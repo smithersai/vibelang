@@ -11,7 +11,7 @@ import (
 // Retained foreign function declarations default to unknown (VIP-4, chapter
 // 003). Check their callback assignments and class fields with native-compatible
 // signatures. Foreign callable variables retain their value provenance;
-// accessor and returned-callable provenance are outside this slice.
+// accessor provenance is outside this slice.
 func init() { fileChecks = append(fileChecks, checkDefaultForeignCallbacks) }
 
 func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
@@ -187,6 +187,19 @@ func defaultForeignCallbackOwners(c *checker.Checker, roots []*checker.Type) []*
 
 // The existing signature/owner substitution maps also cover type parameters
 // used only in JSDoc, which TypeScript may prune from the callable structure.
+// A factory's annotation belongs to its signature, not to the callable
+// returned by that signature (chapter 003). Keep binding/property hosts,
+// but stop before an enclosing function- or signature-like node.
+func defaultForeignSignatureHosts(decl *ast.Node) []*ast.Node {
+	hosts := jsdocHosts(decl)
+	for i, host := range hosts {
+		if i != 0 && ast.IsFunctionLike(host) {
+			return hosts[:i]
+		}
+	}
+	return hosts
+}
+
 // A type alias name's tags never annotate the signature inside it.
 func defaultForeignCallbackContract(c *checker.Checker, signature *checker.Signature, owners []*checker.Type, foreignOnly bool) (throwContract, bool) {
 	original := signature
@@ -244,7 +257,7 @@ func defaultForeignCallbackContract(c *checker.Checker, signature *checker.Signa
 		}
 	}
 	var contract throwContract
-	for _, host := range jsdocHosts(decl) {
+	for _, host := range defaultForeignSignatureHosts(decl) {
 		if ast.IsTypeAliasDeclaration(host) {
 			continue
 		}
@@ -277,7 +290,7 @@ func defaultForeignCallbackContract(c *checker.Checker, signature *checker.Signa
 }
 
 // Retained foreign callable variables keep their declaration provenance.
-// Accessor and returned-callable provenance remain separate contract-flow tasks.
+// Accessor provenance remains a separate contract-flow task.
 func defaultForeignCallbackCandidate(c *checker.Checker, t *checker.Type, owners []*checker.Type, origin *ast.Node) bool {
 	if t == nil {
 		return false
@@ -317,7 +330,7 @@ func defaultForeignCallbackCandidate(c *checker.Checker, t *checker.Type, owners
 			default:
 				return false
 			}
-			for _, host := range jsdocHosts(decl) {
+			for _, host := range defaultForeignSignatureHosts(decl) {
 				if !ast.IsTypeAliasDeclaration(host) && hasThrowsTag(host) {
 					return false
 				}
@@ -436,6 +449,32 @@ func defaultForeignValueDeclaredAbroad(c *checker.Checker, node *ast.Node, seen 
 	}
 	if node.Kind == ast.KindExpressionWithTypeArguments {
 		return defaultForeignValueDeclaredAbroad(c, node.Expression(), seen)
+	}
+	if ast.IsCallExpression(node) || ast.IsNewExpression(node) || ast.IsTaggedTemplateExpression(node) {
+		signature := c.GetResolvedSignature(node)
+		if signature == nil {
+			return false
+		}
+		for signature.Target() != nil {
+			signature = signature.Target()
+		}
+		declaration := signature.Declaration()
+		if declaration == nil {
+			return false
+		}
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil || isLibFile(c, file) {
+			return false
+		}
+		if !isVibeLangFile(file) {
+			return true
+		}
+		for n := declaration; n != nil; n = n.Parent {
+			if isTypeScriptModule(n) {
+				return true
+			}
+		}
+		return false
 	}
 	if ast.IsPropertyDeclaration(node) || node.Kind == ast.KindPropertySignature {
 		file := ast.GetSourceFileOfNode(node)

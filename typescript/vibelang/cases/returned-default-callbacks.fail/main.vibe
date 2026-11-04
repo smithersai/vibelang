@@ -1,0 +1,22 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import {make,makeVar,api,makeGeneric,Ctor,makeTag,consume,type Program,type Handler,type API} from "./helpers.js"
+export const assigned:Handler=make()
+export function argument(){consume(makeVar())}
+export function returned():Handler{return api.make()}
+export const member:API={run:make()}
+export class Box implements API{run=make()}
+class Parent{run=makeVar()}
+export class Inherited extends Parent implements API{}
+const alias=make()
+export const aliased:Handler=alias
+const factory=make
+export const factoryAlias:Handler=factory()
+const generic=makeGeneric()<Program>
+export const ownArguments:Handler=generic
+export const constructed:Handler=new Ctor()
+export const tagged:Handler=makeTag``
+module LocalFactory{
+export function create():()=>number{return()=>1}
+}
+import {create as moduleMake} from LocalFactory
+export const moduleCallback:Handler=moduleMake()

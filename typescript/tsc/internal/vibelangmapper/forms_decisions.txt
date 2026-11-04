@@ -5555,6 +5555,8 @@ typescript/vibelang/cases/retry-effectful-predicate/main.vibe:30:26 lambda effec
 typescript/vibelang/cases/retry-effectful-predicate/main.vibe:31:16 lambda effectFn keyword
 typescript/vibelang/cases/retry-effectful-predicate/main.vibe:32:12 lambda effectFn keyword
 typescript/vibelang/cases/retry-effectful-predicate/main.vibe:7:22 lambda program table
+typescript/vibelang/cases/returned-default-callbacks/main.vibe:12:72 lambda plain table
+typescript/vibelang/cases/returned-default-callbacks/main.vibe:9:34 lambda plain fallback
 typescript/vibelang/cases/returned-effect-arm-called/main.vibe:10:9 lambda effectFn keyword
 typescript/vibelang/cases/returned-effect-arm-called/main.vibe:11:11 lambda effectFn keyword
 typescript/vibelang/cases/returned-effect-arm-called/main.vibe:16:29 byname program table

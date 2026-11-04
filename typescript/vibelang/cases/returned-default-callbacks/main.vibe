@@ -1,0 +1,17 @@
+// expect:
+import {make,makeSafe,makeEffect,makeCaptured,type Program,type Fn,type Handler,type Admitting,type API} from "./helpers.js"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+export const safe:Handler=makeSafe()
+export const effectful:Handler=makeEffect()
+export const captured:Handler=makeCaptured<Program>()
+export const admitted:Admitting=make()
+function localFactory():Fn{return()=>1}
+export const local:Handler=localFactory()
+export function bridged(){return Effect.try(make())}
+export function objectBridge(){return Effect.try({["try"]:make(),catch:()=>0})}
+export function intrinsic(x:unknown){return x is Option.None}
+export class Safe implements API{run=makeSafe()}
+export class Fx implements API{run=makeEffect()}
+export const nativeCall:Handler=localFactory.call(null)
+export const nativeApply:Handler=localFactory.apply(null,[])
