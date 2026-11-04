@@ -237,10 +237,20 @@ or runtime references valid in first-release `.vibe` source.
 
 The kernel's implementation modules are private package files; their source
 stays in `src/kernel/` so the original law and trace suites can test the
-continuation machine directly. Generated code uses the package root. Tests and
+continuation machine directly. Generated code uses the package root and the
+`vibelang-runtime/data-methods` subpath described below. Tests and
 instrumentation import the kernel module itself from `vibelang-runtime/kernel`,
 such as its `hooks`, which report each capture and resumption; the compiler's
 acceptance case `stack-depth` uses them to check that loops run in constant stack.
+
+## Data method dispatch
+
+`vibelang-runtime/data-methods` exports `$method`, the helper the compiler
+imports for data-first method calls, and the `MethodCandidate` type. A callable
+member on the receiver runs with that receiver. Otherwise, exactly one
+matching Effect module candidate receives the value as its first argument.
+An absent or ambiguous candidate keeps JavaScript's missing-method failure.
+Applications normally let the compiler emit this import.
 
 ## Experimental platform APIs
 
@@ -256,8 +266,8 @@ platform, host name and other facts, `kill` and `isRunning`),
 `changes` over `window.matchMedia`). Each service has its own key; `FileSystem` is a superset of
 Effect's interface. The layers are in
 `vibelang-runtime/experimental/platform-node` (`ExperimentalNodeServices`,
-`ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeStdio`, `ExperimentalNodeLocks`, `ExperimentalNodeHttpServer`), `-bun`
-(`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`, `ExperimentalBunStdio`) and `-browser`
+`ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeStdio`, `ExperimentalNodeLocks`, `ExperimentalNodeHttpServer`), `vibelang-runtime/experimental/platform-bun`
+(`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`, `ExperimentalBunStdio`) and `vibelang-runtime/experimental/platform-browser`
 (`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`, `ExperimentalBrowserInfo`, `ExperimentalBrowserWindow`, `ExperimentalBrowserDocument`, `ExperimentalBrowserResizeObserver`, `ExperimentalBrowserFileReader`, `ExperimentalBrowserAnimations`, `ExperimentalBrowserAudioContext`). A layer of a service
 that extends Effect's provides the experimental service and Effect's service
 of the same name from one implementation; a `Crypto` layer provides the
@@ -269,6 +279,22 @@ within one process only, is in no bundle. Install the matching
 `@effect/platform-*` package, an optional peer dependency. The
 platform-neutral modules import only `effect`, and the service keys are pure,
 so a program that does not use them bundles none of them.
+
+The remaining individual subpaths are:
+
+| Subpath | Purpose |
+| --- | --- |
+| `vibelang-runtime/experimental/Animations` | Browser animation controls |
+| `vibelang-runtime/experimental/AudioContext` | Browser audio context operations |
+| `vibelang-runtime/experimental/BrowserInfo` | Browser and navigator information |
+| `vibelang-runtime/experimental/Document` | Document operations |
+| `vibelang-runtime/experimental/FileReader` | Browser file reading |
+| `vibelang-runtime/experimental/ResizeObserver` | Element resize observation |
+| `vibelang-runtime/experimental/Window` | Window operations |
+| `vibelang-runtime/experimental/Stdio` | Effect standard I/O plus `awaitInputClosed` |
+| `vibelang-runtime/experimental/Dns` | Typed DNS resolution |
+| `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |
+| `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns` layer |
 
 ### Browser conformance tests
 
