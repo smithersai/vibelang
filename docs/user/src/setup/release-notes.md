@@ -304,6 +304,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Setup left literal `Bun.build` entrypoints such as `src/index.ts` pointing at files it had migrated, so the build stopped with `ModuleNotFound`. It now follows the existing converted source and keeps native entries as written.
 
 - Migration returned a module to TypeScript when `EK4833` said `No quick fix: keep the qualified Effect type here`, as for an Effect type with a union slot. The style gate now keeps such a module; other `EK4833` warnings still return it.
+- Upgrading an older `service` body could turn its readonly API fields writable. `vibelang --fix --fix-migration-only` now spells the old `readonly` fields and nested type members explicitly, preserving their declarations across the compiler upgrade.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

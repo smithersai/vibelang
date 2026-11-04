@@ -436,9 +436,11 @@ The migrate flow discovers the compiler program before each fixing pass. Repaira
 
 During migration, a generated source-child helper that cannot safely move to a platform sibling stays private in a TypeScript `module` body. The spawning module passes its `import.meta.url`, so loader resolution still starts in the parent package. This avoids platform imports in VibeLang and extra public exports. The `sourceChildModules` receipt lists conversions and warnings for helpers the flow cannot safely adopt.
 
-## Native readonly upgrade
+## Legacy readonly upgrade
 
 Use `vibelang --fix --fix-migration-only` when upgrading modules written for the former implicit readonly default. It writes `readonly` on native interface properties, object-type members and index signatures, including nested type annotations, to preserve their old declarations. It retains explicit `readonly` and `mutable` members, and preserves the TypeScript mutability of methods, class fields and embedded `module` bodies. Normal checking and ordinary `--fix` use the current written mutability. Combining the explicit legacy upgrade with `exactOptionalPropertyTypes` preserves both readonly fields and acceptance of explicitly written `undefined`.
+
+The explicit upgrade also writes `readonly` on legacy `service` body fields and in their nested types, including whole-shape service types. A method keeps its method spelling, and a static field keeps its own mutability; their parameter and result types retain the old nested readonly members. For example, `service Jobs { start: () => void }` becomes `service Jobs { readonly start: () => void }`. Current checking and ordinary fixes do not add these legacy defaults.
 
 
 When `--fix` checks declaration imports across several modules, declaration emission runs in parallel and collects every module's result before comparing the proposed imports.
