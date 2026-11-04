@@ -6,7 +6,7 @@ Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpCli
 Use Effect's crypto services:   try (try SecureRandom.SecureRandom).randomBytes(size)
 Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".
 Use the Path service:   (try Path.Path).resolve()
-Use the FileSystem service:   FileSystem.makeTempDirectory()
+Use the FileSystem service:   (try FileSystem.FileSystem).makeTempDirectory()
 Use the experimental Process service:   try (try Experimental.Process.Process).temporaryDirectory
 Process.temporaryDirectory queries the native temporary directory without creating a directory or file.
 Use the experimental Process service:   Experimental.Process.hostname()

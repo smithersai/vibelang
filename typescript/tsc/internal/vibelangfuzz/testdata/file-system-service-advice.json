@@ -1,0 +1,162 @@
+[
+  {
+    "key": "node:fs:readFile:direct",
+    "source": "import { readFile } from \"node:fs\"\nexport const native = readFile\n",
+    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+  },
+  {
+    "key": "node:fs:readFile:alias",
+    "source": "import { readFile as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+  },
+  {
+    "key": "node:fs:writeFile:direct",
+    "source": "import { writeFile } from \"node:fs\"\nexport const native = writeFile\n",
+    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+  },
+  {
+    "key": "node:fs:writeFile:alias",
+    "source": "import { writeFile as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+  },
+  {
+    "key": "node:fs:mkdir:direct",
+    "source": "import { mkdir } from \"node:fs\"\nexport const native = mkdir\n",
+    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+  },
+  {
+    "key": "node:fs:mkdir:alias",
+    "source": "import { mkdir as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+  },
+  {
+    "key": "node:fs:stat:direct",
+    "source": "import { stat } from \"node:fs\"\nexport const native = stat\n",
+    "advice": "(try FileSystem.FileSystem).stat(path)"
+  },
+  {
+    "key": "node:fs:stat:alias",
+    "source": "import { stat as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).stat(path)"
+  },
+  {
+    "key": "node:fs:createReadStream:direct",
+    "source": "import { createReadStream } from \"node:fs\"\nexport const native = createReadStream\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)"
+  },
+  {
+    "key": "node:fs:createReadStream:alias",
+    "source": "import { createReadStream as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)"
+  },
+  {
+    "key": "node:fs:createWriteStream:direct",
+    "source": "import { createWriteStream } from \"node:fs\"\nexport const native = createWriteStream\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)"
+  },
+  {
+    "key": "node:fs:createWriteStream:alias",
+    "source": "import { createWriteStream as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)"
+  },
+  {
+    "key": "node:fs:watch:direct",
+    "source": "import { watch } from \"node:fs\"\nexport const native = watch\n",
+    "advice": "(try FileSystem.FileSystem).watch(path)"
+  },
+  {
+    "key": "node:fs:watch:alias",
+    "source": "import { watch as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).watch(path)"
+  },
+  {
+    "key": "node:fs:glob:direct",
+    "source": "import { glob } from \"node:fs\"\nexport const native = glob\n",
+    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+  },
+  {
+    "key": "node:fs:glob:alias",
+    "source": "import { glob as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+  },
+  {
+    "key": "fs:readFile:direct",
+    "source": "import { readFile } from \"fs\"\nexport const native = readFile\n",
+    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+  },
+  {
+    "key": "fs:readFile:alias",
+    "source": "import { readFile as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+  },
+  {
+    "key": "fs:writeFile:direct",
+    "source": "import { writeFile } from \"fs\"\nexport const native = writeFile\n",
+    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+  },
+  {
+    "key": "fs:writeFile:alias",
+    "source": "import { writeFile as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+  },
+  {
+    "key": "fs:mkdir:direct",
+    "source": "import { mkdir } from \"fs\"\nexport const native = mkdir\n",
+    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+  },
+  {
+    "key": "fs:mkdir:alias",
+    "source": "import { mkdir as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+  },
+  {
+    "key": "fs:stat:direct",
+    "source": "import { stat } from \"fs\"\nexport const native = stat\n",
+    "advice": "(try FileSystem.FileSystem).stat(path)"
+  },
+  {
+    "key": "fs:stat:alias",
+    "source": "import { stat as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).stat(path)"
+  },
+  {
+    "key": "fs:createReadStream:direct",
+    "source": "import { createReadStream } from \"fs\"\nexport const native = createReadStream\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)"
+  },
+  {
+    "key": "fs:createReadStream:alias",
+    "source": "import { createReadStream as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)"
+  },
+  {
+    "key": "fs:createWriteStream:direct",
+    "source": "import { createWriteStream } from \"fs\"\nexport const native = createWriteStream\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)"
+  },
+  {
+    "key": "fs:createWriteStream:alias",
+    "source": "import { createWriteStream as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)"
+  },
+  {
+    "key": "fs:watch:direct",
+    "source": "import { watch } from \"fs\"\nexport const native = watch\n",
+    "advice": "(try FileSystem.FileSystem).watch(path)"
+  },
+  {
+    "key": "fs:watch:alias",
+    "source": "import { watch as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).watch(path)"
+  },
+  {
+    "key": "fs:glob:direct",
+    "source": "import { glob } from \"fs\"\nexport const native = glob\n",
+    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+  },
+  {
+    "key": "fs:glob:alias",
+    "source": "import { glob as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+  }
+]

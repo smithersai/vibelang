@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("fs:glob:direct\x00\x00")

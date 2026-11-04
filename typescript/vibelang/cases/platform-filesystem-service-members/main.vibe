@@ -1,0 +1,11 @@
+import { fixed, expected } from "./native.js"
+
+effect function actual() {
+  provide Layer.succeed(FileSystem.FileSystem, fixed) {
+    return try (try FileSystem.FileSystem).readFileString("fixture")
+  }
+}
+// expect-result: ["read:fixture", "read:fixture"]
+export effect function main() {
+  return [try actual(), try expected]
+}
