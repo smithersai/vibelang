@@ -492,6 +492,12 @@ const targets = {
     [bun, node],
     "10m"
   ),
+  "docs-jsx-output": check(
+    "Public JSX output claims and generated filenames follow TypeScript's mode-specific extension.",
+    "node --test docs/tools/spec-jsx-modes.test.mjs",
+    [],
+    [node]
+  ),
   tokens: check("Token counts in the docs match a fresh count.", "bun docs/tools/token-counts.ts --check", [], [bun]),
   // The executable is source-keyed; generation still reads the entire tree.
   forms: check(
