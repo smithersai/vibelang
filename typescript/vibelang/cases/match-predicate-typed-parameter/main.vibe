@@ -31,3 +31,5 @@ export function extracted(n: number) {
     default: "none";
   }
 }
+
+// Chapter 004: match-predicate-typed-parameter; rule-evidence: docs/design/src/004-match.md#677ef241c443f885

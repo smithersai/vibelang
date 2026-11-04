@@ -6,3 +6,5 @@ export effect function main() {
   for concurrent ((2 is let n) ? n : 1) (const x of [1, 2]) { sum += x }
   return { limit: n, sum }
 }
+
+// Chapter 004: match-is-concurrent-limit-home; rule-evidence: docs/design/src/004-match.md#c9c869a0319ce7c7

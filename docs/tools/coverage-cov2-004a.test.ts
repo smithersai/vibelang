@@ -31,3 +31,46 @@ test.todo("Chapter 004 / docs/design/src/004-match.md#155f53913884e0f6 / update-
 
 // Chapter 004: guard failure and predicate complements; rule-evidence: docs/design/src/004-match.md#d15a64b19617640a
 test.todo("Chapter 004 / docs/design/src/004-match.md#d15a64b19617640a / predicate false branches can narrow without finite coverage; a failed guard must not imply the positive predicate failed")
+
+// Chapter 004: a relational pattern such as less-than zero narrows neither the subject type nor a binding; rule-evidence: docs/design/src/004-match.md#508b6205d58cf85d
+test.todo("Chapter 004 / docs/design/src/004-match.md#508b6205d58cf85d / a relational pattern such as less-than zero narrows neither the subject type nor a binding")
+
+// Chapter 004: not complements the actual ordinary-class, own matcher, generated-error or retained fixed test; rule-evidence: docs/design/src/004-match.md#79effa77469a4585
+test.todo("Chapter 004 / docs/design/src/004-match.md#79effa77469a4585 / not complements the actual ordinary-class, own matcher, generated-error or retained fixed test")
+
+// Chapter 004: unknown uses the declared error type fallback, including a getter absent from a matching foreign object; rule-evidence: docs/design/src/004-match.md#2d6500f1b6e27dc4
+test.todo("Chapter 004 / docs/design/src/004-match.md#2d6500f1b6e27dc4 / unknown uses the declared error type fallback, including a getter absent from a matching foreign object")
+
+// Chapter 004: or alternative replacement preserves TDZ, source const immutability, and duplicate-initialization restrictions; rule-evidence: docs/design/src/004-match.md#77298c2f137b6437
+test.todo("Chapter 004 / docs/design/src/004-match.md#77298c2f137b6437 / or alternative replacement preserves TDZ, source const immutability, and duplicate-initialization restrictions")
+
+// Chapter 004: if-head bindings use the enclosing home and retain within-one-or cell replacement; rule-evidence: docs/design/src/004-match.md#479cfcc63d56554d
+test.todo("Chapter 004 / docs/design/src/004-match.md#479cfcc63d56554d / if-head bindings use the enclosing home and retain within-one-or cell replacement")
+
+// Chapter 004: EK0705 rejects unbraced statement-body is bindings for every if/else/loop/label form; rule-evidence: docs/design/src/004-match.md#dd17190e2e5680df
+test.todo("Chapter 004 / docs/design/src/004-match.md#dd17190e2e5680df / EK0705 rejects unbraced statement-body is bindings for every if/else/loop/label form")
+
+// Chapter 004: the EK0705 editor action and CLI --fix wrap the owning statement body in braces; rule-evidence: docs/design/src/004-match.md#be0cbf2d645b9852
+test.todo("Chapter 004 / docs/design/src/004-match.md#be0cbf2d645b9852 / the EK0705 editor action and CLI --fix wrap the owning statement body in braces")
+
+// Chapter 004: else-if binding uses the enclosing home's scope and requires braces around an unbraced else body; rule-evidence: docs/design/src/004-match.md#3db8070047219592
+test.todo("Chapter 004 / docs/design/src/004-match.md#3db8070047219592 / else-if binding uses the enclosing home's scope and requires braces around an unbraced else body")
+
+// Chapter 004: duplicate top-level is bindings and lexical collisions use TS2451; parameter collisions keep native codes; rule-evidence: docs/design/src/004-match.md#ba8cbc651337e3f5
+test.todo("Chapter 004 / docs/design/src/004-match.md#ba8cbc651337e3f5 / duplicate top-level is bindings and lexical collisions use TS2451; parameter collisions keep native codes")
+
+// Chapter 004: duplicate initialization inside one top-level pattern follows the draft, with its authorized or exception; rule-evidence: docs/design/src/004-match.md#255ded8a0c673e62
+test.todo("Chapter 004 / docs/design/src/004-match.md#255ded8a0c673e62 / duplicate initialization inside one top-level pattern follows the draft, with its authorized or exception")
+
+// Chapter 004: EK0705 covers unbraced bodies and formal/catch initializers while explicit blocks and arms retain homes; rule-evidence: docs/design/src/004-match.md#04e27363ff50585f
+test.todo("Chapter 004 / docs/design/src/004-match.md#04e27363ff50585f / EK0705 covers unbraced bodies and formal/catch initializers while explicit blocks and arms retain homes")
+
+// Chapter 004: EK0702 rejects data types/variants, schemas, Context.Reference and invalid or nonsignature call-only callees; rule-evidence: docs/design/src/004-match.md#54632cb353222591
+test.todo("Chapter 004 / docs/design/src/004-match.md#54632cb353222591 / EK0702 rejects data types/variants, schemas, Context.Reference and invalid or nonsignature call-only callees")
+
+// Chapter 004: finite-domain omissions have EK4701 for both synchronous and async match; rule-evidence: docs/design/src/004-match.md#d9b8b646ff70f290
+test.todo("Chapter 004 / docs/design/src/004-match.md#d9b8b646ff70f290 / finite-domain omissions have EK4701 for both synchronous and async match")
+
+// Chapter 004: finite domains expand booleans, enums, data variants, Option, Exit and Result into their members; rule-evidence: docs/design/src/004-match.md#e5363fe99945fcac
+test.todo("Chapter 004 / docs/design/src/004-match.md#e5363fe99945fcac / finite domains expand booleans, enums, data variants, Option, Exit and Result into their members")
+

@@ -7,3 +7,5 @@ export function written(s: number[]): number {
 export function writtenKey(s: Record<string, number>): number | undefined {
   return match (s) { when { let a }: s.a; default: -1; }
 }
+
+// Chapter 004: match-bindings-unchecked-index.fail; rule-evidence: docs/design/src/004-match.md#84594252989baada

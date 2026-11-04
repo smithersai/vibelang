@@ -17,3 +17,5 @@ function witness():readonly unknown[]{const n=99;let turn=0;const reads:(()=>unk
 export function main():Effect.Effect<readonly unknown[]>{return Effect.sync(witness)}
 // VIP-7 fresh uninitialized while cells after continue and a skipped match; rule: docs/design/vips/0007-match.md#e2dd39fb39c17162
 // VIP-7 fresh uninitialized while cells after continue and a skipped match; rule: docs/design/vips/0007-match.md#628f5c8e4be0cd17
+
+// Chapter 004: match-vip7-while-tdz; rule-evidence: docs/design/src/004-match.md#b6ad2f1dd7405b33

@@ -13,3 +13,9 @@ export function initialDo(): string {
 export function main(): Effect.Effect<unknown> { return Effect.sync(initialDo) }
 // VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#03fd26bcd6762fe7
 // VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#9546f1703d609138
+
+// Chapter 004: match-vip7-do-cells; rule-evidence: docs/design/src/004-match.md#038dab1450f2a526
+
+// Chapter 004: match-vip7-do-cells; rule-evidence: docs/design/src/004-match.md#adbe045a3bc90730
+
+// Chapter 004: match-vip7-do-cells; rule-evidence: docs/design/src/004-match.md#fd824d06e66ac579

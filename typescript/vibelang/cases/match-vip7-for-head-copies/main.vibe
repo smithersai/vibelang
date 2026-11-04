@@ -12,3 +12,5 @@ export function skipped():readonly string[]{const seen:string[]=[];for(const v o
 export effect function main():Effect.Effect<readonly unknown[]>{return [forIn(),forOf(),try Effect.promise(()=>forAwait()),try forConcurrent(),try forTry(),skipped()]}
 // VIP-7 all five for head environments copy cells; rule: docs/design/vips/0007-match.md#efd59c9924614ebe
 // VIP-7 all five for head environments copy cells; rule: docs/design/vips/0007-match.md#43f61c208e1906e3
+
+// Chapter 004: match-vip7-for-head-copies; rule-evidence: docs/design/src/004-match.md#928ccb27bb2b5328

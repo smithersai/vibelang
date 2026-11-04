@@ -9,6 +9,8 @@ import (
 )
 
 func TestOrdinaryClassExtractorDiagnostic(t *testing.T) {
+	// Chapter 004: TestOrdinaryClassExtractorDiagnostic; rule-evidence: docs/design/src/004-match.md#68ebc38754714647
+	// Chapter 004: TestOrdinaryClassExtractorDiagnostic; rule-evidence: docs/design/src/004-match.md#1761f4f2b8111988
 	for _, declaration := range []string{
 		"class C {}",
 		"class Base {}; class C extends Base {}",

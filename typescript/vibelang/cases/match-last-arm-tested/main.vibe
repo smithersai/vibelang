@@ -30,3 +30,5 @@ export effect function main() {
   const result = only(counted)
   return { only: result, reads, published: phase("published"), outside: try outcome(Effect.sync(() => phase("archived" as any))) }
 }
+
+// Chapter 004: match-last-arm-tested; rule-evidence: docs/design/src/004-match.md#c328390a6a0b5c47

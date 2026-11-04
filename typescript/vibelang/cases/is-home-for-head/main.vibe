@@ -48,3 +48,7 @@ export effect function main() {
 // VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#cf4047a8c5a7607d
 // VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#f29175e8b1c03cba
 // VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#3cc20d862baeec59
+
+// Chapter 004: is-home-for-head; rule-evidence: docs/design/src/004-match.md#d94105afa0e25b9e
+
+// Chapter 004: is-home-for-head; rule-evidence: docs/design/src/004-match.md#64f5fb38ca2ee1cb

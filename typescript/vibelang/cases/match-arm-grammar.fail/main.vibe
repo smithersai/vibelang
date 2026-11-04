@@ -67,3 +67,14 @@ export function guarded(s: string, kind: string) {
 // Chapter 004: match-arm-grammar.fail; rule-evidence: docs/design/src/004-match.md#89a809ed11cf23d4
 
 // Chapter 004: match-arm-grammar.fail; rule-evidence: docs/design/src/004-match.md#9ec28ff730eb24c5
+
+// Chapter 004: match-arm-grammar.fail; rule-evidence: docs/design/src/004-match.md#5fc93482bb42e8c1
+
+// Chapter 004: match-arm-grammar.fail; rule-evidence: docs/design/src/004-match.md#28f5b6e0eb449f5c
+
+export function interpolatedArm(s: string, kind: string) {
+  return match (s) {
+    when let v and if (v === `tag-${kind}`): `ok-${v}`;
+    default: `miss-${kind}`;
+  }
+}

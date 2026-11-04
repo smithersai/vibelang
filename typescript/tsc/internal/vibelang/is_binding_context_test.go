@@ -4,6 +4,7 @@ import "testing"
 
 // Details214/240 require the owning diagnostic without moving evaluation.
 func TestUnsettledIsBindingHomes(t *testing.T) {
+	// Chapter 004: TestUnsettledIsBindingHomes; rule-evidence: docs/design/src/004-match.md#31d9a821bc12c0ed
 	for _, tc := range []struct{ name, source string }{
 		{"direct", "function f(a=(1 is let one)){return a}"},
 		{"catch-default", "function f(){try{(null as any).code}catch({code=(1 is let c)}){}}"},
@@ -37,6 +38,7 @@ func TestUnsettledIsBindingHomes(t *testing.T) {
 // These are classification controls, not proof that every settled home is
 // implemented. They must never inherit an outer parameter's unsettled home.
 func TestUnsettledIsBindingHomeBoundaries(t *testing.T) {
+	// Chapter 004: TestUnsettledIsBindingHomeBoundaries; rule-evidence: docs/design/src/004-match.md#355f23e0c3b9c352
 	for _, tc := range []struct{ name, source string }{
 		{"arrow", "function f(a=():boolean=>(1 is let one)){return a}"},
 		{"catch-arrow", "function f(){try{(null as any).code}catch({code=()=>1 is let c}){}}"},
@@ -71,4 +73,5 @@ func TestUnsettledIsBindingHomeControls(t *testing.T) {
 		})
 	}
 }
+
 // VIP-7 reject parameter-environment bindings without relocating initialization; rule: docs/design/vips/0007-match.md#3f108270c1a50ebb

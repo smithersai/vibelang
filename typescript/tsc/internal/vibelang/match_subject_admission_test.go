@@ -7,6 +7,8 @@ import (
 
 // A non-finite member disables EK4701. Finite tag kinds retain the check.
 func TestMatchSubjectAdmission(t *testing.T) {
+	// Chapter 004: TestMatchSubjectAdmission; rule-evidence: docs/design/src/004-match.md#287fabaa73cda7c6
+	// Chapter 004: TestMatchSubjectAdmission; rule-evidence: docs/design/src/004-match.md#28ec3c7b67b4c469
 	tests := []struct {
 		name, source string
 		wantError    bool

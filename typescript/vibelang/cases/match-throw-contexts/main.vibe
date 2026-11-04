@@ -2,3 +2,5 @@
 export effect function effectArm(flag: boolean) {
   return match (flag) { when true: 1; default: throw "missing"; }
 }
+
+// Chapter 004: throw arm grammar; rule-evidence: docs/design/src/004-match.md#9dfd93419a4da1f5
