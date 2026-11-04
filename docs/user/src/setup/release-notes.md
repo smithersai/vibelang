@@ -629,6 +629,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar-admission audit reported a `schema` body member with no type, such as a bare `string`, as accepted although the compiler rejects it with `EK1505`. It now counts `EK1505` as a syntax rejection.
 - The grammar-admission audit reported `import x = require(("m"))` as accepted although TypeScript rejects a non-literal module reference (`TS1141`). It now counts `TS1141` as a syntax rejection.
 - The grammar-admission audit reported `join` inside a plain `function*` as a new gap. It now records it with the known generator gap, where the compiler still treats an unmarked generator as Effect code.
+- The grammar-admission census reported two `is`-binding recovery helpers as unaccounted. It now lists them under VIP-7.
 
 - Callable-contract documentation tests depended on removed examples; they now retain native witnesses and check the current wrapper example without losing defect, failure or default-callback coverage.
 
