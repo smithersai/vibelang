@@ -6,7 +6,7 @@ A service is a named capability a program uses without passing an implementation
 
 [Upstream page](https://effect.website/docs/v4/requirements-management/services)
 
-The transitional `static readonly default = implementation` form keeps its `EK4855` migration warning. `vibelang --fix` can rename the field and its value/type reads before the canonical static-member rules apply. The legacy field needs an initializer; `static readonly default: Shape` without a value is `EK0902`.
+The transitional `static readonly default = implementation` form keeps its `EK4855` migration warning. For a local service, `vibelang --fix` can write the equivalent native `Context.Service` class and retain the cached static field, its key and its value/type reads. This preserves eager initialization and does not introduce a missing-provider fallback. Exported keys, commented bodies and keys that also declare `defaultValue` need an explicit native class migration. The legacy field needs an initializer; `static readonly default: Shape` without a value is `EK0902`.
 
 ## Declaring typed service keys
 
@@ -126,7 +126,7 @@ effect function readImplementation() {
 // Output: ticket-23 23
 ```
 
-A service can declare `static readonly defaultValue = () => implementation` to supply an implementation without a provider. It compiles to a `Context.Reference`. The returned implementation is checked against the service shape, as with `Layer.succeed`. For `Layer.succeed`, the compiler reports a shape mismatch as a TypeScript error, an excess member failure as `EK9201`, and an undeclared call-time requirement as `EK3101`. Support for the new `defaultValue` form arrives with the compiler's VIP implementation. The `EK4855` repair also migrates supported value and type reads of an old `static readonly default`. If an aliased, parenthesized or union index, or an instantiated type query, cannot be preserved, the diagnostic explains the manual repair and the editor leaves the whole declaration unchanged.
+A service can declare `static readonly defaultValue = () => implementation` to supply an implementation without a provider. It compiles to a `Context.Reference`. The returned implementation is checked against the service shape, as with `Layer.succeed`. For `Layer.succeed`, the compiler reports a shape mismatch as a TypeScript error, an excess member failure as `EK9201`, and an undeclared call-time requirement as `EK3101`. Support for the new `defaultValue` form arrives with the compiler's VIP implementation. For a local key with an old `static readonly default`, the `EK4855` repair writes a native `Context.Service` class that retains the cached field, its reads and the shape's mutable members. Exported keys, commented service bodies and keys that also declare `defaultValue` require a manual native class migration.
 
 A reference declared with a member body has `Flags.Shape` for its implementation and `typeof Flags` for its key value, but no `Flags` identifier type. Writing `let value: Flags` reports `TS2749`, as for Effect's `Context.Reference`; references do not appear in `R`. An import type such as `import("./flags.vibe").Flags` reports `TS2694`; use `typeof import("./flags.vibe").Flags` for the key value.
 

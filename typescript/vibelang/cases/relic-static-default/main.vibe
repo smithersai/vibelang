@@ -1,0 +1,13 @@
+import { initialize, state } from "./events.js"
+
+service Flags {
+  static readonly key = "relic-static-default/Flags"
+  static readonly default: Flags.Shape = initialize()
+  enabled: boolean
+}
+
+export function probe(): unknown { return Flags.default === Flags.default }
+export function snapshot() {
+  return { same: probe(), initializations: state.initializations, enabled: Flags.default.enabled }
+}
+export effect function main() { return snapshot() }

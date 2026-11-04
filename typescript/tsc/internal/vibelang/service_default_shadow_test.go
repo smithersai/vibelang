@@ -27,7 +27,7 @@ func TestVIP9DefaultValueMigrationReturnTypeShadows(t *testing.T) {
 				"const same: [Equal<Value, Flags.Shape>, Equal<Indexed, Flags.Shape>, Equal<Member, boolean>, Equal<Projection, boolean>] = [true, true, true, true]\n"
 			source := service + scope.prefix + reads + scope.suffix
 			fixed := applyQuickFix(t, source, EK4855.Code)
-			if !strings.HasPrefix(fixed, "service Flags") || !strings.Contains(fixed, scope.prefix) || !strings.Contains(fixed, scope.suffix) {
+			if !strings.Contains(fixed, "class Flags extends ") || !strings.Contains(fixed, scope.prefix) || !strings.Contains(fixed, scope.suffix) {
 				t.Fatalf("changed a user binding:\n%s", fixed)
 			}
 			program, file, _, _ := editorProgram(t, fixed)

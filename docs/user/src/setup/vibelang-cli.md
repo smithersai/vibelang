@@ -41,6 +41,8 @@ Every source `.vibe` file has its own module scope, including when `moduleDetect
 
 Top-level `await` is ES top-level await of a Promise, with its module and target requirements, whatever its operand. An unsupported target reports `TS1378`; CommonJS output under `module: "NodeNext"` reports `TS1309`.
 
+For a local service with a cached `static readonly default`, `--fix` writes the native `Context.Service` class while keeping the field, key and reads. It preserves eager initialization and missing-provider failure. Exported keys, commented service bodies and keys that also declare `defaultValue` require a manual native class migration.
+
 ### Inspect or initialize configuration
 
 - `vibelang --init` creates TypeScript's generic `tsconfig.json`. For an ESM project, set `"type": "module"` in `package.json`; then adapt `include` and the output options as above. The initializer does not create VibeLang's package setup.

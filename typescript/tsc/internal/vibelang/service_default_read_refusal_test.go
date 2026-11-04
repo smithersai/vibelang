@@ -27,8 +27,8 @@ func TestServiceDefaultRefusesUnhandledTypeReads(t *testing.T) {
 			if legacyDefault(n) {
 				found = true
 				r := legacyDefaultRewrite(c, file, n)
-				if r.fixable() {
-					t.Errorf("unsafe repair with unhandled read %s", read)
+				if !r.fixable() {
+					t.Errorf("cached native migration unavailable for read %s: %+v", read, r)
 				}
 				return true
 			}

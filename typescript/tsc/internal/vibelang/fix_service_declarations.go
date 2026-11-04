@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"fmt"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
@@ -10,7 +9,7 @@ import (
 )
 
 var EK4854 = message(4854, warningCategory, "Abstract classes no longer declare services; write a service declaration to preserve this service.")
-var EK4855 = message(4855, warningCategory, "A service default is static readonly defaultValue: () => Shape; rename default and wrap its value in a thunk.")
+var EK4855 = message(4855, warningCategory, "Legacy static default: run vibelang --fix to preserve its cached value and service key; use defaultValue: () => Shape only to choose a Reference fallback.")
 
 func init() {
 	for _, m := range []*Message{EK4854, EK4855} {
@@ -19,7 +18,8 @@ func init() {
 		tsFormFixCodes = append(tsFormFixCodes, m.Code)
 	}
 	tsFormRules[EK4854.Code] = &tsFormRule{message: EK4854, find: findLegacyServices, plan: legacyServiceRewrite, diagnosed: ast.IsClassDeclaration}
-	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults, plan: legacyDefaultRewrite, diagnosed: func(n *ast.Node) bool { return ast.IsPropertyDeclaration(n) || legacyDefaultReadNode(n) }}
+	vipMigrationFixCodes = append(vipMigrationFixCodes, EK4855.Code)
+	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults, plan: legacyDefaultRewrite, diagnosed: ast.IsPropertyDeclaration}
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4854.Code, EK4855.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
@@ -83,240 +83,22 @@ func legacyServiceRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.N
 }
 
 func legacyDefault(n *ast.Node) bool {
-	return n != nil && ast.IsPropertyDeclaration(n) && n.Initializer() != nil && ast.IsStatic(n) && ast.HasSyntacticModifier(n, ast.ModifierFlagsReadonly) && n.Name() != nil && !ast.IsComputedPropertyName(n.Name()) && n.Name().Text() == "default" && (declarationWord(n.Parent) == "service" || legacyService(n.Parent))
+	return n != nil && ast.IsPropertyDeclaration(n) && n.Initializer() != nil && ast.IsStatic(n) && ast.HasSyntacticModifier(n, ast.ModifierFlagsReadonly) && n.Name() != nil && !ast.IsComputedPropertyName(n.Name()) && n.Name().Text() == "default" && declarationWord(n.Parent) == "service"
 }
 
-// A legacy default migrates as one unit (VIP-9: "including corresponding
-// type and value reads"): the declaration carries the warning, and its fix
-// also rewrites every read of the member in the same file, value and type
-// reads alike, so the repaired file compiles. A read in another file has its
-// own warning and fix, which vibelang --fix applies in the same run.
+// The declaration owns the complete preserving migration. Static reads keep
+// their names; they no longer become fresh Reference fallback calls.
 func findLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if ast.IsPropertyDeclaration(n) {
-			if r := legacyDefaultRewrite(c, file, n); r != nil {
-				report(n, r)
-			}
-		} else if declaration := legacyDefaultRead(c, n); declaration != nil && ast.GetSourceFileOfNode(declaration) != file {
-			if r := legacyDefaultRewrite(c, file, n); r != nil {
-				report(n, r)
-			}
-			return false // the parts of a read are not reads
+		if r := legacyDefaultRewrite(c, file, n); r != nil {
+			report(n, r)
 		}
 		return n.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
 }
 
-// legacyDefaultReadNode reports whether n is a node a read of a legacy
-// default can stand at.
-func legacyDefaultReadNode(n *ast.Node) bool {
-	return ast.IsPropertyAccessExpression(n) || ast.IsElementAccessExpression(n) || ast.IsTypeQueryNode(n) || ast.IsIndexedAccessTypeNode(n)
-}
-
-// legacyDefaultRead returns the legacy default declaration that n reads, or
-// nil. The reads are the value reads S.default and S["default"] and the type
-// reads typeof S.default (with any qualified continuation) and
-// (typeof S)["default"].
-func legacyDefaultRead(c *checker.Checker, n *ast.Node) *ast.Node {
-	var symbol *ast.Symbol
-	switch {
-	case ast.IsPropertyAccessExpression(n):
-		if n.Name().Text() != "default" {
-			return nil
-		}
-		symbol = c.GetSymbolAtLocation(n.Name())
-	case ast.IsElementAccessExpression(n):
-		argument := n.AsElementAccessExpression().ArgumentExpression
-		if argument == nil || !ast.IsStringLiteral(argument) || argument.Text() != "default" {
-			return nil
-		}
-		if t := c.GetTypeAtLocation(n.Expression()); t != nil {
-			symbol = c.GetPropertyOfType(t, "default")
-		}
-	case ast.IsTypeQueryNode(n):
-		_, name, _ := legacyDefaultTypeQuery(c, n)
-		if name == nil {
-			return nil
-		}
-		symbol = c.GetSymbolAtLocation(name)
-	case ast.IsIndexedAccessTypeNode(n):
-		access := n.AsIndexedAccessTypeNode()
-		if !ast.IsLiteralTypeNode(access.IndexType) || !ast.IsStringLiteral(access.IndexType.AsLiteralTypeNode().Literal) || access.IndexType.AsLiteralTypeNode().Literal.Text() != "default" {
-			return nil
-		}
-		if t := c.GetTypeFromTypeNode(access.ObjectType); t != nil {
-			symbol = c.GetPropertyOfType(t, "default")
-		}
-	default:
-		return nil
-	}
-	if symbol == nil || !legacyDefault(symbol.ValueDeclaration()) {
-		return nil
-	}
-	return symbol.ValueDeclaration()
-}
-
-// legacyDefaultTypeQuery splits typeof S.default.a.b into S, the name default
-// and [a b]. name is nil when the query reads no legacy default. A query with
-// type arguments is left alone.
-func legacyDefaultTypeQuery(c *checker.Checker, n *ast.Node) (left, name *ast.Node, tail []string) {
-	query := n.AsTypeQueryNode()
-	if query.TypeArguments != nil {
-		return nil, nil, nil
-	}
-	for e := query.ExprName; e != nil && ast.IsQualifiedName(e); e = e.AsQualifiedName().Left {
-		qualified := e.AsQualifiedName()
-		if qualified.Right.Text() == "default" {
-			if symbol := c.GetSymbolAtLocation(qualified.Right); symbol != nil && legacyDefault(symbol.ValueDeclaration()) {
-				return qualified.Left, qualified.Right, tail
-			}
-		}
-		tail = append([]string{qualified.Right.Text()}, tail...)
-	}
-	return nil, nil, nil
-}
-
-// closedLegacyDefaultReadType accepts only types whose spelling cannot bind
-// a source name at the read. In particular, enum literals, unique symbols,
-// string mappings and error-any keep the existing factory projection.
-func closedLegacyDefaultReadType(t *checker.Type) bool {
-	if t == nil {
-		return false
-	}
-	if t.Flags()&checker.TypeFlagsUnion != 0 {
-		for _, member := range t.Types() {
-			if !closedLegacyDefaultReadType(member) {
-				return false
-			}
-		}
-		return true
-	}
-	if t.Flags()&(checker.TypeFlagsEnum|checker.TypeFlagsEnumLiteral) != 0 {
-		return false
-	}
-	return t.Flags()&(checker.TypeFlagsLiteral|checker.TypeFlagsString|checker.TypeFlagsNumber|checker.TypeFlagsBigInt|checker.TypeFlagsBoolean|checker.TypeFlagsESSymbol|checker.TypeFlagsNull|checker.TypeFlagsUndefined|checker.TypeFlagsVoid|checker.TypeFlagsNever|checker.TypeFlagsUnknown) != 0
-}
-
-// legacyDefaultReadEdit rewrites one read of a legacy default: a value read
-// calls the factory. A type read keeps its closed original type or projects
-// the factory's result, so an exported type keeps its meaning.
-func legacyDefaultReadEdit(c *checker.Checker, file *ast.SourceFile, n *ast.Node) sourceEdit {
-	// Context.Reference<Shape> exposes () => Shape in declarations, even
-	// when the written factory returns a narrower literal. Preserve the
-	// original type read directly, including inside arrays and unions.
-	if ast.IsTypeQueryNode(n) || ast.IsIndexedAccessTypeNode(n) {
-		if t := c.GetTypeFromTypeNode(n); closedLegacyDefaultReadType(t) {
-			text := c.TypeToStringEx(t, n, checker.TypeFormatFlagsInTypeAlias|checker.TypeFormatFlagsNoTruncation, nil)
-			return sourceEdit{nodeStart(file, n), n.End(), "(" + text + ")"}
-		}
-	}
-	var text string
-	switch {
-	case ast.IsPropertyAccessExpression(n):
-		dot := "."
-		if n.AsPropertyAccessExpression().QuestionDotToken != nil {
-			dot = "?."
-		}
-		text = expressionText(file, n.Expression()) + dot + "defaultValue()"
-	case ast.IsElementAccessExpression(n):
-		open := "["
-		if n.AsElementAccessExpression().QuestionDotToken != nil {
-			open = "?.["
-		}
-		text = expressionText(file, n.Expression()) + open + "\"defaultValue\"]()"
-	case ast.IsTypeQueryNode(n):
-		left, _, tail := legacyDefaultTypeQuery(c, n)
-		text = legacyDefaultFactoryType("typeof " + expressionText(file, left) + ".defaultValue")
-		for _, member := range tail {
-			text += "[\"" + member + "\"]"
-		}
-	case ast.IsIndexedAccessTypeNode(n):
-		text = legacyDefaultFactoryType(expressionText(file, n.AsIndexedAccessTypeNode().ObjectType) + "[\"defaultValue\"]")
-	}
-	return sourceEdit{nodeStart(file, n), n.End(), text}
-}
-
-// Use a lexical conditional type instead of the utility name ReturnType:
-// a local/imported alias or type parameter can shadow that global. The infer
-// binding is local to this conditional and cannot capture a source binding.
-func legacyDefaultFactoryType(factory string) string {
-	return "(" + factory + " extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)"
-}
-
 func legacyDefaultRewrite(c *checker.Checker, file *ast.SourceFile, n *ast.Node) *formRewrite {
-	r := &formRewrite{description: "defaultValue thunk"}
-	if legacyDefaultReadNode(n) {
-		if legacyDefaultRead(c, n) == nil {
-			return nil
-		}
-		r.edits = []sourceEdit{legacyDefaultReadEdit(c, file, n)}
-		return r
-	}
-	if !legacyDefault(n) || n.Initializer() == nil {
-		return nil
-	}
-	value := expressionText(file, n.Initializer())
-	if body := ast.SkipParentheses(n.Initializer()); ast.IsObjectLiteralExpression(body) && body == n.Initializer() || ast.IsBinaryExpression(body) && body.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
-		value = "(" + value + ")" // an arrow body that starts with { is a block
-	}
-	r.edits = []sourceEdit{{nodeStart(file, n.Name()), n.Name().End(), "defaultValue"}, {nodeStart(file, n.Initializer()), n.Initializer().End(), "() => " + value}}
-	if n.Type() != nil {
-		r.edits = append(r.edits, sourceEdit{nodeStart(file, n.Type()), n.Type().End(), "() => " + expressionText(file, n.Type())})
-	}
-	// The reads of this member in this file, outside the declaration itself.
-	reads := 0
-	var visit func(*ast.Node) bool
-	visit = func(m *ast.Node) bool {
-		if m == n {
-			return false
-		}
-		if unhandledLegacyDefaultRead(c, m, n) {
-			r.why = "No quick fix: a corresponding type read of default needs a manual rewrite."
-			return true
-		}
-		if legacyDefaultReadNode(m) && legacyDefaultRead(c, m) == n {
-			r.edits = append(r.edits, legacyDefaultReadEdit(c, file, m))
-			reads++
-			return false
-		}
-		return m.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	if r.why != "" {
-		r.edits = nil
-		return r
-	}
-	if reads > 0 {
-		r.description = fmt.Sprintf("defaultValue thunk and %d %s of %s.default", reads, plural(reads, "read", "reads"), n.Parent.Name().Text())
-	}
-	return r
-}
-
-// Recognize resolved reads beyond the syntactic forms the editor can rewrite.
-// Refuse the whole declaration edit rather than leave a dangling type read.
-func unhandledLegacyDefaultRead(c *checker.Checker, n, declaration *ast.Node) bool {
-	if legacyDefaultRead(c, n) == declaration {
-		return false
-	}
-	if ast.IsTypeQueryNode(n) {
-		for e := n.AsTypeQueryNode().ExprName; e != nil && ast.IsQualifiedName(e); e = e.AsQualifiedName().Left {
-			name := e.AsQualifiedName().Right
-			if symbol := c.GetSymbolAtLocation(name); symbol != nil && symbol.ValueDeclaration() == declaration {
-				return true
-			}
-		}
-	}
-	if ast.IsIndexedAccessTypeNode(n) {
-		access := n.AsIndexedAccessTypeNode()
-		object := c.GetTypeFromTypeNode(access.ObjectType)
-		index := c.GetTypeFromTypeNode(access.IndexType)
-		if object != nil && index != nil {
-			symbol := c.GetPropertyOfType(object, "default")
-			return symbol != nil && symbol.ValueDeclaration() == declaration &&
-				(c.IsTypeAssignableTo(c.GetStringLiteralType("default"), index) || index.Flags()&checker.TypeFlagsTypeParameter != 0)
-		}
-	}
-	return false
+	return legacyDefaultNativeClass(c, file, n)
 }

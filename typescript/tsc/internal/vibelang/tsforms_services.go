@@ -111,6 +111,9 @@ func serviceClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.No
 		switch {
 		case ast.IsSemicolonClassElement(member):
 		case ast.IsStatic(member):
+			if ast.IsPropertyDeclaration(member) && member.Name() != nil && member.Name().Text() == "default" {
+				return nil // cached native static data has no equivalent service/Reference sugar
+			}
 			statics = true
 		default:
 			return nil // an instance member: no service declares one

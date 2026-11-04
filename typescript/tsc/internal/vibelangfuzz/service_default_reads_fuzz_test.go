@@ -74,7 +74,7 @@ func serviceDefaultReadsProject(form serviceDefaultRead, annotated, identifier, 
 	case "parameter":
 		statement = strings.Replace(statement, "type Read =", "type Read<ReturnType = unknown> =", 1)
 	}
-	files := map[string]string{"main.vibe": prefix + declaration + statement}
+	files := map[string]string{"main.vibe": prefix + strings.TrimPrefix(declaration, "export ") + statement}
 	if otherFile {
 		files = map[string]string{"flags.vibe": prefix + declaration, "main.vibe": "import { Flags } from \"./flags.vibe\"\n" + statement}
 	}
@@ -184,6 +184,23 @@ func checkServiceDefaultReads(t *testing.T, w *Workspace, form serviceDefaultRea
 		}
 		if len(result.Refused) > 0 {
 			Gap(t, serviceDefaultReadsTarget, "fix:refused:"+form.key, "Appendix B %q: --fix refused %v\n%s", serviceDefaultReadsQuote, result.Refused, Archive(files))
+			return
+		}
+		if _, exported := files["flags.vibe"]; exported {
+			// The accepted VIP-9 row permits refusal when preserving an
+			// exported key's API cannot be proved. Require an explained site
+			// and byte-identical sources rather than a Reference rewrite.
+			explained := false
+			for _, site := range result.Sites {
+				if site.Code == "EK4855" && site.Reason != "" {
+					explained = true
+				}
+			}
+			if len(result.Files) != 0 || !explained {
+				Gap(t, serviceDefaultReadsTarget, "fix:exported:"+form.key, "exported key needs an explained preserving refusal: files=%v sites=%+v", result.Order, result.Sites)
+				return
+			}
+			ExpectPending(t, serviceDefaultReadsTarget, form.key)
 			return
 		}
 		fixed := maps.Clone(files)

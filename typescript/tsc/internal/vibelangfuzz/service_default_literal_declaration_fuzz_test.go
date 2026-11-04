@@ -81,7 +81,7 @@ func defaultLiteralProject(key string, choice uint8) map[string]string {
 	if choice&1 != 0 {
 		return map[string]string{"flags.vibe": declaration, "main.vibe": "import { Flags } from \"./flags.vibe\"\n" + statement}
 	}
-	return map[string]string{"main.vibe": declaration + statement}
+	return map[string]string{"main.vibe": strings.Replace(declaration, "export service Flags:", "service Flags:", 1) + statement}
 }
 
 // The same type-only client reads each actual emitted package declaration.
@@ -126,6 +126,20 @@ func checkDefaultLiteralDeclaration(t *testing.T, w *Workspace, key string, choi
 		}
 		options := vibelang.FixOptions{MigrationOnly: choice&32 != 0, CheckEachFix: choice&64 != 0}
 		fix := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), options)
+		if _, exported := files["flags.vibe"]; exported {
+			// VIP-9 permits an explained refusal when a public key's
+			// native class cannot be rewritten with the same public API.
+			explained := false
+			for _, site := range fix.Sites {
+				if site.Code == "EK4855" && site.Reason != "" {
+					explained = true
+				}
+			}
+			if fix.Err != nil || len(fix.Files) != 0 || !explained {
+				Gap(t, defaultLiteralDeclarationsTarget, "exported:"+key, "exported key requires an unchanged, explained refusal: error=%v files=%v sites=%+v", fix.Err, fix.Order, fix.Sites)
+			}
+			return
+		}
 		if fix.Err != nil || len(fix.Refused) != 0 || len(fix.Files) == 0 {
 			Gap(t, defaultLiteralDeclarationsTarget, "fix:"+key, "migration failed: %v refused %v\n%s", fix.Err, fix.Refused, Archive(files))
 			return

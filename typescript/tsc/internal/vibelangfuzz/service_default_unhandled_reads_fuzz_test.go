@@ -2,6 +2,8 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 	"strings"
 	"testing"
 )
@@ -25,14 +27,14 @@ func FuzzServiceDefaultTypeReadRefusal(f *testing.F) {
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
 		TestServiceDefaultUnhandledReadsQuoted(t)
 		service := []string{"Flags", "Options"}[variant%2]
-		read := "type K = \"default\"; export type Value = (typeof %[1]s)[K];"
+		read := "type K = \"default\"; export type Read = (typeof %[1]s)[K];"
 		switch key {
 		case "parentheses":
-			read = "export type Value = (typeof %[1]s)[(\"default\")];"
+			read = "export type Read = (typeof %[1]s)[(\"default\")];"
 		case "union":
-			read = "export type Value = (typeof %[1]s)[\"default\" | \"key\"];"
+			read = "export type Read = (typeof %[1]s)[\"default\" | \"key\"];"
 		case "instantiation":
-			read = "export type Value = typeof %[1]s.default.read<string>;"
+			read = "export type Read = typeof %[1]s.default.read<string>;"
 		}
 		source := fmt.Sprintf("service %[1]s { static readonly key = \"app/%[1]s\"; static readonly default: %[1]s.Shape = { enabled: true, read: <T>(x:T) => x }; enabled: boolean; read: <T>(x:T) => T }\n", service) + fmt.Sprintf(read, service)
 		r, err := w.Compile(t.Context(), Single(source))
@@ -43,17 +45,40 @@ func FuzzServiceDefaultTypeReadRefusal(f *testing.F) {
 		if !toolsErrorFree(r) {
 			t.Fatalf("invalid source fixture: %v", SortedKeys(Keys(r.Dir, r.Diagnostics)))
 		}
-		found := false
-		for _, d := range r.Diagnostics {
-			if d.Source() == "EK" && d.Code() == 4855 {
-				found = true
-				if toolsOffersQuickFix(t, w, r, "main.vibe", d) {
-					Gap(t, "FuzzServiceDefaultTypeReadRefusal", key, "VIP-9/34: editor offers partial default migration: %s", source)
-				}
-			}
+
+		typeBefore := serviceDefaultReadType(t, r)
+		// Historical target/corpus names stay stable. The native-key action
+		// keeps the member, so these reads now permit a complete safe fix.
+		fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, r.Dir), vibelang.FixOptions{})
+		if fixed.Err != nil || len(fixed.Refused) > 0 {
+			t.Fatalf("%v; %+v", fixed.Err, fixed.Refused)
 		}
-		if !found {
-			Gap(t, "FuzzServiceDefaultTypeReadRefusal", key+":diagnostic", "manual repair must retain EK4855 and refusal explanation")
+		text := source
+		for _, file := range fixed.Files {
+			text = file.Text
 		}
+		if !strings.Contains(text, "class "+service+" extends ") || !strings.Contains(text, "static readonly default") {
+			Gap(t, "FuzzServiceDefaultTypeReadRefusal", key, "complete cached native action missing: %s", text)
+			return
+		}
+		after, err := w.Compile(t.Context(), Single(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer after.Remove()
+		if !toolsErrorFree(after) {
+			Gap(t, "FuzzServiceDefaultTypeReadRefusal", key, "fixed source errors: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
+			return
+		}
+		if got := serviceDefaultReadType(t, after); got != typeBefore {
+			Gap(t, "FuzzServiceDefaultTypeReadRefusal", key, "type read changed: %s -> %s", typeBefore, got)
+		}
+		// A union can retain a private shape alias in TypeToString. Compare
+		// actual consumer APIs with stock TypeScript, so private renaming
+		// cannot masquerade as a changed exported type.
+		if diff := compareServiceDefaultDeclarations(t, w, r, after); diff != "" {
+			Gap(t, "FuzzServiceDefaultTypeReadRefusal", key, "declaration API changed: %s", diff)
+		}
+		ExpectPending(t, "FuzzServiceDefaultTypeReadRefusal", key)
 	})
 }
