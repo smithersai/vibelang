@@ -44,7 +44,9 @@ test("lint host rules distinguish reporting, exit status and activation", () => 
   }
   assert.match(reporting, /Ignore options do not hide printed diagnostics/)
   assert.match(reporting, /exits `0` for warnings or suggestions alone/)
-  assert.match(chapter, /entry alone neither activates the plugin nor re-enables disabled diagnostics/)
+  assert.match(chapter, /A `vibe.severities` entry never re-enables disabled diagnostics/)
+  assert.match(chapter, /an assigned `EK38xx` key in a config without a resolved plugin entry still activates the whole default plugin/)
+  assert.match(chapter, /reports `EK3012`; after that retirement, such a key alone activates nothing/)
   assert.match(chapter, /Once enabled, severity resolves from `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default/)
 })
 

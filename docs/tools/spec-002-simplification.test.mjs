@@ -35,7 +35,7 @@ test("002 cut 2 retains its rule and existing do-jump-operand-order witness", ()
 test.todo("rule-evidence: docs/design/src/002-running.md#do-expressions | 002-cut-3 existing do-jump-operand-order | present | Everything to its left runs first, in source order, fully evaluated as ECMA-262 specifies (callee and receiver read, spreads iterated, keys converted, earlier template substitutions stringified), so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`.")
 
 test("002 cut 3 retains its rule and existing do-jump-operand-order witness", () => {
-  assert.ok(read("docs/design/src/002-running.md").includes("Everything to its left runs first, in source order, fully evaluated as ECMA-262 specifies (callee and receiver read, spreads iterated, keys converted, earlier template substitutions stringified), so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`."))
+  assert.ok(read("docs/design/src/002-running.md").includes("Everything to its left runs first, in source order, fully evaluated as ECMA-262 specifies (callee and receiver read, spreads iterated, computed object-literal keys converted, earlier template substitutions stringified), so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`."))
   const witness = read("typescript/vibelang/cases/do-jump-operand-order/main.vibe")
   assert.ok(witness.includes("callee()(rec(\"a\""))
   assert.ok(witness.includes("rec(\"a\""))
