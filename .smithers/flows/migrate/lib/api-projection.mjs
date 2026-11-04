@@ -1,6 +1,6 @@
 // Reconstruct a read-only declaration snapshot's original package layout.
 // Every alias forwards to one stored declaration, preserving nominal identity.
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve, sep } from "node:path"
 import { tmpdir } from "node:os"
 
@@ -36,7 +36,13 @@ export function apiProjection(ts, directory, surface, files, { published = true 
   const originals = new Map(), destinations = new Map()
   const path = name => {
     const output = resolve(root, name)
-    if (!output.startsWith(root + sep)) throw new Error("Declaration snapshot path escapes its comparison projection: " + name)
+    // Sibling declarations may live above the package, inside its mirrored
+    // ancestors. The temporary directory bounds that whole isolated layout.
+    const escaped = () => { throw new Error("Declaration snapshot path escapes its comparison projection: " + name) }
+    if (!output.startsWith(temporary + sep)) escaped()
+    // Ancestor node_modules links are resolution inputs, never write targets.
+    for (let cursor = dirname(output); cursor !== temporary; cursor = dirname(cursor))
+      if (existsSync(cursor) && lstatSync(cursor).isSymbolicLink()) escaped()
     return output
   }
   const put = (name, text) => { const file = path(name); mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text) }

@@ -18,7 +18,7 @@ const child = `
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
-import { isAbsolute, join, resolve } from "node:path"
+import { isAbsolute, join, relative, resolve } from "node:path"
 const [input, implementation, compilerApi] = process.argv.slice(1)
 const shape = JSON.parse(input)
 const ts = createRequire(compilerApi)("typescript")
@@ -45,7 +45,7 @@ try {
 } finally { projection.cleanup() }
 assert.equal(existsSync(projection.directory), false)
 // Normalizing the temporary root must preserve rejection of real path escapes.
-surface.apiMetadata.logicalPaths[file] = shape.escape
+surface.apiMetadata.logicalPaths[file] = isAbsolute(shape.escape) ? shape.escape : relative(projection.directory, temporary) + "/../" + shape.escape
 assert.throws(() => apiProjection(ts, resolve("original"), surface, [file]), /escapes its comparison projection/)
 assert.deepEqual(readdirSync(temporary), [])
 `

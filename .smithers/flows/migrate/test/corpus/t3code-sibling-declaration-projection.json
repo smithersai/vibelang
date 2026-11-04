@@ -1,0 +1,21 @@
+{
+  "property": "api-projection-siblings",
+  "rule": "Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin",
+  "input": { "depth": 2, "parents": 2, "suffix": "scripts/lib/x.d.ts" },
+  "logicalPaths": [
+    "src/x.d.ts",
+    "../../scripts/lib/x.d.ts",
+    "../../packages/shared/x.d.ts",
+    "../../scripts/lib/desktop-external-packages.d.ts",
+    "../../packages/client-runtime/src/state/orchestrationV2TestFixtures.d.ts",
+    "../../scripts/lib/public-config.d.ts"
+  ],
+  "before": {
+    "index.d.ts": "export type { Config } from \"../../scripts/lib/x.js\";\n",
+    "x.d.ts": "/** Stable configuration. */ export interface Config { value: string }\n"
+  },
+  "after": {
+    "type": "/** Stable configuration. */ export interface Config { value: number }\n",
+    "documentation": "/** Changed configuration. */ export interface Config { value: string }\n"
+  }
+}

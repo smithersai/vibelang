@@ -314,6 +314,13 @@ aliases and logical output paths in `public-surface.json` (`snapshotVersion: 3`)
 The API comparison reconstructs a temporary package from stored declarations;
 source/runtime aliases forward to those declarations, including default and
 `export =` modules. Publication subpaths and conditions retain their names.
+Logical paths may include `..` segments for sibling packages and scripts. The
+projection mirrors package ancestors inside one isolated temporary directory,
+so those declarations and their relative imports remain comparable. A path
+outside that temporary directory is rejected. Mirrored `node_modules` links
+remain read-only resolution inputs; stored declarations and aliases cannot
+write through them. Type and documentation changes through sibling imports
+still fail the comparison.
 The migration adapter uses the shared supervised worker and retains its resource limits.
 The opt-in `includeComparedFiles` receipt records TypeScript’s actual input closure
 for private-addition and unproven-module attribution, including file shadowing.
