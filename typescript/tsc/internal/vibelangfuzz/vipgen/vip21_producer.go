@@ -32,7 +32,8 @@ func init() {
 			{
 				VIP:      21,
 				Template: `const ‹p› = (‹params›) => Stream.callback((queue) => Effect.gen(function* () { yield* Queue.offer(queue, ‹x›) yield* Effect.sleep(‹d›) yield* Queue.offer(queue, ‹y›) }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })`,
-				Quote:    "It compiles to Effect's `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered.",
+				Quote:    "For one sequential emitter, the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered.",
+				Reading:  "The VIP shows zero-argument ticks with Stream.callback<number>. The reference generalizes its parameters and numeric operands, leaving bufferSize 1, suspend, sequential Queue.offer and Queue.end unchanged.",
 			},
 			{
 				VIP:      21,

@@ -190,6 +190,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 
+- The producer fuzz citation failed after its buffering rule was clarified. It now retains the sequential-emitter qualification and identifies the generalized reference template; the generated programs are unchanged.
+
 - Host writes and deletes in `sync` callbacks with explicit inputs could block migration with `EK4402` and no repair. They now migrate through one fresh `.platform.ts` companion per source, preserving input evaluation, deferred execution and public types; formerly accepted wrapper access reports a migration warning.
 
 - An `is` pattern inside a generic Effect callback could report `EK9206` even though no source function called itself. Pattern predicates now keep their Boolean meaning without inventing a recursive contract requirement.
