@@ -1629,9 +1629,25 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 	case patternArray:
 		test(p.matchCacheCall(ctx, "iterable", at, path()))
 		for i, item := range pat.items {
-			test(p.matchCacheCall(ctx, "has", at, path(), p.mNumber(i, at)))
+			has := func() *ast.Node { return p.matchCacheCall(ctx, "has", at, path(), p.mNumber(i, at)) }
 			value := func() *ast.Node { return p.matchCacheCall(ctx, "at", at, path(), p.mNumber(i, at)) }
-			p.compilePattern(item, p.enterSubject(value, item, steps, ctx), steps, ctx)
+			switch {
+			case item.kind == patternElision:
+				// An elision skips an element that must exist.
+				test(has())
+			case !item.optional:
+				test(has())
+				p.compilePattern(item, p.enterSubject(value, item, steps, ctx), steps, ctx)
+			case patternHasBindings(item):
+				// An absent element leaves its bindings uninitialized, which
+				// this lowering's const cannot express.
+				test(p.patternErrorCall(4704, "Optional binding", item.anchor))
+			default:
+				// Chapter 004: an optional element the value leaves out
+				// consumes nothing, and a present one must match its pattern.
+				absent := p.mBinary(has(), ast.KindEqualsEqualsEqualsToken, p.mKeyword(ast.KindFalseKeyword, at), at)
+				test(p.mParens(p.joinTests([]*ast.Node{absent, p.mParens(p.inlinePattern(item, value, ctx), at)}, ast.KindBarBarToken, at), at))
+			}
 		}
 		if pat.hasRest {
 			if pat.rest != nil {

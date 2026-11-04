@@ -1,0 +1,16 @@
+// expect-result: [[true,false,true,false,false],[true,true,true,false],[false,true,false],[1,1,2,0]]
+// Chapter 004: an optional list element the value leaves out consumes
+// nothing, a present one must match its pattern, and an elision skips an
+// element that must exist. The iterable cache's lowering keeps all three.
+function one(s: unknown[]) { return match (s) { when [1?]: true; default: false; } }
+function two(s: unknown) { return s is [1?, 2?] }
+function skip(s: unknown[]) { return match (s) { when [, 2]: true; default: false; } }
+function tail(s: readonly number[]) { return match (s) { when [let a, 2?, ...let rest]: a + rest.length; default: 0; } }
+export effect function main() {
+  return [
+    [one([]), one([undefined]), one([1]), one([2]), one([1, 2])],
+    [two([]), two([1]), two([1, 2]), two([2])],
+    [skip([2]), skip([1, 2]), skip([1, 2, 3])],
+    [tail([1]), tail([1, 2]), tail([1, 2, 3]), tail([1, 3])],
+  ]
+}

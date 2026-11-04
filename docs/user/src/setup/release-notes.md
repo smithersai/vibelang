@@ -267,6 +267,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `catch` handler missing `=>` could omit `EK0509`; recovery now reports it while retaining independent TypeScript errors in the parameters and body.
 - A `data` variant constructor was accepted as a class pattern, `when Delivery.Sent:`, and `when Delivery.Sent(let t):` gave an obsolete extractor error. Both now report `EK0702`, whose quick fix writes the tag object pattern, and the retired `EK4707` is no longer emitted.
+- An optional list element, `[1?]`, required its element to be present under the iterable cache, so an array without it matched nothing. An absent optional element matches again; an elision still requires its element.
 
 - Migration setup left forced Bun build checks such as `bun check --no-script -b` unable to resolve unchanged tests' imports after conversion; setup now selects VibeLang's build mode with the same projects and emit settings.
 - A member pattern on `super`, `when super.inherited:` or `s is super.inherited`, produced JavaScript that passed `super` to a function and failed to load. The member is now read in place with `this` as its receiver.
