@@ -178,7 +178,7 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 		// A schema error family base installs its registration
 		// before user static initializers. Keep it in the explicit class too.
 		familyAlias := ""
-		if module == "Schema" && errorHasSchemaFamilyRegistration(class) {
+		if module == "Schema" && class.Flags&ast.NodeFlagsAmbient == 0 && errorHasSchemaFamilyRegistration(class) {
 			familyAlias = "$ErrorSchemaFamily"
 			for i := 2; c.ResolveName(familyAlias, class, ast.SymbolFlagsAll, false) != nil; i++ {
 				familyAlias = "$ErrorSchemaFamily" + strconv.Itoa(i)
@@ -186,7 +186,7 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			addedImport += "import { $schemaErrorFamily as " + familyAlias + " } from \"vibelang-runtime\"\n"
 		}
 		var members []string
-		if module == "Schema" {
+		if module == "Schema" && class.Flags&ast.NodeFlagsAmbient == 0 {
 			// VIP-7/VIP-29: an explicit class keeps the declaration's tag
 			// matcher, including before user-written static initializers.
 			matcher := "$ErrorMatcher"
