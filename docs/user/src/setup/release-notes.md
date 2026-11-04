@@ -493,6 +493,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Bare `interruptible` and `uninterruptible` could be stored as global functions. These keyword names now report missing bindings; use `Effect.interruptible` or `Effect.uninterruptible` for function values.
 
+- A class could `implement` a pure callback member while storing or inheriting a throwing function; incompatible member contracts now report `EK0402`, including getters and generic interface bindings.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

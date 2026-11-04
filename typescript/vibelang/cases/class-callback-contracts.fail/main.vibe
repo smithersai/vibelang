@@ -1,0 +1,14 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import {type API,type AlsoPure,type Allowed,type AliasAPI,type GenericAPI,type Plain,type OverloadedAPI,source,broad,Base,instantiated,type EffectAPI} from "./helpers.js"
+export class Field implements API {run=source}
+export const Anonymous=class implements API {run=source}
+export class Getter implements API {get run(){return source}}
+export class Inherited extends Base implements API {}
+export class Builtin implements API {run=JSON.parse}
+export class Typed implements API {run:Allowed=source}
+export class AliasBound implements AliasAPI {run=source}
+export class CapturedNever implements GenericAPI<never> {run=source}
+export class Multiple implements API,AlsoPure {run=source}
+export class Explicit implements API {run:Plain=source}
+export class RequiredOverloads implements OverloadedAPI {run=broad}
+export class InstantiatedGeneric implements EffectAPI {run=instantiated}

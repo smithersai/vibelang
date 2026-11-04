@@ -826,6 +826,7 @@ typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:48:14 lambda effectFn k
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:55:36 lambda program table
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:56:38 lambda program table
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:59:24 lambda program table
+typescript/vibelang/cases/class-callback-contracts/main.vibe:7:38 lambda plain fallback
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:12:28 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:4:28 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:8:26 lambda effectFn table

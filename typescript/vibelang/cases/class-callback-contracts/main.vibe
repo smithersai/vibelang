@@ -1,0 +1,16 @@
+// expect:
+import type {Effect} from "effect"
+import {type API,type InheritedGenericAPI,type AllowedAPI,type UnknownAPI,type GenericAPI,type MisleadingAlias,type UnionAPI,type EffectAPI,type GenericReturn,source,safe,unknownSource,overloaded,fx,FxBase} from "./helpers.js"
+export class Allowed implements AllowedAPI {run=source}
+export class All implements UnknownAPI {run=unknownSource}
+export class Never implements API {run=safe}
+export class Own implements API {run=(text:string)=>text}
+export class CapturedError implements GenericAPI<Error> {run=source}
+export class CapturedUnknown implements GenericAPI<unknown> {run=unknownSource}
+export class AliasNameDoesNotThrow implements API {run:MisleadingAlias=safe}
+export class MatchedOverload implements API {run=overloaded}
+export class SomeDestination implements UnionAPI {run=source}
+export class Fx implements EffectAPI {run=fx}
+export class CapturedFx extends FxBase implements EffectAPI {}
+export class SafeBuiltin implements API {run=JSON.stringify}
+export class InheritedGeneric implements InheritedGenericAPI {run=source}

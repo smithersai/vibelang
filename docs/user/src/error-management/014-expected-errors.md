@@ -510,3 +510,5 @@ A foreign constructor's own `@throws` contract also applies when its value is pa
 The ES2026 `JSON.parse` overload, whose reviver receives a context object, also throws `SyntaxError`. Wrap a synchronous call in native `try/catch`, or use a callback whose contract admits throws; effect code can use `try Effect.try(() => JSON.parse(text, reviver))`.
 
 A foreign tag's `@throws` contract also applies to a tagged-template invocation. Synchronous code must catch a known throwing tag with native `try/catch`, or call it in an admitting wrapper thunk such as `Effect.try`.
+
+A class's `implements` clause also checks the thrown contracts of callable members. Storing a foreign throwing function in a field, returning it from a getter, or inheriting it does not turn it into a pure callback. Give the interface an admitting `@throws` signature, or supply a callback that catches the throw. Generic interface arguments and compatible overloads retain their own contracts.

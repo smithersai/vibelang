@@ -1,0 +1,3 @@
+// expect: TS2416
+import {type API,wrong} from "./helpers.js"
+export class Native implements API {run=wrong}
