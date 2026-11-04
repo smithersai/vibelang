@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
+import ts from "typescript"
 import { lint, lintKind, loadSpec, rules, type Spec } from "./spec-lint"
 import { examples, verdict } from "./spec-examples.mjs"
 
@@ -317,3 +318,58 @@ test("module-extraction-twins checks JSX source-kind neighbors without banning T
   expect(lint(extractionFixture(genericArrow, "tsx"), rule("module-extraction-twins")).some(v => v.message.includes("does not parse"))).toBe(true)
   expect(lint(extractionFixture('export const text = "<div />"', "ts"), rule("module-extraction-twins"))).toEqual([])
 })
+
+test("module-projection-kind rejects the original all-ts mapper instruction", () => {
+  const original = "- **TypeScript mapper.** The one-file projector for stock TypeScript tools refuses bodies today (`EK9100`). It projects each body as its own virtual `.ts` file."
+  const fixture: Spec = new Map([["vips/0040-module-declarations.md", original]])
+  expect(lint(fixture, rule("module-projection-kind")).map(v => v.message)).toEqual([
+    "the TypeScript mapper must preserve both source kinds: .ts for .vibe and .tsx for .vibex (VIP-39/40)"
+  ])
+})
+
+test("module-projection-kind checks the mapper independently of the correct extraction rule", () => {
+  const fixture: Spec = new Map([["vips/0040-module-declarations.md",
+    "The extracted twin uses `.ts` for `.vibe` and `.tsx` for `.vibex`.\n\n" +
+    "- **TypeScript mapper.** It projects each body as its own virtual `.ts` file."]])
+  expect(lint(fixture, rule("module-projection-kind"))).toHaveLength(1)
+})
+
+test("module-projection-kind rejects missing variants across layouts and ignores fenced examples", () => {
+  fc.assert(fc.property(
+    fc.constantFrom(" ", "\n", "  "),
+    fc.constantFrom("`.ts`", "`.vibe`", "`.tsx`", "`.vibex`"),
+    fc.boolean(),
+    (gap, missing, exampleFirst) => {
+      const instruction = "- **TypeScript mapper.** It projects each body as a virtual `.ts` file for `.vibe` or `.tsx` for `.vibex`."
+      const fenced = "\n\n```md\n" + instruction.replace(missing, "`missing`") + "\n```\n\n"
+      const valid = instruction.replaceAll(" ", gap)
+      const wrap = (body: string) => exampleFirst ? fenced + body : body + fenced
+      const fixture: Spec = new Map([["vips/0040-module-declarations.md", wrap(valid)]])
+      expect(lint(fixture, rule("module-projection-kind"))).toEqual([])
+      fixture.set("vips/0040-module-declarations.md", wrap(valid.replace(missing, "`missing`")))
+      expect(lint(fixture, rule("module-projection-kind"))).toHaveLength(1)
+    }
+  ), { seed: 4023, numRuns: 200 })
+})
+
+test("the spec-copies gate includes module projection source kinds", () => {
+  const fixture: Spec = new Map([["vips/0040-module-declarations.md",
+    "- **TypeScript mapper.** It projects each body as its own virtual `.ts` file."]])
+  expect(lintKind(fixture, "copies").some(v => v.rule === "module-projection-kind")).toBe(true)
+})
+
+test("native TypeScript preserves JSX in virtual tsx files and rejects it in ts files", () => {
+  fc.assert(fc.property(fc.integer({ min: 0, max: 1000000 }), n => {
+    const text = "export const view" + n + " = <widget" + n + " data-index={" + n + "} />"
+    const parse = (name: string) => ts.createSourceFile(name, text, ts.ScriptTarget.Latest, true) as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }
+    expect(parse("body.ts").parseDiagnostics.length).toBeGreaterThan(0)
+    expect(parse("body.tsx").parseDiagnostics).toEqual([])
+    expect(parse("body.tsx").languageVariant).toBe(ts.LanguageVariant.JSX)
+  }), { seed: 3940, numRuns: 200 })
+})
+
+// Native TypeScript source-kind probes above establish the parser distinction.
+// They do not establish module-body projection through the Vibe mapper, which
+// the VIP still records as an EK9100 refusal. Keep that integration obligation
+// explicit until the mapper exposes separate virtual body files.
+test.todo("rule-evidence: docs/design/vips/0040-module-declarations.md#tooling | project module bodies from .vibe and .vibex through stock TypeScript with and without JSX | present | It projects each body as its own virtual `.ts` file for a body in `.vibe`, or `.tsx` for one in `.vibex`, retaining the body’s source language variant even when it contains no JSX ([VIP-39](0039-vibex.md#decision)).")

@@ -496,6 +496,24 @@ const plainUnknownCall: Rule = {
   }
 }
 rules.push(fallbackRow, plainUnknownCall)
+// VIP-39 gives .vibex the .tsx language variant; VIP-40 preserves that
+// variant when exposing each body to TypeScript tools, not only on extraction.
+const moduleProjectionKind: Rule = {
+  name: "module-projection-kind",
+  finding: "PREVIEW-23: VIP-40's mapper instruction still projected every body as .ts after its JSX extraction correction",
+  check(spec) {
+    const file = "vips/0040-module-declarations.md", text = spec.get(file)
+    if (text === undefined) return []
+    const instruction = paragraphs(text).find(p => /\*\*TypeScript\s+mapper\.\*\*/.test(p.text))
+    if (instruction && ["`.ts`", "`.vibe`", "`.tsx`", "`.vibex`"].every(ext => instruction.text.includes(ext))) return []
+    return [{ rule: this.name, file, line: instruction ? lineAt(text, instruction.index) : 1,
+      message: "the TypeScript mapper must preserve both source kinds: .ts for .vibe and .tsx for .vibex (VIP-39/40)" }]
+  }
+}
+
+rules.push(moduleProjectionKind)
+kinds.copies!.push("module-projection-kind")
+
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 export const lintKind = (spec: Spec, kind: string) =>
   lint(spec, rules.filter(rule => kinds[kind]?.includes(rule.name)))
