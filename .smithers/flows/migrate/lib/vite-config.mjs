@@ -2,9 +2,9 @@
 // Node and the existing source hook load native dependencies at that boundary.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
-import { listSources, isTestFile } from "./inventory.mjs"
+import { listSources, isTestFile, isFixtureFile } from "./inventory.mjs"
 import { resolveRelative } from "./imports.mjs"
-import { repositoryPackages } from "./wire.mjs"
+import { ownedPaths, repositoryPackages } from "./wire.mjs"
 import { vibePath } from "./codemod.mjs"
 
 const preload = 'NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" '
@@ -16,11 +16,11 @@ const namedConfig = /(?:^|\s)(?:--config|-c)(?:=|\s+)(?:"([^"]+)"|'([^']+)'|([^\
 export const viteConfigSource = /^vite(?:\.[\w-]+)?\.config\.m?ts$/
 
 // Type-only imports, import types and commented examples are not runtime edges.
-function runtimeImports(text, file, ts) {
+function runtimeImports(text, file, ts, nodes = false) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)
   const imports = []
   const namedTypes = clause => clause && ts.isNamedImports(clause) && clause.elements.length > 0 && clause.elements.every(e => e.isTypeOnly)
-  const add = node => { if (node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) imports.push(node.text) }
+  const add = node => { if (node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) imports.push(nodes ? node : node.text) }
   const visit = node => {
     if (ts.isImportDeclaration(node)) {
       const clause = node.importClause
@@ -70,6 +70,47 @@ export function nativeConfigDependency({ root, file, packages, ts }) {
   return visit(file)
 }
 
+// Native Node does not try TypeScript extensions or directory indexes.
+// Plan every edit first: a protected or unresolved helper aborts without
+// leaving half of the graph rewritten or enabling an unloadable script.
+function nativeConfigImportEdits({ root, configs, ts }) {
+  const owns = ownedPaths(root), sources = new Set(listSources(root, "."))
+  const seen = new Set(), edits = new Map()
+  const visit = file => {
+    if (seen.has(file) || !existsSync(join(root, file))) return
+    seen.add(file)
+    const text = readFileSync(join(root, file), "utf8")
+    const config = ts.findConfigFile(join(root, posix.dirname(file)), ts.sys.fileExists)
+    const json = config && ts.readConfigFile(config, ts.sys.readFile).config
+    const options = json ? ts.parseJsonConfigFileContent(json, ts.sys, posix.dirname(config)).options : { moduleResolution: ts.ModuleResolutionKind.Bundler }
+    const replacements = []
+    for (const node of runtimeImports(text, file, ts, true)) {
+      const specifier = node.text
+      const resolved = ts.resolveModuleName(specifier, join(root, file), options, ts.sys).resolvedModule?.resolvedFileName
+      const fallback = resolveRelative(file, specifier, sources)
+      const target = resolved ? posix.relative(root, resolved).replace(/\.d\.vibe\.ts$/, ".vibe") : /\.vibex?$/.test(fallback ?? "") ? fallback : undefined
+      const extensionless = specifier.startsWith(".") && !/\.(?:[cm]?[jt]sx?|vibex?|json|node)$/.test(specifier)
+      if (extensionless) {
+        const refuse = reason => { throw new Error(`${file}: ${specifier}: cannot wire native config loading: ${reason}`) }
+        if (!target || target.startsWith("../") || target.includes("/node_modules/") || /\.d\.[cm]?ts$/.test(target) || !existsSync(join(root, target))) refuse("no local runtime source resolved by TypeScript")
+        if (!owns(file) || isTestFile(file) || isFixtureFile(file)) refuse("the importer is not owned by the migration")
+        if (!/\.(?:[cm]?[jt]s|vibex?)$/.test(target)) refuse("the resolved helper is not supported by the native source loader")
+        const relative = posix.relative(posix.dirname(file), target)
+        const next = relative.startsWith(".") ? relative : "./" + relative
+        replacements.push({ start: node.getStart() + 1, end: node.getEnd() - 1, text: next })
+      }
+      if (target && !target.startsWith("../") && !target.includes("/node_modules/") && !target.startsWith("node_modules/") && !/\.d\.[cm]?ts$/.test(target)) visit(target)
+    }
+    if (replacements.length) {
+      let next = text
+      for (const edit of replacements.sort((a, b) => b.start - a.start)) next = next.slice(0, edit.start) + edit.text + next.slice(edit.end)
+      edits.set(file, next)
+    }
+  }
+  configs.forEach(visit)
+  return edits
+}
+
 /** Wire actual Vite invocations, retaining shell chaining and inherited options. */
 export function nativeViteScripts(scripts = {}, { root, dir, configs }) {
   const wired = new Set()
@@ -110,6 +151,11 @@ export function nativeViteScripts(scripts = {}, { root, dir, configs }) {
 export function wireNativeViteConfigs({ root, packages, configs, manifests, ts, specsFor }) {
   const needed = configs.filter(file => nativeConfigDependency({ root, file, packages, ts }))
   const changed = [], warnings = [], wired = new Set()
+  const imports = nativeConfigImportEdits({ root, configs: needed, ts })
+  for (const [file, text] of imports) {
+    writeFileSync(join(root, file), text)
+    changed.push(file)
+  }
   for (const { dir } of manifests) {
     const file = posix.join(dir, "package.json")
     const before = readFileSync(join(root, file), "utf8")

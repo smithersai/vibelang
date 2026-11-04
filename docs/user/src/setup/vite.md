@@ -87,8 +87,13 @@ compiles and cache hits when diagnosing config startup.
 Migration setup detects runtime imports and re-exports into existing native
 modules or the selected source directories, including transitive config
 helpers, and wires the affected `vite` package scripts. Type-only imports
-do not need this path. Setup reports a config without a matching script so
-its caller can supply the same preload and flag.
+do not need this path. Before enabling native loading, setup adds the source
+extension TypeScript resolves to extensionless relative runtime imports in
+config helpers it owns, including directory indexes and transitive helpers.
+It stops with the file and import when a required edit belongs to a protected
+file or the helper has no runtime source. A config graph outside the migration
+scope keeps its original loader and imports. Setup reports a config without a
+matching script so its caller can supply the same preload and flag.
 
 ## 2. Configure tsconfig.json
 

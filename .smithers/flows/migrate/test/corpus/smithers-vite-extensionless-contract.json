@@ -1,0 +1,4 @@
+{
+  "config": "import { value } from \"./contract\";\nexport default { define: { value: String(value) } };\n",
+  "helper": "export const value = 42\n"
+}
