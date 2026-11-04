@@ -1,0 +1,2 @@
+// expect: TS6054
+export {}

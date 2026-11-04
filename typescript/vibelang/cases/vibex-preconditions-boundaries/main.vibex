@@ -1,0 +1,8 @@
+// rule-evidence: docs/design/vips/0039-vibex.md#preconditions | **Parser boundaries.** A bodyless error must leave the following line alone; fork/join accept a JSX operand; generic catch handlers follow TSX's disambiguation; and the denied trailing-block syntax remains rejected under VIP-11.
+error Timeout
+<App/>
+effect function task() {
+  const forked = fork <A/>
+  const joined = join <A/>
+  return input catch <E,>(e: E) => 1
+}

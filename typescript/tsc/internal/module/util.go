@@ -192,7 +192,7 @@ func TryGetJSExtensionForFile(fileName string, options *core.CompilerOptions) st
 	switch ext {
 	case tspath.ExtensionTs, tspath.ExtensionDts, tspath.ExtensionVibe:
 		return tspath.ExtensionJs
-	case tspath.ExtensionTsx:
+	case tspath.ExtensionTsx, tspath.ExtensionVibex:
 		if options.Jsx == core.JsxEmitPreserve {
 			return tspath.ExtensionJsx
 		}

@@ -1,0 +1,10 @@
+import { memo, useCallback, useAtomSet, todosAtom, type Todo } from "./ui.js"
+export const TodoItem = memo(({ todo }: { todo: Todo }) => {
+  const setTodos = useAtomSet(todosAtom)
+  const toggle = useCallback(
+    () => setTodos(todos => todos.map(candidate =>
+      candidate.id === todo.id ? { ...candidate, done: !candidate.done } : candidate)),
+    [setTodos, todo.id],
+  )
+  return <li><input type="checkbox" checked={todo.done} onChange={toggle} />{todo.text}</li>
+})

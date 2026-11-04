@@ -9,7 +9,6 @@
 > **A `.vibex` file is a `.vibe` file read with TypeScript's JSX language variant. Every JSX production, and its scanning, checking and emit, is exactly `.tsx`'s. Every VibeLang production is exactly `.vibe`'s. Where they compete for the same tokens, `<` in expression position takes its `.tsx` reading. JSX adds no other rule.**
 
 ```vibex
-// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 // Profile.vibex   tsconfig: "jsx": "preserve", "jsxImportSource": "solid-js"
 error ProfileMissing { id: string }
 
@@ -64,7 +63,6 @@ export function ProfileCard(props: { name: string; role: "admin" | "member" }) {
 - An operand that starts with `<` is JSX: `try <A/>`, `fork <A/>`, `join <A/>`, `throw <A/>`, as `await <A/>` is in `.tsx`.
 
 ```vibex
-// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 const id = <T,>(x: T) => x
 const lift = effect <T,>(x: T) => x
 const n = input as number
@@ -87,7 +85,6 @@ The cost is the one every `.tsx` author already pays. `effect <T>(x: T) => x`, l
 - **An attribute value is a string, a container or an element**, as in `.tsx`. `task=effect { … }` is a syntax error; write `task={effect { … }}`.
 
 ```vibex
-// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 export effect function Row(id: string) {
   const item = try loadItem(id)
   return (
@@ -121,7 +118,6 @@ export function Row(id: string) {
 - **Pattern position is not expression position.** After `when`, `is`, `and`, `or` and `not`, `<` is TC39's relational pattern, as in `.vibe`, except that `</` is one token in every `.vibex` context (row 39): write `when < /re/:`. A JSX value goes after the arm's `:`.
 
 ```vibex
-// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 const view = <Task<User!NotFound> run={load} />
 const size = match (n) { when < 5: <Small/>; default: <Big/>; }
 ```
@@ -139,7 +135,6 @@ const size = n < 5 ? <Small/> : <Big/>
 - **An attribute is an object member under VIP-4.** TypeScript checks the attributes against the props type member by member, so a function value in an attribute must fit the prop's call signature, as in `f({ onClick: … })` ([Assignability](../src/003-failures.md#assignability)). A handler imported from a `.ts` file with `/** @throws {Error} */` is `EK0402` against an untagged `onClick`, in `onClick={handler}` and in a spread `{...{ onClick: handler }}` alike. The check of a tag against `JSX.ElementType` or `JSX.ElementClass` is not an assignability site: an element is not a tracked call (Rejected: "JSX elements as throw-tracked calls"), so an imported component is never rejected for what it may throw.
 
 ```vibex
-// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 export effect function Greeting() {
   const name = try currentUser()
   return <p>Hello, {name}</p>
@@ -197,7 +192,6 @@ These orders apply after TypeScript's `exports`, `imports`, `paths`, `moduleSuff
 *Corrected 2026-11-02: the collision follows the selected native output paths, not a shared source stem (decided detail 265; found by the round-6 review).*
 
 ```vibex
-// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 // main.vibex
 import { ProfileCard } from "./Profile"      // Profile.vibex
 import { format } from "./format.js"         // format.vibe
@@ -211,12 +205,12 @@ import { format } from "./format.js"         // format.ts
 
 ### Preconditions
 
-The `.vibex` examples explicitly name the current unsupported-file diagnostic, `TS6054`, with a `// compiler-gap:` marker while these prerequisites and file-kind support are pending. This records the planned feature, not successful compilation. The check rejects a stale marker once that code disappears; remaining diagnostics then retain their own checks.
+`.vibex` file-kind support is implemented: explicit CLI roots, tsconfig `files` and `include`, and imported sources select `ScriptKindTSX` with the VibeLang dialect. Checking and emit use the same options as the `.tsx` twin, including `.jsx` under `preserve`, `.js` otherwise, `.d.ts` declarations and JavaScript import-extension rewriting. Unsupported source extensions still report `TS6054`. The examples describe independent parser and lowering requirements; file-kind admission no longer waits for them.
 
-`.vibex` ships after these, each fixed in VibeLang with a test (see Clashes, rows marked **gap**):
+The original decision required these parser and lowering properties, each protected by a test. The clash table retains the original probe results:
 
-1. **VIP-1's plain functions.** Main still lowers every plain function to an Effect: `export function Label(…) { return <b/> }` is declared `Effect.Effect<JSX.Element>`, and `<Label/>` fails with TS2786 "'Label' cannot be used as a JSX component" (probe `q17`). No component works until VIP-1's lowering ships.
-2. **Four parser gaps** that change how `.vibex` reads: a bodyless `error` eats a `<` on the next line; `fork`/`join` reject a `<` operand; a generic `catch` handler doesn't parse; the denied trailing-block parser (VIP-11) still runs.
+1. **VIP-1's plain functions.** A component stays a plain function with the same JSX return type as its .tsx twin; it must not be lowered to an Effect or spuriously rejected with TS2786.
+2. **Parser boundaries.** A bodyless error must leave the following line alone; fork/join accept a JSX operand; generic catch handlers follow TSX's disambiguation; and the denied trailing-block syntax remains rejected under VIP-11.
 
 ## Clashes
 

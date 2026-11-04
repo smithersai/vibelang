@@ -1,0 +1,1 @@
+effect function task() { return input catch <E>(e: E) => 1 }

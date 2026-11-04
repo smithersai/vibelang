@@ -6,6 +6,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/module"
 )
 
 // Output paths are a static VIP-39 rule. Compare identical .tsx/.vibex inputs;
@@ -34,6 +37,8 @@ func FuzzVibexOutputSuffix(f *testing.F) {
 			f.Add(shape, mode, uint8(7))
 		}
 	}
+	// Foldkit: generic components and callbacks must keep the JSX output suffix.
+	f.Add("component", "preserve", uint8(13))
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, shape, mode string, variant uint8) {
 		TestVibexOutputSuffixQuoted(t)
@@ -69,6 +74,10 @@ func FuzzVibexOutputSuffix(f *testing.F) {
 		suffix := ".js"
 		if mode == "preserve" {
 			suffix = ".jsx"
+		}
+		jsxMode := map[string]core.JsxEmit{"preserve": core.JsxEmitPreserve, "react-native": core.JsxEmitReactNative, "react": core.JsxEmitReact}[mode]
+		if got := module.TryGetJSExtensionForFile(stem+".vibex", &core.CompilerOptions{Jsx: jsxMode}); got != suffix {
+			Gap(t, "FuzzVibexOutputSuffix", shape+":"+mode+":module-extension", "VIP-39: module specifiers require %s, got %q", suffix, got)
 		}
 		var nativePreserves bool
 		for _, ext := range []string{".tsx", ".vibex"} {

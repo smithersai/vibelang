@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/vips/0039-vibex.md#preconditions | **VIP-1's plain functions.** A component stays a plain function with the same JSX return type as its .tsx twin; it must not be lowered to an Effect or spuriously rejected with TS2786.
+import { h } from "./ui.js"
+export function Component(props: { label: string }) {
+  return <span>{props.label}</span>
+}
+export const rendered = <Component label="plain" />

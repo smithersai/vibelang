@@ -1,0 +1,15 @@
+// Minimized from foldkit packages/website/src/snippet/atomCompareAtomAsync.tsx.
+import { Effect } from "effect"
+import { runtime, Api, useAtomValue, AsyncResult, Spinner, ErrorBanner, Profile } from "./ui.js"
+const userAtom = runtime.atom(effect {
+  const api = try Api
+  return try api.getUser()
+})
+export const UserCard = () => {
+  const user = useAtomValue(userAtom)
+  return AsyncResult.builder(user)
+    .onInitial(() => <Spinner />)
+    .onFailure(cause => <ErrorBanner message={cause} />)
+    .onSuccess(user => <Profile user={user} />)
+    .render()
+}
