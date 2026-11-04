@@ -164,6 +164,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-for-await", "async function f(xs) { for await (const x of xs) { x; } }"},
 	{"native-for-await-placement", "async\nfunction f ( xs ) { for await ( const of xs ) effect { x ; } }"},
 	{"reserved-expression-name", "throw effect function join(p) { return try p; }"},
+	{"throw-comma-warning", "effect function f(e) { return [throw e, 1]; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -287,8 +288,12 @@ func grammarAdmissionMutate(seed string, data []byte) (string, string) {
 
 func grammarAdmissionMismatch(source string) (bool, string) {
 	file := parseAs(parseKind{"/fuzz/main.vibe", core.ScriptKindTS}, source)
-	if len(file.Diagnostics()) != 0 {
-		return false, "compiler syntax error"
+	// Only an error rejects. VIP-41's deferred comma case is a parse warning:
+	// the compiler accepts that program, so the oracle must still check it.
+	for _, d := range file.Diagnostics() {
+		if d.Category() == diagnostics.CategoryError {
+			return false, "compiler syntax error"
+		}
 	}
 	lab, err := admissionLab()
 	if err != nil {
@@ -871,6 +876,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarIsOperandPrecedence(ts) {
 		return "admission:is-operand-precedence"
+	}
+	if grammarThrowCommaWarning(ts) {
+		return "admission:throw-comma-warning"
 	}
 	return ""
 }
@@ -1841,4 +1849,44 @@ func TestGrammarAdmissionEffectIdentifierStaysPlain(t *testing.T) {
 			t.Errorf("%q: form %q, want %q", source, got, want)
 		}
 	}
+}
+
+// grammarThrowCommaWarning reports a throw expression whose unary operand is
+// followed directly by a comma: an array element, call argument or object
+// property such as [throw e, 1]. VIP-41's migration policy makes that case
+// the warning EK1010 until its parenthesizing fix ships, while Appendix A's
+// ThrowExpressionInvalidPunctuator still excludes the comma.
+func grammarThrowCommaWarning(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.kind != 'w' || tok.text != "throw" || i == 0 {
+			continue
+		}
+		switch ts[i-1].text {
+		case "(", "[", ",", ":", "=", "?", "??", "||", "&&", "=>", "return":
+		default:
+			continue // a ThrowStatement takes an Expression, commas included
+		}
+		depth, first := 0, true
+	operand:
+		for _, next := range ts[i+1:] {
+			switch {
+			case next.text == "(" || next.text == "[" || next.text == "{":
+				depth++
+			case next.text == ")" || next.text == "]" || next.text == "}":
+				if depth == 0 {
+					break operand
+				}
+				depth--
+			case depth > 0:
+			case next.text == ",":
+				return !first
+			case next.kind != 'p', next.text == "." || next.text == "?." || next.text == "!":
+			case first && (next.text == "-" || next.text == "+" || next.text == "~"):
+			default:
+				break operand
+			}
+			first = false
+		}
+	}
+	return false
 }

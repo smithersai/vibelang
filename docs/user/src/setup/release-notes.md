@@ -299,6 +299,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar-admission audit kept a resolved reserved-name pattern case pending, making its passing regression fail as `XPASS`. It now runs that saved case as a regular syntax-rejection regression.
 - The grammar-admission audit mistook an Effect declaration named `join` or `fork` for undefined syntax. It now checks the declaration name in its enclosing context, while keeping Effect parameter and expression-name restrictions.
 - The grammar-admission audit reported a rejected Effect expression name as accepted syntax. It now counts the `EK1702` reserved-name error as syntax rejection while preserving warning, diagnostic-source, and operand-type checks.
+- The grammar-admission audit read the temporary `EK1010` comma warning as a syntax rejection, so it never checked programs such as `[throw e, 1]` that the compiler accepts. It now counts only errors, records that comma case as a known gap until the error returns, and lists two new parser hooks in its census.
 
 - Callable-contract documentation tests depended on removed examples; they now retain native witnesses and check the current wrapper example without losing defect, failure or default-callback coverage.
 

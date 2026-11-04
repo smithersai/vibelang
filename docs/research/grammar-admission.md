@@ -170,3 +170,13 @@ own-name checks run after parser recovery. A warning, suggestion, another
 diagnostic source, or an operand type error still grants no syntax rejection.
 The `reserved-expression-name` corpus preserves the throw-wrapped campaign
 witness, alongside declaration and method-name controls.
+
+A parse warning is not a syntax rejection either. VIP-41's migration policy
+makes the punctuator-only comma after a throw expression's operand
+(`[throw e, 1]`, `g(throw e, 1)`, `{ a: throw e, b: 1 }`) the warning
+`EK1010` until the parenthesizing `vibelang --fix` ships, while Appendix A's
+`ThrowExpressionInvalidPunctuator` still excludes the comma. The compiler
+accepts those programs, so the oracle now checks them instead of reading the
+warning as rejection. The `throw-comma-warning` seed and corpus stay pending
+until the comma is an error again; then both XPASS and their pending lines go.
+Operator-left `EK1010` violations stay errors and remain syntax rejection.

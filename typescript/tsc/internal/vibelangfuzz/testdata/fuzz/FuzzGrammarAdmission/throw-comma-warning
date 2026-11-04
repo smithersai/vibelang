@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:throw-comma-warning\neffect function f(e) { return [throw e, 1]; }")

@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (900 records)</summary>
+<summary>Parser and lowering hooks (902 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1115,6 +1115,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_fibers.go:Parser.nextTokenIsOpenParenOnSameLine ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17/19 fork and concurrent-loop helpers; legacy paths below |
 | ` parser/vibelang_fibers.go:Parser.nextTokenStartsConcurrentDeclaration ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 declaration and assignment head recovery distinguishes the head from a limit; invalid heads receive EK1906 |
 | ` parser/vibelang_fibers.go:Parser.parseVibeLangConcurrentFor ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 concurrent loop |
+| ` parser/vibelang_concurrent_returns.go:Parser.doConcurrentItemReturn ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent `, ` 002-running.md ` | ` recovery ` | VIP-19: an outward return in concurrent item work (computed names, heritage, head initializers) reports EK1904; admits no syntax (e9aca6d3) |
 | ` parser/vibelang_fibers.go:Parser.rewriteConcurrentJumps ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 concurrent loop |
 | ` parser/vibelang_match.go:Parser.isStartOfVibeLangMatch ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#AsyncMatchExpression ` | ` support ` | Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
 | ` parser/vibelang_match.go:Parser.scanStartOfVibeLangMatch ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#AsyncMatchExpression ` | ` support ` | Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
@@ -1850,6 +1851,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_throw_lookahead.go:throwInvalidPunctuatorCanFollowASI ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
 | ` parser/vibelang_throw_lookahead.go:Parser.checkVibeLangThrowLookahead ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
 | ` parser/vibelang_throw_lookahead.go:Parser.atVibeLangThrowStop ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
+| ` parser/vibelang_throw_lookahead.go:throwLookaheadSeverity ` | ` admission:throw-expression ` | ` 900-appendices.md `, ` 003-failures.md ` | ` support ` | VIP-41 migration policy: the punctuator-only comma case warns (EK1010) until the parenthesizing fix ships; operator-left cases stay errors; the oracle keys the accepted comma form as pending admission:throw-comma-warning (93ab8469) |
 | ` parser/vibelang_throw_lookahead.go:Parser.reportVibeLangThrowStop ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
 | ` parser/vibelang_match.go:Parser.parseMatchRelationOperand ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0 |
 | ` parser/vibelang_match.go:Parser.relationTest ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0 |
