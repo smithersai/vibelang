@@ -20,7 +20,8 @@ import (
 // Existing foreign files are refused. The normal error gate and declaration comparison
 // verify both files together before anything is written.
 func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
-	for _, initial := range fixableFiles(program) {
+	// Under --only, only listed modules are visited (fixScope.fixable).
+	for _, initial := range g.scope.fixable(program) {
 		name := initial.FileName()
 		declined := map[string]bool{}
 		for {
@@ -98,6 +99,13 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			}
 			if _, exists := texts[foreign]; exists {
 				refusal = "the sibling TypeScript module is already reserved"
+			}
+			// Chapter 7: under --only the repairs write no other file, and a
+			// fix that would edit another file is not applied. The new module
+			// is never listed, so refuse here: reaching fixKeeper would stop
+			// the run and keep none of its fixes.
+			if refusal == "" && !g.scope.includes(foreign) {
+				refusal = "--only limits this run to its listed modules, and moving the wrapper would create " + path.Base(foreign.AsString())
 			}
 			local := (&freshNames{file: file}).freshName("$platform")
 			callee, imports := "Effect."+wrapper, "import { Effect } from \"effect\";\n"

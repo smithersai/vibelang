@@ -253,6 +253,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - After migration, bare `node` entries and test-local esbuild bundles could fail when a TypeScript importer reached a converted module. The flow now emits private packages and routes those product imports to committed JavaScript without changing the command or test.
 
 - `vibelang --fix` added an unused catch function to every generated defect bridge, lowering function coverage in migrated modules that never threw. It now reuses Effect's `identity` mapper while preserving the original thrown value and defect channel.
+- `vibelang --fix --only` stopped with exit 3, "a fix reached a file --only does not list; wrote nothing", and kept no fix when a listed module held a platform wrapper, because moving the wrapper creates a new `.platform-N.ts` file; it also moved wrappers in unlisted modules. Under `--only` that move is now refused at its site, unlisted modules are left alone, and the run keeps its other fixes.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
