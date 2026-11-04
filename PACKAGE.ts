@@ -533,6 +533,12 @@ const targets = {
     sandbox: "none",
     timeout: "5m"
   }),
+  "docs-table-rows": check(
+    "User documentation table rows follow their header and delimiter.",
+    "node docs/tools/table-rows.mjs && bun test docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
+    [],
+    [bun, node]
+  ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",

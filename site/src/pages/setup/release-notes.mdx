@@ -228,6 +228,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The resource-warning documentation check depended on an obsolete list position; it now checks the published ownership, unchanged diagnostic code and disposal safeguards directly.
 
 - The catch-parameter documentation check failed when the diagnostic row also named unbraced bodies; it now checks the retained parameter restriction and native closure-environment behavior.
+- Some release-note migration instructions rendered as plain rows outside a table; their missing column headers are now restored and a shared checker rejects orphaned rows.
 
 - The match guide and its scope test still promised implicit scopes for unbraced bindings; they now require the accepted `EK0705` brace repair, with native rejection and repaired-body controls.
 
@@ -1223,6 +1224,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Editor rename checks falsely reported a failure when TypeScript repaired duplicate declarations; checks now accept those repairs while still catching added collisions and unrelated diagnostic changes.
 
 - Renaming a symbol in a file with an unfinished `module { ... }` declaration could crash the editor. Rename now skips the missing module name and still updates other bindings.
+
+| Before | After and repair |
+| --- | --- |
 | A plain `error` method or getter with a computed key known to be `"_tag"`, including a branded singleton, template or string mapping | `EK2117` reserves the name. Run `vibelang --fix` to keep a compatible member in an explicit Effect TypeScript class; rename an instance member whose native override is invalid. |
 | A typed `_tag` payload field in an `error` or `schema error` | `EK2117` reserves the generated tag name, including when the written type accepts it. Rename the field, or use `vibelang --fix` to retain a compatible contract in an explicit class. Fieldless plain bases with generated subclasses need a manual class migration. |
 | An initialized `_tag` field, accessor or static member in an `error` or `schema error` | `EK2117` reserves the name; `--fix` retains previously valid members in explicit Effect classes. |
@@ -1605,6 +1609,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Expressions such as `join fork task` and `! join child` caused parser errors. Fiber operators now compose as ordinary unary expressions.
 - Exporting a `data` declaration named `as` produced an invalid declaration file; the emitted type alias now disambiguates the contextual name and remains usable by TypeScript consumers.
 - Generic `data` parameters silently accepted defaults that its constructors do not support. Defaults now report `EK2803`; `vibelang --fix` preserves them in equivalent Effect TypeScript.
+
+| Before | After and repair |
+| --- | --- |
 | A schema field with a class-only modifier such as `public` or `static` | `TS1070`: run `vibelang --fix` to remove ignored modifiers and preserve the field’s codec and readonly behavior. |
 | A producer has a written annotation incompatible with its `Stream` result, such as `number[]` or `never` | `EK2102`: write a compatible contract or omit the annotation. Aliases, `any`, `unknown` and compatible unions follow TypeScript's ordinary return checking; `--fix` can write the inferred `Stream` contract while preserving execution. |
 - `--fix` could repeatedly recheck a large project when an importer's errors came from one edited dependency. It now traces referenced declarations and keeps unrelated reporter edits together while retaining the complete safety check.
@@ -1621,6 +1628,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification checks rejected the folded explanation that `trustedPackages` was removed. They now permit historical retirement notes while still rejecting obsolete settings in the current configuration documentation.
 
 
+| Before | After and repair |
+| --- | --- |
 | Imports of older generated generic-data helpers such as `OutcomeDefinition` | Run `vibelang --fix` in owned `.vibe` sources. Native TypeScript consumers stay unchanged; update their imported helper name to `$Outcome$Definition`. |
 - A legacy service member call in a `catch` head could typecheck but throw a `TypeError` instead of handling its typed failure. Accepted service calls in `catch`, `try` and pipe heads now look up the service before calling its member, and the lookup remains in the inferred requirements.
 
@@ -1647,6 +1656,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Loader cache tests now cover explicitly included hidden native additions after warm hits, alongside visible-source and existing-file controls; missing invalidations are tracked explicitly.
 - A plain function expected to return an Effect typed its body by the Effect's success, so `probe: () => Effect.succeed({ kind: "a" })` widened the literal and failed with TS2375 where the same TypeScript compiled; the body now gets the Effect as its contextual type.
+
+| Before | After and repair |
+| --- | --- |
 | `when C(let x):` on a class without its own matcher | `EK0704`: `vibelang --fix` writes `when C and { … }:` for the written fields. |
 - A class pattern over a value it could never test compiled and failed at run time: `when Point(let x):` on a class without its own matcher reports `EK0704`, and the quick fix and `vibelang --fix` write the bare class test with an object pattern. A callee whose return type fits no pattern, or with no call or construct signature, reports `EK0702`, and `when Function:` reports `EK0107`.
 - Literal `__proto__` keys in patterns compiled despite the grammar restriction; they now report `EK0707`, while computed keys and binding shorthand remain valid.
@@ -1825,6 +1837,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The mapper runtime-parity command succeeded after a misspelled selector ran no cases; an empty selection now exits with status `2` and names the requested selectors.
 
 - Mapper parity reported clean documentation measurements when `--jobs 0` skipped every compiler project; invalid worker counts now exit with status `2` before changing outputs or prior receipts.
+
+| Before | After and repair |
+| --- | --- |
 | `for try` over an object exposing only the Stream type marker | Supply a complete `Stream.Stream<A, E, R>` implementation. A marker alone now reports `EK2004`; no automatic conversion can supply the missing Stream behavior. |
 - `for try` rejected `any`, `never` and constrained Stream operands, while accepting objects with only a Stream type marker; it now checks assignability to `Stream.Stream<any, any, any>` and preserves constrained element types.
 
@@ -2611,6 +2626,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `Stream` loops previously depended on the operand type; `for try` now explicitly consumes a `Stream` with `continue` and `break`, and rejects a `return` or a labeled jump out of the loop in its head bindings or body (`EK2002`, `EK2003`).
 - An identifier or call followed by a separate block on the next line was rejected with `EK1022`. Standalone blocks now compile normally, including after identifiers named `uninterruptible`, `interruptible` and `restore`.
 
+| Before | After and repair |
+| --- | --- |
 | A user-written `static` member in `error` or `schema error` | `EK1302`; run `vibelang --fix` to keep the fields and `static` members in an equivalent Effect TypeScript class. |
 | A setter in `error` or `schema error` | `EK1302`; run `vibelang --fix` to retain it in an equivalent Effect TypeScript class. |
 | Type parameters on `error` or `schema error` | `EK1303`; `vibelang --fix` converts a plain generic `error` to an Effect TypeScript class. A generic `schema error` needs concrete fields or a TypeScript schema factory; no class fix is offered because it would introduce `TS2562`. |
