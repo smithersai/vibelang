@@ -1,0 +1,4 @@
+main.vibex(3,22): error TS1005
+main.vibex(3,24): error TS1109
+main.vibex(3,33): error TS1381
+main.vibex(3,34): error TS1381

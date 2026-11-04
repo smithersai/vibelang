@@ -93,6 +93,28 @@
     ],
     "r27.tsx": [],
     "r28.tsx": [],
+    "r36.tsx": [
+      {
+        "code": 1005,
+        "start": 87,
+        "length": 1
+      },
+      {
+        "code": 1109,
+        "start": 89,
+        "length": 6
+      },
+      {
+        "code": 1381,
+        "start": 98,
+        "length": 1
+      },
+      {
+        "code": 1381,
+        "start": 99,
+        "length": 1
+      }
+    ],
     "r37.tsx": [
       {
         "code": 1005,

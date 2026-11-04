@@ -35,18 +35,25 @@ try {
     count++;
   }
   const fixture = path.join(scratch, "legacy.vibex");
-  fs.writeFileSync(fixture, `declare global { namespace JSX { interface IntrinsicElements { [tag: string]: any } } }
-declare const render: any;
-` + fs.readFileSync(path.join(dir, "r36.vibex"), "utf8"));
-  const config = path.join(scratch, "tsconfig.json");
-  fs.writeFileSync(config, JSON.stringify({ compilerOptions: {
-    target: "ESNext", module: "ESNext", moduleResolution: "bundler", jsx: "preserve",
-    strict: true, noEmit: true, skipLibCheck: true, types: [],
-  }, files: [fixture] }));
-  const result = spawnSync(compiler, ["--pretty", "false", "-p", config], { encoding: "utf8", timeout: 60000 });
-  if (result.error || result.signal) throw result.error ?? new Error(result.signal);
-  if (result.status === 0 || !/error EK1101:/.test(result.stdout + result.stderr)) {
-    throw new Error("row 36 must reject legacy trailing blocks with EK1101: " + result.stdout + result.stderr);
-  }
-  console.log("TypeScript " + ts.version + ": " + count + " full compiler controls passed; row 36 rejected with EK1101");
+  const twin = path.join(scratch, "legacy.tsx");
+  const source = fs.readFileSync(path.join(dir, "r36.vibex"), "utf8");
+  fs.writeFileSync(fixture, source);
+  fs.writeFileSync(twin, source);
+  const diagnostics = (executable, args, file) => {
+    const config = path.join(scratch, "tsconfig.json");
+    fs.writeFileSync(config, JSON.stringify({ compilerOptions: {
+      target: "ESNext", module: "ESNext", moduleResolution: "bundler", jsx: "preserve",
+      strict: true, noEmit: true, skipLibCheck: true, types: [],
+    }, files: [file] }));
+    const result = spawnSync(executable, [...args, "--pretty", "false", "-p", config], { encoding: "utf8", timeout: 60000 });
+    if (result.error || result.signal) throw result.error ?? new Error(result.signal);
+    const rows = [...(result.stdout + result.stderr).matchAll(/\((\d+),(\d+)\): error ((?:TS|EK)\d+): (.*)/g)]
+      .map(m => [m[1], m[2], m[3], m[4]]);
+    if (result.status === 0 || rows.length === 0) throw new Error("row 36 must fail with native syntax diagnostics: " + result.stdout + result.stderr);
+    return rows;
+  };
+  const expected = diagnostics(process.execPath, [path.join(root, "docs/tools/node_modules/typescript/lib/tsc.js")], twin);
+  const actual = diagnostics(compiler, [], fixture);
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error("row 36: stock=" + JSON.stringify(expected) + " vibex=" + JSON.stringify(actual));
+  console.log("TypeScript " + ts.version + ": " + count + " full compiler controls passed; row 36 matches native TSX diagnostics");
 } finally { fs.rmSync(scratch, { recursive: true, force: true }); }

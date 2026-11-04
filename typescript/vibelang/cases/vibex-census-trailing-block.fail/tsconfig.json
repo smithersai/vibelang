@@ -9,8 +9,7 @@
     "types": [],
     "skipLibCheck": true,
     "outDir": "out",
-    "declaration": true,
-    "noCheck": true
+    "declaration": true
   },
   "files": [
     "main.vibex"

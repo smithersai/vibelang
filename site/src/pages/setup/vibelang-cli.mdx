@@ -208,6 +208,8 @@ The `vibelang/bun` preload loads `.vibex` modules as well as `.vibe`, including 
 
 A `.vibex` source emits `.jsx` under `jsx: preserve`, even when it contains no JSX elements, and `.js` in other JSX modes. Its source map uses the same suffix, `.jsx.map` or `.js.map`; public declarations remain `.d.ts`.
 
+Malformed JSX containers, such as `<p>{render { return 1 }}</p>`, report the same syntax errors as `.tsx`; they do not add the trailing-block migration diagnostic `EK1101`. Written function bodies, `do {}` and `effect {}` inside a container retain VibeLang diagnostics. `vibelang --fix` still migrates a legacy trailing callback in a container to an explicit argument when the rewrite preserves its behavior.
+
 A native `.tsx` sibling keeps the project’s `jsx` output extension: a source import such as `./token.tsx` becomes `./token.jsx` in JavaScript under `preserve`, and `./token.js` under `react-native` and the React transform modes, as `tsc` names them.
 
 ## 4. Add an entry point

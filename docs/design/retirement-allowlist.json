@@ -70,6 +70,36 @@
     "reason": "VIP-10 retires EK4503: a module's name no longer reads its service's members, so Path.sep and Terminal.columns are TypeScript's TS2339, with the note that writes try Path.Path. The case rejects the same reads at the same positions."
   },
   {
+    "code": "TS1005",
+    "case": "typescript/vibelang/cases/vibex-census-trailing-block.fail",
+    "vip": "VIP-39",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0039-vibex.md: accepted by Will, 2026-10-31; Decision and clash row 36. Will standing conformance rule, 2026-11-03: \"It is already implied we match typescript\"."
+    },
+    "reason": "This already-invalid JSX container must have native TSX syntax diagnostics under the accepted VIP-39 decision. The unchanged parent and TypeScript 5.9.3 reject it. The fix removes a spurious `EK1101` and restores native recovery diagnostics; it introduces no new rejection. `TestVibexTrailingContainerFix` verifies the preserving rewrite; `vibex-trailing-block-fixed-output` compiles and runs the repaired callback form."
+  },
+  {
+    "code": "TS1109",
+    "case": "typescript/vibelang/cases/vibex-census-trailing-block.fail",
+    "vip": "VIP-39",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0039-vibex.md: accepted by Will, 2026-10-31; Decision and clash row 36. Will standing conformance rule, 2026-11-03: \"It is already implied we match typescript\"."
+    },
+    "reason": "This already-invalid JSX container must have native TSX syntax diagnostics under the accepted VIP-39 decision. The unchanged parent and TypeScript 5.9.3 reject it. The fix removes a spurious `EK1101` and restores native recovery diagnostics; it introduces no new rejection. `TestVibexTrailingContainerFix` verifies the preserving rewrite; `vibex-trailing-block-fixed-output` compiles and runs the repaired callback form."
+  },
+  {
+    "code": "TS1381",
+    "case": "typescript/vibelang/cases/vibex-census-trailing-block.fail",
+    "vip": "VIP-39",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0039-vibex.md: accepted by Will, 2026-10-31; Decision and clash row 36. Will standing conformance rule, 2026-11-03: \"It is already implied we match typescript\"."
+    },
+    "reason": "This already-invalid JSX container must have native TSX syntax diagnostics under the accepted VIP-39 decision. The unchanged parent and TypeScript 5.9.3 reject it. The fix removes a spurious `EK1101` and restores native recovery diagnostics; it introduces no new rejection. `TestVibexTrailingContainerFix` verifies the preserving rewrite; `vibex-trailing-block-fixed-output` compiles and runs the repaired callback form."
+  },
+  {
     "code": "EK9201",
     "case": "typescript/vibelang/cases/d362-service-default-contract.fail",
     "vip": "VIP-10",

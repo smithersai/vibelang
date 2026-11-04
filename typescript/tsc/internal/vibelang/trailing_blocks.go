@@ -13,7 +13,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // VIP-11 denies trailing blocks. Ordinary compilation leaves the call and
@@ -84,9 +83,21 @@ func deniedTrailingBlockDiagnostics(ctx context.Context, program *compiler.Progr
 	}
 	migration := trailingBlockMigrationProgram(program)
 	legacy := migration.GetSourceFile(file.FileName())
+	// VIP-39: native JSX container errors keep their TypeScript diagnostics.
+	// Private decoding still recognizes these calls for --fix, but its
+	// callback interpretation must not add EK1101 to native TSX recovery.
+	jsxBraces := map[int]bool{}
+	for _, call := range trailingBlockCalls(legacy) {
+		if trailingBlockInJsxContainer(call) {
+			jsxBraces[trailingBlockBrace(legacy, call).Pos()] = true
+		}
+	}
 	var result []*ast.Diagnostic
 	for _, d := range migration.GetSemanticDiagnostics(ctx, legacy) {
 		if d.Source() == diagnosticSource && d.Code() == EK1101.Code || hasDualBlockMigrationNote(d) {
+			if jsxBraces[d.Pos()] {
+				continue
+			}
 			copied := d.Clone()
 			copied.SetFile(file)
 			result = append(result, copied)
@@ -110,6 +121,23 @@ func deniedTrailingBlockDiagnostics(ctx context.Context, program *compiler.Progr
 		}
 	}
 	return append(combined, result...)
+}
+
+// A written block or function inside a container is ordinary VibeLang code.
+// Only expressions directly enclosed by JSX use native container recovery.
+func trailingBlockInJsxContainer(call *ast.Node) bool {
+	for parent := call.Parent; parent != nil; parent = parent.Parent {
+		switch parent.Kind {
+		case ast.KindJsxExpression, ast.KindJsxSpreadAttribute:
+			return true
+		case ast.KindBlock:
+			return false
+		}
+		if ast.IsFunctionLike(parent) {
+			return false
+		}
+	}
+	return false
 }
 
 func checkTrailingBlocks(c *checker.Checker, file *ast.SourceFile) {
@@ -261,7 +289,7 @@ func (h trailingBlockMigrationHost) GetSourceFile(opts ast.SourceFileParseOption
 		opts.VibeLangLegacyTrailingBlocks = true
 		return parser.ParseSourceFile(opts, file.Text(), file.ScriptKind)
 	}
-	opts.VibeLangLegacyTrailingBlocks = opts.FileName.ExtensionIs(tspath.ExtensionVibe)
+	opts.VibeLangLegacyTrailingBlocks = opts.FileName.IsVibeLangSource()
 	return h.CompilerHost.GetSourceFile(opts)
 }
 
