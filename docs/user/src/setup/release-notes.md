@@ -220,6 +220,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Layer dependency diagnostics could mention the retired `wire` form. They now explain provider changes using native `Layer` composition.
 - The grammar inventory check could fail on the recovery helper for malformed `catch` handlers. The census now records that recovery path without admitting the malformed syntax, and both generated tables agree.
+
+- Contributor source checks stopped covering cold program blocks after a span fixture update. They now check cold blocks and nested `do` expressions alongside the existing callback fixture.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.

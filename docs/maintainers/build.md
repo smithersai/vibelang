@@ -1403,3 +1403,11 @@ The Go target catalog declares every literal target name once. `scripts/fast-gat
 
 
 The `//:docs-contracts` target runs the published colon/example, catch-pipe, sidecar-root, schema-documentation, direct-try-advisory and sidecar-input contracts, their mutation properties and native TypeScript/Effect counterparts. It needs no VibeLang compiler build. Its inputs match those read by the six tests, so unrelated compiler edits reuse the cached result. The merge gate selects it from its first declared train; the complete `//:docs-tools` suite remains in post-merge validation.
+
+
+The ESTree token and synthesized-name fixture matrix keeps both an ordinary
+span callback and a cold program value, `Effect.withSpan(effect { ... }, name)`,
+with a nested `do` expression. `TestSharedSourceFixturesRetainColdProgramBlocks`
+checks that the shared matrix still reaches a synthesized program builder.
+When refreshing syntax, retain cold blocks in the checks for source tokens
+and generated names as well as the dedicated tests of program values.
