@@ -234,7 +234,16 @@ test("VIP-39 Preconditions: only the named pending code is allowed, and its mark
   assert.ok(verdict(example, { status: 0, stdout: "" }).some(f => f.message.includes("stale compiler-gap")))
   assert.ok(verdict(example, { status: 1, stdout: "error TS6054: unsupported\nmain.vibex(1,1): error TS1005: syntax\n" }).some(f => f.severity === "error"))
   assert.ok(verdict({ ...example, source: "effect function f() { return fail(1) catch guest }" }, missing).some(f => f.message.includes("EK0509") && f.severity === "error"))
-  for (const item of examples(read(repository, "docs/design/vips/0039-vibex.md")).filter(x => x.language === "vibex")) assert.ok(item.gap.includes("VIP-39 TS6054"))
+  for (const item of examples(read(repository, "docs/design/vips/0039-vibex.md")).filter(x => x.language === "vibex")) {
+    const passed = verdict(item, { status: 0, stdout: "" })
+    if (item.gap) {
+      assert.ok(item.gap.includes("VIP-39 TS6054"))
+      assert.ok(passed.some(f => f.message.includes("stale compiler-gap")))
+    } else {
+      assert.ok(!passed.some(f => f.message.includes("stale compiler-gap")))
+      assert.ok(verdict(item, missing).some(f => f.severity === "error"))
+    }
+  }
 })
 test("fast-check: a code-specific prerequisite never hides another error or a stale marker", () => {
   fc.assert(fc.property(fc.integer({ min: 6100, max: 9900 }), number => {
@@ -498,4 +507,13 @@ test("retained diagnostic assignments need an explicit block exception", () => {
     const findings = codeBlockFindings(changed + rows).map(f => f.message.split(" ")[0]).sort()
     assert.deepEqual(findings, [...removed].sort())
   }), { numRuns: 100 })
+})
+
+
+test("active JSX examples use ordinary diagnostic outcomes", () => {
+  const active = examples("\`\`\`vibex\nconst view = <p/>\n\`\`\`")[0]
+  assert.ok(active)
+  assert.ok(!active.gap)
+  assert.deepEqual(verdict(active, { status: 0, stdout: "" }), [])
+  assert.ok(verdict(active, { status: 1, stdout: "error TS6054: unsupported extension\n" }).some(f => f.severity === "error"))
 })

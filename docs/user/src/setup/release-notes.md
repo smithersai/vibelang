@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.
+- JSX examples without a compiler prerequisite could make specification checks crash. They now use ordinary diagnostic checks, while explicit prerequisite markers still reject extra errors and stale markers.
 - An inherited `schema error` could report an extra TypeScript base-type error alongside `EK2117`. It now reports the inheritance diagnostic while preserving independent errors inside the declaration.
 
 - The `data` guide left multiline assertions ambiguous; it now explains how parentheses preserve an assertion whose type continues on another line.
