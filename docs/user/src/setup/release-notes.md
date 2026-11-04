@@ -199,6 +199,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The starter uses explicit service lookup and catch expressions, wraps test assertions with `Effect.try`, and starts `main` explicitly. Every template is compiled without diagnostics or warnings and run against its expected output in the queue.
 
+- Passing a foreign generic callback directly as `fn<T>` could evade its throw bound; direct instantiation values now receive the same check as retained aliases.
+
 - Callbacks returned by foreign factories could bypass their throw bounds; the compiler now checks the returned callback’s own contract, including through retained aliases.
 
 - Passing an unannotated foreign callable variable to a callback could bypass its throw bound; these values and retained aliases now require a callback that admits their throws.

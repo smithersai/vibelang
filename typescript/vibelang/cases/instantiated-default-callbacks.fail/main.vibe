@@ -1,0 +1,15 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import {generic,genericVar,owner,mixedOwner,neverOwner,factory,consume,type Program,type Handler,type API} from "./helpers.js"
+export const assigned:Handler=generic<Program>
+export function argument(){consume(generic<number>)}
+export function returned():Handler{return generic<never>}
+export const member:API={run:generic<Program>}
+export class Box implements API{run=generic<Program>}
+class Parent{run=genericVar<Program>}
+export class Inherited extends Parent implements API{}
+export const variable:Handler=genericVar<number>
+export const method:Handler=owner.generic<Program>
+export const mixed:Handler=mixedOwner.generic<Program>
+export const empty:Handler=neverOwner.generic<never>
+export const produced:Handler=factory()<Program>
+export const handlers:Handler[]=[generic<Program>]

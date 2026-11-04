@@ -1,0 +1,11 @@
+// expect:
+import {generic,fxOwner,streamOwner,layerOwner,type Program,type StreamProgram,type LayerProgram,type Handler,type Admitting,type API} from "./helpers.js"
+import * as Effect from "effect/Effect"
+export const effectful:Handler=fxOwner.generic<Program>
+export const streaming:Handler=streamOwner.generic<StreamProgram>
+export const layered:Handler=layerOwner.generic<LayerProgram>
+export const admitted:Admitting=generic<Program>
+export function bridge(){return Effect.try(generic<number>)}
+export const mapped=[1].map(generic<number>)
+export const promised=new Promise(generic<void>)
+export class Pure implements API{run=fxOwner.generic<Program>}

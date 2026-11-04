@@ -1,0 +1,5 @@
+// expect: TS2322 TS2345 TS2416
+import {takes,consumeText,type TextAPI} from "./helpers.js"
+export const assigned:(value:string)=>void=takes<number>
+export function argument(){consumeText(takes<number>)}
+export class Bad implements TextAPI{run=takes<number>}

@@ -352,7 +352,7 @@ func defaultForeignSignatureReturn(c *checker.Checker, sig *checker.Signature, o
 }
 func defaultForeignValueContext(node *ast.Node) bool {
 	switch node.Kind {
-	case ast.KindIdentifier, ast.KindPropertyAccessExpression, ast.KindElementAccessExpression, ast.KindNonNullExpression, ast.KindCallExpression, ast.KindNewExpression, ast.KindTaggedTemplateExpression:
+	case ast.KindIdentifier, ast.KindPropertyAccessExpression, ast.KindElementAccessExpression, ast.KindNonNullExpression, ast.KindCallExpression, ast.KindNewExpression, ast.KindTaggedTemplateExpression, ast.KindExpressionWithTypeArguments:
 		return isContextualValue(node)
 	}
 	return false
