@@ -1,0 +1,45 @@
+// expect-result: {"returned":[{"value":1,"done":false},{"value":5,"done":true},["start","closed"]],"resumed":[{"value":1,"done":false},{"value":7,"done":true},["start","closed","after"]],"plain":[2,4]}
+// Chapter 004: a match expression stays in its enclosing activation. An arm
+// that yields runs in the generator: the match is lifted into the statement
+// around it instead of the arrow a match expression otherwise becomes, so the
+// generator suspends at the arm, its match cache closes the pulled iterator
+// when the generator returns or resumes, and the resumed value is the arm's.
+function numbers(log: string[]): Iterable<number> {
+  let i = 0
+  return {
+    [Symbol.iterator]() {
+      log.push("start")
+      return {
+        next: () => { i++; return i <= 2 ? { done: false, value: i } : { done: true, value: undefined as unknown as number } },
+        return: (value?: number) => { log.push("closed"); return { done: true, value: value as number } },
+      }
+    },
+  }
+}
+function* outer(log: string[]): Generator<number, number, number> {
+  const x = match (numbers(log)) { when [let a, ...]: (yield a); default: 0; }
+  log.push("after")
+  return x
+}
+function returned() {
+  const log: string[] = []
+  const g = outer(log)
+  return [g.next(), g.return(5), log]
+}
+function resumed() {
+  const log: string[] = []
+  const g = outer(log)
+  return [g.next(), g.next(7), log]
+}
+function* doubled(xs: number[]): Generator<number, number[], number> {
+  const out: number[] = []
+  for (const x of xs) out.push(match (x) { when 1: (yield x) * 2; when 2: (yield x) * 2; default: 0; })
+  return out
+}
+function plain() {
+  const g = doubled([1, 2])
+  g.next(); g.next(1); return g.next(2).value
+}
+export effect function main() {
+  return { returned: returned(), resumed: resumed(), plain: plain() }
+}

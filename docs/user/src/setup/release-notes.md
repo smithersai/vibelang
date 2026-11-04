@@ -273,6 +273,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.
 
+- A `match` expression whose arm yields, `const x = match (xs) { when [let a, ...]: (yield a); default: 0; }` in a generator, was compiled inside an arrow function and the module failed to load. The match now runs in the generator, and a yielding match that no statement surrounds reports `EK0204`.
 - The shared bundler load hook skipped `.vibex` JSX modules; it now compiles explicit `.vibex` source IDs, including IDs with query strings, alongside `.vibe` modules.
 
 - `--fix` could leave an `Effect.fn` or `Effect.gen` generator unchanged when it constructed DOM `Headers`, reporting that the proposed constructor was not constructable. It now preserves the native constructor binding while retaining `EK4402` for banned host APIs.

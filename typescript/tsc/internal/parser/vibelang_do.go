@@ -114,7 +114,7 @@ func GetDoNarrowingOrigin(binding *ast.Node) *DoNarrowingOrigin {
 
 // parseVibeLangDos checks and lowers the file's do expressions.
 func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
-	if len(p.vibelangDoOrder) == 0 && len(p.vibelangForEachHomes) == 0 {
+	if len(p.vibelangDoOrder) == 0 && len(p.vibelangForEachHomes) == 0 && !p.hasYieldingMatch() {
 		// for try also lifts its RHS out of the native loop. It needs the
 		// same uninitialized head cells even when the source contains no do.
 		var hasForTry func(*ast.Node) bool
@@ -143,6 +143,9 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 		}
 		if !d.lifted {
 			what := "a do expression in this position"
+			if d.match {
+				what = "a match expression in this position"
+			}
 			if p.opts.VibeLangDoAsFunction {
 				what = "every do expression for the TS7 mapper"
 			}
@@ -240,6 +243,22 @@ func (p *Parser) prepareDoMatches() {
 			}
 		}
 	}
+	// A match whose arms yield belongs to its enclosing generator: the arrow
+	// around a match expression cannot hold yield, so it is lifted like a
+	// do-bearing match (chapter 004: a match stays in its enclosing
+	// activation). Source order keeps the generated labels stable.
+	var yielding []*ast.Node
+	if p.vibelangDos == nil {
+		p.vibelangDos = map[*ast.Node]*doExpression{}
+	}
+	for call := range p.vibelangMatches {
+		if !seen[call] && p.matchArmsYield(call) {
+			seen[call] = true
+			yielding = append(yielding, call)
+		}
+	}
+	slices.SortFunc(yielding, func(a, b *ast.Node) int { return a.Pos() - b.Pos() })
+	matches = append(matches, yielding...)
 	for _, call := range matches {
 		info := p.vibelangMatches[call]
 		arrow := ast.SkipParentheses(call.Expression())
@@ -260,6 +279,39 @@ func (p *Parser) prepareDoMatches() {
 		p.vibelangDos[call] = d
 		p.vibelangDoOrder = append(p.vibelangDoOrder, d)
 	}
+}
+
+// hasYieldingMatch reports whether a match expression written as a call
+// yields from its arms. Such a match must be lifted into its enclosing
+// generator even in a file without do expressions.
+func (p *Parser) hasYieldingMatch() bool {
+	for call := range p.vibelangMatches {
+		if p.matchArmsYield(call) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchArmsYield reports whether call, a match expression lowered to a call
+// of an arrow, has a yield expression in its arms outside any function the
+// source wrote inside them. An async match has its own boundary.
+func (p *Parser) matchArmsYield(call *ast.Node) bool {
+	info := p.vibelangMatches[call]
+	if call.Kind != ast.KindCallExpression || info == nil || info.async != nil {
+		return false
+	}
+	arrow := ast.SkipParentheses(call.Expression())
+	if !ast.IsArrowFunction(arrow) || arrow.Body() == nil {
+		return false
+	}
+	found := false
+	forEachDoStatement(arrow.Body(), func(n *ast.Node) {
+		if n.Kind == ast.KindYieldExpression {
+			found = true
+		}
+	})
+	return found
 }
 
 // ---------------------------------------------------------------- TC39's early errors
