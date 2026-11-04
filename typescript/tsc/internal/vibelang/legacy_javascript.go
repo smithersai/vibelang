@@ -125,6 +125,8 @@ func isFunctionValue(c *checker.Checker, expression *ast.Node) bool {
 	if t == nil || t == c.GetErrorType() || t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
 		return false
 	}
+	// Optional access reads the property only from the non-nullish receiver.
+	t = c.GetNonNullableType(t)
 	if t == c.GetGlobalFunctionType() {
 		return true
 	}

@@ -87,6 +87,18 @@ var legacyJavaScriptForms = map[string]struct {
 	"function-shorthand-property-control":   {`return { Function: 1 }`, 0},
 	"function-shorthand-default-control":    {`const { Function = () => 1 } = {} as { Function?: () => number }; return { Function }`, 0},
 	"with":                                  {`const o = { x: 1 }; with (o) { return 1 }`, 1},
+	"constructor-nullable-call":             {`const f = undefined as (() => number) | undefined; return f?.constructor`, 1},
+	"constructor-nullable-function":         {`const f = null as Function | null; return f?.constructor`, 1},
+	"constructor-nullable-construct":        {`const f = undefined as (new () => object) | undefined; return f?.["constructor"]`, 1},
+	"constructor-nullable-key-wrapper":      {`const f = null as (() => number) | null; return f?.[("constructor" as const)]`, 1},
+	"constructor-nullable-template-key":     {"const f = undefined as (() => number) | null | undefined; return f?.[`constructor`]", 1},
+	"constructor-nullable-member":           {`const o = {} as { f?: () => number }; return o.f?.constructor`, 1},
+	"constructor-nullable-continuation":     {`const o = undefined as { f: () => number } | undefined; return o?.f.constructor`, 1},
+	"constructor-nullable-generic":          {`function read<T extends (() => number) | undefined>(f: T) { return f?.constructor }; return read`, 1},
+	"constructor-nullable-object-control":   {`const o = undefined as { constructor: number } | undefined; return o?.constructor`, 0},
+	"constructor-nullable-any-control":      {`const o = undefined as any; return o?.constructor`, 0},
+	"constructor-nullable-instance-control": {`class Box {}; const o = null as Box | null; return o?.constructor`, 0},
+	"constructor-nullable-delete-control":   {`const f = undefined as (() => number) | undefined; return delete f?.constructor`, 0},
 	"constructor-arrow":                     {`return (async () => {}).constructor`, 1},
 	"constructor-function":                  {`const f = () => 1; return f.constructor`, 1},
 	"constructor-element":                   {`const f = () => 1; return f["constructor"]`, 1},
@@ -185,8 +197,12 @@ func FuzzLegacyJavaScript(f *testing.F) {
 				count++
 			}
 		}
+		quote := legacyJavaScriptQuotes[0]
+		if strings.HasPrefix(key, "constructor-") {
+			quote = legacyJavaScriptQuotes[6]
+		}
 		if count != form.want {
-			Gap(t, "FuzzLegacyJavaScript", "legacy:"+key+":"+where, "%s; got %d EK0107, want %d\n%s\n%v", legacyJavaScriptQuotes[0], count, form.want, source, result.Diagnostics)
+			Gap(t, "FuzzLegacyJavaScript", "legacy:"+key+":"+where, "%s; got %d EK0107, want %d\n%s\n%v", quote, count, form.want, source, result.Diagnostics)
 		}
 	})
 }

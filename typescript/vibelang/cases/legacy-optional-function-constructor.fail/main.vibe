@@ -1,0 +1,10 @@
+// expect: EK0107
+// VIP-1: nullable function receivers still expose a function constructor.
+export function read0() { const f = undefined as (() => number) | undefined; return f?.constructor }
+export function read1() { const f = null as Function | null; return f?.constructor }
+export function read2() { const f = undefined as (new () => object) | undefined; return f?.["constructor"] }
+export function read3() { const f = null as (() => number) | null; return f?.[("constructor" as const)] }
+export function read4() { const f = undefined as (() => number) | null | undefined; return f?.[`constructor`] }
+export function read5() { const o = {} as { f?: () => number }; return o.f?.constructor }
+export function read6() { const o = undefined as { f: () => number } | undefined; return o?.f.constructor }
+export function read7() { function read<T extends (() => number) | undefined>(f: T) { return f?.constructor }; return read }
