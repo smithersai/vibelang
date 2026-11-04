@@ -128,14 +128,14 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 // callback runs after Effect.try has finished. A throw statement in such a
 // literal is still EK0401.
 func (a *analyzer) throwsBelongToCall(home *ast.Node) bool {
-	return ast.IsFunctionExpressionOrArrowFunction(home) && (isWrappedCode(home) || isRetiredHatchFunction(home) || admitsThrows(a.checker, home))
+	return ast.IsFunctionExpressionOrArrowFunction(home) && (isWrappedCode(home) || isRetiredHatchFunction(a.checker, home) || admitsThrows(a.checker, home))
 }
 
 // isRetiredHatchFunction reports whether fn is the function of a retired
 // try(…) hatch. The hatch is EK4616, whose fix writes fn as Effect.try's
 // thunk, so a call known to throw in fn belongs to that call and is not
 // reported a second time.
-func isRetiredHatchFunction(fn *ast.Node) bool {
+func isRetiredHatchFunction(c *checker.Checker, fn *ast.Node) bool {
 	n := fn
 	for n.Parent != nil && (ast.IsParenthesizedExpression(n.Parent) || ast.IsBinaryExpression(n.Parent) && n.Parent.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken) {
 		n = n.Parent
@@ -144,7 +144,7 @@ func isRetiredHatchFunction(fn *ast.Node) bool {
 	if !isTryCall(call) {
 		return false
 	}
-	arguments := retiredTryArguments(tryOperand(call))
+	arguments := retiredTryArguments(c, tryOperand(call))
 	return len(arguments) > 0 && ast.SkipParentheses(arguments[0]) == fn
 }
 

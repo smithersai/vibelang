@@ -93,7 +93,7 @@ func checkTries(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node) {
-	if arguments := retiredTryArguments(operand); arguments != nil {
+	if arguments := retiredTryArguments(c, operand); arguments != nil {
 		rewrite := retiredTryRewrite(c, file, call)
 		wrapper := "Effect.try or Effect.tryPromise"
 		d := reportAt(c, file, tsFormSpan(file, call), EK4616, wrapper)
@@ -176,7 +176,7 @@ func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node)
 // operand, the operand of $try, writes: parentheses around a function
 // literal, or around a comma list, the hatch's arguments. It returns nil for
 // any other operand, which try runs.
-func retiredTryArguments(operand *ast.Node) []*ast.Node {
+func retiredTryArguments(c *checker.Checker, operand *ast.Node) []*ast.Node {
 	if !ast.IsParenthesizedExpression(operand) {
 		return nil
 	}
@@ -192,6 +192,18 @@ func retiredTryArguments(operand *ast.Node) []*ast.Node {
 		arguments = append(arguments, n)
 	}
 	flatten(inner)
+	if len(arguments) > 1 {
+		// A comma expression whose value is an Effect is an ordinary operand.
+		// The retired hatch must not override VIP-5's operand test.
+		base := analyzerFor(c).programEffectInterface()
+		t := c.GetTypeAtLocation(operand)
+		if base != nil && t != nil {
+			any := c.GetAnyType()
+			if c.IsTypeAssignableTo(t, c.NewTypeReference(base, []*checker.Type{any, any, any})) {
+				return nil
+			}
+		}
+	}
 	if len(arguments) == 1 {
 		value := ast.SkipParentheses(inner)
 		// An effect block's synthesized arrow is the Effect value try runs.
@@ -213,7 +225,7 @@ func retiredTryArguments(operand *ast.Node) []*ast.Node {
 // goes where the hatch was passed by name, which now passes the wrapper.
 func retiredTryRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
 	operand := tryOperand(call)
-	arguments := retiredTryArguments(operand)
+	arguments := retiredTryArguments(c, operand)
 	if arguments == nil {
 		return nil
 	}

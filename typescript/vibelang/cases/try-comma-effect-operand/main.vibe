@@ -1,0 +1,22 @@
+// expect-result: [2,2,"bad","LRXLRX"]
+import { Effect } from "effect"
+
+effect function failure() {
+  return try (Effect.succeed(0), Effect.fail("bad"))
+}
+
+export effect function main() {
+  let trace = ""
+  function left(): void!! {
+    trace += "L"
+    return Effect.sync(() => { trace += "!" })
+  }
+  function right(): number!! {
+    trace += "R"
+    return Effect.sync(() => { trace += "X"; return 2 })
+  }
+  const direct = try (left(), right())
+  const nested = try (((left(), right())))
+  const failed = failure() catch (error) => error
+  return [direct, nested, failed, trace]
+}

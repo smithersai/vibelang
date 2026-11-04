@@ -82,6 +82,8 @@ A generic call retains its declaration's thrown contract even when a type argume
 
 Calling an effect function returns its unrun Effect. A caller runs it with `try` inside an effect function or Effect block. A defect is for a failure no caller should handle: a catch expression never receives one. In an `async` function, `throw` is JavaScript's and rejects the Promise; a plain function can't throw. `orDie(Effect.try(() => call()))` turns an exception from a `.ts` call into a defect; `sync` takes only a function that can't throw.
 
+An operand may be a grouped comma expression. `try (prepare(), program)` evaluates `prepare()` and `program` from left to right, then runs the Effect value of `program`. An earlier Effect value stays unrun.
+
 Parentheses keep an `effect { ... }` block as an Effect value: `try (effect { return 7 })` runs the block and gives `7`. Its failures propagate through `try` as usual.
 
 An effect method follows the same rules: its keyword determines its kind, and its return annotation checks the Effect type. A plain method, including a JavaScript protocol member such as `[Equal.symbol]`, keeps TypeScript's behavior, except that it can't throw. A plain function calls TypeScript code directly and handles its exceptions with `try`/`catch`. To run an Effect, use `try` inside an effect function or Effect block.
