@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Migration could drop refused-site span reports and overlook a changed-site violation beside other diagnostics; it now retains those spans, accepts independent safe fixes, and fails on a preservation violation.
 
 - Migration API verification could stop before comparing apps that import declarations from sibling packages or scripts. Those declarations now resolve inside the isolated comparison layout, while real API changes and paths escaping that layout still fail.
 

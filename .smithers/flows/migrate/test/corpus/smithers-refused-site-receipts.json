@@ -1,0 +1,15 @@
+{
+  "pattern": "an independent safe fix beside a refused native generator return",
+  "output": "vibelang --fix: src/main.vibe: 1 fix (EK4834 ×1)\nvibelang --fix: refused site: src/main.vibe:3:10-3:18 [68,76) EK2128: generator return value stays native\n",
+  "refused": {
+    "file": "src/main.vibe",
+    "line": 3,
+    "column": 10,
+    "endLine": 3,
+    "endColumn": 18,
+    "start": 68,
+    "end": 76,
+    "code": "EK2128",
+    "error": "generator return value stays native"
+  }
+}

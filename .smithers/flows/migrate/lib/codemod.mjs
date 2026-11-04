@@ -666,6 +666,7 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
 }
 
 const fixLine = /^vibelang --fix: (.+?): (\d+) (?:fix|fixes) \((.*)\)$/
+const refusalSiteLine = /^vibelang --fix: refused site: (.+?):(\d+):(\d+)-(\d+):(\d+) \[(\d+),(\d+)\) ([A-Z]+\d+)( new)?: (.*)$/
 const refusalLine = /^vibelang --fix: (.+?):(\d+): ([A-Z]+\d+) not fixed: the fixed program would report (.*)$/
 
 /** Reads one `vibelang --fix` run: the rewrites applied per file, by kind, and the refusals. */
@@ -674,7 +675,7 @@ export function parseFixOutput(output, { cwd, root } = {}) {
   const files = {}
   const refused = []
   let total = 0
-  for (const line of output.split("\n")) {
+  for (const line of output.split(/\r?\n/)) {
     const fixed = fixLine.exec(line)
     if (fixed) {
       const kinds = {}
@@ -684,6 +685,13 @@ export function parseFixOutput(output, { cwd, root } = {}) {
       }
       files[relative(fixed[1])] = kinds
       total += Number(fixed[2])
+      continue
+    }
+    const site = refusalSiteLine.exec(line)
+    if (site) {
+      refused.push({ file: relative(site[1]), line: Number(site[2]), column: Number(site[3]),
+        endLine: Number(site[4]), endColumn: Number(site[5]), start: Number(site[6]), end: Number(site[7]),
+        code: site[8], ...(site[9] ? { newSite: true } : {}), error: site[10] })
       continue
     }
     const refusal = refusalLine.exec(line)

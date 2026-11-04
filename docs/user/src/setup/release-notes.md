@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Migration could drop refused-site span reports and overlook a changed-site violation beside other diagnostics; it now retains those spans, accepts independent safe fixes, and fails on a preservation violation.
 
 - Grammar admission fuzzing now retains invalid native `import()` arities as pending witnesses when their diagnostic does not fail the VibeLang build.
 

@@ -40,6 +40,9 @@ const crashLine = /^(?:panic: |fatal error: |SIG[A-Z]+: |goroutine \d+ \[)/m
  */
 export function assertFinished(result, log) {
   const output = result.stdout + result.stderr
+  if (/^vibelang --fix: refused site changed:/m.test(output)) {
+    throw new Error("the compiler changed a refused site" + (log ? "; see " + log : ""))
+  }
   const crash = crashLine.exec(output)
   if (!crash && !result.signal && !result.timedOut && (result.code === 0 || parseDiagnostics(output).length)) return
   const tail = crash ? output.slice(crash.index) : output
