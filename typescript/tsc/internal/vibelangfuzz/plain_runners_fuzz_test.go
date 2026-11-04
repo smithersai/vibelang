@@ -13,6 +13,7 @@ import (
 // foldkit-3: Effect.runFork, Effect.runSync and runPromise in plain
 // functions).
 const plainRunnersQuote = "neither keyword: plain JavaScript"
+const plainRunnerWrapperQuote = "Promise-producing calls inside wrapper thunks are ordinary JavaScript"
 
 // plainRunnerForms are the plain function forms FuzzFunctionPlainRunners
 // puts a runner call in; RUN stands for the call.
@@ -35,6 +36,7 @@ var plainRunnerForms = []struct{ key, source string }{
 	{"returned-arrow", "export const f = () => (): void => { RUN }"},
 	{"array-callback", "export const f = (xs: ReadonlyArray<number>): void => { xs.forEach(() => { RUN }) }"},
 	{"plain-callee-callback", "function each(g: () => void): void { g() }\nexport const f = (): void => { each(() => { RUN }) }"},
+	{"async-callback-in-wrapper", "export effect function f() { const transform = (g: () => Promise<void>) => g(); try Effect.tryPromise(() => transform(async () => { RUN })); }"},
 }
 
 // plainRunners are Effect's root runners (D38).
@@ -44,6 +46,9 @@ var plainRunners = []string{"runSync", "runFork", "runPromise", "runSyncExit", "
 // cites (specTests in PACKAGE.ts), so a VIP edit that rewords it fails its
 // own gate.
 func TestPlainRunnersQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("003-failures.md"), plainRunnerWrapperQuote) {
+		t.Fatal("stale Promise wrapper boundary quotation")
+	}
 	vip, err := vipText(1)
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +63,9 @@ func TestPlainRunnersQuoted(t *testing.T) {
 // both by index.
 func FuzzFunctionPlainRunners(f *testing.F) {
 	startShortBudget(f)
+	if !strings.Contains(SpecText("003-failures.md"), plainRunnerWrapperQuote) {
+		f.Fatal("stale Promise wrapper boundary quotation")
+	}
 	vip, err := vipText(1)
 	if err != nil {
 		f.Fatal(err)
