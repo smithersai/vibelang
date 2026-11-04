@@ -1,10 +1,10 @@
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { generate, loadRows, outputs, sourcePath, censusSection, isGeneratedCensusSection } from "./generate-grammar-admission.mjs"
+import { deniedVips, generate, loadRows, outputs, sourcePath, censusSection, isGeneratedCensusSection } from "./generate-grammar-admission.mjs"
 
 const repository = fileURLToPath(new URL("../", import.meta.url))
 const generator = fileURLToPath(new URL("./generate-grammar-admission.mjs", import.meta.url))
@@ -16,6 +16,10 @@ function fixture() {
     mkdirSync(dirname(join(root, path)), { recursive: true })
     copyFileSync(join(repository, path), join(root, path))
   }
+  const vips = "docs/design/vips"
+  mkdirSync(join(root, vips), { recursive: true })
+  for (const name of readdirSync(join(repository, vips)))
+    if (/^\d{4}.*\.md$/.test(name)) copyFileSync(join(repository, vips, name), join(root, vips, name))
   return root
 }
 const clean = root => rmSync(root, { recursive: true, force: true })
@@ -97,6 +101,28 @@ test("invalid and duplicate grammar rows fail explicitly", () => {
     assert.throws(() => generate(root), /duplicate hook/)
     save(root, [])
     assert.throws(() => generate(root), /empty grammar/)
+  } finally { clean(root) }
+})
+
+test("a census reason citing a denied VIP states the denial", () => {
+  const root = fixture()
+  const original = loadRows(root)
+  assert.equal(deniedVips(root).has(11), true)
+  const hook = "parser/vibelang_trailing_legacy.go:isLegacyTrailingBlockHead"
+  assert.match(original.find(r => r.hook === hook).reason, /^Denied by VIP-11; /)
+  try {
+    const rows = structuredClone(original)
+    const row = rows.find(r => r.hook === hook)
+    // The landed 2b7c9a5547ff census: spec-rules authority refused it three times.
+    row.reason = "VIP-11 and Appendix C: private compatibility decoding only for EK1101 diagnosis"
+    save(root, rows)
+    assert.throws(() => loadRows(root), /grammar-admission\.tsv:\d+: reason cites denied VIP-11 without stating the denial/)
+    row.reason = "VIP-2 pinned do expression and completion support"
+    save(root, rows)
+    assert.doesNotThrow(() => loadRows(root), "an accepted VIP needs no denial wording")
+    row.reason = "Denied by VIP-11; Appendix C private compatibility decoding"
+    save(root, rows)
+    assert.doesNotThrow(() => loadRows(root))
   } finally { clean(root) }
 })
 

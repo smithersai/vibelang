@@ -214,6 +214,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Go validation progress could report that no tests ran without identifying a compilation failure. It now reports build failures separately while preserving Go output and exit status.
 
+- The generated grammar admission census cited denied VIP-11 as authority for the legacy trailing-block recovery hooks, so the specification authority check failed on `vibe`. The census source now states the denial, and the generator refuses a denied VIP citation that does not.
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

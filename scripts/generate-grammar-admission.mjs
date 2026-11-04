@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The hook census describes implementation coverage, never admission authority.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -8,7 +8,23 @@ import { sourcePath, outputs, marker, start, end, censusSection } from "./gramma
 export { sourcePath, outputs, censusSection, isGeneratedCensusSection } from "./grammar-census.mjs"
 const read = (root, path) => readFileSync(join(root, path), "utf8")
 
+// A census reason that cites a denied VIP states the denial, so the
+// specification authority rule (docs/tools/spec-rules.mjs) accepts the
+// generated Appendix A census. Test: scripts/grammar-admission.test.mjs.
+export function deniedVips(root) {
+  const dir = "docs/design/vips"
+  const denied = new Set()
+  for (const name of readdirSync(join(root, dir))) {
+    if (!/^\d{4}.*\.md$/.test(name)) continue
+    const status = read(root, join(dir, name)).match(/\*\*Status:\*\*\s*(accepted|denied|open)\b/i)?.[1]?.toLowerCase()
+    if (!status) throw new Error(dir + "/" + name + ": missing VIP status")
+    if (status === "denied") denied.add(Number(name.slice(0, 4)))
+  }
+  return denied
+}
+
 export function loadRows(root) {
+  const denied = deniedVips(root)
   const seen = new Set()
   const rows = []
   for (const [i, line] of read(root, sourcePath).split("\n").entries()) {
@@ -29,6 +45,9 @@ export function loadRows(root) {
       if (!authority.split(",").every(ref => /^[\w-]+\.md(?:#[\w-]+)?$/.test(ref.trim())))
         fail("invalid specification authority")
     }
+    for (const cited of reason.matchAll(/\bVIP-(\d+)\b/g))
+      if (denied.has(Number(cited[1])) && !/\bdenied\b/i.test(reason))
+        fail("reason cites denied VIP-" + cited[1] + " without stating the denial; write \"Denied by VIP-" + cited[1] + "; ...\"")
     rows.push({ hook, form, authority, status, reason })
   }
   if (!rows.length) throw new Error("empty grammar admission source")
