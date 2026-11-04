@@ -244,6 +244,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Contributor source checks stopped covering cold program blocks after a span fixture update. They now check cold blocks and nested `do` expressions alongside the existing callback fixture.
 
 - Hashing platform errors suggested a namespace method; they now show how to obtain the digest service and run its operation.
+
+- Compiler case validation still expected temporary-directory advice to allocate a directory; it now checks the native directory query.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.

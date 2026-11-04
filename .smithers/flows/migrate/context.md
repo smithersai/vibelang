@@ -866,6 +866,8 @@ The terminal diagnostic examples obtain `Terminal.Terminal` with `try` and run i
 
 Digest diagnostic examples obtain `Digest.Digest` with `try`, then run its `digest(Digest.sha256, bytes)` method. This hashes the bytes in one operation.
 
+For `os.tmpdir()`, use `try (try Experimental.Process.Process).temporaryDirectory`. It queries the native temporary directory without creating a directory or file.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

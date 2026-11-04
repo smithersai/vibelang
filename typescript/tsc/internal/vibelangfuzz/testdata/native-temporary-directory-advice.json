@@ -1,0 +1,22 @@
+[
+  {
+    "key": "node:os:tmpdir:direct",
+    "source": "import { tmpdir } from \"node:os\";export const value=tmpdir",
+    "advice": "try (try Experimental.Process.Process).temporaryDirectory"
+  },
+  {
+    "key": "node:os:tmpdir:alias",
+    "source": "import { tmpdir as Native } from \"node:os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).temporaryDirectory"
+  },
+  {
+    "key": "os:tmpdir:direct",
+    "source": "import { tmpdir } from \"os\";export const value=tmpdir",
+    "advice": "try (try Experimental.Process.Process).temporaryDirectory"
+  },
+  {
+    "key": "os:tmpdir:alias",
+    "source": "import { tmpdir as Native } from \"os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).temporaryDirectory"
+  }
+]
