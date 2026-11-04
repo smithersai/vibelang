@@ -1,4 +1,4 @@
-// Rest arrays belong to each execution, including the direct-return path.
+// Rest arrays belong to the call, including the direct-return path.
 export const compact = effect (...values: number[]): Effect<number | undefined, never, never> => values.pop()
 export const expanded = effect (...values: number[]): Effect<number | undefined, never, never> => {
   const last = values.pop()

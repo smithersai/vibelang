@@ -453,6 +453,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Regression checks for repeated runs of an Effect method expected its parameter mutations to reset. They now compare all sixteen method and assignment paths with native TypeScript and preserve each call’s parameter bindings.
 
+- Regression checks for rest parameters expected a new array on every run of the same Effect. They now compare native TypeScript, retain the call’s array identity, and observe its mutations across runs.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 
