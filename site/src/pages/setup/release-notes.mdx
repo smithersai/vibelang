@@ -179,6 +179,15 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
+- A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.
+
+- Migration checks rejected a valid Knip configuration that registered both `.vibe` and `.vibex`. The check now loads the generated module and verifies both compiler bindings and sidecar excludes.
+
+- The formatted-declaration certification property suite could not load because an assertion lacked a closing parenthesis. All declaration and formatter-mutation cases now execute again.
+
+- The direct-consumer migration regression expected its specification comments to disappear and failed the compiler gate. Its fixed example now preserves those comments and checks diagnostics at the corresponding source lines.
+- Upgrade regression checks could stop at an invalid fixture lockfile, missing package version or text placeholder used as a toolchain archive. Valid package fixtures now reach the upgrade gates and verify public release dependencies alongside exact staged development pins.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 
