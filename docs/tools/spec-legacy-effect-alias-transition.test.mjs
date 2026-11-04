@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import fc from "fast-check"
 import { chapter, read } from "./spec-witness.mjs"
 test("the fourth migration warning is identity-selected and preserves local types",()=>{
  const text=chapter("007-tooling")
@@ -21,8 +22,25 @@ test("VIP-3 and chapter 7 give EK4856's repair one trigger", () => {
     assert.ok(!text.includes("where the syntax requires it"), `${name}: vague trigger`)
     assert.ok(!text.includes("in an interface heritage element"), `${name}: interface-only trigger`)
     assert.ok(!text.includes("leaves declarations qualified"), `${name}: authored versus emitted declarations`)
-    assert.ok(text.includes("emitted declarations already print `Effect.Effect<…>`") || text.includes("Emitted declarations already print `Effect.Effect<…>`"), `${name}: emitted declarations unchanged`)
+    checkEmittedDeclarationContract(text, name)
   }
   for (const s of ["`Effect<number>` becomes `number!!`", "`Effect<A | B, E>`", "`Effect<A, E>[]`", "`extends` or `implements` heritage element", "the fix is refused"]) assert.ok(vip.includes(s), s)
-  assert.ok(ch7.includes("heritage elements included"))
+  assert.match(ch7, /including heritage elements/)
+})
+
+function checkEmittedDeclarationContract(text, name) {
+  assert.match(text, /[Ee]mitted declarations already (?:print|use) `Effect\.Effect<…>` and (?:do not change|stay unchanged)/, name)
+}
+
+test("mutations cannot lose the emitted-declaration identity safeguard", () => {
+  const sources = [read("docs/design/vips/0003-effect-type-shorthand.md"), chapter("007-tooling")]
+  for (const text of sources) checkEmittedDeclarationContract(text, "published")
+  fc.assert(fc.property(fc.integer({ min: 0, max: 1 }), fc.constantFrom(
+    "Emitted declarations already", "`Effect.Effect<…>`", "unchanged"
+  ), (index, token) => {
+    const text = sources[index]
+    const fragment = token === "unchanged" ? (index === 0 ? "do not change" : "stay unchanged") : token
+    assert.ok(text.includes(fragment), fragment)
+    assert.throws(() => checkEmittedDeclarationContract(text.replaceAll(fragment, "[removed]"), "mutation"))
+  }), { seed: 1104104, numRuns: 150 })
 })
