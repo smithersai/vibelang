@@ -642,7 +642,7 @@ func matchPattern(c *checker.Checker, file *ast.SourceFile, pattern *ast.Node) (
 		}
 		return "", false
 	case ast.KindIdentifier:
-		if pattern.Text() == "undefined" {
+		if pattern.Text() == "undefined" && c.IsUndefinedSymbol(c.GetSymbolAtLocation(pattern)) {
 			return "undefined", true
 		}
 	case ast.KindObjectLiteralExpression:
@@ -687,11 +687,57 @@ func matchPattern(c *checker.Checker, file *ast.SourceFile, pattern *ast.Node) (
 		}
 		return "", false
 	}
-	// A constant of a literal type, such as Status.Ready, matches by equality.
-	if (ast.IsIdentifier(pattern) || ast.IsPropertyAccessExpression(pattern)) && c.GetTypeAtLocation(pattern).Flags()&(checker.TypeFlagsStringLiteral|checker.TypeFlagsNumberLiteral|checker.TypeFlagsBooleanLiteral) != 0 {
+	// A literal type proves a value, not an inert read. Match eagerly builds
+	// its predicates; match arms read operands lazily (RC-16 / VIP-34).
+	if inertMatchLiteralBinding(c, file, pattern) && c.GetTypeAtLocation(pattern).Flags()&(checker.TypeFlagsStringLiteral|checker.TypeFlagsNumberLiteral|checker.TypeFlagsBooleanLiteral) != 0 {
 		return nodeText(file, pattern), true
 	}
 	return "", false
+}
+
+// inertMatchLiteralBinding proves a literal const has initialized in this
+// activation. Crossing a function or class boundary, importing a binding, or
+// reading ahead can observe TDZ even when the initializer is an inert literal.
+func inertMatchLiteralBinding(c *checker.Checker, file *ast.SourceFile, operand *ast.Node) bool {
+	if !ast.IsIdentifier(operand) {
+		return false
+	}
+	symbol := c.GetSymbolAtLocation(operand)
+	if symbol == nil || symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		return false
+	}
+	decl := symbol.ValueDeclaration()
+	if decl == nil || !ast.IsVariableDeclaration(decl) || decl.Initializer() == nil ||
+		!ast.IsIdentifier(decl.Name()) || ast.GetSourceFileOfNode(decl) != file ||
+		ast.GetCombinedModifierFlags(decl)&ast.ModifierFlagsAmbient != 0 ||
+		decl.End() >= nodeStart(file, operand) {
+		return false
+	}
+	list := decl.Parent
+	if list == nil || !ast.IsVariableDeclarationList(list) || list.Flags&ast.NodeFlagsBlockScoped != ast.NodeFlagsConst {
+		return false
+	}
+	statement := list.Parent
+	if statement == nil {
+		return false
+	}
+	scope := statement.Parent
+	if scope == nil || (!ast.IsBlock(scope) && scope.Kind != ast.KindSourceFile) {
+		return false
+	}
+	for n := operand; n != scope; n = n.Parent {
+		if n == nil || isFunctionBoundary(n) || n.Kind == ast.KindClassDeclaration || n.Kind == ast.KindClassExpression {
+			return false
+		}
+	}
+	initializer := ast.SkipParentheses(decl.Initializer())
+	switch initializer.Kind {
+	case ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword:
+		return true
+	case ast.KindPrefixUnaryExpression:
+		return initializer.AsPrefixUnaryExpression().Operator == ast.KindMinusToken && ast.IsNumericLiteral(initializer.AsPrefixUnaryExpression().Operand)
+	}
+	return false
 }
 
 // matchInstanceOfClass proves the class-pattern predicate is instanceof

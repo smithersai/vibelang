@@ -598,6 +598,8 @@ An `EK4405` input fix preserves captured values' types and is withheld when exis
 
 `EK4839` also reports direct `Option.match(value, handlers)` calls, including named imports and namespace aliases. Its message names `Option`'s own `match` API. The fix uses native `match`, preserving subject evaluation, handler construction, property reads and the selected callback's order. It refuses a choice returning a program or comments between the arguments; those calls keep the warning and its refusal note.
 
+The `EK4839` repair keeps literal-typed getters, properties, mutable bindings and computed constants as `Match` calls: their construction-time reads must not move into a lazy arm or a returned function. A literal `const` initialized earlier in the same activation can still convert. Reads across functions, class initializers or imports keep their advisory, because even a literal binding may still be uninitialized.
+
 The `EK4839` quick fix preserves a Match return-type hint with a checked
 annotation on its binding, including destructuring, or a typed local binding
 inside a `do` expression. It uses existing written context when available

@@ -132,6 +132,8 @@ func fuzzFixProjects(f *testing.F, target string) {
 				archive = dataMethodImportPhaseArchive(archive)
 			}
 			options := vibelang.FixOptions{VIPOnly: strings.HasPrefix(corpusFile(t, target), "fix-vip-only-")}
+			operandReads := strings.HasPrefix(archive, "match-operand-reads:")
+			archive = matchOperandReadsProject(archive)
 			files := toolsUnarchive(archive)
 			if strings.HasPrefix(archive, "match-instanceof:") {
 				files = matchInstanceOfProject(archive)
@@ -327,7 +329,17 @@ func fuzzFixProjects(f *testing.F, target string) {
 						t.Fatalf("cannot verify D372 runtime equivalence: %v", err)
 					}
 				}
-				was, is := node.Run(runtimeBefore, entry.file, entry.name), node.Run(after, entry.file, entry.name)
+				var was, is Outcome
+				if operandReads {
+					was, is = node.RunObserved(runtimeBefore, entry.file, entry.name), node.RunObserved(after, entry.file, entry.name)
+					if !reflect.DeepEqual(was.BeforeCall, is.BeforeCall) ||
+						!reflect.DeepEqual(was.AfterCall, is.AfterCall) ||
+						!reflect.DeepEqual(was.Trace, is.Trace) {
+						Gap(t, target, "fix:match-operand-reads", "007: --fix moved an operand read: original %+v; fixed %+v\n%s\nfixed:\n%s", was, is, archive, Archive(fixed))
+					}
+				} else {
+					was, is = node.Run(runtimeBefore, entry.file, entry.name), node.Run(after, entry.file, entry.name)
+				}
 				if nativeTS {
 					t.Logf("native-ts runtime comparison %s:%s original=%s/%s fixed=%s/%s", entry.file, entry.name, was.Kind, was.Value, is.Kind, is.Value)
 				}
