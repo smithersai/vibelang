@@ -1,5 +1,14 @@
 # The build graph
 
+When editing a `PACKAGE.ts` or `WORKSPACE.ts` declaration, run
+`node --test scripts/build-declarations.test.mjs` before the longer checks.
+The test loads the real workspace through `smthrs graph` without executing
+builds. `S.Filegroup` takes targets in `srcs`: use `S.file("path")` for one
+file or spread `S.glob(["pattern"])` for a group. String paths belong in
+the arguments to those helpers. Invalid declarations fail before any target
+can run; successful tests of a target's command alone do not validate them.
+
+
 The compiler package gate also runs `//typescript/tsc:go-vibelangfmt`, so formatter Go regressions run before a compiler change lands. Schema-optional oracles quote the conditional specification table and retain both project-setting branches; wording updates do not replace semantic or declaration checks.
 
 Negative compiler fixtures in formatter corpora retain explicit refusal checks; valid fixtures retain their round-trip and idempotence checks.
