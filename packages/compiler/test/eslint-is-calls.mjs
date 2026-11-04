@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 
-export const isCallRule = "linters, Knip, bundlers and test runners each read `.vibe`"
+export const isCallRule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 
 export function isInputs(fc) {
   return fc.record({

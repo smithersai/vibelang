@@ -17,7 +17,7 @@ func TestMigrationKnipUsageQuoted(t *testing.T) {
 		sources = append(sources, string(source))
 	}
 	for chapter, quote := range map[string]string{
-		"007-tooling.md": "linters, Knip, bundlers and test runners each read `.vibe`.",
+		"007-tooling.md": "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.",
 		"000-intro.md":   "Where a VIP is silent, its TypeScript or pinned TC39 counterpart applies.",
 	} {
 		if !strings.Contains(SpecText(chapter), quote) {

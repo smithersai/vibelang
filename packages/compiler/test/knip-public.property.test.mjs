@@ -15,7 +15,7 @@ import fc from "fast-check";
 import { checkProperty } from "../../../scripts/testing/property.mjs";
 import { SpecPath } from "../../../scripts/testing/spec-path.mjs";
 
-const quote = "linters, Knip, bundlers and test runners each read `.vibe`.";
+const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.";
 const counterpartQuote =
   "Where a VIP is silent, its TypeScript or pinned TC39 counterpart applies.";
 const compiler = new URL("../knip.mjs", import.meta.url).href;

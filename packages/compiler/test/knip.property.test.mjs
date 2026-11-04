@@ -19,7 +19,7 @@ const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_
 const missing = [native, join(modules, "typescript")].find((path) => !existsSync(path))
 const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
 if (!process.env.VIBELANG_BINARY && !skip) process.env.VIBELANG_BINARY = native
-const quote = "linters, Knip, bundlers and test runners each read `.vibe`"
+const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 
 const trivia = ["/** @public */", "/** A doc. */", "/**\n * Two lines.\n * @internal\n */", "/* @public */", "// @public", "", "/***/"]
 const after = ["", " /** @public */", " // @public", " /* note */"]
