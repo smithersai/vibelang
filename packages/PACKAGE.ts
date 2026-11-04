@@ -104,6 +104,16 @@ const migrateRecordProvenance = S.Shell.Test({
   timeout: "3m"
 })
 
+const migrateWarningProvenance = S.Shell.Test({
+  summary: "Check warning provenance and promoted errors through migration compile.",
+  shell: "VIBELANG_COMPILER=$PWD/packages/compiler/native/vibelang node --test " +
+    "--test-name-pattern='compile reads the codemod journal' .smithers/flows/migrate/test/global-error.property.test.mjs",
+  data: [compilerNative, migrationSources, ...install],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "3m"
+})
+
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
@@ -185,6 +195,7 @@ export const Package = S.Package({
     "migrate-test": migrateTest,
     "migrate-lost-wrapper": migrateLostWrapper,
     "migrate-record-provenance": migrateRecordProvenance,
+    "migrate-warning-provenance": migrateWarningProvenance,
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,

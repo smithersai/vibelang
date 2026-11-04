@@ -1544,3 +1544,9 @@ target retains its source-sync check, regression assertions, property sample
 counts and the precise inputs declared in `api-inputs.ts`. Real SDK fixtures
 check shared execution, cache replay and failure propagation; generated
 filename neighbours check complete ownership of the two commands.
+
+The `//packages:migrate-warning-provenance` target checks both journaled-source
+and retained-declaration provenance through migration's compile stage. A warning
+is retained with its location in `warningExceptions`; promoting it to an error
+blocks the style and new-error checks in either provenance case. The full global
+error property corpus remains in the migration suite.

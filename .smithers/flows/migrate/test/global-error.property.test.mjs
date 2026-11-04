@@ -211,7 +211,7 @@ test("exemptions follow the written producer contract across exported, private, 
 })
 
 test("compile reads the codemod journal's original source before falling back to the retained declaration", native, async () => {
-  for (const journaled of [true, false]) {
+  for (const journaled of [true, false]) for (const category of ["warning", "error"]) {
     const root = mkdtempSync(join(tmpdir(), "migrate-global-error-source-"))
     const target = join(root, "repo"), run = join(root, "run")
     try {
@@ -227,7 +227,7 @@ test("compile reads the codemod journal's original source before falling back to
         'if (process.argv.includes("--estree")) {',
         '  const r = cp.spawnSync(' + JSON.stringify(compiler) + ', process.argv.slice(2), { stdio: "inherit" }); process.exit(r.status ?? 1);',
         '}',
-        'console.log(' + JSON.stringify("main.vibe(" + d.line + "," + d.column + "): warning EK4804: " + d.message) + ');'
+        'console.log(' + JSON.stringify("main.vibe(" + d.line + "," + d.column + "): " + category + " EK4804: " + d.message) + ');'
       ].join("\n") + "\n", { mode: 0o755 })
       const p = paths(run)
       writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11" }))
@@ -238,9 +238,13 @@ test("compile reads the codemod journal's original source before falling back to
       if (journaled) writeJson(p.codemodState("01"), { version: 1, phase: "fixing", files: ["main.ts"], renames: [{ from: "main.ts", to: "main.vibe" }], originals: [{ from: "main.ts", to: "main.vibe", bytes: Buffer.from(examples.before).toString("base64"), mode: 0o644 }], writes: [], attempts: [] })
       const result = await compile({ run, batch: "01" })
       assert.equal(result.diagnostics.length, 1)
-      assert.equal(result.styleExemptions[0].exempt, journaled, JSON.stringify(result.styleExemptions))
+      assert.equal(result.styleExemptions[0].exempt, journaled && category === "warning", JSON.stringify(result.styleExemptions))
       assert.equal(result.styleExemptions[0].oracle, journaled ? "source" : "declaration")
-      assert.deepEqual(result.style.map(d => d.code), journaled ? [] : ["EK4804"])
+      // VIP-34 warnings do not fail; promoted errors still block, regardless of provenance.
+      assert.deepEqual(result.style.map(d => d.code), category === "error" ? ["EK4804"] : [])
+      assert.deepEqual(result.warningExceptions.map(d => [d.code, d.file, d.line, d.category]),
+        category === "warning" ? [["EK4804", "main.vibe", d.line, "warning"]] : [])
+      assert.deepEqual(result.newErrors.map(d => d.code), category === "error" ? ["EK4804"] : [])
     } finally { rmSync(root, { recursive: true, force: true }) }
   }
 })
