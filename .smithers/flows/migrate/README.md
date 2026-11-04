@@ -969,3 +969,5 @@ never become exceptions. Rechecking replaces this snapshot rather than
 accumulating old sites.
 
 Setup also scans owned shell scripts used by build targets for bare source runners. Its bare-runner receipt preserves the shell path, line and original command. A reached module stays TypeScript until the runner has a loader. Literal working-directory changes are followed; a dynamic directory keeps matching source graphs deferred even when the command mentions a loader. The shell script itself keeps its original bytes.
+
+One-pass conversion banks are scoped to their baseline, compiler producer, compiler bytes and flow implementation. Both settled successes and timeouts belong to that identity. After it changes, `next` schedules the fix pass again, and `fix` rechecks the live converted sources instead of reusing stale results. Earlier banks and fix summaries are retained in `fix-bank-history.jsonl` and `fix-result-history.jsonl`; `fix-context-changed` progress records distinguish historical work from current failures. An unchanged context continues to reuse completed work and avoids retrying its timed-out projects.

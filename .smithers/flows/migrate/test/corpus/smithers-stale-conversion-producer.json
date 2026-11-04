@@ -1,0 +1,7 @@
+{
+  "pattern": "one-pass failure and success banks reused after changing the conversion baseline or producer",
+  "oldProducer": "111111111111",
+  "newProducer": "222222222222",
+  "oldBaseline": "333333333333",
+  "newBaseline": "444444444444"
+}

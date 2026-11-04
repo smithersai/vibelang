@@ -1,3 +1,4 @@
+import { conversionIdentity } from "./conversion-context.mjs"
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
 import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
@@ -267,6 +268,7 @@ function identicalDeclarations(config, p, cm) {
 }
 
 async function settle(config, p, cm, options) {
+  const identity = conversionIdentity(config, p)
   const baseline = readJson(join(p.run, "onepass-baseline.json"))
   const maxRounds = positive(options.rounds, 12, "rounds")
   const causes = readJsonIf(join(p.batch("01"), "settle-causes.json"), {})
@@ -300,7 +302,7 @@ async function settle(config, p, cm, options) {
       const result = { settled: !added.length, rounds: history, causes, remaining: added, warningExceptions: exceptions }
       writeJson(join(p.batch("01"), "settle.json"), result)
       if (result.settled) writeJson(join(p.run,"done.json"), Object.fromEntries(config.packages.map(pkg => [pkg.dir,{
-        digest: packageDigest(config,pkg.dir,cm.renames.map(r=>r.to)), at: new Date().toISOString(), kept: [...live].filter(f => owner(config,f) === pkg.dir),
+        identity, digest: packageDigest(config,pkg.dir,cm.renames.map(r=>r.to)), at: new Date().toISOString(), kept: [...live].filter(f => owner(config,f) === pkg.dir),
         reverted: Object.entries(causes).filter(([f]) => owner(config,f) === pkg.dir), checked: checks.map(c => c.file),
         warningExceptions: exceptions.filter(e => owner(config, e.file) === pkg.dir)
       }])))
@@ -344,13 +346,28 @@ async function fix(config, p, cm, options) {
   }
   const closure = new Map(packages.map(dir => [dir, reachable(deps, dir)]))
   const related = (a, b) => closure.get(a).has(b) || closure.get(b).has(a)
-  const bankFile = join(p.run,"fix-bank.json"), bank = readJsonIf(bankFile,{ packages: {}, timedOut: [] })
+  const identity = conversionIdentity(config, p)
+  const bankFile = join(p.run,"fix-bank.json")
+  let bank = readJsonIf(bankFile,{ packages: {}, timedOut: [] })
+  if (bank.identity !== identity) {
+    const stalePackages = Object.keys(bank.packages ?? {}).length
+    const staleFailures = (bank.timedOut ?? []).length
+    if (stalePackages || staleFailures) appendJsonl(join(p.run, "fix-bank-history.jsonl"), bank)
+    appendJsonl(join(p.batch("01"), "progress.jsonl"), {
+      stage: "fix-context-changed", previous: bank.identity ?? null, identity, stalePackages, staleFailures
+    })
+    bank = { identity, packages: {}, timedOut: [] }
+    writeJson(bankFile, bank)
+  }
   const settledBank = readJsonIf(join(p.run,"done.json"),{})
   const pending = new Set(packages.sort((a,b) => cm.renames.filter(r=>owner(config,r.to)===a).length - cm.renames.filter(r=>owner(config,r.to)===b).length))
   const done = new Set(), running = new Map(), failures = []
   const timedOut = new Set(bank.timedOut)
   const saveBank = () => { bank.timedOut = [...timedOut]; writeJson(bankFile,bank) }
-  cm.fix ??= { rounds: [], byFile: {}, totals: {}, refused: [] }
+  if (cm.fix?.identity !== identity) {
+    if (cm.fix) appendJsonl(join(p.run, "fix-result-history.jsonl"), cm.fix)
+    cm.fix = { identity, rounds: [], byFile: {}, totals: {}, refused: [] }
+  }
   cm.fix.projects ??= []
   cm.fix.settled = false
   writeJson(p.codemod("01"), cm)
@@ -358,7 +375,7 @@ async function fix(config, p, cm, options) {
   async function fixPackage(dir) {
     const only = new Set(cm.renames.filter(r => owner(config, r.to) === dir && existsSync(join(config.target, r.to))).map(r => r.to))
     const digest = packageDigest(config,dir,cm.renames.map(r=>r.to))
-    if (!only.size || bank.packages[dir]?.digest === digest || settledBank[dir]?.digest === digest) {
+    if (!only.size || bank.packages[dir]?.digest === digest || settledBank[dir]?.identity === identity && settledBank[dir]?.digest === digest) {
       appendJsonl(join(p.batch("01"),"progress.jsonl"),{stage:"fix-skip-banked",package:dir})
       return
     }
@@ -420,7 +437,7 @@ async function fix(config, p, cm, options) {
       }
     }
     if (!failures.some(f => f.package === dir)) {
-      bank.packages[dir] = { at: new Date().toISOString(), files: [...only], digest: packageDigest(config,dir,cm.renames.map(r=>r.to)) }
+      bank.packages[dir] = { identity, at: new Date().toISOString(), files: [...only], digest: packageDigest(config,dir,cm.renames.map(r=>r.to)) }
       saveBank()
     }
   }

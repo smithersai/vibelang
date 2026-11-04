@@ -871,3 +871,66 @@ if (args.includes("--fix")) console.log("vibelang --fix: 0 fixes in 0 files.")
       { pkg: "app", category: "error", code: "GENERATED65001", line: 1, receipt: false }]]
   ] })
 })
+
+const staleProducerCorpus = readJson(fileURLToPath(new URL("./corpus/smithers-stale-conversion-producer.json", import.meta.url)))
+async function changedConversionContext(kind, failed) {
+  const f = await fixture()
+  try {
+    const config = readJson(paths(f.run).config)
+    config.base = staleProducerCorpus.oldBaseline
+    writeJson(paths(f.run).config, config)
+    const tool = join(f.root, "tool/toolchain.json")
+    writeJson(tool, { ...readJson(tool), commit: staleProducerCorpus.oldProducer })
+    await onePassStep("plan", { run: f.run, scope: f.scope })
+    await onePassStep("rename", { run: f.run })
+    const workingCompiler = text(f.root, "tool/compiler.cjs")
+    if (failed) {
+      put(f.root, "tool/compiler.cjs", workingCompiler.replace('console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0)', 'setTimeout(()=>{},10000); return'))
+      await assert.rejects(onePassStep("fix", { run: f.run, jobs: 1, timeout: 1 }), /fix failed/)
+    } else await onePassStep("fix", { run: f.run, jobs: 1 })
+    const fixes = () => text(f.target, "checks.log").trim().split("\n").map(JSON.parse).filter(c => c.args.includes("--fix")).length
+    const previous = fixes()
+    if (kind === "producer") writeJson(tool, { ...readJson(tool), commit: staleProducerCorpus.newProducer })
+    if (kind === "baseline") {
+      config.base = staleProducerCorpus.newBaseline
+      writeJson(paths(f.run).config, config)
+    }
+    if (failed) put(f.root, "tool/compiler.cjs", workingCompiler)
+    if (kind === "compiler") put(f.root, "tool/compiler.cjs", workingCompiler + "\n// new compiler build\n")
+    assert.equal(nextStep(f.run).step, "codemod", "next must reopen a stale conversion")
+    await onePassStep("fix", { run: f.run, jobs: 1, timeout: 5 })
+    assert.ok(fixes() > previous, kind + " must reopen the previous " + (failed ? "failure" : "success"))
+    const bank = readJson(join(f.run, "fix-bank.json"))
+    assert.deepEqual(bank.timedOut, [])
+    assert.equal(typeof bank.identity, "string")
+    const next = fixes()
+    await onePassStep("fix", { run: f.run, jobs: 1, timeout: 5 })
+    assert.equal(fixes(), next, "an unchanged context retains its completed bank")
+    assert.match(text(f.run, "batches/01/progress.jsonl"), /fix-context-changed/)
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+}
+test("a new producer reopens a previous one-pass timeout", () => changedConversionContext("producer", true))
+test("a new baseline rechecks an unchanged successful conversion", () => changedConversionContext("baseline", false))
+test("conversion banks follow baseline, producer and compiler identity for either outcome", async () => {
+  await fc.assert(fc.asyncProperty(fc.constantFrom("baseline", "producer", "compiler"), fc.boolean(), changedConversionContext),
+    { seed: 392, numRuns: 6 })
+})
+test("settled success receipts cannot certify a different producer", async () => {
+  const f = await fixture()
+  try {
+    put(f.root, "tool/compiler.cjs", text(f.root, "tool/compiler.cjs").replace(/^if \(pkg === "(?:core|app)".*$/gm, ""))
+    await onePassStep("plan", { run: f.run, scope: f.scope })
+    await onePassStep("rename", { run: f.run })
+    await onePassStep("fix", { run: f.run, jobs: 1 })
+    assert.equal((await onePassStep("settle", { run: f.run })).settled, true)
+    const done = readJson(join(f.run, "done.json"))
+    assert.ok(Object.values(done).every(item => typeof item.identity === "string"))
+    writeJson(join(f.run, "fix-bank.json"), { identity: done.app.identity, packages: {}, timedOut: [] })
+    const tool = join(f.root, "tool/toolchain.json")
+    writeJson(tool, { ...readJson(tool), commit: staleProducerCorpus.newProducer })
+    const fixes = () => text(f.target, "checks.log").trim().split("\n").map(JSON.parse).filter(c => c.args.includes("--fix")).length
+    const before = fixes()
+    await onePassStep("fix", { run: f.run, jobs: 1 })
+    assert.ok(fixes() > before, "done.json must be rechecked under the new producer")
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})

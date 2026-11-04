@@ -1,3 +1,4 @@
+import { conversionIdentity } from "./conversion-context.mjs"
 import { restorePrivateResolverExports } from "./import-meta-platform.mjs"
 import { formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
@@ -116,7 +117,11 @@ export function nextStep(runDir) {
   for (let i = 0; i < plan.batches.length; i++) {
     const b = batchName(i)
     if (existsSync(p.record(b))) continue
-    if (!existsSync(p.codemod(b)) || (plan.mode === "one-pass" && !readJson(p.codemod(b)).fix?.settled)) return { step: "codemod", batch: b }
+    if (!existsSync(p.codemod(b))) return { step: "codemod", batch: b }
+    if (plan.mode === "one-pass") {
+      const fixed = readJson(p.codemod(b)).fix
+      if (!fixed?.settled || fixed.identity !== conversionIdentity(readJson(p.config), p)) return { step: "codemod", batch: b }
+    }
     if (!existsSync(p.compile(b))) return { step: "compile", batch: b }
     if (!existsSync(p.repair(b))) return { step: "repair", batch: b }
     const verify = readJsonIf(p.verify(b))
