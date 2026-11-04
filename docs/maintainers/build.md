@@ -269,6 +269,7 @@ queue:
 | `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
 | `//:spec-diagnostic-blocks` | Diagnostic appendix, table linter and regression tests; every retained out-of-block assignment needs an explicit exception, and removed exceptions remain errors. |
 | `//:spec-example-prerequisites` | JSX example metadata and outcome checking; active examples require ordinary success, while explicit prerequisites reject unrelated errors and stale markers. |
+| `//:spec-diagnostic-authority` | Diagnostic authority rows, source proposals and their linter tests; accepted migration rules retain authority while denied proposals remain rejected. |
 | `//:spec-registry-go` | Published specification/VIP assignments, compiler/core diagnostic declarations and fuzz registry inventories; validates registrations, paired debt records and declaration-only allowances; none permits an unassigned diagnostic to be emitted. |
 | `//:tooling-citations` | Service/tooling chapters, their owning VIPs, configuration/core options and the four covered fuzz sources; checks exact public quotations and retired-setting properties without a runtime build. |
 | `//:lint-config` | Configuration/core options, imported lint options or hooks, fixer/config diagnostics, lint fuzz tests, or the VIP-38 contract; checks warning, activation and preserving migration without building runtime packages. |

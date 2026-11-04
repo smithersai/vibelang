@@ -4301,6 +4301,7 @@ typescript/vibelang/cases/legacy-javascript.fail/main.vibe:19:21 lambda plain fa
 typescript/vibelang/cases/legacy-javascript.fail/main.vibe:20:22 lambda plain fallback
 typescript/vibelang/cases/legacy-javascript.fail/main.vibe:21:56 lambda plain fallback
 typescript/vibelang/cases/legacy-javascript.fail/main.vibe:22:32 lambda plain fallback
+typescript/vibelang/cases/legacy-layer-diagnostic-authority/main.vibe:5:3 lambda effectFn keyword
 typescript/vibelang/cases/lexical-arguments-per-run-method/args.vibe:15:18 lambda effectFn keyword
 typescript/vibelang/cases/lexical-arguments-per-run-method/args.vibe:16:36 lambda plain table
 typescript/vibelang/cases/lexical-arguments-per-run-method/args.vibe:24:18 lambda effectFn keyword

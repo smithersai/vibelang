@@ -517,3 +517,18 @@ test("active JSX examples use ordinary diagnostic outcomes", () => {
   assert.deepEqual(verdict(active, { status: 0, stdout: "" }), [])
   assert.ok(verdict(active, { status: 1, stdout: "error TS6054: unsupported extension\n" }).some(f => f.severity === "error"))
 })
+
+test("legacy layer migration cites accepted diagnostic authority", () => fixture((root, edit) => {
+  const original = read(root, appendix)
+  const row = original.split("\n").find(line => line.startsWith("| `EK2121` |"))
+  assert.ok(row)
+  assert.ok(!lintAuthority(root).some(f => f.message.startsWith("EK2121 cites denied VIP-")))
+  const denied = [...vipRegistry(root)].filter(([, v]) => v.status === "denied" && !v.text.split(/^## Amendments\s*$/m)[1]?.includes("EK2121"))
+  assert.ok(denied.length > 0)
+  fc.assert(fc.property(fc.constantFrom(...denied.map(([id]) => id)), id => {
+    const cells = row.split(" | ")
+    cells[2] = id + ", 12, 34"
+    edit(appendix, () => original.replace(row, cells.join(" | ")))
+    assert.ok(lintAuthority(root).some(f => f.message === "EK2121 cites denied VIP-" + id + " as authority"))
+  }), { numRuns: 50 })
+}))

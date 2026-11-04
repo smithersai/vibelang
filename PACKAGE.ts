@@ -834,6 +834,14 @@ const targets = {
     sandbox: "none",
     timeout: "1m"
   }),
+  "spec-diagnostic-authority": S.Shell.Test({
+    summary: "Legacy migration diagnostics cite accepted authority while denied proposals remain rejected.",
+    shell: "node --test --test-name-pattern='legacy layer migration cites|current resource warning|denied-VIP amendments' docs/tools/spec-rules.test.mjs",
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
+    tools: [node],
+    sandbox: "none",
+    timeout: "2m"
+  }),
   "spec-rule-table": S.Shell.Test({
     summary: "Check rule-injection quotations against current public chapters.",
     shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^TestSpecRuleTable$' ./internal/vibelangfuzz/",
