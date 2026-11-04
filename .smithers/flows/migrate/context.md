@@ -73,7 +73,7 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 - Reach the platform only through injected Effect services (`FileSystem`, `Path`, `HttpClient`, `Clock`, `Random`, `Crypto`, `Console`, `Terminal`, `KeyValueStore`, `ChildProcessSpawner`, `Stdio`, `Config`), Effect's own modules, or VibeLang's `Experimental.Process`, `Experimental.FileSystem`, `Experimental.Crypto` and `Experimental.Locks`. The replacement table below names each global's replacement; EK4402 names it too.
 - Never wrap a platform global or a Node.js module in a `sync` or `try` hatch, or in a `module` block, when a service, an Effect module or an Experimental API covers it. Thread the service through the code, and provide its layer where the program starts; a test provides a test layer.
-- Read time and randomness through `Clock` and `Random`, never `Date.now()`, `new Date()` or `Math.random()` (EK4403).
+- `Date.now()`, `Date()`, `new Date()` and `Math.random()` are ordinary ECMAScript calls and remain legal. Use `Clock` and `Random` when a program needs an injected clock or random source.
 
 ## TypeScript at the edges
 

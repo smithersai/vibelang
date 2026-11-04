@@ -516,6 +516,12 @@ const targets = {
   ),
   // A case copied from an older one keeps its pin, so stale pins landed on the
   // stack, which gates only on a build. Fast enough for that gate.
+  "docs-migration-globals": check(
+    "Migration guidance admits ECMAScript clocks and randomness and keeps its generated context current.",
+    "bun test --timeout 60000 docs/tools/rev-docs-transitions.test.ts && node --test .smithers/flows/migrate/test/context.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node]
+  ),
   "effect-pin": check("Every manifest and version literal pins the runtime's Effect version.", "node scripts/effect-pin.mjs", [], [node]),
   // Fast targets the queue's build-only gate selects by changed path (the merge
   // queue's validate.sh), so a commit that breaks one stops at the queue, not in

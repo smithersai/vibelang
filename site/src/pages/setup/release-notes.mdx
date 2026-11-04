@@ -228,6 +228,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
 - The resource-warning documentation check depended on an obsolete list position; it now checks the published ownership, unchanged diagnostic code and disposal safeguards directly.
+- Migration instructions still said native clock and random calls were forbidden after those calls became legal; the instructions now allow them and explain when to use injected services.
 
 - The catch-parameter documentation check failed when the diagnostic row also named unbraced bodies; it now checks the retained parameter restriction and native closure-environment behavior.
 - Some release-note migration instructions rendered as plain rows outside a table; their missing column headers are now restored and a shared checker rejects orphaned rows.
