@@ -181,6 +181,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Generic-assertion repair conformance checks could stop at an obsolete safe-fix quotation. They now check the current parse-preservation contract and retain the full repair property.
 - Explicit-fork migration conformance checks could stop at a reworded contract. They now cite its current wording while retaining the argument-preservation and convergence checks.
 
+- The migrate flow left `import.meta.resolve(specifier)` in `.vibe` files and conversion failed with `EK4402`. It now moves the resolver into a fresh sibling `.ts` function and keeps each call, its captured input and its failure handling in place; source wildcard exports explicitly keep the helper private.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

@@ -1,3 +1,4 @@
+import { restorePrivateResolverExports } from "./import-meta-platform.mjs"
 import { formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
 import { prepareBuilds } from "./builds.mjs"
@@ -1835,6 +1836,7 @@ export async function revertMany(options) {
   for (const { ts, reason, source } of prepared) {
     const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}
     const split = cm.platform?.splits?.find(s => s.file === ts)
+    restorePrivateResolverExports(config.target, split)
     if (split?.platform) rmSync(join(config.target, split.platform), { force: true })
     const recordedBuildEntries = cm.buildEntries?.edits ?? []
     const buildEntryEdits = recordedBuildEntries.some(edit => edit.source === ts)

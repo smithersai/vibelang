@@ -31,7 +31,10 @@ export function batchScope({ files, codemod, testDiff, manifestSnapshots, sideca
   }
   for (const file of codemod?.packingFiles ?? []) scope.add(file)
   for (const emit of codemod?.emittedJs ?? []) for(const file of emit.packingFiles ?? []) scope.add(file)
-  for (const split of codemod?.platform?.splits ?? []) if (split.platform) scope.add(split.platform)
+  for (const split of codemod?.platform?.splits ?? []) {
+    if (split.platform) scope.add(split.platform)
+    if (split.privateExports) scope.add(split.privateExports.manifest)
+  }
   for (const edit of codemod?.exportEdits ?? []) scope.add(edit.manifest)
   // A rewritten importer's declaration may name the renamed module, so its sidecar is written again.
   for (const edit of codemod?.importEdits ?? []) {

@@ -61,6 +61,13 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   const plain = {}
   if (ts) for (const group of plainGroups) Object.assign(plain, markPlainFunctions(ts, target, group.files, group.tsconfigs, { read, write, exists: file => writes.some(w => w.file === (toOf.get(file) ?? file) && w.after !== null) || existsSync(join(target, file)), flipped: group.flipped }))
   const exportEdits = rewriteExports(target, renames, { write, bareEntries })
+  // rewriteExports reads the original manifest. Reapply the companion's
+  // private subpaths to its planned result in the same write-ahead journal.
+  for (const split of platform.splits) if (split.privateExports) {
+    const { manifest, keys } = split.privateExports, pkg = JSON.parse(read(manifest))
+    for (const key of keys) pkg.exports[key] = null
+    write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+  }
   const scriptEdits = rewriteViteScripts(target, renames, { read, write })
   const packageScriptEdits = rewriteScripts(target, renames, { read, write })
   const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })

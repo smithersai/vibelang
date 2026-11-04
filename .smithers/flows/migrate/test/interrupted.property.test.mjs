@@ -298,3 +298,27 @@ test("a killed codemod's journal carries its Vite build entries for resume and r
     rmSync(f.root, { recursive: true, force: true })
   }
 })
+
+test("opencode import.meta companion and private export survive replay and revert", async () => {
+  const sample = readJson(new URL("./corpus/opencode-provider-import-meta.json", import.meta.url))
+  const f = await fixture({ "src/provider.ts": sample.minimal }, ["src/provider.ts"], {
+    type: "module", name: "provider-fixture", exports: { "./*": "./src/*.ts" },
+  })
+  try {
+    const state = prepareState(f.target, ["src/provider.ts"], ["src/provider.ts"], { ts: require("typescript") })
+    saveState(paths(f.run).codemodState("01"), state)
+    // Replay after only some journal writes reached disk.
+    const manifest = state.writes.find(w => w.file === "package.json")
+    durableWrite(join(f.target, manifest.file), manifest.after, manifest.mode)
+    f.put("continue", "")
+    const result = await codemod({ run: f.run })
+    assert.equal(result.platform.splits.length, 1)
+    assert.equal(readJson(join(f.target, "package.json")).exports["./provider.platform"], null)
+    assert.ok(existsSync(join(f.target, "src/provider.platform.ts")))
+    await Jj.commit(f.target, "generated resolver companion")
+    await revert({ run: f.run, batch: "01", file: "src/provider.vibe", reason: "test preserving revert" })
+    assert.equal(readFileSync(join(f.target, "src/provider.ts"), "utf8"), sample.minimal)
+    assert.equal(existsSync(join(f.target, "src/provider.platform.ts")), false)
+    assert.equal(readJson(join(f.target, "package.json")).exports["./provider.platform"], undefined)
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})

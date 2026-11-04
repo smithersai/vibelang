@@ -1,0 +1,5 @@
+{
+  "key": "platform:provider-import-meta-resolve:EK4402",
+  "minimal": "export const resolvePackage = (specifier: string) => import.meta.resolve(specifier);\nexport const value = 1;\n",
+  "text": "import { Effect } from \"effect\"\nconst packageName = (input: string) => input\nexport const loadPackage = Effect.fn(\"Provider.loadPackage\")(function* (input: string) {\n  const specifier = packageName(input)\n  const resolved = yield* Effect.sync(() => {\n    if (specifier.startsWith(\"file://\")) return specifier\n    try {\n      return import.meta.resolve(specifier)\n    } catch {\n      return undefined\n    }\n  })\n  return resolved\n})\nexport const value = 1\n"
+}

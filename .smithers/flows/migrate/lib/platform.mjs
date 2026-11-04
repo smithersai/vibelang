@@ -1,3 +1,4 @@
+import { splitImportMeta, privateResolverExports } from "./import-meta-platform.mjs"
 // Platform code in a module the batch migrates (spec 005, EK4402: "The quick
 // fix and the codemod move the code into a sibling `.ts` module, or point to
 // the Effect service"). A .vibe file does not import a Node or Bun builtin as
@@ -116,6 +117,22 @@ export const platformPath = (file) => file.replace(/\.(m?ts)$/, ".platform.$1")
  * (platformGlobalsOf).
  */
 export function splitPlatform(text, file, ts, { globals = [] } = {}) {
+  const meta = splitImportMeta(text, file, platformPath(file), ts)
+  if (!meta) return splitDeclarationsPlatform(text, file, ts, { globals })
+  if (meta.refused) return meta
+  const declarations = splitDeclarationsPlatform(meta.module, file, ts, { globals })
+  if (declarations?.refused) return declarations
+  const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
+  meta.platform = [...directives, meta.platform].join("\n")
+  if (!declarations) return meta
+  // Both repairs share the fresh companion. Moved declarations call its local
+  // resolver instead of importing the companion from itself.
+  return { ...declarations, importMeta: true,
+    platform: meta.platform + "\n" + declarations.platform.replace(meta.importText + "\n", ""),
+    moved: [...meta.moved, ...declarations.moved] }
+}
+
+function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
@@ -331,7 +348,8 @@ export function splitBatchPlatform(root, files, ts, {
       continue
     }
     const risk = result.refused ? null : publishedSiblingRisk(root, file, { exists, read })
-    const refusal = result.refused ?? (risk && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
+    const privateExports = risk && result.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
+    const refusal = result.refused ?? (risk && !privateExports && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
     if (refusal) {
       // A sibling cannot serve this module. With moduleBodies, a VIP-40 body may.
       const body = moduleBodies ? splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies }) : null
@@ -345,7 +363,12 @@ export function splitBatchPlatform(root, files, ts, {
     const kept = body && !body.refused ? body : null
     write(file, kept ? kept.module : result.module)
     write(sibling, result.platform)
-    splits.push({ file, platform: sibling, moved: result.moved, wrapped: result.wrapped, ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
+    if (privateExports) {
+      const pkg = JSON.parse(read(privateExports.manifest))
+      for (const key of privateExports.keys) pkg.exports[key] = null
+      write(privateExports.manifest, JSON.stringify(pkg, null, 2) + "\n")
+    }
+    splits.push({ file, platform: sibling, ...(privateExports ? { privateExports } : {}), moved: result.moved, wrapped: result.wrapped, ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
   }
   return { splits, refused }
 }
