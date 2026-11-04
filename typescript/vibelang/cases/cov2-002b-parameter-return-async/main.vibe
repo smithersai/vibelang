@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+async function early(x = do { return 7 }) { return 0 }
+export effect function main() { return try Effect.promise(() => early()) }
+
+// Chapter 002: async parameter return
+// docs/design/src/002-running.md#6d97ce3614ceb356

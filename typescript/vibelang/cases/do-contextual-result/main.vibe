@@ -68,3 +68,9 @@ export effect function main() {
 // Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#82db2ea4aa1a268e
 // Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#6549cab5daf39682
 // Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#d52f4f7fe93a18ce
+
+// Chapter 002: fresh literal widening
+// docs/design/src/002-running.md#1d4b222d93f62462
+
+// Chapter 002: branch union and empty values
+// docs/design/src/002-running.md#2f04a62f06efc2f1

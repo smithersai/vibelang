@@ -13,6 +13,12 @@ import (
 // VIP-2's pinned EndsInIterationOrBareIfOrDeclaration groups VariableStatement
 // with declarations and returns isLast. Empty suffixes cannot hide a final var;
 // a later expression still permits the enclosing activation's var binding.
+// Chapter 002: var isLast predicate
+// docs/design/src/002-running.md#8c2b947f00dcc058
+// Chapter 002: final var empty suffixes
+// docs/design/src/002-running.md#f683cf63282bc704
+// Chapter 002: parameter var restriction
+// docs/design/src/002-running.md#26d501b67379d254
 func TestVibeLangDoFinalVarEarlyErrors(t *testing.T) {
 	contexts := []struct{ name, prefix, suffix string }{
 		{"plain", "function f() { return do { ", " } }"},

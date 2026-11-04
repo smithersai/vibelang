@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+export effect function main(a = async () => await Promise.resolve(7), b = function* () { yield 7 }) { return 0 }
+
+// Chapter 002: nested parameter context witness
+// docs/design/src/002-running.md#0897066f2a6876d0

@@ -1,0 +1,12 @@
+// expect: EK0102
+declare const p: Promise<number>
+effect function a(x = await p) {}
+const b = effect (x = await p) => 0
+class C { effect m(x = await p) {} }
+effect function* d(x = await p) { yield 0 }
+
+// Chapter 002: Effect parameter cannot suspend
+// docs/design/src/002-running.md#9ce2160c21ca2dd9
+
+// Chapter 002: formal await and yield diagnostics
+// docs/design/src/002-running.md#1aed91826c7518a0

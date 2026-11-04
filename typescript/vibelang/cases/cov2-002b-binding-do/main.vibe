@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+export effect function main() {
+ const { x = do { try Effect.succeed(7) } } = {} as {x?: number}
+ const early = try effect { const { n = do { return 9 } } = {} as {n?: number}; return 0 }
+ return { x, early }
+}
+
+// Chapter 002: destructuring default jumps
+// docs/design/src/002-running.md#6a578d105736a18d

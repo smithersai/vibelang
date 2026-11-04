@@ -1,0 +1,12 @@
+import { Effect, Stream } from "effect"
+effect function* values() {
+ const { n = do { yield 9; 7 } } = {} as {n?: number}
+ yield n
+}
+export effect function main() {
+ const { x = do { try Effect.succeed(7) } } = {} as {x?: number}
+ const [y = try Effect.succeed(8)] = [] as number[]
+ return { x, y, values: try Stream.runCollect(values()) }
+}
+// Chapter 002: default suspension and producer yield
+// docs/design/src/002-running.md#cadc3eac103bb953

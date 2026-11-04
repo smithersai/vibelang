@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+const trace: string[] = []
+function* native(x = do { trace.push("sync-default"); return 7 }) { trace.push("sync-body"); yield 0 }
+async function* asyncNative(x = do { trace.push("async-default"); return 7 }) { trace.push("async-body"); yield 0 }
+export effect function main() {
+ const a = native(), b = asyncNative()
+ const before = trace.slice()
+ const first = a.next()
+ const second = try Effect.promise(() => b.next())
+ return { before, first, second, trace }
+}
+
+// Chapter 002: generator parameter return
+// docs/design/src/002-running.md#bc6ee9e600375ee4

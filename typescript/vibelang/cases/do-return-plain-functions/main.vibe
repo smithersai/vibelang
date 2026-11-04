@@ -19,3 +19,6 @@ export function argument(n: number): number {
 export effect function main(): readonly [number, number, number, number, number | string, number | string, number]!never {
   return [concise(1), concise(2), block(1), block(2), declared(3), declared(4), argument(6)] as const
 }
+
+// Chapter 002: outward do completions
+// docs/design/src/002-running.md#4331ea319c4b1981

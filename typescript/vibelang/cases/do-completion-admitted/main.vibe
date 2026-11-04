@@ -22,3 +22,6 @@ export effect function main() {
 // Chapter 002: empty switch prefix and final completion; docs/design/src/002-running.md#42aab57cb1e3402b
 // Chapter 002: empty switch prefix and final completion; docs/design/src/002-running.md#4439b82d0e21ba31
 // Chapter 002: empty switch prefix and final completion; docs/design/src/002-running.md#297008e8e3bcb2ea
+
+// Chapter 002: empty completion inheritance
+// docs/design/src/002-running.md#39f9d3df05d3c12e

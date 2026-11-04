@@ -103,3 +103,9 @@ export function main(): (Scalar | Observed[])[] {
 // Chapter 002: do retains source guard narrowing; docs/design/src/002-running.md#df51d0dec4875972
 // Chapter 002: do retains source guard narrowing; docs/design/src/002-running.md#e4d2ed991226bd7a
 // Chapter 002: do retains source guard narrowing; docs/design/src/002-running.md#a3c850b8972d93e9
+
+// Chapter 002: short-circuit flow facts
+// docs/design/src/002-running.md#f26c5245dae0ba64
+
+// Chapter 002: defined string branch
+// docs/design/src/002-running.md#1791fdbdc6415a7e

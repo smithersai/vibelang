@@ -11,3 +11,6 @@ export effect function main() {
   order.push("after")
   return [n, value, order]
 }
+
+// Chapter 002: enclosing suspension context
+// docs/design/src/002-running.md#0a29b4bc77869ecf

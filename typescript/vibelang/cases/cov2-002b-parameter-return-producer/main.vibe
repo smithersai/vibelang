@@ -1,0 +1,6 @@
+import { Effect, Stream } from "effect"
+effect function* empty(x = do { return }) { yield 0 }
+export effect function main() { return try Stream.runCollect(empty()) }
+
+// Chapter 002: producer parameter return
+// docs/design/src/002-running.md#3a3aa7130f34481e

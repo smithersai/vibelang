@@ -1,0 +1,5 @@
+// expect: EK0107
+export function main() { return do { var n = 1; n } }
+
+// Chapter 002: nonfinal var prohibition
+// docs/design/src/002-running.md#4a5f403a7670db58

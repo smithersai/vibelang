@@ -1,0 +1,9 @@
+// expect: EK0501
+import { Effect } from "effect"
+effect function a(x = try Effect.succeed(1)) {}
+const b = effect (x = try Effect.succeed(1)) => 0
+class C { effect m(x = try Effect.succeed(1)) {} }
+effect function* d(x = try Effect.succeed(1)) { yield 0 }
+
+// Chapter 002: formal try diagnostic
+// docs/design/src/002-running.md#7a1e0ff2bebaf733

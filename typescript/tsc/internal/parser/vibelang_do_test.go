@@ -82,6 +82,8 @@ func TestVibeLangDoSnapshot(t *testing.T) {
 
 // Every label in a consecutive chain denotes the same loop (VIP-2,
 // Appendix B EK0205), whereas a label around a different loop is exempt.
+// Chapter 002: loop-head jump early errors
+// docs/design/src/002-running.md#e8e96002973da114
 func TestVibeLangDoLoopHeadLabels(t *testing.T) {
 	heads := []struct{ name, text string }{
 		{"while", "while ($do) {}"},

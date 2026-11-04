@@ -1,0 +1,1 @@
+cov2-002b TS2322: nested native generator default is typed as Stream instead of Generator. Rules: docs/design/src/002-running.md#0897066f2a6876d0

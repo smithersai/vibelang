@@ -1,0 +1,1 @@
+cov2-002b typed failure invokes iterator.return; native Effect.gen abandons without closing. Rules: docs/design/src/002-running.md#13d33feea3dd4c0d

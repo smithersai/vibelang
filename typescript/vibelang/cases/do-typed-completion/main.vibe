@@ -19,3 +19,6 @@ export function captured(flag: boolean): number {
 export effect function main() {
   return [branch(false), branch(true), pattern({ n: 4 }), pattern(null), empty(false) === undefined, empty(true) === 7, captured(true), captured(false)]
 }
+
+// Chapter 002: TC39 do normal completion
+// docs/design/src/002-running.md#b319571655972419

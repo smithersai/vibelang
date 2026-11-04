@@ -1,0 +1,32 @@
+import { Effect } from "effect"
+const trace: string[] = []
+const y = "outer"
+function ordinary(a = do { trace.push("a"); return 7 }, b = (trace.push("b"), 2)) { trace.push("body"); return 0 }
+function scoped(a = do { return 0 }, b = () => y) { const y = "body"; return b() }
+const literal = (a = do { return "early" as const }) => 1 as const
+const earlyType: 1 | "early" = literal()
+export effect function main() {
+ const result = ordinary()
+ return { result, trace, length: ordinary.length, outer: scoped(1), early: scoped(), earlyType }
+}
+
+// Chapter 002: abrupt parameter completion
+// docs/design/src/002-running.md#9a048774ef1de284
+
+// Chapter 002: parameter do return admission
+// docs/design/src/002-running.md#abf2bfbae797f759
+
+// Chapter 002: return reaches callable body
+// docs/design/src/002-running.md#18f9994ed43c3681
+
+// Chapter 002: plain parameter return
+// docs/design/src/002-running.md#fab8d3c70b868ca1
+
+// Chapter 002: parameter evaluation order
+// docs/design/src/002-running.md#2bc7274c26396485
+
+// Chapter 002: parameter lexical scope
+// docs/design/src/002-running.md#3872c8de70c0c0a3
+
+// Chapter 002: parameter return result type
+// docs/design/src/002-running.md#2e56a173dfe0fed9

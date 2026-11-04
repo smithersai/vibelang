@@ -1,0 +1,21 @@
+import { Effect, Stream } from "effect"
+export effect function main() {
+ const value = do { switch (0) {} 7 }
+ const empty = do { switch (0) {} }
+ const first = do { for try (const row of Stream.make(1)) {} 7 }
+ const second = do { for concurrent (const row of [1]) {} 7 }
+ const limited = do { for concurrent(1) (const row of [1]) {} 7 }
+ return [value, empty === undefined, first, second, limited]
+}
+
+// Chapter 002: empty switch predicate
+// docs/design/src/002-running.md#2e4a94b06de2bf7d
+
+// Chapter 002: Effect loop static predicates
+// docs/design/src/002-running.md#70b1a09ddad022ac
+
+// Chapter 002: loop IsEmpty and IsBreak
+// docs/design/src/002-running.md#8eb1fb833fa20f1d
+
+// Chapter 002: predicate example results
+// docs/design/src/002-running.md#d28c9f3ea667cfa9

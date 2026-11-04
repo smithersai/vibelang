@@ -1,0 +1,4 @@
+// expect: EK2128
+effect function* values(x = do { return 7 }) { yield 0 }
+// Chapter 002: producer parameter valued return
+// docs/design/src/002-running.md#3a3aa7130f34481e

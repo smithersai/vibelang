@@ -1,0 +1,8 @@
+// expect: EK2104
+effect function a(x = yield 1) {}
+const b = effect (x = yield 1) => 0
+class C { effect m(x = yield 1) {} }
+effect function* d(x = yield 1) { yield 0 }
+
+// Chapter 002: formal await and yield diagnostics
+// docs/design/src/002-running.md#1aed91826c7518a0
