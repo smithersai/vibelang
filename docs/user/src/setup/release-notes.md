@@ -196,6 +196,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `catch` handler missing `=>` could omit `EK0509`; recovery now reports it while retaining independent TypeScript errors in the parameters and body.
 
 - Migration setup left forced Bun build checks such as `bun check --no-script -b` unable to resolve unchanged tests' imports after conversion; setup now selects VibeLang's build mode with the same projects and emit settings.
+- A member pattern on `super`, `when super.inherited:` or `s is super.inherited`, produced JavaScript that passed `super` to a function and failed to load. The member is now read in place with `this` as its receiver.
 
 - Generated synchronous defect bridges now use a nonthrowing inline catch mapper, so `--fix` no longer refuses EK0403, generator conversion or EK0407 retirement because an imported `identity` adds EK0402. Existing imports and the original defect value are preserved.
 
