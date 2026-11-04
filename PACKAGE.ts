@@ -750,6 +750,14 @@ const targets = {
     sandbox: "none",
     timeout: "15m"
   }),
+  "spec-rule-table": S.Shell.Test({
+    summary: "Check rule-injection quotations against current public chapters.",
+    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^TestSpecRuleTable$' ./internal/vibelangfuzz/",
+    data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]],
+    tools: [S.Host.bin("go"), S.Host.bin("node")],
+    sandbox: "none",
+    timeout: "15m"
+  }),
   "spec-registry-go": S.Shell.Test({
     summary: "Every assigned code is registered or names its implementation owner; legacy exceptions apply only to unassigned declarations.",
     shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(TestRegistryMatchesSpec|TestCompilerRegistryIsSpecified|TestGrammarAdmissionReasonsUsePublishedCodes|FuzzPublicCompatibilityCodeCitations)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,

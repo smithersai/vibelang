@@ -189,6 +189,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Importing the runtime could fail with a duplicate-binding `SyntaxError`; matcher registration is now exported once so the entry module loads normally.
 - The specification coverage census now retains generated grammar admission rows and cites their source sync check as coverage; handwritten rules still require independent evidence.
 
+- The specification regression table rejected quotations after the public rules were clarified. It now cites the current rules while retaining every test program and diagnostic expectation.
 - A `match` over an ordinary tagged-error class could appear exhaustive although a structurally compatible instance fell through with `TypeError`. Ordinary constructor patterns now cover no finite case; cover the tag explicitly or add a `default`.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
