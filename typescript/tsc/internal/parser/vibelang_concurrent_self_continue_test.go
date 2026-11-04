@@ -15,6 +15,13 @@ func TestVibeLangConcurrentSelfContinue(t *testing.T) {
 		returns, continues int
 	}{
 		{"direct", "continue own", 1, 0},
+		{"do-expression", "const value = do { if(x===1) continue own; 0 }; void value", 1, 0},
+		{"do-unlabeled", "const value = do { if(x===1) continue; 0 }; void value", 1, 0},
+		{"do-native-loop", "for(const y of [1]) { const value = do { if(x===1)continue own;0 };void value }", 1, 0},
+		{"do-local-loop", "for(const y of [1]) { const value = do { if(x===1)continue;0 };void value }", 0, 1},
+		{"do-written-function", "function f(){const value = do {continue own};void value}", 0, 1},
+		{"do-nested-item", "for concurrent(const y of [1]){const value = do {continue own};void value}", 0, 1},
+		{"match-expression", "const value = match(x) {when 1: do { continue own }; default: 0;}; void value", 1, 0},
 		{"conditional", "if(x) continue own", 1, 0},
 		{"switch", "switch(x){case 1:continue own;default:break}", 1, 0},
 		{"for", "for(let i=0;i<2;i++)continue own", 1, 0},

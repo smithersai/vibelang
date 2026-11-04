@@ -18,6 +18,13 @@ func FuzzConcurrentSelfContinue(f *testing.F) {
 	startShortBudget(f)
 	variants := []struct{ key, body, want string }{
 		{"direct", "continue own", ""},
+		{"do-labeled", "const value=do {if(x===1)continue own;0};void value", ""},
+		{"do-unlabeled", "const value=do {if(x===1)continue;0};void value", ""},
+		{"do-native-loop", "for(const y of [1]){const value=do {if(x===1)continue own;0};void value}", ""},
+		{"do-local-loop", "for(const y of [1]){const value=do {if(x===1)continue;0};void value}", ""},
+		{"do-native-function", "function f(){const value=do {continue own};void value}", "TS1107"},
+		{"do-nested-item", "for concurrent(const y of [1]){const value=do {continue own};void value}", "EK1905"},
+		{"match-do", "const value=match(x){when 1:do {continue own};default:0;};void value", ""},
 		{"conditional", "if(x===1)continue own", ""},
 		{"switch", "switch(x){case 1:continue own;default:break}", ""},
 		{"for", "for(let i=0;i<2;i++)continue own", ""},

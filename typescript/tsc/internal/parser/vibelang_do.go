@@ -189,6 +189,13 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 		n.ForEachChild(visit)
 		l.lowerIn(n)
 		l.finishArrayBindings(n)
+		// Lowering can expose item continues that were inside a do arrow
+		// when the concurrent body and its source labels were first parsed.
+		if ast.IsLabeledStatement(n) {
+			p.rewriteConcurrentLabelContinues(n)
+		} else if ast.IsCallExpression(n) && isIntrinsicCall(n) == "$forConcurrent" && len(n.Arguments()) == 3 {
+			p.rewriteConcurrentJumps(n.Arguments()[2].Body(), false, "")
+		}
 		return false
 	}
 	file.AsNode().ForEachChild(visit)
