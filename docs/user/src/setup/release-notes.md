@@ -266,6 +266,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
 
 - Empty `data` declarations were rejected; they now produce an empty tagged union, as `Data.TaggedEnum<{}>` does.
+
+- A computed object-pattern key such as `{ [keys.name]: let value, ...let rest }` could run its getter repeatedly, convert an object key twice, or read a different property after a proxy presence check. Each property clause now saves one converted key for its presence check, value read and rest exclusion.
 - A `match` over an ordinary tagged-error class could appear exhaustive although a structurally compatible instance fell through with `TypeError`. Ordinary constructor patterns now cover no finite case; cover the tag explicitly or add a `default`.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
