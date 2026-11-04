@@ -8,6 +8,10 @@ cd typescript/tsc
 CGO_ENABLED=0 GOFLAGS=-trimpath go build -o ../built/local/tsc ./cmd/tsc
 ```
 
+The tooling manifest declares each installed package in either `dependencies` or
+`devDependencies` once, with its pin retained in `bun.lock`. The repository
+dependency check catches overlaps before a version update can leave competing pins.
+
 Then, from the repository root:
 
 ```sh

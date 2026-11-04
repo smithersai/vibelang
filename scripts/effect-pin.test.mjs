@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { RUNTIME, SOURCES, drift, rewrite, write } from "./effect-pin.mjs"
+import { RUNTIME, SOURCES, drift, manifests, rewrite, write } from "./effect-pin.mjs"
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
@@ -74,4 +74,20 @@ test("a test's ignored fixture copy is not a pin", (t) => {
 
 test("rewrite refuses an edit that reaches beyond the pins", () => {
   assert.throws(() => rewrite('{"scripts":{"effect":"node effect.mjs"},"dependencies":{"effect":"4.0.6"}}', ["effect"], "4.1.0"), /more than their pins/)
+})
+
+
+test("installed dependencies have one pin across production and development sections", () => {
+  const overlaps = []
+  for (const file of manifests(repo)) {
+    let manifest
+    try { manifest = JSON.parse(readFileSync(path.join(repo, file), "utf8")) }
+    catch { continue } // Some compiler fixtures intentionally contain invalid JSON.
+    for (const name of Object.keys(manifest.dependencies ?? {})) {
+      if (Object.hasOwn(manifest.devDependencies ?? {}, name)) overlaps.push(`${file}: ${name}`)
+    }
+  }
+  // Libraries still declare a peer dependency and install it for development.
+  // Only two competing declarations of the same installed dependency warn in Bun.
+  assert.deepEqual(overlaps, [], "declare each installed dependency in dependencies or devDependencies once")
 })

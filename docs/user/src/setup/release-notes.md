@@ -400,6 +400,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - On a host without `Symbol.customMatcher`, `vibelang-runtime` defined it as a configurable property, so any module could delete or replace the key that every matcher uses. It is now non-writable, non-enumerable and non-configurable, like a well-known symbol, and a symbol the host already defines is kept.
 
 - `try.allSettled [a, b]` added a call to `Array.prototype.map` that its native counterpart omits; literals without spreads now wrap each element directly with `Effect.exit`.
+
+- Installing the documentation tools printed a duplicate-dependency warning for `fast-check`. The tools now declare its existing version once, and a repository check catches competing production and development declarations.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
