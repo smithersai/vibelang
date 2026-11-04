@@ -1,0 +1,7 @@
+// Parameter binding adds no iteration beyond source destructuring.
+export effect function* defaulted(x: number = 7) { yield x }
+export effect function* prefixed(a: number, x: number = 7) { yield a + x }
+export effect function* destructured({ x }: {x:number} = {x:7}) { yield x }
+export const rested = effect function*(x: number = 7, ...tail: number[]) { yield x + tail.length }
+export const method = { effect *run(x: number = 7) { yield x } }.run
+export effect function* array([x]: number[] = [7]) { yield x }

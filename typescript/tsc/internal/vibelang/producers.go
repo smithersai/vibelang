@@ -326,11 +326,13 @@ func bodyPauses(c *checker.Checker, statement *ast.Node) bool {
 // Such parameters move to an arrow the plain function calls in a try:
 //
 //	function s(arg_1) {
-//	  try { return (({ id }) => runtime.$produce(…))(...arguments) }
+//	  try { return (({ id }) => runtime.$produce(…))(...runtime.$spreadItems(arguments)) }
 //	  catch (e) { return runtime.$produce(() => Effect.die(e)) }
 //	}
 //
 // The placeholders keep the function's length, and the arrow keeps this.
+// Forwarding uses a private iterable so it cannot observe user-modified
+// array iterator hooks; source binding patterns still iterate normally.
 func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	ec := tx.EmitContext()
@@ -410,7 +412,7 @@ func (tx *lowering) producerBindingBoundary(node *ast.Node, parameters *ast.Node
 		placeholders = append(placeholders, f.NewParameterDeclaration(nil, nil, f.NewUniqueName("arg"), nil, nil, nil))
 	}
 	bind := f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(bound), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), produce)
-	call := f.NewCallExpression(f.NewParenthesizedExpression(bind), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{f.NewSpreadElement(f.NewIdentifier("arguments"))}), ast.NodeFlagsNone)
+	call := f.NewCallExpression(f.NewParenthesizedExpression(bind), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{f.NewSpreadElement(tx.generated(tx.runtimeCall("$spreadItems", f.NewIdentifier("arguments"))))}), ast.NodeFlagsNone)
 	thrown := f.NewUniqueName("e")
 	die := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("die"), ast.NodeFlagsNone), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{thrown}), ast.NodeFlagsNone)
 	dies := tx.runtimeCall("$produce", f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), die))

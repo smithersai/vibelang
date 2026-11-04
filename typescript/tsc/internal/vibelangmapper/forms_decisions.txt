@@ -5112,6 +5112,8 @@ typescript/vibelang/cases/producer-inferred-scope/main.vibe:25:58 lambda plain t
 typescript/vibelang/cases/producer-method-members/main.vibe:17:3 lambda choice fallback
 typescript/vibelang/cases/producer-method-return-value-fixed/main.vibe:6:20 lambda dual fallback
 typescript/vibelang/cases/producer-method-return-value.fail/main.vibe:6:20 lambda dual fallback
+typescript/vibelang/cases/producer-parameter-forwarding/main.vibe:5:23 lambda plain fallback
+typescript/vibelang/cases/producer-parameter-forwarding/main.vibe:6:25 lambda plain fallback
 typescript/vibelang/cases/producer-scope-unions/main.vibe:46:45 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:46:54 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:42 lambda plain table
