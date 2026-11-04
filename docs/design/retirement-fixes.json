@@ -25,6 +25,22 @@
       {
         "input": "typescript/vibelang/cases/builtin-throws-bridge.fail",
         "output": "typescript/vibelang/cases/builtin-throws-bridge-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/ek0403-predicate-early.fail",
+        "output": "typescript/vibelang/cases/ek0403-predicate-early-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/ek0403-predicate-positive.fail",
+        "output": "typescript/vibelang/cases/ek0403-predicate-positive-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/ek0403-predicate-reassigned.fail",
+        "output": "typescript/vibelang/cases/ek0403-predicate-reassigned-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/ek0403-predicate-undefined.fail",
+        "output": "typescript/vibelang/cases/ek0403-predicate-undefined-fixed-output"
       }
     ]
   },
@@ -105,15 +121,6 @@
       {
         "input": "typescript/vibelang/cases/match-is-one-name-per-home.fail",
         "output": "typescript/vibelang/cases/match-is-one-name-per-home-fixed-output"
-      }
-    ]
-  },
-  {
-    "code": "EK4857",
-    "cases": [
-      {
-        "input": "typescript/vibelang/cases/vip3-infer-slot.fail",
-        "output": "typescript/vibelang/cases/vip3-infer-slot-migration-output"
       }
     ]
   },

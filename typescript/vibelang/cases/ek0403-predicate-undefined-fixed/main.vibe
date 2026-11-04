@@ -1,0 +1,10 @@
+// expect-result: "accepted"
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws docs/design/src/007-tooling.md#fix-ownership-and-preservation
+import { isResolved, accepts, type News } from "./foreign.ts"
+export effect function read(news: unknown): string!! {
+  if (try Effect.orDie(Effect.try({ try: () => accepts(news), catch: (e) => e }))) {
+    return "accepted"
+  }
+  return "rejected"
+}
+export effect function main() { return try read(undefined) }

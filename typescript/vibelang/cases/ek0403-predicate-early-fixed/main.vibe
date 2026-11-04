@@ -1,0 +1,10 @@
+// expect-result: "news"
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws docs/design/src/007-tooling.md#fix-ownership-and-preservation
+import { isResolved, accepts, type News } from "./foreign.ts"
+export effect function read(news: News | undefined): string!! {
+  const resolved = try Effect.orDie(Effect.try({ try: () => isResolved(news) ? news : undefined, catch: (e) => e }))
+  if (resolved === undefined) return "absent"
+  const title: string = resolved.title
+  return title
+}
+export effect function main() { return try read({ title: "news" }) }

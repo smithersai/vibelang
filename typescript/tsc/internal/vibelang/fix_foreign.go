@@ -111,6 +111,14 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 		}
 		return &formRewrite{edits: []sourceEdit{{at, at, ": infer _"}}, description: "the function plain"}
 	}
+	predicateFallback := ""
+	if isMarkedEffect(fn) {
+		var predicate *formRewrite
+		predicate, predicateFallback = planForeignPredicate(c, file, call)
+		if predicate != nil {
+			return predicate
+		}
+	}
 	target := call
 	guard := outermostGuardedExpression(call)
 	if guard != nil && holdsNarrowedForeignCall(c, file, guard) {
@@ -215,7 +223,7 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	default:
 		edits = append(edits, sourceEdit{at, target.End(), wrapped})
 	}
-	return &formRewrite{edits: joinEditsAt(edits), description: "the call through Effect.try, preserving failures and defects"}
+	return &formRewrite{edits: joinEditsAt(edits), description: "the call through Effect.try, preserving failures and defects" + predicateFallback}
 }
 
 // branchStatement returns the statement that holds node when it is the

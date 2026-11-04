@@ -1,0 +1,10 @@
+// expect: EK0403
+// expect-result: "done"
+import { isResolved, accepts, type News } from "./foreign.ts"
+export effect function read(news: News | undefined) {
+  if (isResolved(news)) {
+    news = undefined
+  }
+  return "done"
+}
+export effect function main() { return try read({ title: "news" }) }

@@ -207,7 +207,7 @@ func FuzzForeignThrowsNeverFix(f *testing.F) {
 	})
 }
 
-func TestForeignThrowsNeverCLITwin(t *testing.T) {
+func TestForeignThrowsNeverCLITwinPrefersNarrowingBridge(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -222,13 +222,13 @@ func TestForeignThrowsNeverCLITwin(t *testing.T) {
 		t.Fatalf("refused: %+v", result.Refused)
 	}
 	if len(result.Files) != 1 {
-		t.Fatalf("want only the helper changed: %v", result.Order)
+		t.Fatalf("want only the caller changed: %v", result.Order)
 	}
 	for name, fixed := range result.Files {
-		if filepath.Base(name.AsString()) != "helpers.ts" || fixed.Counts[EK0403.Code] != 1 {
+		if filepath.Base(name.AsString()) != "main.vibe" || fixed.Counts[EK0403.Code] != 1 {
 			t.Fatalf("unexpected fix: %s %+v", name, fixed)
 		}
-		want, err := os.ReadFile(filepath.Join(cases, "ek0403-throws-never-fixed-output/helpers.ts"))
+		want, err := os.ReadFile(filepath.Join(cases, "ek0403-throws-never-fixed-output/main.vibe"))
 		if err != nil {
 			t.Fatal(err)
 		}

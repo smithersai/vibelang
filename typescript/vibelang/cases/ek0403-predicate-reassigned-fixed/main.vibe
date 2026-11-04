@@ -1,0 +1,9 @@
+// expect-result: "done"
+import { isResolved, accepts, type News } from "./foreign.ts"
+export effect function read(news: News | undefined) {
+  if (try Effect.orDie(Effect.try({ try: () => isResolved(news), catch: (e) => e }))) {
+    news = undefined
+  }
+  return "done"
+}
+export effect function main() { return try read({ title: "news" }) }
