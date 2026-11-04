@@ -1602,3 +1602,12 @@ nominal-class and selected-module mutations, and all 24 generated samples remain
 enabled. A same-box A–B–B–A measurement of the fixed witness observed median wall
 time fall from 9.56 seconds to 3.22 seconds (two samples per variant). This
 measures that fixture, not the complete API target or a reserved-host guarantee.
+
+
+Nested ambient-ownership API fixtures select `lib.es5.d.ts` for both their
+native TypeScript validation and every comparator program. A native source-file
+guard rejects accidental browser-library loading. The fixture still checks
+published and referenced wildcard modules, nested roots in both directions,
+private generic-class mutations and all 24 generated samples. This library
+scope belongs only to this fixture; browser and explicit library-reference
+witnesses keep their own environments.

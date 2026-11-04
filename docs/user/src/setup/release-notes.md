@@ -247,6 +247,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration API verification repeatedly walked the same deep type graph for each exported name; it now reuses completed error-free walks while preserving type, documentation and dependency-error checks.
 - Validating `vibelang --fix` progress could intermittently reject a valid line while scanning remaining fix sites; that stage now passes the progress check.
 
+- Migration verification tests for nested ambient declarations spent time checking unrelated browser libraries; they now use the libraries their fixtures require while retaining every ownership and mutation check.
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.
