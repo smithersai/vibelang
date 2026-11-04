@@ -234,6 +234,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Regression checks for `or`-pattern bindings in loops could reject a correct compiler because their witnesses omitted the required lexical block. The checks now use block bodies and separately verify `EK0705` on unbraced bodies.
 
 - Cancelling Go validation could leave child test processes running. On POSIX hosts, the progress wrapper now forwards cancellation to the whole test process group and immediately records the signal.
+
+- Migration prompts told converters to replace `ensuring` with retired `try`/`finally` in Effect code; they now keep `ensuring` or `onExit` and reserve native `try`/`finally` for plain and `async` functions.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.

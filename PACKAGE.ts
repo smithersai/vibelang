@@ -477,6 +477,12 @@ const targets = {
     sandbox: "none",
     timeout: "1m"
   }),
+  "docs-migration-cleanup": check(
+    "Migration prompts retain native Effect cleanup and distinguish plain JavaScript statements.",
+    "bun test --timeout 60000 docs/tools/migration-cleanup.test.ts && node --test .smithers/flows/migrate/test/context.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node]
+  ),
   "api-identity-test": apiIdentityTest,
   "spec-shared-tables": specSharedTables,
   "spec-copy-sections": specCopySections,
