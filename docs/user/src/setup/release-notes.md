@@ -239,6 +239,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A CommonJS program loading a migrated package through `vibelang/register` could fail with `Cannot find module` and a `file:` URL; it now resolves the source with the same module identity as an ESM import.
 
+- VIP-27 now emits the generated `@throws {never}` contract on every local non-effectful export signature; `Effect`, `Stream` and `Layer` return channels keep their own contract. API identity allows only the added tag and still rejects authored documentation changes.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

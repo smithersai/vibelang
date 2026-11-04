@@ -6900,6 +6900,11 @@ typescript/vibelang/cases/vip20-head-jump.fail/main.vibe:5:92 lambda plain fallb
 typescript/vibelang/cases/vip20-head-jump.fail/main.vibe:6:60 lambda plain fallback
 typescript/vibelang/cases/vip20-lexical/main.vibe:11:23 lambda plain table
 typescript/vibelang/cases/vip20-ordinary-iterable/main.vibe:9:34 byname program table
+typescript/vibelang/cases/vip27-every-export/main.vibe:11:20 lambda plain fallback
+typescript/vibelang/cases/vip27-every-export/main.vibe:13:25 lambda plain fallback
+typescript/vibelang/cases/vip27-every-export/main.vibe:31:22 lambda plain annotation
+typescript/vibelang/cases/vip27-every-export/main.vibe:7:22 lambda plain fallback
+typescript/vibelang/cases/vip27-every-export/main.vibe:8:27 lambda plain fallback
 typescript/vibelang/cases/vip4-coverage-async/main.vibe:25:15 lambda plain table
 typescript/vibelang/cases/vip4-coverage-async/main.vibe:30:83 byname program table
 typescript/vibelang/cases/vip4-coverage-async/main.vibe:31:92 byname program table
