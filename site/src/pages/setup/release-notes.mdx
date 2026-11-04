@@ -184,6 +184,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
+
+- Ambient declaration API tests repeatedly loaded browser libraries for pure module and global fixtures. Those fixtures now use their required ECMAScript library; browser augmentation tests retain the native `Window` and `Request` bindings.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.
@@ -221,6 +223,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A function literal passed to a `@rethrows` parameter, as in `invoke(() => parse(s))` or `xs.map((x) => parse(x))`, reported `EK0401` inside the literal. Known throws now belong to the enclosing call or constructor, including when its own contract is `@throws {never}`: effect code reports `EK0403` at the invocation, while native `try/catch` and `Effect.try` handle it.
 - Appendix conformance cases retained stale pending markers and older callback, service and inline `module` forms; they now check the accepted rules against TypeScript twins and treat resolved diagnostics as passing tests.
+
+- Runner callback conformance treated an unwrapped Promise call in effect code as valid. It now requires the Promise boundary while continuing to allow root runners inside the plain async callback.
+
+- `vibelang --fix` could ignore a producer return-contract repair reported as `TS2322`; it now applies that specific repair while leaving unrelated assignment errors alone.
+
+- API-identity regression tests repeatedly checked browser libraries for pure declaration and JSON fixtures. These fixtures now load their required ECMAScript library while retaining configuration, CLI and semantic mutation checks.
 
 - Geolocation, Permissions, UserDirectories and the experimental Process, FileSystem and Locks diagnostics suggested calling members on the module namespace, where they do not exist; their advice now obtains the injected service and runs its member.
 - A member pattern on `super`, `when super.inherited:` or `s is super.inherited`, produced JavaScript that passed `super` to a function and failed to load. The member is now read in place with `this` as its receiver.
