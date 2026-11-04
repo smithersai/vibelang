@@ -60,7 +60,7 @@ test("built install metadata resolves in the npm snapshot and both themes have z
         expect(builtInstallProblems(join(site, "dist/public"), snapshot)).toEqual([])
         for (const file of ["index.html", "getting-started/004-installation/index.html", "getting-started/004-installation.md"]) {
           const text = readFileSync(join(site, "dist/public", file), "utf8")
-          expect(text).not.toContain("@vibelang/cli-win32-")
+          expect(text).not.toContain("@smthrs/cli-win32-")
           expect(text).toContain("WSL")
         }
       }

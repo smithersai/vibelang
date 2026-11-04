@@ -56,7 +56,7 @@ test("names the scoped Windows package when its optional dependency is missing",
     })
     assert.equal(result.status, 1)
     assert.match(result.stderr, /no native compiler is installed for win32-/)
-    assert.match(result.stderr, /@vibelang\/cli-win32-/)
+    assert.match(result.stderr, /@smthrs\/cli-win32-/)
     assert.match(result.stderr, /VIBELANG_BINARY/)
     assert.doesNotMatch(result.stderr, /\n\s+at /)
   } finally {

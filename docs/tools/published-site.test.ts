@@ -17,12 +17,12 @@ test("built install commands and native packages resolve in the npm snapshot, ah
       const historical = /\/(?:spec|vips)\/|(?:release-notes|compiler-gaps)\.md$/.test(file)
       for (const line of text.split("\n")) {
         if (!/\b(?:npm|pnpm|bun|yarn)\s+(?:add|install|i)\b/.test(line)) continue
-        for (const [, name, version] of line.matchAll(/(?<![\w/-])((?:@vibelang\/cli-[a-z0-9-]+|(?:create-)?vibelang(?:-[a-z0-9-]+)?))@([^\s\x60"\x27<>),;]+)/g)) {
+        for (const [, name, version] of line.matchAll(/(?<![\w/-])((?:@smthrs\/cli-[a-z0-9-]+|(?:create-)?vibelang(?:-[a-z0-9-]+)?))@([^\s\x60"\x27<>),;]+)/g)) {
           if (!snapshot.packages[name] || (version !== "latest" && (!(snapshot.packages[name].versions ?? [snapshot.packages[name].version]).includes(version) || (!historical && version !== snapshot.compiler.version)))) problems.push(name + "@" + version)
         }
       }
       if (file.endsWith("/004-installation.md")) {
-        for (const name of text.match(/(?:\bvibelang-(?:darwin|linux|win32)|@vibelang\/cli-win32)-(?:arm64|x64)\b/g) ?? []) {
+        for (const name of text.match(/(?:\bvibelang-(?:darwin|linux|win32)|@smthrs\/cli-win32)-(?:arm64|x64)\b/g) ?? []) {
           if (!snapshot.packages[name]) problems.push(name)
         }
         expect(text).toContain("WSL")

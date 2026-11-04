@@ -11,7 +11,7 @@ const semver = /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/
 const tools = ["vibelang", "vibelang-runtime", "vibelang-vite", "vibelang-unplugin", "create-vibelang"]
 const read = path => JSON.parse(readFileSync(path, "utf8"))
 export const platformNames = manifest => Object.keys(manifest.optionalDependencies ?? {})
-  .filter(name => /^(?:vibelang-(?:darwin|linux|win32|freebsd)-|@vibelang\/cli-win32-)/.test(name)).sort()
+  .filter(name => /^(?:vibelang-(?:darwin|linux|win32|freebsd)-|@smthrs\/cli-win32-)/.test(name)).sort()
 
 export function resolveSiteRelease({ env = process.env, npm = args => execFileSync("npm", ["view", ...args, "--tag=latest"], { encoding: "utf8", timeout: 30000 }), repository = root, requirePublished = false } = {}) {
   if (env.VIBELANG_SITE_RELEASE_FILE) return read(env.VIBELANG_SITE_RELEASE_FILE)
@@ -62,7 +62,7 @@ export function renderSiteRelease(path, text, snapshot, sourceEffect) {
   if (/004-installation\.(?:md|mdx)$/.test(path)) {
     const labels = { darwin: "macOS", linux: "Linux", win32: "Windows", freebsd: "FreeBSD" }
     const rows = platforms.map(name => {
-      const [, os, arch] = /(?:vibelang-|@vibelang\/cli-)(\w+)-(\w+)$/.exec(name) ?? []
+      const [, os, arch] = /(?:vibelang-|@smthrs\/cli-)(\w+)-(\w+)$/.exec(name) ?? []
       const label = os === "darwin" ? (arch === "arm64" ? "macOS on Apple silicon" : "macOS on Intel") : labels[os] + " on " + arch
       return "| " + label + " | \x60" + name + "\x60 | " + (os === "linux" && arch === "x64" ? "Yes" : "No") + " |"
     })
@@ -78,11 +78,11 @@ export function visibleSiteText(text) {
 
 export function installReferences(body) {
   const refs = []
-  const native = text => text.match(/(?:\bvibelang-(?:darwin|linux|win32|freebsd)|@vibelang\/cli-win32)-(?:arm64|x64)\b/g) ?? []
+  const native = text => text.match(/(?:\bvibelang-(?:darwin|linux|win32|freebsd)|@smthrs\/cli-win32)-(?:arm64|x64)\b/g) ?? []
   const tables = [...body.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>|^\s*\|[^\n]+/gm)].map(match => match[0])
   for (const line of visibleSiteText(body).split("\n")) {
     if (!/\b(?:npm|pnpm|bun|yarn)\s+(?:add|install|i|create)\b/.test(line)) continue
-    for (const [, name, version] of line.matchAll(/(?<![\w/-])((?:@vibelang\/cli-[a-z0-9-]+|(?:create-)?vibelang(?:-[a-z0-9-]+)?))@([^\s\x60"\x27<>),;]+)/g)) {
+    for (const [, name, version] of line.matchAll(/(?<![\w/-])((?:@smthrs\/cli-[a-z0-9-]+|(?:create-)?vibelang(?:-[a-z0-9-]+)?))@([^\s\x60"\x27<>),;]+)/g)) {
       refs.push({ name: /\b(?:npm|bun) create vibelang/.test(line) && name === "vibelang" ? "create-vibelang" : name, version })
     }
     for (const name of native(line)) if (!line.includes(name + "@")) refs.push({ name })

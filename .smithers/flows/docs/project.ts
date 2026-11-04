@@ -186,7 +186,7 @@ Timeline and commitment labels state a maintainer's current belief, not a promis
     },
     {
       heading: "Release process",
-      body: `The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and eleven packages. Include both Windows packages, \`@vibelang/cli-win32-x64\` and \`@vibelang/cli-win32-arm64\`, in rehearsal and publication.
+      body: `The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and eleven packages. Include both Windows packages, \`@smthrs/cli-win32-x64\` and \`@smthrs/cli-win32-arm64\`, in rehearsal and publication.
 
 {{releaseSteps}}
 

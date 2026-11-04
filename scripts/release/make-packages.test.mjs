@@ -9,7 +9,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
 const repo = fileURLToPath(new URL("../../", import.meta.url))
-const platformPackage = (platform) => platform.startsWith("win32-") ? `@vibelang/cli-${platform}` : `vibelang-${platform}`
+const platformPackage = (platform) => platform.startsWith("win32-") ? `@smthrs/cli-${platform}` : `vibelang-${platform}`
 const platforms = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"]
 const json = (file) => JSON.parse(readFileSync(file, "utf8"))
 // The compiler package's own files; make-packages writes the others.
@@ -137,7 +137,7 @@ test("reports inconsistent versions, pins and missing binaries together before r
   const compilerPath = join(root, "packages/compiler/package.json")
   const compiler = json(compilerPath)
   compiler.optionalDependencies["vibelang-linux-x64"] = "99.0.0"
-  delete compiler.optionalDependencies["@vibelang/cli-win32-x64"]
+  delete compiler.optionalDependencies["@smthrs/cli-win32-x64"]
   writeFileSync(compilerPath, JSON.stringify(compiler))
   rmSync(join(root, "dist-npm/bin/darwin-arm64"), { recursive: true })
   mkdirSync(join(root, "dist-npm/tarballs"))

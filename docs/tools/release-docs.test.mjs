@@ -195,7 +195,7 @@ test("historical platform guidance is retained and the launcher recognizes scope
   assert.match(history, /Windows.*not (?:available|published).*WSL/s)
   const launcher = readFileSync(join(root, "packages/compiler/bin/vibelang"), "utf8")
   assert.match(launcher, /const platforms = .*win32-arm64.*win32-x64/)
-  assert.match(launcher, /@vibelang\/cli-/)
+  assert.match(launcher, /@smthrs\/cli-/)
 })
 
 test("the starter and existing-project instructions pin the transitive Effect peer", () => {

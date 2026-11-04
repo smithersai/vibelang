@@ -47,7 +47,7 @@ uplinks:
   npmjs:
     url: https://registry.npmjs.org/
 packages:
-  '@vibelang/*':
+  '@smthrs/*':
     access: \$all
     publish: \$authenticated
   'vibelang':

@@ -113,7 +113,7 @@ test("maintainer docs describe staged landings, outside reviews, and every relea
   const word = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
   expect(maintainers).toContain(`${word[platforms.length]} platform binaries`)
   expect(maintainers).toContain(`${word[packages]} packages`)
-  for (const platform of platforms.filter((name) => name.startsWith("win32-"))) expect(maintainers).toContain(`@vibelang/cli-${platform}`)
+  for (const platform of platforms.filter((name) => name.startsWith("win32-"))) expect(maintainers).toContain(`@smthrs/cli-${platform}`)
   expect(maintainers).not.toContain("VIBELANG_SKIP=win32")
   expect(maintainers).toContain("publish.sh --otp <one-time-password>")
 })

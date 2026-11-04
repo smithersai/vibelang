@@ -102,12 +102,12 @@ test("a stale homepage badge cannot hide behind correct release prose", async ()
 
 
 test("scoped Windows packages are recognized only when published", async () => {
-  const windows = ["@vibelang/cli-win32-arm64", "@vibelang/cli-win32-x64"]
+  const windows = ["@smthrs/cli-win32-arm64", "@smthrs/cli-win32-x64"]
   const npm = { ...latest, optionalDependencies: { ...latest.optionalDependencies, ...Object.fromEntries(windows.map(p => [p, version])) } }
   const updated = Object.fromEntries(Object.entries(pages).map(([path, text]) => [path,
     text.replace(support, "macOS, Linux and native Windows on arm64 and x64.") +
       (path.startsWith("/getting-started/") ? windows.map(p => `\n| Windows | ${p} |`).join("") : "")
   ]))
   assert.deepEqual(await fixture(updated, npm, npm).check(), [])
-  assert.ok((await fixture({ "/setup.md": pages["/setup.md"] + "\n@vibelang/cli-win32-x64" }).check()).some(p => p.includes("absent from npm latest")))
+  assert.ok((await fixture({ "/setup.md": pages["/setup.md"] + "\n@smthrs/cli-win32-x64" }).check()).some(p => p.includes("absent from npm latest")))
 })

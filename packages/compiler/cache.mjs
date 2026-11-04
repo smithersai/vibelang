@@ -166,7 +166,7 @@ export function launcherBinary(compiler) {
   const local = join(dirname(compiler), "../native", executable)
   if (existsSync(local)) return local
   try {
-    const name = process.platform === "win32" ? `@vibelang/cli-win32-${process.arch}` : `vibelang-${process.platform}-${process.arch}`
+    const name = process.platform === "win32" ? `@smthrs/cli-win32-${process.arch}` : `vibelang-${process.platform}-${process.arch}`
     const target = `${name}/package.json`
     return join(dirname(createRequire(compiler).resolve(target)), "bin", executable)
   } catch {

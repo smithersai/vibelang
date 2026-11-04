@@ -8,7 +8,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
 const repo = fileURLToPath(new URL("../../", import.meta.url))
-const names = ["vibelang-linux-x64", "@vibelang/cli-win32-x64", "@vibelang/cli-win32-arm64", "vibelang"]
+const names = ["vibelang-linux-x64", "@smthrs/cli-win32-x64", "@smthrs/cli-win32-arm64", "vibelang"]
 
 function fixture(t, mode, target = names[0]) {
   const root = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "vibelang-publish-test-"))

@@ -20,7 +20,7 @@ const out = join(root, "dist-npm")
 const staging = join(out, "pkg")
 const tarballs = join(out, "tarballs")
 const skipBuild = process.argv.includes("--skip-build")
-const platformPackage = (platform) => platform.startsWith("win32-") ? `@vibelang/cli-${platform}` : `vibelang-${platform}`
+const platformPackage = (platform) => platform.startsWith("win32-") ? `@smthrs/cli-${platform}` : `vibelang-${platform}`
 const platforms = {
   "darwin-arm64": ["darwin", "arm64"],
   "darwin-x64": ["darwin", "x64"],

@@ -67,7 +67,7 @@ function releasePageProblems(route, body, { version, expectedOutput, platforms }
   if (platforms && ["/", "/setup.md", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route)) {
     const install = route.startsWith("/getting-started/")
     if (install) {
-      const listed = [...new Set(text.match(/(?:\bvibelang-(?:darwin|linux|win32|freebsd)|@vibelang\/cli-win32)-(?:arm64|x64)\b/g) ?? [])].sort()
+      const listed = [...new Set(text.match(/(?:\bvibelang-(?:darwin|linux|win32|freebsd)|@smthrs\/cli-win32)-(?:arm64|x64)\b/g) ?? [])].sort()
       for (const name of new Set([...platforms, ...listed])) {
         if (!platforms.includes(name)) problem("platform " + name + " is not published in npm latest")
         else if (!listed.includes(name)) problem("missing published platform " + name)
@@ -79,10 +79,10 @@ function releasePageProblems(route, body, { version, expectedOutput, platforms }
     for (const arch of ["arm64", "x64"]) {
       if (platforms.some(p => p.endsWith("-" + arch)) && !text.includes(arch)) problem("platform list missing " + arch)
     }
-    const nativeWindows = platforms.some(p => /^(?:vibelang-win32-|@vibelang\/cli-win32-)/.test(p))
+    const nativeWindows = platforms.some(p => /^(?:vibelang-win32-|@smthrs\/cli-win32-)/.test(p))
     if (!nativeWindows) {
       if (!/\bWSL\b/.test(text)) problem("platform list missing Windows via WSL guidance")
-      if (/vibelang-win32-|@vibelang\/cli-win32-|Windows on (?:arm64|x64)|(?:native )?Windows (?:binaries |packages )?(?:are )?(?:available|supported|published)|Windows\s*\|/i.test(text)) {
+      if (/vibelang-win32-|@smthrs\/cli-win32-|Windows on (?:arm64|x64)|(?:native )?Windows (?:binaries |packages )?(?:are )?(?:available|supported|published)|Windows\s*\|/i.test(text)) {
         problem("platform list advertises native Windows, absent from npm latest")
       }
     }
@@ -118,7 +118,7 @@ export async function deployedReleaseProblems({
   let platforms
   if (latest) {
     if (latest.version !== version) problems.push(`npm latest: ${latest.version}; compiler manifest: ${version}`)
-    platforms = Object.keys(latest.optionalDependencies ?? {}).filter(name => name.startsWith("vibelang-") || name.startsWith("@vibelang/cli-win32-")).sort()
+    platforms = Object.keys(latest.optionalDependencies ?? {}).filter(name => name.startsWith("vibelang-") || name.startsWith("@smthrs/cli-win32-")).sort()
     if (!platforms.length) problems.push("npm latest: missing published platform packages")
     for (const name of platforms) {
       if (latest.optionalDependencies[name] !== version || manifest.optionalDependencies?.[name] !== version) {
