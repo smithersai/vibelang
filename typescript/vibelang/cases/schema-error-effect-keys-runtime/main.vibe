@@ -1,7 +1,10 @@
 // expect-result: {"events":["struct-string","struct-number","struct-symbol","optional-string","optional-number","optional-symbol","array-string","array-number","array-symbol","tuple-string","tuple-number","tuple-symbol"],"valid":[true,true,true,true,true,true,true,true,true,true,true,true],"block":1,"failure":true,"required":true,"inherited":7}
 const field: unique symbol = Symbol()
 error KeyError
-service Keys { key: string }
+service Keys {
+  static readonly key = "schema-error-effect-keys-runtime/Keys"
+  key: string
+}
 effect function failed(): boolean!KeyError {
   schema error E { value: { readonly [try Effect.fail(new KeyError())]: string } }
   return false

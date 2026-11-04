@@ -134,8 +134,8 @@ export function greeting(name) {
     }
 }
 // In an Effect function, whose arms run Effects.
-export function announce(arg_1) {
-    return Effect_1.fnUntraced(function* announce(phase) {
+export function announce(phase) {
+    return Effect_1.gen(function* announce() {
         $match18: {
             const $match19 = phase;
             {
@@ -162,5 +162,5 @@ export function announce(arg_1) {
             }
         }
         return phase;
-    }).apply(this, arguments);
+    });
 }
