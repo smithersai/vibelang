@@ -77,7 +77,7 @@ var runningRules = []struct{ key, quote, good, bad string }{
 	{"mask-qualified", "Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`", "effect function f() { return try Effect.uninterruptible(Effect.succeed(1)) }", "effect function f() { return try uninterruptible(Effect.succeed(1)) }"},
 	{"interruptible-qualified", "Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`", "effect function f() { return try Effect.interruptible(Effect.succeed(1)) }", "effect function f() { return try interruptible(Effect.succeed(1)) }"},
 	{"try-newline-statement", "a `try` statement", "effect function f() { return 1 }", "effect function f() { try\n{ return 1 } finally { } }"},
-	{"producer-arrow-yield", "`yield` in a nested `effect` block, an arrow or an `effect function` handler is a syntax error", "effect function* p() { yield 1 }", "effect function* p() { const task = effect () => { yield 1 }; try task() }"},
+	{"producer-arrow-yield", "`yield` in a nested `effect` block, an `effect` arrow or an `effect function` handler is `EK2104`", "effect function* p() { yield 1 }", "effect function* p() { const task = effect () => { yield 1 }; try task() }"},
 	{"fork-scoped-requirement", "adds `Scope` to R", "import type { Fiber, Scope } from \"effect\"; effect function f(): Effect.Effect<Fiber.Fiber<number>, never, Scope.Scope> { return fork.scoped Effect.succeed(1) }", "import type { Fiber } from \"effect\"; effect function f(): Effect.Effect<Fiber.Fiber<number>, never, never> { return fork.scoped Effect.succeed(1) }"},
 	{"concurrent-expression-body", "`for concurrent (const x of xs) (try f(x));` has no limit", "effect function f() { let n = 0; for concurrent (const x of [1, 2]) (try Effect.sync(() => { n += x })); return n }", "effect function f() { for concurrent(1)(2)(const x of [1]) { } }"},
 	{"restore-plain-boundary", "`uninterruptible { }`, `interruptible { }` or `restore { }` outside effect code", "function f() { return 1 }", "function f() { uninterruptible { restore { } } }"},
@@ -323,7 +323,7 @@ func contextualCatchChapter(t testing.TB) {
 	}
 	for _, quote := range []string{
 		"| an arrow or `function` expression | plain function |",
-		"An arrow handler's body is TypeScript's concise body",
+		"An expression-bodied arrow handler takes an `AssignmentExpression` as its body, as in `(e) => a ?? b`",
 	} {
 		if !strings.Contains(string(text), quote) {
 			t.Fatalf("chapter 2 no longer says %q", quote)

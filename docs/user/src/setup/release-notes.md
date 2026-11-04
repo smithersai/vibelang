@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Fuzz guards for do-expression typing and evaluation order, legacy fork options, and legacy call marks now cite the current specification wording. Their generators, runtime and native-TypeScript oracles, and saved corpus inputs are unchanged.
 
 - The diagnostic-specification reader now recognizes the current severity-entry rule, including interim codes, and identifies the unmatched rule prefix if the table drifts. Code numbers and categories remain derived from Appendix B.
+
+- Producer and catch-handler fuzz guards now cite the current written-Stream, nested-yield, and arrow-body rules. All valid and invalid programs, diagnostic checks, and saved inputs are retained.
 - Effect's `deterministicKeys` rule asked a service moved into a `module` body for a key built from the body's own file, `@x/pkg/a.vibe.platform/Port`, where its `.ts` file had `@x/pkg/a/Port`, so every keyed service the migrate flow moved into `module platform { }` failed with `EK3822` (15 t3code desktop modules). A body's keys now come from the `.vibe` file that holds it, so a moved service keeps its key and its run-time identity.
 - A build of many `.vibe` files that write `Effect.Array` or another `Effect.M` module could stop at random with `fatal error: concurrent map read and map write` in `(*lowering).visit`. Each file's lowering now reads its own copy of what the checker recorded.
 - A type such as `Missing.Shape`, where no scope declares `Missing`, stopped the compiler with `fatal error: stack overflow`. It now reports the error TypeScript reports for the same text.

@@ -1012,3 +1012,5 @@ When a published pending target reports XPASS, replay the exact key and its pair
 When specification prose is simplified, update literal citations from the current normative chapter and replay the entire affected generator family. A citation refresh preserves generated programs, semantic comparisons, and existing corpus inputs.
 
 Diagnostic table readers must derive code identities from current rows and fail with the unmatched rule prefix when wording drifts. Keep missing-row and severity checks strict when refreshing a normative row anchor.
+
+A producer citation should name the channel contract exercised by its witness; a handler citation should name its current grammar production. Preserve both accepted and rejected programs when refreshing that wording.

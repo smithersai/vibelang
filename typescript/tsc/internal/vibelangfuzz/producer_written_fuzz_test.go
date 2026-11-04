@@ -8,7 +8,7 @@ import (
 )
 
 const producerWrittenTarget = "FuzzProducerWrittenStream"
-const producerWrittenQuote = "a written return type that is not a `Stream.Stream<A, E, R>`"
+const producerWrittenQuote = "A written `Stream.Stream<A, E, R>` return contract checks each `yield x` against `A`, and the escaping errors and supplied requirements against `E` and `R`."
 
 func producerWrittenChapter(t testing.TB) {
 	t.Helper()
