@@ -96,6 +96,14 @@ export effect function main() {
  return {selected, results, reads}
 }
 `, typ, strconv.Quote(fallback), pattern, binding, body, discriminator, discriminator, discriminator, discriminator, discriminator, discriminator)
+	if mode == "exhaustive" && tag {
+		old := "Match.value(value).pipe(" + pattern + "(" + binding + "):string => " + body + "), Match.orElse(():string => { selected.push(\"miss\"); return \"miss\" }))"
+		replacement := "Match.value(value).pipe(Match.withReturnType<string>(), Match.tagsExhaustive({ hit: (" + binding + "):string => " + body + ", miss: ():string => { selected.push(\"miss\"); return \"miss\" } }))"
+		if strings.Count(source, old) != 1 {
+			panic("exhaustive Match generator shape changed")
+		}
+		source = strings.Replace(source, old, replacement, 1)
+	}
 	return Archive(map[string]string{"main.vibe": source})
 }
 
@@ -103,7 +111,7 @@ export effect function main() {
 // missing Effect entry would otherwise make a before/after check vacuous.
 func TestMatchHandlerDestructureProjects(t *testing.T) {
 	w := NewWorkspace(t)
-	for _, mode := range []string{"missing", "default", "nested", "rest", "rename", "scope", "assign", "computed", "ordered"} {
+	for _, mode := range []string{"missing", "default", "nested", "rest", "rename", "scope", "assign", "computed", "ordered", "exhaustive"} {
 		for _, predicate := range []string{"when", "tag"} {
 			t.Run(mode+"-"+predicate, func(t *testing.T) {
 				source := matchDestructureArchive("match-handler-destructure:" + mode + ":" + predicate + ":empty")

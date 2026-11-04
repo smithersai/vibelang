@@ -1107,3 +1107,5 @@ Mapper recovery-block coverage varies braced and unbraced concurrent and Stream 
 Iterable `is` cache declarations use the source pattern span but are generated statements, not source calls. Projection tests retain all 200 parenthesized-subject mutations and add plain, arrow, Effect and nested block homes. Runtime witnesses verify early return, failed patterns, cache-name collisions and throwing property reads close the iterator; keyed tuple corpus entries also exercise the recovery-block oracle. This follows the iterator cleanup introduced by `d4c0dd4a`.
 
 `FuzzMapperNativeEffectValues` covers direct references, aliases, local shadows, and nested shadows of `interrupt` and `yieldNow`. Mapper regression tests check the projected types with stock TypeScript and execute the emitted modules to compare native Effect value identities.
+
+The `FuzzMatchTagDestructure` corpus includes `Match.tagsExhaustive` with `Match.withReturnType`, block handlers, destructuring, and mutated fallback strings. Each input reaches the existing before/after runtime and declaration oracle.
