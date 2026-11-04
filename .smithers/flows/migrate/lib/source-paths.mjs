@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { posix, join } from "node:path"
 import { Minimatch } from "./vendor/minimatch.mjs"
-import { expectationLiteral, joinedLiteralPath, packageContext, processArgument, remoteUrlPart, resolveRenamed, twinListed } from "./converted-paths.mjs"
+import { expectationLiteral, joinedLiteralPath, packageContext, processArgument, remoteUrlPart, resolveRenamed, twinListed, viteEntryRoot } from "./converted-paths.mjs"
 import { compileRegex, disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
 
 
@@ -313,7 +313,8 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
   const renameByPath = new Map(renames.map(r => [r.from, r]))
   const live = new Set(inventory ?? [])
   // A key of an object literal is data: only an exact path from the file or the root moves it.
-  const targetOf = (value, key) => resolveRenamed(value, file, renameByPath, key ? { live } : { packages, live }).move
+  const targetOf = (node, key) => resolveRenamed(node.text, file, renameByPath, key ? { live } :
+    { packages, live, urlRoot: viteEntryRoot(ts, node, file, source, packages) }).move
   const pathPattern = value => value.length < 200 && (value.includes("/") || /\.(?:[cm]?[jt]sx?|vibe)(?:$|[,}])|\.\{(?:[cm]?[jt]sx?|vibe)[,}]/.test(value))
   const matcherOf = pattern => compiledSelector(pattern, matcherCache)
   const moduleMap = node => {
@@ -333,7 +334,7 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
   const visit = node => {
     // A child process inherits no loader for .vibe, so verify refuses its path instead.
     if (literal(node) && !literalOnly(node) && !moduleMap(node) && !processArgument(ts, node) && !remoteUrlPart(ts, node) && !twinListed(ts, node)) {
-      const move = fragmentTarget(node) ?? targetOf(node.text, ts.isPropertyAssignment(node.parent) && node.parent.name === node)
+      const move = fragmentTarget(node) ?? targetOf(node, ts.isPropertyAssignment(node.parent) && node.parent.name === node)
       if (move && (!exactContexts || exactContexts.has(literalContext(ts,node)))) {
         const discovery = globOwner(node)
         if (discovery && !globCall(node)) warnings.push(file + ":" + line(node) + ": source selector options or transformed patterns lack a selected-set proof; rewrite refused")

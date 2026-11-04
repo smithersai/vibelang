@@ -687,6 +687,13 @@ module. A key of an object literal moves only for an exact path from its file
 or the root. A list that already names both `x.ts` and `x.vibe`, a literal in
 `new URL(x, "https://…")` and an argument of a child process stay as written.
 
+Vite configuration variants also wire single-slash SSR `serverEntry` and
+`clientEntry` URLs from the owning package root. This automatic wiring requires
+a literal under `ssr` and the default root; explicit roots and spread
+configurations require manual wiring. Query and fragment suffixes remain
+verification refusals. Receipts retain the leading slash and original quoting
+so reverting a module restores the exact configuration bytes.
+
 Every changed literal is recorded in `referenceEdits` with its file, line,
 original spelling and kind. Assertions, expected values, test names and
 type literals stay as written. Unknown glob dialects and unguarded extension

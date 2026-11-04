@@ -292,14 +292,46 @@ export function packageContext(tracked, readManifest) {
   return { dirs, names }
 }
 
+// SSR entry strings in a Vite config are project-root URLs, not filesystem
+// absolute paths. Keep this context shared by the rewrite and verification.
+export function viteEntryRoot(ts, node, file, source, packages) {
+  const config = /^vite(?:\.[\w-]+)?\.config(?:\.(?!(?:d|test|spec)\.)[\w-]+)?\.(?:m?[jt]s|vibe)$/
+  if (!config.test(posix.basename(file)) || isTestFile(file) || isFixtureFile(file) || !isString(ts, node)) return undefined
+  const property = node.parent
+  if (!ts.isPropertyAssignment(property) || property.initializer !== node ||
+      !["serverEntry", "clientEntry"].includes(property.name.text)) return undefined
+  const object = property.parent, ssr = object.parent
+  if (!ts.isObjectLiteralExpression(object) || !ts.isPropertyAssignment(ssr) || ssr.name.text !== "ssr") return undefined
+  // A configured/spread root needs the Vite invocation's own resolution proof.
+  // Never guess that it uses the default package root.
+  let customRoot = false
+  const visit = n => {
+    const key = n.name, computed = key && ts.isComputedPropertyName(key)
+    const name = computed ? (isString(ts, key.expression) ? key.expression.text : null) : key?.text
+    if (ts.isSpreadAssignment(n) || (n.parent && ts.isObjectLiteralExpression(n.parent) &&
+        (name === "root" || (computed && name === null)))) customRoot = true
+    ts.forEachChild(n, visit)
+  }
+  visit(source)
+  return customRoot || !packages ? null : packageOf(file, packages)
+}
+
 /** The renamed module a static path names, tried from the file, the repository and the file's package. */
-export function resolveRenamed(value, file, byFrom, { packages, live } = {}) {
+export function resolveRenamed(value, file, byFrom, { packages, live, urlRoot } = {}) {
   // A build label: //apps/site/x.ts is rooted at the repository, from any file.
   if (value?.startsWith("//")) {
+    if (urlRoot !== undefined) return {}
     const move = byFrom.get(posix.normalize(value.slice(2)))
     return move ? { move } : {}
   }
-  if (!value || scheme.test(value) || value.startsWith("/")) return {}
+  if (!value || scheme.test(value)) return {}
+  if (value.startsWith("/")) {
+    if (typeof urlRoot !== "string") return {}
+    const relative = posix.normalize(value.slice(1))
+    if (relative === ".." || relative.startsWith("../")) return {}
+    const move = byFrom.get(posix.join(urlRoot, relative))
+    return move ? { move } : {}
+  }
   const direct = byFrom.get(posix.normalize(value))
   const relative = byFrom.get(posix.normalize(posix.join(posix.dirname(file), value)))
   if (direct && relative && direct !== relative) return { ambiguous: [direct, relative] }
@@ -415,7 +447,7 @@ export function scanSource(ts, text, file, index) {
     return at > 0 ? value.slice(0, at) : value
   }
   const staticValue = (node, value, parts, sink) => {
-    const options = { packages: index.packages, live: index.live }
+    const options = { packages: index.packages, live: index.live, urlRoot: viteEntryRoot(ts, node, file, source, index.packages) }
     const clean = stripped(value)
     const whole = staticPath(parts, file)
     const fromDir = whole && stripped(whole)

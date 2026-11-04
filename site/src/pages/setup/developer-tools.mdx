@@ -66,8 +66,15 @@ const fromSource = import.meta.url.endsWith(".ts")
 
 Revert the module to TypeScript, or change the caller in its own commit before
 the batch. A path the check cannot prove either way, such as ``import(`./${name}`)``,
-goes under `pathReferences.reports` and does not fail the batch. Comments, URLs,
+goes under `pathReferences.reports` and does not fail the batch. Comments, remote URLs,
 prose, assertions, generated outputs and files that were not renamed stay clean.
+
+In owned Vite configuration variants, an SSR `serverEntry` or
+`clientEntry` URL such as `/src/entry.server.ts` follows the renamed
+module from the package root. Automatic wiring uses literal values under
+`ssr` with the default root. Configurations with explicit roots or object
+spreads require manual wiring. The receipt keeps the original slash and
+quoting so reverting the module restores the exact configuration bytes.
 
 A build can also drop a module without naming it: an entry glob such as
 `src/**/*.ts` leaves `Local.vibe` out of `dist`, and the build still exits 0. A
