@@ -24,7 +24,7 @@ var callbackAliasShapes = []struct{ name, code string }{
 func callbackAliasNames() []string {
 	var names []string
 	for shape, alias := range callbackAliasShapes {
-		for s, src := range callbackSources {
+		for s, src := range callbackImplementationSources {
 			for d, dst := range callbackDestinations {
 				site := "argument"
 				if (shape+s+d)%2 != 0 {
@@ -71,10 +71,10 @@ func FuzzForeignCallbackAliases(f *testing.F) {
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		i := r4Pick(data, names)
-		shape := i / (len(callbackSources) * len(callbackDestinations))
-		s := (i / len(callbackDestinations)) % len(callbackSources)
+		shape := i / (len(callbackImplementationSources) * len(callbackDestinations))
+		s := (i / len(callbackDestinations)) % len(callbackImplementationSources)
 		d := i % len(callbackDestinations)
-		alias, src, dst := callbackAliasShapes[shape], callbackSources[s], callbackDestinations[d]
+		alias, src, dst := callbackAliasShapes[shape], callbackImplementationSources[s], callbackDestinations[d]
 		handlers := src.tag + "\nexport function source(): void {}\nexport const nativeAlias = source\n" + dst.decl + "\n" +
 			"/** @throws {never} */\nexport declare function call(f: Handler): void\n" +
 			"/** @throws {never} */\nexport declare function take(value: { onCall: Handler }): void\n"

@@ -22,7 +22,7 @@ var callbackElementKeys = []struct{ name, expression string }{
 func callbackElementNames() []string {
 	var names []string
 	for _, key := range callbackElementKeys {
-		for _, src := range callbackSources {
+		for _, src := range callbackImplementationSources {
 			for _, dst := range callbackDestinations {
 				for _, site := range []string{"argument", "member"} {
 					names = append(names, key.name+"/"+src.name+"/"+dst.name+"/"+site)
@@ -69,8 +69,8 @@ func FuzzForeignCallbackElementValues(f *testing.F) {
 		i := r4Pick(data, names)
 		site := i % 2
 		dst := callbackDestinations[(i/2)%len(callbackDestinations)]
-		src := callbackSources[(i/(2*len(callbackDestinations)))%len(callbackSources)]
-		key := callbackElementKeys[i/(2*len(callbackDestinations)*len(callbackSources))]
+		src := callbackImplementationSources[(i/(2*len(callbackDestinations)))%len(callbackImplementationSources)]
+		key := callbackElementKeys[i/(2*len(callbackDestinations)*len(callbackImplementationSources))]
 		handlers := "export const token: unique symbol = Symbol(\"callback\")\nexport const handlers = {\n" +
 			src.tag + "\n source(): void {},\n" + src.tag + "\n 0(): void {},\n" + src.tag + "\n [token](): void {}\n}\n" + dst.decl + "\n" +
 			"/** @throws {never} */\nexport declare function call(f: Handler): void\n" +

@@ -83,14 +83,19 @@ type callbackSource struct {
 // never < TypeError < Error < unknown.
 var callbackBounds = []string{"never", "TypeError", "Error", "unknown"}
 
-var callbackSources = []callbackSource{
+// Alias and element generators emit implementation bodies. Keep their source
+// domain separate from the declaration-aware site generator.
+var callbackImplementationSources = []callbackSource{
 	{"never", "/** @throws {never} */", false, 0},
 	{"type-error", "/** @throws {TypeError} */", false, 1},
 	{"error", "/** @throws {Error} */", false, 2},
 	{"unknown", "/** @throws {unknown} */", false, 3},
-	{"never-dts", "/** @throws {never} */", true, 0},
-	{"error-dts", "/** @throws {Error} */", true, 2},
 }
+
+var callbackSources = append(slices.Clone(callbackImplementationSources),
+	callbackSource{"never-dts", "/** @throws {never} */", true, 0},
+	callbackSource{"error-dts", "/** @throws {Error} */", true, 2},
+)
 
 var callbackDestinations = []struct {
 	name, decl string
