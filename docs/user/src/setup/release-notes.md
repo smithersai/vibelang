@@ -197,6 +197,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A TypeScript file importing a migrated VibeLang module could emit a declaration through the package index and pull unrelated types into downstream consumers. Inferred imports now name the declaring module chosen by the TypeScript twin.
 - Binding-home documentation tests assumed every uninitialized type reports `TS2454`; they now preserve TypeScript's exemptions and continue executing the saved per-iteration closure witnesses.
 - Public-citation checks depended on removed contract wording and a fixed amendment month; they now verify the active claims against accepted VIP authority and reject missing claims or supporting clauses.
+- The CLI declaration-quote check rejected typography and wording changes in the same rule; it now preserves both first-specifier quote selection and the no-specifier double-quote default.
 - ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
