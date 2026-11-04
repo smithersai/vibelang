@@ -10,7 +10,7 @@ import (
 )
 
 const platformYieldValueQuote = "The non-function value exports are globals too;"
-const platformYieldDiagnosticQuote = "a message in the user's words that says what is wrong and how to fix it"
+const platformYieldDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
 
 func TestPlatformYieldAdviceQuoted(t *testing.T) { platformYieldAdviceQuoted(t) }
 

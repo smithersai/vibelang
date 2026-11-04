@@ -12,7 +12,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const nativeKeyNamespaceQuote = "TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types."
+const nativeKeyNamespaceQuote = "Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types."
 
 func nativeKeyNamespaceQuoted(t testing.TB) {
 	t.Helper()

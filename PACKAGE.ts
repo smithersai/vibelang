@@ -729,6 +729,14 @@ const targets = {
     [go, node],
     "15m"
   ),
+  "tooling-citations": S.Shell.Test({
+    summary: "Native diagnostic, actionable advice and retired-setting fuzz oracles match the published tooling contracts.",
+    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(Test(NativeServiceKeyNamespaceQuoted|ServiceShapeQualifierFallbackQuoted|PlatformYieldAdviceQuoted|RetiredConfigOptionsQuoted)|FuzzRetiredConfigOptions)$' ./internal/vibelangfuzz/",
+    data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]] as Array<never>,
+    tools: [go, node],
+    sandbox: "none",
+    timeout: "15m"
+  }),
   "spec-registry-go": S.Shell.Test({
     summary: "Every assigned code is registered or names its implementation owner; legacy exceptions apply only to unassigned declarations.",
     shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath -run '^(TestRegistryMatchesSpec|TestCompilerRegistryIsSpecified)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,

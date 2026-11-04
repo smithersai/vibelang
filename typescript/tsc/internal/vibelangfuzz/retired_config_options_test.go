@@ -16,8 +16,8 @@ import (
 
 var retiredConfigQuotes = []string{
 	"root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle` are ignored with nonfatal deprecation warning `EK3011` for every value, including invalid values",
-	"The retired `trustedPackages` key is ignored in `vibe` and every supported legacy section",
-	"npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` when no `@throws` is written; use a signature contract or an explicit `Effect.try` bridge.",
+	"The retired `trustedPackages` key is ignored in `vibe` and supported legacy sections, with warning `EK3010`: remove it.",
+	"Npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` without `@throws`; use a signature contract or an explicit `Effect.try` bridge",
 }
 
 func TestRetiredConfigOptionsQuoted(t *testing.T) {
