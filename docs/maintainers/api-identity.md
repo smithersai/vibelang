@@ -376,3 +376,14 @@ test.
 The generated-tag exception also preserves authored JSDoc block counts: repeated prose blocks remain a difference even when TypeScript coalesces identical documentation text.
 Within a comparison, the optional diagnostic path reuses the exact program supplied for the first original or normalized diagnostic group; later groups remain fresh. The fuzz worker materializes ambient documentation on demand for the same closure proof. Shared physical modules need no such proof; distinct closures still request their full documentation. Programs and checkers remain local to one comparison.
 
+
+
+Error-taint checks reuse completed error-free type closures across exported
+roots. Only a complete walk with no shared-declaration frontier or generic
+instantiation can establish reusable intermediate results. Cycles still inspect
+their whole reachable graph; incomplete or erroneous walks retain their
+original root-specific result. Shared frontiers keep their declaration order,
+and each generic instantiation retains its argument checks.
+The `export-comparison-plan` profiling record reports `errorWalkTypes`,
+`errorWalkCacheHits` and `closedErrorTypes` so repeated traversal can be
+distinguished from input diagnostics and structural probes.

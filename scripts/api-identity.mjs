@@ -1187,6 +1187,7 @@ function prepareComparison(ts, before, after, options, progress) {
   // sides apart as long as both reach the same declarations in the same order.
   const invalidExports = []
   const errorCache = new Map(), boundedErrorCache = new Map()
+  let errorWalkTypes = 0, errorWalkCacheHits = 0, closedErrorTypes = 0
   const sharedFile = file => !virtual.has(file) && ![before, after].some(base => file === base || file.startsWith(base + "/"))
   const sharedSymbol = symbol => symbol?.declarations?.length > 0 &&
     symbol.declarations.every(d => sharedFile(d.getSourceFile().fileName))
@@ -1196,14 +1197,20 @@ function prepareComparison(ts, before, after, options, progress) {
     !(type.objectFlags & ts.ObjectFlags.Reference && checker.getTypeArguments(type).length) && sharedSymbol(type.symbol)
   function walkErrors(root, bounded) {
     const cache = bounded ? boundedErrorCache : errorCache
-    if (cache.has(root)) return cache.get(root)
+    if (cache.has(root)) { errorWalkCacheHits++; return cache.get(root) }
     const pending = [root], seen = new Set(), expanded = new Set(), frontier = []
+    let closed = true
     while (pending.length) {
       const type = pending.pop()
     if (!type) continue
     if (bounded && sharedDeclaration(type)) { frontier.push(type); continue }
     if (seen.has(type)) continue
     seen.add(type)
+    if (cache.get(type)?.closed) { errorWalkCacheHits++; continue }
+    errorWalkTypes++
+    // Instantiations share shape expansion within a walk. Such a walk cannot
+    // prove every intermediate instantiation independently error-free.
+    if (type.target && type.target !== type) closed = false
     const identity = type.target ?? type
     if (type.flags & ts.TypeFlags.Any && ["error", "unresolved"].includes(type.intrinsicName)) {
       const walk = { error: true, frontier }
@@ -1239,6 +1246,17 @@ function prepareComparison(ts, before, after, options, progress) {
       for (let i = nested.length - 1; i >= 0; i--) pending.push(nested[i])
     }
     const walk = { error: false, frontier }
+    // Only a complete, error-free closure without shared frontiers or generic
+    // instantiations proves all visited nodes negative. Cycles are complete
+    // once their entire reachable graph has been inspected. Never memoize a
+    // partial walk or reuse a frontier whose order belongs to another root.
+    if (closed && frontier.length === 0) {
+      walk.closed = true
+      for (const type of seen) {
+        if (!cache.get(type)?.closed) closedErrorTypes++
+        cache.set(type, walk)
+      }
+    }
     cache.set(root, walk)
     return walk
   }
@@ -1577,7 +1595,8 @@ function prepareComparison(ts, before, after, options, progress) {
       }
     }
   }
-  progress("export-comparison-plan", { sharedExportProofs, structuralProbes: checks.length })
+  progress("export-comparison-plan", { sharedExportProofs, structuralProbes: checks.length,
+    errorWalkTypes, errorWalkCacheHits, closedErrorTypes })
   for (const [path, text] of bridges) virtual.set(resolve(path), text)
   for (const [from, to] of equivalents) {
     const text = bridges.get(from)

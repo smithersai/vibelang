@@ -49,6 +49,29 @@ test("many exports sharing a deep documented graph do not repeat the documentati
   })
 })
 
+test("completed closed error walks are reused across deep exported roots", t => {
+  const depth = 96
+  const text = chain(depth, "Terminal documentation")
+    .replace("type Root = N0;\nexport { Root };", "export type Root = N0;")
+  let propertyReads = 0
+  const compiler = { ...ts, createProgram(...args) {
+    const program = ts.createProgram(...args)
+    const checker = program.getTypeChecker()
+    const observed = { ...checker, getPropertiesOfType(type) {
+      propertyReads++
+      return checker.getPropertiesOfType(type)
+    } }
+    return { ...program, getTypeChecker: () => observed }
+  } }
+  fixture({ "index.d.ts": text }, { "index.d.ts": text }, (a, b) => {
+    const result = compareApiIdentity(compiler, a, b, options)
+    assert.equal(result.identical, true, JSON.stringify(result))
+    t.diagnostic(`Property reads: ${propertyReads} for ${depth} levels`)
+    assert.ok(propertyReads <= depth * 12,
+      `Shared closed graphs need linear property reads: ${propertyReads} for ${depth} levels`)
+  })
+})
+
 test("deep error-type walks terminate without hiding a missing exported type", () => {
   for (const used of [false, true]) {
     const files = {
@@ -534,4 +557,59 @@ test("generic bridge keys distinguish an ambient module name from a namespace pa
     assert.equal(result.identical,false,JSON.stringify(result))
     assert.ok(result.typeDifferences.some(d=>d.export==="X"&&d.aspect==="type"),JSON.stringify(result))
   })
+})
+
+test("property: closed error-walk reuse preserves cycles and terminal mutations", async () => {
+  await checkProperty(fc, {
+    name: "api-identity-closed-error-walk",
+    rule: "Published declaration identity requires exported names, strict bidirectional types and documentation to agree; unresolved exported types cannot establish identity",
+    command: "node --test scripts/api-identity-scale.test.mjs",
+    numRuns: 16,
+    arbitrary: fc.record({
+      depth: fc.integer({ min: 4, max: 32 }), cycle: fc.boolean(),
+      mutation: fc.constantFrom("none", "type", "doc", "missing"),
+    }),
+    check: ({ depth, cycle, mutation }) => {
+      let text = chain(depth, "Terminal documentation")
+        .replace("type Root = N0;\nexport { Root };", "export type Root = N0;")
+      if (cycle) text = text.replace("value: string", "back: N0; value: string")
+      let changed = text
+      if (mutation === "type") changed = changed.replace("value: string", "value: number")
+      if (mutation === "doc") changed = changed.replace("Terminal documentation", "Changed documentation")
+      if (mutation === "missing") changed = changed.replace("value: string", "value: Missing")
+      fixture({ "index.d.ts": text }, { "index.d.ts": changed }, (a, b) => {
+        const result = compareApiIdentity(ts, a, b, options)
+        assert.equal(result.identical, mutation === "none", JSON.stringify(result))
+        assert.equal(result.comparisonComplete, mutation !== "missing", JSON.stringify(result))
+        if (mutation === "type") assert.ok(result.typeDifferences.length > 0)
+        if (mutation === "doc") assert.ok(result.docDifferences.length > 0)
+        if (mutation === "missing") assert.ok(result.environmentDiagnostics.some(d => d.blocking))
+      })
+    },
+  })
+})
+
+
+test("cached clean subgraphs cannot hide suppressed errors in later exported roots", () => {
+  for (const field of ["value: Missing", "value: Box<Missing>", "next: ZBroken; value: Missing"]) {
+    const text = `interface Leaf { value: string }
+interface AValid { leaf: Leaf }
+interface Box<T> { item: T }
+// @ts-ignore
+interface ZBroken { leaf: Leaf; ${field} }
+export type Root = AValid;`
+    fixture({ "index.d.ts": text }, { "index.d.ts": text }, (a, b) => {
+      const program = ts.createProgram([join(a, "index.d.ts")],
+        { ...options.compilerOptions, strict: true, noEmit: true, types: [] })
+      assert.deepEqual(ts.getPreEmitDiagnostics(program), [],
+        "the native diagnostic is suppressed, so error taint must reject the export")
+      for (const target of [a, b]) {
+        const result = compareApiIdentity(ts, a, target, options)
+        assert.equal(result.identical, false, JSON.stringify(result))
+        assert.equal(result.comparisonComplete, false, JSON.stringify(result))
+        assert.ok(result.environmentDiagnostics.some(d => d.blocking &&
+          d.export === "ZBroken" && /erroneous type/.test(d.diagnostic)), JSON.stringify(result))
+      }
+    })
+  }
 })
