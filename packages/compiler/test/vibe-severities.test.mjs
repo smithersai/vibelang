@@ -62,13 +62,19 @@ for (const severity of ["error","warning","suggestion","off"]) {
   const dir=project(t,{vibe:{severities:{EK3833:severity}}},`import { Effect } from "effect"
 export effect function pause() { try Effect.sleep(0); return 1 }
 `)
+  const config = JSON.parse(readFileSync(join(dir,"tsconfig.json"),"utf8"))
+  config.compilerOptions.plugins = [{name:"@effect/language-service"}]
+  writeFileSync(join(dir,"tsconfig.json"),JSON.stringify(config))
   const result=run(dir,"--noEmit")
-  assert.equal(result.status===0,severity!=="error",result.stdout+result.stderr)
-  if(severity==="warning" || severity==="error") assert.match(result.stdout,new RegExp(`${severity} EK3833: effectSleepZeroToYieldNow: Consider `))
+  assert.equal(result.signal,null,result.stdout+result.stderr)
+  assert.equal(result.status===0,severity!=="error" && severity!=="warning",result.stdout+result.stderr)
+  if(severity!=="off") assert.match(result.stdout,new RegExp(severity+" EK3833: effectSleepZeroToYieldNow: Consider "))
   else assert.doesNotMatch(result.stdout,/EK3833/)
   const lint=spawnSync(native,["lint","-p","tsconfig.json"],{cwd:dir,encoding:"utf8"})
+  assert.ifError(lint.error)
+  assert.equal(lint.signal,null,lint.stdout+lint.stderr)
   assert.equal(lint.status===0,severity!=="error",lint.stdout+lint.stderr)
-  if(severity==="warning" || severity==="error") assert.match(lint.stdout,new RegExp(`${severity} EK3833:`))
+  if(severity!=="off") assert.match(lint.stdout,new RegExp(severity+" EK3833:"))
   else assert.doesNotMatch(lint.stdout,/EK3833/)
  })
 }
