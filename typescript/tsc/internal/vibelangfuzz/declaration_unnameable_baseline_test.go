@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -25,8 +26,10 @@ import (
 //   - the .vibe module compiles and its declaration equals, byte for byte,
 //     stock tsc's declaration of the twin;
 //   - when stock tsc rejects the original Effect.fn module, the migration's
-//     declaration gate reports the new declaration as added, so the flow keeps
-//     the TypeScript file instead of claiming an identity it cannot prove.
+//     declaration gate reports the new entry on the after side, so the flow
+//     keeps the TypeScript file instead of claiming an identity it cannot prove;
+//   - reversing the comparison reports removal on the before side, and equal
+//     complete declaration trees remain identical.
 func TestDeclarationUnnameableBaseline(t *testing.T) {
 	requireDeclarationPreludeModesQuote(t)
 	requireUnnameableFormQuote(t)
@@ -126,18 +129,73 @@ export class Client extends Context.Service<
 				if originalErr == "" {
 					return
 				}
-				ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
-				defer cancel()
-				diff, err := compareIdentityDeclarations(ctx, api, filepath.Join(stockOriginal, "out"), current)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if !strings.Contains(diff, "revert.d.ts (added)") {
-					t.Fatalf("stock tsc wrote no revert.d.ts (%s), so the migration gate must report the native declaration as added; it reported:\n%s", originalErr, diff)
+				// Inspect the public API receipt, not its human report spelling.
+				// The migration must refuse both an added and a removed entry,
+				// while the same complete declaration tree remains identical.
+				baseline := filepath.Join(stockOriginal, "out")
+				for _, check := range []struct{ name, before, after, side string }{
+					{"added", baseline, current, "after"},
+					{"removed", current, baseline, "before"},
+					{"same", current, current, ""},
+				} {
+					receipt := unnameableBaselineReceipt(t, api, check.before, check.after)
+					if !receipt.ComparisonComplete {
+						t.Fatalf("%s: declaration comparison was incomplete: %+v", check.name, receipt)
+					}
+					if len(receipt.TypeDifferences) != 0 || len(receipt.DocDifferences) != 0 || len(receipt.EnvironmentDiagnostics) != 0 {
+						t.Fatalf("%s: unexpected API differences: %+v", check.name, receipt)
+					}
+					if check.side == "" {
+						if !receipt.Identical || len(receipt.NameDifferences) != 0 {
+							t.Fatalf("equal declaration trees must be identical: %+v", receipt)
+						}
+						continue
+					}
+					want := unnameableEntryDifference{Entrypoint: "revert.d.ts", Export: "*", Side: check.side}
+					if receipt.Identical || len(receipt.NameDifferences) != 1 || receipt.NameDifferences[0] != want {
+						t.Fatalf("%s: stock tsc wrote no revert.d.ts (%s), so the migration gate must refuse the %s declaration entry; got %+v", check.name, originalErr, check.side, receipt)
+					}
 				}
 			})
 		}
 	}
+}
+
+type unnameableEntryDifference struct {
+	Entrypoint string `json:"entrypoint"`
+	Export     string `json:"export"`
+	Side       string `json:"side"`
+}
+
+type unnameableIdentityReceipt struct {
+	Identical              bool                        `json:"identical"`
+	ComparisonComplete     bool                        `json:"comparisonComplete"`
+	NameDifferences        []unnameableEntryDifference `json:"nameDifferences"`
+	TypeDifferences        []json.RawMessage           `json:"typeDifferences"`
+	DocDifferences         []json.RawMessage           `json:"docDifferences"`
+	EnvironmentDiagnostics []json.RawMessage           `json:"environmentDiagnostics"`
+}
+
+func unnameableBaselineReceipt(t *testing.T, api, before, after string) unnameableIdentityReceipt {
+	t.Helper()
+	const script = `import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+const [gate, api, before, after] = process.argv.slice(1);
+const { compareApiIdentity } = await import(pathToFileURL(gate));
+const ts = createRequire(import.meta.url)(api);
+console.log(JSON.stringify(compareApiIdentity(ts, before, after)));`
+	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "node", "--input-type=module", "-e", script, filepath.Join(Root(), "scripts/api-identity.mjs"), api, before, after)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("unnameable baseline API receipt (context %v): %v: %.1600s", ctx.Err(), err, out)
+	}
+	var receipt unnameableIdentityReceipt
+	if err := json.Unmarshal(out, &receipt); err != nil {
+		t.Fatalf("unnameable baseline API receipt JSON: %v: %.1600s", err, out)
+	}
+	return receipt
 }
 
 const unnameableFormQuote = "a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`"
