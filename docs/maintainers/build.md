@@ -1711,3 +1711,8 @@ are counted and saved before adding that ambient fixture; their bytes and
 the throwing TypeScript helper remain unchanged. All eight generated samples
 and type, documentation and missing-dependency negatives remain enabled.
 Stock and native loaded-library guards retain the actual ES5 declarations.
+
+The five fixed variance forms use guarded ES5 programs for native TypeScript
+validation and API comparison. Their original target and strictness settings
+remain in force. The `in`, `out` and `in out` forms, class/interface/type
+shapes and four generated changed-field samples remain enabled.

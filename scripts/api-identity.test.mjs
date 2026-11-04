@@ -784,9 +784,10 @@ test("variance-annotated generic exports compare with themselves using valid pro
     "export interface Box<in T> { consume(value: T): void }",
     "export interface Box<in out T> { value: T }",
   ]) fixture(text, text, (a, b) => {
-    const original = ts.createProgram([join(a, "index.d.ts")], { strict: true, noEmit: true, types: [] })
+    const original = withPureFixtureCompiler(compiler => compiler.createProgram([join(a, "index.d.ts")],
+      { ...pureLibraries, strict: true, noEmit: true, types: [] }))
     assert.deepEqual(ts.getPreEmitDiagnostics(original).map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
-    for (const result of [compareApiIdentity(ts, a, a), compareApiIdentity(ts, a, b)])
+    for (const result of [comparePure(a, a), comparePure(a, b)])
       assert.equal(result.identical, true, JSON.stringify(result))
   })
 })

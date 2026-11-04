@@ -50,6 +50,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` shortened a written `Experimental.Process.Process` type to `Experimental.Process` and left the `Option<number>`, `Scope` and `FileSystem.of` shorthands as written; every `--fix` scope now writes the export (`Option.Option<number>`, `Scope.Scope`, `FileSystem.FileSystem.of`) and keeps written qualified types.
 - Helper re-export declaration tests repeatedly loaded browser libraries in native, stock and API comparison programs. Their fixture now selects the required ES5 declarations while preserving native output and API checks.
 
+- Contributor checks for variance-annotated declarations loaded unrelated browser libraries. They now use ES5 while retaining native validity and changed-field checks.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11
