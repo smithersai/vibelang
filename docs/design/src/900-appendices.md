@@ -1278,7 +1278,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/chains_lower.go:optionalLink ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` vibelang/chains_lower.go:lowering.guardedLink ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` vibelang/chains_lower.go:writesQuestionDot ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
-| ` vibelang/chains_lower.go:lowering.unguardedOptional ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` vibelang/chains_lower.go:lowering.mayYield ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` vibelang/chains_lower.go:lowering.visitGuardedChain ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` vibelang/chains_lower.go:lowering.visitGuardedLink ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
@@ -1459,6 +1458,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/lower.go:lowering.visit ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.visitSource ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.visitNode ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
+| ` vibelang/lower.go:lowering.visitCatchLeftValue ` | ` admission:catch ` | ` 900-appendices.md#CatchExpression `, ` 002-running.md ` | ` support ` | VIP-5 (amended 2026-10-29): a try in a catch's left side runs before the catch, which receives the value the left side gives |
 | ` vibelang/lower.go:lowering.visitSourceFile ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.namespaceImport ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.fileName ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |

@@ -307,6 +307,18 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 	return tx.Visitor().VisitEachChild(node)
 }
 
+// visitCatchLeftValue lowers the left side of a catch that holds a try where
+// it stands, in the enclosing Effect, and passes the catch a function that
+// gives its value: ((value) => () => value)(left).
+func (tx *lowering) visitCatchLeftValue(node *ast.Node) *ast.Node {
+	f := tx.Factory()
+	value := tx.Visitor().VisitNode(node.Body())
+	name := f.NewUniqueName("value")
+	parameter := f.NewParameterDeclaration(nil /*modifiers*/, nil /*dotDotDotToken*/, name, nil /*questionToken*/, nil /*type*/, nil /*initializer*/)
+	give := tx.generated(f.NewParenthesizedExpression(tx.arrow([]*ast.Node{parameter}, tx.arrow(nil, name))))
+	return f.NewCallExpression(give, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{value}), ast.NodeFlagsNone)
+}
+
 func (tx *lowering) visitSourceFile(file *ast.SourceFile) *ast.Node {
 	visited := tx.reachIntrinsics(tx.Visitor().VisitEachChild(file.AsNode()))
 	tx.markProgramArrows(visited)
