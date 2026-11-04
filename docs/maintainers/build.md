@@ -258,7 +258,7 @@ queue:
 
 The complete parser package takes less than a second after compilation and includes the clash-corpus expectations. Parser and corpus changes select it from their first matching train.
 
-The runtime package check runs the existing entrypoint, export-identity and Effect-version tests and checks the README's public export table after building the runtime. It takes about eight seconds after the build. It joins the first matching train, without waiting for a post-merge receipt: adding a helper to the main entry while omitting it from the guarded entry must fail before landing.
+The runtime package check runs the existing entrypoint, export-identity and Effect-version tests, plus 500 generated error-matcher subclass histories and checks the README's public export table after building the runtime. It takes about eight seconds after the build. It joins the first matching train, without waiting for a post-merge receipt: adding a helper to the main entry while omitting it from the guarded entry must fail before landing.
 
 The editor oracles take about a minute after their build. They join for the
 language service, which they judge: main went RED post-merge on
