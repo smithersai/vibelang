@@ -1,0 +1,7 @@
+{
+  "script": "bun check --no-script",
+  "files": {
+    "leaf.ts": "export const value = 42;\n",
+    "consumer.ts": "import { value } from \"./leaf.js\"; export const output: number = value;\n"
+  }
+}

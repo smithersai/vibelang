@@ -219,6 +219,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The generated grammar admission census cited denied VIP-11 as authority for the legacy trailing-block recovery hooks, so the specification authority check failed on `vibe`. The census source now states the denial, and the generator refuses a denied VIP citation that does not.
 - EK4839's direct `Option.match` quick fix now handles callbacks returning Effects, preserving cold construction and an explicit `try` on the selected result, including `try Option.match(…)` as a statement. These choices previously kept a blanket program-result refusal. A call whose handler is an `Effect.fn` generator now waits for `EK1002`'s rewrite instead of refusing first and blocking it.
 
+- Migration setup left `bun check --no-script` using a checker that could not resolve unchanged TypeScript tests' `.js` imports after conversion; it now runs `vibelang --noEmit` with the same project.
+
 - A throwing foreign call inside a native `try/catch` in a plain `catch` handler could incorrectly require an Effect bridge. It now follows the handler’s plain source context while uncaught calls keep their checks.
 
 - Native service-name, platform-advice and retired-setting conformance checks rejected an editorial specification update; they now cite the current rules while retaining their compiler checks.

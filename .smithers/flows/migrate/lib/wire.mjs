@@ -1,3 +1,4 @@
+import { replaceBunCheck } from "./bun-check.mjs"
 import { bunProgramScope } from "./bun-scope.mjs"
 import { addBunBuildGlobs } from "./bun-globs.mjs"
 // The edits that set up VibeLang in an existing project, as text-in,
@@ -151,7 +152,7 @@ export function addEffectExitOptions(text, ts) {
 export function replaceTsc(scripts = {}) {
   const command = new RegExp(`(^|[\\s;&|(])(?:${typeScriptCompilers.join("|")})(?=[\\s;&|)]|$)`, "g")
   const next = {}
-  for (const [name, script] of Object.entries(scripts)) next[name] = script.replace(command, "$1vibelang")
+  for (const [name, script] of Object.entries(scripts)) next[name] = replaceBunCheck(script).replace(command, "$1vibelang")
   return next
 }
 

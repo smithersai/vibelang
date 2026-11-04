@@ -1,0 +1,26 @@
+import { shellCommands } from "./shell-commands.mjs"
+
+// --no-script selects Bun's built-in TypeScript checker, never a user script
+// called check. Bare bun check retains the repository's script semantics.
+export function replaceBunCheck(script) {
+  let commands
+  try { commands = shellCommands(script) } catch { return script }
+  let result = script, offset = 0, delta = 0
+  for (const { raw, words } of commands) {
+    const start = script.indexOf(raw, offset)
+    offset = start + raw.length
+    if (words[0] !== "bun" || words[1] !== "check" || !/^bun[ \t]+check[ \t]+--no-script(?=[ \t]|$)/.test(raw)) continue
+    // Future Bun-only options keep the original command rather than losing flags.
+    let valid = true
+    for (let i = 2; i < words.length; i++) {
+      if (["--no-script", "--noEmit", "--strict", "--skipLibCheck"].includes(words[i])) continue
+      if (["-p", "--project"].includes(words[i]) && words[i + 1] && !words[i + 1].startsWith("-")) { i++; continue }
+      valid = false
+    }
+    if (!valid) continue
+    const next = raw.replace(/^bun\s+check\b/, "vibelang --noEmit").replace(/\s+--no-script(?=\s|$)/, "")
+    result = result.slice(0, start + delta) + next + result.slice(offset + delta)
+    delta += next.length - raw.length
+  }
+  return result
+}
