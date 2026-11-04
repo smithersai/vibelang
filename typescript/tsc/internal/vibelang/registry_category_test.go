@@ -16,8 +16,7 @@ import (
 var categoryAhead = map[int32]string{}
 
 // TestRegistryCategoriesMatchAppendixB checks each registry message's default
-// category against its Appendix B row: a row that begins "warning" or "lint
-// warning" is a warning, every other row an error. FuzzCompile checks the same
+// category against its Appendix B row, including its explicit category variants. FuzzCompile checks the same
 // rule on compiled programs, but only after a change lands; this test runs in
 // //:spec-tests before it does, so a category edit on one side alone fails
 // there (main RED on EK4609 2026-10-31 20:54Z, 2026-11-01 14:10Z and 14:42Z).
@@ -51,12 +50,17 @@ func TestRegistryCategoriesMatchAppendixB(t *testing.T) {
 		if strings.HasPrefix(rule, "warning") || strings.HasPrefix(rule, "lint warning") {
 			want = diagnostics.CategoryWarning
 		}
+		matches := m.Category == want
+		// Contextual rules explicitly list both possible categories.
+		if strings.Contains(rule, "category variants: `error`, `warning`.") {
+			matches = m.Category == diagnostics.CategoryError || m.Category == diagnostics.CategoryWarning
+		}
 		checked++
 		lane, ahead := categoryAhead[code]
 		switch {
-		case m.Category != want && !ahead:
+		case !matches && !ahead:
 			t.Errorf("EK%04d is %s in the registry, but Appendix B makes it %s: %q", code, m.Category.Name(), want.Name(), row[2])
-		case m.Category == want && ahead:
+		case matches && ahead:
 			t.Errorf("EK%04d's registry category now matches Appendix B; delete it from categoryAhead (%s)", code, lane)
 		}
 	}

@@ -139,3 +139,39 @@ func TestCompilePlatformContextualCases(t *testing.T) {
 		t.Fatalf("expected both reported platform cases, found %d", found)
 	}
 }
+
+func FuzzExplicitDiagnosticCategoryVariants(f *testing.F) {
+	startShortBudget(f)
+	for _, code := range []int32{1010, 4402} {
+		for variant := uint8(0); variant < 4; variant++ {
+			f.Add(code, variant)
+		}
+	}
+	f.Fuzz(func(t *testing.T, raw int32, variant uint8) {
+		code := int32(1010)
+		if raw == 4402 {
+			code = 4402
+		}
+		if !strings.Contains(Facts().Rows[code].Reports, "Category variants: `error`, `warning`.") {
+			t.Fatal("Appendix B no longer lists both error and warning categories")
+		}
+		categories := []diagnostics.Category{diagnostics.CategoryError, diagnostics.CategoryWarning, diagnostics.CategorySuggestion, diagnostics.CategoryMessage}
+		category := categories[variant%uint8(len(categories))]
+		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/project/main.vibe", PathKey: "/project/main.vibe"}, "x", core.ScriptKindTS)
+		d := ast.NewExternalDiagnostic(file, core.NewTextRange(0, 1), "EK", category, code, "explicit category-variant witness")
+		gaps := &Gaps{}
+		CheckDiagnostics(gaps, "/project", []*ast.Diagnostic{d}, true)
+		valid := category == diagnostics.CategoryError || category == diagnostics.CategoryWarning
+		if gaps.Any() == valid {
+			t.Fatalf("EK%d category %s: valid=%t gaps=%v", code, category.Name(), valid, gaps.found)
+		}
+		if Facts().IsAdjustable(code) {
+			t.Fatalf("EK%d contextual category became configurable", code)
+		}
+		for _, severity := range Facts().Severities {
+			if len(settingProblems(map[string]any{"severities": map[string]any{fmt.Sprintf("EK%04d", code): severity}})) != 1 {
+				t.Fatalf("EK%d=%s must remain an invalid override", code, severity)
+			}
+		}
+	})
+}

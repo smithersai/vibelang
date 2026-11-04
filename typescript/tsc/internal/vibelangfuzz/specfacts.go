@@ -172,6 +172,11 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 			// require each category; the registry alone has no source context.
 			category = DefaultBoundaryWarning
 		}
+		// A category-variant row explicitly overrides its prefix default.
+		// Both categories are context-sensitive; neither enables a severity override.
+		if strings.Contains(cells[1], "Category variants: `error`, `warning`.") {
+			category = DefaultBoundaryWarning
+		}
 		facts.Defaults[code] = category
 	}
 	// The own-warning table remains separate from the imported inventory.

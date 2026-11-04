@@ -1097,3 +1097,5 @@ The foreign `count` fixture declares `@throws {never}`: it only reads its module
 The plain-runner property covers async callbacks invoked through `tryPromise`, preserving all six root-runner choices. The unit witness also retains the unwrapped call and requires exactly one `EK0404` there, while the wrapped callback keeps zero `EK1005` reports. Chapter 3 supplies the Promise boundary rule; callback kind still follows VIP-1.
 
 `FuzzProducerContractCLIRepair` crosses declaration and method forms with direct, readonly, and aliased incompatible `Stream` contracts. It requires project fixes to preserve the producer body, remove the annotation error, and retain independent assignment errors.
+
+`FuzzExplicitDiagnosticCategoryVariants` checks every diagnostic category against Appendix B’s explicit error/warning rows for `EK1010` and `EK4402`. Suggestions and messages remain invalid, and all configured overrides remain rejected. Source-context generators continue to determine where each allowed category applies.
