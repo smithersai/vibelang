@@ -57,13 +57,32 @@ func TestFixPlatformWrapperPreservesDeclaration(t *testing.T) {
 	}
 }
 
-func TestFixPlatformWrapperRefusesCapturesAndExistingFiles(t *testing.T) {
+// A wrapper that captures a binding or a receiver stays in the .vibe file, and
+// only the host read moves to a sibling (platformCallSplit).
+func TestFixPlatformWrapperCaptureMovesOnlyHostRead(t *testing.T) {
+	for _, source := range []string{
+		"export effect function probe(prefix: string) { return try Effect.try(() => prefix + window.location.origin); }",
+		"export class C { prefix = 'x'; effect probe() { return try Effect.try(() => this.prefix + window.location.origin); } }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			_, file, _, _ := editorProgram(t, source)
+			result := fixCase(t, filepath.Dir(file.FileName().AsString()))
+			if result.Err != nil || len(result.Refused) != 0 || len(result.Files) != 2 {
+				t.Fatalf("expected a verified two-file split: %+v", result)
+			}
+			fixed := result.Files[file.FileName()]
+			if fixed == nil || strings.Contains(fixed.Text, "window.") || !strings.Contains(fixed.Text, "Effect.try(() =>") {
+				t.Fatalf("the wrapper should stay and only the host read move: %+v", fixed)
+			}
+		})
+	}
+}
+
+func TestFixPlatformWrapperRefusesExistingFiles(t *testing.T) {
 	for _, test := range []struct {
 		source, why string
 		existing    bool
 	}{
-		{"export effect function probe(prefix: string) { return try Effect.try(() => prefix + window.location.origin); }", "captures prefix", false},
-		{"export class C { prefix = 'x'; effect probe() { return try Effect.try(() => this.prefix + window.location.origin); } }", "lexical receiver", false},
 		{"export effect function probe() { return try Effect.try(() => window.location.origin); }", "already exists", true},
 	} {
 		t.Run(test.why, func(t *testing.T) {

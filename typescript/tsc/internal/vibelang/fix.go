@@ -703,11 +703,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 		return result
 	}
-	if !options.VIPOnly {
-		rewritePlatformWrappers(g, fs, program, texts, result)
-		verified(texts)
-		program = build(texts)
-	}
+	// VIP-33 checks host access throughout a .vibe file, so --fix-vip-only
+	// also moves the platform code a converted module's wrappers run.
+	rewritePlatformWrappers(g, fs, program, texts, result)
+	verified(texts)
+	program = build(texts)
 	round := 0
 	changed := false // the program changed since the refusals were last retried
 	seen := map[[32]byte]bool{fixState(program): true}
@@ -1183,10 +1183,30 @@ func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsopt
 	})
 	host := fixCompilerHost{compiler.NewCompilerHost(overlaid, libraryPath, nil, nil, nil), parsed}
 	return compiler.NewProgram(compiler.ProgramOptions{
-		ProgramConfig:    compiler.ProgramConfig{Config: config},
+		ProgramConfig:    compiler.ProgramConfig{Config: withNewRoots(config, overlay)},
 		ProgramHosts:     compiler.ProgramHosts{Host: host},
 		ProgramFactories: compiler.ProgramFactories{CreateModuleResolver: parsed.moduleResolver(created)},
 	})
+}
+
+// withNewRoots adds the files a fix creates to config's root files when its
+// include specs take them, as they will once the files are written. Without
+// them a composite project reports TS6307 for a new sibling .ts module that
+// tsc, reading the written files, lists.
+func withNewRoots(config *tsoptions.ParsedCommandLine, overlay map[tspath.RootedFilePath]string) *tsoptions.ParsedCommandLine {
+	var added []tspath.RootedFilePath
+	for name := range overlay {
+		// Not only files absent from disk: the keeper writes each verified
+		// set, so a later trial's overlay holds an earlier new file on disk.
+		if !config.FilePaths().Has(config.CaseSensitivity().PathKey(tspath.RootedPath(name))) && config.IncludesNewFile(name) {
+			added = append(added, name)
+		}
+	}
+	if len(added) == 0 {
+		return config
+	}
+	slices.SortFunc(added, tspath.RootedFilePath.Compare)
+	return config.WithFileNames(append(slices.Clone(config.FileNames()), added...))
 }
 
 // fixCompilerHost lets a --fix run's programs share parsed files. The run

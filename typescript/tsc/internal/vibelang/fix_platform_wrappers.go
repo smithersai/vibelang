@@ -15,8 +15,9 @@ import (
 
 // Move a closed Effect wrapper, including its callback, into a new TypeScript
 // factory. The factory is called where the wrapper was built; host reads still
-// happen only when its Effect runs. Captures, lexical receivers and existing
-// foreign files are refused. The normal error gate and declaration comparison
+// happen only when its Effect runs. A wrapper that captures a binding or a
+// lexical receiver stays, and only its platform code moves (platformCallSplit).
+// Existing foreign files are refused. The normal error gate and declaration comparison
 // verify both files together before anything is written.
 func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	for _, initial := range fixableFiles(program) {
@@ -29,6 +30,7 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			var diagnosticCode int32
 			var wrapper, wrapperModule string
 			var refusal string
+			at := 0 // where the diagnostic the candidate holds starts
 			for _, d := range program.GetSemanticDiagnostics(g.ctx, file) {
 				if d.Source() != diagnosticSource || (d.Code() != EK4402.Code && d.Code() != EK4403.Code) {
 					continue
@@ -59,6 +61,7 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 									return false
 								}
 								candidate, wrapper, wrapperModule = n, member, module
+								at = d.Pos()
 								diagnosticCode = d.Code()
 								return true // outermost wrapper keeps nested contexts intact
 							}
@@ -127,6 +130,39 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 				after := declarationsOf(g.ctx, g.build(maps(texts, overlay)), []tspath.RootedFilePath{name})
 				if before[name] == "" || before[name] != after[name] {
 					refusal = "moving this wrapper would change the public declaration"
+				}
+			}
+			if refusal != "" && !strings.Contains(refusal, "sibling TypeScript module") {
+				// The wrapper cannot move whole, usually because its callback
+				// reads a binding of this file: move only the platform code.
+				c, done := program.GetTypeCheckerForFile(g.ctx, file)
+				split, why := platformCallSplit(c, fs, file, texts, at)
+				done()
+				if why == "" {
+					if w, ok := g.passes(texts, split); !ok {
+						why = w
+					}
+				}
+				if why == "" {
+					before := declarationsOf(g.ctx, program, []tspath.RootedFilePath{name})
+					after := declarationsOf(g.ctx, g.build(maps(texts, split)), []tspath.RootedFilePath{name})
+					if before[name] == "" || before[name] != after[name] {
+						why = "it would change the public declaration"
+					}
+				}
+				if why == "" {
+					overlay, refusal = split, ""
+				} else {
+					refusal += "; moving only the platform code: " + why
+				}
+			}
+			if refusal == "" {
+				// --only writes no file it does not list (fix_keep.go), and the
+				// keeper stops the whole run at one: refuse this site instead.
+				for target := range overlay {
+					if !g.scope.includes(target) {
+						refusal = "--only does not list " + path.Base(target.AsString()) + ", the new sibling TypeScript module; run vibelang --fix without --only to create it"
+					}
 				}
 			}
 			if refusal != "" {

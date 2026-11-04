@@ -13,7 +13,7 @@ The pure helpers `AbortSignal` and `URL` remain available, but `AbortSignal.time
 
 The restriction covers the whole file: plain and `async` functions, nested callbacks, and `Effect.try`, `tryPromise`, `sync` and `callback` bodies all report `EK4402` for a host binding such as `window` or `document`. A local binding with the same name keeps its own meaning, and erased type queries remain allowed.
 
-For a self-contained wrapper, `vibelang --fix` moves the wrapper into a new sibling `.ts` factory and imports it. The factory builds the Effect at the original call site, so platform work stays deferred until the Effect runs. It keeps the rewrite only when checking succeeds and the public declaration stays identical. A wrapper that captures another source binding or lexical context needs a manual TypeScript adapter; an existing foreign module is never overwritten.
+For a self-contained wrapper, `vibelang --fix` moves the wrapper into a new sibling `.ts` factory and imports it. The factory builds the Effect at the original call site, so platform work stays deferred until the Effect runs. It keeps the rewrite only when checking succeeds and the public declaration stays identical. When the wrapper reads another binding of the file or `this`, as `Effect.try({ try: () => decrypt(Buffer.from(value)), catch: ... })` does, the wrapper stays and `--fix` moves only the platform code, `Buffer.from(value)`, into a new sibling `.ts` function that takes its arguments as parameters. `--fix-vip-only` does the same for modules that were already converted. An existing foreign module is never overwritten.
 
 ## Using platform services
 
