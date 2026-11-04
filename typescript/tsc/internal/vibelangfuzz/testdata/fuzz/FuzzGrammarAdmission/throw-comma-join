@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:throw-comma-join\neffect function f ( e ) { return [ join throw e , 1 ] ; }")

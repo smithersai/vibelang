@@ -205,3 +205,11 @@ member that is not a `Field`, the data counterpart of `EK2109` and
 `EK2125`. The checker reports it, so the parse gate never saw it; campaign183
 found `data D { A { x : number` and a line break before `number } ; B }`,
 whose second member has no type.
+
+The `throw-comma-warning` key covers a throw in any expression position:
+after an operator or an opening punctuator, or after a word that takes an
+operand (`return`, `join`, `fork`, `try`, `await`, `typeof`, `void`,
+`delete`, `yield`, `in`, `instanceof`, `case`). Campaign189 found
+`[join throw e, 1]`, which the first classifier left unkeyed. After `;`,
+`{`, `}`, `)`, `]` or any other word, `throw` starts a `ThrowStatement`,
+whose comma expression is ordinary.

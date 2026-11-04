@@ -32,6 +32,7 @@ func TestGrammarAdmissionThrowCommaWarning(t *testing.T) {
 		{"call-argument", "effect function f(e, g) { return g(throw e, 1); }", true},
 		{"object-property", "effect function f(e) { return { a: throw e, b: 1 }; }", true},
 		{"member-operand", "effect function f(e) { return [throw e.cause, 1]; }", true},
+		{"join-operand", "effect function f ( e ) { return [ join throw e , 1 ] ; }", true},
 		{"parenthesized-throw", "effect function f(e) { return [(throw e), 1]; }", false},
 		{"parenthesized-operand", "effect function f(e) { return [throw (e, 1)]; }", false},
 		{"operator-left", "effect function f(e) { return [throw e + 1, 1]; }", false},
@@ -78,9 +79,24 @@ func TestGrammarAdmissionThrowCommaWarning(t *testing.T) {
 		"effect function f(e) { return [(throw e), 1]; }",
 		"effect function f(e) { return [throw (e, 1)]; }",
 		"effect function f(e) { return [throw, 1]; }",
+		"function f(c, e) { if (c) throw e, 1; }",
+		"function f(c, e) { if (c) { } else throw e, 1; }",
+		"function f(e) { { } throw e, 1; }",
+		"function f(e) { f(e); throw e, 1; }",
 	} {
 		if grammarThrowCommaWarning(grammarLexSource(source)) {
 			t.Errorf("throw-comma key for %q", source)
+		}
+	}
+	// A throw after an operator or an operand-taking word is an expression.
+	for _, source := range []string{
+		"effect function f(e) { return [join throw e, 1]; }",
+		"effect function f(e) { return [void throw e, 1]; }",
+		"effect function f(a, e) { return [a + throw e, 1]; }",
+		"effect function f(e) { return [!throw e, 1]; }",
+	} {
+		if !grammarThrowCommaWarning(grammarLexSource(source)) {
+			t.Errorf("no throw-comma key for %q", source)
 		}
 	}
 }

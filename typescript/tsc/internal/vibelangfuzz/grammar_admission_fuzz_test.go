@@ -169,6 +169,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"export-assignment", "export = 1 ;"},
 	{"import-equals", "import x = require ( \"m\" ) ; import y = N . a ;"},
 	{"data-member-not-field", "data D { A { x : number\nnumber } ; B }"},
+	{"throw-comma-join", "effect function f ( e ) { return [ join throw e , 1 ] ; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1886,9 +1887,7 @@ func grammarThrowCommaWarning(ts []grammarToken) bool {
 		if tok.kind != 'w' || tok.text != "throw" || i == 0 {
 			continue
 		}
-		switch ts[i-1].text {
-		case "(", "[", ",", ":", "=", "?", "??", "||", "&&", "=>", "return":
-		default:
+		if !grammarThrowExpressionPosition(ts[i-1]) {
 			continue // a ThrowStatement takes an Expression, commas included
 		}
 		depth, first := 0, true
@@ -1947,6 +1946,28 @@ func grammarSchemaEffectField(ts []grammarToken) bool {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+// grammarThrowExpressionPosition reports whether a throw after prev is a
+// throw expression: after an operator or an opening punctuator, or after a
+// word that takes an operand, as in [join throw e, 1]. After ; { } ) ] or any
+// other word it starts a ThrowStatement: no object literal starts with throw.
+func grammarThrowExpressionPosition(prev grammarToken) bool {
+	if prev.kind == 'p' {
+		switch prev.text {
+		case ")", "]", "{", "}", ";":
+			return false
+		}
+		return true
+	}
+	if prev.kind != 'w' {
+		return false
+	}
+	switch prev.text {
+	case "return", "join", "fork", "try", "await", "typeof", "void", "delete", "yield", "in", "instanceof", "case":
+		return true
 	}
 	return false
 }
