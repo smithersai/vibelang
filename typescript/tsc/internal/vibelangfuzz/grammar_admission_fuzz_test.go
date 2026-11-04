@@ -174,6 +174,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"throw-comma-join", "effect function f ( e ) { return [ join throw e , 1 ] ; }"},
 	{"schema-member-not-field", "schema C {\nstring }"},
 	{"module-reference-not-literal", "import x = require ( ( \"m\" ) ) ; ; import y = N . a ;"},
+	{"module-require-identifier", "import x = require(join);"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -677,6 +678,9 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarModuleRequireIdentifier(ts) {
+		return "admission:module-require-identifier"
+	}
 	if grammarOrBindingReservedName(ts) {
 		return "admission:or-binding-reserved-name"
 	}

@@ -208,6 +208,15 @@ TypeScript's `ImportEqualsDeclaration`, which VIP-40 forbids only inside a
 module body (`EK4008`). The lab's TypeScript subset now derives it.
 Campaign176 found both omissions.
 
+The identifier-specifier path also accepts `import x = require(M)`, although
+the inherited TypeScript `ExternalModuleReference` requires a string literal.
+VIP-40 adds identifier specifiers to static imports, with no production for
+this `require` argument. `EK4006` for an undeclared module is a name error,
+so it does not excuse the missing derivation. The exact
+`admission:module-require-identifier` family and keyed corpus stay pending;
+native string references, ordinary calls, parenthesized recovery and
+`import … from M` remain separate controls.
+
 `EK1606` is a syntax rejection when its source is `EK` and its category is
 an error: VIP-16's rejection of a malformed `data` variant or a payload
 member that is not a `Field`, the data counterpart of a malformed schema

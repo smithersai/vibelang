@@ -9,6 +9,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Grammar admission fuzzing now records identifier arguments in import-alias `require` references as a pending gap instead of stopping at an unclassified mismatch.
+
+
 - Grammar admission checks could overlook undefined field modifiers when a schema type was unsupported; these type errors now leave the syntax check active.
 
 
