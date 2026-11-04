@@ -1049,3 +1049,5 @@ Mixed service-member coverage keeps the two forbidden-member diagnostics separat
 Layer-composition advice keeps its native `Layer.provide` and `Layer.provideMerge` guidance and its refusal to switch providers automatically. The full keyed provider/dependent mutation property also checks that refusal notes do not reintroduce retired composition syntax.
 
 The alias-configuration Go guard shares the current tooling quotation with the migration property suite. Its route matrix, compiler consumers, path rewrites, corpus and property sample counts remain unchanged.
+
+Owner-syntax coverage cites the complete current `EK0512` row and mutates closed block-bodied or parenthesized handlers, with grouped whole-catch controls. Existing owner-code cases, pending keys and native-diagnostic rejection checks remain unchanged.

@@ -326,7 +326,7 @@ func FuzzIsHomePositions(f *testing.F) {
 var ownerCodeQuotes = map[string]string{
 	"EK0109": "| `EK0109` | a recognized `effect` arrow head that breaks its required form: a typed or generic bare parameter; parenthesize the parameters | 1 |",
 	"EK0202": "| `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 |",
-	"EK0512": "`catch` mixed with `??`, `\\|\\|` or `&&` without parentheses, or a member access or call after a function-expression handler; parenthesize | 5 |",
+	"EK0512": "| `EK0512` | `catch` mixed with `??`, `\\|\\|` or `&&` without parentheses (parenthesize the mixed operands), or a member access or call after any closed handler (a parenthesized handler, a function-expression handler or a block-bodied arrow handler); parenthesize the whole catch expression | 5 |",
 	"EK1505": "| `EK1505` | a member of a `schema` body that is not a `Field` | 15 |",
 	"EK1606": "| `EK1606` | a malformed `data` variant or a payload member that is not a `Field` | 16 |",
 }
@@ -341,6 +341,12 @@ var ownerShapes = []struct{ name, source, want string }{
 	{"member-after", "export effect function f() { return a catch function () { return 1 }.call(a) }\n", "EK0512"},
 	{"call-after", "export effect function f() { return a catch function () { return 1 }() }\n", "EK0512"},
 	{"index-after", "export effect function f() { return a catch function () { return [1] }[0] }\n", "EK0512"},
+	{"closed-arrow-member", "export effect function f() { return a catch () => { return 1 }.toString() }\n", "EK0512"},
+	{"closed-arrow-call", "export effect function f() { return a catch () => { return () => 1 }() }\n", "EK0512"},
+	{"closed-paren-member", "export effect function f() { return a catch (() => 1).toString() }\n", "EK0512"},
+	{"closed-paren-call", "export effect function f() { return a catch (() => 1)() }\n", "EK0512"},
+	{"paren-whole-arrow", "export effect function f() { return (a catch () => { return 1 }) }\n", ""},
+	{"paren-whole-paren-arrow", "export effect function f() { return (a catch (() => 1)) }\n", ""},
 	{"arrow-owns-coalesce", "export effect function f() { return a catch () => b ?? 1 }\n", ""},
 	{"paren-left", "export effect function f() { return b ?? (a catch () => 1) }\n", ""},
 	{"paren-whole", "export effect function f() { return (a catch function () { return 1 }) }\n", ""},
