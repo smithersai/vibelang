@@ -79,6 +79,7 @@ func FuzzFix(f *testing.F) {
 	for _, choices := range []string{"\x00\x07\x00\x00\x00", "\x01\x81\x01\x00\x01", "\x02\x82\x00\x01\x01\x01", "\x00\x80\x01\x01\x00", "\x01\xff\x00\x00\x01"} {
 		f.Add(optionMatchFixKey + choices)
 	}
+	f.Add(optionMatchFixKey + "\x00\x07\x00\x00\x00\x00\x00\x00\x01")
 	for _, data := range []string{"\x04\x00\x02", "\x14\x04\x03"} {
 		f.Add(trailingWhitespaceFixKey + data)
 	}
@@ -255,6 +256,13 @@ func fuzzFixProjects(f *testing.F, target string) {
 				for name, text := range r.Outputs {
 					if strings.HasSuffix(name, ".d.ts") && after.Outputs[name] != text {
 						Gap(t, "FuzzFix", "fix:legacy-data-method:declarations", "public declaration bytes changed: %s\nbefore:\n%s\nafter:\n%s", name, text, after.Outputs[name])
+					}
+				}
+			}
+			if directOption {
+				for _, d := range after.Diagnostics {
+					if d.Code() == 4839 {
+						Gap(t, target, "fix:direct-option-match:remaining", "safe Option choice still refused: %s\n%s", d.String(), Archive(fixed))
 					}
 				}
 			}

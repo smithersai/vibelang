@@ -226,6 +226,13 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	if g.isFn && g.span != nil && g.returns == "" && len(g.stages) == 0 {
 		if contextual := c.GetContextualType(call, checker.ContextFlagsNone); contextual != nil {
 			if signatures := c.GetSignaturesOfType(contextual, checker.SignatureKindCall); len(signatures) == 1 {
+				// Generic callbacks such as Option.match infer their return type
+				// from this still-unfixed generator. Its instantiated any channels
+				// are not a source contract and must not become an annotation.
+				decl := signatures[0].Declaration()
+				if decl == nil || decl.Type() == nil || !isEffectType(c, c.GetTypeFromTypeNode(decl.Type())) {
+					return g, ""
+				}
 				if returned := c.GetReturnTypeOfSignature(signatures[0]); isEffectType(c, returned) {
 					g.returns = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 				}

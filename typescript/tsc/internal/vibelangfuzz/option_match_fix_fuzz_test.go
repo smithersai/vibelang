@@ -29,6 +29,9 @@ func TestOptionMatchFixQuoted(t *testing.T) {
 // handler construction and getter reads. No second runtime oracle is needed.
 func optionMatchFixArchive(input string) string {
 	data := []byte(strings.TrimPrefix(input, optionMatchFixKey))
+	if len(data) > 8 && data[8]&1 != 0 {
+		return optionMatchProgramFixArchive(data)
+	}
 	pick := func(i int) byte {
 		if len(data) == 0 {
 			return 0

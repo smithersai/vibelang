@@ -1,0 +1,27 @@
+// expect-result: [7,7,-1,8,"failed","after"]
+export function choose(value: Option<number>) {
+  return Option.match(value, {
+    onNone: () => Effect.fail("missing"),
+    onSome: (n) => Effect.succeed(n),
+  })
+}
+
+export effect function chooseRun(value: Option<number>) {
+  return try Option.match(value, {
+    onNone: () => Effect.succeed(0),
+    onSome: (n) => Effect.succeed(n + 1),
+  })
+}
+
+export effect function chooseStatement(value: Option<number>) {
+  try Option.match(value, {
+    onNone: () => Effect.void,
+    onSome: (n) => Effect.fail(`boom ${n}`),
+  })
+  return "after"
+}
+
+export effect function main() {
+  const cold = choose(Option.some(7))
+  return [try cold, try cold, (choose(Option.none()) catch () => -1), try chooseRun(Option.some(7)), (chooseStatement(Option.some(1)) catch () => "failed"), try chooseStatement(Option.none())]
+}

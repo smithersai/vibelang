@@ -134,7 +134,8 @@ func matchStage(c *checker.Checker, stage *ast.Node) (*ast.Node, string) {
 func findMatchChains(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if optionMatchOf(c, node) && !inGeneratorBody(node) {
+		// Like a generator body, a generator in the arguments waits for EK1002.
+		if optionMatchOf(c, node) && !inGeneratorBody(node) && !holdsEffectGenerator(c, file, node) {
 			report(node, optionMatchRewrite(c, file, node), "Option.match", shortText(expressionText(file, node.Arguments()[0]), "value"), "Option's match API")
 		}
 		if chain := matchChainOf(c, node); chain != nil && !inGeneratorBody(node) {

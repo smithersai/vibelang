@@ -16,9 +16,9 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	if !optionMatchOf(c, call) {
 		return nil
 	}
-	if analyzerFor(c).runs(call) || holdsEffectValue(c, c.GetTypeAtLocation(call)) {
-		return &formRewrite{why: "No quick fix: the Option choice returns a program, which a native arm could run."}
-	}
+	// Only explicit try runs an Effect (VIP-5). Callback calls in the arms
+	// return their programs as data, exactly as Option.match does.
+	runs := analyzerFor(c).runs(call)
 	value, handlers := call.Arguments()[0], call.Arguments()[1]
 	if hasComment(file.Text()[nodeStart(file, call):nodeStart(file, value)]) || hasComment(file.Text()[value.End():nodeStart(file, handlers)]) || hasComment(file.Text()[handlers.End():call.End()]) {
 		return &formRewrite{why: "No quick fix: a comment stands between Option.match's arguments."}
@@ -77,8 +77,13 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	if ast.IsExpressionStatement(call.Parent) {
 		prefix = "{ const "
 	}
+	// Run only the selected program, retaining current scoped callback annotations.
+	run := ""
+	if runs {
+		run = "try "
+	}
 	text := prefix + input + " = " + expressionText(file, value) + "; const " + callbacks + handlersAnnotation + " = " + expressionText(file, handlers) +
-		"; const { onNone: " + none + ", onSome: " + some + " }" + destructureAnnotation + " = " + callbacks + "; match (" + input + ") { when " + option + ".Some(let " + payload + "): " + some + "(" + payload + "); default: " + none + "(); }; }"
+		"; const { onNone: " + none + ", onSome: " + some + " }" + destructureAnnotation + " = " + callbacks + "; match (" + input + ") { when " + option + ".Some(let " + payload + "): " + run + some + "(" + payload + "); default: " + run + none + "(); }; }"
 	if !ast.IsExpressionStatement(call.Parent) {
 		// A call/property/binary chain can begin an expression statement too.
 		// Keep do in expression position when this call supplies its first token.
@@ -92,4 +97,20 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 		}
 	}
 	return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{nodeStart(file, call), call.End(), text}}, description: "an eager native Option match"})
+}
+
+// holdsEffectGenerator reports whether node contains an Effect.gen, Effect.fn
+// or Effect.fnUntraced call of a function* that EK1002 rewrites. Until then
+// that generator is EK1002's error and its type is any: a handler type read
+// now would be wrong (TS2375), and a refusal here would block the EK1002 fix
+// this one waits for.
+func holdsEffectGenerator(c *checker.Checker, file *ast.SourceFile, node *ast.Node) bool {
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if g, _ := readGeneratorCall(c, file, n); g != nil && g.generator != nil && isGeneratorExpression(g.generator) {
+			return true
+		}
+		return n.ForEachChild(visit)
+	}
+	return node.ForEachChild(visit)
 }
