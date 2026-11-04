@@ -10,7 +10,7 @@ const parse = (key: string): number!string => effect {
 }
 
 const spanName = (): string!! => effect {
-  const span = try Effect.currentSpan catch () => undefined
+  const span = Effect.currentSpan catch () => undefined
   return span?.name ?? "no span"
 }
 

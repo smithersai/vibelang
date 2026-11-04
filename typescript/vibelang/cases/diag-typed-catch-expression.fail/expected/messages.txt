@@ -1,1 +1,0 @@
-A catch clause no longer tests a failure's type; write catch (e) and test e with match or is.

@@ -14,7 +14,7 @@ effect function load(q: string) {
 // expect-result: {"row":"row a true","failed":"Rejected","shadow":"local x","retried":"row b false"}
 export effect function main() {
   const row = try load("a")
-  const failed = try load("bad") catch () => "Rejected"
+  const failed = load("bad") catch () => "Rejected"
   const retried = try retry(tryPromise(() => queryDb("b")), { times: 1 })
   return { row, failed, shadow: try shadowed(), retried }
 }

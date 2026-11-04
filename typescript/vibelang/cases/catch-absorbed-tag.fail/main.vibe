@@ -13,7 +13,7 @@ class NotReady extends Data.TaggedError("NotReady")<{}> {}
 effect function read(): (string | undefined)!(Error | ApiError)! { return undefined }
 
 export const byTag = effect () =>
-  (try effect {
+  (effect {
     const host = try read()
     return (host ? host : throw new NotReady())
   }) catch effect (e) => match (e) {

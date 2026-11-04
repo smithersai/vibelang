@@ -11,7 +11,9 @@ import (
 
 const migrationOperandTarget = "FuzzMigrationEffectOperands"
 const migrationOperandQuote = "`e` is an Effect when its type is assignable to `Effect.Effect<any, any, any>`."
-const migrationOperandConsumersQuote = "Only the [operand test](#operand-test) of `try` (`EK0502`), `catch` (`EK0506`), `try.all` (`EK1801`) and `fork` (`EK1703`) uses assignability to `Effect.Effect<any, any, any>`, which `never` and `any` pass."
+const migrationOperandConsumersQuote = "The [operand test](#operand-test) of `try` (`EK0502`), `catch` (`EK0506`) and `fork` (`EK1703`) uses assignability to `Effect.Effect<any, any, any>`."
+const migrationOperandCollectionsQuote = "The four concurrent array operations require assignability to `ReadonlyArray<Effect.Effect<any, any, any>>` (`EK1801`)"
+const migrationOperandTopBottomQuote = "These are ordinary TypeScript assignability tests, with the project's compiler options; `any` and `never` pass."
 
 type migrationOperandRule struct {
 	key, declarations string
@@ -60,7 +62,7 @@ func TestMigrationEffectOperandsQuoted(t *testing.T) {
 		}
 	}
 	chapter := SpecText("002-running.md")
-	for _, quote := range []string{migrationOperandQuote, migrationOperandConsumersQuote} {
+	for _, quote := range []string{migrationOperandQuote, migrationOperandConsumersQuote, migrationOperandCollectionsQuote, migrationOperandTopBottomQuote} {
 		if !strings.Contains(chapter, quote) {
 			t.Fatalf("Chapter 2 no longer says %q", quote)
 		}

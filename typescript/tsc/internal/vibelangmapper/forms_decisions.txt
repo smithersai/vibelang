@@ -357,14 +357,14 @@ typescript/vibelang/cases/carried18-plain-handler-nothrow.fail/main.vibe:4:10 la
 typescript/vibelang/cases/carried18-plain-handler-nothrow.fail/main.vibe:4:39 lambda effectFn table
 typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:15:22 lambda dual fallback
 typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:16:3 lambda effectFn table
-typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:16:8 lambda program table
+typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:16:4 lambda choice fallback
 typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:18:27 lambda dual fallback
 typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:19:12 lambda effectFn table
 typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:19:32 lambda dual fallback
 typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:21:14 lambda dual fallback
 typescript/vibelang/cases/catch-absorbed-tag/main.vibe:20:25 lambda plain fallback
 typescript/vibelang/cases/catch-absorbed-tag/main.vibe:21:3 lambda effectFn table
-typescript/vibelang/cases/catch-absorbed-tag/main.vibe:21:8 lambda program table
+typescript/vibelang/cases/catch-absorbed-tag/main.vibe:21:4 lambda choice fallback
 typescript/vibelang/cases/catch-absorbed-tag/main.vibe:23:27 lambda dual fallback
 typescript/vibelang/cases/catch-absorbed-tag/main.vibe:24:12 lambda effectFn table
 typescript/vibelang/cases/catch-absorbed-tag/main.vibe:24:32 lambda dual fallback
@@ -6132,7 +6132,7 @@ typescript/vibelang/cases/vip1-accept-try-paren-pipeline/main.vibe:6:48 byname p
 typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:12:18 lambda effectFn annotation
 typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:12:34 lambda choice fallback
 typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:13:16 lambda effectFn table
-typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:13:45 lambda effectFn table
+typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:13:41 lambda effectFn table
 typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:22:9 lambda effectFn annotation
 typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:24:7 lambda program table
 typescript/vibelang/cases/vip1-accept-withspan-catch/main.vibe:25:16 lambda choice fallback
@@ -6472,7 +6472,7 @@ typescript/vibelang/cases/vip6-scoped-global/main.vibe:5:14 lambda plain fallbac
 typescript/vibelang/cases/vip6-scoped-global/main.vibe:5:44 lambda plain table
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:11:25 lambda plain table
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:17:18 lambda effectFn table
-typescript/vibelang/cases/vip6-try-promise-global/main.vibe:17:40 lambda effectFn table
+typescript/vibelang/cases/vip6-try-promise-global/main.vibe:17:36 lambda effectFn table
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:18:29 byname program table
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:18:40 lambda plain table
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:6:22 lambda plain fallback
