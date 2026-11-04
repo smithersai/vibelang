@@ -6,6 +6,8 @@ import (
 )
 
 func TestCallableOwnNameContext(t *testing.T) {
+	// rule-evidence: docs/design/src/900-appendices.md#45c724db94743400 — Chapter 900: method property names
+	// rule-evidence: docs/design/src/900-appendices.md#46a8f711c214f642 — Chapter 900: declaration and overload own names
 	for _, test := range []struct {
 		name, source string
 		want         int

@@ -19,6 +19,7 @@ import (
 // no declarations: the fix's tsconfig is often not the one that builds the
 // package's declarations.
 func TestServiceClassFixKeepsDeclarations(t *testing.T) {
+	// rule-evidence: docs/design/src/007-tooling.md#4b00a9276c4ace5d — Chapter 007: exported service class shape
 	source := `import { Context } from "effect"
 
 /** The flow work belongs to. */
