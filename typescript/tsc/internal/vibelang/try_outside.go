@@ -4,6 +4,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // try runs an Effect only in effect code (VIP-1, VIP-5): the body of the
@@ -227,16 +228,22 @@ func effectMarkerEdit(file *ast.SourceFile, fn *ast.Node) (sourceEdit, string, b
 		start := nodeStart(file, fn)
 		return sourceEdit{start, start, "effect "}, "effect (…) =>", true
 	case ast.KindFunctionDeclaration, ast.KindFunctionExpression:
-		from := nodeStart(file, fn)
-		loc := functionWord.FindStringIndex(file.Text()[from:fn.End()])
-		if loc == nil {
-			return sourceEdit{}, "", false
+		// Only a real keyword in the declaration head can receive the marker.
+		// A comment containing function must remain byte-for-byte unchanged.
+		s := scanner.GetScannerForSourceFile(file, nodeStart(file, fn))
+		for s.Token() != ast.KindFunctionKeyword {
+			if s.Token() == ast.KindEndOfFile || s.TokenStart() >= fn.End() ||
+				s.Token() == ast.KindOpenParenToken || s.Token() == ast.KindOpenBraceToken {
+				return sourceEdit{}, "", false
+			}
+			s.Scan()
 		}
+		from := s.TokenStart()
 		name := "(…)"
 		if fn.Name() != nil {
 			name = fn.Name().Text() + "(…)"
 		}
-		return sourceEdit{from + loc[0], from + loc[0], "effect "}, "effect function " + name, true
+		return sourceEdit{from, from, "effect "}, "effect function " + name, true
 	case ast.KindMethodDeclaration:
 		start := nodeStart(file, fn.Name())
 		return sourceEdit{start, start, "effect "}, "effect " + nodeText(file, fn.Name()) + "(…)", true // a name may be computed

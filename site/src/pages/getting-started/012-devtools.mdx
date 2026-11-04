@@ -86,6 +86,8 @@ Use a throw statement to fail an Effect: `if (value === undefined) throw new Mis
 
 The server exposes TypeScript completions through the VibeLang checker, service member types included. Catch-specific completions are not implemented. Other diagnostic messages suggest repairs as text. Use an effect function and `try` for VibeLang sequencing.
 
+The `EK0501` editor quick fix marks an ordinary function `effect`, so callers receive an unrun Effect. Header comments stay unchanged while the modifier is added before the declaration’s `function` keyword.
+
 ### Move a TypeScript module body to a file
 
 Place the cursor in a top-level `module parse { … }` declaration and request **Move module to a .ts file** (VIP-40). The refactor writes the TypeScript body to `parse.ts` beside the `.vibe` source and rewrites its identifier imports and re-exports to that file. Other module declarations stay in place. The new file keeps the body's comments, JSDoc, relative imports and runtime behavior.
