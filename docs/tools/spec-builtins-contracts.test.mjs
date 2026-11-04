@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import fc from "fast-check"
 import { block, chapter, read, run } from "./spec-witness.mjs"
 
 test("built-in thrown contracts use the selected signature's entire admitted domain", () => {
@@ -53,9 +54,40 @@ for (const method of ["padStart", "padEnd"]) {
 })
 
 
-test("VIP-4 publishes full declared domains and the padding exception", () => {
-  const text = process.env.SPEC_VIP4 ? readFileSync(process.env.SPEC_VIP4, "utf8") : read("docs/design/vips/0004-throw.md")
-  assert.match(text, /full admitted receiver and parameter types/)
-  assert.match(text, /Safe literals or local range proofs/)
-  assert.match(text, /padStart.*padEnd.*ToLength/)
+
+// Accepted docs-tools disposition 39: VIP-4 owns foreign signatures and
+// generated annotations; its linked chapter owns the native validation domain.
+const requiredNativeClauses = [
+  "receiver or environment state is implicit",
+  "It is never tracked, and it is a defect in effect code",
+  "any input admitted by the selected signature's receiver and parameter types",
+  "A safe literal does not erase it",
+  "a resource limit or stack overflow",
+  "`padStart` and `padEnd` use `ToLength`",
+  "padding's own thrown type is `never`",
+]
+const requiredVipClauses = [
+  "no `@throws` means it throws `unknown`",
+  "no `throw` reachable from well-typed input",
+  "an npm signature needs its own annotation",
+]
+function checkBuiltinAuthority(vip, native) {
+  for (const clause of requiredVipClauses) assert.ok(vip.includes(clause), "VIP-4: " + clause)
+  for (const clause of requiredNativeClauses) assert.ok(native.includes(clause), "003: " + clause)
+}
+test("VIP-4 and its linked chapter preserve full domains, defects and the padding exception", () => {
+  const vip = process.env.SPEC_VIP4 ? readFileSync(process.env.SPEC_VIP4, "utf8") : read("docs/design/vips/0004-throw.md")
+  assert.match(vip, /\*\*Status:\*\* accepted/)
+  assert.ok(vip.includes("../src/003-failures.md"))
+  checkBuiltinAuthority(vip, chapter("003-failures"))
+})
+test("mutations cannot erase native domains or grant npm inventory an implicit contract", () => {
+  const vip = read("docs/design/vips/0004-throw.md"), native = chapter("003-failures")
+  fc.assert(fc.property(fc.boolean(), fc.nat(), (isVip, n) => {
+    const clauses = isVip ? requiredVipClauses : requiredNativeClauses
+    const clause = clauses[n % clauses.length]
+    assert.throws(() => checkBuiltinAuthority(
+      isVip ? vip.replace(clause, "[removed]") : vip,
+      isVip ? native : native.replace(clause, "[removed]")))
+  }), { seed: 1104105, numRuns: 200 })
 })
