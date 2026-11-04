@@ -354,7 +354,7 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	run := tx.wrapGenerator("fnUntraced", node, generator)
 	run.Loc = core.UndefinedTextRange() // the function keeps the source's comments
 	if usesThis(node.Body()) {
-		run = f.NewFunctionBindCall(run, f.NewThisExpression(), nil /*argumentsList*/)
+		run = tx.generated(tx.runtimeCall("$bindMethod", run, f.NewThisExpression()))
 	}
 	produce := tx.runtimeCall("$produce", run)
 	block := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(produce)}), true /*multiLine*/)

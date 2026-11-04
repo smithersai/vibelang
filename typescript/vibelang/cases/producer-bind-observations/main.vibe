@@ -1,0 +1,21 @@
+class Counter {
+ n=7
+ effect *run() { yield this.n }
+}
+const counter=new Counter()
+export const classMethod=()=>counter.run()
+const object={n:11,effect *run(){yield this.n}}
+export const objectMethod=()=>object.run()
+class StaticCounter {
+ static n=13
+ static effect *run(){yield this.n}
+}
+export const staticMethod=()=>StaticCounter.run()
+class PrivateCounter {
+ n=17
+ effect *#run(){yield this.n}
+ run(){return this.#run()}
+}
+const privateCounter=new PrivateCounter()
+export const privateMethod=()=>privateCounter.run()
+export effect function* noReceiver(){yield 19}

@@ -343,6 +343,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `Option.match` repairs could introduce an argument-count error when `onSome` ignored its payload; the repair now preserves the callback type and passes the original payload safely.
 
+- Creating a producer that uses `this` could invoke a modified `Function.prototype.bind` or throw before returning its stream. Receiver capture now preserves the native counterpart without that extra property read.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.
