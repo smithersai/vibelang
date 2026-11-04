@@ -190,6 +190,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The throw-expression and API-identity pages exposed private review attribution. They now state the same public rules, retaining the migration prerequisite, diagnostic severities and generated-contract exception.
 - A migration regression test still treated a retained warning as a blocking error; it now checks the warning's provenance record and verifies that promoting it to an error still blocks migration.
 - Migration could stop with an unknown function-model declaration when the compiler emitted `@throws {never}`; it now recognizes that generated contract while still rejecting unknown declaration shapes.
+- Migration load-path tests failed on clean installs because `esbuild` was undeclared; the compiler test package now installs it explicitly and the tests use that copy.
 
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.

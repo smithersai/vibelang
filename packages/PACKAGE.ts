@@ -129,6 +129,16 @@ const migratePlainProbe = S.Shell.Test({
   timeout: "5m"
 })
 
+const migrateNativeLoadpaths = S.Shell.Test({
+  summary: "Check migrated native load paths with the explicitly installed esbuild.",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && cd ../.. && " +
+    "node --test .smithers/flows/migrate/test/native-loadpaths.property.test.mjs",
+  data: [migrationSources, ...install, S.file("compiler/package.json"), S.file("compiler/bun.lock")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
+  sandbox: "none",
+  timeout: "3m"
+})
+
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
@@ -212,6 +222,7 @@ export const Package = S.Package({
     "migrate-record-provenance": migrateRecordProvenance,
     "migrate-warning-provenance": migrateWarningProvenance,
     "migrate-plain-probe": migratePlainProbe,
+    "migrate-native-loadpaths": migrateNativeLoadpaths,
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,

@@ -11,6 +11,7 @@ import { loadTypeScript } from "../lib/declarations.mjs"
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const require = createRequire(join(repo, "packages/runtime/package.json"))
+const compilerRequire = createRequire(join(repo, "packages/compiler/package.json"))
 const fc = require("fast-check")
 const ts = loadTypeScript([join(repo, "packages/runtime")])
 const put = (root, file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
@@ -28,7 +29,7 @@ for (const [name, runner, diagnostic] of [
   const files = JSON.parse(readFileSync(new URL("./corpus/" + name + ".json", import.meta.url)))
   for (const [file, text] of Object.entries(files)) put(root, file, text)
   mkdirSync(join(root, "node_modules"), { recursive: true })
-  symlinkSync(dirname(require.resolve("esbuild/package.json")), join(root, "node_modules/esbuild"))
+  symlinkSync(dirname(compilerRequire.resolve("esbuild/package.json")), join(root, "node_modules/esbuild"))
   // The .ts twin runs with exactly the original command, without a loader.
   const vibe = Object.keys(files).find(file => file.endsWith(".vibe"))
   const native = vibe.replace(/\.vibe$/, ".ts")
@@ -81,7 +82,7 @@ test("native load paths: runtime import forms work, type-only and protected sour
         assert.equal(read(root, "src/unchanged.test.ts"), protectedText)
         assert.equal(read(root, "src/types.ts"), typeText)
         // esbuild consumes every native extension; its call and options are unchanged.
-        const { build } = require("esbuild")
+        const { build } = compilerRequire("esbuild")
         const bundle = await build({ entryPoints: [join(root, "src/index." + ext)], bundle: true, format: "esm", platform: "browser", write: false, logLevel: "silent" })
         const actual = await import("data:text/javascript;base64," + Buffer.from(bundle.outputFiles[0].text).toString("base64"))
         assert.equal(actual.value, answer)

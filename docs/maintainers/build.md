@@ -1560,3 +1560,9 @@ and retained-declaration provenance through migration's compile stage. A warning
 is retained with its location in `warningExceptions`; promoting it to an error
 blocks the style and new-error checks in either provenance case. The full global
 error property corpus remains in the migration suite.
+
+The `//packages:migrate-native-loadpaths` target installs `esbuild` from the
+compiler package's locked development dependencies. The load-path tests resolve
+it from that package rather than relying on an incidental runtime install.
+The target retains both original Node/esbuild commands, protected test bytes,
+generated import forms and idempotent routing and restoration checks.
