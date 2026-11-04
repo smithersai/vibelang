@@ -431,6 +431,12 @@ func isPreludeName(name string) bool {
 	return ok || effectglobals.Names[name]
 }
 
+// scopeKeywordHelper names compiler support for interruption statements.
+// VIP-6 excludes these keyword spellings from ordinary source globals.
+func scopeKeywordHelper(name string) bool {
+	return name == "interruptible" || name == "uninterruptible"
+}
+
 // resolvePreludeName resolves name, which no scope around location declares,
 // when location is in a .vibe file: a prelude name to the runtime's export,
 // and the name of an effect root export or subpath module to that export
@@ -482,6 +488,14 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 		location.Flags&(ast.NodeFlagsVibeLangIntrinsic|ast.NodeFlagsReparsed) == 0 &&
 		implicitEffectModuleDisabled(c, file, name) {
 		return nil
+	}
+	// Scope statements resolve their flagged compiler helpers. Source value
+	// and type-query references use qualified Effect functions (VIP-6).
+	if scopeKeywordHelper(name) && location.Flags&(ast.NodeFlagsVibeLangIntrinsic|ast.NodeFlagsReparsed) == 0 {
+		if ast.IsIdentifier(location) && location.Text() == name ||
+			ast.IsShorthandPropertyAssignment(location) && location.Name() != nil && location.Name().Text() == name {
+			return nil
+		}
 	}
 	state := preludeStateOf(c)
 	symbol := preludeSymbol(c, state, file, name)
@@ -565,7 +579,7 @@ func preludeSpellingCandidates(c *checker.Checker, location *ast.Node, meaning a
 	state := preludeStateOf(c)
 	var candidates []*ast.Symbol
 	offer := func(name string) {
-		if !strings.HasPrefix(name, "$") && !implicitEffectModuleDisabled(c, file, name) {
+		if !strings.HasPrefix(name, "$") && !scopeKeywordHelper(name) && !implicitEffectModuleDisabled(c, file, name) {
 			if symbol := preludeSymbol(c, state, file, name); symbol != nil {
 				candidates = append(candidates, symbol)
 			}

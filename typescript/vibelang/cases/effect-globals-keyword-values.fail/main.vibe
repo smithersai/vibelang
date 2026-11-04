@@ -1,0 +1,4 @@
+// expect: TS2552
+import * as Effect from "effect/Effect"
+export const first: typeof Effect.interruptible = interruptible
+export const second: typeof Effect.uninterruptible = uninterruptible

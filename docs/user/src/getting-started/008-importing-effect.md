@@ -36,6 +36,8 @@ These globals follow [VIP-6](https://github.com/smithersai/vibelang/blob/main/do
 | A JavaScript global | `Effect.undefined` |
 | A VibeLang keyword | `Effect.match`, `Effect.when`, `Effect.service`, `Effect.provide`, `Effect.interruptible`, `Effect.uninterruptible` |
 
+Store or pass the native interruption functions as `Effect.interruptible` and `Effect.uninterruptible`. The statement forms are `interruptible { … }` and `uninterruptible { … }`.
+
 The compiler reads this list from the installed `effect` when it is built, so it follows the pinned Effect version's exports. The prelude's own names win over an export of the same name: `sync`, `callback`, `interrupt`, and `yieldNow` are the prelude's. To turn these globals off and write every one as `Effect.x`, set `"vibe": { "effectGlobals": false }` in `tsconfig.json` ([options](012-devtools.md)).
 
 JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:

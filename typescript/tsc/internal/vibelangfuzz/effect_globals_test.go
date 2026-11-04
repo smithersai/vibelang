@@ -89,6 +89,27 @@ func effectGlobalsProject(name string, mode int) (project Project, wantError boo
 	return Single("export const probe = " + name + ";\n"), false
 }
 
+// Clashing names test source contexts independently of ordinary globals.
+// Every shape still requires the native Effect export's type.
+func effectGlobalClashProject(name string, mode int) Project {
+	prefix := "import * as Native from \"effect/Effect\";\n"
+	body := fmt.Sprintf("export const probe: typeof Native.%s = %s;\n", name, name)
+	config := ""
+	switch mode {
+	case effectGlobalLocal:
+		body = fmt.Sprintf("export type Query = typeof %s;\ndeclare const candidate: Query;\nexport const probe: typeof Native.%s = candidate;\n", name, name)
+	case effectGlobalOff:
+		config = effectGlobalsConfig("{ \"effectGlobals\": false }")
+	case effectGlobalImport:
+		body = fmt.Sprintf("const box = { %s };\nexport const probe: typeof Native.%s = box.%s;\n", name, name, name)
+	case effectGlobalIdentity:
+		body = fmt.Sprintf("const read = () => %s;\nexport const probe: typeof Native.%s = read();\n", name, name)
+	case effectGlobalModulesOff:
+		config = effectGlobalsConfig("{ \"effectModules\": false }")
+	}
+	return Project{Files: map[string]string{"main.vibe": prefix + body}, Config: config}
+}
+
 // compileEffectGlobal returns the keys of the project's diagnostics when it
 // has an error, and nil when it has none.
 func compileEffectGlobal(t *testing.T, w *Workspace, project Project) []DiagnosticKey {
@@ -139,7 +160,7 @@ func FuzzEffectGlobals(f *testing.F) {
 			if qualified := compileEffectGlobal(t, w, Single("export const probe = Effect."+name+";\n")); qualified != nil {
 				Gap(t, effectGlobalsTarget, key, "VIP-6: %s is %s, so it is used as Effect.%s; got %v", name, why, name, qualified)
 			}
-			if bare := compileEffectGlobal(t, w, Single("export const probe: typeof Effect."+name+" = "+name+";\n")); bare == nil {
+			if bare := compileEffectGlobal(t, w, effectGlobalClashProject(name, mode)); bare == nil {
 				Gap(t, effectGlobalsTarget, key, "VIP-6: %s is %s, so it is not a global, but it resolved bare", name, why)
 			}
 		} else {

@@ -474,6 +474,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Conformance checks incorrectly treated live Vibe modules as arbitrary-extension declarations. Native consumer checks now compare admission and emitted imports with TypeScript's source twins, including disabled rewriting and stale sidecars.
 
+- Bare `interruptible` and `uninterruptible` could be stored as global functions. These keyword names now report missing bindings; use `Effect.interruptible` or `Effect.uninterruptible` for function values.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

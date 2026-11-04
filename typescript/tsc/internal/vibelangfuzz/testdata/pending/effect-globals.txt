@@ -9,7 +9,5 @@ FuzzEffectGlobals off:interrupt compiler VIP-6: vibe.effectGlobals false leaves 
 FuzzEffectGlobals identity:interrupt compiler VIP-6: bare interrupt is the runtime's function, not Effect's export; lane fix-vip-globals-2
 FuzzEffectGlobals off:yieldNow compiler VIP-6: vibe.effectGlobals false leaves the runtime's yieldNow in scope; lane fix-vip-globals-2
 FuzzEffectGlobals identity:yieldNow compiler VIP-6: bare yieldNow is the runtime's function, not Effect's export; lane fix-vip-globals-2
-FuzzEffectGlobals clash:interruptible compiler VIP-6: interruptible is a keyword, but the runtime's function still resolves bare; lane fix-vip-globals-2
-FuzzEffectGlobals clash:uninterruptible compiler VIP-6: uninterruptible is a keyword, but the runtime's function still resolves bare; lane fix-vip-globals-2
 FuzzEffectGlobals corpus:global-sync compiler VIP-6: minimized corpus reproduction of global:sync; lane fix-vip-globals-2
 FuzzEffectGlobals corpus:global-callback compiler VIP-6: minimized corpus reproduction of global:callback; lane fix-vip-globals-2

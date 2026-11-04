@@ -1,0 +1,10 @@
+// expect-result: 3
+export effect function main() {
+  let total = 0
+  uninterruptible {
+    total += 1
+    restore { total += 1 }
+    interruptible { total += 1 }
+  }
+  return total
+}

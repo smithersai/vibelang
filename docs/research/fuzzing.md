@@ -10,6 +10,8 @@ Spec quote checks from independent fuzz targets need distinct Go names. Keep eac
 
 `FuzzTryOperationElements` checks the operation call in emitted JavaScript, not the helper import or the enclosing function wrapper. Both runtime helpers and direct `Effect.all` calls must construct their element Effects without an added `Effect.suspend`. Import-only controls, tail-completion records and lazy-element mutants test the oracle itself. Tail transport may separate construction from delegation; execution is checked by `FuzzVIPDifferential`. Keyed seeds retain every original operation shape and cover parenthesized, nested-running and shadowed `try.allSettled` literals.
 
+The `FuzzEffectGlobals` clash inputs cover direct values, type queries, object shorthand, closures and both global/module switches against the native Effect export type. Keyword spellings stay unavailable as global values while compiler-generated interruption statements retain their helper bindings.
+
 ## Quick-fix behavior oracle
 
 `FuzzQuickFixBehavior` reads the EK inventory from the compiler's registered
