@@ -41,11 +41,11 @@ function violations(key, source) {
     require(!/0040-throw-expressions/.test(failures), "VIP-40 collides with modules")
   }
   if (key === "OPUS-13" && text("src/005-services.md").includes("service Name: Type")) {
-    require(/ServiceShapeDeclaration\s*=\s*ServiceStart TypeParameters\? ":" Type/.test(appendix), "missing whole-shape grammar")
-    require(/ServiceShapeMember\s*=\s*KeyMember \| DefaultMember \| Member/.test(appendix), "missing body recovery grammar")
+    require(/ServiceDeclaration\s*=[\s\S]*?\|\s*ServiceStart TypeParameters\? ":" Type "\{" \(ServiceMember Separator\)\* "\}"/.test(appendix), "missing whole-shape grammar")
+    require(/only KeyMember and DefaultMember are admitted; other members parse for EK0902/.test(appendix), "missing body recovery grammar")
     for (const file of ["src/005-services.md", "vips/0009-service-declarations.md"]) {
       require(!text(file).includes("is the only way to declare a service"), `${file}: excludes the whole shape`)
-      require(text(file).includes("the required body admits only the existing `key` and `defaultValue` members"), `${file}: missing body restriction`)
+      require(/[Tt]he required body admits only the existing `key` and `defaultValue` members/.test(text(file)), `${file}: missing body restriction`)
       if (file.startsWith("src/")) require(/\|[^\n]*service Name: Type[^\n]*\| `EK0902` \|/.test(text(file)), `${file}: missing body diagnostic`)
     }
   }
@@ -111,4 +111,19 @@ test("OPUS-14: native async defaults and callbacks reject while foreign plain ca
   }
   const plain = () => { throwing(); return Promise.resolve(0) }
   assert.throws(plain, error => error === token)
+})
+
+test("OPUS-13: folded grammar retains exact shape and recovery restrictions", () => {
+  const current = published()
+  assert.deepEqual(violations("OPUS-13", current), [])
+  fc.assert(fc.property(fc.constantFrom(
+    'ServiceStart TypeParameters? ":" Type',
+    "only KeyMember and DefaultMember are admitted",
+    "other members parse for EK0902"
+  ), fc.nat(20), (clause, padding) => {
+    const appendix = current["src/900-appendices.md"]
+    assert.ok(appendix.includes(clause), clause)
+    const changed = { ...current, "src/900-appendices.md": "Unrelated prose.\n".repeat(padding) + appendix.replace(clause, "[removed]") }
+    assert.ok(violations("OPUS-13", changed).length > 0, clause)
+  }), { seed: 1104108, numRuns: 180 })
 })
