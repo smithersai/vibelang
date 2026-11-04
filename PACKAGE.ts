@@ -1271,11 +1271,24 @@ const targets = {
     [go, node, bun],
     "15m"
   ),
+  "http-request-pipe-rollback-controls": goVibelang(
+    "Canonical request pipelines retain safe data-first repairs and declaration contracts",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run '^(TestAlchemyDnsPureRequest|TestAlchemyRequestPipeKeepsObservableArguments)$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestPureRequestPipeReceiverQuoted|FuzzPureRequestPipeReceiver)$' ./internal/vibelangfuzz",
+    [],
+    "20m"
+  ),
   "service-member-diagnostic-ownership": goVibelang(
     "Each rejected service member reports once while generic, key and independent native errors remain",
     "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^(TestServiceGeneric.*|TestServiceKey.*|TestWholeServiceNameless.*|TestServiceCallSignatures.*|TestServiceConstructSignatures.*)$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^(TestService(Generic|Key)RecoveryQuoted|FuzzService(Generic|Key)WithRejectedMembers)$' ./internal/vibelangfuzz",
     [],
     "15m"
+  ),
+  "pure-request-pipe-receiver-controls": check(
+    "Canonical request pipeline repairs preserve native values and reject observable custom stages",
+    "cd typescript/tsc && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run '^(TestAlchemyDnsPureRequest|TestAlchemyRequestPipeKeepsObservableArguments|TestEffectPipeKeepsReceiverSensitiveStage|TestEffectPipeCapturesCustomStages|TestEffectPipeCaptureAvoidsWrittenIdentifiers|TestEffectPipeCaptureKeepsInterstageComments)$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestPureRequestPipeReceiverQuoted|FuzzPureRequestPipeReceiver)$' ./internal/vibelangfuzz && cd ../.. && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test packages/compiler/test/fix-dns-pure-request.property.test.mjs packages/compiler/test/effect-pipe-order.property.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"]],
+    [go, node, bun],
+    "20m"
   ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",

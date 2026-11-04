@@ -146,7 +146,8 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	}
 	callee := call.Expression()
 	stages := call.Arguments()
-	if isHttpRequestPipeline(c, call) {
+	requestPipeline := isHttpRequestPipeline(c, call)
+	if requestPipeline {
 		for _, stage := range stages {
 			stage = ast.SkipParentheses(stage)
 			if !ast.IsCallExpression(stage) || !isDataFirstStage(c, stage) || slices.ContainsFunc(stage.Arguments(), func(argument *ast.Node) bool { return !stableRequestPipeArgument(c, file, argument) }) {
@@ -179,7 +180,9 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	if hasComment(tail) {
 		return refuse("a comment stands before the .pipe's closing parenthesis")
 	}
-	if pipeStagesNeedCapture(c, stages) {
+	// Request setters were proven canonical and their arguments stable above.
+	// They can keep the data-first form without changing construction order.
+	if !requestPipeline && pipeStagesNeedCapture(c, stages) {
 		return capturedEffectPipe(file, call)
 	}
 	var edits []sourceEdit
@@ -236,6 +239,12 @@ func pipeStageReceiverSafe(c *checker.Checker, stage *ast.Node) bool {
 		callee = callee.Expression()
 	}
 	if module, _ := effectMember(c, callee); module != "" {
+		return true
+	}
+	// Canonical data-first request setters live in Effect's nested HTTP
+	// module. Their partially applied stages do not observe a receiver,
+	// just like the top-level Effect operators recognized above.
+	if ast.IsCallExpression(inner) && isDataFirstStage(c, inner) {
 		return true
 	}
 	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(stage), checker.SignatureKindCall)
