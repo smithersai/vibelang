@@ -9,6 +9,7 @@ import (
 
 // TestArmSeparatorFix checks that EK0701's quick fix writes ; at the end of an
 // arm, and over a comma.
+// Chapter 004: mandatory final and intermediate separators with insert-semicolon quick fix; rule-evidence: docs/design/src/004-match.md#29ba303c88b4c2c1
 func TestArmSeparatorFix(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, source, want string }{

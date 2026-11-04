@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+function probe(): unknown {
+const xs: unknown[][] = [[], [undefined], [1], [1,2]]
+return xs.map(s => match (s) { when [1?]: true; default: false; })
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: optional-list; rule-evidence: docs/design/src/004-match.md#0888a8eb71458987

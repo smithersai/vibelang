@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+function probe(): unknown {
+const values: unknown[] = ["ready", "other", 0, null, {}, Symbol("x")]
+return values.map(s => match (s) { when `ready`: "hit"; default: "miss"; })
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: template-value; rule-evidence: docs/design/src/004-match.md#100c0bc4f3c3e01c

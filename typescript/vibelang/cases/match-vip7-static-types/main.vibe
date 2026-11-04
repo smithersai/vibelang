@@ -19,3 +19,5 @@ export function main():Effect.Effect<readonly unknown[]> { return Effect.sync(()
 // VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#1bbfdfdf04443189
 // VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#e86be2620ad45c2e
 // VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#cf9538082a414009
+
+// Chapter 004: match-vip7-static-types; rule-evidence: docs/design/src/004-match.md#83375a7dab9805c7

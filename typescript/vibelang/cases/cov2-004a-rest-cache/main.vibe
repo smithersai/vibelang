@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+function probe(): unknown {
+let reads = 0
+const s = { get value() { return ++reads } }
+const result = match (s) { when { value: 0 }: 0; when { ...let rest }: rest.value; default: -1; }
+return [result, reads]
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: rest-cache; rule-evidence: docs/design/src/004-match.md#5bd3ef3b8719bbb1

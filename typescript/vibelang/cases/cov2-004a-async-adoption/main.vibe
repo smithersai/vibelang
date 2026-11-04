@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+function compute(): Promise<number> { return async match (await Promise.resolve(true)) { when true: await Promise.resolve(7); default: Promise.resolve(0); } }
+export function main(): Effect.Effect<unknown> { return Effect.promise(async () => { const value: number = await compute(); return value }) }
+// Chapter 004: async-adoption; rule-evidence: docs/design/src/004-match.md#facba9e0c9c661bc

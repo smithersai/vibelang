@@ -1,0 +1,11 @@
+import { Effect } from "effect"
+function probe(): unknown {
+let bounds = 0
+function bound() { bounds++; return 2 }
+const xs: unknown[] = [1,2,3,NaN,{},"1",1n]
+const result = xs.map(s => [s is <= bound(), s is >= bound()])
+return [result,bounds]
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: inclusive-relations; rule-evidence: docs/design/src/004-match.md#a593be56b5088936
+// Chapter 004: inclusive-relations; rule-evidence: docs/design/src/004-match.md#d81bc58566c3c767

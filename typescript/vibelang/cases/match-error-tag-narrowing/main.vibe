@@ -55,3 +55,5 @@ export function fallback(s: unknown) {
 // VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#c9749d36c585a505
 // VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#7fd68ac4218d7498
 // VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#54b87e136a348914
+
+// Chapter 004: match-error-tag-narrowing; rule-evidence: docs/design/src/004-match.md#ace4b0704e79dafe

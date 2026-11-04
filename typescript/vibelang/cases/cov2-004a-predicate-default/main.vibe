@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+function probe(): unknown {
+function isText(s: string | number): s is string { return typeof s === "string" }
+function classify(s: string | number) { return match (s) { when isText: s.length; default: s.toFixed(0); } }
+return [classify("abc"),classify(7)]
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: predicate-default; rule-evidence: docs/design/src/004-match.md#74a4feed8e9bd54a

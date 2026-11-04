@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+function probe(): unknown {
+  const log: string[] = []
+  function* numbers() { try { yield 1; yield 2 } finally { log.push("closed") } }
+  const value = match (numbers()) { when [let a, ...]: a; default: -1; }
+  function first() { return match (numbers()) { when [let a, ...]: do { return a }; default: -1; } }
+  return [value, first(), log]
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: finish-value-jump; rule-evidence: docs/design/src/004-match.md#d72a5e504bac7e01
+// Chapter 004: finish-value-jump; rule-evidence: docs/design/src/004-match.md#0e03cd8d3acfe30b
+// Chapter 004: finish-value-jump; rule-evidence: docs/design/src/004-match.md#9aff0f328fbfc879

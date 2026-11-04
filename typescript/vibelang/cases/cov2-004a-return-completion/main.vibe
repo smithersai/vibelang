@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+export effect function main(): unknown!! {
+  const ignored = match (true) { default: do { return 7 }; }
+  return 0
+}
+// Chapter 004: return-completion; rule-evidence: docs/design/src/004-match.md#4eb037b6c08e18bd

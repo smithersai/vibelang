@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+import { iterator } from "./native.js"
+function probe(): unknown {
+  const log: string[] = []
+  let error: unknown
+  try { match (iterator(log)) { when [0]: 0; default: 1; } } catch (e) { error = e }
+  return [String(error), log]
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: finish-prefix; rule-evidence: docs/design/src/004-match.md#2f4ea13e2b627350

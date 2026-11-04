@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+function* numbers(log: string[]) { try { yield 1; yield 2 } finally { log.push("closed") } }
+effect function typed(log: string[]) { return match (numbers(log)) { when [let a, ...]: throw "bad"; default: 0; } }
+export effect function main(): unknown!! { const log: string[] = []; const result = try exit(typed(log)); return [result._tag, log] }
+// Chapter 004: effect-abandon; rule-evidence: docs/design/src/004-match.md#b56dc2f5a674d86f
+// Chapter 004: effect-abandon; rule-evidence: docs/design/src/004-match.md#bb661f33f3604f31

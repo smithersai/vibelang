@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+function probe(): unknown {
+const xs: number[][] = [[9,3], [9,8,3], [], [9]]
+return xs.map(s => match (s) { when [,,3]: true; default: false; })
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// Chapter 004: elisions; rule-evidence: docs/design/src/004-match.md#23a037de8c6844f4
+// Chapter 004: elisions; rule-evidence: docs/design/src/004-match.md#64482617864dee31
