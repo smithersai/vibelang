@@ -27,7 +27,7 @@ func TestSchemaOptionalMigrationRuntime(t *testing.T) {
 		{"attached-doc", "", "export schema error E {\n /** status docs */\n status?: number; get label() { return \"kept\" } }"},
 		{"prelude", "", "export schema error E { status?: number; get label() { return \"kept\" } }"},
 		{"named-import", "", "export schema error E { status?: number; get label() { return \"kept\" } }"},
-		{"family", "", "export abstract schema error Parent { status?: number; get label() { return \"kept\" } }\nexport schema error E extends Parent {}"},
+		{"family", "", "export schema error Parent { status?: number; get label() { return \"kept\" } }\nexport schema error E { status?: number; get label() { return \"kept\" } }\nexport type Family = Parent | E"},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			prefix := row.prefix

@@ -13,6 +13,7 @@ const schemaOptionalDefaultQuote = "| `name?: T` / `T?` | `Schema.optional(S)`: 
 
 func TestSchemaExactOptionalQuoted(t *testing.T) {
 	chapterSays(t, "006-data.md", "| `name?: T \\| undefined` / `(T \\| undefined)?` | `Schema.optional(S)` | `Schema.optional(S)` |")
+	chapterSays(t, "003-failures.md", "| an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | `EK2117` |")
 	chapterSays(t, "007-tooling.md", "A rewrite that can't preserve types, behavior and declaration output refuses at that site")
 	if !strings.Contains(SpecText("006-data.md"), schemaOptionalDefaultQuote) {
 		t.Fatalf("006-data.md no longer contains %q", schemaOptionalDefaultQuote)
@@ -26,6 +27,9 @@ func TestSchemaExactOptionalQuoted(t *testing.T) {
 func FuzzSchemaExactOptionalMigration(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
+	for _, mode := range []uint8{0, 7, 8, 15, 16, 35, 64, 192} {
+		f.Add("smithers-schema-error-union", mode)
+	}
 	for _, key := range []string{"schema", "schema-error", "tuple", "data", "nested-native", "smithers-jev-session-checker", "t3code-safari-cookies", "smithers-retry-policy", "t3code-explicit-optional-codec"} {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(7))
@@ -89,6 +93,18 @@ func FuzzSchemaExactOptionalMigration(f *testing.F) {
 		case "schema-error":
 			source = "export schema error S { value?: " + typ + " }\n"
 			twin = "export class S extends " + alias + ".TaggedError<S>()(\"S\", { value: " + optional + " }) {}\n"
+		case "smithers-schema-error-union":
+			// Native errors group by a union, not by inherited tags. Each
+			// alternative keeps its own optional codec and declaration.
+			source = "export schema error Parent { value?: " + typ + " }\nexport schema error S { value?: " + typ + " }\nexport type Family = Parent | S\n"
+			twin = "export class Parent extends " + alias + ".TaggedError<Parent>()(\"Parent\", { value: " + optional + " }) {}\nexport class S extends " + alias + ".TaggedError<S>()(\"S\", { value: " + optional + " }) {}\nexport type Family = Parent | S\n"
+			if mode&64 != 0 {
+				form := "schema error"
+				if mode&128 != 0 {
+					form = "error"
+				}
+				source = "export " + form + " Parent { value?: " + typ + " }\nexport " + form + " S extends Parent { value?: " + typ + " }\n"
+			}
 		case "smithers-jev-session-checker":
 			source = "export schema error JevProbeError { status?: " + typ + "; get label() { return \"kept\" } }\n"
 			twin = "export class JevProbeError extends " + alias + ".TaggedError<JevProbeError>()(\"JevProbeError\", { status: " + optional + " }) { get label() { return \"kept\" } }\n"
@@ -138,6 +154,22 @@ func FuzzSchemaExactOptionalMigration(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer before.Remove()
+		if key == "smithers-schema-error-union" && mode&64 != 0 {
+			found := false
+			for _, diagnostic := range Keys(before.Dir, before.Diagnostics) {
+				found = found || strings.Contains(diagnostic.String(), " EK2117:")
+			}
+			if !found {
+				Gap(t, "FuzzSchemaExactOptionalMigration", fmt.Sprintf("%s:inheritance-%d", key, mode&128), "Chapter 3 rejects inherited native errors: %v\n%s", before.Diagnostics, source)
+			}
+			fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{MigrationOnly: true})
+			for _, file := range fixed.Files {
+				if !strings.Contains(file.Text, "extends Parent") {
+					Gap(t, "FuzzSchemaExactOptionalMigration", fmt.Sprintf("%s:refusal-%d", key, mode&128), "a compatibility fix removed the unsupported inheritance clause\n%s", file.Text)
+				}
+			}
+			return
+		}
 		if HasError(before.Diagnostics) {
 			t.Fatalf("bad generated program: %v", before.Diagnostics)
 		}
