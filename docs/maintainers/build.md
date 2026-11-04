@@ -1223,3 +1223,5 @@ The hidden-native cache property requires real misses for the fixed .vibe leadin
 Migration helper, runtime enumeration, pinned formatter and workspace reachability property citations use Chapter 007’s current declaration-file and source-tool split. Citation refreshes preserve their generated inputs, negative controls, assertions and sample counts.
 
 The sidecar source-selection properties cite the current Chapter 007 summary of discovery, explicit-input overwrite protection and final physical/logical resolution. Keep each citation check together with its original native/stock compiler controls, literal corpus hashes, generated dimensions and sample counts.
+
+Async conversion integration tests retain every refusal fixture in the LSP project, then compile each positive repair in a separate project. This keeps intentionally invalid neighbours from stopping the runtime check. Converted async returns may use a Promise-adoption bridge, so the execution check awaits `Effect.runPromise`. The fresh data checks compare against stock TypeScript twins and exercise 100 generated primitive values while retaining getter and alias refusals.
