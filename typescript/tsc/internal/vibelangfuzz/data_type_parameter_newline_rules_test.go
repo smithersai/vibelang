@@ -32,6 +32,31 @@ func dataTypeParameterNewlineRules() []dataRule {
 			}
 		}
 	}
+	for _, op := range []string{"as", "satisfies"} {
+		for i, trivia := range []string{"\n", "\r\n", "\r", "\u2028", "\u2029", " /*\n*/ ", " // type\n"} {
+			for _, context := range []string{"statement", "parenthesized", "initializer", "return"} {
+				expr := "data " + op + trivia + "number"
+				source, code := expr, "EK1604"
+				chapter, quote := "006-data.md", "So `schema as T;`, `schema satisfies T;`, `data as T;` and `data satisfies T;` are syntax errors at statement start"
+				if context != "statement" {
+					chapter, quote = "900-appendices.md", "Anything else is ordinary TypeScript, where the word is an identifier"
+				}
+				switch context {
+				case "parenthesized":
+					source, code = "("+expr+")", ""
+				case "initializer":
+					source, code = "const value = "+expr, ""
+				case "return":
+					source, code = "function read() { return "+expr+" }", ""
+				}
+				rules = append(rules, dataRule{
+					name:    fmt.Sprintf("data-assertion-newline-%s-%d-%s", op, i, context),
+					chapter: chapter, quote: quote,
+					source: "const data = 1; " + source, code: code, owner: "parser",
+				})
+			}
+		}
+	}
 	return rules
 }
 

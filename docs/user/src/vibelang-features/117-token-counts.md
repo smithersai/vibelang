@@ -214,7 +214,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |
-| [Data](../data-types/073-data.md) | 4,000 |
+| [Data](../data-types/073-data.md) | 4,100 |
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |
