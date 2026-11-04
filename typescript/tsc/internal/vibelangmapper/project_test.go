@@ -958,7 +958,7 @@ func assertParses(t *testing.T, text string) {
 // silently turn unsupported field types into accepted schema declarations.
 func TestSchemaDiagnostics(t *testing.T) {
 	unsupported := Project("schema Event { run(): void; parts: Partial<{ a: string }> }\n", testContext)
-	assert.Equal(t, virtualBody(t, unsupported), "interface Event extends Schema.Schema.Type<typeof Event> {}\nconst Event = Schema.Struct({ run: Schema.Unknown, parts: Schema.mutableKey(Schema.Unknown) });\n")
+	assert.Equal(t, virtualBody(t, unsupported), "interface Event extends Schema.Schema.Type<typeof Event> {}\nconst Event = Schema.Struct({ run: Schema.Never, parts: Schema.mutableKey(Schema.Unknown) });\n")
 	assert.Equal(t, len(unsupported.Diagnostics), 2)
 
 	for _, source := range []string{

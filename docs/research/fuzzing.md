@@ -1073,3 +1073,5 @@ Error and schema-error declaration counterparts follow the 2026-11-04 VIP-27 rul
 Reserved Effect-expression names are owned by the VIP-17 parser diagnostic. Exact-count controls include functions, producers, escaped identifiers, Unicode prefixes, nested source contexts and the existing rename checks. The callable-name property retains its original count oracle and adds escaped-name mutations and keyed inputs.
 
 The retired-formatter and public compatibility-code fuzz targets register the same short-seed CPU guard as every other target. Their original seeds, mutation oracles and twelve-minute limit remain unchanged; `TestShortTargetsBudgeted` checks the registration.
+
+The mapper non-field schema oracle follows `f41346523af5` (`EK1505`): a method recovers as `Schema.Never`, while an unsupported field type keeps `Schema.Unknown`. Parameter and return-type mutations preserve the two recovery diagnostics and the rejecting method codec.
