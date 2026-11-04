@@ -1,6 +1,6 @@
 {
   "property": "opencode-explicit-sidecar-namespace",
-  "rule": "Type checkers work through `.d.vibe.ts`",
+  "rule": "Type checkers use `.d.vibe.ts`",
   "spec": "docs/design/src/007-tooling.md",
   "input": {
     "namespace": "CodeModeTool",

@@ -25,11 +25,11 @@ function render(input) {
  return {output,expected}
 }
 test("diagnostic migration oracles quote the current specification and flow policy",()=>{
- assert.ok(tooling.includes("Every VibeLang diagnostic has a code"));assert.ok(tooling.includes(quote));assert.ok(flow.includes(flowQuote))
+ assert.ok(tooling.includes("Keys are whole printed codes: `EK3801` and `EK38100` identify different rules."));assert.ok(tooling.includes(quote));assert.ok(flow.includes(flowQuote))
 })
 test("diagnostics retain errors, locations and notes across LF, CRLF and mixed streams",async()=>{
  await checkProperty(fc,{
-  name:"migration-diagnostic-line-endings",rule:"docs/design/src/007-tooling.md: Every VibeLang diagnostic has a code; "+quote,
+  name:"migration-diagnostic-line-endings",rule:"docs/design/src/007-tooling.md: Keys are whole printed codes: `EK3801` and `EK38100` identify different rules.; "+quote,
   command:"node --test test/diagnostics.property.test.mjs",regressions,numRuns:100,
   arbitrary:fc.record({ending:fc.constantFrom("lf","crlf","mixed"),headers:fc.array(fc.record({
    global:fc.boolean(),file:fc.constantFrom("src/testing.vibe","src/path with spaces/a.vibe","src/(generated)/a.vibe"),

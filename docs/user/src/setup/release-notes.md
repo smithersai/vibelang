@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Diagnostic-stream and explicit-sidecar regression checks now cite the current tooling rules; their diagnostic, resolution and property assertions stay intact.
+
 - Quick-fix regression checks now verify the refusal receipt for an existing factory type error while preserving independent body rewrites and second-run idempotence.
 
 - Migration helper regressions now recognize an unchanged public API through a bare reexport, while still rejecting changed types, changed JSDoc and unresolved declarations.
