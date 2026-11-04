@@ -17,6 +17,8 @@ func TestReadonlyFieldNoteOffersNoMutableMarker(t *testing.T) {
 		{"generic data field", "data Box<A> { Full { value: A }; Empty }\nexport const put = (b: Extract<Box<number>, { _tag: \"Full\" }>): void => { b.value = 2 }\n", "value"},
 		{"error field", "error Failed { attempts: number }\nexport const retry = (e: Failed): void => { e.attempts = 2 }\n", "attempts"},
 		{"error quoted field", "error Failed { \"retry-count\": number }\nexport const retry = (e: Failed): void => { e[\"retry-count\"] = 2 }\n", "\"retry-count\""},
+		{"schema error field", "schema error Rejected { reason: string }\nexport const retry = (e: Rejected): void => { e.reason = \"x\" }\n", "reason"},
+		{"schema error optional field", "schema error Rejected { note?: string }\nexport const retry = (e: Rejected): void => { e.note = \"x\" }\n", "note"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -35,7 +37,7 @@ func TestReadonlyFieldNoteOffersNoMutableMarker(t *testing.T) {
 				if strings.Contains(text, "mutable") {
 					t.Errorf("TS2540 note offers the retired mutable marker: %q", text)
 				}
-				want := "Every field of a data variant or an error is readonly, as in Effect's Data.TaggedEnum and Data.TaggedError; construct a new value with the changed " + c.field + " instead."
+				want := "Every field of a data variant, an error or a schema error is readonly, as in Effect's Data.TaggedEnum, Data.TaggedError and Schema.TaggedError; construct a new value with the changed " + c.field + " instead."
 				if !strings.Contains(text, want) {
 					t.Errorf("TS2540 note = %q, want %q", text, want)
 				}
