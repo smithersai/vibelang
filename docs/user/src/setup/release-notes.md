@@ -221,6 +221,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A bad `catch` operand could hide type errors in its arguments or handler. Those errors now remain visible alongside `EK0506`.
 
+- The no-throw wrapper conformance fixture still ran a catch operand with a redundant `try`. It now uses the catch expression’s existing join point and continues to check the wrapped foreign call.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

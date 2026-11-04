@@ -1059,3 +1059,5 @@ Generic-assertion repair cites the current parse-preservation sentence in chapte
 Explicit-fork migration cites the current chapter 7 contract. Every existing owner, fix mode, options mutation and convergence check remains active; no expected output changes.
 
 Catch-operand diagnostics cover only the rejected operand's argument mismatch. A stock-TypeScript differential property checks bad call arguments, overloads, generic constraints, satisfaction checks and handler assignments through source wrappers; valid inner expressions remain clean while `EK0506` still reports the invalid operand.
+
+The no-throw wrapper fixture uses the VIP-5 catch join point without a second execution head. Its positive oracle, foreign throwing declaration, wrapped inner call and source mutations remain unchanged.

@@ -100,7 +100,7 @@ func failuresNoThrowCases() []*failCase {
 	// function literals the parameter admits
 	add(&failCase{Name: "nothrow-wrapper-thunk-plain", Quote: q.literal, Host: "plain", Lib: parse, Body: "const e = Effect.try(() => parse(s))"})
 	add(&failCase{Name: "nothrow-wrapper-thunk-throw", Quote: q.literal, Host: "effect", Body: "const v = try Effect.try(() => { ⟦throw new Error(\"x\")⟧ })", Code: 401})
-	add(&failCase{Name: "nothrow-wrapper-thunk-wrapped", Quote: q.literal, Host: "effect", Lib: parse, Body: "return try Effect.fail(new Error(\"input\")) catch effect (e) => try Effect.try(() => parse(s))"})
+	add(&failCase{Name: "nothrow-wrapper-thunk-wrapped", Quote: q.literal, Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch effect (e) => try Effect.try(() => parse(s))"})
 	add(&failCase{Name: "nothrow-rethrows-effectful-callee", Quote: q.literal, Host: "effect", Lib: "import { Effect } from \"effect\"\ntype Callback = {\n /** @throws {unknown} */\n (): number\n}\n/** @throws {Error} @rethrows callback */\nexport declare function load(callback: Callback): Effect.Effect<number>", Body: "const value = load(() => JSON.parse(s))"})
 	// each construct of synchronous code outside effect code
 	add(&failCase{Name: "nothrow-arrow", Quote: q.constructs, Host: "none", Decls: "export const check = (s: string) => { if (!s) ⟦throw new Error(\"empty\")⟧; return s }", Code: 401})
