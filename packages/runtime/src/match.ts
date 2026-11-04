@@ -18,9 +18,12 @@
  * pattern `M(...)` accepts `false`, `true`, or the extracted values. The runtime
  * defines `Symbol.customMatcher` when the engine lacks it, as the registered
  * symbol the proposal's polyfills use, so every copy of the runtime agrees.
+ * Like a well-known symbol it is non-writable, non-enumerable and
+ * non-configurable; an engine's own symbol is kept (008-runtime.md, Matcher
+ * symbol initialization).
  */
-if (typeof (Symbol as any).customMatcher !== "symbol") {
-  Object.defineProperty(Symbol, "customMatcher", { value: Symbol.for("Symbol.customMatcher"), configurable: true })
+if ((Symbol as any).customMatcher === undefined) {
+  Object.defineProperty(Symbol, "customMatcher", { value: Symbol.for("Symbol.customMatcher") })
 }
 export const customMatcher: typeof Symbol.customMatcher = (Symbol as any).customMatcher
 
