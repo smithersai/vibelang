@@ -1,0 +1,13 @@
+[
+  {"key":"direct","expression":"Effect.orDie(PROGRAM)","count":0},
+  {"key":"direct-parentheses","expression":"Effect.orDie(((PROGRAM)))","count":0},
+  {"key":"alchemy-pipe","expression":"PROGRAM |> Effect.orDie(%)","count":0},
+  {"key":"pipe-parentheses","expression":"((PROGRAM)) |> (Effect.orDie((%)))","count":0},
+  {"key":"pipe-global","expression":"PROGRAM |> orDie(%)","count":0},
+  {"key":"pipe-outer","expression":"(PROGRAM |> Effect.orDie(%)) |> Effect.asVoid(%)","count":0},
+  {"key":"unprotected","expression":"PROGRAM","count":1},
+  {"key":"pipe-unprotected","expression":"PROGRAM |> Effect.asVoid(%)","count":1},
+  {"key":"unrelated-orDie","expression":"PROGRAM |> unrelated.orDie(%)","count":1},
+  {"key":"unrelated-defect","expression":"PROGRAM |> Effect.orDie(Effect.succeed(%))","count":1},
+  {"key":"duplicated-topic","expression":"PROGRAM |> [%, Effect.orDie(%)][0]","count":1}
+]

@@ -630,12 +630,22 @@ func (r *ruleCheck) checkTryMapping(call *ast.Node) {
 	}
 }
 
-// isDefectBridge reports whether call, an Effect.try, is the operand of
-// Effect.orDie: no catch reads what its mapping returns, which a defect keeps
-// as it was thrown.
-func isDefectBridge(c *checker.Checker, call *ast.Node) bool {
-	parent := call.Parent
-	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() != call && isEffectFunction(c, parent.Expression(), "Effect", "orDie")
+// isDefectBridge reports whether an Effect.try operand reaches Effect.orDie:
+// no catch reads what its mapping returns, which a defect keeps as thrown.
+// Native pipes have the same meaning as nested calls (VIP-23).
+func isDefectBridge(c *checker.Checker, operand *ast.Node) bool {
+	for operand.Parent != nil && ast.IsParenthesizedExpression(operand.Parent) {
+		operand = operand.Parent
+	}
+	if pipe := pipeOfLeft(operand); pipe != nil {
+		// Another use of the topic can retain the original failure channel.
+		topics := topicsOf(pipe)
+		return len(topics) == 1 && isDefectBridge(c, topics[0])
+	}
+	parent := operand.Parent
+	return parent != nil && ast.IsCallExpression(parent) &&
+		len(parent.Arguments()) == 1 && parent.Arguments()[0] == operand &&
+		isEffectFunction(c, ast.SkipParentheses(parent.Expression()), "Effect", "orDie")
 }
 
 // checkRunChannels reports EK4811 when call, which runs, adds any or unknown

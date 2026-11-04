@@ -360,7 +360,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Anti-pattern | `scopeInLayerEffect` | Effect 3 only: Effect 4's `Layer.effect` owns its scope | `Layer.effect(Users, effect { const pool = try open(); … })` |
 | Anti-pattern | `strictEffectProvide` | EK4816, off by default | `provide AppLive { … }` or `Effect.provide(program, AppLive)`; includes functions named `main` |
 | Anti-pattern | `tryCatchInEffectGen` | Use a `catch` expression | `(try Users).find(id) catch (e) => fallback` |
-| Anti-pattern | `unknownInEffectCatch` | EK4806, warning | `Effect.try({ try: code, catch: (cause) => cause })` |
+| Anti-pattern | `unknownInEffectCatch` | `EK4806`, warning; a direct `Effect.orDie` defect bridge or its `\|>` spelling is exempt | `Effect.try({ try: code, catch: (cause) => cause })` without a defect bridge |
 | Effect-native | `cryptoRandomUUID` | Covered: `EK4402`, because `crypto` is a banned global | `crypto.randomUUID()` |
 | Effect-native | `cryptoRandomUUIDInEffect` | Covered: `EK4402`, because `crypto` is a banned global | `crypto.randomUUID()` |
 | Effect-native | `extendsNativeError` | EK4805, warning | `class Boom extends Error {}`; declare `error Boom { }` |

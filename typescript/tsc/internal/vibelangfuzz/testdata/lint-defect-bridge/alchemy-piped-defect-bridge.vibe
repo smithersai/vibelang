@@ -1,0 +1,7 @@
+import { predicate } from "./foreign.js"
+export effect function probe(value: unknown) {
+  return try (Effect.try({
+    try: () => predicate(value) ? value : undefined,
+    catch: (cause) => cause,
+  }) |> Effect.orDie(%))
+}
