@@ -1,6 +1,6 @@
 // VIP-5/17/18: use native Effect operand assignability, including never/any.
 declare const input: never
-/** @throws {never} */
+// VibeLang declarations already have thrown type never (VIP-4).
 declare function make(): never
 
 export effect function probe() { return try input }
