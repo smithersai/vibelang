@@ -41,3 +41,9 @@ export effect function main(): Effect.Effect<[number[], string, string, string[]
 
 // docs/design/vips/0031-runtime-guarantees.md#d0dda6a7ca73ff0c | VIP-31 paired-declaration-and-Exit-check
 // **Checking it.** Each VIP's VibeLang and Effect TS pair is a differential test that compiles one, runs both, and compares their `Exit`s.
+
+// Chapter 002: try spells the four concurrent operations
+// Spec rule: docs/design/src/002-running.md#70b6cecab433614b
+
+// Chapter 002: all starts waiting operands concurrently
+// Spec rule: docs/design/src/002-running.md#f9bb0e223bd63dec

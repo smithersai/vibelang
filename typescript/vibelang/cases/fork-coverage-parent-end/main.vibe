@@ -13,3 +13,6 @@ export effect function main(): Effect.Effect<boolean> {
 
 // docs/design/vips/0017-fork.md#a4a35589fb1e968c | VIP-17 unjoined-child-interrupted-with-parent
 // `fork` keeps Effect's meaning: a child is interrupted when its parent ends.
+
+// Chapter 002: current fiber interrupts child at parent termination
+// Spec rule: docs/design/src/002-running.md#a8d54596be54949b

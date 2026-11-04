@@ -7,6 +7,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
+// Chapter 002: retired await operations are fixed to try operations
+// Spec rule: docs/design/src/002-running.md#64134e82af21df18
 func TestVIP18LegacyRewriteDraft(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"array", "export function main() { return await.all [Effect.succeed(1)] }", "return (try.all [effect { return try Effect.succeed(1) }])"},

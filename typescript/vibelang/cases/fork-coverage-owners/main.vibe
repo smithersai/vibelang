@@ -51,3 +51,12 @@ export effect function main(): Effect.Effect<number[]> {
 
 // docs/design/vips/0017-fork.md#72a1993a2eaa398f | VIP-17 native-owner-and-caller-evaluation
 // ```vibe const f = fork.in(makeScope()) work() // makeScope() runs, then work() ``` Effect TS: `const $s = makeScope(); const f = yield* Effect.forkIn(work(), $s)`.
+
+// Chapter 002: scope evaluated before fork operand; given scope owns fiber
+// Spec rule: docs/design/src/002-running.md#92fc24ea1aef70cd
+
+// Chapter 002: scoped fork requires Scope and uses scoped owner
+// Spec rule: docs/design/src/002-running.md#3a4b0bd645766b01
+
+// Chapter 002: detached fork uses no parent owner
+// Spec rule: docs/design/src/002-running.md#8128469082de5235

@@ -24,3 +24,6 @@ export effect function main(): Effect.Effect<number[]> {
 
 // docs/design/vips/0019-for-concurrent.md#c8fdbd7d45e97f2e | VIP-19 explicit-unbounded-Concurrency-domain
 // **`for concurrent(n)` delegates the numeric limit's meaning to pinned Effect.** (Opus round27 m40; accepted VIP-19 limit amendment; details48/109/125/212.) Keep `n` assignable to `Types.Concurrency` (`number | "unbounded"` in Effect4.1.0), evaluate it once in the existing caller-side order before the head environment, and pass the resulting value straight to `Effect.forEach`'s `concurrency`.
+
+// Chapter 002: Concurrency admits explicit unbounded unchanged
+// Spec rule: docs/design/src/002-running.md#1b901728e580bd76

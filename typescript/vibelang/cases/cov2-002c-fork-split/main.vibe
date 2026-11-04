@@ -1,0 +1,25 @@
+// Chapter 002: child handler preserves caller operand failure
+// Spec rule: docs/design/src/002-running.md#cfa186c54733976f
+// Chapter 002: successful operand starts child and handler
+// Spec rule: docs/design/src/002-running.md#8ff28638c2cf29d6
+// Chapter 002: failed operand starts no fiber
+// Spec rule: docs/design/src/002-running.md#f2a30451679653d7
+import {Effect,Exit,Cause} from "effect"
+export effect function main(): Effect.Effect<unknown[],string> {
+ const events:string[]=[]
+ function worker(n:number):Effect.Effect<never,string> {
+   events.push("build")
+   return Effect.andThen(Effect.sync(()=>{events.push("run")}),Effect.fail("worker "+n))
+ }
+ effect function start(id:Effect.Effect<number,string>) {
+   const child=fork Effect.catch(worker(try id), e=>Effect.sync(()=>{events.push("handle");return "recovered "+e}))
+   const recovered=join child
+   events.push(recovered)
+   return "started"
+ }
+ const success=try start(Effect.succeed(1))
+ const good=[success,[...events]]
+ events.length=0
+ const failure=try Effect.exit(start(Effect.fail("no id")))
+ return [good,[failure._tag,Exit.isFailure(failure)?Cause.squash(failure.cause):"wrong",[...events]]]
+}

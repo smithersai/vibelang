@@ -1,0 +1,9 @@
+// Chapter 002: whitespace-separated try operation tokens
+// Spec rule: docs/design/src/002-running.md#4186eb5fe0f18849
+import {Effect} from "effect"
+export effect function main():Effect.Effect<number[]>{
+ const a=try . all [Effect.succeed(1)]
+ const b=try
+ . all [Effect.succeed(2)]
+ return [...a,...b]
+}

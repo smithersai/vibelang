@@ -71,3 +71,6 @@ export effect function main(): Effect.Effect<number[]> {
 
 // docs/design/vips/0019-for-concurrent.md#b1e198126cefb94a | VIP-19 native-Concurrency-domain-and-item-binding
 // VibeLang's omitted limit remains its already-accepted `"unbounded"` default, not Effect.forEach's separate default sequential behavior.
+
+// Chapter 002: positive and sub-one numeric concurrency limits
+// Spec rule: docs/design/src/002-running.md#624f60da005efbec

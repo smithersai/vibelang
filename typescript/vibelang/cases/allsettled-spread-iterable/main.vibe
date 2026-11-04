@@ -18,3 +18,6 @@ export effect function main() {
 // Chapter 002: Sets, generators and own iterators supply the yielded Effects; docs/design/src/002-running.md#f13b9edc7c16ab78
 // Chapter 002: Sets, generators and own iterators supply the yielded Effects; docs/design/src/002-running.md#fcc801d389903778
 // Chapter 002: Sets, generators and own iterators supply the yielded Effects; docs/design/src/002-running.md#ad7b61bf0a9ec730
+
+// Chapter 002: spread uses native element order and custom iterators
+// Spec rule: docs/design/src/002-running.md#7ae4d4e8059d604c

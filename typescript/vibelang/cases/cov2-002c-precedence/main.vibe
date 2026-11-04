@@ -1,0 +1,19 @@
+// Chapter 002: fork and join unary precedence
+// Spec rule: docs/design/src/002-running.md#db888cd889708b54
+// Chapter 002: pipe gets Fiber and addition gets joined value
+// Spec rule: docs/design/src/002-running.md#5bd486a97a483887
+// Chapter 002: try operation literal and mapped operands
+// Spec rule: docs/design/src/002-running.md#74ef6f8233fdea82
+// Chapter 002: parenthesized body does not become concurrency limit
+// Spec rule: docs/design/src/002-running.md#6ea629dcb99d980f
+import {Effect,Fiber} from "effect"
+export effect function main():Effect.Effect<number[]> {
+ const child=fork Effect.succeed(2) |> %
+ const out=[join child + 1]
+ const ids=[4,5]
+ function load(n:number){return Effect.succeed(n)}
+ out.push(...try.all [load(1),load(2)])
+ out.push(...try.all ids.map(load))
+ for concurrent (const n of [6,7]) (try Effect.sync(()=>{out.push(n)}));
+ return out
+}

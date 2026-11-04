@@ -1,0 +1,11 @@
+// Chapter 002: nested loop and switch keep their own jumps
+// Spec rule: docs/design/src/002-running.md#61af822a7f2914f6
+import {Effect} from "effect"
+export effect function main():Effect.Effect<number[]>{
+ const out:number[]=[]
+ for concurrent(1)(const n of [4,6]){
+  for(const x of [0,1,2]){if(x===0)continue;out.push(n*10+x);break}
+  switch(n){case 4:out.push(400);break;default:out.push(600)}
+ }
+ return out
+}

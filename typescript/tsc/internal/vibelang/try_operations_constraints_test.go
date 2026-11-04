@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// Chapter 002: array operand assignability rejects records and plain elements
+// Spec rule: docs/design/src/002-running.md#efd533da52c06212
 func TestTryOperationArrayConstraints(t *testing.T) {
 	for _, test := range []struct {
 		name, source string
