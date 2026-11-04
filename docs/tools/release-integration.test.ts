@@ -75,7 +75,8 @@ test("upgrade repairs cover plain methods, renamed experimental layers and confl
 })
 
 test("trailing-block upgrade names the new compile error and automatic rewrite", () => {
-  const entry = fixes.split("\n").find(line => line.startsWith("- ") && line.includes("VIP-11") && line.includes("EK1101")) || ""
+  const upgrade = notes.split("### Upgrade from 0.0.10")[1]?.split("### Bugs fixed")[0] || ""
+  const entry = upgrade.split("\n").find(line => line.startsWith("| ") && line.includes("VIP-11") && line.includes("EK1101")) || ""
   expect(entry).toContain("compiled")
   expect(entry).toContain("compile error")
   expect(entry).toContain("`vibelang --fix`")
