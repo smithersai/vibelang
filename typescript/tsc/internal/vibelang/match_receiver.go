@@ -11,6 +11,14 @@ func (tx *lowering) visitPatternReceiver(node *ast.Node) *ast.Node {
 		return tx.Visitor().VisitEachChild(node)
 	}
 	f := tx.Factory()
+	if matcher.Expression().Kind == ast.KindSuperKeyword {
+		// super is not a value to capture: read the member where it stands,
+		// with this as the receiver the member's own call would get.
+		result := tx.runtimeCall(node.Expression().Text(), tx.visit(matcher), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindThisKeyword))
+		tx.EmitContext().SetOriginal(result, node)
+		result.Loc = node.Loc
+		return result
+	}
 	receiver := f.NewUniqueName("receiver")
 	parameters := []*ast.Node{f.NewParameterDeclaration(nil, nil, receiver, nil, nil, nil)}
 	arguments := []*ast.Node{tx.visit(matcher.Expression())}

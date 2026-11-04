@@ -1,0 +1,30 @@
+// expect-result: {"match":["hit","miss"],"is":[true,false],"computed":["hit","miss"],"static":["hit","miss"],"reads":2}
+// A member pattern keeps its receiver. A super member is read where it
+// stands, with this as its receiver: super is not a value an arrow can take.
+let reads = 0
+class Base {
+  get three() { reads++; return 3 }
+  static get five() { return 5 }
+}
+const key = "three"
+class Derived extends Base {
+  viaMatch(s: unknown) { return match (s) { when super.three: "hit"; default: "miss"; } }
+  viaIs(s: unknown) { return s is super.three }
+  viaKey(s: unknown) { return match (s) { when super[key]: "hit"; default: "miss"; } }
+  static viaStatic(s: unknown) { return match (s) { when super.five: "hit"; default: "miss"; } }
+}
+export effect function main() {
+  const d = new Derived()
+  const result = {
+    match: [d.viaMatch(3), d.viaMatch(4)],
+    is: [d.viaIs(3), d.viaIs(4)],
+    computed: [d.viaKey(3), d.viaKey(4)],
+    static: [Derived.viaStatic(5), Derived.viaStatic(6)],
+    reads: 0,
+  }
+  reads = 0
+  d.viaMatch(3)
+  d.viaIs(3)
+  result.reads = reads
+  return result
+}
