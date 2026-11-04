@@ -12,7 +12,7 @@ import (
 )
 
 // fixProgressLine is a line fixProgress prints.
-var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try( [0-9]+)?|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?, [0-9]+ this (round|phase) \([0-9]+ whole, [0-9]+ partial\); (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+(; (building program|program built|checking baseline|finding fixes|checking diagnostics|diagnostics collected|comparing diagnostics|diagnostics compared|checking partial diagnostics|tracing error origins) for [0-9hms]+)?; heap [0-9]+ MiB, goal [0-9]+ MiB, [0-9]+ GCs$`)
+var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try( [0-9]+)?|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?, [0-9]+ this (round|phase) \([0-9]+ whole, [0-9]+ partial\); (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+(; (building program|program built|checking baseline|finding fixes|checking diagnostics|diagnostics collected|finding remaining fix sites|comparing diagnostics|diagnostics compared|checking partial diagnostics|tracing error origins) for [0-9hms]+)?; heap [0-9]+ MiB, goal [0-9]+ MiB, [0-9]+ GCs$`)
 
 // A --fix run says on stderr what it is doing, at most once each
 // ProgressEvery: its phase and round, the fixes applied and pending, the
@@ -148,4 +148,33 @@ func TestFixProgressIdentifiesStageAndHeap(t *testing.T) {
 	}
 	var quiet *fixProgress
 	quiet.stage("checking diagnostics")
+}
+
+// Sampling this short scan used to fail only when a timer tick landed in it.
+// Exercise the real producer directly so the witness is independent of timing.
+func TestFixProgressAcceptsRemainingFixSiteDiscovery(t *testing.T) {
+	var out strings.Builder
+	p := newFixProgress(&out, time.Hour)
+	defer p.close()
+	p.enter("prelude", 0, 11, 1, "finding rewrites")
+	p.stage("finding remaining fix sites")
+	line := p.line(time.Now())
+	if !strings.Contains(line, "; finding remaining fix sites for ") {
+		t.Fatalf("missing active discovery stage: %q", line)
+	}
+	if !fixProgressLine.MatchString(line) {
+		t.Fatalf("valid discovery progress line rejected: %q", line)
+	}
+	for _, invalid := range []string{
+		strings.Replace(line, "finding remaining fix sites", "finding remaining fix sites unexpectedly", 1),
+		strings.Replace(line, ": prelude:", ": unknown:", 1),
+		strings.Split(line, "; heap ")[0],
+	} {
+		if invalid == line {
+			t.Fatalf("negative control did not modify %q", line)
+		}
+		if fixProgressLine.MatchString(invalid) {
+			t.Fatalf("malformed progress line accepted: %q", invalid)
+		}
+	}
 }
