@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { createRequire } from "node:module"
 import { dirname, join, posix } from "node:path"
 import { isTestFile, isFixtureFile } from "./inventory.mjs"
+import { splitSpecifier } from "./imports.mjs"
 import { isTestMockCall, isTestMockLoader } from "./test-mock-loaders.mjs"
 import { pathCandidate, provePathRename } from "./test-diff-paths.mjs"
 import { proveFormatterOnly } from "./test-diff-format.mjs"
@@ -257,6 +258,10 @@ function candidates(ts, source, bindings) {
 }
 
 function specifierRename(file, old, next, renames, declarationImportStyle) {
+  const before = splitSpecifier(old), after = splitSpecifier(next)
+  if (before.suffix !== after.suffix) return false
+  old = before.path
+  next = after.path
   if (!old.startsWith(".") || !next.startsWith(".")) return false
   const ext = /\.(?:tsx?|jsx?)$/.exec(old)?.[0]
   if (!ext) return false // an extensionless specifier must stay as written

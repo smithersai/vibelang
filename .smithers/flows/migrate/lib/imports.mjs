@@ -137,6 +137,13 @@ export function effectUse(imports) {
 const sourceExtensions = [".ts", ".tsx", ".mts", ".cts", ".vibe"]
 const jsToSource = { ".js": [".ts", ".tsx", ".vibe"], ".jsx": [".tsx"], ".mjs": [".mts", ".vibe"], ".cjs": [".cts"] }
 
+/** A loader query or fragment follows the source path; a package imports key may begin with #. */
+export function splitSpecifier(specifier) {
+  const offset = specifier.slice(1).search(/[?#]/)
+  const at = offset < 0 ? specifier.length : offset + 1
+  return { path: specifier.slice(0, at), suffix: specifier.slice(at) }
+}
+
 /**
  * The repository-relative file a relative specifier of `from` names, given the
  * set of repository-relative files that exist, or undefined. It follows
@@ -144,6 +151,7 @@ const jsToSource = { ".js": [".ts", ".tsx", ".vibe"], ".jsx": [".tsx"], ".mjs": 
  * `.js` specifier names a `.ts` or a `.vibe` source.
  */
 export function resolveRelative(from, specifier, files) {
+  specifier = splitSpecifier(specifier).path
   if (!specifier.startsWith(".")) return undefined
   return resolveFile(posix.normalize(posix.join(posix.dirname(from), specifier)), files)
 }
@@ -181,6 +189,7 @@ export function resolveFile(target, files) {
  * tryLoadModuleUsingPaths).
  */
 export function resolveAlias(specifier, paths, files) {
+  specifier = splitSpecifier(specifier).path
   if (!paths || specifier.startsWith(".")) return undefined
   let best = paths[specifier] && !specifier.includes("*") ? { substitutions: paths[specifier], matched: "" } : undefined
   if (!best) {
@@ -211,6 +220,7 @@ export function resolveAlias(specifier, paths, files) {
  * aliased path before those rules, exact marking an opaque key, or undefined.
  */
 export function resolveAliased(from, specifier, files, aliases) {
+  specifier = splitSpecifier(specifier).path
   if (!aliases || specifier.startsWith(".")) return undefined
   for (const { pattern, targets } of aliases(from)) {
     const star = pattern.indexOf("*")

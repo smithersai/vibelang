@@ -8,7 +8,7 @@ import { join, posix, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
-import { applyEdits, parseImports, resolveAliased, resolveRelative } from "./imports.mjs"
+import { applyEdits, parseImports, resolveAliased, resolveRelative, splitSpecifier } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
@@ -485,6 +485,8 @@ export function restoreScripts(root, edits, module) {
  * revert returned to .ts names its .ts source again.
  */
 export function rewriteSpecifier(importer, specifier, target, { base: aliased } = {}) {
+  const { path, suffix } = splitSpecifier(specifier)
+  if (suffix) return rewriteSpecifier(importer, path, target, { base: aliased }) + suffix
   const targetExt = posix.extname(target)
   const ext = posix.extname(specifier)
   if (targetExt === ".vibe") {
@@ -620,7 +622,8 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
     const nativeBodies = file.endsWith(".vibe") ? nativeImportRanges(text, root) : []
     for (const i of parseImports(text)) {
       if (nativeBodies.some(([start, end]) => start <= i.start && i.start < end)) continue
-      if (javascript && !/\.(?:[cm]?tsx?|vibe)$/.test(i.specifier)) continue
+      const { path: modulePath, suffix } = splitSpecifier(i.specifier)
+      if (javascript && !/\.(?:[cm]?tsx?|vibe)$/.test(modulePath)) continue
       if (kept.get(file)?.has(i.specifier)) continue
       // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).
       const aliased = resolveRelative(file, i.specifier, files) === undefined ? resolveAliased(file, i.specifier, files, aliases) : undefined
@@ -630,13 +633,13 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
       // spelling: it resolved under this configuration before the rename, and
       // `~/leaf.ts`, a non-relative TypeScript name, is TS2877 under
       // rewriteRelativeImportExtensions (t3code web, 23 modules).
-      if (aliased && !target.endsWith(".vibe") && posix.extname(i.specifier) !== ".vibe") continue
+      if (aliased && !target.endsWith(".vibe") && posix.extname(modulePath) !== ".vibe") continue
       // Detail 272's first addendum: a test's or fixture's extensionless specifier needs
       // no edit (the test-diff protects both alike),
       // an import's or a Vitest or Jest mock's alike. Bun's mock.module("../src/x") does
       // need one: it does not reach x.vibe as written.
-      if (i.kind !== "mock" && (isTestFile(file) || isFixtureFile(file)) && !specifierExtensions.includes(posix.extname(i.specifier))) continue
-      let next = rewriteSpecifier(file, i.specifier, target, { base: aliased?.base })
+      if (i.kind !== "mock" && (isTestFile(file) || isFixtureFile(file)) && !specifierExtensions.includes(posix.extname(modulePath))) continue
+      let next = rewriteSpecifier(file, modulePath, target, { base: aliased?.base })
       if (aliased && target.endsWith(".vibe") && (aliased.exact || aliases?.rewriteRelativeImportExtensions?.(file))) {
         // An exact paths key cannot gain a source suffix. Native TS2877 also
         // rejects non-relative source names under rewriteRelativeImportExtensions.
@@ -651,6 +654,7 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
         const chosen = aliases?.migratedSourceExtension?.(file, sourceExt) ?? sourceExt
         next = next.slice(0, -sourceExt.length) + chosen
       }
+      next += suffix
       if (next !== i.specifier) {
         changes.push({ start: i.start, end: i.end, text: next })
         edits.push({ file, from: i.specifier, to: next })

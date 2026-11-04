@@ -1,0 +1,6 @@
+{
+  "repo": "foldkit",
+  "pattern": "snippet re-exports retain their raw query after a source rename",
+  "source": "export { default as counterRaw } from './counter.ts?raw'\nexport * from './counter.ts?raw#snippet'\n",
+  "expected": "export { default as counterRaw } from './counter.vibe?raw'\nexport * from './counter.vibe?raw#snippet'\n"
+}
