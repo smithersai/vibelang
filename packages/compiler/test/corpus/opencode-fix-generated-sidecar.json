@@ -1,0 +1,6 @@
+{
+  "issue": "fix:native-body-dts-input:TS5055",
+  "input": { "kind": "named-body", "repeats": 2, "annotation": "ReturnType<typeof make>", "parameter": "required" },
+  "source": "import { make } from \"./media.vibe\"\nexport const work = Effect.fn(function* (value: ReturnType<typeof make>) { return value })\n",
+  "dependency": "module throwing { export class Asset { #value = 1; get value() { return this.#value } }\n/** @throws {never} */ export function make() { return new Asset() } }\nexport { make } from throwing\n"
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -503,6 +504,22 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 			printed := c.TypeToStringEx(inferred, annotation, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 			if printed == "" {
 				return "", "an inferred parameter type cannot be written"
+			}
+			// Expanding a source annotation can introduce an import type that
+			// resolves through a generated declaration instead of the original
+			// source (notably a named module body or a relocated sidecar).
+			// Keep the already checked annotation in its unchanged lexical scope:
+			// the fix must not make its own outputs into inputs, or split a
+			// private class's identity. Optional/default/rest syntax stays intact.
+			if effectFnTypeHasImport(printed) {
+				readonlyRest := parameter.AsParameterDeclaration().DotDotDotToken != nil && strings.HasPrefix(printed, "readonly ") && strings.HasSuffix(printed, "[]")
+				printed = nodeText(file, annotation)
+				if parameter.QuestionToken() != nil || parameter.Initializer() != nil {
+					printed = "(" + printed + ") | undefined"
+				}
+				if readonlyRest {
+					printed = "[..." + printed + "]"
+				}
 			}
 			if parameter.AsParameterDeclaration().DotDotDotToken != nil && strings.HasSuffix(printed, "[]") {
 				printed = strings.TrimPrefix(printed, "readonly ")
@@ -1330,4 +1347,18 @@ func dedentEdits(file *ast.SourceFile, block *ast.Node, width int, edits []sourc
 		i = line + next - start
 	}
 	return out
+}
+
+// effectFnTypeHasImport reads type syntax rather than matching string literals
+// that happen to contain the word import.
+func effectFnTypeHasImport(text string) bool {
+	if !strings.Contains(text, "import") {
+		return false
+	}
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/parameter.ts", PathKey: "/parameter.ts"}, "type Parameter = "+text, core.ScriptKindTS)
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		return ast.IsImportTypeNode(node) || node.ForEachChild(visit)
+	}
+	return visit(file.AsNode())
 }
