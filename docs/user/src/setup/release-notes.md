@@ -195,6 +195,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Match-chain migration validation now retains the explicit fallback required for destructuring combinator arms and checks that exhaustive tagged handlers keep their results and public types.
 
 
+- Declaration regression tests could fail because private-helper fixtures omitted an `exports` map. The fixtures now declare their intended public surface and also check unrestricted deep exports.
+
 - Migration verification could report a missing declaration for a module returned to TypeScript when its package export kept a source `types` condition. Declaration snapshots now preserve that recorded source path and still reject changed types, documentation and missing provenance.
 
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.

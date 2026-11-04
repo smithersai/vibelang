@@ -1,14 +1,19 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { createRequire } from "node:module"
 import { compareDeclarations, recordDeclarationSurface, sidecarChanges } from "../lib/declarations.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 
 const require = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-function fixture(before, after, check, manifests = [{ types: "./index.d.ts" }, { types: "./index.d.ts" }]) {
+test("declaration export visibility quotes the TypeScript identity contract", () => {
+  const chapter = readFileSync(SpecPath("001-functions.md"), "utf8")
+  assert.ok(chapter.includes("each export's type identical to `tsc`'s in both directions"))
+})
+function fixture(before, after, check, manifests = [{ types: "./index.d.ts", exports: { ".": "./index.d.ts" } }, { types: "./index.d.ts", exports: { ".": "./index.d.ts" } }]) {
   const root = mkdtempSync(join(tmpdir(), "migrate-api-gate-"))
   try {
     for (const [i, [side, files]] of Object.entries({ before, after }).entries()) {
@@ -42,6 +47,33 @@ test("migration gate accepts formatting, member order and alias expansion", () =
 test("migration gate compares only published exports, including changed private files", () => {
   equal({ "index.d.ts": "export type X=string;", "private.d.ts": "export type Hidden=string;" },
     { "index.d.ts": "export type X=string;", "private.d.ts": "export type Hidden=number;" })
+})
+test("a package without exports retains its shipped deep declaration API", () => {
+  fixture({ "index.d.ts": "export type X=string;", "private.d.ts": "export type Hidden=string;" },
+    { "index.d.ts": "export type X=string;", "private.d.ts": "export type Hidden=number;" }, (a, b) => {
+      const result = compareDeclarations(ts, a, b)
+      assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+      assert.equal(result.identical, false, JSON.stringify(result))
+      assert.ok(result.typeDifferences.some(item => item.entrypoint === "./private.js" && item.export === "Hidden"), JSON.stringify(result))
+    }, [{ types: "./index.d.ts" }, { types: "./index.d.ts" }])
+})
+test("property: export maps decide whether shipped deep declaration mutations are public", async () => {
+  await fc.assert(fc.asyncProperty(fc.boolean(), fc.constantFrom("private", "nested/helper", "internal/value"), async (closed, name) => {
+    const manifest = { types: "./index.d.ts", ...(closed ? { exports: { ".": "./index.d.ts" } } : {}) }
+    fixture({ "index.d.ts": "export type X=string;", [name + ".d.ts"]: "export type Hidden=string;" },
+      { "index.d.ts": "export type X=string;", [name + ".d.ts"]: "export type Hidden=number;" }, (a, b) => {
+        const modules = join(a, "..", "node_modules")
+        mkdirSync(modules)
+        symlinkSync(a, join(modules, "visibility-fixture"), "dir")
+        const exposed = Boolean(ts.resolveModuleName("visibility-fixture/" + name + ".js", join(a, "..", "consumer.ts"),
+          { module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler }, ts.sys).resolvedModule)
+        assert.equal(exposed, !closed, "stock TypeScript decides the public subpath")
+        const result = compareDeclarations(ts, a, b)
+        assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+        assert.equal(result.identical, !exposed, JSON.stringify(result))
+        assert.equal(result.typeDifferences.some(item => item.entrypoint === "./" + name + ".js" && item.export === "Hidden"), exposed, JSON.stringify(result))
+      }, [manifest, manifest])
+  }), { seed: 162163, numRuns: 16 })
 })
 test("public entrypoint names cannot change while retaining one declaration filename", () => {
   fixture({ "index.d.ts": "export type X=string;" }, { "index.d.ts": "export type X=string;" }, (a,b) => {
@@ -211,7 +243,7 @@ test("an unmapped emitted file uses its project's output layout and native resol
     assert.ok(result.comparedFiles.before.includes("dep/index.d.ts"),JSON.stringify(result))
     assert.ok(result.comparedFiles.after.includes("dep.d.ts"),JSON.stringify(result))
     assert.ok(!result.comparedFiles.after.includes("dep/index.d.ts"),JSON.stringify(result))
-  },[{types:"./dist/index.d.ts"},{types:"./dist/index.d.ts"}])
+  },[{types:"./dist/index.d.ts",exports:{".":"./dist/index.d.ts"}},{types:"./dist/index.d.ts",exports:{".":"./dist/index.d.ts"}}])
 })
 
 test("earlier sidecars retain recorded output layout and package dependency resolution",()=>{
