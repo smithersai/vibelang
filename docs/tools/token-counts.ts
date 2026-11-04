@@ -183,7 +183,7 @@ export function measuredClaims() {
   const summary = measured.saving + "% fewer tokens across " + measured.pairs.length + " cheat-sheet pairs; VibeLang is longer in " + measured.longer + " pairs."
   return {
     "README.md": "**" + summary + "** The example above uses **" + heroVibe + " vs " + heroEffect + " tokens (" + percentFewer(heroEffect, heroVibe) + " fewer)**.",
-    "site/src/pages/index.mdx": "- **People can review what agents write.** [" + measured.saving + "% fewer tokens across the " + measured.pairs.length + " cheat-sheet pairs](/vibelang-features/117-token-counts); VibeLang is longer in " + measured.longer + " pairs."
+    "site/src/pages/index.mdx": "[" + measured.saving + "% fewer tokens across the " + measured.pairs.length + " cheat-sheet pairs](/vibelang-features/117-token-counts), counted with o200k_base. VibeLang is longer in " + measured.longer + " pairs."
   }
 }
 
