@@ -856,6 +856,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
+The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` before calling its methods. The `randomBytes` method returns new bytes; it does not fill an existing array.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

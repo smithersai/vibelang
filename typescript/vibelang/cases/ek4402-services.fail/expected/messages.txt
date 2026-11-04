@@ -3,7 +3,7 @@ Provide it in main with NodeServices.layer from "@effect/platform-node", or BunS
 Use the ChildProcessSpawner service:   try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))
 Use HttpClient:   HttpClient.get(url)
 Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".
-Use Effect's crypto services:   SecureRandom.randomBytes(size)
+Use Effect's crypto services:   try (try SecureRandom.SecureRandom).randomBytes(size)
 Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".
 Use the Path service:   (try Path.Path).resolve()
 Use the FileSystem service:   FileSystem.makeTempDirectory()

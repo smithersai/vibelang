@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("global:crypto:randomUUID\x00\x00")

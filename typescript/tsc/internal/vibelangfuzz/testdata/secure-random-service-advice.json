@@ -1,0 +1,122 @@
+[
+  {
+    "key": "node:crypto:randomUUID:direct",
+    "source": "import { randomUUID } from \"node:crypto\";export const value=randomUUID",
+    "advice": "try (try SecureRandom.SecureRandom).uuidV4()"
+  },
+  {
+    "key": "node:crypto:randomUUID:alias",
+    "source": "import { randomUUID as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).uuidV4()"
+  },
+  {
+    "key": "node:crypto:randomBytes:direct",
+    "source": "import { randomBytes } from \"node:crypto\";export const value=randomBytes",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "node:crypto:randomBytes:alias",
+    "source": "import { randomBytes as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "node:crypto:randomInt:direct",
+    "source": "import { randomInt } from \"node:crypto\";export const value=randomInt",
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+  },
+  {
+    "key": "node:crypto:randomInt:alias",
+    "source": "import { randomInt as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+  },
+  {
+    "key": "node:crypto:getRandomValues:direct",
+    "source": "import { getRandomValues } from \"node:crypto\";export const value=getRandomValues",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "node:crypto:getRandomValues:alias",
+    "source": "import { getRandomValues as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "node:crypto:namespace",
+    "source": "import * as Native from \"node:crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "node:crypto:side-effect",
+    "source": "import \"node:crypto\";export const value=1",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "crypto:randomUUID:direct",
+    "source": "import { randomUUID } from \"crypto\";export const value=randomUUID",
+    "advice": "try (try SecureRandom.SecureRandom).uuidV4()"
+  },
+  {
+    "key": "crypto:randomUUID:alias",
+    "source": "import { randomUUID as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).uuidV4()"
+  },
+  {
+    "key": "crypto:randomBytes:direct",
+    "source": "import { randomBytes } from \"crypto\";export const value=randomBytes",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "crypto:randomBytes:alias",
+    "source": "import { randomBytes as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "crypto:randomInt:direct",
+    "source": "import { randomInt } from \"crypto\";export const value=randomInt",
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+  },
+  {
+    "key": "crypto:randomInt:alias",
+    "source": "import { randomInt as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+  },
+  {
+    "key": "crypto:getRandomValues:direct",
+    "source": "import { getRandomValues } from \"crypto\";export const value=getRandomValues",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "crypto:getRandomValues:alias",
+    "source": "import { getRandomValues as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "crypto:namespace",
+    "source": "import * as Native from \"crypto\";export const value=Native",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "crypto:side-effect",
+    "source": "import \"crypto\";export const value=1",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "global:crypto:randomUUID",
+    "source": "export const value=crypto.randomUUID",
+    "advice": "try (try SecureRandom.SecureRandom).uuidV4()"
+  },
+  {
+    "key": "global:crypto:getRandomValues",
+    "source": "export const value=crypto.getRandomValues",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  },
+  {
+    "key": "global:globalThis.crypto:randomUUID",
+    "source": "export const value=globalThis.crypto.randomUUID",
+    "advice": "try (try SecureRandom.SecureRandom).uuidV4()"
+  },
+  {
+    "key": "global:globalThis.crypto:getRandomValues",
+    "source": "export const value=globalThis.crypto.getRandomValues",
+    "advice": "try (try SecureRandom.SecureRandom).randomBytes(size)"
+  }
+]

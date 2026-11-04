@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("crypto:getRandomValues:alias\x00\x00")
