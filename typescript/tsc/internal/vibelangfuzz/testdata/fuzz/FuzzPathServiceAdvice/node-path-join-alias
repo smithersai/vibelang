@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("node:path:join:alias\x00\x00")

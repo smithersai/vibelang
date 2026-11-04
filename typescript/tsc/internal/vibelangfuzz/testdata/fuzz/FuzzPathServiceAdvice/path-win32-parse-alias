@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("path/win32:parse:alias\x00\x00")

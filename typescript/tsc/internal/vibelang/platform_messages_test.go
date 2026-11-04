@@ -66,7 +66,7 @@ export const run = (path: string) => readFile(path, "utf8")`, []string{
 		{"path", `import * as path from "node:path"
 export const run = (name: string) => path.join("dist", name)`, []string{
 			"path from node:path is platform code, which a .vibe file does not import as a value.",
-			"Use the Path service:   Path.join(directory, name)", provideNodeServices,
+			"Use the Path service:   (try Path.Path).join(directory, name)", provideNodeServices,
 		}},
 		{"child process", `import { execFileSync } from "node:child_process"
 export const run = () => execFileSync("git", ["status"])`, []string{
@@ -106,7 +106,7 @@ export const run = () => typeof server`, nil},
 		}},
 		{"process.cwd", `export const run = () => process.cwd()`, []string{
 			"process.cwd is platform code, which VibeLang code does not use directly.",
-			"Use the Path service:   Path.resolve()", provideNodeServices,
+			"Use the Path service:   (try Path.Path).resolve()", provideNodeServices,
 		}},
 		{"process.env", `export const run = () => process.env.PORT`, []string{
 			"process.env is platform code, which VibeLang code does not use directly.",
@@ -331,6 +331,9 @@ func TestPlatformServicesTable(t *testing.T) {
 	imported := regexp.MustCompile(`import \{ ([^}]*) \}|import \* as (\w+)`)
 	receiver := regexp.MustCompile(`(?:^|[^.\w/])([A-Za-z_]\w*)\.`) // not a path's or a member's
 	prelude := []string{"Number", "String", "fiber", "import", "Experimental", "globalThis"}
+	for name := range preludeModules {
+		prelude = append(prelude, name)
+	}
 	for name := range effectRootNames {
 		prelude = append(prelude, name)
 	}

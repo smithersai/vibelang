@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("path/win32:relative:direct\x00\x00")

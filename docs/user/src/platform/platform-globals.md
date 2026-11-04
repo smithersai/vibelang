@@ -8,6 +8,8 @@ The restriction covers the whole file, including plain and `async` functions and
 
 Platform repairs from one source share one fresh `<source>.platform.ts` companion. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten. During migration, host access inside formerly accepted boundary callbacks reports an `EK4402` warning; `--fix` and `--fix-migration-only` can repair explicit-input writes and deletes such as restoring `process.env`. Unwrapped host access remains an error.
 
+Path diagnostic examples obtain the implementation with `try Path.Path`. Pure members such as `join` and `sep` return values directly; `fromFileUrl` and `toFileUrl` return Effects, so run a conversion with `try` before passing its result to `dirname`. Construct a URL through `try orDie(Effect.try(() => new URL(import.meta.url)))` when deriving a filename from the module identity.
+
 A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.
 
 The builtin boundary covers the supported Node versions' internal and legacy names too: bare imports such as `_http_agent`, `_stream_readable` and `_tls_wrap` report `EK4402`, just like their `node:` forms. Type-only imports remain allowed and emit no Node import.

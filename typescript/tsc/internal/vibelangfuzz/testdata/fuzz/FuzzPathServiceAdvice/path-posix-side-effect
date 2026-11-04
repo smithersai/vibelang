@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("path/posix:side-effect\x00\x00")

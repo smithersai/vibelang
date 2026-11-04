@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("path/posix:toNamespacedPath:direct\x00\x00")

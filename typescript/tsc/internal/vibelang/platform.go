@@ -19,7 +19,7 @@ import (
 // one and the layer that provides it:
 //
 //	error EK4402: process.cwd is platform code, which VibeLang code does not use directly.
-//	  Use the Path service:   Path.resolve()
+//	  Use the Path service:   (try Path.Path).resolve()
 //	  Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".
 //
 // Where Effect has no API for it yet, it names VibeLang's experimental
@@ -70,9 +70,9 @@ const (
 // that each example uses what its import brings in.
 var platformServices = map[string]*platformService{
 	"FileSystem": {"the FileSystem service", "FileSystem.readFileString(path)", "", nodeServices},
-	"Path":       {"the Path service", "Path.join(directory, name)", "", nodeServices},
-	"PathPosix":  {"the Path service", "Path.join(directory, name)", "", `Path.layer from "effect/Path", which is POSIX's on every platform`},
-	"PathWin32":  {"the Path service", "Path.join(directory, name)", "", `NodePath.layerWin32 from "@effect/platform-node"`},
+	"Path":       {"the Path service", "(try Path.Path).join(directory, name)", "", nodeServices},
+	"PathPosix":  {"the Path service", "(try Path.Path).join(directory, name)", "", `Path.layer from "effect/Path", which is POSIX's on every platform`},
+	"PathWin32":  {"the Path service", "(try Path.Path).join(directory, name)", "", `NodePath.layerWin32 from "@effect/platform-node"`},
 	"ChildProcess": {"the ChildProcessSpawner service", "ChildProcessSpawner.string(ChildProcess.make(command, args))",
 		"", nodeServices},
 	"Crypto":   {"Effect's crypto services", "SecureRandom.randomBytes(size)", "", cryptoLayers},
@@ -277,13 +277,13 @@ var platformAPIs = map[string]platformAPI{
 	"os.platform":             {"ExperimentalProcess", "Experimental.Process.platform()", ""},
 	"os.arch":                 {"ExperimentalProcess", "Experimental.Process.arch()", ""},
 
-	"url.fileURLToPath": {"Path", "Path.fromFileUrl(url)", ""},
-	"path.sep":          {"Path", "Path().sep", ""},
+	"url.fileURLToPath": {"Path", "try (try Path.Path).fromFileUrl(url)", ""},
+	"path.sep":          {"Path", "(try Path.Path).sep", ""},
 	"util.inspect":      {"Inspectable", "", "It writes values as JSON, not as util.inspect does."},
-	"url.pathToFileURL": {"Path", "Path.toFileUrl(path)", ""},
+	"url.pathToFileURL": {"Path", "try (try Path.Path).toFileUrl(path)", ""},
 
-	"__dirname":  {"Path", "Path.dirname(Path.fromFileUrl(new URL(import.meta.url)))", ""},
-	"__filename": {"Path", "Path.fromFileUrl(new URL(import.meta.url))", ""},
+	"__dirname":  {"Path", "(try Path.Path).dirname(try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url)))))", ""},
+	"__filename": {"Path", "try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url))))", ""},
 
 	"events.once":                   {note: "Effect has no adapter for a Node.js EventEmitter; Stream.fromEventListener reads an event target."},
 	"stream.Readable.from":          {"Stream", "Stream.fromIterable(values)", ""},
@@ -355,7 +355,7 @@ var platformAPIs = map[string]platformAPI{
 	"process.version":        {"ExperimentalProcess", "Experimental.Process.versions()", ""},
 	"process.memoryUsage":    {"ExperimentalProcess", "Experimental.Process.memoryUsage()", ""},
 	"process.argv":           {"Stdio", "Stdio.args()", "Stdio.args() leaves out argv[0] and argv[1], the runtime and the script."},
-	"process.cwd":            {"Path", "Path.resolve()", ""},
+	"process.cwd":            {"Path", "(try Path.Path).resolve()", ""},
 	"process.stdout":         {"Console", "Console.log(text)", "For bytes, Stdio.stdout() is a Sink."},
 	"process.stderr":         {"Console", "Console.error(text)", "For bytes, Stdio.stderr() is a Sink."},
 	"process.stdin":          {"Terminal", "Terminal.readLine()", "Stdio.stdin streams the bytes."},
@@ -447,11 +447,12 @@ func init() {
 		platformAPIs["fs."+name] = api
 		platformAPIs["fs."+name+"Sync"] = api
 	}
-	for _, call := range pathAPIs {
-		name := call[:strings.IndexByte(call, '(')]
-		for module, s := range map[string]string{"path": "Path", "path/posix": "PathPosix", "path/win32": "PathWin32", "path.posix": "PathPosix", "path.win32": "PathWin32"} {
-			platformAPIs[module+"."+name] = platformAPI{s, "Path." + call, ""}
+	for module, s := range map[string]string{"path": "Path", "path/posix": "PathPosix", "path/win32": "PathWin32", "path.posix": "PathPosix", "path.win32": "PathWin32"} {
+		for _, call := range pathAPIs {
+			name := call[:strings.IndexByte(call, '(')]
+			platformAPIs[module+"."+name] = platformAPI{s, "(try Path.Path)." + call, ""}
 		}
+		platformAPIs[module+".sep"] = platformAPI{s, "(try Path.Path).sep", ""}
 	}
 	for _, name := range timerAPIs {
 		if _, ok := platformAPIs["timers."+name]; !ok {

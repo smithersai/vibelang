@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("node:path/posix:normalize:direct\x00\x00")

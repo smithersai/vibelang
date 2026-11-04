@@ -1,0 +1,837 @@
+[
+  {
+    "key": "node:path:basename:direct",
+    "source": "import { basename } from \"node:path\"\nexport const native=basename\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "node:path:basename:alias",
+    "source": "import { basename as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "node:path:dirname:direct",
+    "source": "import { dirname } from \"node:path\"\nexport const native=dirname\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "node:path:dirname:alias",
+    "source": "import { dirname as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "node:path:extname:direct",
+    "source": "import { extname } from \"node:path\"\nexport const native=extname\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "node:path:extname:alias",
+    "source": "import { extname as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "node:path:format:direct",
+    "source": "import { format } from \"node:path\"\nexport const native=format\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "node:path:format:alias",
+    "source": "import { format as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "node:path:isAbsolute:direct",
+    "source": "import { isAbsolute } from \"node:path\"\nexport const native=isAbsolute\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "node:path:isAbsolute:alias",
+    "source": "import { isAbsolute as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "node:path:join:direct",
+    "source": "import { join } from \"node:path\"\nexport const native=join\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path:join:alias",
+    "source": "import { join as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path:normalize:direct",
+    "source": "import { normalize } from \"node:path\"\nexport const native=normalize\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "node:path:normalize:alias",
+    "source": "import { normalize as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "node:path:parse:direct",
+    "source": "import { parse } from \"node:path\"\nexport const native=parse\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "node:path:parse:alias",
+    "source": "import { parse as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "node:path:relative:direct",
+    "source": "import { relative } from \"node:path\"\nexport const native=relative\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "node:path:relative:alias",
+    "source": "import { relative as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "node:path:resolve:direct",
+    "source": "import { resolve } from \"node:path\"\nexport const native=resolve\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "node:path:resolve:alias",
+    "source": "import { resolve as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "node:path:toNamespacedPath:direct",
+    "source": "import { toNamespacedPath } from \"node:path\"\nexport const native=toNamespacedPath\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "node:path:toNamespacedPath:alias",
+    "source": "import { toNamespacedPath as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "node:path:sep:direct",
+    "source": "import { sep } from \"node:path\"\nexport const native=sep\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "node:path:sep:alias",
+    "source": "import { sep as Native } from \"node:path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "node:path:namespace",
+    "source": "import * as Native from \"node:path\"; export const native=Native",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path:side-effect",
+    "source": "import \"node:path\"; export const native=1",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path:basename:direct",
+    "source": "import { basename } from \"path\"\nexport const native=basename\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "path:basename:alias",
+    "source": "import { basename as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "path:dirname:direct",
+    "source": "import { dirname } from \"path\"\nexport const native=dirname\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "path:dirname:alias",
+    "source": "import { dirname as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "path:extname:direct",
+    "source": "import { extname } from \"path\"\nexport const native=extname\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "path:extname:alias",
+    "source": "import { extname as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "path:format:direct",
+    "source": "import { format } from \"path\"\nexport const native=format\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "path:format:alias",
+    "source": "import { format as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "path:isAbsolute:direct",
+    "source": "import { isAbsolute } from \"path\"\nexport const native=isAbsolute\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "path:isAbsolute:alias",
+    "source": "import { isAbsolute as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "path:join:direct",
+    "source": "import { join } from \"path\"\nexport const native=join\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path:join:alias",
+    "source": "import { join as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path:normalize:direct",
+    "source": "import { normalize } from \"path\"\nexport const native=normalize\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "path:normalize:alias",
+    "source": "import { normalize as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "path:parse:direct",
+    "source": "import { parse } from \"path\"\nexport const native=parse\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "path:parse:alias",
+    "source": "import { parse as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "path:relative:direct",
+    "source": "import { relative } from \"path\"\nexport const native=relative\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "path:relative:alias",
+    "source": "import { relative as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "path:resolve:direct",
+    "source": "import { resolve } from \"path\"\nexport const native=resolve\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "path:resolve:alias",
+    "source": "import { resolve as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "path:toNamespacedPath:direct",
+    "source": "import { toNamespacedPath } from \"path\"\nexport const native=toNamespacedPath\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "path:toNamespacedPath:alias",
+    "source": "import { toNamespacedPath as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "path:sep:direct",
+    "source": "import { sep } from \"path\"\nexport const native=sep\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "path:sep:alias",
+    "source": "import { sep as Native } from \"path\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "path:namespace",
+    "source": "import * as Native from \"path\"; export const native=Native",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path:side-effect",
+    "source": "import \"path\"; export const native=1",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/posix:basename:direct",
+    "source": "import { basename } from \"node:path/posix\"\nexport const native=basename\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "node:path/posix:basename:alias",
+    "source": "import { basename as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "node:path/posix:dirname:direct",
+    "source": "import { dirname } from \"node:path/posix\"\nexport const native=dirname\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "node:path/posix:dirname:alias",
+    "source": "import { dirname as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "node:path/posix:extname:direct",
+    "source": "import { extname } from \"node:path/posix\"\nexport const native=extname\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "node:path/posix:extname:alias",
+    "source": "import { extname as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "node:path/posix:format:direct",
+    "source": "import { format } from \"node:path/posix\"\nexport const native=format\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "node:path/posix:format:alias",
+    "source": "import { format as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "node:path/posix:isAbsolute:direct",
+    "source": "import { isAbsolute } from \"node:path/posix\"\nexport const native=isAbsolute\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "node:path/posix:isAbsolute:alias",
+    "source": "import { isAbsolute as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "node:path/posix:join:direct",
+    "source": "import { join } from \"node:path/posix\"\nexport const native=join\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/posix:join:alias",
+    "source": "import { join as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/posix:normalize:direct",
+    "source": "import { normalize } from \"node:path/posix\"\nexport const native=normalize\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "node:path/posix:normalize:alias",
+    "source": "import { normalize as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "node:path/posix:parse:direct",
+    "source": "import { parse } from \"node:path/posix\"\nexport const native=parse\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "node:path/posix:parse:alias",
+    "source": "import { parse as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "node:path/posix:relative:direct",
+    "source": "import { relative } from \"node:path/posix\"\nexport const native=relative\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "node:path/posix:relative:alias",
+    "source": "import { relative as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "node:path/posix:resolve:direct",
+    "source": "import { resolve } from \"node:path/posix\"\nexport const native=resolve\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "node:path/posix:resolve:alias",
+    "source": "import { resolve as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "node:path/posix:toNamespacedPath:direct",
+    "source": "import { toNamespacedPath } from \"node:path/posix\"\nexport const native=toNamespacedPath\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "node:path/posix:toNamespacedPath:alias",
+    "source": "import { toNamespacedPath as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "node:path/posix:sep:direct",
+    "source": "import { sep } from \"node:path/posix\"\nexport const native=sep\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "node:path/posix:sep:alias",
+    "source": "import { sep as Native } from \"node:path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "node:path/posix:namespace",
+    "source": "import * as Native from \"node:path/posix\"; export const native=Native",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/posix:side-effect",
+    "source": "import \"node:path/posix\"; export const native=1",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/posix:basename:direct",
+    "source": "import { basename } from \"path/posix\"\nexport const native=basename\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "path/posix:basename:alias",
+    "source": "import { basename as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "path/posix:dirname:direct",
+    "source": "import { dirname } from \"path/posix\"\nexport const native=dirname\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "path/posix:dirname:alias",
+    "source": "import { dirname as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "path/posix:extname:direct",
+    "source": "import { extname } from \"path/posix\"\nexport const native=extname\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "path/posix:extname:alias",
+    "source": "import { extname as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "path/posix:format:direct",
+    "source": "import { format } from \"path/posix\"\nexport const native=format\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "path/posix:format:alias",
+    "source": "import { format as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "path/posix:isAbsolute:direct",
+    "source": "import { isAbsolute } from \"path/posix\"\nexport const native=isAbsolute\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "path/posix:isAbsolute:alias",
+    "source": "import { isAbsolute as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "path/posix:join:direct",
+    "source": "import { join } from \"path/posix\"\nexport const native=join\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/posix:join:alias",
+    "source": "import { join as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/posix:normalize:direct",
+    "source": "import { normalize } from \"path/posix\"\nexport const native=normalize\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "path/posix:normalize:alias",
+    "source": "import { normalize as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "path/posix:parse:direct",
+    "source": "import { parse } from \"path/posix\"\nexport const native=parse\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "path/posix:parse:alias",
+    "source": "import { parse as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "path/posix:relative:direct",
+    "source": "import { relative } from \"path/posix\"\nexport const native=relative\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "path/posix:relative:alias",
+    "source": "import { relative as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "path/posix:resolve:direct",
+    "source": "import { resolve } from \"path/posix\"\nexport const native=resolve\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "path/posix:resolve:alias",
+    "source": "import { resolve as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "path/posix:toNamespacedPath:direct",
+    "source": "import { toNamespacedPath } from \"path/posix\"\nexport const native=toNamespacedPath\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "path/posix:toNamespacedPath:alias",
+    "source": "import { toNamespacedPath as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "path/posix:sep:direct",
+    "source": "import { sep } from \"path/posix\"\nexport const native=sep\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "path/posix:sep:alias",
+    "source": "import { sep as Native } from \"path/posix\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "path/posix:namespace",
+    "source": "import * as Native from \"path/posix\"; export const native=Native",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/posix:side-effect",
+    "source": "import \"path/posix\"; export const native=1",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/win32:basename:direct",
+    "source": "import { basename } from \"node:path/win32\"\nexport const native=basename\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "node:path/win32:basename:alias",
+    "source": "import { basename as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "node:path/win32:dirname:direct",
+    "source": "import { dirname } from \"node:path/win32\"\nexport const native=dirname\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "node:path/win32:dirname:alias",
+    "source": "import { dirname as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "node:path/win32:extname:direct",
+    "source": "import { extname } from \"node:path/win32\"\nexport const native=extname\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "node:path/win32:extname:alias",
+    "source": "import { extname as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "node:path/win32:format:direct",
+    "source": "import { format } from \"node:path/win32\"\nexport const native=format\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "node:path/win32:format:alias",
+    "source": "import { format as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "node:path/win32:isAbsolute:direct",
+    "source": "import { isAbsolute } from \"node:path/win32\"\nexport const native=isAbsolute\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "node:path/win32:isAbsolute:alias",
+    "source": "import { isAbsolute as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "node:path/win32:join:direct",
+    "source": "import { join } from \"node:path/win32\"\nexport const native=join\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/win32:join:alias",
+    "source": "import { join as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/win32:normalize:direct",
+    "source": "import { normalize } from \"node:path/win32\"\nexport const native=normalize\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "node:path/win32:normalize:alias",
+    "source": "import { normalize as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "node:path/win32:parse:direct",
+    "source": "import { parse } from \"node:path/win32\"\nexport const native=parse\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "node:path/win32:parse:alias",
+    "source": "import { parse as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "node:path/win32:relative:direct",
+    "source": "import { relative } from \"node:path/win32\"\nexport const native=relative\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "node:path/win32:relative:alias",
+    "source": "import { relative as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "node:path/win32:resolve:direct",
+    "source": "import { resolve } from \"node:path/win32\"\nexport const native=resolve\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "node:path/win32:resolve:alias",
+    "source": "import { resolve as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "node:path/win32:toNamespacedPath:direct",
+    "source": "import { toNamespacedPath } from \"node:path/win32\"\nexport const native=toNamespacedPath\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "node:path/win32:toNamespacedPath:alias",
+    "source": "import { toNamespacedPath as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "node:path/win32:sep:direct",
+    "source": "import { sep } from \"node:path/win32\"\nexport const native=sep\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "node:path/win32:sep:alias",
+    "source": "import { sep as Native } from \"node:path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "node:path/win32:namespace",
+    "source": "import * as Native from \"node:path/win32\"; export const native=Native",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:path/win32:side-effect",
+    "source": "import \"node:path/win32\"; export const native=1",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/win32:basename:direct",
+    "source": "import { basename } from \"path/win32\"\nexport const native=basename\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "path/win32:basename:alias",
+    "source": "import { basename as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).basename(path)"
+  },
+  {
+    "key": "path/win32:dirname:direct",
+    "source": "import { dirname } from \"path/win32\"\nexport const native=dirname\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "path/win32:dirname:alias",
+    "source": "import { dirname as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).dirname(path)"
+  },
+  {
+    "key": "path/win32:extname:direct",
+    "source": "import { extname } from \"path/win32\"\nexport const native=extname\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "path/win32:extname:alias",
+    "source": "import { extname as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).extname(path)"
+  },
+  {
+    "key": "path/win32:format:direct",
+    "source": "import { format } from \"path/win32\"\nexport const native=format\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "path/win32:format:alias",
+    "source": "import { format as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).format(parts)"
+  },
+  {
+    "key": "path/win32:isAbsolute:direct",
+    "source": "import { isAbsolute } from \"path/win32\"\nexport const native=isAbsolute\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "path/win32:isAbsolute:alias",
+    "source": "import { isAbsolute as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).isAbsolute(path)"
+  },
+  {
+    "key": "path/win32:join:direct",
+    "source": "import { join } from \"path/win32\"\nexport const native=join\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/win32:join:alias",
+    "source": "import { join as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/win32:normalize:direct",
+    "source": "import { normalize } from \"path/win32\"\nexport const native=normalize\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "path/win32:normalize:alias",
+    "source": "import { normalize as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).normalize(path)"
+  },
+  {
+    "key": "path/win32:parse:direct",
+    "source": "import { parse } from \"path/win32\"\nexport const native=parse\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "path/win32:parse:alias",
+    "source": "import { parse as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).parse(path)"
+  },
+  {
+    "key": "path/win32:relative:direct",
+    "source": "import { relative } from \"path/win32\"\nexport const native=relative\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "path/win32:relative:alias",
+    "source": "import { relative as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).relative(from, to)"
+  },
+  {
+    "key": "path/win32:resolve:direct",
+    "source": "import { resolve } from \"path/win32\"\nexport const native=resolve\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "path/win32:resolve:alias",
+    "source": "import { resolve as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).resolve(path)"
+  },
+  {
+    "key": "path/win32:toNamespacedPath:direct",
+    "source": "import { toNamespacedPath } from \"path/win32\"\nexport const native=toNamespacedPath\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "path/win32:toNamespacedPath:alias",
+    "source": "import { toNamespacedPath as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).toNamespacedPath(path)"
+  },
+  {
+    "key": "path/win32:sep:direct",
+    "source": "import { sep } from \"path/win32\"\nexport const native=sep\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "path/win32:sep:alias",
+    "source": "import { sep as Native } from \"path/win32\"\nexport const native=Native\n",
+    "advice": "(try Path.Path).sep"
+  },
+  {
+    "key": "path/win32:namespace",
+    "source": "import * as Native from \"path/win32\"; export const native=Native",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "path/win32:side-effect",
+    "source": "import \"path/win32\"; export const native=1",
+    "advice": "(try Path.Path).join(directory, name)"
+  },
+  {
+    "key": "node:url:fileURLToPath:direct",
+    "source": "import { fileURLToPath } from \"node:url\"; export const native=fileURLToPath",
+    "advice": "try (try Path.Path).fromFileUrl(url)"
+  },
+  {
+    "key": "node:url:fileURLToPath:alias",
+    "source": "import { fileURLToPath as Native } from \"node:url\"; export const native=Native",
+    "advice": "try (try Path.Path).fromFileUrl(url)"
+  },
+  {
+    "key": "node:url:pathToFileURL:direct",
+    "source": "import { pathToFileURL } from \"node:url\"; export const native=pathToFileURL",
+    "advice": "try (try Path.Path).toFileUrl(path)"
+  },
+  {
+    "key": "node:url:pathToFileURL:alias",
+    "source": "import { pathToFileURL as Native } from \"node:url\"; export const native=Native",
+    "advice": "try (try Path.Path).toFileUrl(path)"
+  },
+  {
+    "key": "url:fileURLToPath:direct",
+    "source": "import { fileURLToPath } from \"url\"; export const native=fileURLToPath",
+    "advice": "try (try Path.Path).fromFileUrl(url)"
+  },
+  {
+    "key": "url:fileURLToPath:alias",
+    "source": "import { fileURLToPath as Native } from \"url\"; export const native=Native",
+    "advice": "try (try Path.Path).fromFileUrl(url)"
+  },
+  {
+    "key": "url:pathToFileURL:direct",
+    "source": "import { pathToFileURL } from \"url\"; export const native=pathToFileURL",
+    "advice": "try (try Path.Path).toFileUrl(path)"
+  },
+  {
+    "key": "url:pathToFileURL:alias",
+    "source": "import { pathToFileURL as Native } from \"url\"; export const native=Native",
+    "advice": "try (try Path.Path).toFileUrl(path)"
+  },
+  {
+    "key": "global:process.cwd",
+    "source": "export const native=process.cwd",
+    "advice": "(try Path.Path).resolve()"
+  },
+  {
+    "key": "global:__dirname",
+    "source": "export const native=__dirname",
+    "advice": "(try Path.Path).dirname(try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url)))))"
+  },
+  {
+    "key": "global:__filename",
+    "source": "export const native=__filename",
+    "advice": "try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url))))"
+  }
+]
