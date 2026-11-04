@@ -6,7 +6,18 @@ import { test } from "node:test"
 import { compareApiIdentity,loadTypeScript } from "./api-identity.mjs"
 import { SpecPath } from "./testing/spec-path.mjs"
 import {createDependencyDocuments} from "./api-identity-diagnostics-cache.mjs"
-const ts=loadTypeScript()
+const stockTs=loadTypeScript()
+let browserPrograms=0,missingSymbolPrograms=0
+const ts={...stockTs,createProgram(...args){
+ const program=stockTs.createProgram(...args),files=program.getSourceFiles()
+ if(files.some(source=>/[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)))browserPrograms++
+ if(!files.some(source=>/[/\\]lib\.es2015\.symbol\.d\.ts$/.test(source.fileName)))missingSymbolPrograms++
+ return program
+}}
+function checkLibraries(){
+ assert.equal(browserPrograms,0,"Diagnostic-cache fixtures must not load unrelated browser libraries")
+ assert.equal(missingSymbolPrograms,0,"Diagnostic-cache fixtures must retain the library SymbolConstructor augmentation target")
+}
 class ObservedCache extends Map {
  hits=0
  gets=0
@@ -21,12 +32,14 @@ function fixture(t){
  const dependency=join(modules,"dependency/index.d.ts")
  put(join(modules,"dependency/package.json"),'{"name":"dependency","version":"1.0.0","types":"index.d.ts","type":"module"}')
  put(dependency,"export interface Value { value: string }\n")
- const cache=new ObservedCache(),documents=createDependencyDocuments(ts),options={moduleRoots:[modules]}
+ const cache=new ObservedCache(),documents=createDependencyDocuments(ts),options={moduleRoots:[modules],compilerOptions:{lib:["lib.esnext.d.ts"]}}
  const input='export type {Value} from "dependency";\nexport declare const answer: number;\n'
  const write=(a=input,b=a)=>{put(join(before,"index.d.ts"),a);put(join(after,"index.d.ts"),b)}
  const compare=()=>{
   const fresh=compareApiIdentity(ts,before,after,options)
+  checkLibraries()
   const cached=compareApiIdentity(ts,before,after,{...options,dependencyDiagnosticsCache:cache,dependencyDocuments:documents,lazyAmbientDocumentation:true})
+  checkLibraries()
   assert.deepEqual(cached,fresh,"reuse must preserve the complete strict comparison result")
   return cached
  }
@@ -204,6 +217,7 @@ test("shared ambient paths avoid unused documentation queries without changing t
   const result=compareApiIdentity(measured,f.before,f.after,{...f.options,
    dependencyDiagnosticsCache:new Map(),dependencyDocuments:createDependencyDocuments(measured),
    lazyAmbientDocumentation:lazy})
+  checkLibraries()
   assert.deepEqual(result,reference)
   return symbols
  }

@@ -1641,3 +1641,11 @@ cases retain authored `@throws` and `@rethrows` documentation, function,
 arrow and overload forms, JSON value types, export conditions and key order.
 The JSON consumer still independently requires `TS2322` for a changed value
 type and no diagnostic for key-order changes.
+
+Dependency-diagnostics cache fixtures explicitly retain `lib.esnext.d.ts`
+and the native `SymbolConstructor` library augmentation target, while a
+source-file guard rejects unrelated browser declarations. Resource assertions
+run outside the comparison call so its failure-reporting contract cannot
+absorb them. All 13 tests retain fresh-versus-cached result equality, actual
+cache hits, content and resolution invalidation, documentation changes,
+18 changing environments, 20 file-group errors and bounded retention.
