@@ -210,3 +210,155 @@ func TestNeverStarted(t *testing.T) { MissingForBuildFailure() }
   assert.match(result.stderr, new RegExp("event=finish.*phase=build-failed.*tests_started=0.*tests_finished=0.*build_failures=" + failures + ".*cause=exit code=1"))
   assert.doesNotMatch(result.stderr, /MissingForBuildFailure|broken_test\.go|progress\.build\.fixture/)
 })
+
+for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) test("Go progress cancels descendants on " + signal, { timeout: 15_000 }, async t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-tree-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const receipt = join(dir, "receipt")
+  const leaf = join(dir, "leaf.mjs")
+  writeFileSync(leaf, `import { writeFileSync } from "node:fs"
+const receipt = ${JSON.stringify(receipt)}
+for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(signal, () => {
+  writeFileSync(receipt, signal); process.exit(0)
+})
+process.stdout.write("descendant-ready\\n")
+setTimeout(() => { writeFileSync(receipt, "escaped"); process.exit(0) }, 1500)
+`)
+  const env = fixture(t, 'import { spawn } from "node:child_process"; const child=spawn(process.execPath, [' + JSON.stringify(leaf) + '], {stdio:"inherit"}); child.on("close", code => {process.exitCode=code})')
+  const child = spawn(process.execPath, args, { env, stdio: ["ignore", "pipe", "pipe"] })
+  t.after(() => { if (child.exitCode === null) child.kill("SIGKILL") })
+  let stdout = "", stderr = ""
+  child.stderr.on("data", bytes => { stderr += bytes })
+  const ready = new Promise((resolve, reject) => {
+    child.stdout.on("data", bytes => { stdout += bytes; if (stdout.includes("descendant-ready\n")) resolve() })
+    child.once("error", reject)
+    child.once("close", () => reject(new Error("closed before descendant started: " + stderr)))
+  })
+  const closed = new Promise((resolve, reject) => {
+    child.once("error", reject)
+    child.once("close", (code, signal) => resolve({ code, signal }))
+  })
+  await ready
+  child.kill(signal)
+  const result = await closed
+  assert.equal(readFileSync(receipt, "utf8"), signal, "descendant must receive cancellation instead of finishing its work")
+  assert.equal(result.code, { SIGTERM: 143, SIGINT: 130, SIGHUP: 129 }[signal], stderr)
+  assert.equal(result.signal, null)
+  assert.equal(stdout, "descendant-ready\n")
+  assert.match(stderr, new RegExp("event=finish.*cause=signal.*signal=" + signal))
+  assert.doesNotMatch(stderr, /go-progress-tree-|private-fixture/)
+})
+
+test("Go progress cancellation reaches generated branching process trees", {
+  timeout: 120_000, skip: process.platform === "win32"
+}, async t => {
+  for (let seed = 1; seed <= 12; seed++) {
+    const signal = ["SIGHUP", "SIGINT", "SIGTERM"][seed % 3]
+    const depth = 1 + seed % 3, width = 1 + seed % 2
+    const expected = Array.from({ length: depth + 1 }, (_, i) => width ** i).reduce((a, b) => a + b)
+    const dir = mkdtempSync(join(tmpdir(), "go-progress-branch-"))
+    const worker = join(dir, "worker.mjs"), receipt = join(dir, "receipt")
+    try {
+      writeFileSync(worker, `import { spawn } from "node:child_process"
+import { appendFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+const depth = Number(process.argv[2]), width = Number(process.argv[3])
+const receipt = ${JSON.stringify(receipt)}
+for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(signal, () => {
+  appendFileSync(receipt, signal + "\\n"); process.exit(0)
+})
+if (depth > 0) for (let i = 0; i < width; i++) spawn(process.execPath, [
+  fileURLToPath(import.meta.url), String(depth - 1), String(width)
+], { stdio: "inherit" })
+process.stdout.write("tree-ready\\n")
+setTimeout(() => { appendFileSync(receipt, "escaped\\n"); process.exit(0) }, 10_000)
+`)
+      const env = fixture(t, 'import { spawn } from "node:child_process"; spawn(process.execPath, ' +
+        JSON.stringify([worker, String(depth), String(width)]) + ', {stdio:"inherit"})')
+      const child = spawn(process.execPath, args, { env, stdio: ["ignore", "pipe", "pipe"] })
+      t.after(() => { if (child.exitCode === null) child.kill("SIGKILL") })
+      let stdout = "", stderr = ""
+      child.stderr.on("data", bytes => { stderr += bytes })
+      const ready = new Promise((resolve, reject) => {
+        child.stdout.on("data", bytes => {
+          stdout += bytes
+          if (stdout.split("\n").length - 1 === expected) resolve()
+        })
+        child.once("error", reject)
+        child.once("close", () => reject(new Error("tree did not start: " + stderr)))
+      })
+      const closed = new Promise((resolve, reject) => {
+        child.once("error", reject)
+        child.once("close", (code, signal) => resolve({ code, signal }))
+      })
+      await ready
+      child.kill(signal)
+      const result = await closed
+      assert.deepEqual(readFileSync(receipt, "utf8").trim().split("\n"), Array(expected).fill(signal), "seed " + seed)
+      assert.equal(stdout, "tree-ready\n".repeat(expected))
+      assert.equal(result.code, { SIGTERM: 143, SIGINT: 130, SIGHUP: 129 }[signal], stderr)
+      assert.equal(result.signal, null)
+      assert.match(stderr, new RegExp("event=cancel.*signal=" + signal))
+      assert.match(stderr, new RegExp("event=finish.*cause=signal.*signal=" + signal))
+      assert.doesNotMatch(stderr, /go-progress-branch-|private-fixture/)
+    } finally { rmSync(dir, { recursive: true, force: true }) }
+  }
+})
+
+test("Go progress cancels a child of a real native Go test", {
+  timeout: 600_000, skip: process.platform === "win32"
+}, async t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-native-tree-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const receipt = join(dir, "receipt"), worker = join(dir, "worker.mjs")
+  writeFileSync(worker, `import { writeFileSync } from "node:fs"
+for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(signal, () => {
+  writeFileSync(${JSON.stringify(receipt)}, signal); process.exit(0)
+})
+process.stdout.write("native-descendant-ready\\n")
+setTimeout(() => { writeFileSync(${JSON.stringify(receipt)}, "escaped"); process.exit(0) }, 10_000)
+`)
+  writeFileSync(join(dir, "go.mod"), "module progress.fixture\n\ngo 1.27\n")
+  writeFileSync(join(dir, "progress_test.go"), `package progress
+import ("os"; "os/exec"; "testing")
+func TestCancellation(t *testing.T) {
+  child := exec.Command(os.Getenv("PROGRESS_NODE"), os.Getenv("PROGRESS_WORKER"))
+  child.Stdout = os.Stdout
+  child.Stderr = os.Stderr
+  if err := child.Run(); err != nil { t.Fatal(err) }
+}
+`)
+  const goroot = spawnSync("go", ["env", "GOROOT"], { encoding: "utf8" })
+  assert.equal(goroot.status, 0, goroot.stderr)
+  const nativePath = join(goroot.stdout.trim(), "bin") + delimiter + process.env.PATH
+  for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+    const child = spawn(process.execPath, [script, "go", "test", "-json", "-count=1", "-p", "8", "."], {
+      cwd: dir, env: { ...process.env, PATH: nativePath, GOMAXPROCS: "8", GOFLAGS: "", GOWORK: "off",
+        PROGRESS_NODE: process.execPath, PROGRESS_WORKER: worker }, stdio: ["ignore", "pipe", "pipe"]
+    })
+    t.after(() => { if (child.exitCode === null) child.kill("SIGKILL") })
+    let stdout = "", stderr = ""
+    child.stderr.on("data", bytes => { stderr += bytes })
+    const ready = new Promise((resolve, reject) => {
+      child.stdout.on("data", bytes => {
+        stdout += bytes
+        if (stdout.includes("native-descendant-ready")) resolve()
+      })
+      child.once("error", reject)
+      child.once("close", () => reject(new Error("native test did not start: " + stdout + stderr)))
+    })
+    const closed = new Promise((resolve, reject) => {
+      child.once("error", reject)
+      child.once("close", (code, signal) => resolve({ code, signal }))
+    })
+    await ready
+    child.kill(signal)
+    const result = await closed
+    assert.equal(readFileSync(receipt, "utf8"), signal)
+    assert.equal(result.code, { SIGTERM: 143, SIGINT: 130, SIGHUP: 129 }[signal], stderr)
+    assert.equal(result.signal, null)
+    assert.match(stderr, new RegExp("event=cancel.*signal=" + signal))
+    assert.match(stderr, new RegExp("event=finish.*cause=signal.*signal=" + signal))
+    assert.doesNotMatch(stderr, /go-progress-native-tree-|PROGRESS_NODE|PROGRESS_WORKER/)
+  }
+})

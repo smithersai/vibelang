@@ -232,6 +232,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.
 - Fuzz validation previously rejected native arrow declarations with the correct generated contract; it now reads `@throws {never}` from the exported binding.
 - Regression checks for `or`-pattern bindings in loops could reject a correct compiler because their witnesses omitted the required lexical block. The checks now use block bodies and separately verify `EK0705` on unbraced bodies.
+
+- Cancelling Go validation could leave child test processes running. On POSIX hosts, the progress wrapper now forwards cancellation to the whole test process group and immediately records the signal.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.

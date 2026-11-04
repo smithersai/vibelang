@@ -84,9 +84,21 @@ export function run(args) {
       (extra ? " " + extra : "") + "\n")
   }
   record("start")
-  child = spawn(args[0], args.slice(1), { stdio: ["inherit", "pipe", "inherit"] })
+  // Own a separate POSIX group so cancellation reaches Go's test binaries
+  // and their children without signalling the caller's process group.
+  const processGroup = process.platform !== "win32"
+  child = spawn(args[0], args.slice(1), {
+    stdio: ["inherit", "pipe", "inherit"], detached: processGroup
+  })
   const heartbeat = setInterval(() => record("heartbeat"), 10000)
-  const forward = signal => { interrupted = signal; child.kill(signal) }
+  const forward = signal => {
+    interrupted = signal
+    record("cancel", "signal=" + signal)
+    if (!child.pid) return
+    if (!processGroup) { child.kill(signal); return }
+    try { process.kill(-child.pid, signal) }
+    catch (error) { if (error.code !== "ESRCH") throw error }
+  }
   const handlers = ["SIGINT", "SIGTERM", "SIGHUP"].map(signal => {
     const handler = () => forward(signal)
     process.on(signal, handler)

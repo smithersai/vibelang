@@ -516,6 +516,13 @@ test progress. Sampling reads no process arguments or environment values.
 These samples describe the observed phase; they do not establish why a launcher
 waited or why a test took time.
 
+On POSIX hosts, each invocation owns a separate process group. Cancelling the
+reporter with `SIGINT`, `SIGTERM` or `SIGHUP` forwards that signal to the
+whole group, including test binaries and their children. An immediate
+`event=cancel` record identifies the signal, and the final record retains the
+signal-derived exit status. On Windows, cancellation forwards to the direct
+child.
+
 The target retains its 15-minute deadline, required dependency checks,
 `VIBELANG_FUZZ_HANG=120s` and `-count=1` to rerun external oracles.
 Run it with:
