@@ -29,10 +29,12 @@ func isEffectBlock(node *ast.Node) bool {
 // handler's result as its value (VIP-5: x catch (e) => f(e) is
 // Effect.catch(x, (e) => Effect.succeed(f(e)))). The parser passes both
 // sides to $catchExpression as functions. The left side's function is the
-// code around it: plain, giving the Effect to run, or, when a try in it runs
-// an Effect first, an Effect function that runs what it gives
-// (catchLeftRuns). A plain handler is typed and lowered as an Effect function
-// whose body runs nothing, so its result is the success value.
+// code around it and gives the Effect to run. A try in it runs where the
+// left side stands, before the catch (catchLeftHoldsTry), so the catch
+// receives the Effect the left side gives: (try x) catch h is
+// Effect.catch(yield* x, h) (VIP-5, amended 2026-10-29). A plain handler is
+// typed and lowered as an Effect function whose body runs nothing, so its
+// result is the success value.
 func markedForm(fn *ast.Node) form {
 	switch {
 	case isEffectBlock(fn):
@@ -40,8 +42,6 @@ func markedForm(fn *ast.Node) form {
 	case isMarkedEffect(fn):
 		return formEffect
 	case isCalledInPlace(fn) && inEffectCode(fn):
-		return formEffect
-	case isCatchLeftFunction(fn) && inEffectCode(fn) && holdsTry(fn.Body()):
 		return formEffect
 	case isCatchHandlerOf(fn) && inEffectCode(fn):
 		return formEffect
@@ -104,13 +104,26 @@ func isCatchLeftBody(node *ast.Node) bool {
 	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil && ast.SkipParentheses(fn.Body()) == node
 }
 
-// catchLeftRuns reports whether call is the left side of a catch expression
-// whose function is an Effect function (markedForm): that function runs the
-// Effect the left side gives, as the catch runs it.
-func catchLeftRuns(call *ast.Node) bool {
-	fn := call.Parent
-	for fn != nil && ast.IsParenthesizedExpression(fn) {
-		fn = fn.Parent
-	}
-	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil && ast.SkipParentheses(fn.Body()) == call && markedForm(fn) == formEffect
+// catchLeftHoldsTry reports whether fn is the function the parser writes
+// around a catch expression's left side, in effect code, with a try in it.
+// That function is no function in the source: the plan and the lowering
+// treat its body as code of the enclosing Effect, so each try runs before
+// the catch, and the catch runs the value the left side gives. A failure of
+// that try is the enclosing code's, not the catch's: g(try a) catch h
+// catches g's failure (chapter 2), and (try x) catch h catches the Effect
+// that x succeeds with (VIP-5, amended 2026-10-29).
+func catchLeftHoldsTry(fn *ast.Node) bool {
+	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil && inEffectCode(fn) && holdsTry(fn.Body())
+}
+
+// visitCatchLeftValue lowers the left side of a catch that holds a try where
+// it stands, in the enclosing Effect, and passes the catch a function that
+// gives its value: ((value) => () => value)(left).
+func (tx *lowering) visitCatchLeftValue(node *ast.Node) *ast.Node {
+	f := tx.Factory()
+	value := tx.Visitor().VisitNode(node.Body())
+	name := f.NewUniqueName("value")
+	parameter := f.NewParameterDeclaration(nil /*modifiers*/, nil /*dotDotDotToken*/, name, nil /*questionToken*/, nil /*type*/, nil /*initializer*/)
+	give := tx.generated(f.NewParenthesizedExpression(tx.arrow([]*ast.Node{parameter}, tx.arrow(nil, name))))
+	return f.NewCallExpression(give, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{value}), ast.NodeFlagsNone)
 }

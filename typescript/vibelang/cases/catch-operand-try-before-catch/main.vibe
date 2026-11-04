@@ -1,0 +1,37 @@
+// A try in a catch's left side runs where it stands, before the catch: the
+// catch receives the Effect the left side gives. Chapter 2's catch table
+// gives (try x) catch (e) => y as yield* Effect.catch(yield* x, ...), and
+// VIP-5 (amended 2026-10-29) says (try x) catch h catches the Effect that x
+// succeeds with; g(try a) catch h catches g's failure.
+import { Effect } from "effect"
+const g = (n: number) => n > 0 ? Effect.fail("g" + n) : Effect.succeed(n)
+effect function argument(a: Effect.Effect<number, string>) {
+  return g(try a) catch (e) => "caught " + e
+}
+effect function grouped(nested: Effect.Effect<Effect.Effect<number, string>, string>) {
+  return (try nested) catch () => 7
+}
+effect function asserted(nested: Effect.Effect<Effect.Effect<number, string>, string>) {
+  return (try nested) as Effect.Effect<number, string> catch () => 7
+}
+effect function order(events: string[], a: Effect.Effect<number, string>) {
+  const o = { m(x: number, y: number) { events.push("m"); return y > 0 ? Effect.fail("m") : Effect.succeed(x + y) } }
+  const f = () => { events.push("f"); return 1 }
+  const r = o.m(f(), try Effect.tap(a, () => Effect.sync(() => { events.push("a") }))) catch (e) => { events.push("h:" + e); return -1 }
+  return [r, events.join(",")]
+}
+export effect function main() {
+  const results: unknown[] = []
+  results.push(try Effect.exit(argument(Effect.fail("a"))))
+  results.push(try argument(Effect.succeed(1)))
+  results.push(try argument(Effect.succeed(0)))
+  results.push(try Effect.exit(grouped(Effect.fail("out"))))
+  results.push(try grouped(Effect.succeed(Effect.fail("in"))))
+  results.push(try grouped(Effect.succeed(Effect.succeed(3))))
+  results.push(try Effect.exit(asserted(Effect.fail("out"))))
+  results.push(try asserted(Effect.succeed(Effect.fail("in"))))
+  results.push(try order([], Effect.succeed(0)))
+  results.push(try order([], Effect.succeed(2)))
+  results.push(try Effect.exit(order([], Effect.fail("a"))))
+  return results
+}

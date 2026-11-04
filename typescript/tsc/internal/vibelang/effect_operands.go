@@ -43,8 +43,19 @@ func effectOperandType(c *checker.Checker, operand *ast.Node) *checker.Type {
 // value. Check that value, not the Effect returned by its hidden helper.
 func catchOperandType(c *checker.Checker, operand *ast.Node) *checker.Type {
 	inner := ast.SkipParentheses(operand)
-	if isTry(inner) || isKeywordFormCall(inner) {
+	if isTry(inner) || isKeywordFormCall(inner) || runsInPlace(inner) {
 		return c.GetTypeAtLocation(operand)
 	}
 	return effectOperandType(c, operand)
+}
+
+// runsInPlace reports whether node is a do or match in effect code, which
+// runs where it stands (markedForm): like try, it has produced its value
+// before a catch on its left runs that value.
+func runsInPlace(node *ast.Node) bool {
+	if !ast.IsCallExpression(node) {
+		return false
+	}
+	fn := ast.SkipParentheses(node.Expression())
+	return isCalledInPlace(fn) && markedForm(fn) == formEffect
 }

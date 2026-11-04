@@ -190,7 +190,7 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 			}
 			return false
 		}
-		if isFunctionBoundary(node) {
+		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) {
 			return false
 		}
 		if isInvocation(node) && cb(node) {
@@ -217,7 +217,7 @@ func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) boo
 			}
 			return false
 		}
-		if isFunctionBoundary(node) {
+		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) {
 			return false
 		}
 		if isInvocation(node) && cb(node) {
@@ -350,7 +350,7 @@ func (a *analyzer) runs(call *ast.Node) bool {
 		if isCatchLeftBody(call) {
 			// a catch h1 catch h2 is (a catch h1) catch h2 (VIP-5): the
 			// outer catch runs the inner one, which stays its Effect.
-			return catchLeftRuns(call)
+			return false
 		}
 		return inEffectCode(call) // e catch h runs e (VIP-5)
 	}
@@ -359,9 +359,6 @@ func (a *analyzer) runs(call *ast.Node) bool {
 		// exact sugar for an Effect that runs where the form stands, as
 		// try e does (VIP-12, VIP-17, VIP-19).
 		return inEffectCode(call) && !holdsProgram(a.checker, call) && a.resolvedRunsResult(call)
-	}
-	if catchLeftRuns(call) {
-		return true
 	}
 	if !isTry(call) || !inEffectCode(call) {
 		return false

@@ -99,7 +99,7 @@ func (a *analyzer) isCatchOperandProgram(fn *ast.Node) bool {
 // (chapter 2), so a's success and h's result are Effects; never counts as one,
 // since an a that only fails passes the operand test.
 func (a *analyzer) chainedCatchValue(call *ast.Node) *checker.Type {
-	if catchExpressionOf(call) == nil || !isCatchLeftBody(call) || catchLeftRuns(call) {
+	if catchExpressionOf(call) == nil || !isCatchLeftBody(call) {
 		return nil
 	}
 	program := effectOfValue(a.checker, a.checker.GetTypeAtLocation(call))

@@ -15,7 +15,7 @@ export effect function nested(source: Source): number!! {
   if (source.read !== undefined) {
     return (do {
       const later = effect (): Effect.Effect<number, string, never> => try source.read()
-      try later()
+      later()
     }) catch () => 0
   }
   return 0

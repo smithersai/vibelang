@@ -27,7 +27,7 @@ func newServicePlan() servicePlan {
 // service lookup. Unlike a source function, this parser-created arrow shares
 // its surrounding effect code. Its result stays the Effect that catch runs.
 func serviceHead(c *checker.Checker, fn *ast.Node) bool {
-	return isCatchLeftFunction(fn) && markedForm(fn) == formNone && inEffectCode(fn) &&
+	return isCatchLeftFunction(fn) && markedForm(fn) == formNone && inEffectCode(fn) && !holdsTry(fn.Body()) &&
 		forEachCallInBody(fn, func(call *ast.Node) bool { return isServiceLookup(c, call) })
 }
 

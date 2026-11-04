@@ -24,7 +24,7 @@ func init() {
 					return false
 				}
 				if fix.ErrorCode == EK0506.Code {
-					if call := catchExpressionOf(node); call != nil && markedForm(call.Arguments()[0]) != formNone {
+					if call := catchExpressionOf(node); call != nil && catchLeftHoldsTry(call.Arguments()[0]) {
 						left, _ := catchParts(call)
 						if nodeStart(fix.SourceFile, left) == fix.Span.Pos() {
 							text := "effect { return " + nodeText(fix.SourceFile, left) + " }"
