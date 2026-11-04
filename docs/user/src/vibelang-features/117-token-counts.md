@@ -103,7 +103,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,000 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,000 |
 | [Devtools](../getting-started/012-devtools.md) | 19,000 |
-| **All 13 pages** | **47,000** |
+| **All 13 pages** | **48,000** |
 
 ### Setup
 
@@ -115,11 +115,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 2,900 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,500 |
-| **Build and test** | **17,000** |
+| **Build and test** | **18,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 14,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,500 |
 | **Format and lint** | **10,000** |
-| [Format with dprint](../setup/formatting.md) | 2,600 |
+| [Format with dprint](../setup/formatting.md) | 2,700 |
 | [Developer tools](../setup/developer-tools.md) | 7,400 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
@@ -203,18 +203,18 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Leftovers](../sink/062-leftovers.md) | 680 |
 | **Testing** | **1,400** |
 | [TestClock](../testing/063-testclock.md) | 1,400 |
-| **Code Style** | **8,600** |
+| **Code Style** | **8,700** |
 | [Guidelines](../code-style/064-guidelines.md) | 850 |
 | [Dual APIs](../code-style/065-dual.md) | 1,000 |
 | [Branded Types](../code-style/066-branded-types.md) | 1,200 |
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,900 |
-| [Excessive Nesting](../code-style/068-do.md) | 1,800 |
+| [Excessive Nesting](../code-style/068-do.md) | 1,900 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 1,900 |
 | **Data Types** | **19,000** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |
-| [Data](../data-types/073-data.md) | 3,700 |
+| [Data](../data-types/073-data.md) | 3,800 |
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |
@@ -230,7 +230,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Order](../behaviour/084-order.md) | 1,400 |
 | **Schema** | **36,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
-| [Getting Started](../schema/086-getting-started.md) | 3,400 |
+| [Getting Started](../schema/086-getting-started.md) | 3,500 |
 | [Basic Usage](../schema/087-basic-usage.md) | 5,100 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,000 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,600 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 8,200 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 8,300 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **180,000** |
@@ -268,9 +268,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 260 |
 | [Producers](112-producers.md) | 3,500 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
-| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 8,700 |
+| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 8,800 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
-| [Pattern matching with match and is](116-match-and-is.md) | 9,900 |
+| [Pattern matching with match and is](116-match-and-is.md) | 10,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,900 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 9,300 |
 | **All 8 pages** | **48,000** |
