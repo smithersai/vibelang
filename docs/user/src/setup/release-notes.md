@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
+- Declaration-identity project-root tests repeatedly checked unrelated browser libraries; they now use the fixture’s required libraries while preserving project-root diagnostics, JSON exports and generated option coverage.
+
 - Ambient-import declaration-identity tests still checked unused newer ECMAScript libraries after browser libraries were removed; they now use ES5 declarations while retaining strict checks for private classes, missing modules and every generated sample.
 
 - The compiler fuzz suite stopped before running any test because one match witness was registered twice; it is registered once and the suite runs again.

@@ -7,12 +7,18 @@ import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/foldkit-project-root-probe.json", import.meta.url)))
-const ts = loadTypeScript()
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Project-root fixtures must not load unrelated browser libraries")
+  return program
+} }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 function fixture({ composite = false, explicit = true, json = false, unused = false, value = 1 }, run) {
   const root = mkdtempSync(join(tmpdir(), "api-identity-project-root-"))
   const compilerOptions = {
-    strict: true, noEmit: true, types: [], target: ts.ScriptTarget.ESNext,
+    lib: ["lib.es5.d.ts"], strict: true, noEmit: true, types: [], target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
     resolveJsonModule: true, noUnusedLocals: unused, noUnusedParameters: unused,
     configFilePath: join(root, "tsconfig.json"), composite,
@@ -20,7 +26,7 @@ function fixture({ composite = false, explicit = true, json = false, unused = fa
   }
   try {
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: {
-      strict: true, composite, ...(explicit ? { rootDir: "." } : {}),
+      lib: ["es5"], strict: true, composite, ...(explicit ? { rootDir: "." } : {}),
     } }))
     for (const side of ["before", "after"]) {
       const dir = join(root, side)

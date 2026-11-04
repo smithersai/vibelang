@@ -1619,3 +1619,11 @@ published and referenced wildcard modules, nested roots in both directions,
 private generic-class mutations and all 24 generated samples. This library
 scope belongs only to this fixture; browser and explicit library-reference
 witnesses keep their own environments.
+
+Project-root API fixtures use `lib.es5.d.ts` in native programs and `es5`
+in their written TypeScript project configuration. A source-file guard
+rejects accidental browser-library loading in validation and comparison
+programs. The fixture retains explicit and implicit project roots,
+composite projects, JSON exports, unused checks and all 24 generated
+option layouts. Its real outside-root sources must still produce `TS6059`
+and make the comparison unavailable.
