@@ -6,8 +6,8 @@ service DefaultPort: Shape {
   static readonly key = "coverage/DefaultPort"
   static readonly defaultValue = () => ({ value: "default" })
 }
-export const exact: Equal<Port.Shape, Shape> = true
-export const defaultExact: Equal<DefaultPort.Shape, Shape> = true
+export const exact: Equal<Context.Service.Shape<typeof Port>, Shape> = true
+export const defaultExact: Equal<Context.Service.Shape<typeof DefaultPort>, Shape> = true
 export effect function main() {
   const a = try Effect.provideService(effect { return (try Port).value }, Port, { value: "provided" })
   return [a, (try DefaultPort).value, "Shape" in Port, "Shape" in DefaultPort]

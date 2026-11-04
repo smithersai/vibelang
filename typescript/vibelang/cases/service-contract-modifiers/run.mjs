@@ -24,7 +24,7 @@ assert.notEqual(first.status, 0, "the private name still needs a deliberate publ
 const fixedSource = readFileSync(new URL("invalid.vibe", fixedDir), "utf8")
 assert(fixedSource.includes("service Public { n: number }"), fixedSource)
 assert(fixedSource.includes("service Definite { n: number }"), fixedSource)
-assert(fixedSource.includes("service EffectMethod { run(): Effect<number> }"), fixedSource)
+assert(fixedSource.includes("service EffectMethod { run(): number!! }"), fixedSource)
 const remaining = [...(first.stdout+first.stderr).matchAll(/^.*\((\d+),\d+\): error ([A-Z]+)(\d+):/gm)]
 assert.equal(remaining.length, 1, first.stdout+first.stderr)
 assert.equal(Number(remaining[0][1]), 10)
