@@ -13,7 +13,7 @@ func init() {
 			VIP:      29,
 			Template: "class ‹Name› extends Schema.TaggedError‹<Name>›()(‹tag›, { [‹field›]: Schema.Number }) {}",
 			Quote:    "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas. Transport compatibility follows their encoded representations, as above.",
-			Reading:  "Chapter 3's Field keys example uses a string-typed field name and Schema.decodeUnknownExit: a missing actual key fails, and an unrelated key is stripped. The reference keeps that exact Schema.TaggedError class and computed field map. Type-only arguments/annotations are erased for ref.mjs.",
+			Reading:  "Chapter 3's Field keys example uses a literal-typed field name, const field = \"actual\", whose key domain excludes _tag as VIP-29's computed-key amendment requires, and Schema.decodeUnknownExit: a missing actual key fails, and an unrelated key is stripped. The reference keeps that exact Schema.TaggedError class and computed field map. Type-only arguments/annotations are erased for ref.mjs.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			return []Stmt{&Event{Label: g.Label()}, computedErrorProbe(g)}
@@ -33,7 +33,7 @@ func computedErrorProbe(g *Gen) Stmt {
 type computedSchemaError struct{ Name, Key string }
 
 func (d *computedSchemaError) Vibe(w *Writer) {
-	w.Write(fmt.Sprintf("const %s: string = \"actual\";\nschema error %s { [%s]: number }", d.Key, d.Name, d.Key))
+	w.Write(fmt.Sprintf("const %s = \"actual\";\nschema error %s { [%s]: number }", d.Key, d.Name, d.Key))
 }
 func (d *computedSchemaError) Effect(w *Writer) {
 	w.Write(fmt.Sprintf("const %s = \"actual\";\nclass %s extends Schema.TaggedError()(%q, { [%s]: Schema.Number }) {}", d.Key, d.Name, d.Name, d.Key))
