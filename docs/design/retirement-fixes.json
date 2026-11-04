@@ -7,6 +7,10 @@
         "output": "typescript/vibelang/cases/ek4401-fix-fixed-output"
       },
       {
+        "input": "typescript/vibelang/cases/opencode-narrowed-branch-call.fail",
+        "output": "typescript/vibelang/cases/opencode-narrowed-branch-call-fixed-output"
+      },
+      {
         "input": "typescript/vibelang/cases/opencode-narrowed-property-call.fail",
         "output": "typescript/vibelang/cases/opencode-narrowed-property-call-fixed-output"
       },

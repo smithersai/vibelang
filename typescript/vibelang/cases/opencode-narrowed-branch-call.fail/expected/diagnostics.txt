@@ -1,0 +1,4 @@
+lib.vibe(10,26): error EK0403
+lib.vibe(15,28): error EK0403
+lib.vibe(21,8): error EK0403
+lib.vibe(27,38): error EK0403

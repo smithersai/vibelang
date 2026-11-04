@@ -226,6 +226,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Sidecar resolution documentation checks expected obsolete wording; they now verify the current final-path, symlink, module-identity and explicit-input safeguards.
 
 - After a build wrote declaration sidecars, `vibelang --fix` could refuse an `Effect.fn` migration with `TS5055` because expanding a parameter type imported those outputs. It now retains the checked source annotation, so repeated builds and fixes keep the same type identity; explicitly selected declaration inputs still have overwrite protection.
+- `vibelang --fix` left `EK0403` on a plain TypeScript call that reads a guarded property when the call is the whole branch of an `if`, as in `if (field.description) log.info(field.description)`: an unbraced branch got no fix, and `if (o.p) { f(o.p) }` on one line was refused with `TS1005`. The branch now becomes a block that holds the `const` keeping the guard's proof, so the call still runs only when the guard holds. An unbraced branch whose call runs an Effect operand, such as `if (n > 0) return f(try one())`, is now fixed the same way instead of being left alone.
+
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 
 - Migrating a module reached through an exact `paths` alias could rewrite imports to a name absent from the configuration, such as `models.vibe`. Those imports now name the same migrated source by a relative path, and revert restores the original alias.

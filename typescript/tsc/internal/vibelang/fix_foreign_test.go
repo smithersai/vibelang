@@ -72,7 +72,6 @@ func TestForeignCallFixKeepsWhatRuns(t *testing.T) {
 	for name, body := range map[string]string{
 		"while":    "let i = 0\n  while (double(try one()) < 0) i++\n  return i",
 		"for":      "let t = 0\n  for (let i = 0; i < double(try one()); i++) t++\n  return t",
-		"unbraced": "if (n > 0) return double(try one())\n  return 0",
 		"ternary":  "return n > 0 ? double(try one()) : 0",
 		"and":      "return n > 0 && double(try one()) > 0",
 	} {
@@ -187,4 +186,63 @@ func foreignCaseHeader(t *testing.T, fixture string) string {
 		t.Fatal("foreign-call fixture needs its diagnostic header")
 	}
 	return header + "\n"
+}
+
+// The call is an if's whole branch (opencode cli auth/form.ts: if
+// (field.description) log.info(field.description)). The const that keeps the
+// guard's proof, or that runs an operand, goes under the guard: the branch
+// becomes a block. A call alone in a block on the guard's line got the const's
+// insertion and the call's rewrite at one offset, applied in the wrong order
+// (TS1005); an unbraced branch got no fix at all.
+func TestForeignCallFixNarrowedBranchTwin(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(root, "typescript/vibelang/cases/opencode-narrowed-branch-call.fail")
+	twin := filepath.Join(root, "typescript/vibelang/cases/opencode-narrowed-branch-call-fixed")
+	want, err := os.ReadFile(filepath.Join(twin, "lib.vibe"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := fixCase(t, copyCompilerFixture(t, fixture, root))
+	if len(result.Refused) != 0 {
+		t.Errorf("refused: %v", result.Refused)
+	}
+	got := ""
+	for file, fixed := range result.Files {
+		if filepath.Base(file.AsString()) == "lib.vibe" {
+			got = fixed.Text
+		}
+	}
+	if expected := foreignCaseHeader(t, fixture) + string(want); got != expected {
+		t.Errorf("--fix writes\n%s\nwant\n%s", got, expected)
+	}
+	if again := fixCase(t, copyCompilerFixture(t, twin, root)); len(again.Files) != 0 {
+		t.Errorf("fixing the twin again changes %v", again.Order)
+	}
+}
+
+// An operand that runs an Effect, in an unbraced branch, runs under the guard
+// as before: in a const in the branch's new block, not before the if.
+func TestForeignCallFixBracesARunningOperand(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek4401-fix.fail"), root)
+	source := "import { double } from \"./plain.ts\"\nconst one = effect (): number!! => 1\nexport const value = effect (n: number) => {\n  if (n > 0) return double(try one())\n  return 0\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "lib.vibe"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := fixCase(t, dir)
+	if len(result.Refused) != 0 {
+		t.Errorf("refused: %v", result.Refused)
+	}
+	want := "  if (n > 0) {\n    const n2 = try one()\n    return try Effect.orDie(Effect.try({ try: () => double(n2), catch: (error) => error }))\n  }\n  return 0\n"
+	for file, fixed := range result.Files {
+		if filepath.Base(file.AsString()) == "lib.vibe" && !strings.Contains(fixed.Text, want) {
+			t.Errorf("--fix writes\n%s\nwant it to hold\n%s", fixed.Text, want)
+		}
+	}
 }

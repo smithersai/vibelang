@@ -119,8 +119,13 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 		code = nodeText(file, target)
 	}
 	var edits []sourceEdit
+	var statement, branch *ast.Node
+	consts := ""
 	if len(inputs) > 0 {
-		statement := enclosingStatement(call)
+		statement, branch = enclosingStatement(call), branchStatement(call)
+		if branch != nil {
+			statement = branch // the consts go under the branch's guard, in braces
+		}
 		if statement == nil || a.runsOutOfOrder(statement, call, inputs) {
 			return nil
 		}
@@ -129,12 +134,17 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 				return nil // the call that runs first could change the property
 			}
 		}
-		at := nodeStart(file, statement)
-		text := ""
-		for _, declaration := range inputConsts(inputs) {
-			text += strings.TrimSuffix(declaration, "; ") + "\n" + lineIndent(file.Text(), at)
+		start := nodeStart(file, statement)
+		separator := "\n" + lineIndent(file.Text(), start)
+		if branch != nil {
+			outer := lineIndent(file.Text(), nodeStart(file, branch.Parent))
+			separator = "\n" + outer + branchIndentUnit(outer)
+		} else if line := file.Text()[strings.LastIndexByte(file.Text()[:start], '\n')+1 : start]; strings.TrimSpace(line) != "" {
+			separator = "; " // if (o.p) { f(o.p) }: the statement shares its line
 		}
-		edits = append(edits, sourceEdit{at, at, text})
+		for _, declaration := range inputConsts(inputs) {
+			consts += strings.TrimSuffix(declaration, "; ") + separator
+		}
 	}
 	if !isMarkedEffect(fn) && (ast.IsArrowFunction(fn) || ast.IsFunctionExpression(fn)) {
 		edits = append(edits, sourceEdit{nodeStart(file, fn), nodeStart(file, fn), "effect "}) // try needs effect code
@@ -147,8 +157,47 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	if !standsAlone(target) {
 		wrapped = "(" + wrapped + ")"
 	}
-	edits = append(edits, sourceEdit{nodeStart(file, target), target.End(), wrapped})
+	switch at := nodeStart(file, target); {
+	case branch != nil:
+		// if (o.p) f(o.p): the branch becomes a block that holds the consts
+		// and the statement, so they run only when the branch does.
+		outer := lineIndent(file.Text(), nodeStart(file, branch.Parent))
+		start := nodeStart(file, branch)
+		text := file.Text()[start:at] + wrapped + file.Text()[target.End():branch.End()]
+		edits = append(edits, sourceEdit{start, branch.End(), "{\n" + outer + branchIndentUnit(outer) + consts + text + "\n" + outer + "}"})
+	case consts != "" && at == nodeStart(file, statement):
+		// The call is the statement: one edit, or the consts' insertion and
+		// the call's rewrite would share a start and could apply in either order.
+		edits = append(edits, sourceEdit{at, target.End(), consts + wrapped})
+	case consts != "":
+		edits = append(edits, sourceEdit{nodeStart(file, statement), nodeStart(file, statement), consts}, sourceEdit{at, target.End(), wrapped})
+	default:
+		edits = append(edits, sourceEdit{at, target.End(), wrapped})
+	}
 	return &formRewrite{edits: edits, description: "the call through Effect.try, whose exceptions stay defects"}
+}
+
+// branchStatement returns the statement that holds node when it is the
+// unbraced branch of an if, as in if (o.p) f(o.p), or nil.
+func branchStatement(node *ast.Node) *ast.Node {
+	for n := node; n.Parent != nil && !ast.IsFunctionLike(n); n = n.Parent {
+		if ast.IsStatement(n) {
+			if ast.IsIfStatement(n.Parent) && n != n.Parent.Expression() && !ast.IsBlock(n) {
+				return n
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
+// branchIndentUnit returns one more level of indent after outer: a tab where outer
+// uses tabs, else two spaces.
+func branchIndentUnit(outer string) string {
+	if strings.Contains(outer, "\t") {
+		return "\t"
+	}
+	return "  "
 }
 
 // outermostGuardedExpression returns the outermost conditional or logical
