@@ -148,11 +148,11 @@ type matchPath func() *ast.Node
 
 // matchCompile carries the state of compiling one top-level pattern.
 type matchCompile struct {
-	coverage bool // match arms include binding-only and/not in finite coverage queries
+	coverage bool   // mark refutable combinators in finite coverage queries
 	cache    string // the private per-evaluation Iterator Record cache
 	anchor   core.TextRange
 	inline   bool // inside or, not, or an is without an if or while: no declarations
-	// uncovered marks the tests of and and not, which cover nothing, in a match
+	// uncovered marks refutable and/not tests, which cover nothing, in a match
 	// with no default arm, for EK4701 (chapter 004, Coverage). With a default arm
 	// no coverage is checked, and the arms narrow as TypeScript does.
 	uncovered bool
@@ -1557,7 +1557,7 @@ func (p *Parser) matcherTest(pat *pattern, path matchPath) *ast.Node {
 // compilePattern appends the steps that match pat against path to steps.
 func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep, ctx *matchCompile) {
 	at := pat.anchor
-	if ctx.coverage && pat.kind != patternOr && patternHasCoverageCombinator(pat) {
+	if ctx.coverage && coveragePattern(pat).kind != patternOr && patternHasCoverageCombinator(pat) {
 		start := len(*steps)
 		defer func() {
 			hasTest := false
@@ -1818,6 +1818,7 @@ func bindsBesideOneTest(items []*pattern) bool {
 // onlyBinds reports whether pat binds names and tests only that the keys it
 // names exist.
 func onlyBinds(pat *pattern) bool {
+	pat = coveragePattern(pat)
 	switch pat.kind {
 	case patternBinding:
 		return true
@@ -1847,10 +1848,38 @@ func (p *Parser) markUncovered(steps []matchStep, first int, ctx *matchCompile, 
 	}
 }
 
-// A containing object, array or extractor cannot turn an and/not subpattern
-// into a bare binding for coverage. Or is handled per alternative by
-// compilePattern, retaining the credit of its other alternatives.
+// coveragePattern removes only irrefutable captures from conjunctions.
+// Preserve the source pattern for compilation: coverage must not change the
+// order or scope of bindings. A property-presence test is not irrefutable.
+func coveragePattern(pat *pattern) *pattern {
+	if pat == nil || pat.kind != patternAnd {
+		return pat
+	}
+	var tested, binding *pattern
+	for _, item := range pat.items {
+		item = coveragePattern(item)
+		if item.kind == patternBinding {
+			binding = item
+		} else if tested == nil {
+			tested = item
+		} else {
+			return pat
+		}
+	}
+	if tested != nil {
+		return tested
+	}
+	if binding != nil {
+		return binding
+	}
+	return pat
+}
+
+// A containing object, array or extractor cannot hide a refutable and/not
+// subpattern. Irrefutable captures preserve coverage recursively. Or is
+// handled per alternative, retaining the credit of its other alternatives.
 func patternHasCoverageCombinator(pat *pattern) bool {
+	pat = coveragePattern(pat)
 	if pat == nil {
 		return false
 	}
@@ -2281,7 +2310,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 			continue
 		}
 		block := p.mBlock(append(slices.Clone(arm.hoists), p.emitSteps(steps, success(arm.value, span), arm.anchor)...), span)
-		if arm.pattern.kind != patternOr && patternHasCoverageCombinator(arm.pattern) {
+		if coveragePattern(arm.pattern).kind != patternOr && patternHasCoverageCombinator(arm.pattern) {
 			block.Flags |= ast.NodeFlagsVibeLangUncountedPattern
 		}
 		out = append(out, block)

@@ -8,7 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const combinatorCoverageQuote = "`and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing"
+const combinatorCoverageQuote = "An irrefutable capture on either side of `and` preserves the other pattern's coverage, including nested conjunctions and captures within a property or extractor argument."
 
 func TestMatchCombinatorCoverageQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("004-match.md"), combinatorCoverageQuote) {
@@ -19,8 +19,8 @@ func TestMatchCombinatorCoverageQuoted(t *testing.T) {
 var combinatorCoverageKeys = []string{"and", "not", "binding-right", "binding-left", "nested-or", "or-alternative", "default", "independent-cover", "plain-or", "open", "field-bindings", "extractor-bindings"}
 
 // The key chooses a rule, the bytes vary finite domains, binding placement,
-// parentheses, trivia and source contexts. Only independent literal arms or
-// a default discharge coverage; the actual combinator test still narrows.
+// parentheses, trivia and source contexts. Irrefutable captures preserve
+// coverage; refutable combinators still need independent coverage or a default.
 func FuzzMatchCombinatorCoverage(f *testing.F) {
 	startShortBudget(f)
 	if !strings.Contains(SpecText("004-match.md"), combinatorCoverageQuote) {
@@ -108,11 +108,89 @@ func FuzzMatchCombinatorCoverage(f *testing.F) {
 			}
 		}
 		want := 1
-		if key == "default" || key == "independent-cover" || key == "plain-or" || key == "open" {
+		if key == "default" || key == "independent-cover" || key == "plain-or" || key == "open" || key == "binding-right" || key == "binding-left" || key == "field-bindings" || key == "extractor-bindings" {
 			want = 0
 		}
 		if count != want {
 			Gap(t, "FuzzMatchCombinatorCoverage", "coverage:"+key, "VIP-7 %s: want %d EK4701, got %d\n%s", combinatorCoverageQuote, want, count, source)
+		}
+	})
+}
+
+// Adding an irrefutable capture to any arm never changes exhaustiveness.
+// Compare complete and incomplete matches, guards and genuinely refutable
+// conjunctions across finite domains, either arm, either side and nesting.
+func FuzzMatchCaptureCoverage(f *testing.F) {
+	startShortBudget(f)
+	for domain := uint8(0); domain < 4; domain++ {
+		for shape := uint8(0); shape < 64; shape++ {
+			f.Add(domain, shape)
+		}
+	}
+	w := NewWorkspace(f)
+	f.Fuzz(func(t *testing.T, domain, shape uint8) {
+		typ, yes, no := "boolean", "true", "false"
+		switch domain % 4 {
+		case 1:
+			typ, yes, no = "1 | 2", "1", "2"
+		case 2:
+			typ, yes, no = `"a" | "b"`, `"a"`, `"b"`
+		case 3:
+			typ, yes, no = `{_tag:"A"}|{_tag:"B"}`, `{_tag:"A"}`, `{_tag:"B"}`
+		}
+		patterns := []string{yes, no}
+		selected := int(shape>>1) % 2
+		if shape&4 != 0 {
+			patterns = []string{patterns[selected]}
+			selected = 0
+		}
+		if shape&8 != 0 {
+			patterns[selected] = "(" + patterns[selected] + " and " + patterns[selected] + ")"
+		}
+		count := func(capture bool) int {
+			arms := ""
+			for i, pattern := range patterns {
+				if capture && i == selected {
+					for depth := uint8(0); depth <= shape>>5; depth++ {
+						binding := fmt.Sprintf("let captured%d", depth)
+						if shape&1 == 0 {
+							pattern = "(" + pattern + ") and " + binding
+						} else {
+							pattern = "const captured" + fmt.Sprint(depth) + " and (" + pattern + ")"
+						}
+					}
+				}
+				if shape&16 != 0 && i == selected {
+					pattern += " and if (flag)"
+				}
+				arms += fmt.Sprintf("when %s: %d;", pattern, i)
+			}
+			source := fmt.Sprintf("export function f(x:%s,flag:boolean){return match(x){%s}}", typ, arms)
+			result, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer result.Remove()
+			gaps := 0
+			for _, d := range result.Diagnostics {
+				if d.Category() != diagnostics.CategoryError {
+					continue
+				}
+				if diagnosticKey(d) == "EK4701" {
+					gaps++
+				} else {
+					t.Fatalf("unexpected %s\n%s", specDiagnosticText(d), source)
+				}
+			}
+			return gaps
+		}
+		before, after := count(false), count(true)
+		want := 0
+		if shape&28 != 0 {
+			want = 1
+		}
+		if before != want || after != before {
+			t.Fatalf("domain=%d shape=%d: control=%d captured=%d, want %d", domain, shape, before, after, want)
 		}
 	})
 }

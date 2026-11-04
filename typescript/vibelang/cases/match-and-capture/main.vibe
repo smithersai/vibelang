@@ -1,0 +1,31 @@
+// VIP-7 / foldkit-181: irrefutable captures preserve coverage.
+// rule-evidence: docs/design/src/004-match.md#exhaustiveness
+export type State = { readonly _tag: "Idle" } | { readonly _tag: "Ready"; readonly value: number }
+
+export function identity(state: State): State {
+  return match (state) {
+    when { _tag: "Idle" } and let idle: idle;
+    when { _tag: "Ready" } and let ready: ready;
+  }
+}
+
+export function left(state: State): State {
+  return match (state) {
+    when const idle and { _tag: "Idle" }: idle;
+    when let ready and { _tag: "Ready" }: ready;
+  }
+}
+
+export function nested(state: State): State {
+  return match (state) {
+    when (let idle and const alsoIdle) and ({ _tag: "Idle" } and let lastIdle): lastIdle;
+    when let ready and ({ _tag: "Ready" } and (const alsoReady and let lastReady)): lastReady;
+  }
+}
+
+export function control(state: State): State {
+  return match (state) {
+    when { _tag: "Idle" }: state;
+    when { _tag: "Ready" }: state;
+  }
+}

@@ -14,7 +14,7 @@ import (
 )
 
 func TestMatchCombinatorCoverage(t *testing.T) {
-	for _, pattern := range []string{"true and true", "true and let v", "let v and true", "not false", "(true and true) or false", "(true and true)", "let v and let w"} {
+	for _, pattern := range []string{"true and true", "true and Boolean", "not false", "(true and true) or false", "(true and true)"} {
 		t.Run(pattern, func(t *testing.T) {
 			source := fmt.Sprintf("export function f(x:boolean){return match(x){when %s:1;when false:0;}}", pattern)
 			p, f, _, _ := editorProgram(t, source)
@@ -92,7 +92,7 @@ func TestMatchCombinatorCoverageCLI(t *testing.T) {
 }
 
 func TestMatchCombinatorTaggedCoverage(t *testing.T) {
-	for _, pattern := range []string{`{_tag:"A"} and let value`, `A and let value`, `(A and A) or (B and B)`} {
+	for _, pattern := range []string{`{_tag:"A"} and {_tag:"A"}`, `A and A`, `(A and A) or (B and B)`} {
 		source := `error A;error B;export function f(x:A|B){return match(x){when ` + pattern + `:1;when B:0;}}`
 		ds := errorsOf(t, source)
 		if len(ds) != 1 || ds[0].Code() != EK4701.Code {
@@ -133,14 +133,52 @@ func combinatorDeclarations(t *testing.T, source string) string {
 
 func TestMatchNestedBindingCombinatorCoverage(t *testing.T) {
 	for name, source := range map[string]string{
+		"right":     `export function f(x:boolean){return match(x){when true and let v:v;when false:false;}}`,
+		"left":      `export function f(x:boolean){return match(x){when const v and true:v;when false:false;}}`,
+		"only":      `export function f(x:boolean){return match(x){when let v and let w:v;}}`,
+		"error-tag": `error A;error B;export function f(x:A|B){return match(x){when A and let a:a;when B and let b:b;}}`,
+		"tagged":    `type T={_tag:"A"}|{_tag:"B"};export function f(x:T){return match(x){when {_tag:"A"} and let a:a;when let b and {_tag:"B"}:b;}}`,
+		"tag-cases": `type T={_tag:"A"|"B"};export function f(x:T){return match(x){when {_tag:"A"} and let a:a;when let b and {_tag:"B"}:b;}}`,
+		"generic":   `export function f<T extends {_tag:"A"}|{_tag:"B"}>(x:T){return match(x){when {_tag:"A"} and let a:a;when let b and {_tag:"B"}:b;}}`,
+		"tag-field": `type T={_tag:"A"|"B"};export function f(x:T){return match(x){when {_tag:("A" and let a)}:a;when {_tag:(let b and "B")}:b;}}`,
+		"or":        `export function f(x:boolean){return match(x){when (true and let a) or (false and let a):a;}}`,
 		"field":     `type T={_tag:"A";n:number}|{_tag:"B"};export function f(x:T){return match(x){when {_tag:"A",n:(let a and let b)}:1;when {_tag:"B"}:0;}}`,
 		"extractor": `error A;error B;export function f(x:A|B){return match(x){when A(let a and let b):1;when B:0;}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			ds := errorsOf(t, source)
-			if len(ds) != 1 || ds[0].Code() != EK4701.Code {
-				t.Fatalf("want one EK4701, got %v", ds)
+			if len(ds) != 0 {
+				t.Fatalf("irrefutable captures changed coverage: %v", ds)
 			}
 		})
+	}
+}
+
+func TestMatchCaptureKeepsRefutableAlternative(t *testing.T) {
+	for _, pattern := range []string{
+		"(true and true) or false",
+		"((true and true) or false) and let value",
+		"let value and ((true and true) or false)",
+		"(((true and true) or false) and let value) and const other",
+	} {
+		source := "export function f(x:boolean){return match(x){when " + pattern + ":1;}}"
+		p, file, _, _ := editorProgram(t, source)
+		ds := p.GetSemanticDiagnostics(t.Context(), file)
+		gaps := 0
+		for _, d := range ds {
+			if d.Category() != diagnostics.CategoryError {
+				continue
+			}
+			if d.Code() != EK4701.Code {
+				t.Fatalf("%s: %s", pattern, d.String())
+			}
+			gaps++
+			if !strings.Contains(d.String(), "true is left") {
+				t.Fatalf("%s: capture changed the remaining cases: %s", pattern, d.String())
+			}
+		}
+		if gaps != 1 {
+			t.Fatalf("%s: got %d gaps, want one", pattern, gaps)
+		}
 	}
 }

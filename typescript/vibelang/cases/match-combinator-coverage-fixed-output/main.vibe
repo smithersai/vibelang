@@ -6,7 +6,7 @@ export function notTest(x: boolean) {
   return match (x) { when not false: 1; when false: 0;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
 }
 export function bindingTest(x: boolean) {
-  return match (x) { when true and let value: value; when false: false;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
+  return match (x) { when true and Boolean: true; when false: false;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
 }
 export function nestedTest(x: boolean) {
   return match (x) { when (true and true) or false: 1;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
@@ -14,10 +14,10 @@ export function nestedTest(x: boolean) {
 
 type Tagged = { _tag: "A"; n: number } | { _tag: "B" }
 export function fieldBindings(x: Tagged) {
-  return match (x) { when { _tag: "A", n: (let a and let b) }: 1; when { _tag: "B" }: 0;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
+  return match (x) { when { _tag: "A", n: (let a and Number) }: 1; when { _tag: "B" }: 0;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
 }
 error NestedA
 error NestedB
 export function extractorBindings(x: NestedA | NestedB) {
-  return match (x) { when NestedA(let a and let b): 1; when NestedB: 0;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
+  return match (x) { when NestedA(let a and Number): 1; when NestedB: 0;  default: match (void 0 as unknown) { when 0: (void 0 as never); }; }
 }

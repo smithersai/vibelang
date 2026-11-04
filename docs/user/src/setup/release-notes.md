@@ -266,6 +266,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Contributor tests could pass while invalid build inputs stopped CI from loading its graph; the release tests now load the real build declarations.
+- Exhaustive matches with irrefutable `and` captures no longer report missing cases. Captures preserve coverage on either side and when nested; refutable conjuncts still require coverage for the remaining cases.
+
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
 - A `data` variant field keyed by an enum member whose value is `"_tag"`, `readonly [Key.Tag]: string`, compiled silently, and the variant constructor then overwrote that field with the variant name. The key now reports `EK1601` like a literal `_tag` key.
 - `EK4701` printed a unique symbol subject as `unique symbol | unique symbol: unique symbol is left`. The subject and the missing case now print as TypeScript writes them at the match, `typeof A | typeof B: typeof B is left`, namespace-qualified names such as `Option.Option<number>` included.

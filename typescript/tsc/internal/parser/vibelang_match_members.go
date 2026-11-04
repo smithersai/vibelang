@@ -23,6 +23,7 @@ func MatchMemberArms(call *ast.Node) []MatchMemberArm {
 }
 
 func memberCoverageArm(pat *pattern) MatchMemberArm {
+	pat = coveragePattern(pat)
 	if pat == nil {
 		return MatchMemberArm{}
 	}
@@ -36,7 +37,7 @@ func memberCoverageArm(pat *pattern) MatchMemberArm {
 		}
 		return out
 	}
-	if pat.kind != patternObject || len(pat.items) != 0 || pat.rest != nil && pat.rest.kind != patternBinding {
+	if pat.kind != patternObject || len(pat.items) != 0 || pat.rest != nil && coveragePattern(pat.rest).kind != patternBinding {
 		return MatchMemberArm{}
 	}
 	out := MatchMemberArm{}
@@ -46,7 +47,7 @@ func memberCoverageArm(pat *pattern) MatchMemberArm {
 		}
 		name := clause.key.Text()
 		out.Required = append(out.Required, name)
-		sub := clause.pattern
+		sub := coveragePattern(clause.pattern)
 		if sub == nil || sub.kind == patternBinding {
 			continue
 		}

@@ -1,0 +1,20 @@
+// expect: EK4701 EK4701 EK4701 EK4701 EK4701 EK4701
+type State = { readonly _tag: "Idle" } | { readonly _tag: "Ready"; readonly value: number }
+export function right(s: State) {
+  return match (s) { when {_tag: "Idle"} and let idle: 0; when {_tag: "Ready"} and {value: 1}: 1; }
+}
+export function left(s: State) {
+  return match (s) { when let idle and {_tag: "Idle"}: 0; when {value: 1} and {_tag: "Ready"}: 1; }
+}
+export function nested(s: State) {
+  return match (s) { when {_tag: "Idle"}: 0; when let ready and ({_tag: "Ready"} and {value: 1}): 1; }
+}
+export function missing(s: State) {
+  return match (s) { when {_tag: "Idle"} and let idle: idle; }
+}
+export function guarded(s: State, flag: boolean) {
+  return match (s) { when {_tag: "Idle"}: 0; when {_tag: "Ready"} and let ready and if (flag): 1; }
+}
+export function optional(s: {_tag: "A"; value?: number} | {_tag: "B"}) {
+  return match (s) { when {_tag: "A"} and {let value}: 1; when {_tag: "B"}: 0; }
+}
