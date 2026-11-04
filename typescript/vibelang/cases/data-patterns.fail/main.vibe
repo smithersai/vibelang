@@ -62,3 +62,6 @@ function missingGeneric(state: LoadState<number, string>) {
   }
 }
 // Chapter 900: EK2127 diagnostic - spec-rule: docs/design/src/900-appendices.md#0458b1215753c05d
+
+// rule-evidence: docs/design/src/900-appendices.md#f5e5419ad755d5fe
+// Chapter 900: EK4707 — a legacy variant pattern selects a case absent from the subject's ty

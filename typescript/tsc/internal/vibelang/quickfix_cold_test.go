@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// Chapter 900: EK4801 discarded Effect diagnostic - rule-evidence: docs/design/src/900-appendices.md#aea235e216916daa
 func TestQuickFixKeepsDiscardedEffectCold(t *testing.T) {
 	for _, source := range []string{
 		"effect function main(job: Effect.Effect<number>) { job }",

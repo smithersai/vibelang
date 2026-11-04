@@ -17,3 +17,6 @@ service Leaky {
 }
 
 export effect function example() { return try (try Flaky).read() + try (try Leaky).read() }
+
+// rule-evidence: docs/design/src/900-appendices.md#22a7abd037af536e
+// Chapter 900: EK3101 — a legacy provider reads a service at call time where its contract ad

@@ -28,3 +28,5 @@ func TestVibexResolutionDiagnosticsMatchTSX(t *testing.T) {
 		})
 	}
 }
+
+// VIP-39: unsupported source extensions report TS6054

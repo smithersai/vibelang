@@ -119,9 +119,25 @@ export effect function parsed(text: string) {
 // Chapter 900: EK4805 diagnostic - spec-rule: docs/design/src/900-appendices.md#39c3d2a974ab9d59
 // Chapter 900: EK4806 diagnostic - spec-rule: docs/design/src/900-appendices.md#00a184596eb76e88
 // Chapter 900: EK4813 diagnostic - spec-rule: docs/design/src/900-appendices.md#b62224ef4c52eb1f
-// Chapter 900: EK4808 diagnostic - spec-rule: docs/design/src/900-appendices.md#18e027056cd55ac0
-// Chapter 900: EK4809 diagnostic - spec-rule: docs/design/src/900-appendices.md#ac96540d588701a8
-// Chapter 900: EK4810 diagnostic - spec-rule: docs/design/src/900-appendices.md#073824c25099e067
-// Chapter 900: EK4811 diagnostic - spec-rule: docs/design/src/900-appendices.md#60733b5590d79a42
-// Chapter 900: EK4815 diagnostic - spec-rule: docs/design/src/900-appendices.md#27cb4815189792bb
-// Chapter 900: EK4817 diagnostic - spec-rule: docs/design/src/900-appendices.md#5fea487a123560c6
+
+// Chapter 900: EK4804 — an Effect failure is a global Error without a distinguishing tag
+
+// Chapter 900: EK4807 — Layer
+
+// Chapter 900: assigned Appendix B rule
+
+// Chapter 900: EK4808 — a provide block contains only another provide block
+
+// Chapter 900: EK4809 — every service member requires the same service
+
+// Chapter 900: EK4810 — an assertion removes part of an Effect's error or requirement channe
+
+// Chapter 900: EK4811 — any or unknown enters an Effect channel
+
+// Chapter 900: EK4814 — a Schema class overrides its constructor
+
+// Chapter 900: EK4815 — an Effect value is thrown as an Effect failure
+
+// Chapter 900: EK4817 — instanceof tests a Schema class rather than schema membership
+
+// Chapter 900: Use Schema.is for schema membership

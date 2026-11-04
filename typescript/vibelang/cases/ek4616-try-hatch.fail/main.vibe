@@ -10,3 +10,6 @@ export effect function main() {
   const m = try(async () => 1)
   return [n, m]
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#974a1cf7a9d1e3a8
+// Chapter 900: EK4616 retired try hatch diagnostic

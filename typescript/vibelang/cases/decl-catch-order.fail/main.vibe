@@ -12,3 +12,6 @@ export effect function attempt(flag: boolean) {
     return "busy"
   }
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#876017210e4ba1d8
+// Chapter 900: EK2106 catch ordering diagnostic

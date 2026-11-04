@@ -1,2 +1,4 @@
 // expect: TS6054
 export {}
+// rule-evidence: docs/design/vips/0039-vibex.md#d80dbe38f4b7f77a
+// VIP-39: unsupported source extensions report TS6054

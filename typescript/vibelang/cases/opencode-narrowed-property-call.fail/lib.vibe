@@ -30,3 +30,6 @@ export const early = effect (o: Options) => {
   if (!o.p) return 0
   return double(o.p)
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#7914d40ee2945304
+// Chapter 900: EK0403 unwrapped throwing call

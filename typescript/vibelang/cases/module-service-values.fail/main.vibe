@@ -13,3 +13,6 @@ export function main() {
   const nativeKey: string = Path.Path.key
   return [sep, columns, viaKey, nativeKey]
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#1a8e3f92dcfc8c49
+// Chapter 900: Read the implementation with `try Service`, then select its member

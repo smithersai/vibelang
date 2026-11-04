@@ -14,3 +14,6 @@ const UsersTest = Layer.succeed(Users, {
 })
 
 const AppLive = wire(UsersLive, UsersTest)
+
+// rule-evidence: docs/design/src/900-appendices.md#b87f7080371b2fa8
+// Chapter 900: EK3202 ambiguous provider diagnostic

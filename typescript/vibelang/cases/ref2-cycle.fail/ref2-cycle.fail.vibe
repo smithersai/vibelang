@@ -24,3 +24,6 @@ const DatabaseLive = Layer.effect(Database, effect {
 })
 
 const AppLive = wire(CacheLive, DatabaseLive)
+
+// rule-evidence: docs/design/src/900-appendices.md#e90b21380036cfeb
+// Chapter 900: EK3203 provider cycle diagnostic

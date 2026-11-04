@@ -98,6 +98,7 @@ func checkAwaitAdvisoryPlacement(t *testing.T, w *Workspace, key string, variant
 	}
 }
 
+// Chapter 900: native async await and effect await placement - rule-evidence: docs/design/src/900-appendices.md#37b89862efeeb944
 func TestAwaitAdvisoryPlacementRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, key := range awaitAdvisoryKeys {

@@ -87,3 +87,6 @@ func TestOptionPipeNotReported(t *testing.T) {
 		}
 	}
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#85e5486645c81a46
+// Chapter 900: EK4840 Option pipeline warning and fix

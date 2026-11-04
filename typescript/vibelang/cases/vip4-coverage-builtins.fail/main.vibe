@@ -15,3 +15,5 @@ export effect function bad() {
   const url = new URL("https://example.test")
   return [json,cycle,repeat,fixed,url]
 }
+
+// Chapter 900: Wrap native code with `Effect

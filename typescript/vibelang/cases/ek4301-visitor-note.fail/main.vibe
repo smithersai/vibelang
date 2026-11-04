@@ -9,4 +9,3 @@ export function main() {
   ;[1].forEach(work)
   return used
 }
-// Chapter 900: EK4301 diagnostic - spec-rule: docs/design/src/900-appendices.md#d59fe6e38177aeb5

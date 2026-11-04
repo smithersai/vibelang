@@ -48,4 +48,7 @@ export effect function joinInHatch() {
     join x
   })
 }
-// Chapter 900: EK4604 diagnostic - spec-rule: docs/design/src/900-appendices.md#04961d07f271f19d
+
+// Chapter 900: EK4604 — a legacy non-async hatch body contains await
+
+// Chapter 900: EK0102 Native async functions retain JavaScript await

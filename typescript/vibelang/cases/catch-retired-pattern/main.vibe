@@ -12,3 +12,6 @@ export effect function main() {
     return id
   }
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#04fd691c8189b1a8
+// Chapter 900: EK2112 warning: a legacy catch clause tests its failure's type

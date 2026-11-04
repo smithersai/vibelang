@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// Chapter 900: EK4409 any-call warning in a legacy Effect function - rule-evidence: docs/design/src/900-appendices.md#5048abc92958c40b
 func TestAnyCallResultIgnoresErrorRecovery(t *testing.T) {
 	p, file, _, _ := editorProgram(t, `import * as Effect from "effect/Effect"
 export effect function missingMember(value: { present: number }) {

@@ -7,3 +7,8 @@ import { Users } from "./services.vibe"
 export effect function main() {
   try Console.log(try (try Users).find("1"))
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#1a789ca38d7aa2c7
+// Chapter 900: ordinary main has no automatic host invocation
+// rule-evidence: docs/design/src/900-appendices.md#d4a7e32cdd60d9f7
+// Chapter 900: EK3205 unprovided entry service warning

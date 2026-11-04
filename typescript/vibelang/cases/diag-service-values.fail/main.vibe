@@ -12,3 +12,6 @@ export const keyMember = Users.key
 
 export const topLevelRegion = Users.region
 export const topLevelFind = Users.find
+
+// rule-evidence: docs/design/src/900-appendices.md#3e087b726a5eeaf5
+// Chapter 900: EK4503 service key implementation diagnostic

@@ -176,4 +176,3 @@ export effect function main() {
   phase("detached", d)
   return { served, joined: j, inner: i, loop: l, failing: f, failedBlock, scoped: s, outlives: o, detached: d, events }
 }
-// Chapter 900: EK4838 diagnostic - spec-rule: docs/design/src/900-appendices.md#db3839c2a55d4973

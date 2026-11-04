@@ -10,6 +10,8 @@ import (
 
 // VIP-39: explicit VibeLang extensions substitute like .ts/.tsx; runtime
 // extensions keep native implementations ahead of migrated implementations.
+// rule-evidence: docs/design/vips/0039-vibex.md#e535a097b3309cc4
+// VIP-39: vibex source file-kind selection
 func TestVibexResolutionPriority(t *testing.T) {
 	files := map[string]string{"/repo/main.ts": ""}
 	for _, name := range []string{"a.ts", "b.tsx", "c.vibe", "d.vibex", "e.vibe", "e.vibex", "f.tsx", "f.vibex", "g.vibex", "g.d.vibex.ts", "h.d.ts", "dir/index.vibex"} {
@@ -98,3 +100,5 @@ func TestVibexResolutionNodeNextESM(t *testing.T) {
 		}
 	}
 }
+
+// VIP-39: vibex source file-kind selection

@@ -30,3 +30,6 @@ export function mixed(n: number) {
   }
 }
 // Chapter 900: EK4703 diagnostic - spec-rule: docs/design/src/900-appendices.md#7926a62b6bfb0571
+
+// rule-evidence: docs/design/src/900-appendices.md#303eb57c7dfdefe8
+// Chapter 900: EK4704 — the current lowering does not support a pattern form
