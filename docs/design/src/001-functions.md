@@ -399,12 +399,34 @@ An enclosing optional tuple element keeps TypeScript's omission and indexed `und
 | `User!!` | `Effect.Effect<User, never, never>` |
 
 - An omitted slot is `never`, as Effect's own defaults make it. It is never inferred, so `User!NotFound` on a function with a body still means `Effect.Effect<User, NotFound, never>`. To have the type inferred, leave the annotation out.
-- An effect function's annotation means the same as the annotation on its Effect TypeScript twin. A written `infer` slot, such as `Effect.Effect<A, infer E, R>` or `A!(infer E)!R`, has no special channel-inference meaning: ordinary TypeScript `infer` rules apply (`TS1338` outside a conditional type). For a recognized legacy Effect return slot, the transitional compiler reports `EK4857` instead of `TS1338` for the same written `infer` occurrence, following VIP-34's specific-diagnostic rule; independent native errors remain. Valid conditional-type inference and native `infer` outside that migration keep TypeScript's rules and diagnostics. Once the migration retires, `TS1338` alone remains wherever TypeScript rejects that occurrence. `--fix` writes the inferred slot types, or removes the whole return annotation when every slot is `infer`, preserving its declaration. If it cannot name a type safely, it explains why the repair is refused. To infer the return type in new code, omit the annotation.
+- An effect function's annotation means the same as the annotation on its Effect TypeScript twin. A written `infer` slot, such as `Effect.Effect<A, infer E, R>` or `A!(infer E)!R`, has no special channel-inference meaning: ordinary TypeScript `infer` rules apply (`TS1338` outside a conditional type). The transitional exception is the diagnostic and preserving repair for the [legacy return-slot set](#legacy-written-infer-return-slots) below. To infer the return type in new code, omit the annotation.
+
+### Legacy written `infer` return slots
+
+While the VIP-3 migration exists, `EK4857` replaces `TS1338` for the same immediate written `infer` channel in this set:
+
+- The annotation is the return annotation of a function declaration, function expression, arrow, or class or object method **with a body**, in a `.vibe` or `.vibex` file outside a TypeScript `module` body or a boundary hatch's TypeScript callback. It is neither `async` nor an ordinary generator.
+- The annotation directly names the real Effect type and exposes its success, error and requirement channels: `Effect.Effect<A, E, R>`, the `A!E!R` shorthand, an equivalent imported or namespace-renamed Effect binding, or the supported retired prelude `Effect<A, E, R>` alias. A shadowing type named `Effect` or an arbitrary alias of a whole Effect type does not qualify merely by spelling or structure.
+- At least one complete channel is written directly as `infer Name`, without enclosing parentheses or another type constructor. A parenthesized channel such as `number!(infer E)` was not a recognized legacy inferred slot and keeps native `TS1338`. An `infer` nested in a valid conditional type is native conditional inference, not a retired channel.
+
+The set includes an **unmarked** function, expression, arrow or method whose explicit Effect return annotation selected the legacy Effect-function model; it is not restricted to today's `effect` modifier. VIP-1 still decides the meaning of repaired and new code: an unmarked callable is plain, and returning an Effect leaves it unrun. The migration does not add `effect`, `try` or execution merely because a return annotation qualified.
+
+| Source position | Transitional diagnostic for the written channel |
+| --- | --- |
+| `function p(): Effect.Effect<number, infer E> { return Effect.succeed(1) }` | `EK4857` |
+| `const a = (): number!(infer E) => Effect.succeed(1)` | Native `TS1338`: the channel is parenthesized |
+| `class C { effect m(): Effect.Effect<number, infer E, never> { return 1 } }` | `EK4857` |
+| `type F = () => Effect.Effect<number, infer E>` | Native `TS1338` |
+| `function p(): number { return 1 }` | No written `infer` channel; no `EK4857` |
+
+Function types, interface or bodyless call signatures, standalone type aliases, ordinary non-Effect annotations, constructors, accessors, `async` functions, ordinary generators and `.ts`/`.js` code are outside this migration. Existing producer migrations are separate. Invalid native `infer` outside the set keeps `TS1338`; valid conditional inference keeps TypeScript's meaning everywhere. Independent native errors remain, including on an eligible return annotation. After this migration retires, `TS1338` alone remains wherever TypeScript rejects the occurrence.
+
+`--fix` writes checker-proved inferred channel types, preserving declaration types and runtime behavior, or refuses with an explanation if it cannot name those types safely. It may remove the whole return annotation only on an explicitly `effect`-marked callable when every channel is `infer` and preservation is proved. It does not offer that removal merely because an unmarked callable's annotation belongs to the set. These are VIP-34's preserving-fix checks, not permission for partial inference in new source.
 
 ```vibe
 // compiler-gap: pending VIP-3
 effect function f(): Effect.Effect<number, infer E, never> { return 1 } // EK4857, not TS1338
-effect function g(): number!(infer E) { return 1 } // EK4857, not TS1338
+effect function g(): number!(infer E) { return 1 } // TS1338: parenthesized channel, outside the legacy set
 ```
 
 ```vibe es

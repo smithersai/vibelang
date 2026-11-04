@@ -295,7 +295,7 @@ These [Appendix B compatibility codes](900-appendices.md#transitional-compiler-d
 | `EK4854` | Warning | The retired abstract-class service spelling | Write `service`, retaining its contract and key (VIP-9). |
 | `EK4855` | Warning | A service's cached `static readonly default` | Use an equivalent native `Context.Service` class, retaining its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure; otherwise refuse (VIP-9). |
 | `EK4856` | Warning | A type resolves to the retired global `Effect<A, E, R>` alias | Write `A!E!R` where it needs no new parentheses, otherwise `Effect.Effect<A, E, R>`, including heritage elements (VIP-3). |
-| `EK4857` | Error | An Effect return annotation has a written `infer` slot | Write inferred slot types, or omit the annotation when every slot is `infer`, preserving declaration types (VIP-3). |
+| `EK4857` | Error | An immediate written `infer` channel belongs to the [legacy return-slot set](001-functions.md#legacy-written-infer-return-slots) | Write checker-proved channel types; only on an explicitly `effect`-marked callable with every channel `infer`, omit the annotation if preservation is proved (VIP-3). |
 
 `EK4856` selects the resolved legacy symbol: local and imported types named `Effect` retain their TypeScript meaning. Keep existing parentheses, written default slots and the `Effect` namespace binding; otherwise refuse. Emitted declarations already use `Effect.Effect<…>` and stay unchanged. Remove the alias only with a coordinated compiler, codemod and docs release. Afterwards, a module-only `Effect<number>` is native `TS2709`; an unbound name follows TypeScript resolution ([VIP-3](../vips/0003-effect-type-shorthand.md#decision)).
 
