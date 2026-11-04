@@ -1,0 +1,1 @@
+{"caught":"before-promise","bridged":"Failure"}

@@ -98,7 +98,7 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 		return nil
 	}
 	t := callTrust(a.checker, node)
-	if t.promise || a.performs(node) {
+	if a.performs(node) {
 		return nil
 	}
 	if t.unknown || t.unreachable != "" {

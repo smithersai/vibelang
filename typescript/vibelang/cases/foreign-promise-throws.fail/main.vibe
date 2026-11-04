@@ -1,0 +1,9 @@
+// expect: EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401
+import {risky,unknownThrow,promiseLike} from "./helpers.js"
+export function direct(){return risky()}
+export const arrow=()=>risky()
+export function defaulted(value=risky()){return value}
+export class Box {value=risky();static value=risky()}
+export function unknown(){return unknownThrow()}
+export function thenable(){return promiseLike()}
+export const top=risky()

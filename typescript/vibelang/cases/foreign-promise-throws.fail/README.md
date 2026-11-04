@@ -1,0 +1,1 @@
+Chapter 003 preserves a foreign Promise-returning callable’s synchronous `@throws` contract. Defaults, fields and ordinary calls need the same `EK0401` as other known throwing calls. A Promise result does not establish the source `async` rule.

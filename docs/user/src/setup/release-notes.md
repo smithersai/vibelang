@@ -429,6 +429,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Applying `vibelang --fix` to a `Match` handler with an object parameter could send a matching value with a missing optional field to the fallback. Handler fields are now destructured after arm selection, preserving missing fields, defaults, rest bindings and getter reads.
 
 - Passing a throwing foreign callback to a `@rethrows` parameter could escape the synchronous no-throw check; calls, constructors and tagged templates now retain that callback’s known thrown contract.
+
+- A foreign function that throws before returning a `Promise` could bypass the synchronous no-throw check; its written `@throws` contract now requires handling at the call.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
