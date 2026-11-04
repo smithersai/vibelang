@@ -197,6 +197,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The JSX formatter regression used a regex where the pinned relational-pattern grammar requires a literal or member operand. It now checks a valid member operand containing a regex and separately verifies that the invalid raw-regex form is refused.
 
+- The legacy Effect-alias fuzz check compared a current mutable type with the explicit source upgrade's former readonly defaults. Its fixtures now distinguish upgrade and ordinary-fix modes while retaining strict declaration identity checks for both.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

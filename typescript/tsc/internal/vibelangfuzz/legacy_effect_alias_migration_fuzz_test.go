@@ -35,6 +35,11 @@ func FuzzLegacyEffectAliasMigration(f *testing.F) {
 			f.Add(key, mode)
 		}
 	}
+	// Preserve the readonly upgrade baseline separately from ordinary --fix's
+	// writable intersection, including the non-ASCII source-offset variant.
+	for _, mode := range []uint8{4, 8, 12} {
+		f.Add("success-intersection", mode)
+	}
 	f.Add("nested", uint8(8)) // ordinary --fix retains the original nested witness
 	w := NewWorkspace(f)
 	api := declarationIdentityAPI(f)
@@ -81,7 +86,16 @@ func FuzzLegacyEffectAliasMigration(f *testing.F) {
 		case "success-union":
 			source = "export type Value = Effect<number | string>"
 		case "success-intersection":
-			source = "export type Value = Effect<{ a: number } & { b: string }>"
+			// MigrationOnly is an explicit upgrade of the former implicit
+			// readonly default (native_readonly_migration.go). Spell that
+			// baseline under today's checker so this oracle isolates the
+			// alias rewrite; ordinary --fix still probes writable fields.
+			member := ""
+			if mode&8 == 0 {
+				member = "readonly "
+			}
+			source = "export type Value = Effect<{ " + member + "a: number } & { " + member + "b: string }>"
+			wantText = strings.Replace(source, "Effect<", "Effect.Effect<", 1)
 		case "error-union":
 			source = "export type Value = Effect<number, Error | { readonly _tag: 'Missing' }>"
 		case "requirements-union":
