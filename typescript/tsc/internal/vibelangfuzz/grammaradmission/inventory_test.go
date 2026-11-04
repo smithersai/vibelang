@@ -34,8 +34,11 @@ func TestTableAccountsForEveryHook(t *testing.T) {
 	}
 	specPath := func(chapter string) string { return filepath.Join(root, "docs/design/src", chapter) }
 	errs, _ := Check(hooks, string(data), specPath)
+	// One subtest per hook, so a gate that tolerates the failures main is red
+	// on still rejects a commit that adds another unaccounted hook. Under one
+	// test name, 8341e3fa217c's six new hooks landed while main was red here.
 	for _, e := range errs {
-		t.Error(e)
+		t.Run(inventoryErrorKey(e), func(t *testing.T) { t.Error(e) })
 	}
 	if len(hooks) < 100 {
 		t.Fatalf("the census found only %d hooks; it no longer reads the compiler", len(hooks))
@@ -91,5 +94,38 @@ func TestLegacyTrailingBlockHooksAreRecovery(t *testing.T) {
 				t.Errorf("private trailing-block decoder must remain VIP-11 recovery: %s", line)
 			}
 		}
+	}
+}
+
+// inventoryErrorKey names a Check error by the hook or table line it is about.
+func inventoryErrorKey(e string) string {
+	e = strings.TrimPrefix(strings.TrimPrefix(e, "unaccounted syntax/lowering hook "), "duplicate hook ")
+	f := strings.Fields(e)
+	if len(f) == 0 {
+		return e
+	}
+	if f[0] == "line" && len(f) > 1 {
+		return "line " + strings.TrimRight(f[1], ":")
+	}
+	return strings.TrimRight(f[0], ";:")
+}
+
+func TestInventoryErrorKeyNamesTheHook(t *testing.T) {
+	for _, c := range []struct{ err, want string }{
+		{"unaccounted syntax/lowering hook parser/vibelang_a.go:Parser.a; add its spec authority or pending admission:<form>", "parser/vibelang_a.go:Parser.a"},
+		{"unaccounted syntax/lowering hook vibelang/x_lower.go:serviceHead; add its spec authority or pending admission:<form>", "vibelang/x_lower.go:serviceHead"},
+		{"duplicate hook parser/vibelang_a.go:Parser.a", "parser/vibelang_a.go:Parser.a"},
+		{"parser/vibelang_a.go:Parser.a: missing form/reason", "parser/vibelang_a.go:Parser.a"},
+		{"vibelang/h.go:hatchOf: invalid status maybe", "vibelang/h.go:hatchOf"},
+		{"line 7: want hook, form, authority, status, reason", "line 7"},
+	} {
+		if got := inventoryErrorKey(c.err); got != c.want {
+			t.Errorf("inventoryErrorKey(%q) = %q, want %q", c.err, got, c.want)
+		}
+	}
+	a := inventoryErrorKey("unaccounted syntax/lowering hook parser/a.go:Parser.a; x")
+	b := inventoryErrorKey("unaccounted syntax/lowering hook parser/a.go:Parser.b; x")
+	if a == b {
+		t.Errorf("two hooks share the subtest name %q", a)
 	}
 }

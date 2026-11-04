@@ -13,7 +13,7 @@ go test ./internal/vibelangfuzz -run 'TestVibexClashParityQuoted|FuzzVibexClashP
 
 `FuzzVibexClashParity` uses stable row keys and mutates comments and line endings around the native controls.
 
-Known gaps are recorded explicitly, not skipped: row 17's `TS1139` is VIP-39's documented VIP-3 boundary gap; row 33's `EK0204` is the current `do` lowering limitation documented in chapter 2. Their tests check those diagnostics and do not claim semantic conformance. Row 36 permits parser recovery; the compiler must reject it with `EK1101`, checked separately by `compile-parity.mjs`.
+Known gaps are recorded explicitly, not skipped. Row 33's `EK0204` is the current `do` lowering limitation documented in chapter 2. Its test checks that diagnostic and does not claim semantic conformance. Row 17 follows Appendix A: `x as A!! < 3` omits `R` and continues with a comparison. Row 36 permits parser recovery; the compiler must reject it with `EK1101`, checked separately by `compile-parity.mjs`.
 
 The deduplicated `panel.json` retains 445 panel and merged source witnesses with provenance keys. `TestVibexPanelCorpus` checks deterministic parsing; numbered rows and the stock compiler controls supply the grammar oracles.
 
