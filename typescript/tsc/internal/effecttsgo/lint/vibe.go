@@ -99,6 +99,18 @@ var vibeAnswers = map[string]vibeAnswer{
 	"unsupportedServiceAccessors":   {notNeeded: "Users.find(id) calls a member through the key"},
 }
 
+// VibeLangPort returns the VibeLang diagnostic that answers Effect's rule in a
+// .vibe file, its port (ek) or the diagnostic that covers it, and "" when none
+// does. --fix writes it in place of an @effect-diagnostics directive that the
+// rename to .vibe left with no effect (vibelang/fix_dead_directives.go).
+func VibeLangPort(rule string) string {
+	answer := vibeAnswers[rule]
+	if answer.ek != "" {
+		return answer.ek
+	}
+	return answer.covered
+}
+
 // vibeRuleNames are the rules that run as Effect wrote them on .vibe files: those VibeLang does not answer.
 var vibeRuleNames = func() []string {
 	var names []string

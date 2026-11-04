@@ -852,6 +852,15 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if done.Err() == nil {
 				removeUnusedEffectImports(g, program, texts, result)
 			}
+			// Turn the @effect-diagnostics directives that suppress nothing
+			// into the comments they explain (TS377000, fix_dead_directives.go).
+			if done.Err() == nil && hasEffectNextLineDirective(g.scope.fixable(program)) {
+				current := program
+				if !sameTexts(before, texts) {
+					current = build(texts)
+				}
+				removeDeadEffectDirectives(g, fs, current, texts, result)
+			}
 		}
 		if done.Err() != nil {
 			return finish()
