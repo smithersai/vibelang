@@ -257,6 +257,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler cache regression checks could fail on retired `trustedPackages` diagnostics; they now verify workspace configuration changes with TypeScript’s supported `strictNullChecks` setting.
 
 - Loop-head fuzz campaigns stopped on retired `var` declarations. Their value comparisons now use equivalent assignment heads, while separate rejection tests retain the old syntax witnesses.
+
+- Go test shards hid discovery, assignments and completed workers until the slowest worker finished. These stages and exit statuses now appear as they happen.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 

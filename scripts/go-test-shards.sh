@@ -84,15 +84,18 @@ trap 'exit 143' HUP INT TERM
 
 # Listing can run TestMain too. Keep its PID so cancellation reaps it just
 # like the shard processes below.
+echo "go-test-shards: listing tests" >&2
 "$bin" "$@" -test.list '.*' > "$dir/listed" 2>&1 &
 pids=$!
 wait "$pids"
 listed_status=$?
 pids=
 if [ "$listed_status" -ne 0 ]; then
+  echo "go-test-shards: listing failed: exit $listed_status" >&2
   cat "$dir/listed"
   exit 1
 fi
+echo "go-test-shards: listed tests: exit 0" >&2
 weights=testdata/shard-seconds.txt
 [ -f "$weights" ] || weights=/dev/null
 # Check every stage before running any subset of the tests. A POSIX shell
@@ -130,11 +133,18 @@ for list in "$dir"/names*; do
   # this into ^()$, silently running no tests while every shard reports success.
   run="^("
   separator=
+  assigned_names=
+  assigned_separator=
+  assigned_count=0
   while IFS= read -r name; do
     run="$run$separator$name"
     separator="|"
+    assigned_names="$assigned_names$assigned_separator$name"
+    assigned_separator=","
+    assigned_count=$((assigned_count + 1))
   done < "$list"
   run="$run)\$"
+  echo "go-test-shards: starting process $i: $assigned_count tests: $assigned_names" >&2
   ( child=
     cancel() {
       trap '' HUP INT TERM
@@ -152,6 +162,7 @@ for list in "$dir"/names*; do
     child=$!
     wait "$child"
     status=$?
+    echo "go-test-shards: finished process $i: exit $status" >&2
     echo "go-test-shards: process $i: $(wc -l < "$list") tests, exit $status, $(( $(date +%s) - start ))s" >> "$dir/out$i"
     echo $status > "$dir/status$i" ) &
   pids="$pids $!"

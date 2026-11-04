@@ -708,6 +708,8 @@ run the suite the same way by hand, from `typescript/tsc`:
 go test -short -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/
 ```
 
+The launcher reports discovery, each process's assigned test names and each completed process's exit status immediately on stderr. A held or slow sibling therefore leaves the current stage and assignments visible while test stdout remains grouped until all processes finish. Discovery failures include the binary's exit status and preserve its output. `scripts/go-test-shards-progress.test.mjs` checks held discovery, held siblings, success and failure, native selector pass-through, and generated shard/slice layouts.
+
 A run with `-run`, `-bench`, `-fuzz` or `-json`, or with `GO_TEST_SHARDS=1`,
 runs the binary once, as before. Active fuzz selections accept both native binary flag
 forms, `-test.fuzz=FuzzTarget` and `-test.fuzz FuzzTarget`; the script
