@@ -476,6 +476,10 @@ A run's `issues.jsonl` is the input to the loop that improves the flow. The repa
 
 `report.md` lists all three, with the rewrites `--fix` applied and refused, so a run's report says which rule to write next.
 
+### Pure request pipelines
+
+The native codemod also converts known pure `HttpClientRequest` dual setters to pipe stages with the request first. It accepts only stable arguments, preserving the ordering between argument construction and immediate setter application; observable argument expressions remain in their original form with a refusal.
+
 ### Stored program callbacks
 
 When an ordinary native array callback returns a converted generator, the codemod records the checked program type as the array method's type argument. The array still holds cold programs for a later consumer; it does not run them while mapping.

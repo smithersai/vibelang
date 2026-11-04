@@ -85,10 +85,59 @@ func isEffectPipeline(c *checker.Checker, call *ast.Node) bool {
 	return ast.IsCallExpression(receiver) && callReturnsEffect(c, receiver)
 }
 
+// HttpClientRequest's setters are pure, so unlike cold Effect operators they
+// apply while constructing the pipeline. Keep argument construction free of
+// observable work before replacing a native multi-stage .pipe.
+func isHttpRequestPipeline(c *checker.Checker, call *ast.Node) bool {
+	receiver := ast.SkipParentheses(call.Expression().Expression())
+	typ := c.GetTypeAtLocation(receiver)
+	if typ == nil || typ.Symbol() == nil || typ.Symbol().Name() != "HttpClientRequest" {
+		return false
+	}
+	return slices.ContainsFunc(typ.Symbol().Declarations(), func(declaration *ast.Node) bool {
+		return strings.HasSuffix(string(ast.GetSourceFileOfNode(declaration).FileName()), "/effect/dist/http/HttpClientRequest.d.ts")
+	})
+}
+
+func stableRequestPipeArgument(c *checker.Checker, file *ast.SourceFile, node *ast.Node) bool {
+	node = ast.SkipParentheses(node)
+	if ast.IsLiteralExpression(node) || node.Kind == ast.KindTrueKeyword || node.Kind == ast.KindFalseKeyword || node.Kind == ast.KindNullKeyword {
+		return true
+	}
+	if ast.IsIdentifier(node) {
+		t := c.GetTypeAtLocation(node)
+		return t != nil && slices.ContainsFunc(t.Distributed(), func(member *checker.Type) bool {
+			return member.Flags()&(checker.TypeFlagsStringLike|checker.TypeFlagsNumberLike|checker.TypeFlagsBooleanLike|checker.TypeFlagsNull|checker.TypeFlagsUndefined) != 0
+		}) && !slices.ContainsFunc(t.Distributed(), func(member *checker.Type) bool {
+			return member.Flags()&(checker.TypeFlagsStringLike|checker.TypeFlagsNumberLike|checker.TypeFlagsBooleanLike|checker.TypeFlagsNull|checker.TypeFlagsUndefined) == 0
+		}) && stableBindingRead(c, file, node)
+	}
+	if ast.IsArrayLiteralExpression(node) {
+		return !slices.ContainsFunc(node.Elements(), func(element *ast.Node) bool { return !stableRequestPipeArgument(c, file, element) })
+	}
+	if ast.IsObjectLiteralExpression(node) {
+		return !slices.ContainsFunc(node.AsObjectLiteralExpression().Properties.Nodes, func(property *ast.Node) bool {
+			if ast.IsShorthandPropertyAssignment(property) {
+				symbol := c.GetShorthandAssignmentValueSymbol(property)
+				if symbol == nil {
+					return true
+				}
+				declaration := symbol.ValueDeclaration()
+				if declaration == nil || !(ast.IsVariableDeclaration(declaration) || declaration.Kind == ast.KindParameter) {
+					return true
+				}
+				return !stableRequestPipeArgument(c, file, declaration.Name())
+			}
+			return !ast.IsPropertyAssignment(property) || !(ast.IsIdentifier(property.Name()) || ast.IsStringLiteral(property.Name()) || ast.IsNumericLiteral(property.Name())) || !stableRequestPipeArgument(c, file, property.Initializer())
+		})
+	}
+	return false
+}
+
 // planEffectPipe plans the rewrite of call, a .pipe of an Effect. It returns
 // nil for any other call, and a refusal where a stage has no pipe form.
 func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
-	if !isPipeCall(call) || !isEffectPipeline(c, call) {
+	if !isPipeCall(call) || !(isEffectPipeline(c, call) || isHttpRequestPipeline(c, call)) {
 		return nil
 	}
 	refuse := func(why string) *formRewrite {
@@ -96,6 +145,15 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	}
 	callee := call.Expression()
 	stages := call.Arguments()
+	if isHttpRequestPipeline(c, call) {
+		for _, stage := range stages {
+			stage = ast.SkipParentheses(stage)
+			if !ast.IsCallExpression(stage) || !isDataFirstStage(c, stage) || slices.ContainsFunc(stage.Arguments(), func(argument *ast.Node) bool { return !stableRequestPipeArgument(c, file, argument) }) {
+				return refuse("a pure request stage argument can observe interleaved construction")
+			}
+		}
+	}
+
 	if call.TypeArguments() != nil || ast.IsOptionalChain(call) || len(stages) == 0 {
 		return refuse("the .pipe has type arguments, an optional chain, or no stages")
 	}
@@ -303,7 +361,19 @@ func pipeStageEdits(c *checker.Checker, file *ast.SourceFile, stage *ast.Node) (
 // the Semaphore as self and the program last.
 func isDataFirstStage(c *checker.Checker, call *ast.Node) bool {
 	if module, _ := effectMember(c, call.Expression()); module == "" {
-		return false
+		callee := call.Expression()
+		if ast.IsPropertyAccessExpression(callee) {
+			callee = callee.Name()
+		}
+		symbol := c.GetSymbolAtLocation(callee)
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol == nil || !slices.ContainsFunc(symbol.Declarations(), func(declaration *ast.Node) bool {
+			return strings.HasSuffix(string(ast.GetSourceFileOfNode(declaration).FileName()), "/effect/dist/http/HttpClientRequest.d.ts")
+		}) {
+			return false
+		}
 	}
 	count := len(call.Arguments())
 	for _, signature := range c.GetSignaturesOfType(c.GetTypeAtLocation(call.Expression()), checker.SignatureKindCall) {
