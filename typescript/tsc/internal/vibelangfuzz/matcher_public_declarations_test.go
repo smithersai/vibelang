@@ -7,7 +7,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const matcherDeclarationQuote = "An `error` or `schema error` keeps its static `[Symbol.customMatcher]` member, and every declaration file whose emitted text names `Symbol.customMatcher` begins with `/// <reference types=\"vibelang-runtime\" />`"
+const matcherDeclarationQuote = "Generated matcher declarations follow [VIP-27's published matcher boundary](../vips/0027-declaration-output.md#decision)."
 
 func TestMatcherPublicDeclarationsQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("001-functions.md"), matcherDeclarationQuote) {
@@ -103,26 +103,25 @@ func FuzzMatcherPublicDeclarations(f *testing.F) {
 			t.Fatal("missing declaration output")
 		}
 		reference := "/// <reference types=\"vibelang-runtime\" />"
+		// Declaration/API-identity oracle: neither generated protocol members
+		// nor a runtime type reference may be added to the TypeScript twin.
+		if strings.Contains(text, reference) || strings.Contains(text, "\"vibelang-runtime\"") || strings.Contains(text, "Symbol.customMatcher") || strings.Contains(text, "static [") {
+			t.Fatalf("published declaration adds a runtime protocol dependency:\n%s", text)
+		}
 		if count == 0 {
-			if strings.Contains(text, reference) || strings.Contains(text, "[Symbol.customMatcher]") {
-				t.Fatalf("ordinary class acquired a generated matcher:\n%s", text)
-			}
 			return
 		}
-		if !strings.HasPrefix(text, reference) || strings.Count(text, reference) != 1 || strings.Count(text, "static [") != count {
-			Gap(t, "FuzzMatcherPublicDeclarations", kind+"/boundary", "VIP-27: %s\n%s", matcherDeclarationQuote, text)
-			return
-		}
-		consumer := `import { ` + importName + ` } from "./api.js"; const matcher = ` + matcher + `[Symbol.customMatcher]; const value: boolean | readonly [unknown] = matcher(null, {matchType:"extractor"}); export {value}`
+		consumer := `import { ` + importName + ` } from "./api.js"; export function matches(value: unknown): boolean { return match(value) { when ` + matcher + `: true; default: false; } }`
+
 		config := strings.Replace(DefaultConfig, `"skipLibCheck": true`, `"skipLibCheck": false`, 1)
-		checked, err := w.Compile(t.Context(), Project{Files: map[string]string{"api.d.ts": text, "consumer.ts": consumer}, Config: config})
+		checked, err := w.Compile(t.Context(), Project{Files: map[string]string{"api.d.ts": text, "consumer.vibe": consumer}, Config: config})
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer checked.Remove()
 		for _, d := range checked.Diagnostics {
 			if d.Category() == diagnostics.CategoryError {
-				Gap(t, "FuzzMatcherPublicDeclarations", kind+"/consumer", "VIP-27 stock-consumer boundary: %s\n%v\n%s", matcherDeclarationQuote, checked.Diagnostics, text)
+				t.Fatalf("VIP-27 VibeLang consumer boundary (%s): %s\n%v\n%s", kind, matcherDeclarationQuote, checked.Diagnostics, text)
 				return
 			}
 		}

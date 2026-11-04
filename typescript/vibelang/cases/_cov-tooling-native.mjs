@@ -114,8 +114,8 @@ export function nativeContract(mode) {
       config({files:["main"+suffix]});const r=invoke("-p",".","--pretty","false");assert.equal(r.status,0,r.text)
       for(const entry of ["out/main.d.ts","main.d"+suffix+".ts"]) check(suffix+"/"+entry,()=>{
         const text=readFileSync(join(dir,entry),"utf8")
-        assert.ok(text.startsWith('/// <reference types="vibelang-runtime" />'),"runtime Symbol augmentation reference")
-        assert.equal((text.match(/static \[Symbol\.customMatcher\]/g)||[]).length,2,"both class kinds retain their matcher")
+        assert.doesNotMatch(text, /reference types="vibelang-runtime"|Symbol\.customMatcher/, "no generated runtime protocol in declarations")
+        assert.equal((text.match(/static \[/g)||[]).length,0,"neither class kind adds a matcher")
         const program=ts.createProgram([join(dir,entry)],{noEmit:true,types:[],strict:true,module:ts.ModuleKind.NodeNext,target:ts.ScriptTarget.ES2022})
         assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>d.code),[])
       })

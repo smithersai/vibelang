@@ -146,20 +146,9 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		members := &sourcePropertyModifiers{}
 		members.NewTransformer(members.visit, resolver.EmitContext())
 		declarations = members.TransformSourceFile(declarations)
-		matchers := &matcherDeclarations{}
-		var matcherBindings func(*ast.Node) bool
-		matcherBindings = func(node *ast.Node) bool {
-			forEachTopLevelName(node, func(name string) {
-				if name == "Symbol" {
-					matchers.symbolBound = true
-				}
-			})
-			return matchers.symbolBound || node.ForEachChild(matcherBindings)
-		}
-		matcherBindings(declarations.AsNode())
-		matchers.NewTransformer(matchers.visit, resolver.EmitContext())
-		declarations = matchers.TransformSourceFile(declarations)
-		declarations = matchers.runtimeReference(declarations)
+		// VIP-27 (2026-11-04): generated error matchers belong to JavaScript,
+		// not the Effect TypeScript declaration surface. VibeLang consumers
+		// resolve the runtime protocol through their own prelude.
 		if len(keys.keys) > 0 {
 			for _, statement := range declarations.Statements.Nodes {
 				forEachTopLevelName(statement, func(name string) { keys.bound[name] = true })

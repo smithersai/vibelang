@@ -1,1 +1,1 @@
-error and schema error declarations retain runtime references and static matchers
+error and schema error declarations omit generated runtime references and static matchers
