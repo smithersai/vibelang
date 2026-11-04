@@ -1366,6 +1366,9 @@ untouched. The merge gate's `//:forms` target depends on
 that hooks and specification authorities exist; generated projections do not
 turn a `pending` row into a language rule.
 
+Update this source when adding or renaming a parser/support or lowering helper,
+including diagnostic recovery. Check every discovered helper with `cd typescript/tsc && go test -p 8 ./internal/vibelangfuzz/grammaradmission` before regenerating.
+
 
 The full `//:site-contrast` check runs `npm run test:404` after its production
 build and before the browser contrast checks. It passes the built

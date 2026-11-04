@@ -974,7 +974,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 \<details>
-\<summary>Parser and lowering hooks (898 records)\</summary>
+\<summary>Parser and lowering hooks (899 records)\</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1042,6 +1042,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_catch.go:Parser.isVibeLangCatchExpression ` | ` admission:catch ` | ` 900-appendices.md#CatchExpression ` | ` admitted ` | VIP-5 literal handler production; value handler recovery audited separately |
 | ` parser/vibelang_catch.go:Parser.parseVibeLangCatchRest ` | ` admission:catch ` | ` 900-appendices.md#CatchExpression ` | ` admitted ` | VIP-5 literal handler production; value handler recovery audited separately |
 | ` parser/vibelang_catch.go:Parser.parseVibeLangCatchHandler ` | ` admission:catch ` | ` 900-appendices.md#CatchExpression ` | ` admitted ` | VIP-5 literal handler production; value handler recovery audited separately |
+| ` parser/vibelang_catch.go:Parser.keepCatchBlockHandler ` | ` admission:catch ` | ` 900-appendices.md#CatchHandler `, ` 002-running.md ` | ` recovery ` | VIP-5 malformed block-handler recovery retains other diagnostics without admitting a parameter list followed directly by a block |
 | ` parser/vibelang_catch.go:Parser.nextTokenIsEqualsGreaterThanToken ` | ` admission:catch ` | ` 900-appendices.md#CatchExpression ` | ` admitted ` | VIP-5 literal handler production; value handler recovery audited separately |
 | ` parser/vibelang_data.go:Parser.scanDataName ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` support ` | VIP-16/28 declarations and generated constructors |
 | ` parser/vibelang_data.go:Parser.parseDataDeclaration ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` support ` | VIP-16/28 declarations and generated constructors |
