@@ -1,5 +1,6 @@
 // Native lexical heads capture a permanently uninitialized RHS cell.
-// Assignment and var heads share their outer cell instead.
+// Assignment heads share their outer cell instead (VIP-1 bans source var).
+// The historical var_* probes retain their shared cell using outer let bindings.
 // The simple let control writes then reads: stock TypeScript reports TS2454
 // for a direct read in this head, while a write still observes the same TDZ.
 
@@ -425,7 +426,7 @@ export function const_multiple(count:number, jump:string):unknown {
 }
 
 export function var_simple(count:number, jump:string):unknown {
-  var x=7;
+  let x=7;
   let read:()=>number=():number=>x;
   const trace:string[]=[];
   const cells:Array<()=>number>=[];
@@ -452,7 +453,7 @@ export function var_simple(count:number, jump:string):unknown {
       }
     };
   }
-  for (var x of items(():number=>x)) {
+  for (x of items(():number=>x)) {
     observe("body",read);
     cells.push(():number=>x);
     x+=10;
@@ -467,7 +468,7 @@ export function var_simple(count:number, jump:string):unknown {
 }
 
 export function var_array(count:number, jump:string):unknown {
-  var x=7;
+  let x=7;
   let read:()=>number=():number=>x;
   const trace:string[]=[];
   const cells:Array<()=>number>=[];
@@ -494,7 +495,7 @@ export function var_array(count:number, jump:string):unknown {
       }
     };
   }
-  for (var [x] of items(():number=>x)) {
+  for ([x] of items(():number=>x)) {
     observe("body",read);
     cells.push(():number=>x);
     x+=10;
@@ -509,7 +510,7 @@ export function var_array(count:number, jump:string):unknown {
 }
 
 export function var_object(count:number, jump:string):unknown {
-  var x=7;
+  let x=7;
   let read:()=>number=():number=>x;
   const trace:string[]=[];
   const cells:Array<()=>number>=[];
@@ -536,7 +537,7 @@ export function var_object(count:number, jump:string):unknown {
       }
     };
   }
-  for (var {x} of items(():number=>x)) {
+  for ({x} of items(():number=>x)) {
     observe("body",read);
     cells.push(():number=>x);
     x+=10;

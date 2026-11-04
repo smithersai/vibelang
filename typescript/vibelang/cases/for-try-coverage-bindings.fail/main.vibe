@@ -1,4 +1,4 @@
-// expect: EK2002 EK2003 EK2004 EK2005
+// expect: EK0107 EK2002 EK2003 EK2004 EK2005
 import { Stream } from "effect"
 // VIP-20 each rejected form has its own diagnostic.
 export effect function returns() { for try (const n of Stream.make(1)) return n }

@@ -1,6 +1,6 @@
 export function probe(): unknown {
   const events: unknown[] = []
-  var x = 7
+  let x = 7
   function observe(label: string, f: () => unknown): void {
     try { events.push([label, f()]) }
     catch (e) { events.push([label, e instanceof Error ? e.name : String(e)]) }
@@ -10,7 +10,7 @@ export function probe(): unknown {
     const cells: (() => unknown)[] = []
     let same: () => unknown = () => 0
     let local: () => unknown = () => 0
-    outer: alias: for (var x of do {
+    outer: alias: for (x of do {
       read = (): unknown => x
       same = read
       observe("before", read)
@@ -32,3 +32,5 @@ export function probe(): unknown {
   return events
 }
 export { nativeSource } from "./native.js"
+
+// VIP-1: an explicit outer let and assignment head retain the shared cell.

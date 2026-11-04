@@ -29,7 +29,8 @@ export function jumps(): unknown {
 export function vars(): unknown {
   const x = 7
   let read: () => unknown = () => 0
-  for (const x of do { var leaked = 9; read = (): unknown => x; [1] }) {}
+  let leaked = 0
+  for (const x of do { leaked = 9; read = (): unknown => x; [1] }) {}
   return [leaked, readError(read)]
 }
 export async function suspended(): Promise<unknown> {

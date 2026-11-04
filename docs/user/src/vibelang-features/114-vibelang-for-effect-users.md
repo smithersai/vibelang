@@ -24,7 +24,7 @@ Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns
 
 Plain code may discard a runner's result: `function run(): void { Effect.runSyncExit(Effect.succeed(1)) }` runs the Effect and discards its `Exit`, just as in TypeScript. The same applies to plain callbacks, `async` functions and module statements. Discarding a constructed Effect value does not run it; use explicit execution when that is intended.
 
-A plain `for...of` also keeps TypeScript's lexical scopes. A closure made in its iterable expression captures an uninitialized `let` or `const` head binding, even with destructuring. Calling that closure during or after the loop throws `ReferenceError`; initializing the separate per-iteration bindings does not initialize the captured cell. A `var` or assignment head keeps its shared binding instead.
+A plain `for...of` also keeps TypeScript's lexical scopes. A closure made in its iterable expression captures an uninitialized `let` or `const` head binding, even with destructuring. Calling that closure during or after the loop throws `ReferenceError`; initializing the separate per-iteration bindings does not initialize the captured cell. An assignment head keeps its outer shared binding instead. In `.vibe`, write an explicit outer `let` and an assignment head when migrating a shared `var` cell; `var` itself belongs in a `.ts` or `.js` file (VIP-1).
 
 A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Remove the modifier from the signature, or put the implementation in an ordinary function or method. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.
 

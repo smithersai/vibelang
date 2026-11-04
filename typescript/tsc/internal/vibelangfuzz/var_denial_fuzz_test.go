@@ -26,7 +26,7 @@ func TestVarDenialQuoted(t *testing.T) { requireVarDenialQuotes(t) }
 func FuzzVarDenial(f *testing.F) {
 	startShortBudget(f)
 	requireVarDenialQuotes(f)
-	for _, key := range []string{"plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "do", "do-call-argument", "do-nested", "do-for-head", "property-control", "literal-control", "let-control"} {
+	for _, key := range []string{"plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "do", "do-call-argument", "do-nested", "do-for-head", "property-control", "literal-control", "let-control", "for-in-assignment-control", "for-of-assignment-control", "for-of-array-assignment-control", "for-of-object-assignment-control"} {
 		for _, mode := range []uint8{0, 1, 2} {
 			f.Add(key, mode)
 		}
@@ -66,6 +66,14 @@ func FuzzVarDenial(f *testing.F) {
 			source = "export function load(): number { return do { { " + declaration + " }; value } }"
 		case "do-for-head":
 			source = "export function load(): number { return do { for (var" + gap + "value = 0; value < 2; value++) {}; value } }"
+		case "for-in-assignment-control":
+			source, want = "export function load(): string { let value = 'outer'; for (value in do { ({ item: 1 }) }) {}; return value }", 0
+		case "for-of-assignment-control":
+			source, want = "export function load(): number { let value = 7; for (value of do { [1, 2] }) {}; return value }", 0
+		case "for-of-array-assignment-control":
+			source, want = "export function load(): number { let value = 7; for ([value] of do { [[1], [2]] }) {}; return value }", 0
+		case "for-of-object-assignment-control":
+			source, want = "export function load(): number { let value = 7; for ({ value } of do { [{ value: 1 }, { value: 2 }] }) {}; return value }", 0
 		case "property-control":
 			source, want = "export const row = { var: 1 }; export const value = row.var", 0
 		case "literal-control":
