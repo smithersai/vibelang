@@ -3,3 +3,4 @@ FuzzIsHomePositions catch:EK0705 compiler VIP-7: an is binding in a catch parame
 FuzzIsHomePositions catch:free compiler VIP-5: a typed catch parameter in plain code reports EK2105 and EK9203, though decided detail 249's examples use that native form; lane impl-hunt-data
 FuzzIsHomePositions catch:body compiler VIP-5: a typed catch parameter in plain code reports EK2105 and EK9203, though decided detail 249's examples use that native form; lane impl-hunt-data
 FuzzPipeRightEdge accepted:closed-handler compiler VIP-5: x catch function () { return 1 } succeeds with the function, so the following pipe reports TS2365 (claim vip05.catch-function); lane impl-hunt-run
+FuzzIsHomePositions catch:local-do compiler VIP-4/VIP-5: the catch-local-do shape throws from a plain function, which EK0401 rejects, and its untyped catch parameter is unknown outside effect code (TS2339), so no plain wrapper can host the do-block default; lane impl-hunt-data

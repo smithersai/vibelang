@@ -16,8 +16,6 @@ FuzzQuickFixBehavior corpus:registry-EK1023 quickfix-generators Chapter 7 / VIP-
 FuzzQuickFixBehavior corpus:registry-EK2128 quickfix-generators Chapter 7 / VIP-34: keyed census producer-return-value.fail; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4401 quickfix-generators Chapter 7 / VIP-34: keyed census ch02-plain-ts-call.fail; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4402 quickfix-generators Chapter 7 / VIP-34: keyed census ch10-fetch.fail; delete this marker once all its preservation oracles pass
-FuzzQuickFixBehavior corpus:registry-EK4406 quickfix-generators Chapter 7 / VIP-34: keyed census EK4406; delete this marker once all its preservation oracles pass
-FuzzQuickFixBehavior corpus:registry-EK4609 quickfix-generators Chapter 7 / VIP-34: keyed census native-await-single-interfaces.fail; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4801 quickfix-generators Chapter 7 / VIP-34: keyed census ek2003-bare-return.fail; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4819 quickfix-generators Chapter 7 / VIP-34: keyed census EK4819; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4820 quickfix-generators Chapter 7 / VIP-34: keyed census EK4820; delete this marker once all its preservation oracles pass
