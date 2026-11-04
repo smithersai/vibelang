@@ -225,6 +225,8 @@ A value named `string`, `number` or another type keyword keeps its library form 
 
 For older programs that relied on an implicit readonly schema key, run `vibelang -p tsconfig.json --fix --fix-migration-only`. The upgrade makes the old readonly keys explicit. A referenced codec whose decoded-key flags cannot be represented by that modifier stays an explicit Effect codec, preserving its public type and identity.
 
+An eligible `Schema.Struct` constant immediately followed by its matching `typeof Name.Type` alias also receives the configurable `EK4841` warning. Its quick fix combines the pair as a `schema Name = …` declaration while preserving its fields, exports, and written imports.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/schema/getting-started](https://effect.website/docs/v4/schema/getting-started/)

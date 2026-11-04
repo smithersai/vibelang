@@ -121,6 +121,8 @@ A catch expression can try the cache before applying a default: `effect { return
 
 The `EK0509` quick fix for a callable value such as `x catch onErr` writes a function literal and chooses a parameter name that does not shadow a name visible to the handler. Escaped identifier spellings and comments do not change that choice. 
 
+A handler written as a parameter list followed directly by a block, `x catch (e) { … }`, is missing its `=>`. It reports `EK0509`, not a syntax error, so the file's other errors still show. The quick fix writes `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own; write `x catch (e) => { … }` instead for a plain fallback.
+
 For an `async` or generator handler, removing `async` or `*` is offered only when the handler uses no `await` or `yield` at its own function level. Nested functions keep their own modifiers. Otherwise, the diagnostic asks for an explicit body conversion, and CLI and editor offer no modifier edit.
 
 Modifier repairs keep comments after `async` and around `*`, including JSDoc comments.

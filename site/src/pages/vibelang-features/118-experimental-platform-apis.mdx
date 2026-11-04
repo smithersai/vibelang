@@ -11,6 +11,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | --- | --- | --- |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |
 | `Experimental.Crypto` | `hmac`, `sign`, `verify`, beside the members of Effect 4.0's `Crypto` | Node, Bun, browser |
+| `Experimental.Stdio` | Effect standard I/O plus `awaitInputClosed` without consuming input | Node, Bun |
 | `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning`, `observeSignals` | Node, Bun |
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
 | `Experimental.MediaQuery` | `matches`, `changes` over `window.matchMedia` | browser |
@@ -33,8 +34,8 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 
 | Module | Layers |
 | --- | --- |
-| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig` |
-| `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer` |
+| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`, `ExperimentalNodeStdio.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig` |
+| `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer`, `ExperimentalBunStdio.layer` |
 | `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserInfo.layer`, `ExperimentalBrowserWindow.layer`, `ExperimentalBrowserDocument.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
@@ -106,6 +107,24 @@ effect function signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
 ```
 
 `Experimental.Crypto.layerTest()` provides the service for tests: random bytes are zeros, so UUIDs repeat, and digests, HMACs and signatures are real.
+
+
+## Stdio
+
+Effect's `Stdio.stdin` is a byte stream: running it consumes input. When another transport already owns stdin, provide `ExperimentalNodeStdio.layer` or `ExperimentalBunStdio.layer` from the experimental platform subpath and wait without taking its bytes:
+
+```vibe
+effect function awaitTransportInputClosed() {
+  const stdio = try Experimental.Stdio.Stdio
+  try stdio.awaitInputClosed
+}
+```
+
+`awaitInputClosed` waits for stdin's `end` or `close` and returns immediately when stdin has already ended or been destroyed. It reads the host only when run and detaches its two listeners on completion, interruption or setup failure. It never reads, resumes, pauses, drains or destroys input and installs no `data`, `readable` or `error` listener. The transport keeps byte and error ownership; it must consume input itself for native `end` to occur.
+
+`Experimental.Stdio.Service` extends Effect's `Stdio.Stdio` interface; `Experimental.Stdio.Stdio` is a distinct service key. `Experimental.Stdio.make(stdio, { awaitInputClosed })` keeps Effect's argument effects, sinks, terminal facts and input stream unchanged. The Node and Bun experimental bundles also include this extension. There is no browser layer.
+
+`Experimental.Stdio.layerTest()` supplies Effect's test standard I/O and an already-completed closure Effect. Override `awaitInputClosed` and the standard members a test needs. A pending or failing transport can be modeled with an injected Effect without native stdin.
 
 ## Process
 
