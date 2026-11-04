@@ -154,7 +154,7 @@ export const run = () => uptime()`, []string{
 		{"experimental", `import { hostname } from "node:os"
 export const run = () => hostname()`, []string{
 			"hostname from node:os is platform code, which a .vibe file does not import as a value.",
-			"Use the experimental Process service:   Experimental.Process.hostname()", provideExperimental,
+			"Use the experimental Process service:   try (try Experimental.Process.Process).hostname", provideExperimental,
 		}},
 		{"home directory", `import { homedir } from "node:os"
 export const run = () => homedir()`, []string{
@@ -164,12 +164,12 @@ export const run = () => homedir()`, []string{
 		}},
 		{"experimental service with a note", `export const run = (pid: number) => process.kill(pid, "SIGINT")`, []string{
 			"process.kill is platform code, which VibeLang code does not use directly.",
-			"Use the experimental Process service:   Experimental.Process.kill(pid, { killSignal })", provideExperimental,
-			"Signal 0 is Experimental.Process.isRunning(pid); a child that the injected ChildProcessSpawner service started also stops with its handle's kill().",
+			"Use the experimental Process service:   try (try Experimental.Process.Process).kill(pid, { killSignal })", provideExperimental,
+			"Signal 0 is (try Experimental.Process.Process).isRunning(pid); a child that the injected ChildProcessSpawner service started also stops with its handle's kill().",
 		}},
 		{"experimental locks", `export const run = (name: string) => navigator.locks.request(name, () => undefined)`, []string{
 			"navigator.locks is platform code, which VibeLang code does not use directly.",
-			"Use the experimental Locks service:   Experimental.Locks.hold(name)",
+			"Use the experimental Locks service:   try (try Experimental.Locks.Locks).hold(name)",
 			`Provide it in main with ExperimentalBrowserLocks.layer from "vibelang-runtime/experimental/platform-browser"; ExperimentalNodeLocks.layer from "vibelang-runtime/experimental/platform-node" locks only within one Node.js process.`,
 			"A Semaphore locks only within one program.",
 		}},
@@ -206,7 +206,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"experimental property", `export const run = () => process.pid`, []string{
 			"process.pid is platform code, which VibeLang code does not use directly.",
-			"Use the experimental Process service:   Experimental.Process.pid()", provideExperimental,
+			"Use the experimental Process service:   try (try Experimental.Process.Process).pid", provideExperimental,
 		}},
 		{"experimental browser global", `export const run = (query: string) => matchMedia(query)`, []string{
 			"matchMedia is platform code, which VibeLang code does not use directly.",

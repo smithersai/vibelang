@@ -1,0 +1,442 @@
+[
+  {
+    "key": "node:os:hostname:direct",
+    "source": "import { hostname } from \"node:os\";export const value=hostname",
+    "advice": "try (try Experimental.Process.Process).hostname"
+  },
+  {
+    "key": "node:os:hostname:alias",
+    "source": "import { hostname as Native } from \"node:os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).hostname"
+  },
+  {
+    "key": "node:os:availableParallelism:direct",
+    "source": "import { availableParallelism } from \"node:os\";export const value=availableParallelism",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "node:os:availableParallelism:alias",
+    "source": "import { availableParallelism as Native } from \"node:os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "node:os:platform:direct",
+    "source": "import { platform } from \"node:os\";export const value=platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "node:os:platform:alias",
+    "source": "import { platform as Native } from \"node:os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "node:os:arch:direct",
+    "source": "import { arch } from \"node:os\";export const value=arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "node:os:arch:alias",
+    "source": "import { arch as Native } from \"node:os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "os:hostname:direct",
+    "source": "import { hostname } from \"os\";export const value=hostname",
+    "advice": "try (try Experimental.Process.Process).hostname"
+  },
+  {
+    "key": "os:hostname:alias",
+    "source": "import { hostname as Native } from \"os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).hostname"
+  },
+  {
+    "key": "os:availableParallelism:direct",
+    "source": "import { availableParallelism } from \"os\";export const value=availableParallelism",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "os:availableParallelism:alias",
+    "source": "import { availableParallelism as Native } from \"os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "os:platform:direct",
+    "source": "import { platform } from \"os\";export const value=platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "os:platform:alias",
+    "source": "import { platform as Native } from \"os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "os:arch:direct",
+    "source": "import { arch } from \"os\";export const value=arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "os:arch:alias",
+    "source": "import { arch as Native } from \"os\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "node:process:pid:direct",
+    "source": "import { pid } from \"node:process\";export const value=pid",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "node:process:pid:alias",
+    "source": "import { pid as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "node:process:platform:direct",
+    "source": "import { platform } from \"node:process\";export const value=platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "node:process:platform:alias",
+    "source": "import { platform as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "node:process:arch:direct",
+    "source": "import { arch } from \"node:process\";export const value=arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "node:process:arch:alias",
+    "source": "import { arch as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "node:process:execPath:direct",
+    "source": "import { execPath } from \"node:process\";export const value=execPath",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "node:process:execPath:alias",
+    "source": "import { execPath as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "node:process:versions:direct",
+    "source": "import { versions } from \"node:process\";export const value=versions",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "node:process:versions:alias",
+    "source": "import { versions as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "node:process:version:direct",
+    "source": "import { version } from \"node:process\";export const value=version",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "node:process:version:alias",
+    "source": "import { version as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "node:process:memoryUsage:direct",
+    "source": "import { memoryUsage } from \"node:process\";export const value=memoryUsage",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "node:process:memoryUsage:alias",
+    "source": "import { memoryUsage as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "node:process:kill:direct",
+    "source": "import { kill } from \"node:process\";export const value=kill",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "node:process:kill:alias",
+    "source": "import { kill as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "process:pid:direct",
+    "source": "import { pid } from \"process\";export const value=pid",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "process:pid:alias",
+    "source": "import { pid as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "process:platform:direct",
+    "source": "import { platform } from \"process\";export const value=platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "process:platform:alias",
+    "source": "import { platform as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "process:arch:direct",
+    "source": "import { arch } from \"process\";export const value=arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "process:arch:alias",
+    "source": "import { arch as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "process:execPath:direct",
+    "source": "import { execPath } from \"process\";export const value=execPath",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "process:execPath:alias",
+    "source": "import { execPath as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "process:versions:direct",
+    "source": "import { versions } from \"process\";export const value=versions",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:versions:alias",
+    "source": "import { versions as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:version:direct",
+    "source": "import { version } from \"process\";export const value=version",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:version:alias",
+    "source": "import { version as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:memoryUsage:direct",
+    "source": "import { memoryUsage } from \"process\";export const value=memoryUsage",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "process:memoryUsage:alias",
+    "source": "import { memoryUsage as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "process:kill:direct",
+    "source": "import { kill } from \"process\";export const value=kill",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "process:kill:alias",
+    "source": "import { kill as Native } from \"process\";export const value=Native",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "process:pid:held",
+    "source": "export const value=process.pid",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "process:pid:closure",
+    "source": "export const value=()=>process.pid",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "process:platform:held",
+    "source": "export const value=process.platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "process:platform:closure",
+    "source": "export const value=()=>process.platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "process:arch:held",
+    "source": "export const value=process.arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "process:arch:closure",
+    "source": "export const value=()=>process.arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "process:execPath:held",
+    "source": "export const value=process.execPath",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "process:execPath:closure",
+    "source": "export const value=()=>process.execPath",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "process:versions:held",
+    "source": "export const value=process.versions",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:versions:closure",
+    "source": "export const value=()=>process.versions",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:version:held",
+    "source": "export const value=process.version",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:version:closure",
+    "source": "export const value=()=>process.version",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "process:memoryUsage:held",
+    "source": "export const value=process.memoryUsage",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "process:memoryUsage:closure",
+    "source": "export const value=()=>process.memoryUsage",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "process:kill:held",
+    "source": "export const value=process.kill",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "process:kill:closure",
+    "source": "export const value=()=>process.kill",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "globalThis.process:pid:held",
+    "source": "export const value=globalThis.process.pid",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "globalThis.process:pid:closure",
+    "source": "export const value=()=>globalThis.process.pid",
+    "advice": "try (try Experimental.Process.Process).pid"
+  },
+  {
+    "key": "globalThis.process:platform:held",
+    "source": "export const value=globalThis.process.platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "globalThis.process:platform:closure",
+    "source": "export const value=()=>globalThis.process.platform",
+    "advice": "try (try Experimental.Process.Process).platform"
+  },
+  {
+    "key": "globalThis.process:arch:held",
+    "source": "export const value=globalThis.process.arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "globalThis.process:arch:closure",
+    "source": "export const value=()=>globalThis.process.arch",
+    "advice": "try (try Experimental.Process.Process).arch"
+  },
+  {
+    "key": "globalThis.process:execPath:held",
+    "source": "export const value=globalThis.process.execPath",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "globalThis.process:execPath:closure",
+    "source": "export const value=()=>globalThis.process.execPath",
+    "advice": "try (try Experimental.Process.Process).execPath"
+  },
+  {
+    "key": "globalThis.process:versions:held",
+    "source": "export const value=globalThis.process.versions",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "globalThis.process:versions:closure",
+    "source": "export const value=()=>globalThis.process.versions",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "globalThis.process:version:held",
+    "source": "export const value=globalThis.process.version",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "globalThis.process:version:closure",
+    "source": "export const value=()=>globalThis.process.version",
+    "advice": "try (try Experimental.Process.Process).versions"
+  },
+  {
+    "key": "globalThis.process:memoryUsage:held",
+    "source": "export const value=globalThis.process.memoryUsage",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "globalThis.process:memoryUsage:closure",
+    "source": "export const value=()=>globalThis.process.memoryUsage",
+    "advice": "try (try Experimental.Process.Process).memoryUsage"
+  },
+  {
+    "key": "globalThis.process:kill:held",
+    "source": "export const value=globalThis.process.kill",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "globalThis.process:kill:closure",
+    "source": "export const value=()=>globalThis.process.kill",
+    "advice": "try (try Experimental.Process.Process).kill(pid, { killSignal })"
+  },
+  {
+    "key": "navigator.hardwareConcurrency:held",
+    "source": "export const value=navigator.hardwareConcurrency",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "navigator.hardwareConcurrency:closure",
+    "source": "export const value=()=>navigator.hardwareConcurrency",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "globalThis.navigator.hardwareConcurrency:held",
+    "source": "export const value=globalThis.navigator.hardwareConcurrency",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "globalThis.navigator.hardwareConcurrency:closure",
+    "source": "export const value=()=>globalThis.navigator.hardwareConcurrency",
+    "advice": "try (try Experimental.Process.Process).availableParallelism"
+  },
+  {
+    "key": "performance.timeOrigin:held",
+    "source": "export const value=performance.timeOrigin",
+    "advice": "try (try Experimental.Process.Process).timeOrigin"
+  },
+  {
+    "key": "performance.timeOrigin:closure",
+    "source": "export const value=()=>performance.timeOrigin",
+    "advice": "try (try Experimental.Process.Process).timeOrigin"
+  },
+  {
+    "key": "globalThis.performance.timeOrigin:held",
+    "source": "export const value=globalThis.performance.timeOrigin",
+    "advice": "try (try Experimental.Process.Process).timeOrigin"
+  },
+  {
+    "key": "globalThis.performance.timeOrigin:closure",
+    "source": "export const value=()=>globalThis.performance.timeOrigin",
+    "advice": "try (try Experimental.Process.Process).timeOrigin"
+  }
+]

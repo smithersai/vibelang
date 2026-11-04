@@ -179,6 +179,8 @@ Authenticated-encryption diagnostic examples obtain `Aead.Aead` with `try` befor
 
 Environment diagnostic examples run `Config.String("NAME")` directly with `try`. A config value is an Effect; it is not called again as a function.
 
+Every service example in platform advice obtains the injected service first, then reads or calls its member: `try (try Geolocation.Geolocation).getCurrentPosition()`, `try (try Permissions.Permissions).query("geolocation")`, `try (try UserDirectories.UserDirectories).home`, and for the experimental services `try (try Experimental.Process.Process).pid`, `try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })` and `try (try Experimental.Locks.Locks).hold(name)`. A module is a namespace, not a service, so `Experimental.Process.pid()` names no function.
+
 Timer-cancellation advice uses `try Fiber.interrupt(fiber)`. The public `Fiber` module function returns an Effect; `try` runs it.
 
 Clipboard advice first obtains the injected `Clipboard.Clipboard` service. Its `readString` member is an Effect value: `try (try Clipboard.Clipboard).readString` reads the text.

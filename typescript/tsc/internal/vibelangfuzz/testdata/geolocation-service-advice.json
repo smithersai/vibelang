@@ -1,0 +1,82 @@
+[
+  {
+    "key": "navigator.geolocation:held",
+    "source": "export const value=navigator.geolocation",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "navigator.geolocation:alias-held",
+    "source": "const Native=navigator.geolocation;export const value=Native",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "navigator.geolocation:alias-read",
+    "source": "const Native=navigator.geolocation;export function value(){return Native.getCurrentPosition(()=>{})}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "navigator.geolocation:getter",
+    "source": "export function value(){return navigator.geolocation}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "navigator.geolocation:closure",
+    "source": "export const value=()=>navigator.geolocation",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "navigator.geolocation:read",
+    "source": "export function value(){return navigator.geolocation.getCurrentPosition(()=>{})}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "navigator.geolocation:async-read",
+    "source": "export async function value(){return await navigator.geolocation.getCurrentPosition(()=>{})}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "navigator.geolocation:boundary",
+    "source": "export effect function value(){return try Effect.tryPromise(()=>navigator.geolocation.getCurrentPosition(()=>{}))}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:held",
+    "source": "export const value=globalThis.navigator.geolocation",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:alias-held",
+    "source": "const Native=globalThis.navigator.geolocation;export const value=Native",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:alias-read",
+    "source": "const Native=globalThis.navigator.geolocation;export function value(){return Native.getCurrentPosition(()=>{})}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:getter",
+    "source": "export function value(){return globalThis.navigator.geolocation}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:closure",
+    "source": "export const value=()=>globalThis.navigator.geolocation",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:read",
+    "source": "export function value(){return globalThis.navigator.geolocation.getCurrentPosition(()=>{})}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:async-read",
+    "source": "export async function value(){return await globalThis.navigator.geolocation.getCurrentPosition(()=>{})}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  },
+  {
+    "key": "globalThis.navigator.geolocation:boundary",
+    "source": "export effect function value(){return try Effect.tryPromise(()=>globalThis.navigator.geolocation.getCurrentPosition(()=>{}))}",
+    "advice": "try (try Geolocation.Geolocation).getCurrentPosition()"
+  }
+]

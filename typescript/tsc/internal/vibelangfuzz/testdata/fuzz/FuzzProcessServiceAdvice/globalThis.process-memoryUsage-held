@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("globalThis.process:memoryUsage:held\x00\x00")

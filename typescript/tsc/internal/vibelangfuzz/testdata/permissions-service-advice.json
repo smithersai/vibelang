@@ -1,0 +1,82 @@
+[
+  {
+    "key": "navigator.permissions:held",
+    "source": "export const value=navigator.permissions",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "navigator.permissions:alias-held",
+    "source": "const Native=navigator.permissions;export const value=Native",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "navigator.permissions:alias-read",
+    "source": "const Native=navigator.permissions;export function value(){return Native.query({name:'geolocation'})}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "navigator.permissions:getter",
+    "source": "export function value(){return navigator.permissions}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "navigator.permissions:closure",
+    "source": "export const value=()=>navigator.permissions",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "navigator.permissions:read",
+    "source": "export function value(){return navigator.permissions.query({name:'geolocation'})}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "navigator.permissions:async-read",
+    "source": "export async function value(){return await navigator.permissions.query({name:'geolocation'})}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "navigator.permissions:boundary",
+    "source": "export effect function value(){return try Effect.tryPromise(()=>navigator.permissions.query({name:'geolocation'}))}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:held",
+    "source": "export const value=globalThis.navigator.permissions",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:alias-held",
+    "source": "const Native=globalThis.navigator.permissions;export const value=Native",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:alias-read",
+    "source": "const Native=globalThis.navigator.permissions;export function value(){return Native.query({name:'geolocation'})}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:getter",
+    "source": "export function value(){return globalThis.navigator.permissions}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:closure",
+    "source": "export const value=()=>globalThis.navigator.permissions",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:read",
+    "source": "export function value(){return globalThis.navigator.permissions.query({name:'geolocation'})}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:async-read",
+    "source": "export async function value(){return await globalThis.navigator.permissions.query({name:'geolocation'})}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  },
+  {
+    "key": "globalThis.navigator.permissions:boundary",
+    "source": "export effect function value(){return try Effect.tryPromise(()=>globalThis.navigator.permissions.query({name:'geolocation'}))}",
+    "advice": "try (try Permissions.Permissions).query(\"geolocation\")"
+  }
+]

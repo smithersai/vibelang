@@ -11,7 +11,7 @@ import { assertFinished, check, newErrors, parseDiagnostics, styleProblems, summ
 const output = `src/users.vibe(8,60): error EK1002: Effect.gen expects a JavaScript generator, but in VibeLang function* declares a producer.
   Write the body as an ordinary function: remove Effect.gen, function*, and yield*.
 src/users.vibe(16,26): error EK4402: process.pid is platform code, which VibeLang code does not use directly.
-  Use the experimental Process service:   Experimental.Process.pid()
+  Use the experimental Process service:   try (try Experimental.Process.Process).pid
 src/users.vibe(3,1): warning EK4831: Users extends Context.Service; in VibeLang a service is a service declaration: service Users { … }.
 src/other.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.
 error TS5096: Option 'allowImportingTsExtensions' can only be used when 'noEmit' or 'emitDeclarationOnly' is set.

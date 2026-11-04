@@ -188,6 +188,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The compiler fuzz suite stopped before running any test because one match witness was registered twice; it is registered once and the suite runs again.
 - A new fuzz target could land without its short-run CPU budget; the registry fuzz target now registers one, and the fast registry gate checks every target.
+- Geolocation, Permissions, UserDirectories and the experimental Process, FileSystem and Locks diagnostics suggested calling members on the module namespace, where they do not exist; their advice now obtains the injected service and runs its member.
 - A `catch` handler missing `=>` could omit `EK0509`; recovery now reports it while retaining independent TypeScript errors in the parameters and body.
 
 - Migration setup left forced Bun build checks such as `bun check --no-script -b` unable to resolve unchanged tests' imports after conversion; setup now selects VibeLang's build mode with the same projects and emit settings.

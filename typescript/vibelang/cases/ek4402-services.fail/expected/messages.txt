@@ -9,7 +9,7 @@ Use the Path service:   (try Path.Path).resolve()
 Use the FileSystem service:   (try FileSystem.FileSystem).makeTempDirectory()
 Use the experimental Process service:   try (try Experimental.Process.Process).temporaryDirectory
 Process.temporaryDirectory queries the native temporary directory without creating a directory or file.
-Use the experimental Process service:   Experimental.Process.hostname()
+Use the experimental Process service:   try (try Experimental.Process.Process).hostname
 Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun".
 Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now.
 Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.
