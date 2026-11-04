@@ -1,0 +1,4 @@
+// expect:
+export error Plain {constructor:string}
+export schema error Encoded {constructor?:string}
+export class Native {constructor(readonly value:number){}}

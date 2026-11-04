@@ -1,0 +1,2 @@
+// expect: TS1089
+export class Native {static constructor(){}}

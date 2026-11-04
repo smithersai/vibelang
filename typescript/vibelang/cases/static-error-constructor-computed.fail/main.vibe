@@ -1,0 +1,3 @@
+// expect: EK1302 EK1302
+export error A {static ["constructor"](){}}
+export schema error B {static ["constructor"](){}}

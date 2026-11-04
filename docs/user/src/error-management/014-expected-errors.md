@@ -516,3 +516,5 @@ A class's `implements` clause also checks the thrown contracts of callable membe
 A foreign callback passed to a signature marked `@rethrows cb` keeps its known thrown contract at the enclosing call, constructor or tagged template. The enclosing signature’s `@throws {never}` does not erase that callback contract. Synchronous code must catch the invocation or put it in an admitting wrapper such as `Effect.try`. Callbacks that return an Effect keep their `never` thrown contract.
 
 A foreign function can throw synchronously before returning a `Promise` or `PromiseLike`. Its written `@throws` contract therefore applies at the call, including in parameter defaults and field initializers. Catch the call with native `try/catch` or put it in an admitting wrapper. An `async` function declared in VibeLang uses Promise rejection semantics for its body and parameter defaults.
+
+An `error` or `schema error` constructor gets `EK1301` once, including when it has a `static` modifier. A computed method named `["constructor"]` is an ordinary method, so its `static` modifier gets `EK1302`. Payload fields named `constructor` keep ordinary field behavior.

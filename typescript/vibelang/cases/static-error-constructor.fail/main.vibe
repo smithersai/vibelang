@@ -1,0 +1,7 @@
+// expect: EK1301 EK1301 EK1301 EK1301 EK1301 EK1301
+export error A {static constructor(){}}
+export schema error B {static constructor(){}}
+export error C {public static "constructor"(){}}
+export schema error D {private static "constructor"(){}}
+export error E {protected static constructor(value:number){}}
+export schema error F {static /* ownership */ constructor(){}}

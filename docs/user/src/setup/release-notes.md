@@ -355,6 +355,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Building an `effect` block or Effect arrow before a derived constructor calls `super()` no longer reads `this` early; each run checks the receiver only when it reaches the read, and a computed `super` key runs after that check.
 
+- A `static` constructor in an error declaration could report two member errors; it now reports the constructor error once, while computed static methods keep the static-member error.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.
