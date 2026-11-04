@@ -1010,3 +1010,5 @@ Quoted chapter witnesses keep their citation in the registered witness metadata.
 When a published pending target reports XPASS, replay the exact key and its paired feature or corpus rows before removing metadata. Preserve the original diagnostic, native-consumer, runtime, and negative-control oracles and keep every corpus input. A neighboring key remains pending until its own oracle passes.
 
 When specification prose is simplified, update literal citations from the current normative chapter and replay the entire affected generator family. A citation refresh preserves generated programs, semantic comparisons, and existing corpus inputs.
+
+Diagnostic table readers must derive code identities from current rows and fail with the unmatched rule prefix when wording drifts. Keep missing-row and severity checks strict when refreshing a normative row anchor.

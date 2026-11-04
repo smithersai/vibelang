@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,7 +13,7 @@ import (
 
 // Appendix B names these rules in its Rule column; their numbers are read
 // from that table, not copied from compiler diagnostics.
-const severityEntryRule = "an error code or an unknown code in `vibe.severities`"
+const severityEntryRule = "an error code, an interim `EK92xx` code (even one printed as a warning) or an unknown code in `vibe.severities`"
 const configValueRule = "an unknown `vibe` key"
 
 const toolingChapter = "007-tooling.md"
@@ -205,7 +206,7 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 		}
 	}
 	if facts.SeverityConfigCode == 0 || facts.ConfigValueCode == 0 {
-		panic("Appendix B lost the severity-entry or config-key/value rule")
+		panic(fmt.Sprintf("Appendix B lost the severity-entry or config-key/value rule: severity prefix %q matched code %d; config prefix %q matched code %d", severityEntryRule, facts.SeverityConfigCode, configValueRule, facts.ConfigValueCode))
 	}
 	// "A transitional compiler may still print compatibility diagnostics from
 	// the old language. The following inventory covers the `EK92xx` codes in
