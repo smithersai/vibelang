@@ -19,7 +19,10 @@ Appendix A production, which the test resolves. A shared hook lists each
 authority separated by a comma. `admitted` is a syntax entry,
 `support` is implementation machinery for the cited construct, and
 `recovery` recognizes an invalid form to diagnose it. None authorizes other
-branches or type-directed legacy behavior in the same function. Effect callable
+branches or type-directed legacy behavior in the same function. Declaration
+dispatch with an ambient context remains support for `DeclarationStart`; the
+missing-body reporter is recovery for `SchemaDeclaration` and `EK1503`.
+Neither helper admits a new form. Effect callable
 binding helpers, including `bindSuperMethod`, cite the existing
 [bindings rule](../design/src/001-functions.md#bindings); they introduce no syntax.
 

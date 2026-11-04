@@ -209,6 +209,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration setup made Bun build checks with `-p` or `--project` fail with `TS5072`; it now selects the same project using TypeScript build-mode arguments.
 
+- The grammar admission inventory failed after schema header diagnostics were added; the declaration dispatcher and missing-body recovery now name their existing grammar authority.
+
 - Geolocation, Permissions, UserDirectories and the experimental Process, FileSystem and Locks diagnostics suggested calling members on the module namespace, where they do not exist; their advice now obtains the injected service and runs its member.
 - A member pattern on `super`, `when super.inherited:` or `s is super.inherited`, produced JavaScript that passed `super` to a function and failed to load. The member is now read in place with `this` as its receiver.
 - Migrating legacy bare `yieldNow(priority)`, `yieldNow()` and `interrupt()` factory calls stopped at `TS2349` or ran a held Effect; `vibelang --fix` now keeps held and returned programs cold and evaluates optional priorities once.

@@ -970,13 +970,14 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (974 records)</summary>
+<summary>Parser and lowering hooks (976 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
 | ` parser/vibelang.go:Parser.isVibeLangFile ` | ` admission:declaration-support ` | ` 900-appendices.md#DeclarationStart ` | ` support ` | Declaration dispatch and synthesized node support |
 | ` parser/vibelang.go:isVibeLangDeclarationWord ` | ` admission:declaration-support ` | ` 900-appendices.md#DeclarationStart ` | ` support ` | Declaration dispatch and synthesized node support |
 | ` parser/vibelang.go:Parser.scanStartOfVibeLangDeclaration ` | ` admission:declaration-support ` | ` 900-appendices.md#DeclarationStart ` | ` support ` | Declaration dispatch and synthesized node support |
+| ` parser/vibelang.go:Parser.scanStartOfVibeLangDeclarationInContext ` | ` admission:declaration-support ` | ` 900-appendices.md#DeclarationStart ` | ` support ` | Declaration dispatch in the enclosing ambient context; no additional syntax |
 | ` parser/vibelang.go:Parser.isStartOfVibeLangDeclaration ` | ` admission:declaration-support ` | ` 900-appendices.md#DeclarationStart ` | ` support ` | Declaration dispatch and synthesized node support |
 | ` parser/vibelang.go:Parser.parseVibeLangDeclaration ` | ` admission:declaration-support ` | ` 900-appendices.md#DeclarationStart ` | ` support ` | Declaration dispatch and synthesized node support |
 | ` parser/vibelang.go:Parser.vibelangSynthesized ` | ` admission:declaration-support ` | ` 900-appendices.md#DeclarationStart ` | ` support ` | Declaration dispatch and synthesized node support |
@@ -1948,6 +1949,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.recordVibeLangSourceReturn ` | ` admission:match ` | ` 900-appendices.md#AsyncMatchExpression `, ` 004-match.md ` | ` support ` | VIP-7: async match creates a native async function boundary; await and source-jump checks preserve that boundary |
 | ` parser/vibelang_match.go:VibeLangAsyncMatches ` | ` admission:match ` | ` 900-appendices.md#AsyncMatchExpression `, ` 004-match.md ` | ` support ` | VIP-7: async match creates a native async function boundary; await and source-jump checks preserve that boundary |
 | ` parser/vibelang_yield_activation.go:VibeLangYieldOutsideProducer ` | ` admission:producer-yield-activation ` | ` 900-appendices.md#Producer `, ` 002-running.md ` | ` recovery ` | VIP-21: source activations and formal initialization own EK2104; compiler-generated wrappers grant no yield permission |
+| ` parser/vibelang_declaration_body.go:Parser.reportVibeLangMissingBody ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` recovery ` | Reports `EK1503` for a schema header without the required field body or alias; recovery adds no form |
 
 </details>
 
