@@ -1732,6 +1732,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `Result.gen` in a `.vibe` file as `EK1002` with no quick fix and no reason. It now rewrites it to a plain function called in place, which stops at the first failure as `Result.gen` does, or says why it can't.
 - Development checks could repeat the migration suites and exceed their time limit; compiler and migration suites now run once in their separate targets.
 
+- Legacy `mutable` fields in an `error` could not be removed without changing its emitted payload type. `vibelang --fix` now writes an explicit compatibility class with the same declarations, constructor and tagged matching.
+
+- Migrated interfaces and object types kept redundant `mutable` markers. `vibelang --fix` now removes those markers, including on index signatures, while preserving comments, writable fields and emitted declarations.
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - `--fix` rewrote `.pipe(Semaphore.withPermits(semaphore, 1))` to `Semaphore.withPermits(%, semaphore, 1)`, which passes the program as the Semaphore, and then refused the whole `Effect.gen` with TS2740; a stage whose `self` is not the piped value now stays curried, as `Semaphore.withPermits(semaphore, 1)(%)`.
 - A bare object after `fork` was interpreted as a legacy callback body; it now remains an object operand and receives `EK1703` when it is not an Effect.

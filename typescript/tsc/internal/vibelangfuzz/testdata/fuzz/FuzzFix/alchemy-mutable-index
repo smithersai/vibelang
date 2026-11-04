@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:mutable-relic:index\n\x07\x01\x00\x00\x00")

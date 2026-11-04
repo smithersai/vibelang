@@ -262,6 +262,16 @@ func hasRegisteredSchemaErrorMatcher(c *checker.Checker, constructor *checker.Ty
 		return false
 	}
 	class := symbol.ValueDeclaration()
+	// The runtime TaggedError factory already installs and registers the
+	// declaration's matcher on its returned base. An explicit preserving
+	// compatibility class keeps that same matcher without adding a static
+	// member or changing the public declaration and reflection surface.
+	if base := ast.GetClassExtendsHeritageElement(class); base != nil && ast.IsCallExpression(base.Expression()) {
+		call := base.Expression()
+		if runtimeExportOf(c, call.Expression()) == "TaggedError" && len(call.Arguments()) == 1 && ast.IsStringLiteral(call.Arguments()[0]) {
+			return true
+		}
+	}
 	for _, member := range class.Members() {
 		if member.Kind != ast.KindClassStaticBlockDeclaration {
 			continue

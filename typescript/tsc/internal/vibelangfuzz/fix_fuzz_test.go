@@ -97,6 +97,11 @@ func FuzzFix(f *testing.F) {
 	for _, data := range []string{"\x04\x00\x02", "\x14\x04\x03"} {
 		f.Add(trailingWhitespaceFixKey + data)
 	}
+	for _, key := range []string{"property", "index", "error"} {
+		for _, choices := range []string{"\x07\x00\x00\x00", "\x81\x02\x01\x01"} {
+			f.Add(mutableRelicFixKey + key + "\n" + choices)
+		}
+	}
 	fuzzFixProjects(f, "FuzzFix")
 }
 
@@ -155,6 +160,11 @@ func fuzzFixProjects(f *testing.F, target string) {
 			if directOption {
 				TestOptionMatchFixQuoted(t)
 				archive = optionMatchFixArchive(archive)
+			}
+			mutableRelic := strings.HasPrefix(archive, mutableRelicFixKey)
+			if mutableRelic {
+				TestMutableRelicFixQuoted(t)
+				archive = mutableRelicFixArchive(archive)
 			}
 			dataOrder := strings.HasPrefix(archive, dataMethodImportOrderKey)
 			dataOrderSafe := false
@@ -251,6 +261,9 @@ func fuzzFixProjects(f *testing.F, target string) {
 			if trailingWhitespace && len(result.Files) == 0 {
 				Gap(t, target, "fix:trailing-whitespace:missing", "Chapter 7 requires the mechanical trailing-block migration:\n%s", archive)
 			}
+			if mutableRelic && (!toolsErrorFree(r) || len(result.Files) == 0) {
+				Gap(t, "FuzzFix", "fix:mutable-relic:missing", "ordinary mutable marker must have a preserving fix: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			}
 			if result.Err != nil {
 				Gap(t, target, "fix:converge", "--fix did not reach a fixed point (%v):\n%s", result.Err, archive)
 				return
@@ -338,6 +351,9 @@ func fuzzFixProjects(f *testing.F, target string) {
 				if declarations == 0 {
 					Gap(t, "FuzzFix", "fix:"+declarationKind+":missing-declarations", "generated declaration must emit its public API")
 				}
+			}
+			if mutableRelic {
+				mutableRelicDeclarations(t, r, after)
 			}
 			// Chapter 7 (decided 2026-10-31): "One `vibelang --fix` run applies
 			// fixes until none applies; running it again changes nothing." When

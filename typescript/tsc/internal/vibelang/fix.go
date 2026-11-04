@@ -659,6 +659,8 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(localServiceShapeMigrationFixes(ctx, program, file, g.refused))
+				p = p.withFixes(mutableRelicFixes(file, g.refused))
+				p = p.withFixes(mutableErrorRelicFixes(ctx, program, file, g.refused))
 				if options.MigrationOnly && len(p.fixes) == 0 {
 					p = sourceFileMigrationFixes(ctx, program, file, g.refused)
 				}
