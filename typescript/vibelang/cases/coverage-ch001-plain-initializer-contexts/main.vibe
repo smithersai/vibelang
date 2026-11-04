@@ -1,0 +1,18 @@
+// expect-result: [1,2,3,4,5,6,7,8,9]
+// Chapter 1: a class field initializer and a static block are not effect
+// code, even inside an effect function. Chapter 3: a call whose throwing is
+// unknown stays an ordinary call there, so this file compiles with no
+// diagnostic and each initializer runs where JavaScript runs it.
+import { plain } from "./k.js"
+effect function field() { class C { x = plain(1) } return new C().x }
+effect function staticField() { class C { static y = plain(2) } return C.y }
+effect function staticBlock() { class C { static z = 0; static { C.z = plain(3) } } return C.z }
+effect function accessorField() { class C { accessor a = plain(4) } return new C().a }
+effect function nestedValue() { class C { x = { v: plain(5) } } return new C().x.v }
+class K { effect m() { const C = class { x = plain(6) }; return new C().x } }
+function plainParam(x = plain(7)) { return x }
+async function asyncParam(x = plain(8)) { return x }
+effect function nestedArrow(g = () => plain(9)) { return g() }
+export effect function main() {
+  return [try field(), try staticField(), try staticBlock(), try accessorField(), try nestedValue(), try new K().m(), plainParam(), try promise(() => asyncParam()), try nestedArrow()]
+}

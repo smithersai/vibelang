@@ -1,0 +1,10 @@
+// expect: EK0401
+// Chapter 3: "In an effectful function's parameter list a default whose
+// thrown type is not `never` is `EK0401`". An unannotated .ts function's
+// thrown type is unknown, so each default below is EK0401, not EK0403.
+import { plain } from "./k.js"
+export effect function param(x = plain(1)) { return x }
+export const arrow = effect (x = plain(1)) => x
+export class M { effect m(x = plain(1)) { return x } }
+export effect function* producer(x = plain(1)) { yield x }
+export effect function destructured({ a = plain(1) }: { a?: number } = {}) { return a }

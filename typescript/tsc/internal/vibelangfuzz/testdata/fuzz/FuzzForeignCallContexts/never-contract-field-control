@@ -1,0 +1,3 @@
+go test fuzz v1
+string("never-contract-field-control")
+byte(0)

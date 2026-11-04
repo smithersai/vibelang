@@ -1,0 +1,3 @@
+go test fuzz v1
+string("param-nested-arrow-control")
+byte(0)

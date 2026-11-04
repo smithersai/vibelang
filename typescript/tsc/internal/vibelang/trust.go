@@ -568,6 +568,22 @@ func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 	return true // every unmarked callback retains its TypeScript body (VIP-1)
 }
 
+// inParameterListOf reports whether node stands in a parameter of fn: a
+// default, a destructuring default or a computed binding key.
+func inParameterListOf(node, fn *ast.Node) bool {
+	for n := node.Parent; n != nil && n != fn; n = n.Parent {
+		if n.Kind == ast.KindParameter && n.Parent == fn {
+			return true
+		}
+	}
+	return false
+}
+
+// foreignCallInEffectParameters is EK0401's text for a call whose throwing
+// is unknown in an effect function's or producer's parameter list. {0} is
+// the callee.
+var foreignCallInEffectParameters = EK0401.With("'{0}' may throw, and an effect function's parameter list runs at the call, before its Effect exists, so nothing there may throw. Compute the value in the body, or move the code to a '.ts' file.")
+
 // enclosingFunction returns the function whose body holds node, or nil at
 // the module's top level.
 func enclosingFunction(node *ast.Node) *ast.Node {
@@ -632,6 +648,24 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	t := callTrust(c, call)
 	callee := call.Expression()
 	name := nodeText(file, callee)
+	// Chapter 1 (Static rules) and chapter 3 (Code outside the generator):
+	// an effect function's parameter list, a class field initializer and a
+	// static block are not effect code. A call whose throwing is unknown
+	// stays an ordinary call in a field initializer or static block; in an
+	// effect function's or producer's parameter list its thrown type,
+	// unknown, is not never, so it is EK0401 there rather than EK0403.
+	switch home := a.plainHomeOf(call); {
+	case home == nil:
+	case home.Kind == ast.KindPropertyDeclaration && home.Initializer() != nil && ast.IsNodeDescendantOf(call, home.Initializer()),
+		home.Kind == ast.KindClassStaticBlockDeclaration:
+		return // a computed name or decorator keeps its enclosing context
+	case ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(call, home):
+		if t.kind == trustForeign && !t.promise {
+			d := report(c, callee, foreignCallInEffectParameters, name)
+			note(d, "Compute the value in the body with {0}.", boundaryCall(c, file, "try", call, ""))
+		}
+		return
+	}
 	// @throws is a contract, not an implicit bridge. Keep explicit trusted
 	// values on their existing runtime contract; ordinary foreign signatures
 	// need Effect.try even when the thrown class is reachable.

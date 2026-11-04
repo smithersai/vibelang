@@ -1,0 +1,3 @@
+go test fuzz v1
+string("field-class-expression")
+byte(0)

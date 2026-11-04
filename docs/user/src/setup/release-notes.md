@@ -195,6 +195,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An off-pin Effect dependency now reports one project-level EK3201 on the configuration file (or package manifest), with the resolved and pinned versions. Platform peers each report once; adding source files no longer duplicates the mismatch or attaches it to an Effect use.
 
+- In an `effect` function, a call of an unannotated `.ts` function inside a class field initializer or `static` block reported `EK0403`, as if it ran in effect code, and the same call in a parameter default reported `EK0403` too. A field initializer or `static` block is plain code, so the call is now an ordinary call there; a default in an `effect` function's or producer's parameter list runs before its Effect exists and now reports `EK0401`.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

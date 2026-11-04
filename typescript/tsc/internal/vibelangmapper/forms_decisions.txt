@@ -1695,6 +1695,7 @@ typescript/vibelang/cases/coverage-ch001-default-return/main.vibe:1:33 lambda pl
 typescript/vibelang/cases/coverage-ch001-dual-modifiers.fail/main.vibe:4:24 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-dual-modifiers.fail/main.vibe:5:24 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-effect-call-is-ordinary/main.vibe:1:64 lambda plain annotation
+typescript/vibelang/cases/coverage-ch001-effect-parameter-foreign.fail/main.vibe:7:22 lambda effectFn keyword
 typescript/vibelang/cases/coverage-ch001-field-enum-reservations/main.vibe:1:14 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-field-enum-reservations/main.vibe:1:45 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-foreign-boundaries/main.vibe:2:55 lambda plain table
@@ -1724,6 +1725,8 @@ typescript/vibelang/cases/coverage-ch001-nested-formal-context/main.vibe:1:30 la
 typescript/vibelang/cases/coverage-ch001-nested-formal-context/main.vibe:1:72 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-plain-effectful-load/main.vibe:10:15 lambda effectFn table
 typescript/vibelang/cases/coverage-ch001-plain-effectful-load/main.vibe:10:30 lambda effectFn table
+typescript/vibelang/cases/coverage-ch001-plain-initializer-contexts/main.vibe:15:33 lambda choice fallback
+typescript/vibelang/cases/coverage-ch001-plain-initializer-contexts/main.vibe:17:145 lambda plain table
 typescript/vibelang/cases/coverage-ch001-promise-bridge/main.vibe:4:31 byname program table
 typescript/vibelang/cases/coverage-ch001-promise-bridge/main.vibe:5:33 byname program table
 typescript/vibelang/cases/coverage-ch001-promise-bridge/main.vibe:6:30 byname program table
