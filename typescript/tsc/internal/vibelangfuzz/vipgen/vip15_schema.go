@@ -653,7 +653,7 @@ function witness() {
 		{
 			Key:     "vip15.schema-optional-plain",
 			Chapter: "006-data.md",
-			Quote:   "`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default.",
+			Quote:   "| `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |",
 			Vibe: `schema S0 { x?: string; readonly y?: number }
 function witness() {
   const probes: unknown[] = [{}, { x: undefined }, { x: "a", y: 1 }, { x: 1 }, { y: "b" }]

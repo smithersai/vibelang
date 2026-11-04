@@ -201,6 +201,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Formatter regression checks treated an intentionally duplicated module declaration as valid input. They now verify its refusal before invoking the formatter, alongside the existing valid module round trips.
 
+- The optional-schema runtime witness still quoted the old unconditional mapping rule. It now cites the current optional-property table while keeping its source, TypeScript twin and probes unchanged.
+
 
 - Stock-oracle and package-load migration checks could fail while reading an absent legacy setup receipt. Their fixtures now record complete public declaration metadata and real upstream packs before testing certification and load regressions.
 
