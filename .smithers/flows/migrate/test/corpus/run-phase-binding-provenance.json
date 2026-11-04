@@ -1,6 +1,6 @@
 {
   "key": "run-phase-binding-provenance",
-  "quote": "Migration rewrites toward the VIP form or native Effect TypeScript and preserves evaluation order, captures, the call-versus-run phase, coldness, error and environment channels, and public declarations.",
+  "quote": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix.",
   "samples": [
     {
       "key": "shadowed-gen",

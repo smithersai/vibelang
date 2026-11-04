@@ -47,6 +47,8 @@ The `//:api-identity-test` target checks [published declaration identity](api-id
 
 Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
 
+The run-phase binding corpus quotes Chapter 7's current requirement to preserve evaluation order, coldness, types, comments and declaration output. Contract wording updates preserve the binding-provenance cases and property counts; they do not change run-phase verification.
+
 Fixtures that bypass setup use `recordDeclarationSurface` to preserve entrypoint aliases and output layout, and record actual `packRepository` results. A hand-written root list does not contain the metadata needed to reproject the baseline independently of the candidate tree.
 
 Private-declaration and one-pass record fixtures capture actual upstream packs, including the empty published set when every package is private. Private declarations remain gated by their original opt-in rules; pack prerequisites must not prevent those positive and negative cases from executing.
