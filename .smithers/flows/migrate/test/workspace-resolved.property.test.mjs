@@ -15,7 +15,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check")
 const ts = loadTypeScript([new URL("../../../../packages/runtime/", import.meta.url).pathname])
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-figma-workspace-peer.json", import.meta.url), "utf8"))
-const toolingQuote = "linters, Knip, bundlers and test runners each read `.vibe`."
+const toolingQuote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const reachingQuote = "every package that runs `bun test` and reaches a migrated package through workspace dependencies"
 
 function fixture(run, installed = true) {

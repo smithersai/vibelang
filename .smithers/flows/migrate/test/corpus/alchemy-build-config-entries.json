@@ -1,7 +1,7 @@
 {
   "repo": "alchemy",
   "pattern": "package build entries outside the configured src inventory",
-  "quote": "Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "quote": "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.",
   "modules": [
     "packages/cloudflare-runtime/src/vite/plugin.ts",
     "packages/frontend-frameworks/src/astro/aws.ts"

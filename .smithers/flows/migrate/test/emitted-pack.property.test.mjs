@@ -11,7 +11,7 @@ import { checkProperty } from "../../../../scripts/testing/property.mjs"
 const repo=fileURLToPath(new URL("../../../../",import.meta.url))
 const fc=createRequire(join(repo,"packages/runtime/package.json"))("fast-check")
 const scratch=process.env.TMPDIR || "/tmp"
-const rule="Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`."
+const rule="Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const write=(root,path,text)=>{const file=join(root,path);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text)}
 const run=(cwd,cmd,args,environment={})=>{
   const r=spawnSync(cmd,args,{cwd,encoding:"utf8",timeout:60000,env:{...process.env,...environment}})

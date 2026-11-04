@@ -10,7 +10,7 @@ import {checkProperty} from '../../../../scripts/testing/property.mjs'
 const require=createRequire(new URL('../../../../packages/runtime/package.json',import.meta.url))
 const ts=require('typescript'),fc=require('fast-check')
 const corpus=JSON.parse(readFileSync(new URL('./corpus/opencode-native-wildcard-js-edge.json',import.meta.url)))
-const rule='Existing tools work.'
+const rule='Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.'
 function scenario({entry=corpus.entry,field='exports',form='self',condition=false}={}) {
  const root=mkdtempSync(join(tmpdir(),'native-wildcard-'))
  const put=(f,s)=>{mkdirSync(dirname(join(root,f)),{recursive:true});writeFileSync(join(root,f),s)}

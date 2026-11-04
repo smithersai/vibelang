@@ -78,7 +78,7 @@ const mobileCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-mobile-rev
 const mobile = mobileCorpus.input
 
 test("the keyed T3code Mobile reversion corpus quotes the tooling contract and retains its literal sources", () => {
-  const rule = "Existing tools work."
+  const rule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
   const spec = readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
   assert.ok(spec.includes(rule))
   assert.equal(mobileCorpus.rule, rule)

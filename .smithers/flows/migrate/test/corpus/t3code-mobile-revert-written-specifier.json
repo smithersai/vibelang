@@ -1,7 +1,7 @@
 {
   "property": "RevertWrittenSpecifier",
   "key": "t3code:mobile:revert-written-specifier",
-  "rule": "Existing tools work.",
+  "rule": "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.",
   "repo": "t3code",
   "pattern": "Mobile consumers converted in the same batch keep written extensionless imports when their dependencies revert to TypeScript",
   "source": {

@@ -1237,3 +1237,5 @@ Publication helper properties cite Chapter 007’s native output names: x.js and
 The retained-schema-constructor gate cites the current preserving-fix rule in Chapter 007. Its real compiler fixture, constructor/refused-class warning checks and generated diagnostic-policy controls remain required when refreshing that citation.
 
 The compiler package test target passes its declared compiler-native artifact through VIBELANG_BINARY after entering packages/compiler. Keep that path absolute and quoted so the native configuration-contract tests run in workspace paths containing spaces; retain the existing target selection, dependency and deadline.
+
+The corpus for build entries and the properties for packages, wildcards, reversion and workspace resolution quote Chapter 007’s current contract for TypeScript and tools. Run both consumers of the shared corpus when refreshing its quotation, preserving their literal sources, variant sets, hashes and original property counts.
