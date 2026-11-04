@@ -38,6 +38,15 @@ export const migrate: (records: ReadonlyArray<string>) => Effect.Effect<Catalog>
  return { schemaVersion: 1 }
 })
 `},
+		{"annotated generator with stages", `export const load = Effect.fn("load")(function* <T>(x: T): Effect.fn.Return<T> {
+ const same = yield* Effect.gen(function* () { return x })
+ return same
+}, Effect.withSpan("post"))
+`},
+		{"annotated generator changing success type", `export const load = Effect.fn(function* (x: number): Effect.fn.Return<number> {
+ return x
+}, Effect.map((value) => String(value)))
+`},
 		{"annotated span literal", `type Catalog = { readonly schemaVersion: 1 }
 export const migrate = Effect.fn("migrate")(function* (records: readonly string[]): Effect.fn.Return<Catalog> {
  const targets: string[] = []

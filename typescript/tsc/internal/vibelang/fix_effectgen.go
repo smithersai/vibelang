@@ -721,10 +721,9 @@ func effectFnHead(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 		body = "{ " + strings.Join(bindings, " ") + body[1:]
 	}
 	signature := applyEdits(text[:close], head)[open:]
-	if g.returns != "" {
-		if len(g.stages) > 0 {
-			return "", "", "its generator's return type names the Effect before its stages"
-		}
+	if g.returns != "" && len(g.stages) == 0 {
+		// Stages may change the success, error or requirement type. Their
+		// output is inferred; the written contract stays on the inner program.
 		signature += ": " + g.returns // a span keeps the Effect's type
 	}
 	return signature, body, ""

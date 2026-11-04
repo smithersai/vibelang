@@ -1,0 +1,9 @@
+{
+  "finding": "t3code:annotated-generator-with-stages",
+  "input": {
+    "form": "named",
+    "nested": true,
+    "mapped": false,
+    "value": 42
+  }
+}

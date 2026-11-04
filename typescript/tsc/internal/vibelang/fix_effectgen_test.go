@@ -281,7 +281,6 @@ func TestEffectGenRefusals(t *testing.T) {
 		{"a comment after Effect.fn's last stage", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, Effect.asVoid /* why */)\n", "a comment stands between"},
 		{"a comment before Effect.fn's generator", "export const f = Effect.fn(/* why */ function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n", "a comment stands between"},
 		{"another return type", "type G = Generator<never, number>\nexport const f = Effect.fn(function* (n: number): G {\n  return n\n})\n", "a return type other than Effect.fn.Return"},
-		{"a return annotation before stages", "export const f = Effect.fn(function* (n: number): Effect.fn.Return<number> {\n  return n\n}, Effect.map((x) => x + 1))\n", "names the Effect before its stages"},
 		{"new.target", "export function F(this: unknown) {\n  return Effect.gen(function* () {\n    return new.target === undefined\n  })\n}\n", "new.target"},
 		{"an Effect.fn stage that reads a defaulted argument", "export const f = Effect.fn(function* (n: number = 1) {\n  return yield* Effect.succeed(n)\n}, (e, n) => Effect.map(e, (x) => x + (n ?? 0)))\n", "does not hold its argument"},
 		{"an Effect.fn stage that reads a destructured argument", "export const f = Effect.fn(function* ({ n }: { n: number }) {\n  return yield* Effect.succeed(n)\n}, (e, o) => Effect.map(e, (x) => x + o.n))\n", "does not hold its argument"},
