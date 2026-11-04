@@ -18,8 +18,8 @@ const values = ["{ a: x }", "[x]", "class {}", "\"s\"", "1", "`t${x}`", "new Map
 const programs = ["Effect.gen(function* () { return x })", "Effect.gen({ self: x }, function* () { return 1 })"]
 const opaque = ["x.pipe(Effect.map((y: any) => y))", "Effect.succeed(x)", "helper(x)", "x"]
 const wrap = fc.constantFrom(e => e, e => `(${e})`, e => `(${e} as any)`, e => `(${e} satisfies unknown)`, e => `(${e})!`)
-const eager = ["if (!x) throw new Error(\"e\")", "log(x)", "count++", "x.y = 1", "const v = load(x)", "for (const i of x) use(i)"]
-const pure = ["const v = x.y", "const n = 1", "let m: number"]
+const eager = ["const v = x.y", "if (!x) throw new Error(\"e\")", "log(x)", "count++", "x.y = 1", "const v = load(x)", "for (const i of x) use(i)"]
+const pure = ["const n = 1", "let m: number"]
 
 test("alchemy-62: a returned value is a value however it is parenthesized or cast", () => {
   fc.assert(fc.property(fc.constantFrom(...values), wrap, (value, w) => verdict(w(value)) === "value"))

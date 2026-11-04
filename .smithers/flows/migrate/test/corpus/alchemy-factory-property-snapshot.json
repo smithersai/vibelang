@@ -1,0 +1,19 @@
+{
+  "key": "alchemy-factory-property-snapshot",
+  "quote": "The migration preserves eager factory calls, argument evaluation and closure state shared by repeated runs",
+  "samples": [
+    {
+      "key": "getter",
+      "source": "import { Effect } from \"effect\"; export function make(input: { value: number }): Effect.Effect<number> { const snapshot = input.value; return Effect.gen(function* () { return snapshot }) }"
+    },
+    {
+      "key": "destructure",
+      "source": "import { Effect } from \"effect\"; export function make(input: { value: number }): Effect.Effect<number> { const { value: snapshot } = input; return Effect.gen(function* () { return snapshot }) }"
+    },
+    {
+      "key": "copy",
+      "source": "import { Effect } from \"effect\"; export function make(input: { value: number }) { const snapshot = { ...input }; return Effect.gen(function* () { return snapshot }) }"
+    }
+  ],
+  "retimed": "import { Effect } from \"effect\"; export function make(input: { value: number }): Effect.Effect<number> { return Effect.gen(function* () { const snapshot = input.value; return snapshot }) }"
+}

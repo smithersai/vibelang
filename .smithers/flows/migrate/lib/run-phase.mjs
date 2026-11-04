@@ -202,7 +202,9 @@ function returned(ts, expression) {
   if (ts.isCallExpression(node)) {
     const callee = unwrap(ts, node.expression)
     if (ts.isPropertyAccessExpression(callee) && callee.name.text === "gen") {
-      for (const expression of [callee.expression, ...node.arguments]) {
+      // A proven module import has no author-defined namespace getter.
+      const inputs = effectMember(ts, callee) ? node.arguments : [callee.expression, ...node.arguments]
+      for (const expression of inputs) {
         const work = eagerWork(ts, expression)
         if (work) return { verdict: "eager", detail: work }
       }
@@ -213,15 +215,18 @@ function returned(ts, expression) {
   return { verdict: "review", detail: "returns " + node.getText().slice(0, 60) }
 }
 
-/** Statements that do work at the call: a throw, a call, an assignment or a loop outside nested functions. */
+/** Work at the call, including reads that capture a snapshot or invoke author code. */
 function eagerWork(ts, statement) {
   let found = null
   const visit = node => {
-    if (found || ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (found || ts.isFunctionLike(node) || ts.isClassLike(node) || ts.isTypeNode(node)) return
     if (ts.isThrowStatement(node)) found = "throws at the call: " + node.getText().slice(0, 60)
     else if (ts.isCallExpression(node) || ts.isNewExpression(node) || ts.isAwaitExpression(node)) found = "calls at the call: " + node.getText().slice(0, 60)
     else if (ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment) found = "assigns at the call: " + node.getText().slice(0, 60)
     else if (ts.isPostfixUnaryExpression(node) || (ts.isPrefixUnaryExpression(node) && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator))) found = "updates at the call: " + node.getText().slice(0, 60)
+    else if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) found = "reads at the call: " + node.getText().slice(0, 60)
+    else if (ts.isObjectBindingPattern(node) || ts.isArrayBindingPattern(node)) found = "destructures at the call: " + node.getText().slice(0, 60)
+    else if (ts.isSpreadAssignment(node) || ts.isSpreadElement(node)) found = "spreads at the call: " + node.getText().slice(0, 60)
     else ts.forEachChild(node, visit)
   }
   visit(statement)

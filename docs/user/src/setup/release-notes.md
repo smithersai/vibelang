@@ -234,6 +234,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration could omit renamed source modules from published packages whose `files` allowlist selected only `.ts` sources. It now records exact `.vibe` additions in `files` and `publishConfig.files`, preserving exclusions and removing only its own entries on revert.
 
 - One-pass migration repair could repeatedly retain a module whose original declaration baseline was unproven; it now restores that module to TypeScript, keeps its cause for retries and requires fresh verification.
+
+- Migration verification could miss factory snapshots moved from the call to execution. It now rejects deferred property reads, destructuring and spreads, with the moved operation in the report.
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
 
 - Stock TypeScript tools could receive an unchanged `.vibe` file for iterable `is` patterns because projection edits overlapped. Function and nested-block projections now preserve the iterator cache and its cleanup without overlapping edits.
