@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import test from "node:test"
+import fc from "fast-check"
 import { Effect } from "effect"
 
 const failures = readFileSync(process.env.SPEC_FAILURES ?? new URL("../design/src/003-failures.md", import.meta.url), "utf8")
@@ -14,10 +15,8 @@ test("a .vibe generator never throws; an async generator's body rejects", () => 
   assert.doesNotMatch(failures, /parameter initialization alone contributes to the call's synchronous thrown type/)
 })
 
-test("the documented generator call phases have the stated Effect Exits", async () => {
-  const block = [...failures.matchAll(/```ts effect\n([\s\S]*?)```/g)]
-    .map((m) => m[1]).find((s) => s.includes("const constructed ="))
-  assert.ok(block, "chapter 003 needs the executable lazy/eager generator contrast")
+test("the retained native generator call phases have the stated Effect Exits", async () => {
+  const block = readFileSync(new URL("./fixtures/generator-call-phase.ts", import.meta.url), "utf8")
   const code = block.replace('from "effect"', "from " + JSON.stringify(import.meta.resolve("effect")))
   const module = await import("data:text/javascript;base64," + Buffer.from(
     code + "\nexport { constructed, resumed, defaulted, resumedAsync, defaultedAsync }"
@@ -56,4 +55,28 @@ test("native parameter initialization is eager for every generator callable form
 test("the Effect parameter example returns a dying Effect instead of throwing at construction", () => {
   assert.doesNotMatch(failures, /c\(\) from untyped JS throws TypeError at the call/)
   assert.match(failures, /c\(\) from untyped JS gives an Effect that dies with TypeError/)
+})
+
+test("fast-check: all native generator forms initialize before their bodies resume", async () => {
+  await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: 5 }), fc.string(), fc.string(), async (form, parameterReason, bodyReason) => {
+    const trace = []
+    const fail = () => { trace.push("parameter"); throw parameterReason }
+    const body = () => { trace.push("body"); throw bodyReason }
+    const forms = [
+      function* declared(value = fail()) { body(); yield value },
+      function* (value = fail()) { body(); yield value },
+      { *method(value = fail()) { body(); yield value } }.method,
+      async function* declared(value = fail()) { body(); yield value },
+      async function* (value = fail()) { body(); yield value },
+      { async *method(value = fail()) { body(); yield value } }.method,
+    ]
+    assert.throws(() => forms[form](), reason => reason === parameterReason)
+    assert.deepEqual(trace, ["parameter"])
+    trace.length = 0
+    const iterator = forms[form](1)
+    assert.deepEqual(trace, [])
+    if (form < 3) assert.throws(() => iterator.next(), reason => reason === bodyReason)
+    else await assert.rejects(iterator.next(), reason => reason === bodyReason)
+    assert.deepEqual(trace, ["body"])
+  }), { seed: 40032, numRuns: 180 })
 })

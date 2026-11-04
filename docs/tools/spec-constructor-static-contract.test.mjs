@@ -1,9 +1,11 @@
 import assert from "node:assert/strict"
+import fc from "fast-check"
+import { Data, Effect } from "effect"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import { test } from "node:test"
-import { block, chapter, repo, run, tools } from "./spec-witness.mjs"
+import { chapter, read, repo, run, tools } from "./spec-witness.mjs"
 const ts = createRequire(join(repo, "experiments/package.json"))("typescript")
 const failures = () => process.env.SPEC_FAILURES ? readFileSync(process.env.SPEC_FAILURES, "utf8") : chapter("003-failures")
 
@@ -17,7 +19,7 @@ test("generated constructor never contracts retain implicit payload-access failu
 })
 
 test("the exact typed getter witness dies before either constructor produces its result", () => {
-  const source = block(failures(), "function copyPayload(")
+  const source = read("docs/tools/fixtures/constructor-payload.ts")
   const dir = mkdtempSync(join(tools, ".spec-constructor-contract-"))
   try {
     const file = join(dir, "example.mts")
@@ -39,4 +41,26 @@ for (const kind of ["error", "data"] as const) {
 }
 `)
   assert.equal(result.status, 0, result.stderr)
+})
+
+test("fast-check: constructor payload getters and Proxy access remain defects", () => {
+  class PayloadError extends Data.TaggedError("PayloadError") {}
+  const Tagged = Data.taggedEnum()
+  fc.assert(fc.property(fc.constantFrom("error", "data"), fc.constantFrom("getter", "proxy-get", "proxy-ownKeys"), fc.string(), (kind, mode, reason) => {
+    let accesses = 0
+    const fail = () => { accesses++; throw reason }
+    const payload = mode === "getter" ? { get value() { return fail() } }
+      : new Proxy({ value: 1 }, mode === "proxy-ownKeys"
+        ? { ownKeys: fail }
+        : { get: (target, key, receiver) => key === "value" ? fail() : Reflect.get(target, key, receiver) })
+    const program = Effect.gen(function* () {
+      if (kind === "error") return yield* Effect.fail(new PayloadError(payload))
+      return Tagged.Item(payload)
+    })
+    assert.equal(accesses, 0)
+    const exit = Effect.runSyncExit(program)
+    assert.equal(accesses, 1)
+    assert.equal(exit._tag, "Failure")
+    assert.deepEqual(exit.cause.reasons.map(r => [r._tag, r.defect]), [["Die", reason]])
+  }), { seed: 40031, numRuns: 180 })
 })
