@@ -18,7 +18,6 @@ func TestDeclarationKeywordSpacing(t *testing.T) {
 		"service   Users{find():Effect<string>}",
 		"service   class   Users{find():Effect<string>}",
 		"service   Prefix:   string",
-		"control   Approval{approve():Effect<boolean>}",
 		"data   Shape{Sq{s:number}}",
 		"layer   Live: Users { find() { return \"x\" } }",
 	} {

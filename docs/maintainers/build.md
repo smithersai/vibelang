@@ -244,6 +244,7 @@ queue:
 
 | Target | Runs when a batch changes |
 | --- | --- |
+| `//typescript/tsc:go-vibelangfmt` | Formatter sources/tests, the parser retirement check or VIP-35; retains retired syntax as refusal witnesses and tests admitted syntax round trips. |
 | `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
 | `//:spec-registry-go` | Published specification/VIP assignments, compiler/core diagnostic declarations and fuzz registry inventories; validates registrations and rejects obsolete legacy exceptions. |
 | `//:tooling-citations` | Service/tooling chapters, their owning VIPs, configuration/core options and the four covered fuzz sources; checks exact public quotations and retired-setting properties without a runtime build. |

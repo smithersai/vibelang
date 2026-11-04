@@ -301,10 +301,10 @@ function logAll(ids: string[]) {
   }
 }
 `,
-	// Older declarations and control flow still parse: layer (D221), service
-	// class (D223), select (EK4607), and typed/repeated catch clauses (D216).
+	// Older admitted declarations and catch clauses still round-trip. Retired
+	// control/select witnesses are retained as rejection tests under VIP-35.
 	// Provider blocks use VIP-12's current provide syntax.
-	"retired and older forms": `layer UsersLive: Users {
+	"older admitted forms": `layer UsersLive: Users {
   const directory = Directory()
   find(id) { return directory.get(id) }
   readonly region = "eu"
@@ -314,10 +314,7 @@ service class Accounts {
 }
 function f(jobs: Queue.Queue<string>) {
   provide UsersLive {
-    select {
-      case const job = jobs.take(): run(job)
-      default: idle()
-    }
+    run(jobs)
   }
   const fiber = fork read()
   return await fiber
@@ -462,7 +459,7 @@ func TestFormatRejects(t *testing.T) {
 		{"syntax error", "const x = (\n", "1:"},
 		{"newline declaration followed by a retired block", "schema\nUser { id: string }", "2:1"},
 		{"comment between a call and its block", "const v = withSpan(\"x\") /* why */ {\n  return 1\n}\n", "expected"},
-		{"comment between try clauses", "function f() {\n  try {\n    a()\n  } handle Ask.answer(q) {\n    resume(true)\n  } // next\n  catch (e) {\n    c()\n  }\n}\n", "comment between the clauses"},
+		{"retired handler before clause-comment formatting", "function f() {\n  try {\n    a()\n  } handle Ask.answer(q) {\n    resume(true)\n  } // next\n  catch (e) {\n    c()\n  }\n}\n", parser.RetiredControlMessage},
 		// A module body's own syntax errors, which the .vibe file's tree does
 		// not hold (D283), are reported at their place in the .vibe file.
 		{"syntax error in a module body", "module text {\n  export const a = (\n}\nimport { a } from text\n", "vibelang format: 2:21: module text: Expression expected"},
