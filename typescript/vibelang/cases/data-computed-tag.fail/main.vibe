@@ -1,5 +1,5 @@
-// expect: EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 TS2344 TS1170 TS1170 TS1170
-// Chapter 006: a variant field named _tag is EK1601; native enum, index and symbol keys keep TypeScript behavior.
+// expect: EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 TS2344 TS1170 TS1170 TS1170
+// Chapter 006: a variant field named _tag is EK1601, an enum member valued "_tag" included; native index and symbol keys keep TypeScript behavior.
 // computed-tag-literal-double
 namespace Case0 { export data D { A { readonly ["_tag"]:string } } }
 // computed-tag-literal-single
@@ -24,8 +24,12 @@ namespace Case9 { const key="_tag";export data D { A { readonly [key]?:string } 
 namespace Case10 { const key="_tag" as const;export data D { A { readonly [key]?:string } } }
 // computed-tag-qualified-optional
 namespace Case11 { const names={tag:"_tag"} as const;export data D { A { readonly [names.tag]?:string } } }
-// computed-tag-enum-control
+// computed-tag-enum
 namespace Case12 { enum Key { Tag="_tag" };export data D { A { readonly [Key.Tag]:string } } }
+// computed-tag-const-enum
+namespace Case19 { const enum Key { Tag="_tag" };export data D { A { readonly [Key.Tag]:string } } }
+// computed-tag-enum-other-control
+namespace Case20 { enum Key { Tag="_tag", Other="other" };export data D { A { readonly [Key.Other]:string } } }
 // computed-tag-broad-control
 namespace Case13 { declare const key:string;export data D { A { readonly [key]:string } } }
 // computed-tag-symbol-control

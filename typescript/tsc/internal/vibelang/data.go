@@ -685,9 +685,10 @@ func (n dataNames) hasVariants(c *checker.Checker, t *checker.Type) bool {
 }
 
 // dataFieldHasTagName recognizes a literal string key through the native
-// type checker. A broad string key remains an index signature and keeps
-// Data.TaggedEnum's native constraint error. Enum keys retain the native
-// enum-key behavior rather than treating their spelling as a string literal.
+// type checker, an enum member whose value is "_tag" included: TypeScript
+// binds that key as the property _tag, which the variant's constructor then
+// overwrites. A broad string key remains an index signature and keeps
+// Data.TaggedEnum's native constraint error.
 func dataFieldHasTagName(c *checker.Checker, name *ast.Node) bool {
 	if name == nil {
 		return false
@@ -703,7 +704,7 @@ func dataFieldHasTagName(c *checker.Checker, name *ast.Node) bool {
 		return false // Native TypeScript rejects this key shape with TS1170.
 	}
 	t := c.GetTypeAtLocation(expression)
-	if t == nil || t.Flags()&checker.TypeFlagsStringLiteral == 0 || t.Flags()&checker.TypeFlagsEnumLiteral != 0 {
+	if t == nil || t.Flags()&checker.TypeFlagsStringLiteral == 0 {
 		return false
 	}
 	value, ok := t.AsLiteralType().Value().(string)

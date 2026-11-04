@@ -256,6 +256,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Contributor tests could pass while invalid build inputs stopped CI from loading its graph; the release tests now load the real build declarations.
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
+- A `data` variant field keyed by an enum member whose value is `"_tag"`, `readonly [Key.Tag]: string`, compiled silently, and the variant constructor then overwrote that field with the variant name. The key now reports `EK1601` like a literal `_tag` key.
 
 - Stock TypeScript tools could receive an unchanged `.vibe` file for iterable `is` patterns because projection edits overlapped. Function and nested-block projections now preserve the iterator cache and its cleanup without overlapping edits.
 

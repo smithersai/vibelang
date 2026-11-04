@@ -63,6 +63,14 @@ namespace Case12 { enum Key { Tag="_tag" };
 export type D=Data.TaggedEnum<{A:{readonly [Key.Tag]:string}}>
 }
 
+namespace Case19 { const enum Key { Tag="_tag" };
+export type D=Data.TaggedEnum<{A:{readonly [Key.Tag]:string}}>
+}
+
+namespace Case20 { enum Key { Tag="_tag", Other="other" };
+export type D=Data.TaggedEnum<{A:{readonly [Key.Other]:string}}>
+}
+
 namespace Case13 { declare const key:string;
 // @ts-expect-error TS2344: native TaggedEnum forbids this payload key.
 export type D=Data.TaggedEnum<{A:{readonly [key]:string}}>
