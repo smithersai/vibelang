@@ -45,14 +45,7 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 							if ast.IsIdentifier(callee) {
 								name := callee.Text()
 								if name == "tryPromise" || name == "sync" || name == "callback" {
-									actual := c.GetSymbolAtLocation(callee)
-									expected := preludeSymbol(c, preludeStateOf(c), file, name)
-									if actual != nil && expected != nil && aliasTarget(c, actual) == aliasTarget(c, expected) {
-										module, member = "Effect", name
-										if name != "tryPromise" {
-											module = runtimeModule
-										}
-									}
+									module, member = platformWrapperGlobal(c, file, callee)
 								}
 							}
 							done()
@@ -251,4 +244,30 @@ func platformWrapperCaptureWithInputs(c *checker.Checker, file *ast.SourceFile, 
 	}
 	call.ForEachChild(visit)
 	return why
+}
+
+// platformWrapperGlobal names the wrapper a bare tryPromise, sync or callback
+// callee calls: (runtimeModule, name) for the runtime transitional sync or
+// callback hatch, ("Effect", name) for the Effect global (VIP-6 makes sync and
+// callback ordinary Effect globals), and ("", "") for any other binding. A
+// project can resolve sync to either, so compare both identities.
+func platformWrapperGlobal(c *checker.Checker, file *ast.SourceFile, callee *ast.Node) (string, string) {
+	name := callee.Text()
+	actual := c.GetSymbolAtLocation(callee)
+	if actual == nil {
+		return "", ""
+	}
+	actual = resolvedAlias(c, actual)
+	state := preludeStateOf(c)
+	if name != "tryPromise" {
+		if runtime := runtimeModuleSymbol(c, state, file); runtime != nil {
+			if hatch := c.TryGetMemberInModuleExports(name, runtime); hatch != nil && resolvedAlias(c, hatch) == actual {
+				return runtimeModule, name
+			}
+		}
+	}
+	if expected := preludeSymbol(c, state, file, name); expected != nil && resolvedAlias(c, expected) == actual {
+		return "Effect", name
+	}
+	return "", ""
 }

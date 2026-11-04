@@ -566,7 +566,7 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
   :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
-  :go-vibelang-fix-twins        the --fix fixed twins of the TypeScript-form and migration cases and the --fix cost guards (merge gate)
+  :go-vibelang-fix-twins        the --fix fixed twins of the TypeScript-form and migration cases, the --fix cost guards and the platform-wrapper repairs (merge gate)
   :go-vibelangfuzz-compile      the compile oracles over their short sample of cases and documentation examples (merge gate)
   :go-vibelangfuzz-config       the project-settings oracles over every case's vibelang section (merge gate)
   :go-vibelangfuzz-topic-<t>    the Fuzz and Test functions of internal/vibelangfuzz/<t>_*_test.go (merge gate,

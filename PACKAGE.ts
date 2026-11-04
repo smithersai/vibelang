@@ -162,6 +162,12 @@ const specTests = [
 // compare the time and memory of two project sizes, so a slower fix loop fails
 // here in seconds; the rewrite cases, which meet it as a 30 s limit on a busy
 // host, run after the merge.
+// The platform-wrapper --fix repairs: an EK4402 access inside a bare sync,
+// callback or tryPromise moves into a .platform.ts companion, or the run says
+// why it refuses. They take about 45 s together. dd45ca328242 (VIP-6 sync and
+// callback as Effect globals) changed the prelude identity of sync, and the
+// repair silently found no wrapper; only post-merge //:go-vibelang ran them.
+const platformWrapperFixTests = ["TestFixPlatformWrapperInputsAndOneCompanion", "TestFixPlatformWrapperInputRefusals", "TestFixPlatformWrapperInputRuntime", "TestFixPlatformWrapperPreservesDeclaration", "TestFixPlatformOneCompanionVerified", "TestFixPlatformExistingGeneratedCompanion"]
 const fixCostTests = ["TestFixProjectBoundsChecks", "TestFixProgramsShareParsedFiles", "TestFixProjectChecksAPassingRoundOnce", "TestFixGateChecksAFewTimes", "TestFixScalesWithTheProject", "TestFixHalvingChecksTheWholeProgramAFewTimes"]
 // The cost guards of flow narrowing. They count allocations, so a repeated
 // union removal that rehashes fails here in seconds; match-flow-limit.fail,
@@ -759,8 +765,8 @@ const targets = {
   // the tsforms and migrate fixed twins changed again on a second --fix run and TestFixGateChecksAFewTimes built
   // more programs than its bound, and only post-merge's //:go-vibelang and //:spec-tests saw it.
   "go-vibelang-fix-twins": goVibelang(
-    "What --fix writes for the TypeScript-form, migration and pipeline-stage cases is their fixed twin, within the --fix cost bounds.",
-    `CGO_ENABLED=0 ${effect} go test -count=1 -timeout 20m -trimpath -run '^(TestTypeScriptFormCasesFix|TestMigrationCasesFix|TestEffectStageFixes|TestEffectStageFixesRefuse|${fixCostTests.join("|")})$' ./internal/vibelang/`,
+    "What --fix writes for the TypeScript-form, migration and pipeline-stage cases is their fixed twin, within the --fix cost bounds, and platform wrappers move into their companion.",
+    `CGO_ENABLED=0 ${effect} go test -count=1 -timeout 20m -trimpath -run '^(TestTypeScriptFormCasesFix|TestMigrationCasesFix|TestEffectStageFixes|TestEffectStageFixesRefuse|${fixCostTests.join("|")}|${platformWrapperFixTests.join("|")})$' ./internal/vibelang/`,
     [Tsc["vibelang-files"]],
     "30m"
   ),
