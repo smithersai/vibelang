@@ -21,8 +21,25 @@ for (const name of ["vue", "svelte"]) {
   })
 }
 
-test("Vue documents both unresolved VibeLang import locations alongside rewrite errors", () => {
-  const build = read("vue").split("## 8. Type-check and build")[1].split("## Next")[0]
-  expect(build).toMatch(/TS2307[^\n]*\.\/todos\.vibe[^\n]*runtime\.ts[^\n]*TodoBoard\.vue/)
-  expect(build).toContain("TS2876")
-})
+
+for (const name of ["vue", "svelte"]) {
+  test(name + " retains component type checking after native sidecar generation", () => {
+    const title = name === "vue" ? "## 8. Type-check and build" : "## 7. Type-check and build"
+    const build = read(name).split(title)[1].split("## Next")[0]
+    const blocks = [...build.matchAll(/\x60{3}json\n([\s\S]*?)\x60{3}/g)].map(match => JSON.parse(match[1]))
+    const config = blocks.find(block => block.extends === "./tsconfig.app.json")
+    expect(config?.compilerOptions).toMatchObject({
+      noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: false
+    })
+    const script = blocks.find(block => block.scripts)?.scripts[name === "vue" ? "build" : "check"] ?? ""
+    const checker = name === "vue" ? "vue-tsc" : "svelte-check"
+    expect(script.indexOf("vibelang -b")).toBe(0)
+    expect(script.indexOf(checker)).toBeGreaterThan(script.indexOf("vibelang -b"))
+    expect(script).toContain("tsconfig.check.json")
+    if (name === "vue") {
+      expect(script.indexOf("vite build")).toBeGreaterThan(script.indexOf(checker))
+      expect(build).toContain("TS2876")
+    }
+    expect(build).not.toContain("instead of \x60" + checker + "\x60")
+  })
+}

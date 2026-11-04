@@ -249,27 +249,34 @@ If `package.json` has no `test` script, add `"test": "vitest run"`. Run `npx vit
 
 ## 8. Type-check and build
 
-vue-tsc does not understand `.vibe` files. With `rewriteRelativeImportExtensions` enabled, vue-tsc 3.3.13 reports TS2876 for `.vue` imports and TS2307 for `./todos.vibe` in both `runtime.ts` and `TodoBoard.vue`:
+Run `vibelang` first to refresh the adjacent `.d.vibe.ts` declarations. `vue-tsc` reads those declarations for imports from `.vibe` modules and checks the script blocks and templates in `.vue` files. `vibelang` checks the `.vibe` and `.ts` sources; it does not check Vue components.
 
-```text
-error TS2876: This relative import path is unsafe to rewrite because it looks like a file name, but actually resolves to "./App.vue".
-error TS2876: This relative import path is unsafe to rewrite because it looks like a file name, but actually resolves to "./TodoBoard.vue".
-src/runtime.ts: error TS2307: Cannot find module './todos.vibe' or its corresponding type declarations.
-src/TodoBoard.vue: error TS2307: Cannot find module './todos.vibe' or its corresponding type declarations.
-```
-
-Without `rewriteRelativeImportExtensions`, the TS2876 rewrite errors disappear, but `.vibe` imports still fail with TS2307. Use `vibelang -b` instead: it builds the same project references and checks `.vibe` and `.ts` files as one program, but not the script blocks of `.vue` files. Keep those blocks thin: import a program, run it, and render its result, as `TodoBoard.vue` does. The `.vibe` tests and the component test cover the rest. In `package.json`, change the `build` script:
-
+Create `tsconfig.check.json` for the component checker:
 
 ```json
 {
-  "scripts": {
-    "build": "vibelang -b && vite build"
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowArbitraryExtensions": true,
+    "rewriteRelativeImportExtensions": false
   }
 }
 ```
 
-Run `npx vibelang -b`; it prints nothing and exits with status 0. Then run `npm run build` or `bun run build`; it exits with status 0, and its last line starts with `✓ built in`. Review the files you added and changed. Your build now uses VibeLang instead of `vue-tsc`.
+This configuration keeps source-extension imports for checking without rewriting them. With `rewriteRelativeImportExtensions` enabled, `vue-tsc` 3.3.13 reports `TS2876` for `.vue` imports such as `./App.vue`; leave rewriting enabled in the app configuration for native JavaScript emission, and disable it only in this check configuration. The declarations must exist before the component check runs.
+
+In `package.json`, keep both checks before the Vite build:
+
+```json
+{
+  "scripts": {
+    "build": "vibelang -b && vue-tsc --project tsconfig.check.json --noEmit && vite build"
+  }
+}
+```
+
+Run `npm run build` or `bun run build`. The native compiler checks the VibeLang and TypeScript sources first, `vue-tsc` checks the components against their imports' declarations, and Vite builds the app. Refresh the declarations whenever a VibeLang module changes.
 
 ## Next
 

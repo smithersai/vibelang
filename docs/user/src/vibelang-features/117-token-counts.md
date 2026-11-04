@@ -121,10 +121,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Format and lint** | **10,000** |
 | [Format with dprint](../setup/formatting.md) | 2,600 |
 | [Developer tools](../setup/developer-tools.md) | 7,400 |
-| **Frameworks** | **12,000** |
+| **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
-| [Vue](../setup/vue.md) | 3,000 |
+| [Vue](../setup/vue.md) | 2,900 |
 | [Svelte](../setup/svelte.md) | 2,600 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |
 | **Editors** | **4,400** |

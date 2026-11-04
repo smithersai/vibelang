@@ -447,6 +447,12 @@ const targets = {
     [bun, node]
   ),
   "site-spec-links": siteSpecLinks,
+  "docs-framework-sidecars": check(
+    "Vue and Svelte guides retain component checkers after native declaration-sidecar generation.",
+    "bun test --timeout 60000 docs/tools/ui-setup.test.ts docs/tools/rev-docs-sidecars.test.ts",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node]
+  ),
   "spec-lint": specLint,
   "docs-comparison-output": check(
     "Complete Effect comparisons print the output their prose promises, without an injected runner.",

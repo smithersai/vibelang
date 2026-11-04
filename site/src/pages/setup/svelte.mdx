@@ -213,28 +213,34 @@ If `package.json` has no `test` script, add `"test": "vitest run"`. Run `npx vit
 
 ## 7. Type-check and build
 
-svelte-check does not understand `.vibe` files, so the template's `check` script fails: svelte-check 4.7.7 reports TS2307 for each import of `./cart.vibe`, then TS2345 for the `{#each}` block, whose `lines` it types as `unknown`. With `--output human` it prints absolute paths, shortened here to `src/`:
+Run `vibelang` first to refresh the adjacent `.d.vibe.ts` declarations. `svelte-check` reads those declarations for imports from `.vibe` modules and checks the script blocks and templates in `.svelte` files. `vibelang` checks the `.vibe` and `.ts` sources; it does not check Svelte components.
 
-```text
-src/runtime.ts:4:31
-Error: Cannot find module './cart.vibe' or its corresponding type declarations.
-
-src/CartQuote.svelte:3:29
-Error: Cannot find module './cart.vibe' or its corresponding type declarations. (ts)
-```
-
-Use `vibelang -b` instead: it builds the same project references and checks `.vibe` and `.ts` files as one program, but not the script blocks of `.svelte` files. Keep those blocks thin: import a program, run it, and render its result, as `CartQuote.svelte` does. The `.vibe` tests and the component test cover the rest. In `package.json`, change the `check` script:
-
+Create `tsconfig.check.json` for the component checker:
 
 ```json
 {
-  "scripts": {
-    "check": "vibelang -b"
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowArbitraryExtensions": true,
+    "rewriteRelativeImportExtensions": false
   }
 }
 ```
 
-Run `npm run check` or `bun run check`; it exits with status 0. Then run `npm run build` or `bun run build`; it exits with status 0, and its last line starts with `✓ built in`. Review the files you added and changed. Your `check` script now uses VibeLang instead of `svelte-check`.
+`allowArbitraryExtensions` lets the checker resolve a `./cart.vibe` import through `cart.d.vibe.ts`. Without the declarations, the import still reports `TS2307`. This check configuration does not emit JavaScript; keep import rewriting enabled in the app configuration for native emission.
+
+In `package.json`, keep both checkers in the `check` script:
+
+```json
+{
+  "scripts": {
+    "check": "vibelang -b && svelte-check --tsconfig tsconfig.check.json"
+  }
+}
+```
+
+Run `npm run check` or `bun run check` to check the VibeLang and TypeScript sources first, then the Svelte components against their imports' declarations. Run `npm run build` or `bun run build` to build the app. Refresh the declarations whenever a VibeLang module changes.
 
 ## Next
 
