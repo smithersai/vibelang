@@ -1,0 +1,82 @@
+import { Context } from "effect"
+function stage(trace: string[], name: string) {
+  trace.push("build:" + name)
+  return <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+    trace.push("apply:" + name)
+    return program
+  }
+}
+export const pipeline = (trace: string[], value: number) => Effect.sync(() => {
+  trace.push("run")
+  return value
+}).pipe(stage(trace, "first"), stage(trace, "second"))
+export const mixed = (trace: string[], value: number) => Effect.sync(() => {
+  trace.push("run")
+  return value
+}).pipe(stage(trace, "custom"), Effect.map((trace.push("build:map"), (n: number) => n + 1)))
+export const capture = (trace: string[], value: number) => {
+  let next = stage(trace, "original")
+  const first = <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+    trace.push("apply:first")
+    next = stage(trace, "replacement")
+    return program
+  }
+  return Effect.sync(() => { trace.push("run"); return value }).pipe(first, next)
+}
+
+export const method = (trace: string[], value: number) => {
+  const holder = {
+    stage<A, E, R>(this: unknown, program: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
+      trace.push(this === holder ? "holder" : this === undefined ? "none" : "pipe")
+      return program
+    }
+  }
+  return Effect.sync(() => { trace.push("run"); return value }).pipe(holder.stage)
+}
+
+function valueStage(trace: string[], name: string) {
+  trace.push("build:" + name)
+  return (value: number) => {
+    trace.push("apply:" + name)
+    return Effect.succeed(value)
+  }
+}
+export const runner = (trace: string[], value: number) => Effect.sync(() => {
+  trace.push("run")
+  return value
+}).pipe(Effect.runSync, valueStage(trace, "last"))
+
+class Offset extends Context.Service<Offset, { readonly n: number }>()("Offset") {}
+export const ordered = (trace: string[], fails: boolean, value: number) => Effect.gen(function* () {
+  const p = Effect.flatMap(Offset, ({ n }) => fails ? Effect.fail("bad") : Effect.succeed(value + n))
+  return yield* p.pipe(
+    stage(trace, "before"),
+    Effect.map((n: number) => { trace.push("map"); return n + 1 }),
+    Effect.mapError((e: string) => { trace.push("error"); return e + "!" }),
+    Effect.catch((e: string) => Effect.sync(() => { trace.push("catch:" + e); return -1 })),
+    Effect.orElseSucceed(() => { trace.push("fallback"); return -2 }),
+    Effect.provideService(Offset, { n: 10 }),
+    stage(trace, "after")
+  )
+})
+export const held = (trace: string[], fails: boolean, value: number) => Effect.gen(function* () {
+  const program: Effect.Effect<number, string> = fails ? Effect.fail("bad") : Effect.succeed(value)
+  return yield* program.pipe(
+    Effect.orElseSucceed(() => Effect.sync(() => { trace.push("held"); return value + 7 }))
+  )
+})
+
+export const retryOptions = (trace: string[], value: number) => Effect.sync(() => {
+  trace.push("run")
+  return value
+}).pipe(
+  Effect.retry({ get times() { trace.push("get:times"); return 0 } }),
+  Effect.map((trace.push("build:map"), (n: number) => n + 1))
+)
+export const spanOptions = (trace: string[], value: number) => Effect.sync(() => {
+  trace.push("run")
+  return value
+}).pipe(
+  Effect.withSpan("load", { get attributes() { trace.push("get:attributes"); return { value } } }),
+  Effect.map((trace.push("build:map"), (n: number) => n + 1))
+)
