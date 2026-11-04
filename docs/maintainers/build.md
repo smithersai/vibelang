@@ -1235,3 +1235,5 @@ The native declaration-spelling property reads the current Specifiers contract i
 Publication helper properties cite Chapter 007’s native output names: x.js and ordinary x.d.ts in outDir. Citation maintenance retains both 100-case properties and their distribution paths, shadowing, unsupported-expression and source-form controls.
 
 The retained-schema-constructor gate cites the current preserving-fix rule in Chapter 007. Its real compiler fixture, constructor/refused-class warning checks and generated diagnostic-policy controls remain required when refreshing that citation.
+
+The compiler package test target passes its declared compiler-native artifact through VIBELANG_BINARY after entering packages/compiler. Keep that path absolute and quoted so the native configuration-contract tests run in workspace paths containing spaces; retain the existing target selection, dependency and deadline.

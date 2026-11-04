@@ -50,7 +50,7 @@ const compilerNative = S.Shell.Build({
 
 const compilerTest = S.Shell.Test({
   summary: "The compiler package's node tests.",
-  shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && VIBELANG_BINARY=\"$PWD/native/vibelang\" node --test test/*.test.mjs",
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
   data: [compilerNative, Tsc["go-vibelangfmt"], runtimeDist, S.glob("compiler/**"), migrationSources,
