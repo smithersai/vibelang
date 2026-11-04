@@ -288,6 +288,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Find References and rename could miss identifiers inside retired `select` arms; the editor now follows their written callees and bindings during recovery.
 
 - Qualified namespace aliases could read host globals without a platform error; they now report `EK4402`, including unused aliases, while local namespaces and type queries keep their ordinary rules. `vibelang --fix` removes unused aliases that TypeScript already erases.
+
+- Grouping or a type assertion around `Function` in an `instanceof` test or a `prototype` access incorrectly reported `EK0107`. These forms now keep the same exemptions as the unwrapped reference.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 - Native `|>` pipelines could incorrectly report a nested pipe chain. Lint now checks written `.pipe` calls and ignores the calls generated to type native pipeline stages.
 

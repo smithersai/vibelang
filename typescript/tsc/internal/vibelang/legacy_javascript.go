@@ -81,6 +81,10 @@ func isIdentifierReference(node *ast.Node) bool {
 // functionConstructorExempt is VIP-1's two exemptions: the right operand of
 // instanceof, and the object of a statically named prototype access.
 func functionConstructorExempt(node *ast.Node) bool {
+	// Parentheses and erased assertions preserve the reference's role.
+	for node.Parent != nil && ast.IsOuterExpression(node.Parent, ast.OEKParentheses|ast.OEKAssertions) && node.Parent.Expression() == node {
+		node = node.Parent
+	}
 	parent := node.Parent
 	if ast.IsBinaryExpression(parent) {
 		b := parent.AsBinaryExpression()

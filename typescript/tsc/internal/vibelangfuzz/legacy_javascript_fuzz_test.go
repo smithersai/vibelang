@@ -49,6 +49,18 @@ var legacyJavaScriptForms = map[string]struct {
 	statement string
 	want      int
 }{
+	"function-wrapper-instanceof-parens":    {`const x: unknown = 1; return x instanceof ((Function))`, 0},
+	"function-wrapper-instanceof-assert":    {`const x: unknown = 1; return x instanceof (Function as FunctionConstructor)`, 0},
+	"function-wrapper-instanceof-satisfies": {`const x: unknown = 1; return x instanceof (Function satisfies FunctionConstructor)`, 0},
+	"function-wrapper-instanceof-nonnull":   {`const x: unknown = 1; return x instanceof Function!`, 0},
+	"function-wrapper-prototype-parens":     {`return ((Function)).prototype`, 0},
+	"function-wrapper-prototype-assert":     {`return (Function as FunctionConstructor).prototype`, 0},
+	"function-wrapper-prototype-satisfies":  {`return (Function satisfies FunctionConstructor)["prototype"]`, 0},
+	"function-wrapper-prototype-nonnull":    {`return Function!?.prototype`, 0},
+	"function-wrapper-call-banned":          {`return (Function as FunctionConstructor)("return 7")`, 1},
+	"function-wrapper-alias-banned":         {`const F = ((Function)); return F`, 1},
+	"function-wrapper-member-banned":        {`return (Function!).name`, 1},
+	"function-wrapper-comma-banned":         {`const x: unknown = 1; return x instanceof (0, Function)`, 1},
 	"eval-direct":                           {`return eval("1")`, 1},
 	"eval-indirect":                         {`return (0, eval)("1")`, 1},
 	"eval-optional":                         {`return eval?.("1")`, 1},
