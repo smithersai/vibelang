@@ -1,5 +1,5 @@
 // expect: EK0512
 // rule-evidence: docs/design/src/002-running.md#2e72964a67a6d50f
-// Chapter 002: As with `??`, mixing it with `??`, `||` or `&&` needs parentheses; without them it is a syntax error (`EK0512`).
+// Chapter 002: Catch logical operator mixing
 import { Effect } from "effect"
-export effect function invalid() { const a = Effect.fail(1) catch () => 2 ?? 3; const b = Effect.fail(1) catch () => 2 || 3; const c = Effect.fail(1) catch () => 2 && 3; return [a,b,c] }
+export effect function invalid() { const a = Effect.fail(1) catch (() => 2) ?? 3; const b = Effect.fail(1) catch (() => 2) || 3; const c = Effect.fail(1) catch (() => 2) && 3; return [a,b,c] }

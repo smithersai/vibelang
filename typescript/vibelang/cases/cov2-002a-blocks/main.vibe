@@ -1,0 +1,15 @@
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#069f32e38673d909
+// Chapter 002: Effect block generator equivalence
+// rule-evidence: docs/design/src/002-running.md#cdb365b82758cbdd
+// Chapter 002: Try inside effect blocks
+// rule-evidence: docs/design/src/002-running.md#d33c2f634198cdcb
+// Chapter 002: Explicit effect block execution
+// rule-evidence: docs/design/src/002-running.md#bdb67d41b1f0ca0f
+// Chapter 002: Effect block internal jumps
+import { Effect } from "effect"
+export effect function main() {
+ const a = try effect { let n = 0; for (let i=0;i<4;i++) { if(i===1) continue; if(i===3) break; n += i }; return try Effect.succeed(n) }
+ const b = try (effect () => { return try Effect.succeed(2) })()
+ return [a,b]
+}

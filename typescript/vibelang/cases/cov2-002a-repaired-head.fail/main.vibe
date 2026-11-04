@@ -1,5 +1,8 @@
 // expect: EK0505
 // rule-evidence: docs/design/src/002-running.md#0fe580d403c6e2db
-// Chapter 002: A repaired, well-formed `try x catch (e) => B` still gets `EK0505`.
+// Chapter 002: Repaired catch head diagnostic
 import { Effect } from "effect"
 export effect function invalid() { return try Effect.fail(1) catch () => 0 }
+
+// rule-evidence: docs/design/src/002-running.md#651d62c155f30e0d
+// Chapter 002: Try catch execution head

@@ -1,16 +1,16 @@
 // runtime witness
 // rule-evidence: docs/design/src/002-running.md#77f679a26f083bde
-// Chapter 002: Write `x catch effect (e) => { B }` for an Effect handler, or `x catch (e) => { B }` for a plain fallback.
+// Chapter 002: Explicit catch handler repairs
 // rule-evidence: docs/design/src/002-running.md#052cefbb0e6acb87
-// Chapter 002: Both explicit repairs have `Success(0)` in these counterparts.
+// Chapter 002: Catch repair success values
 // rule-evidence: docs/design/src/002-running.md#d712f7fedca0d812
-// Chapter 002: `e catch h` runs `e`.
+// Chapter 002: Catch executes its operand
 // rule-evidence: docs/design/src/002-running.md#5c95e362ed7afe23
-// Chapter 002: `h` is evaluated only on failure.
+// Chapter 002: Catch handler failure-only evaluation
 // rule-evidence: docs/design/src/002-running.md#ce6fb4678236c23d
-// Chapter 002: An `effect` block is an ordinary operand, so `effect { try write(x); try close() } catch effect (e) => try log(e)` replaces the banned `try { } catch { }` statement:
+// Chapter 002: Effect block catch operand
 // rule-evidence: docs/design/src/002-running.md#659323a3b6e4b300
-// Chapter 002: | `x catch h`, `h` a plain function: `x catch (e) => f(e)` is `(e) => Effect.succeed(f(e))`, and `x catch () => guest` is `() => Effect.succeed(guest)`.
+// Chapter 002: Plain catch success wrapping
 import { Effect } from "effect"
 export effect function main() {
  let n = 0

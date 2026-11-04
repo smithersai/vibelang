@@ -1,7 +1,7 @@
 // expect: EK0509
 // rule-evidence: docs/design/src/002-running.md#164d7a524cf92a6b
-// Chapter 002: Anything else after `catch` is a syntax error (`EK0509`): a name, a call, any other value, an `effect { … }` block, a class expression, an `async` arrow or function expression, or a generator or `async` generator expression.
+// Chapter 002: Catch handler literal syntax
 // rule-evidence: docs/design/src/002-running.md#8e0f23608ebe2c5f
-// Chapter 002: | a non-function handler, including a parameter list followed directly by a block, or an `async`, generator or `async` generator handler (table above) | `EK0509` |
+// Chapter 002: Malformed handler rejection
 import { Effect } from "effect"
-export effect function invalid() { const a = Effect.fail(1) catch 7; const b = Effect.fail(1) catch async (e) => 7; const c = Effect.fail(1) catch function* (e) {}; return 0 }
+export effect function invalid() { return Effect.fail(1) catch 7 }

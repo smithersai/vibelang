@@ -1,0 +1,5 @@
+// expect: EK2002 EK2003
+// rule-evidence: docs/design/src/002-running.md#320d336737c5f051
+// Chapter 002: Stream item outward jumps
+import { Stream } from "effect"
+export effect function invalid(s: Stream.Stream<number>) { outer: for (;;) { for try (const x of s) { if(x) return x; continue outer } } }

@@ -1,0 +1,4 @@
+// expect: EK2004
+// rule-evidence: docs/design/src/002-running.md#c1b6948cfd02105d
+// Chapter 002: Stream input type restriction
+export effect function invalid() { for try (const x of [1,2]) {} }

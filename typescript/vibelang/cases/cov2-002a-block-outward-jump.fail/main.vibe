@@ -1,0 +1,4 @@
+// expect: EK0202
+// rule-evidence: docs/design/src/002-running.md#7e05391862e172e9
+// Chapter 002: Effect block outward jumps
+export effect function invalid() { outer: for(;;) { const a = effect { break outer }; const b = effect { continue outer }; break } }

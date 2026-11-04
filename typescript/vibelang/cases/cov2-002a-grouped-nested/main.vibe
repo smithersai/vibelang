@@ -1,0 +1,5 @@
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#3bcdfda0231791f8
+// Chapter 002: Parenthesized nested Effect catch
+import { Effect } from "effect"
+export effect function main() { return (try Effect.succeed(Effect.fail("inner"))) catch (e) => e.length }

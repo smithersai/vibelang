@@ -1,0 +1,8 @@
+// expect: EK0102 EK0103
+// rule-evidence: docs/design/src/002-running.md#6c49a361ac6a6c33
+// Chapter 002: Forbidden effect await forms
+import { Effect, Fiber, Deferred } from "effect"
+export effect function invalid(p: Promise<number>, f: Fiber.Fiber<number>, d: Deferred.Deferred<number>) { const a = await p; const b = await Effect.succeed(1); const c = await f; const e = await d; const n = await 1; return [a,b,c,e,n] }
+export effect function invalidLoop() { for await (const x of [1]) {} }
+export effect function invalidUsing() { await using x = null }
+export async function invalidEffectAwait() { return await Effect.succeed(1) }

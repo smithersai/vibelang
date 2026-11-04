@@ -1,0 +1,5 @@
+// expect: EK1701 EK0501
+// rule-evidence: docs/design/src/002-running.md#80985b36ec84eeaf
+// Chapter 002: Effect-only forms in async bodies
+import { Fiber, Deferred } from "effect"
+export async function invalid(f: Fiber.Fiber<number>, d: Deferred.Deferred<number>) { const a = join f; const b = try Deferred.await(d); return [a,b] }

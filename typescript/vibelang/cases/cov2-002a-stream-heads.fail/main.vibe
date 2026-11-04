@@ -1,0 +1,5 @@
+// expect: EK2005 EK0107 EK0102
+// rule-evidence: docs/design/src/002-running.md#43acff402ceea348
+// Chapter 002: Stream declaration head restrictions
+import { Stream } from "effect"
+export effect function invalid(s: Stream.Stream<number>) { let x = 0; for try (x of s) {}; for try (var y of s) {}; for try (using z of s) {}; for try (await using v of s) {} }

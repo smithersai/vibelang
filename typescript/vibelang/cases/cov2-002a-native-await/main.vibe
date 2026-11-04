@@ -1,0 +1,24 @@
+import { completedFiber } from "./fiber.js"
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#96fd99f55144cd0a
+// Chapter 002: Native async await semantics
+// rule-evidence: docs/design/src/002-running.md#74f9bbb96dbfebc1
+// Chapter 002: Fiber and Deferred bridge values
+// rule-evidence: docs/design/src/002-running.md#aff3a4d9c13154a3
+// Chapter 002: Native await object identity
+// rule-evidence: docs/design/src/002-running.md#50b91fd4d50600ea
+// Chapter 002: Explicit runPromise async bridge
+import { Effect, Fiber, Deferred } from "effect"
+async function bridge(fiber: Fiber.Fiber<number>, deferred: Deferred.Deferred<number>) {
+ const rawFiber = await fiber
+ const rawDeferred = await deferred
+ const a = await Effect.runPromise(Fiber.join(fiber))
+ const b = await Effect.runPromise(Deferred.await(deferred))
+ return [rawFiber === fiber, rawDeferred === deferred, a, b]
+}
+export effect function main() {
+ const f = completedFiber()
+ const d = try Deferred.make<number>()
+ try Deferred.succeed(d,8)
+ return try Effect.promise(() => bridge(f,d))
+}

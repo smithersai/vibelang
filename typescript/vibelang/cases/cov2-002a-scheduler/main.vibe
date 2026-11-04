@@ -1,0 +1,7 @@
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#7d3e4bf6d4708a1a
+// Chapter 002: Synchronous try scheduling
+// rule-evidence: docs/design/src/002-running.md#5f3d68c2e3ae28e2
+// Chapter 002: Await analogy scheduling boundary
+import { Effect } from "effect"
+export effect function main() { const events: string[] = []; const a = try Effect.sync(() => { events.push("run"); return 7 }); events.push("after"); return [a,events] }

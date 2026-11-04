@@ -1,0 +1,5 @@
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#698edbee8f51743f
+// Chapter 002: Typed failure versus defect channels
+import { Effect } from "effect"
+export effect function main() { let calls = 0; const a = Effect.fail("typed") catch (e) => { calls++; return e }; const b = try Effect.exit(effect { return Effect.die("defect") catch () => { calls++; return "wrong" } }); return [a,calls,b._tag === "Failure" ? b.cause.reasons.map(r => r._tag) : []] }

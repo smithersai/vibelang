@@ -1,0 +1,5 @@
+// expect: TS2322
+// rule-evidence: docs/design/src/002-running.md#67607f7ef51917a0
+// Chapter 002: Handler parameter type variance
+import { Effect } from "effect"
+export effect function invalid(e: Effect.Effect<number, "NotFound" | "DbError">) { return e catch (error: "NotFound") => 0 }

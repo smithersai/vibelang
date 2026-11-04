@@ -1,5 +1,5 @@
 // expect: EK0504
 // rule-evidence: docs/design/src/002-running.md#70fa7a1bfd423eeb
-// Chapter 002: | `catch` outside effect code | `EK0504` |
+// Chapter 002: Catch outside effect code
 import { Effect } from "effect"
 export function invalid() { return Effect.fail(1) catch () => 0 }

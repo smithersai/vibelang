@@ -1,0 +1,8 @@
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#902abc8b9402a1a6
+// Chapter 002: Effect handler execution and rethrow
+import { Effect } from "effect"
+export effect function main() {
+ const outcome = try Effect.exit(effect { return Effect.fail("first") catch effect (e) => { const s = try Effect.succeed(e + ":second"); throw s } })
+ return outcome._tag === "Failure" ? outcome.cause.reasons.map(r => r._tag === "Fail" ? r.error : r._tag) : ["wrong"]
+}

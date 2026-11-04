@@ -1,0 +1,5 @@
+// expect: EK0502
+// rule-evidence: docs/design/src/002-running.md#63bd50eef40b31dd
+// Chapter 002: Optional call Effect operand
+import { Effect } from "effect"
+export effect function invalid(f: (() => Effect.Effect<number>) | undefined) { return try f?.() }

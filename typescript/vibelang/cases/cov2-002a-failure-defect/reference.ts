@@ -1,0 +1,2 @@
+import { Effect } from "effect"
+export function main() { return Effect.gen(function* () { let calls = 0; const a = yield* Effect.catch(Effect.fail("typed"), e => Effect.succeed((calls++,e))); const b = yield* Effect.exit(Effect.gen(function* () { return yield* Effect.catch(Effect.die("defect"), () => Effect.succeed((calls++,"wrong"))) })); return [a,calls,b._tag === "Failure" ? b.cause.reasons.map(r => r._tag) : []] }) }

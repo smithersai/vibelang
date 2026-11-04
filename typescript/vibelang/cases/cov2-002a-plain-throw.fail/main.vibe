@@ -1,5 +1,8 @@
 // expect: EK0401
 // rule-evidence: docs/design/src/002-running.md#4ec348e7d5e37a0f
-// Chapter 002: | `x catch (e) => { throw e }` | plain function | a compile error, `EK0401`; write `x catch effect (e) => { throw e }` |
+// Chapter 002: Plain handler throw rejection
 import { Effect } from "effect"
 export effect function invalid() { return Effect.fail("bad") catch (e) => { throw e } }
+
+// rule-evidence: docs/design/src/002-running.md#3358874605673dce
+// Chapter 002: Plain throw versus typed failure

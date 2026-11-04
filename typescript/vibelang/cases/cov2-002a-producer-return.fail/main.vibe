@@ -1,0 +1,4 @@
+// expect: EK2128
+// rule-evidence: docs/design/src/002-running.md#821035760d037fe6
+// Chapter 002: Producer return value restriction
+export effect function* invalid() { yield 1; return 2 }

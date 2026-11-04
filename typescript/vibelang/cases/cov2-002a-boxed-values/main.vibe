@@ -1,0 +1,30 @@
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#a274f8c29de7231c
+// Chapter 002: Effect return preserves nested values
+// rule-evidence: docs/design/src/002-running.md#998b3e7065ad97db
+// Chapter 002: Try success preserves nested values
+// rule-evidence: docs/design/src/002-running.md#a4dabd10b8f1f779
+// Chapter 002: Return and handler data values
+// rule-evidence: docs/design/src/002-running.md#10d65326af305390
+// Chapter 002: Boxed and unboxed Effect returns
+import { Effect } from "effect"
+import { values } from "./values.js"
+effect function boxed(inner: Effect.Effect<number>) { return inner }
+effect function unboxed(inner: Effect.Effect<number>) { return try inner }
+export effect function main() {
+ let runs = 0
+ const inner = Effect.sync(() => { runs++; return 7 })
+ const a = try boxed(inner)
+ const b = try Effect.succeed(inner)
+ const c = Effect.fail("bad") catch () => inner
+ const before = runs
+ const n = try unboxed(inner)
+ const data = values()
+ const promiseTry = try Effect.succeed(data.promise)
+ const promiseReturn = try effect { return data.promise }
+ const promiseCatch = Effect.fail(1) catch () => data.promise
+ const thenableTry = try Effect.succeed(data.thenable)
+ const thenableReturn = try effect { return data.thenable }
+ const thenableCatch = Effect.fail(1) catch () => data.thenable
+ return [a === inner,b === inner,c === inner,before,n,runs,promiseTry === data.promise,promiseReturn === data.promise,promiseCatch === data.promise,thenableTry === data.thenable,thenableReturn === data.thenable,thenableCatch === data.thenable,data.state.n]
+}

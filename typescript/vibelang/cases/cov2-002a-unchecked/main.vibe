@@ -1,0 +1,13 @@
+// rule-evidence: docs/design/src/002-running.md#da6262249cc5b780
+// Chapter 002: Unchecked native delegation
+import { inputs } from "./inputs.js"
+import { Effect } from "effect"
+effect function unchecked(value: any) { return try value }
+export effect function main() {
+ const observations: unknown[] = []
+ for (const value of inputs()) {
+   const result = try Effect.exit(unchecked(value))
+   observations.push(result._tag === "Success" ? ["Success", result.value] : result.cause.reasons.map(r => r._tag === "Die" ? ["Die", r.defect instanceof TypeError] : [r._tag]))
+ }
+ return observations
+}
