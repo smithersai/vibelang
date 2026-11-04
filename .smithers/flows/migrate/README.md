@@ -476,6 +476,16 @@ A run's `issues.jsonl` is the input to the loop that improves the flow. The repa
 
 `report.md` lists all three, with the rewrites `--fix` applied and refused, so a run's report says which rule to write next.
 
+### Generator parameter bindings
+
+The converter defers supported `Effect.fn` generator parameter bindings until
+program execution. Destructuring and defaults run again on each execution,
+including for callbacks with an ordinary function contract. A plain arrow that
+destructures before returning `Effect.gen` retains its original call-time
+binding. Scope-sensitive defaults, unsupported spans or stages, and
+destructuring combined with rest receive a refusal. A spread copy of a rest
+array would introduce an observable iterator access.
+
 ### Catch pipelines
 
 Each sequential recovery stage remains a cold program for the following stage.

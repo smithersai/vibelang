@@ -40,7 +40,8 @@ import (
 // A parameter that a default or a pattern binds is bound when an Effect.gen
 // function is called, so that function stays plain and returns the block:
 // ({ id }) => effect { B }. Effect.fn binds its parameters when the
-// program runs, as an effect function does. An effect function is untraced:
+// program runs; a converted effect function defers those bindings explicitly.
+// An effect function is untraced:
 // Effect.fn's stack frames, which only a failure's trace reads, go, and its
 // name stays as the span.
 //
@@ -436,7 +437,7 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 
 	switch {
 	case g.isFn && len(g.stages) == 0 && plainMemberDestination(a, outer):
-		program, why := plainArrowEffectText(file, g, body)
+		program, why := plainArrowEffectText(c, file, g, body)
 		if why != "" {
 			return refuse(why)
 		}
@@ -518,7 +519,54 @@ func parametersEnd(file *ast.SourceFile, fn *ast.Node) int {
 
 // effectFnText returns the effect function that replaces g, an Effect.fn
 // whose rewritten block is body, or why there is none.
-func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, body string) (string, string) {
+// A parameter initializer has a separate scope from body declarations.
+// Moving a free read past a body binding would change what it resolves to.
+// Leave dynamic scope and receiver-sensitive defaults in their original form.
+func deferredParameterScope(generator *ast.Node) string {
+	if usesArguments(generator) {
+		return "deferred bindings must preserve the generator's arguments object"
+	}
+	bodyNames := map[string]bool{}
+	var collect func(*ast.Node) bool
+	collect = func(node *ast.Node) bool {
+		if ast.IsVariableDeclaration(node) || ast.IsFunctionDeclaration(node) || ast.IsClassDeclaration(node) {
+			if node.Name() != nil {
+				collectBindingNames(node.Name(), bodyNames)
+			}
+		}
+		if isFunctionBoundary(node) || ast.IsClassLike(node) {
+			return false
+		}
+		node.ForEachChild(collect)
+		return false
+	}
+	generator.Body().ForEachChild(collect)
+	var sensitive func(*ast.Node) bool
+	sensitive = func(node *ast.Node) bool {
+		return node.Kind == ast.KindThisKeyword || ast.IsIdentifier(node) && (node.Text() == "arguments" || node.Text() == "eval" || bodyNames[node.Text()]) || node.ForEachChild(sensitive)
+	}
+	var bindingExpressions func(*ast.Node) bool
+	bindingExpressions = func(node *ast.Node) bool {
+		if ast.IsBindingElement(node) {
+			if property := node.PropertyName(); property != nil && ast.IsComputedPropertyName(property) && sensitive(property.Expression()) {
+				return true
+			}
+			if initial := node.Initializer(); initial != nil && sensitive(initial) {
+				return true
+			}
+			return bindingExpressions(node.Name())
+		}
+		return !ast.IsIdentifier(node) && node.ForEachChild(bindingExpressions)
+	}
+	for _, parameter := range generator.Parameters() {
+		if bindingExpressions(parameter.Name()) || parameter.Initializer() != nil && sensitive(parameter.Initializer()) {
+			return "a parameter binding would change its original lexical scope"
+		}
+	}
+	return ""
+}
+
+func effectFnHead(c *checker.Checker, file *ast.SourceFile, g *generatorCall, body string) (string, string, string) {
 	generator := g.generator
 	text := file.Text()
 	open := generator.ParameterList().Pos() - 1
@@ -527,7 +575,7 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 	}
 	close := parametersEnd(file, generator)
 	if close < 0 || open < 0 {
-		return "", "its parameters could not be read"
+		return "", "", "its parameters could not be read"
 	}
 	// The native Effect.fn result prints its inferred parameter tuple, not
 	// the generator's annotation syntax. Serialize each checked parameter
@@ -535,8 +583,90 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 	// An optional or defaulted parameter is an optional tuple element, which
 	// tsc prints as T | undefined; a default's body still reads T. A rest
 	// parameter spreads into the tuple, which prints it as a mutable T[].
+	deferred := slices.ContainsFunc(generator.Parameters(), func(parameter *ast.Node) bool {
+		return ast.IsBindingPattern(parameter.Name())
+	})
+	if deferred && slices.ContainsFunc(generator.Parameters(), func(parameter *ast.Node) bool { return parameter.AsParameterDeclaration().DotDotDotToken != nil }) {
+		return "", "", "deferring a rest binding would add observable iteration"
+	}
+	var parameterNames []string
+	if deferred {
+		if slices.ContainsFunc(generator.Parameters(), func(parameter *ast.Node) bool {
+			return ast.IsIdentifier(parameter.Name()) && parameter.Initializer() != nil
+		}) {
+			return "", "", "a deferred named default needs its original public parameter binding"
+		}
+		call := generator.Parent
+		for call != nil && ast.IsParenthesizedExpression(call) {
+			call = call.Parent
+		}
+		if call == nil || !ast.IsCallExpression(call) {
+			return "", "", "the original public parameter labels could not be read"
+		}
+		signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(call), checker.SignatureKindCall)
+		if len(signatures) != 1 {
+			return "", "", "the original public parameter labels are not unique"
+		}
+		expanded := c.GetExpandedParameters(signatures[0], true)
+		if len(expanded) != 1 || len(expanded[0]) != len(generator.Parameters()) {
+			return "", "", "the original public parameter labels do not match its bindings"
+		}
+		for index, parameter := range generator.Parameters() {
+			name := expanded[0][index].Name()
+			parameterNames = append(parameterNames, name)
+			if !ast.IsBindingPattern(parameter.Name()) {
+				continue
+			}
+			var captures func(*ast.Node) bool
+			captures = func(node *ast.Node) bool {
+				return ast.IsIdentifier(node) && node.Text() == name || node.ForEachChild(captures)
+			}
+			if captures(generator) {
+				return "", "", "a public parameter label would capture an original binding"
+			}
+		}
+		if why := deferredParameterScope(generator); why != "" {
+			return "", "", why
+		}
+	}
+	if deferred && (g.span != nil || len(g.stages) > 0) {
+		return "", "", "parameter bindings must remain inside the generator before its stages"
+	}
+	var bindings []string
 	var head []sourceEdit
-	for _, parameter := range generator.Parameters() {
+	for index, parameter := range generator.Parameters() {
+		if deferred && ast.IsBindingPattern(parameter.Name()) {
+			if hasComment(nodeText(file, parameter)) {
+				return "", "", "a comment stands in a deferred parameter binding"
+			}
+			inferred := c.GetTypeAtLocation(parameter)
+			if parameter.Initializer() != nil || parameter.QuestionToken() != nil {
+				inferred = c.GetUnionType([]*checker.Type{inferred, c.GetUndefinedType()})
+			}
+			printed := c.TypeToStringEx(inferred, parameter, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+			if printed == "" || effectFnTypeHasImport(printed) {
+				if parameter.Type() == nil {
+					return "", "", "a deferred parameter type cannot be written in the original scope"
+				}
+				printed = nodeText(file, parameter.Type())
+				if parameter.Initializer() != nil || parameter.QuestionToken() != nil {
+					printed = "(" + printed + ") | undefined"
+				}
+			}
+			name := parameterNames[index]
+			header, value := name, name
+			if parameter.QuestionToken() != nil {
+				header += "?"
+			}
+			header += ": " + printed
+			if initial := parameter.Initializer(); initial != nil {
+				header += " = void 0"
+				value = name + " === void 0 ? " + nodeText(file, initial) + " : " + name
+			}
+			head = append(head, sourceEdit{nodeStart(file, parameter), parameter.End(), header})
+			bindings = append(bindings, "let "+nodeText(file, parameter.Name())+" = "+value+";")
+			continue
+		}
 		if annotation := parameter.Type(); annotation != nil {
 			inferred := c.GetTypeFromTypeNode(annotation)
 			if parameter.QuestionToken() != nil || parameter.Initializer() != nil {
@@ -544,7 +674,7 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 			}
 			printed := c.TypeToStringEx(inferred, annotation, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 			if printed == "" {
-				return "", "an inferred parameter type cannot be written"
+				return "", "", "an inferred parameter type cannot be written"
 			}
 			// Expanding a source annotation can introduce an import type that
 			// resolves through a generated declaration instead of the original
@@ -567,19 +697,31 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 			}
 			if original := nodeText(file, annotation); printed != original {
 				if hasComment(original) {
-					return "", "a comment stands inside a parameter type that inference expands"
+					return "", "", "a comment stands inside a parameter type that inference expands"
 				}
 				head = append(head, sourceEdit{nodeStart(file, annotation), annotation.End(), printed})
 			}
 		}
 	}
 
+	if len(bindings) > 0 {
+		body = "{ " + strings.Join(bindings, " ") + body[1:]
+	}
 	signature := applyEdits(text[:close], head)[open:]
 	if g.returns != "" {
 		if len(g.stages) > 0 {
-			return "", "its generator's return type names the Effect before its stages"
+			return "", "", "its generator's return type names the Effect before its stages"
 		}
 		signature += ": " + g.returns // a span keeps the Effect's type
+	}
+	return signature, body, ""
+}
+
+func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, body string) (string, string) {
+	generator := g.generator
+	signature, body, why := effectFnHead(c, file, g, body)
+	if why != "" {
+		return "", why
 	}
 	keepsThis := generator.Name() != nil || usesFunctionThis(generator)
 	if g.span == nil && len(g.stages) == 0 {
@@ -828,22 +970,31 @@ func plainMemberDestination(a *analyzer, node *ast.Node) bool {
 
 // plainArrowEffectText writes g, an Effect.fn with no stages, as a plain arrow
 // that returns its program: (a) => effect { B }, with its span around it.
-func plainArrowEffectText(file *ast.SourceFile, g *generatorCall, body string) (string, string) {
+func plainArrowEffectText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, body string) (string, string) {
 	generator := g.generator
 	if generator.Name() != nil || usesFunctionThis(generator) {
 		return "", "the generator has a name or reads this, which an arrow function has no own of"
 	}
-	open := generator.ParameterList().Pos() - 1
-	if generator.TypeParameterList() != nil {
-		open = generator.TypeParameterList().Pos() - 1
-	}
-	close := parametersEnd(file, generator)
-	if close < 0 || open < 0 {
-		return "", "its parameters could not be read"
-	}
-	signature := file.Text()[open:close]
-	if g.returns != "" {
-		signature += ": " + g.returns
+	var signature string
+	if slices.ContainsFunc(generator.Parameters(), func(parameter *ast.Node) bool { return ast.IsBindingPattern(parameter.Name()) }) {
+		var why string
+		signature, body, why = effectFnHead(c, file, g, body)
+		if why != "" {
+			return "", why
+		}
+	} else {
+		open := generator.ParameterList().Pos() - 1
+		if generator.TypeParameterList() != nil {
+			open = generator.TypeParameterList().Pos() - 1
+		}
+		close := parametersEnd(file, generator)
+		if close < 0 || open < 0 {
+			return "", "its parameters could not be read"
+		}
+		signature = file.Text()[open:close]
+		if g.returns != "" {
+			signature += ": " + g.returns
+		}
 	}
 	program := "effect " + body
 	if g.span != nil {

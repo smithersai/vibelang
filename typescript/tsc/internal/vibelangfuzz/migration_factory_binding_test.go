@@ -83,7 +83,7 @@ func checkMigrationFactoryBinding(t *testing.T, w *Workspace, node *Node, key st
 		fixedName := "main.vibe"
 		// The observer stays TypeScript when testing conversion of a plain
 		// factory: changing its timing would otherwise hide the same defect.
-		if strings.HasPrefix(p.key, "smithers-") && !strings.HasPrefix(p.key, "smithers-held-") {
+		if strings.HasPrefix(p.key, "smithers-") && !strings.HasPrefix(p.key, "smithers-held-") || strings.HasPrefix(p.key, "alchemy-fn-") {
 			files = map[string]string{"main.ts": source, "factory.vibe": p.factory}
 			fixedName = "factory.vibe"
 		}
