@@ -526,6 +526,9 @@ const rules = (settings = {}) => Object.fromEntries(Object.entries(settings).fla
   // A core rule typescript-eslint extends for TypeScript, as Oxlint's does, is typescript-eslint's.
   if (plugin === "typescript" || plugin === "@typescript-eslint" || ((plugin === "" || plugin === "eslint") && typed.has(rule))) {
     if (!typed.has(rule)) { if (levels[level] !== "off") missing.add(name); return [] }
+    // The source parser has no TypeScript program. Keep type-aware rules on
+    // the native projection pass, which owns the configured type information.
+    if (tseslint.plugin.rules[rule].meta?.docs?.requiresTypeChecking) return []
     aliases.set(typedName, (plugin === "" || plugin === "eslint") ? "eslint/" + rule : "typescript/" + rule)
     return [[typedName, value]]
   }

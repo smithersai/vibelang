@@ -262,7 +262,10 @@ lines and columns:
 | A module the projection leaves unparsable | A `vibelang(unprojected)` warning on that module, because it got no rules |
 
 A rule runs once on a module: the native pass turns off each rule the ESLint pass
-carries, including in overrides. JS plugin rules stay with ESLint.
+carries, including in overrides. JS plugin rules stay with ESLint. Type-aware
+TypeScript rules stay with the native pass because the source ESLint parser has
+no TypeScript program. This also keeps resolved Oxlint defaults from requiring
+parser services before repository JavaScript plugin rules run.
 
 The pass applies no `--fix`, because a fix on projected text is not a source
 edit. It leaves `reportUnusedDisableDirectives` off, because a directive naming a

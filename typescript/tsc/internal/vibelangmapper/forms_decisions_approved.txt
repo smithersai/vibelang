@@ -2094,3 +2094,6 @@ typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: ef
 typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 
 typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
+typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-5: this catch handler explicitly writes effect, so its written function kind takes precedence over table inference.
+typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the service implementation explicitly writes an effect lambda, which determines its function kind.
+typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the existing effect modifier determines this lambda's function kind before fallback inference.

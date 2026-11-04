@@ -1,0 +1,7 @@
+{
+  "repo": "foldkit",
+  "name": "typescript/await-thenable",
+  "level": "error",
+  "override": true,
+  "symptom": "Resolved Oxlint rules require parser services and crash the syntax-only ESLint bridge before repository JavaScript plugin rules can run."
+}
