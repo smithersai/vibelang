@@ -16,7 +16,7 @@ import (
 const serviceDefaultReadsTarget = "FuzzServiceDefaultReads"
 
 // Appendix B, the EK4855 row (VIP-9 amended 2026-10-30).
-const serviceDefaultReadsQuote = "migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads"
+const serviceDefaultReadsQuote = "preserving migration of a service's cached `static readonly default` to an equivalent native `Context.Service` class; retain its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure, or refuse"
 
 func TestServiceDefaultReadsQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("900-appendices.md"), serviceDefaultReadsQuote) {

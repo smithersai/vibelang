@@ -7,11 +7,10 @@ import (
 )
 
 func TestServiceDefaultUnhandledReadsQuoted(t *testing.T) {
-	for _, quote := range []string{"including the corresponding type and value reads", migrationDeclarationFixQuote} {
-		chapter := "007-tooling.md"
-		if strings.HasPrefix(quote, "including") {
-			chapter = "900-appendices.md"
-		}
+	for chapter, quote := range map[string]string{
+		"900-appendices.md": serviceDefaultReadsQuote,
+		"007-tooling.md":    migrationDeclarationFixQuote,
+	} {
 		if !strings.Contains(SpecText(chapter), quote) {
 			t.Fatalf("%s no longer says %q", chapter, quote)
 		}

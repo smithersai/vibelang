@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Service migration checks still cited the retired default-factory wording. They now cite the current cached native-service preservation and refusal contract while retaining every type and runtime check.
+
 - Declaration and import property checks still cited retired output and API-preservation wording. They now cite the native-twin and written-specifier rules while keeping their original assertions and corpus.
 
 - Quick-fix coverage omitted the legacy global `Effect` alias diagnostic. The `EK4856` alias, channel and heritage witnesses now run through the strict CLI, editor, API and runtime checks.
