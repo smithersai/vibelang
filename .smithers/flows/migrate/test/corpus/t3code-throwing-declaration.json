@@ -1,0 +1,6 @@
+{
+  "file": "src/useQueuedRunEdit.vibe",
+  "source": "module throwing { import type { Value } from \"./input.vibe\"; export function run(value: Value): Value { return value; } }\nexport { run } from throwing;\n",
+  "sidecar": ".vibe/declarations/src/useQueuedRunEdit.d.vibe.ts",
+  "outputs": ["src/useQueuedRunEdit.vibe.throwing.d.ts", ".vibe/declarations/src/useQueuedRunEdit.vibe.throwing.d.ts"]
+}

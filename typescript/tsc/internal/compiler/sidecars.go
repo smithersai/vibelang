@@ -155,7 +155,9 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				resolve := func(specifier string) string {
 					refer(tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier))
 					resolved, _, _ := resolver.ResolveModuleName(specifier, data.SourceFile.FileName(), p.GetDefaultResolutionModeForFile(data.SourceFile), nil)
-					if resolved != nil && resolved.Extension == tspath.ExtensionVibe {
+					// A body declaration stays beside the source. Keep its source
+					// identity: a relocated output is not a second VibeLang input.
+					if !isBody && resolved != nil && resolved.Extension == tspath.ExtensionVibe {
 						target, _ := p.vibeSidecarPaths(string(resolved.ResolvedFileName))
 						return strings.TrimSuffix(target, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe
 					}

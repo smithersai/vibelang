@@ -1,3 +1,4 @@
+import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
 import { conversionIdentity } from "./conversion-context.mjs"
 import { restorePrivateResolverExports } from "./import-meta-platform.mjs"
 import { formatResult as formatApiIdentity } from "./api-identity.mjs"
@@ -1826,7 +1827,13 @@ export async function revertMany(options) {
     const source = await revertSource(config.target, p, plan, b, ts, vibe)
     const original = source.original ? Buffer.from(source.original.bytes, "base64") : await Jj.fileAt(config.target, source.revision, ts)
     if (original === null) throw new Error("missing revert source: " + ts)
-    prepared.push({ ts, vibe, reason, source, original })
+    const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
+    const project = owner && join(config.target, owner.dir, owner.tsconfig)
+    const api = loadTypeScript([config.target, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))])
+    const settings = project && existsSync(project) ? Enumerations.sidecarSettings(project, api) : null
+    const bodyDeclarations = moduleDeclarationFiles(api, join(config.target, vibe), readFileSync(join(config.target, vibe), "utf8"),
+      settings ? sidecarPath(join(config.target, vibe), settings) : undefined)
+    prepared.push({ ts, vibe, reason, source, original, bodyDeclarations })
   }
   const groups = new Map()
   for (const item of prepared) {
@@ -1843,8 +1850,11 @@ export async function revertMany(options) {
     await Jj.restore(config.target, revision, items.slice(i, i + 100).flatMap(x => [x.ts, x.vibe]))
   }
   // Check before rewriting: jj may exit successfully without restoring a missing path.
-  for (const { ts, vibe, original } of prepared) {
+  for (const { ts, vibe, original, bodyDeclarations } of prepared) {
     if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || !readFileSync(join(config.target, ts)).equals(Buffer.from(original))) throw new Error("revert did not restore " + vibe)
+    // Body declarations are compiler outputs owned by this source's parsed
+    // module declarations. Keep similarly named declarations with no such body.
+    for (const declaration of bodyDeclarations) rmSync(declaration, { force: true })
     rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true })
     const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
     const file = owner && join(config.target, owner.dir, owner.tsconfig)

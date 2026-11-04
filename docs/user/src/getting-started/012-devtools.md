@@ -95,6 +95,8 @@ If `parse.ts` or a conflicting sibling name is taken, compared case-insensitivel
 
 `new f()` on a function declared in a `.vibe` file uses TypeScript's own constructor checks. VibeLang adds no constructor diagnostic, so assertions and `@ts-ignore` keep TypeScript's behavior.
 
+A generated declaration for a `module` body keeps relative imports pointed at their source modules. With `vibe.sidecarDir`, rebuilding does not import a relocated declaration as a second source module. The migrate flow removes a returned source's module-body declarations when it restores the original TypeScript.
+
 ## Diagnostic reference: additional codes
 
 `EK1502` rejects type parameters on a `schema` body or alias. Write a generic TypeScript factory for parameterized construction. If an older compiler accepted the header as an empty schema followed by a TypeScript expression, its quick fix and `vibelang --fix` make that empty body explicit and retain the expression, preserving the old decoder and public type.

@@ -61,6 +61,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `vibelang --fix` could refuse comments on `Schema.TaggedError` fields or getters, or write invalid code for a private class with a codec field. It now preserves those comments and applies the private-class rewrite without overlapping edits; a JSDoc comment that would gain a new member attachment keeps the native class.
 
+- Generated declarations for a `module` body could import a relocated compiler output and make a rebuild fail with `TS5055`. They now retain source-module imports, and returning a migrated source to TypeScript removes the declarations owned by its module bodies.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11

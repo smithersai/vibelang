@@ -80,6 +80,10 @@ test("revert returns a file to .ts and points every import the codemod rewrote b
     writeJson(paths(run).codemod("01"), { importEdits })
     writeFileSync(join(target, "src/b.d.vibe.ts"), "export declare const b = 1;\n")
 
+    writeFileSync(join(target, "src/b.vibe"), 'module throwing {export const b = 1}\nexport {b} from throwing\n')
+    writeFileSync(join(target, "src/b.vibe.throwing.d.ts"), "export declare const b = 1;\n")
+    writeFileSync(join(target, "src/b.vibe.unrelated.d.ts"), "export declare const keep = 2;\n")
+
     const reverted = await revert({ run, batch: "01", file: "src/b.vibe", reason: "blocked on an issue" })
     assert.equal(readFileSync(join(target, "src/b.ts"), "utf8"), "export const b = 1\n")
     assert.equal(existsSync(join(target, "src/b.vibe")), false)
@@ -90,6 +94,8 @@ test("revert returns a file to .ts and points every import the codemod rewrote b
     assert.equal(readFileSync(join(target, "src/c.vibe"), "utf8"), 'import { b } from "./b.js"\nexport const c = b\n')
     // A TypeScript importer gets back the specifier it had: ./b.js stays ./b.js.
     assert.equal(readFileSync(join(target, "src/d.ts"), "utf8"), 'import { b } from "./b.js"\nexport const d = b\n')
+    assert.equal(existsSync(join(target, "src/b.vibe.throwing.d.ts")), false)
+    assert.equal(existsSync(join(target, "src/b.vibe.unrelated.d.ts")), true)
     assert.equal(existsSync(join(target, "src/b.d.vibe.ts")), false)
     assert.deepEqual(reverted.importEdits, [
       { file: "src/a.ts", from: "./b.vibe", to: "./b.ts" },
