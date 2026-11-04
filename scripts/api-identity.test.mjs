@@ -302,9 +302,9 @@ test("private member alignment preserves valid elided signatures", () => {
     `export declare class C${i} { ${member} value(): number; }`).join("\n")
   fixture(declarations, declarations, (a, b) => {
     assert.deepEqual(nativeDiagnostics([join(a, "index.d.ts")]).map(d => "TS" + d.code), [])
-    const result = compareApiIdentity(ts, a, b)
+    const result = comparePure(a, b)
     assert.equal(result.identical, true, JSON.stringify(result, null, 2))
-    const sameRoot = compareApiIdentity(ts, a, a)
+    const sameRoot = comparePure(a, a)
     assert.equal(sameRoot.identical, true, JSON.stringify(sameRoot, null, 2))
   })
   const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-private-getter.json", import.meta.url)))
@@ -358,7 +358,7 @@ test("property: a valid private-member package compared with itself is identical
       const text = `export declare class ${name}${generic ? "<T>" : ""} { ${body} value(): ${generic ? "T" : "number"}; }`
       fixture(text, text, (a, b) => {
         assert.deepEqual(nativeDiagnostics([join(a, "index.d.ts")]).map(d => "TS" + d.code), [])
-        const result = compareApiIdentity(ts, a, b)
+        const result = comparePure(a, b)
         assert.equal(result.identical, true, JSON.stringify({ text, result }, null, 2))
       })
     },

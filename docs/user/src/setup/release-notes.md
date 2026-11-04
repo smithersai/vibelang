@@ -228,6 +228,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `Effect.gen` migrations stopped at written generator return types; supported annotations now preserve their contextual success type and failure and requirement channels in the converted cold program.
 
+- Private-member declaration API tests still loaded browser libraries during comparison. Their fixed and generated comparisons now use the same ES5 baseline as native validation.
+
 - Stock TypeScript tools rejected the mapper prelude after the old interruption and yield factories were retired. The mapper now imports `interrupt` and `yieldNow` directly from Effect and preserves their native value identities.
 - Match-chain migration validation now retains the explicit fallback required for destructuring combinator arms and checks that exhaustive tagged handlers keep their results and public types.
 

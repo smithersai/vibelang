@@ -1690,3 +1690,9 @@ and comparison programs. Authored `es2020` directives still supply
 unavailable. Missing path references still require `TS6053`. The original
 24 generated path, ambient-value and library-reference samples remain active.
 Loaded-library guards run outside comparison failure handling.
+
+Private-member API fixtures use the same ES5 library baseline for native
+validation and comparison, including all 24 generated class shapes. Their
+loaded-library guards also cover fixed private signatures and comparisons
+against the same package directory. Native private, protected and ECMAScript
+private-member incompatibility checks remain active.
