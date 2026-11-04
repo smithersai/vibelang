@@ -383,6 +383,8 @@ The transitional bare `Effect<A, E, R>` alias reports `EK4856`. Its migration fi
 
 See [Control operations and handlers](/vibelang-features/111-control-operations-and-handlers) for the proposal's status.
 
+An inferred return declaration preserves a written assertion such as `value as ReturnType<typeof create>` and the import that names `create`. This also applies to a migrated helper that still writes `: infer _`. It needs no public return annotation to retain that spelling.
+
 Inferred parameter types of retained SDK error constructors keep their Effect namespace spelling in declarations. For example, exporting `AsyncFiberError` writes its inferred fiber parameter as `Fiber.Fiber<unknown, unknown>` with an import from `effect`, independently of nearby matching code. Explicit import types and local or generic `Fiber` bindings retain their written scope.
 
 Returning an Effect, an Effect subtype, a union or a program function keeps it as data and does not itself report `EK4802`. To execute a returned Effect, write `return try program`. Native `Effect.gen` return advice belongs to the imported `effecttsgo/returnEffectInGen` rule (`EK38103`).

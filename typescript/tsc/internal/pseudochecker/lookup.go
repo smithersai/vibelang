@@ -203,7 +203,7 @@ func (ch *PseudoChecker) createReturnFromSignature(fn *ast.Node) *PseudoType {
 		d := fn.FunctionLikeData()
 		// !!! TODO: support ripping return type off of .FullSignature
 		r := d.Type
-		if r != nil {
+		if r != nil && !infersReturnType(fn) {
 			return NewPseudoTypeDirect(r)
 		}
 	}

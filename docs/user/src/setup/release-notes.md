@@ -33,6 +33,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `JoseError` extractors could report `EK0704` and bare patterns could miss branded errors from another installation. They now use Effect's `isJoseError` guard through imports and immutable aliases.
 
+- Migrated helpers with an inferred return could expand a written `ReturnType` assertion in declarations. They now preserve the assertion and its imported name.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

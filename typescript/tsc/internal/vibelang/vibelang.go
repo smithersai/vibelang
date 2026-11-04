@@ -11,6 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/pseudochecker"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers/declarations"
 )
 
@@ -41,6 +42,7 @@ func init() {
 	checker.RegisterResolvingReturnTypeHook(selfCallType)
 	checker.RegisterInferTypeHook(inferChannel)
 	declarations.RegisterTypeAnnotationHook(hasInferredChannel)
+	pseudochecker.RegisterReturnTypeInferenceHook(hasInferredReturn)
 	checker.RegisterNameResolutionHook(resolvePreludeName)
 	checker.RegisterSpellingCandidatesHook(preludeSpellingCandidates)
 	checker.RegisterEntityNameVisibilityHook(preludeNameVisible)

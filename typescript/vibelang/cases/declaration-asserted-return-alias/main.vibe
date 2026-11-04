@@ -1,0 +1,4 @@
+import { Tool } from "effect/ai"
+const compact = (value: unknown): unknown => value
+export const advertisedJsonSchema = (tool: Tool.Any): infer _ =>
+  compact(Tool.getJsonSchema(tool)) as ReturnType<typeof Tool.getJsonSchema>

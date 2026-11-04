@@ -2195,6 +2195,8 @@ typescript/vibelang/cases/decl-service/main.vibe:37:29 lambda program table
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:14:32 lambda effectFn keyword
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:19:3 lambda effectFn keyword
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:9:22 lambda effectFn keyword
+typescript/vibelang/cases/declaration-asserted-return-alias/main.vibe:2:17 lambda plain annotation
+typescript/vibelang/cases/declaration-asserted-return-alias/main.vibe:3:37 lambda plain annotation
 typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:12:22 lambda effectFn keyword
 typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:17:22 lambda choice fallback
 typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:22:29 lambda effectFn keyword
