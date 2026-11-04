@@ -135,7 +135,7 @@ func (p *Parser) vibeLangAssertionRestComplete() bool {
 	expr := p.parseBinaryExpressionRest(ast.OperatorPrecedenceLowest, dummy, pos)
 	expr = p.parseVibeLangCatchRest(expr, pos)
 	expr = p.parseConditionalExpressionRest(expr, pos, true)
-	p.parsePipeRest(expr, pos)
+	p.parsePipeRest(expr, pos, true /*allowReturnTypeInArrowFunction*/)
 	if len(p.diagnostics) != diagnostics {
 		return false
 	}
