@@ -7,10 +7,19 @@ import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 
-const ts = loadTypeScript()
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  const allowed = new Set(["lib.es5.d.ts", "lib.decorators.d.ts", "lib.decorators.legacy.d.ts"])
+  assert.ok(program.getSourceFiles().every(source => {
+    const name = basename(source.fileName)
+    return !name.startsWith("lib.") || allowed.has(name)
+  }), "Ambient import fixtures must use only the ES5 declaration libraries")
+  return program
+} }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-google-auth-ambient-import.json", import.meta.url)))
-const options = { lib: ["lib.esnext.d.ts"], strict: true, noEmit: true, skipLibCheck: false, types: [], target: ts.ScriptTarget.ESNext,
+const options = { lib: ["lib.es5.d.ts"], strict: true, noEmit: true, skipLibCheck: false, types: [], target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext }
 const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text) }
 function valid(file) {

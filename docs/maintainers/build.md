@@ -1599,14 +1599,17 @@ after API input selection changes; they retain their existing dependency,
 command and failure assertions.
 
 
-The ambient-import API fixture uses `lib.esnext.d.ts` explicitly. Its declarations
-use ECMAScript types and authored virtual modules; loading browser declarations
-added unrelated checking work to every mutation. A source-file resource guard
-rejects accidental DOM-library loading. The complete diagnostics, self-identity,
-nominal-class and selected-module mutations, and all 24 generated samples remain
-enabled. A same-box A–B–B–A measurement of the fixed witness observed median wall
-time fall from 9.56 seconds to 3.22 seconds (two samples per variant). This
-measures that fixture, not the complete API target or a reserved-host guarantee.
+The ambient-import API fixture uses `lib.es5.d.ts` explicitly. Its authored
+virtual modules, `Promise` declarations and private classes require no newer
+ECMAScript or browser declarations. A native source-file guard allows only
+ES5 and its decorator libraries in validation and comparison programs.
+Strict diagnostics, nominal-class and selected-module mutations,
+missing-module checks and all 24 generated samples remain enabled with
+`skipLibCheck: false`. A same-box A–B–B–A fixed-witness measurement observed
+median wall time fall from 6.47 seconds with ESNext libraries to 2.53 seconds
+with ES5 libraries (two samples per variant). This measures that fixture,
+not the complete API target or a reserved-host guarantee. Separate browser
+and explicit library-reference witnesses retain their own environments.
 
 
 Nested ambient-ownership API fixtures select `lib.es5.d.ts` for both their
