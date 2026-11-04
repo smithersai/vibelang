@@ -1495,3 +1495,18 @@ evidence before expensive builds, and final admission executes the witnesses
 after building the candidate compiler. The validation hooks also cover queue
 processes started before the adapter was installed. Neither known-red target
 tolerance nor an optional semantic judge disables this check.
+
+Go progress records count explicit `build-fail` JSON frames separately as
+`build_failures`. A build failure emits `event=build-fail` and the final
+record uses `phase=build-failed`, including when no tests started. Other
+packages can still report their normal test progress. These counts refer to
+the failure frames Go emits; a package's later `fail` record does not add
+another build failure. Source diagnostics, import paths, arguments and
+environment values stay outside the added metadata. Go's original output,
+exit status and signal handling remain intact.
+
+The captured parser-arity failure in
+`scripts/testdata/go-progress/vibelang-parser-arity-build-fail.jsonl`
+covers a real compiler error before testing. The observer tests also check
+mixed test/build events, 128 stream partitions, oversized output recovery
+and a real native Go compilation failure.

@@ -211,6 +211,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The agent guide left member readonlyness unclear while the historical decision still described the retired default. It now states that `schema` and `service` fields are writable unless marked `readonly`, and `error` and `data` payload fields are readonly.
 
+- Go validation progress could report that no tests ran without identifying a compilation failure. It now reports build failures separately while preserving Go output and exit status.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

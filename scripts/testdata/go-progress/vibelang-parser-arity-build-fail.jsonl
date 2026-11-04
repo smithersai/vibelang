@@ -1,0 +1,8 @@
+{"ImportPath":"github.com/microsoft/TypeScript/tsc/internal/parser","Action":"build-output","Output":"# github.com/microsoft/TypeScript/tsc/internal/parser\n"}
+{"ImportPath":"github.com/microsoft/TypeScript/tsc/internal/parser","Action":"build-output","Output":"internal/parser/vibelang_effect_assertion.go:138:24: not enough arguments in call to p.parsePipeRest\n"}
+{"ImportPath":"github.com/microsoft/TypeScript/tsc/internal/parser","Action":"build-output","Output":"\thave (*ast.Expression, int)\n"}
+{"ImportPath":"github.com/microsoft/TypeScript/tsc/internal/parser","Action":"build-output","Output":"\twant (*ast.Expression, int, bool)\n"}
+{"ImportPath":"github.com/microsoft/TypeScript/tsc/internal/parser","Action":"build-fail"}
+{"Action":"start","Package":"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"}
+{"Action":"output","Package":"github.com/microsoft/TypeScript/tsc/internal/vibelangestree","Output":"FAIL\tgithub.com/microsoft/TypeScript/tsc/internal/vibelangestree [build failed]\n","OutputType":"frame"}
+{"Action":"fail","Package":"github.com/microsoft/TypeScript/tsc/internal/vibelangestree","Elapsed":0,"FailedBuild":"github.com/microsoft/TypeScript/tsc/internal/parser"}

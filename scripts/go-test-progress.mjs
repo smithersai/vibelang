@@ -29,7 +29,7 @@ export function processKinds(pid, proc = "/proc") {
 
 export function progressState() {
   let buffer = "", discard = false
-  const state = { packagesStarted: 0, packagesFinished: 0, testsStarted: 0, testsFinished: 0 }
+  const state = { packagesStarted: 0, packagesFinished: 0, testsStarted: 0, testsFinished: 0, buildFailures: 0 }
   return {
     state,
     consume(text, event) {
@@ -43,6 +43,9 @@ export function progressState() {
         if (!discard) {
           try {
             const item = JSON.parse(buffer)
+            if (item.Action === "build-fail" && typeof item.ImportPath === "string" && !item.Test) {
+              state.buildFailures++; event("build-fail")
+            }
             if (item.Action === "start" && !item.Test) { state.packagesStarted++; event("package-start") }
             if (item.Action === "run" && item.Test) state.testsStarted++
             if (["pass", "fail", "skip"].includes(item.Action)) {
@@ -68,13 +71,15 @@ export function run(args) {
   const record = (event, extra = "") => {
     const kinds = child?.pid ? processKinds(child.pid) : null
     const state = observer.state
-    const phase = state.packagesStarted > state.packagesFinished || kinds?.test ? "tests" :
+    const failedBuild = state.buildFailures > 0 && ["build-fail", "finish"].includes(event)
+    const phase = failedBuild ? "build-failed" : state.packagesStarted > state.packagesFinished || kinds?.test ? "tests" :
       kinds?.compile || kinds?.link ? "build" : kinds?.go ? "go-setup-or-build" :
       kinds?.launcher ? "launcher" : "starting"
     process.stderr.write("go-progress run=" + process.pid + " event=" + event +
       " elapsed_ms=" + Math.round(performance.now() - started) + " phase=" + phase +
       " packages_started=" + state.packagesStarted + " packages_finished=" + state.packagesFinished +
       " tests_started=" + state.testsStarted + " tests_finished=" + state.testsFinished +
+      " build_failures=" + state.buildFailures +
       (kinds ? " processes=" + Object.entries(kinds).map(([k,v]) => k + ":" + v).join(",") : "") +
       (extra ? " " + extra : "") + "\n")
   }

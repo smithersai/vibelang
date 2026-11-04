@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from "node:fs"
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, delimiter } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -26,7 +26,7 @@ test("Go progress counts fragmented events and recovers after a bounded oversize
   consume('{"Action":"output","Output":"' + "x".repeat(70000))
   consume('"}\n{"Action":"pass","Test":"TestOne"}\nnot-json\n')
   consume('{"Action":"pass","Package":"fixture"}\n')
-  assert.deepEqual(observer.state, { packagesStarted: 1, packagesFinished: 1, testsStarted: 1, testsFinished: 1 })
+  assert.deepEqual(observer.state, { packagesStarted: 1, packagesFinished: 1, testsStarted: 1, testsFinished: 1, buildFailures: 0 })
   assert.deepEqual(events, ["package-start", "package-pass"])
 })
 
@@ -55,6 +55,8 @@ for (const code of [0, 7]) test("Go progress preserves output and exit " + code 
   assert.match(result.stderr, /event=start.*packages_started=0/)
   assert.match(result.stderr, /event=package-start.*phase=tests/)
   assert.match(result.stderr, /event=finish.*packages_finished=1.*tests_finished=1.*cause=exit code=/)
+  assert.match(result.stderr, /event=finish.*build_failures=0/)
+  assert.doesNotMatch(result.stderr, /event=build-fail|phase=build-failed/)
   assert.doesNotMatch(result.stderr, /private-fixture-(value|argument|path)/)
 })
 
@@ -113,7 +115,7 @@ test("Go progress is invariant across seeded stream chunk boundaries", () => {
       observer.consume(lines.slice(offset, offset + width), event => events.push(event))
       offset += width
     }
-    assert.deepEqual(observer.state, { packagesStarted: 1, packagesFinished: 1, testsStarted: 2, testsFinished: 2 }, "seed " + seed)
+    assert.deepEqual(observer.state, { packagesStarted: 1, packagesFinished: 1, testsStarted: 2, testsFinished: 2, buildFailures: 0 }, "seed " + seed)
     assert.deepEqual(events, ["package-start", "package-fail"], "seed " + seed)
   }
 })
@@ -145,4 +147,66 @@ func TestProgressFail(t *testing.T) { t.Fatal("intentional native failure") }
     assert.match(result.stderr, new RegExp("event=finish.*packages_finished=1.*tests_finished=" + finished + ".*cause=exit code=" + code))
     assert.match(result.stderr, /event=start.*packages_started=0/)
   }
+})
+
+const buildCorpus = readFileSync(new URL("./testdata/go-progress/vibelang-parser-arity-build-fail.jsonl", import.meta.url), "utf8")
+
+test("Go progress counts build failures across fragmented and mixed streams", () => {
+  for (let seed = 1; seed <= 128; seed++) {
+    const mixed = seed % 2 === 0
+    const stream = '{"Action":"build-output","ImportPath":"private-fixture-path","Output":"' + "x".repeat(70000) + '"}\n' + buildCorpus +
+      '{"Action":"build-fail","Test":"not-a-build-event"}\nnull\nnot-json\n' +
+      (mixed ? '{"Action":"start","Package":"other"}\n{"Action":"run","Test":"TestOther"}\n{"Action":"pass","Test":"TestOther"}\n{"Action":"pass","Package":"other"}\n' : "")
+    const observer = progressState(), events = []
+    let offset = 0, random = seed
+    while (offset < stream.length) {
+      random = (Math.imul(random, 1664525) + 1013904223) >>> 0
+      const width = 1 + random % 4093
+      observer.consume(stream.slice(offset, offset + width), event => events.push(event))
+      offset += width
+    }
+    assert.deepEqual(observer.state, {
+      packagesStarted: mixed ? 2 : 1, packagesFinished: mixed ? 2 : 1,
+      testsStarted: mixed ? 1 : 0, testsFinished: mixed ? 1 : 0, buildFailures: 1,
+    }, "seed " + seed)
+    assert.deepEqual(events, ["build-fail", "package-start", "package-fail",
+      ...(mixed ? ["package-start", "package-pass"] : [])], "seed " + seed)
+  }
+})
+
+test("Go progress reports build failures while preserving native JSON bytes and exit", t => {
+  const output = buildCorpus.replaceAll("not enough arguments", "private-fixture-value not enough arguments")
+  const env = fixture(t, "process.stdout.write(" + JSON.stringify(output) + "); process.exitCode=1")
+  const result = spawnSync(process.execPath, args, { env, encoding: "utf8", timeout: 10000 })
+  assert.equal(result.status, 1, result.stderr)
+  assert.equal(result.stdout, output)
+  assert.match(result.stderr, /event=build-fail.*phase=build-failed.*build_failures=1/)
+  assert.match(result.stderr, /event=finish.*phase=build-failed.*tests_started=0.*tests_finished=0.*build_failures=1.*cause=exit code=1/)
+  assert.doesNotMatch(result.stderr, /private-fixture-(value|argument|path)|vibelang_effect_assertion|github\.com/)
+})
+
+test("Go progress observes a real native build failure before any test runs", { timeout: 600_000 }, t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-build-failure-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  writeFileSync(join(dir, "go.mod"), "module progress.build.fixture\n\ngo 1.27\n")
+  writeFileSync(join(dir, "broken_test.go"), `package progress
+import "testing"
+func TestNeverStarted(t *testing.T) { MissingForBuildFailure() }
+`)
+  const goroot = spawnSync("go", ["env", "GOROOT"], { encoding: "utf8" })
+  assert.equal(goroot.status, 0, goroot.stderr)
+  const result = spawnSync(process.execPath, [script, "go", "test", "-json", "-count=1", "-p", "8", "."], {
+    cwd: dir, env: { ...process.env, GOMAXPROCS: "4", GOFLAGS: "", GOWORK: "off",
+      PATH: join(goroot.stdout.trim(), "bin") + delimiter + process.env.PATH },
+    encoding: "utf8", timeout: 280_000,
+  })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  const items = result.stdout.trim().split("\n").map(line => JSON.parse(line))
+  const failures = items.filter(item => item.Action === "build-fail").length
+  assert.ok(failures >= 1, result.stdout)
+  assert.equal(items.filter(item => item.Action === "run" && item.Test).length, 0)
+  assert.match(result.stdout, /undefined: MissingForBuildFailure/)
+  assert.match(result.stderr, /event=build-fail.*phase=build-failed/)
+  assert.match(result.stderr, new RegExp("event=finish.*phase=build-failed.*tests_started=0.*tests_finished=0.*build_failures=" + failures + ".*cause=exit code=1"))
+  assert.doesNotMatch(result.stderr, /MissingForBuildFailure|broken_test\.go|progress\.build\.fixture/)
 })
