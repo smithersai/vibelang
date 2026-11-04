@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+import { input } from "./input.js"
+function plain(x = input.value) { return x }
+async function asyncCall(x = input.value) { return x }
+effect function effectCall(x = input.value) { return x }
+export effect function main() {
+ const a = try Effect.exit(Effect.try(() => plain()))
+ const b = try Effect.exit(Effect.tryPromise(() => asyncCall()))
+ const c = try Effect.exit(effectCall())
+ return [a._tag, b._tag, c._tag === "Failure" ? c.cause.reasons[0]._tag : "Success"]
+}
+
+// Chapter 002: parameter throw context
+// docs/design/src/002-running.md#dbf546c0cbdff86a

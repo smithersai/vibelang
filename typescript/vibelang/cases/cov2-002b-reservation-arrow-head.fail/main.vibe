@@ -1,0 +1,4 @@
+// expect: EK1702
+export effect function main() { const fn = (join: number) => 1; return 0 }
+// Chapter 002: reserved bindings and heads — arrow-head
+// docs/design/src/002-running.md#5b81decda9d75c75

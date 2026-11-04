@@ -1,0 +1,20 @@
+import { Effect } from "effect"
+export effect function main() {
+ const scope = try Scope.make()
+ const a = fork . in(scope) Effect.succeed(1)
+ const b = fork . detached Effect.succeed(2)
+ const c = try Effect.scoped(effect { const f = fork . scoped Effect.succeed(3); return join f })
+ const x = fork Effect.succeed(4), y = fork Effect.succeed(5)
+ const values = [join a, join b, c, join x, join y]
+ try Scope.close(scope, Exit.void)
+ return values
+}
+
+// Chapter 002: fork owner grammar
+// docs/design/src/002-running.md#3912b151ec5057a6
+
+// Chapter 002: fork owner token separation
+// docs/design/src/002-running.md#5e99057736d3d60b
+
+// Chapter 002: fork operand comma boundary
+// docs/design/src/002-running.md#958d63b7885f9d31

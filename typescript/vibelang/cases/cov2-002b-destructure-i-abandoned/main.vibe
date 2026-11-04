@@ -17,3 +17,6 @@ export effect function main() {
 
 // Chapter 002: Effect failure abandonment
 // docs/design/src/002-running.md#13d33feea3dd4c0d
+
+// Chapter 002: failed generator not closed
+// docs/design/src/002-running.md#9e3ec59773b96a5a

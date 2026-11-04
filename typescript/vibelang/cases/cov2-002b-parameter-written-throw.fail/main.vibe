@@ -1,0 +1,7 @@
+// expect: EK0401
+function plain(x = do { throw "plain" }) { return x }
+const arrow = (x = do { throw "arrow" }) => x
+effect function program(x = do { throw "effect" }) { return x }
+async function allowed(x = do { throw "async" }) { return x }
+// Chapter 002: written parameter default throw contexts
+// docs/design/src/002-running.md#dbf546c0cbdff86a

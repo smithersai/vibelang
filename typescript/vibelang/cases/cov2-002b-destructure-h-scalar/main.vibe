@@ -17,3 +17,6 @@ export effect function main() {
 
 // Chapter 002: protocol order and error identity
 // docs/design/src/002-running.md#2449445921ea7d59
+
+// Chapter 002: scalar destructuring error
+// docs/design/src/002-running.md#07225749dcdcacf4

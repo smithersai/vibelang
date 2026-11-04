@@ -1,0 +1,5 @@
+// expect: EK1706
+export effect function main() { const f = fork.in(5) Effect.succeed(1); return 0 }
+
+// Chapter 002: fork Scope operand diagnostic
+// docs/design/src/002-running.md#ddcc0e74c8460957

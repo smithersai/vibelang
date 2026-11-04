@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+import { join as joinText } from "./strings.js"
+export effect function main() { return joinText(["a", "b"]) }
+
+// Chapter 002: renamed imported join
+// docs/design/src/002-running.md#54759aa99e556902

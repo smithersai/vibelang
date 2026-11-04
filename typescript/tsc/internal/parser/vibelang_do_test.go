@@ -84,6 +84,10 @@ func TestVibeLangDoSnapshot(t *testing.T) {
 // Appendix B EK0205), whereas a label around a different loop is exempt.
 // Chapter 002: loop-head jump early errors
 // docs/design/src/002-running.md#e8e96002973da114
+// Chapter 002: loop-head target diagnostics
+// docs/design/src/002-running.md#f4b7adc0c368f3c3
+// Chapter 002: contiguous loop labels
+// docs/design/src/002-running.md#a59a749c4129b585
 func TestVibeLangDoLoopHeadLabels(t *testing.T) {
 	heads := []struct{ name, text string }{
 		{"while", "while ($do) {}"},

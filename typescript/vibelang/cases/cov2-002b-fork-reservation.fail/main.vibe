@@ -1,0 +1,24 @@
+// expect: EK1702
+effect function parameter(join: number) {}
+export effect function main() {
+ const fork = 1
+ join: while (false) {}
+ const a = (join: number) => 1
+ const b = async (join: number) => 1
+ const c = ({join}: {join: number}) => 1
+ const d = async ({fork = 1}: {fork?: number}) => 1
+ const shorthand = { join }
+ return 0
+}
+
+// Chapter 002: Effect fork join reservation
+// docs/design/src/002-running.md#835443041f82ef09
+
+// Chapter 002: inherited async arrow head
+// docs/design/src/002-running.md#74ad31126c824a65
+
+// Chapter 002: reserved bindings and heads
+// docs/design/src/002-running.md#5b81decda9d75c75
+
+// Chapter 002: shorthand versus property names
+// docs/design/src/002-running.md#192e7ff84d3563ae

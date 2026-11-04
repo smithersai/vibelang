@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+effect function arrowHeadNames() {
+ function plain(join: number) { return join }
+ const later = async (value: number) => { const join = value; return join }
+ return plain(7)
+}
+export effect function main() { return try arrowHeadNames() }
+// Chapter 002: arrow head runtime counterpart
+// docs/design/src/002-running.md#b5bfc360e98d55b7

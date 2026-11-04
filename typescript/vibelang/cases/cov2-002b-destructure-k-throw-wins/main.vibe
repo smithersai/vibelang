@@ -17,3 +17,6 @@ export effect function main() {
 
 // Chapter 002: native throw wins closing
 // docs/design/src/002-running.md#b276acea7568892c
+
+// Chapter 002: pending throw wins close
+// docs/design/src/002-running.md#03b62d0dbc1150bb

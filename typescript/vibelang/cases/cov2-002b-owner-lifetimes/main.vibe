@@ -1,0 +1,22 @@
+import { Effect, Deferred } from "effect"
+export effect function main() {
+ const observations: boolean[] = []
+ for (const detached of [false, true]) {
+  const ready = try Deferred.make<void>()
+  const release = try Deferred.make<void>()
+  const stopped = try Deferred.make<void>()
+  const child = Effect.ensuring(effect { try Deferred.succeed(ready, undefined); try Deferred.await(release) }, Deferred.succeed(stopped, undefined))
+  const parent = try Effect.forkChild(effect {
+   if (detached) { fork.detached child } else { fork child }
+   try Deferred.await(ready)
+  })
+  try Fiber.join(parent)
+  observations.push(try Deferred.isDone(stopped))
+  try Deferred.succeed(release, undefined)
+  try Deferred.await(stopped)
+ }
+ return observations
+}
+
+// Chapter 002: parent child owner lifetimes
+// docs/design/src/002-running.md#a3b49b47b3a6e870

@@ -1,0 +1,22 @@
+import { Effect } from "effect"
+function fork(n: number) { return n + 1 }
+function join(n: number) { return n + 2 }
+class Plain { static value = 0; static { this.value = join(4) } }
+const ordinary = async (join: number) => join
+export effect function main() {
+ class Fields { value = fork(4) }
+ enum Count { One = join(4) }
+ function plain(join: number) { return join }
+ const later = async (value: number) => { const join = value; return join }
+ const props = { join: plain, fork: 2 }
+ return { field: new Fields().value, enumValue: Count.One as number, plainStatic: Plain.value, names: plain(7), property: props.join(2), asyncValue: try Effect.promise(() => later(8)), outside: try Effect.promise(() => ordinary(9)) }
+}
+
+// Chapter 002: initializer reservation reset
+// docs/design/src/002-running.md#e0e77e2c36abdb44
+
+// Chapter 002: native async arrow body
+// docs/design/src/002-running.md#a6a5bf976dfa11fb
+
+// Chapter 002: arrow head runtime counterpart
+// docs/design/src/002-running.md#b5bfc360e98d55b7

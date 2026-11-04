@@ -15,3 +15,6 @@ export const labeledLoop = do { label: for (const x of [1]) { break label } }
 export const switchClauseLet = do { switch (f()) { case 1: let n = 1 } }
 export const goodLabel = do { label: { 4 } }
 export const goodSwitch = do { switch (f()) { case 1: 5; default: 6 } }
+
+// Chapter 002: do final statement diagnostics
+// docs/design/src/002-running.md#82e5ec05850bb965

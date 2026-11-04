@@ -1,0 +1,6 @@
+// expect: EK1702
+effect function named(join: number) {}
+// Chapter 002: Effect fork join reservation — callable-parameter
+// docs/design/src/002-running.md#835443041f82ef09
+// Chapter 002: reserved bindings and heads — callable-parameter
+// docs/design/src/002-running.md#5b81decda9d75c75

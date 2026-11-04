@@ -18,3 +18,9 @@ export effect function main() {
 
 // Chapter 002: jump IteratorClose
 // docs/design/src/002-running.md#57da829229d355b5
+
+// Chapter 002: jump for-of counterpart
+// docs/design/src/002-running.md#5e413e4234cbdc55
+
+// Chapter 002: jump closes once
+// docs/design/src/002-running.md#77c2902e8c27a425

@@ -1,0 +1,5 @@
+// expect: EK1704
+export effect function main(p: Promise<number>) { return join p }
+
+// Chapter 002: join Fiber operand diagnostic
+// docs/design/src/002-running.md#876af1da515ff903

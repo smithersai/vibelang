@@ -1,0 +1,5 @@
+// expect: EK1704
+export effect function main() { const regex = join /x/; const negative = join - 1; return 0 }
+
+// Chapter 002: join lexical operand goals
+// docs/design/src/002-running.md#eebf1681ac4a048a

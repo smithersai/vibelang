@@ -1,0 +1,5 @@
+// expect: EK1705
+export effect function main() { const f = fork.other Effect.succeed(1); return 0 }
+
+// Chapter 002: unknown fork owner diagnostic
+// docs/design/src/002-running.md#35c659ce788cc99f

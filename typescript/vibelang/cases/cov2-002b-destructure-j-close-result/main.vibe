@@ -1,0 +1,20 @@
+import { Effect } from "effect"
+import { keys as corpusKeys, fixture, finish, attach, normalize } from "./fixture.js"
+const keys=corpusKeys.filter(key=>["j-close-result"].includes(key))
+effect function k(xs: any, bad: {value: number}) { const [x = do { try Effect.succeed(7); bad.value }] = xs; return x }
+effect function h(xs: any, b: {value: number}) { attach(xs, () => x); const [x = do { const v = b.value; try Effect.succeed(7); v }] = xs; return x }
+effect function j(xs: any) { const [x = do { return 9 }] = xs; return 0 }
+effect function i(xs: any) { const [x = do { try Effect.fail("f"); 1 }] = xs; return 0 }
+export effect function main() {
+ const observations: unknown[] = []
+ for (const key of keys) {
+  const row = fixture(key)
+  const result = try Effect.exit(row.method === "k" ? k(row.xs, row.b) : row.method === "h" ? h(row.xs, row.b) : row.method === "j" ? j(row.xs) : i(row.xs))
+  finish(row)
+  observations.push({ key, trace: row.trace, exit: normalize(result) })
+ }
+ return observations
+}
+
+// Chapter 002: jump nonobject close result
+// docs/design/src/002-running.md#c0f19f40bab48c5a

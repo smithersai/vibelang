@@ -30,3 +30,6 @@ export effect function main() {
 
 // Chapter 002: parameter return result type
 // docs/design/src/002-running.md#2e56a173dfe0fed9
+
+// Chapter 002: transitional outward completion gap
+// docs/design/src/002-running.md#44fa272c3354c8a7

@@ -1,0 +1,8 @@
+// expect: EK0201
+import { Stream } from "effect"
+effect function a() { return do { for try (const n of Stream.make(1)) {} } }
+effect function b() { return do { for concurrent (const n of [1]) {} } }
+effect function c() { return do { for concurrent(1) (const n of [1]) {} } }
+
+// Chapter 002: do final statement diagnostics
+// docs/design/src/002-running.md#82e5ec05850bb965

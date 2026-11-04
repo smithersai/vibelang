@@ -1,0 +1,4 @@
+// expect: EK1702
+export effect function main() { join: while (false) {}; return 0 }
+// Chapter 002: reserved bindings and heads — label
+// docs/design/src/002-running.md#5b81decda9d75c75

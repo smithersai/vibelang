@@ -1,0 +1,5 @@
+// expect: EK1701
+export effect function main() { class C { static { join(1) } }; return 0 }
+
+// Chapter 002: static block reservation
+// docs/design/src/002-running.md#738aea41cae8a3bd

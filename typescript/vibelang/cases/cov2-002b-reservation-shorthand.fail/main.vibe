@@ -1,0 +1,4 @@
+// expect: EK1702
+const join = 1; export effect function main() { const value = { join }; return 0 }
+// Chapter 002: shorthand versus property names — shorthand
+// docs/design/src/002-running.md#192e7ff84d3563ae

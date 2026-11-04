@@ -17,3 +17,6 @@ export effect function main() {
 
 // Chapter 002: native destructuring algorithms
 // docs/design/src/002-running.md#216ffe06b40165d7
+
+// Chapter 002: close sees bound value
+// docs/design/src/002-running.md#d03ae74bdaa71bae

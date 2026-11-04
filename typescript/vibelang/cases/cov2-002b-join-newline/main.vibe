@@ -1,0 +1,11 @@
+import { Effect } from "effect"
+export effect function main() {
+ const a = fork
+   Effect.succeed(7)
+ const value = join
+   a
+ return value
+}
+
+// Chapter 002: fiber operand newline
+// docs/design/src/002-running.md#16761e81a50a6645
