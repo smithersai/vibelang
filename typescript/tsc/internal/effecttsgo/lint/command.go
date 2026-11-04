@@ -257,12 +257,7 @@ func lintProject(ctx context.Context, sys tsc.System, configFile string, files [
 		options = *releaseSeverities(&options, parsed.CompilerOptions().VibeLang)
 		// Checking the file reports the VibeLang ports (vibeAnswers) and records what some rules read.
 		checked := program.GetSemanticDiagnostics(ctx, sf)
-		diags := vibePortDiagnostics(checked, options.DiagnosticSeverity)
-		for _, d := range checked {
-			if d.Source() == "EK" && core.VibeSeverityCode(fmt.Sprintf("EK%04d", d.Code())) {
-				diags = append(diags, d)
-			}
-		}
+		diags := lintPortDiagnostics(checked, options.DiagnosticSeverity)
 		c, done := program.GetTypeCheckerForFile(ctx, sf)
 		diags = append(diags, runRules(ctx, program, c, sf, &options, lintRuleNames)...)
 		done()
@@ -383,6 +378,21 @@ func enableVibePorts(options *core.CompilerOptions, config *Config) {
 	}
 	vibelang.Diagnostics = codes
 	options.VibeLang = &vibelang
+}
+
+// lintPortDiagnostics returns what a file's check reports to lint: the ports
+// of the rules severity enables (vibePortDiagnostics), then every other
+// VibeLang diagnostic with a configurable severity. A port whose severity is
+// configurable, such as EK4802, is reported once, at its rule's severity.
+func lintPortDiagnostics(checked []*ast.Diagnostic, severity map[string]etscore.Severity) []*ast.Diagnostic {
+	diags := vibePortDiagnostics(checked, severity)
+	ported := len(diags)
+	for _, d := range checked {
+		if d.Source() == "EK" && core.VibeSeverityCode(fmt.Sprintf("EK%04d", d.Code())) && !slices.Contains(diags[:ported], d) {
+			diags = append(diags, d)
+		}
+	}
+	return diags
 }
 
 // vibePortDiagnostics keeps the VibeLang diagnostics that port a rule severity
