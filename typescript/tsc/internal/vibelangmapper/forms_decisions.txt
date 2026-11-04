@@ -2749,6 +2749,9 @@ typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:19:15 lambda effec
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:19:39 lambda effectFn table
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:20:15 lambda effectFn table
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:20:38 lambda effectFn table
+typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:21:116 lambda effectFn table
+typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:21:141 lambda effectFn table
+typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:27:31 lambda dual fallback
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:5:23 lambda dual fallback
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:12:11 lambda effectFn keyword
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:21:11 lambda effectFn keyword

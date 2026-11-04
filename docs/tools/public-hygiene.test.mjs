@@ -74,14 +74,14 @@ test("retired scratch rules preserve path, content and prefix boundaries", () =>
 test("receiver retirement publishes its prerequisites without internal attribution", () => {
   const tooling = readFileSync(resolve(root, "docs/design/src/007-tooling.md"), "utf8")
   const appendix = readFileSync(resolve(root, "docs/design/src/900-appendices.md"), "utf8")
-  assert.match(tooling, /Rejection begins only after the preserving codemod ships and migration repositories have zero remaining uses(?:,|\.)/)
+  assert.match(tooling, /enforcement waits until preserving codemods ship and every migration repository has zero remaining uses\./)
   assert.deepEqual(publicHygiene("docs/design/src/007-tooling.md", tooling), [])
   assert.deepEqual(publicHygiene("docs/design/src/900-appendices.md", appendix), [])
 })
 
 test("internal authority prose stays rejected across spec chapters and punctuation", () => {
   fc.assert(fc.property(
-    fc.constantFrom("007-tooling", "900-appendices"),
+    fc.constantFrom("001-functions", "003-failures", "007-tooling", "900-appendices"),
     fc.constantFrom("Will", "Codex", "Fable", "GPT-6"),
     fc.constantFrom("'s", "’s", " —", ":", "\n"),
     (chapter, owner, punctuation) => {
@@ -90,4 +90,26 @@ test("internal authority prose stays rejected across spec chapters and punctuati
       assert.deepEqual(publicHygiene(`docs/design/src/${chapter}.md`, "The preserving codemod will ship before rejection."), [])
     }
   ), { numRuns: 100, seed: 20261103 })
+})
+
+
+test("throw punctuator policy preserves the migration prerequisite without private attribution", () => {
+  for (const chapter of ["003-failures", "900-appendices"]) {
+    const file = "docs/design/src/" + chapter + ".md"
+    const text = readFileSync(resolve(root, file), "utf8")
+    assert.deepEqual(publicHygiene(file, text), [])
+    assert.match(text, /punctuator-only comma case.*warning/)
+    assert.match(text, /the preserving codemod ships before the new error/)
+    assert.match(text, /operator-left.*remain errors/)
+  }
+})
+
+test("API identity keeps the generated-contract exception without private attribution", () => {
+  const file = "docs/design/src/001-functions.md"
+  const text = readFileSync(resolve(root, file), "utf8")
+  assert.deepEqual(publicHygiene(file, text), [])
+  assert.match(text, /emitted declaration may add VIP-27’s generated/)
+  assert.match(text, /where the twin has no authored throw contract/)
+  assert.match(text, /No other JSDoc difference is allowed/)
+  assert.match(text, /an authored .* must remain unchanged/)
 })

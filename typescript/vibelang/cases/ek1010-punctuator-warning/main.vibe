@@ -1,4 +1,4 @@
-// expect-result: [7,"object",7,"array",7,"call"]
+// expect-result: [7,"object",7,"array",7,"call",7,"nested"]
 error Missing { id: string }
 effect function objectShape(cond: boolean) {
   const obj = {
@@ -18,5 +18,11 @@ export effect function main() {
   const obj = objectShape(false) catch (e) => e.id
   const arr = arrayShape(false) catch (e) => e.id
   const arg = callShape(false) catch (e) => e.id
-  return [try objectShape(true), obj, try arrayShape(true), arr, try callShape(true), arg]
+  return [try objectShape(true), obj, try arrayShape(true), arr, try callShape(true), arg, try nestedShape(true), (nestedShape(false) catch (e) => e.id)]
+}
+
+// rule-evidence: docs/design/src/003-failures.md#throw-expressions docs/design/src/900-appendices.md#throwexpression docs/design/src/900-appendices.md#appendix-b-diagnostics
+// Nested object/array delimiters keep the same warning and preserve both exits.
+effect function nestedShape(cond: boolean) {
+  return [{ value: cond ? 7 : throw new Missing({ id: "nested" }), }][0].value
 }

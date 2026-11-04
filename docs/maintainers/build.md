@@ -254,6 +254,7 @@ queue:
 | `//packages:runtime-package` | `packages/runtime/`, `packages/PACKAGE.ts` or `docs/tools/bugbash4-docs.test.mjs` |
 | `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
 | `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
+| `//:docs-check` | Public spec sources or generated pages and the provenance checker; rejects internal review attribution while keeping the public policy text. |
 | `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
 | `//:mapper-scripts` | `scripts/mapper-*`, `packages/ts-mapper/`, the compiler's `cache.mjs` or the LSP fixture |
 | `//:spec-lint-unit` | Public chapters/VIPs and spec-linter sources or tests; checks diagnostic ownership and mutation properties without a compiler build. |
