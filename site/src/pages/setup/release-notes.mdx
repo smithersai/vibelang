@@ -250,6 +250,18 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Environment-access errors suggested calling a config value as a function; they now show how to run its Effect directly.
 
+- Migration API verification repeatedly walked the same deep type graph for each exported name; it now reuses completed error-free walks while preserving type, documentation and dependency-error checks.
+- Validating `vibelang --fix` progress could intermittently reject a valid line while scanning remaining fix sites; that stage now passes the progress check.
+
+- Migration verification tests for nested ambient declarations spent time checking unrelated browser libraries; they now use the libraries their fixtures require while retaining every ownership and mutation check.
+- Ambient `schema` and `data` declarations were accepted or produced native initializer errors; they now report `EK1506` or `EK1607`, including inherited ambient contexts and incomplete bodies.
+
+- Timer-cancellation errors suggested a legacy method without running its Effect; they now show how to run the public `Fiber.interrupt(fiber)` Effect.
+
+- Since vibe `db3327647f6b`, passing Effect's own callable values or factory results as callbacks, such as `Order.mapInput(Order.Number, f)` or `Schema.String.pipe(Schema.brand("Id"))`, reported `EK0402`. They compile again while the rule for unannotated foreign callable values is decided; written `@throws` contracts are still checked.
+
+- Clipboard errors suggested an unavailable namespace function; they now show how to obtain the injected service and run its `readString` Effect.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.
@@ -295,6 +307,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
+
+- The throw-expression and API-identity pages exposed private review attribution. They now state the same public rules, retaining the migration prerequisite, diagnostic severities and generated-contract exception.
 - A `match` over an ordinary tagged-error class could appear exhaustive although a structurally compatible instance fell through with `TypeError`. Ordinary constructor patterns now cover no finite case; cover the tag explicitly or add a `default`.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
@@ -1536,6 +1550,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Effect 3 API repairs could rename functions whose callbacks or results changed in Effect 4. The editor and CLI now leave those sites unchanged and explain the manual migration.
 
+
+- An `error` or `schema error` with an `extends` clause could compile when its native parent had a broad tag type. Both now report `EK2117`; `vibelang --fix` preserves valid inheritance as an explicit TypeScript class.
 
 - Schema conformance checks rejected the dangling aliases that TypeScript itself emits with `stripInternal`; these cases now verify exact native output and the same TypeScript diagnostics.
 - `vibelang --fix` refused an `Effect.fn` whose parameter annotation was a type name's last read under `noUnusedLocals`, because writing the checked parameter type left the name unused (TS6133, TS6196), so the module stayed on `EK1002`; the fix now also removes that type-only import binding or module-local type alias.

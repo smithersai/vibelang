@@ -230,7 +230,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Order](../behaviour/084-order.md) | 1,400 |
 | **Schema** | **36,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
-| [Getting Started](../schema/086-getting-started.md) | 3,400 |
+| [Getting Started](../schema/086-getting-started.md) | 3,500 |
 | [Basic Usage](../schema/087-basic-usage.md) | 5,100 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,000 |
@@ -271,7 +271,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 9,500 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 11,000 |
-| [Diagnostic code map](diagnostic-code-map.md) | 3,100 |
+| [Diagnostic code map](diagnostic-code-map.md) | 3,200 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 9,500 |
 | **All 8 pages** | **50,000** |
 
