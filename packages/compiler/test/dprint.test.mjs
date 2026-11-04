@@ -65,6 +65,7 @@ test("dprint check fails on an unformatted .vibe file and dprint fmt formats it"
 })
 
 test("dprint formats a module declaration's body as TypeScript and keeps identifier specifiers", { skip }, () => {
+  // VIP-40: Formatter, the body is formatted as .ts, indented one level, imports unsorted — spec-rule: docs/design/vips/0040-module-declarations.md#8920f70a83299f6a
   const dir = project({
     "m.vibe": "import { clean } from text\nimport { suffix } from './suffix.ts'\n\nmodule text {\nimport { b } from './b.ts'\nimport { a } from \"a\"\nexport function clean(value: string): string { return value.trim() + a + b }\n}\n\nexport * from text\nexport function tidy(value: string): string!! { return sync(() => clean(value) + suffix) }\n"
   })

@@ -29,6 +29,7 @@ func (h retiredModulesHost) ReadFile(name tspath.RootedFilePath) (string, bool) 
 func (h retiredModulesHost) CaseSensitivity() tspath.CaseSensitivity { return tspath.CaseInsensitive }
 
 // VIP-40 restores editor operations on module declarations and their bodies.
+// VIP-40: the editor's retired-module refusals are removed — spec-rule: docs/design/vips/0040-module-declarations.md#db90ea7e2ded1ed7
 func TestModuleDeclarationEdits(t *testing.T) {
 	for _, tc := range []struct{ name, source, old, replacement, want string }{
 		{"module-name", "module text { export const n = 1 }\nimport { n } from text\nimport text\nexport { n } from text\nexport const result = n\n", "text", "fresh", "module fresh { export const n = 1 }\nimport { n } from fresh\nimport fresh\nexport { n } from fresh\nexport const result = n\n"},

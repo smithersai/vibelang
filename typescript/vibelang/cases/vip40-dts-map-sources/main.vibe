@@ -1,0 +1,31 @@
+// VIP-40: the maps name main.vibe with its full sourcesContent — spec-rule: docs/design/vips/0040-module-declarations.md#5aba7d453a08e321
+import { port } from parse
+import type { Shape } from shapes
+
+module parse {
+  /**
+   * Reads a TCP port.
+   * @throws {RangeError} when the text is not a port
+   */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!(n >= 1 && n <= 65535)) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+module shapes {
+  export interface Shape {
+    readonly width: number
+  }
+}
+
+module unused {
+  export const never = 1
+}
+
+export const shape: Shape = { width: 1 }
+
+export effect function main() {
+  return try Effect.try(() => port("80"))
+}

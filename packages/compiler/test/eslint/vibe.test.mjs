@@ -148,6 +148,7 @@ test("a codec that a schema field names is used, wherever the field names it", (
 })
 
 test("a module declaration's body lints as TypeScript, on the .vibe file's lines and columns", () => {
+  // VIP-40: Linters, the ESLint parser gives the declaration a VibeModuleDeclaration node — spec-rule: docs/design/vips/0040-module-declarations.md#7d78c1856c68a863
   const { code, filename } = fixture("modules.vibe")
   assert.deepEqual(problems(code, parseForESLint(code, { filePath: filename }).ast, keys), [])
   const found = lint({ code, filename }).map(({ line, column, ruleId }) => `${line}:${column} ${ruleId}`)
@@ -173,6 +174,7 @@ const scopeConfig = [{
 }]
 
 test("a module declaration's body is a module scope of its own, beside the file's", () => {
+  // VIP-40: Linters, the body's statements have their own scope — spec-rule: docs/design/vips/0040-module-declarations.md#7d78c1856c68a863
   const { code, filename } = fixture("modules.vibe")
   const messages = new Linter({ configType: "flat", cwd: "/" }).verify(code, scopeConfig, { filename })
   // The body redeclares and shadows nothing, and cannot read the file's label.

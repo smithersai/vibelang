@@ -1,0 +1,36 @@
+// VIP-40: a body is checked, emitted and declared exactly as a sibling ts file — spec-rule: docs/design/vips/0040-module-declarations.md#48e8734623ccdc56
+// VIP-40: main.vibe with module parse emits main.vibe.parse.js and main.js imports it — spec-rule: docs/design/vips/0040-module-declarations.md#8b9dc99553b4847c
+// VIP-40: a module is used as import from X — spec-rule: docs/design/vips/0040-module-declarations.md#22f61ff05ae58c47
+// VIP-40: a body imported only for types or never imported emits no JavaScript — spec-rule: docs/design/vips/0040-module-declarations.md#18914d3128057be8
+// VIP-40: a body's declarations are main.vibe.parse.d.ts with JSDoc @throws — spec-rule: docs/design/vips/0040-module-declarations.md#305dae96ccdf893a
+// VIP-40: source map offsets, lines and columns are the vibe file's — spec-rule: docs/design/vips/0040-module-declarations.md#428f3ffd5533ad38
+import { port } from parse
+import type { Shape } from shapes
+
+module parse {
+  /**
+   * Reads a TCP port.
+   * @throws {RangeError} when the text is not a port
+   */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!(n >= 1 && n <= 65535)) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+module shapes {
+  export interface Shape {
+    readonly width: number
+  }
+}
+
+module unused {
+  export const never = 1
+}
+
+export const shape: Shape = { width: 1 }
+
+export effect function main() {
+  return try Effect.try(() => port("80"))
+}
