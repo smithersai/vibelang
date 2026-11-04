@@ -1,0 +1,8 @@
+FuzzGenericNeverOverloadAssignment contract:foldkit-struct-evolve-generic-overload compiler VIP-4: an explicitly never-throwing generic overload reports EK0402 at a TypeScript-compatible call-signature comparison; lane migfix-foldkit
+FuzzGenericNeverOverloadAssignment corpus:foldkit-struct-evolve-generic-overload compiler VIP-4: reproduces contract:foldkit-struct-evolve-generic-overload; lane migfix-foldkit
+FuzzGenericNeverOverloadAssignment contract:struct-evolve-generic-alias compiler VIP-4: an explicitly never-throwing generic overload reports EK0402 at a TypeScript-compatible call-signature comparison; lane migfix-foldkit
+FuzzGenericNeverOverloadAssignment corpus:struct-evolve-generic-alias compiler VIP-4: reproduces contract:struct-evolve-generic-alias; lane migfix-foldkit
+FuzzGenericNeverOverloadAssignment contract:struct-evolve-generic-argument compiler VIP-4: an explicitly never-throwing generic overload reports EK0402 at a TypeScript-compatible call-signature comparison; lane migfix-foldkit
+FuzzGenericNeverOverloadAssignment corpus:struct-evolve-generic-argument compiler VIP-4: reproduces contract:struct-evolve-generic-argument; lane migfix-foldkit
+FuzzGenericNeverOverloadAssignment contract:struct-evolve-generic-return compiler VIP-4: an explicitly never-throwing generic overload reports EK0402 at a TypeScript-compatible call-signature comparison; lane migfix-foldkit
+FuzzGenericNeverOverloadAssignment corpus:struct-evolve-generic-return compiler VIP-4: reproduces contract:struct-evolve-generic-return; lane migfix-foldkit

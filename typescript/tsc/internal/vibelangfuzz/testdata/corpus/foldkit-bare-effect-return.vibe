@@ -1,0 +1,2 @@
+import { Effect } from "effect";
+export effect function bare(flag: boolean) { if (flag) return; try Effect.void; }

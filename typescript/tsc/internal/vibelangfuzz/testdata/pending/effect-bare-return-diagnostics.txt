@@ -1,0 +1,12 @@
+FuzzEffectBareReturnDiagnostics diagnostics:bare-effect-arrow:noImplicitReturns=true compiler VIP-1: a void-completing Effect body reports TS7030 although its stock Effect.gen counterpart accepts it; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics corpus:bare-effect-arrow compiler VIP-1: reproduces diagnostics:bare-effect-arrow:noImplicitReturns=true; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics diagnostics:bare-effect-method:noImplicitReturns=true compiler VIP-1: a void-completing Effect body reports TS7030 although its stock Effect.gen counterpart accepts it; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics corpus:bare-effect-method compiler VIP-1: reproduces diagnostics:bare-effect-method:noImplicitReturns=true; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics diagnostics:explicit-undefined:noImplicitReturns=true compiler VIP-1: a void-completing Effect body reports TS7030 although its stock Effect.gen counterpart accepts it; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics corpus:explicit-undefined compiler VIP-1: reproduces diagnostics:explicit-undefined:noImplicitReturns=true; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics diagnostics:foldkit-bare-effect-return:noImplicitReturns=true compiler VIP-1: a void-completing Effect body reports TS7030 although its stock Effect.gen counterpart accepts it; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics corpus:foldkit-bare-effect-return compiler VIP-1: reproduces diagnostics:foldkit-bare-effect-return:noImplicitReturns=true; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics diagnostics:foldkit-finalizer-bare-return:noImplicitReturns=true compiler VIP-1: a void-completing Effect body reports TS7030 although its stock Effect.gen counterpart accepts it; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics corpus:foldkit-finalizer-bare-return compiler VIP-1: reproduces diagnostics:foldkit-finalizer-bare-return:noImplicitReturns=true; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics diagnostics:nested-bare-return:noImplicitReturns=true compiler VIP-1: a void-completing Effect body reports TS7030 although its stock Effect.gen counterpart accepts it; lane migfix-foldkit
+FuzzEffectBareReturnDiagnostics corpus:nested-bare-return compiler VIP-1: reproduces diagnostics:nested-bare-return:noImplicitReturns=true; lane migfix-foldkit
