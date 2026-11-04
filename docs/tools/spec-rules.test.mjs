@@ -217,8 +217,12 @@ test("r14 OPUS-4 neighbourhood: a registry row cannot turn an open VIP into appr
 }))
 test("fast-check: pending diagnostic authorities stay unresolved across the fresh VIP blocks", () => fixture((root) => {
   const source = read(root, appendix), original = read(root, chapter)
+  const assigned = diagnosticRegistry(root)
   fc.assert(fc.property(fc.integer({ min: 70, max: 99 }), id => {
-    const code = "EK" + id + "01"
+    let suffix = 1
+    while (assigned.has("EK" + id + String(suffix).padStart(2, "0"))) suffix++
+    assert.ok(suffix < 100, "the proposal needs an unassigned code in its own block")
+    const code = "EK" + id + String(suffix).padStart(2, "0")
     writeFileSync(join(root, "docs/design/vips/00" + id + "-open-test.md"), "# VIP-" + id + "\n\n**Status:** open\n")
     const row = "| \u0060" + code + "\u0060 | pending rule | " + id + " | chapter |\n"
     writeFileSync(join(root, appendix), source.replace("| \u0060EK0501\u0060", row + "| \u0060EK0501\u0060"))
@@ -531,4 +535,14 @@ test("legacy layer migration cites accepted diagnostic authority", () => fixture
     edit(appendix, () => original.replace(row, cells.join(" | ")))
     assert.ok(lintAuthority(root).some(f => f.message === "EK2121 cites denied VIP-" + id + " as authority"))
   }), { numRuns: 50 })
+}))
+
+
+test("a published compiler assignment remains assigned beside proposed blocks", () => fixture(root => {
+  const before = diagnosticRegistry(root).get("EK9001")
+  assert.ok(before)
+  writeFileSync(join(root, "docs/design/vips/0090-open-test.md"), "# VIP-90\n\n**Status:** open\n")
+  const after = diagnosticRegistry(root).get("EK9001")
+  assert.deepEqual(after, before)
+  assert.ok(!lintRegistry(root).some(f => f.message.startsWith("EK9001 has only open VIP authority")))
 }))

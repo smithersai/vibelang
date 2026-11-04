@@ -842,6 +842,14 @@ const targets = {
     sandbox: "none",
     timeout: "2m"
   }),
+  "spec-proposed-diagnostics": S.Shell.Test({
+    summary: "Proposed diagnostic fixtures use unassigned codes and preserve every published assignment.",
+    shell: "node --test --test-name-pattern='pending diagnostic authorities stay unresolved|published compiler assignment remains assigned' docs/tools/spec-rules.test.mjs",
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
+    tools: [node],
+    sandbox: "none",
+    timeout: "2m"
+  }),
   "spec-rule-table": S.Shell.Test({
     summary: "Check rule-injection quotations against current public chapters.",
     shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^TestSpecRuleTable$' ./internal/vibelangfuzz/",
