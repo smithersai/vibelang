@@ -399,7 +399,13 @@ An enclosing optional tuple element keeps TypeScript's omission and indexed `und
 | `User!!` | `Effect.Effect<User, never, never>` |
 
 - An omitted slot is `never`, as Effect's own defaults make it. It is never inferred, so `User!NotFound` on a function with a body still means `Effect.Effect<User, NotFound, never>`. To have the type inferred, leave the annotation out.
-- An effect function's annotation means the same as the annotation on its Effect TypeScript twin. A written `infer` slot, such as `Effect.Effect<A, infer E, R>` or `A!(infer E)!R`, has no special channel-inference meaning: ordinary TypeScript `infer` rules apply (`TS1338` outside a conditional type). The transitional compiler reports `EK4857`; `--fix` writes the inferred slot types, or removes the whole return annotation when every slot is `infer`, preserving its declaration. If it cannot name a type safely, it explains why the repair is refused. To infer the return type in new code, omit the annotation.
+- An effect function's annotation means the same as the annotation on its Effect TypeScript twin. A written `infer` slot, such as `Effect.Effect<A, infer E, R>` or `A!(infer E)!R`, has no special channel-inference meaning: ordinary TypeScript `infer` rules apply (`TS1338` outside a conditional type). For a recognized legacy Effect return slot, the transitional compiler reports `EK4857` instead of `TS1338` for the same written `infer` occurrence, following VIP-34's specific-diagnostic rule; independent native errors remain. Valid conditional-type inference and native `infer` outside that migration keep TypeScript's rules and diagnostics. Once the migration retires, `TS1338` alone remains wherever TypeScript rejects that occurrence. `--fix` writes the inferred slot types, or removes the whole return annotation when every slot is `infer`, preserving its declaration. If it cannot name a type safely, it explains why the repair is refused. To infer the return type in new code, omit the annotation.
+
+```vibe
+// compiler-gap: pending VIP-3
+effect function f(): Effect.Effect<number, infer E, never> { return 1 } // EK4857, not TS1338
+effect function g(): number!(infer E) { return 1 } // EK4857, not TS1338
+```
 
 ```vibe es
 // compiler-gap: pending VIP-3
