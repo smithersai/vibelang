@@ -161,16 +161,33 @@ func findErrorClasses(c *checker.Checker, file *ast.SourceFile, report func(at *
 }
 
 // findSchemaErrorClasses reports EK4837 at each Schema.TaggedError class of
-// file. Its body may hold what a schema error's does, so only its head counts.
+// file. Its body may hold what a schema error's does, but native spread
+// fields and a written static _tag have no declaration equivalent (D284).
 func findSchemaErrorClasses(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsClassDeclaration(node) && !inHatch(node) && errorClassOf(c, file, node).base == schemaErrorBase && errorClassHead(node) {
+		if ast.IsClassDeclaration(node) && !inHatch(node) && errorClassOf(c, file, node).base == schemaErrorBase && errorClassHead(node) && !nativeSchemaErrorClass(c, node) {
 			report(node.Name(), errorClassRewrite(c, file, node), node.Name().Text())
 		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// nativeSchemaErrorClass recognizes the native-only shapes excluded from
+// EK4837 by the 2026-11-04 D284 ruling. Use this in both discovery and planning:
+// an editor can request a repair using a diagnostic from an older source.
+func nativeSchemaErrorClass(c *checker.Checker, class *ast.Node) bool {
+	for _, member := range class.Members() {
+		if ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) && errorMemberIsReservedTag(c, member) {
+			return true
+		}
+	}
+	arguments := ast.GetClassExtendsHeritageElement(class).Expression().Arguments()
+	if len(arguments) >= 2 && ast.IsObjectLiteralExpression(arguments[1]) {
+		return slices.ContainsFunc(arguments[1].AsObjectLiteralExpression().Properties.Nodes, ast.IsSpreadAssignment)
+	}
+	return false
 }
 
 // errorClassRewrite plans EK4830's fix for class.
@@ -179,6 +196,13 @@ func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node
 		return nil
 	} // VIP-13: a generic class has no error-declaration equivalent.
 	parts := errorClassOf(c, file, class)
+	if parts.base == schemaErrorBase {
+		if !errorClassHead(class) || nativeSchemaErrorClass(c, class) {
+			return nil
+		}
+	} else if parts.base == notErrorBase || !errorClassShape(file, class) {
+		return nil
+	}
 	name := class.Name().Text()
 	tag, literal := "", false
 	if parts.tag != nil && ast.IsStringLiteralLike(parts.tag) {

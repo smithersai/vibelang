@@ -1,0 +1,5 @@
+import { Schema, Data } from "effect"
+const shared = { cause: Schema.Defect() }
+export class A extends Schema.TaggedError<A>()("A", { ...shared, reason: Schema.String }) {}
+export class B extends Schema.TaggedError<B>()("B", { reason: Schema.String }) { static readonly _tag = "B" }
+export class C extends Data.TaggedError("C")<{ readonly id: string }> { static readonly _tag = "C" }

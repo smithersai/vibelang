@@ -157,6 +157,8 @@ Unknown or retired warning codes cannot be configured. Remove an entry for the r
 
 ## TypeScript-style Effect code
 
+Native `Schema.TaggedError` classes whose fields object contains a spread, and native `Schema.TaggedError` or `Data.TaggedError` classes with a written static `_tag`, keep their library form without `EK4837` or `EK4830` and without a declaration quick fix. These shapes have no equivalent declaration form; a stale editor diagnostic does not make them eligible for a repair.
+
 Effect declarations and combinator calls written in TypeScript's style use the same library APIs in `.vibe`. The table shows declaration forms and their existing diagnostics. Quick fixes for new VIP forms arrive with the compiler's VIP implementation; [Effect.gen in direct style](#effectgen-and-effectfn) shows the conversion.
 
 For `EK4834`, `EK4835` and the `provide` calls in `EK4836`, only the direct operand of bare `try` in effect code warns. Parentheses, `as`, `satisfies` and non-null `!` wrappers still count, as do resolved import aliases. Stored or returned Effects, `fork` and `join` operands, `try.all` and its siblings' elements, Effect API arguments and `catch` heads keep their library forms. A recognized direct operand still warns when no safe rewrite exists; its note explains why the quick fix is unavailable. Wrappers with written type effects stay intact.
