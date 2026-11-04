@@ -1153,7 +1153,7 @@ The compiler also prints `EK0204`, a compiler gap rather than a language rule. W
 | --- | --- | --- | --- |
 | `EK0204` | compiler gap, not a language rule: a `return`, `var`, jump, `await` or `yield` that would leave a `do` the compiler still compiles to a function; admitted completions keep VIP-2’s meaning | 2 | [Running Effects](002-running.md#do-expressions) |
 
-The existing migration warnings retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
+The existing migration diagnostics retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
@@ -1164,7 +1164,7 @@ The existing migration warnings retain their emitted codes until the compiler an
 | `EK4856` | warning: a type use resolves to the retired global `Effect<A, E, R>` alias; write `A!E!R` or `Effect.Effect<A, E, R>`; local and imported types are unchanged | 3, 14, 34 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK4857` | error: a recognized legacy Effect return slot written `infer`; replaces `TS1338` for the same occurrence while the migration exists, preserving independent native errors; write the inferred slot type, or omit the whole return annotation | 3 | [Effect types](001-functions.md#the-aer-type-shorthand) |
 
-An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A legacy cached service default retains the native service and static field semantics described above; adoption of a Reference factory is an explicit semantic change. These warnings use the existing safe codemod and its refusal rules ([Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements)).
+An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A legacy cached service default retains the native service and static field semantics described above; adoption of a Reference factory is an explicit semantic change. These diagnostics use the existing safe codemod and its refusal rules ([Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements)).
 
 ### Imported lint codes
 
