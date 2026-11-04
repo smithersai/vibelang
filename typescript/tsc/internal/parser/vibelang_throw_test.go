@@ -11,6 +11,22 @@ import (
 // Examples are from the upstream explainer; remaining rows exercise each
 // UnaryExpression operand and the ExpressionStatement lookahead restriction.
 func TestTC39ThrowExpressions(t *testing.T) {
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#77427b5bb65b125f
+	// VIP-41: match direct throw full operand.
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#bafedb6cac1bddad
+	// VIP-41: throw lookahead diagnostic identity.
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#7fcd54eef37d109b
+	// VIP-41: throw expression newline.
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#4812c5e637af9179
+	// VIP-41: throw as satisfies native grammar.
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#539a111ce09b3bd1
+	// VIP-41: throw keyword operators.
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#47550a62224d5a6f
+	// VIP-41: throw comma boundary.
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#a7fc984083a118ad
+	// VIP-41: parenthesized throw before operator.
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#175cd2f67900ea1b
+	// VIP-41: parenthesized throw operand.
 	good := []string{
 		`function save(filename = throw new TypeError("Argument required")) {}`,
 		`lint(ast, { with: () => throw new Error("avoid using with statements") });`,

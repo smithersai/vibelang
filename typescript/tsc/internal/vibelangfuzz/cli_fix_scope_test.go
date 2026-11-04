@@ -15,6 +15,8 @@ import (
 // Chapter 007 / fix scope flags require fix in either argument order: docs/design/src/007-tooling.md#64b83ee238c8d156
 
 func TestCommandLineFixScopes(t *testing.T) {
+	// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#b1e39e947cf4e462
+	// VIP-34: scope flags require fix.
 	w := &Workspace{fs: osvfs.FS()}
 	dir := t.TempDir()
 	for _, scope := range []string{"--fix-migration-only", "--fix-vip-only"} {

@@ -14,6 +14,8 @@ import (
 // TestVibeLangDoEarlyErrors pins TC39's early errors for do expressions
 // (VIP-2) and the code each one reports, at the statement it names.
 func TestVibeLangDoEarlyErrors(t *testing.T) {
+	// rule-evidence: docs/design/vips/0041-throw-expressions.md#c4006304270aa2f9
+	// VIP-41: existing do blocks valid.
 	for _, c := range []struct {
 		text, at string
 		code     int32
