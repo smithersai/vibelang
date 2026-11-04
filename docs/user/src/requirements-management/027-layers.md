@@ -2,6 +2,8 @@
 
 A layer describes how to build services: their dependencies, initialization errors, and resources. Build the application graph once around an entry point so its services share one managed lifetime.
 
+When one layer needs a service supplied by another, `Layer.mergeAll` builds them independently. Use `Layer.provide` or `Layer.provideMerge` to supply that construction dependency; review the provider and build order before changing the composition.
+
 [Upstream page](https://effect.website/docs/v4/requirements-management/layers)
 
 ## Describing a dependency graph

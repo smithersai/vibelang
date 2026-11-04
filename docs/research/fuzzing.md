@@ -1045,3 +1045,5 @@ The producer buffering citation keeps the accepted sequential-emitter qualifier:
 The declaration oracle preflights emitted roots when the stock source contains an error-suppression directive. A suppressed namespace used as an exported type (`TS2709`) has no valid API to compare. Only that owned emitted-root error makes the baseline ineligible; missing dependencies and other errors still fail. A local suppression with a valid exported declaration remains eligible.
 
 Mixed service-member coverage keeps the two forbidden-member diagnostics separate from the independent `EK4831` migration lint on a neighboring `Context.Service` class. Mutation varies member kind and declaration order, with ordinary-class and computed-property controls.
+
+Layer-composition advice keeps its native `Layer.provide` and `Layer.provideMerge` guidance and its refusal to switch providers automatically. The full keyed provider/dependent mutation property also checks that refusal notes do not reintroduce retired composition syntax.

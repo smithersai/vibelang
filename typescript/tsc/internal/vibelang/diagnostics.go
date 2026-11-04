@@ -314,7 +314,7 @@ func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc co
 		note(d, "No automatic fix: running the returned program changes the value seen by its caller. Write try explicitly to run it, or keep the program as data with a written return contract.")
 	}
 	if m.Code == EK4807.Code {
-		note(d, "No automatic fix: wire changes which layer supplies a dependency and the exported requirement. Review the provider and build order before composing manually.")
+		note(d, "No automatic fix: supplying a dependency changes its provider and the exported requirement. Review the provider and build order before composing manually.")
 	}
 	if m.Code == EK4810.Code {
 		note(d, "No automatic fix: removing this assertion changes the program's public channel types. Write and check the intended contract explicitly.")

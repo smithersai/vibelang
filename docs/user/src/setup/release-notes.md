@@ -216,6 +216,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The error guide did not name the operation that preserves an Effect's typed failures; it now names `try`. Fast executable documentation checks now run on affected merge-gate changes, catching this wording before landing.
 
 - Fuzz validation reported allowed platform-boundary warnings as errors; it now checks the contextual `EK4402` policy while retaining errors for unwrapped host access.
+
+- Layer dependency diagnostics could mention the retired `wire` form. They now explain provider changes using native `Layer` composition.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.
