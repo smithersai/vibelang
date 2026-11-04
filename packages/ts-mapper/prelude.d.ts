@@ -50,13 +50,13 @@ export type Scope = ScopeModule.Scope;
 
 // D151: the Effect functions a .vibe file calls without the Effect. prefix.
 export {
-  all, die, exit, forEach, log, logDebug, logError, logInfo, logWarning, race, repeat, retry, sleep, timeout, withSpan
+  all, die, exit, forEach, interrupt, yieldNow, log, logDebug, logError, logInfo, logWarning, race, repeat, retry, sleep, timeout, withSpan
 } from "effect/Effect"
 
 // The runtime's prelude names (the fork's prelude.go).
 export {
   TaggedError, pipe, wire, fork, sync, callback, Resume, runPromise,
-  runFork, runSync, runCallback, detach, forkIn, interrupt, yieldNow, uninterruptible, restore, interruptible,
+  runFork, runSync, runCallback, detach, forkIn, uninterruptible, restore, interruptible,
   customMatcher, Experimental
 } from "vibelang-runtime"
 

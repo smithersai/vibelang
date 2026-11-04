@@ -332,12 +332,12 @@ var prologueHelpers = map[string]bool{
 
 // d151Names are the Effect functions a .vibe file calls without the
 // Effect. prefix (prelude.d.ts), imported from effect/Effect.
-var d151Names = setOf(`all die exit forEach log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`)
+var d151Names = setOf(`all die exit forEach interrupt yieldNow log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`)
 
 // runtimePreludeNames are the runtime's prelude names (prelude.d.ts),
 // imported from vibelang-runtime.
 var runtimePreludeNames = setOf(`TaggedError Control pipe wire fork handle resume resumeWith abandon sync callback Resume runPromise
-	runFork runSync runCallback detach forkIn interrupt yieldNow uninterruptible restore interruptible customMatcher`)
+	runFork runSync runCallback detach forkIn uninterruptible restore interruptible customMatcher`)
 
 func setOf(list string) map[string]bool {
 	set := map[string]bool{}

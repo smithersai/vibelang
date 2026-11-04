@@ -46,10 +46,10 @@ var preludeNames = func() map[string]bool {
 		TxDeferred TxHashMap TxHashSet TxPriorityQueue TxPubSub TxQueue TxReentrantLock TxRef TxSemaphore
 		TxSubscriptionRef Types UndefinedOr Unify Utils Version absurd cast flow hole identity`,
 		// D151.
-		`all die exit forEach log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`,
+		`all die exit forEach interrupt yieldNow log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`,
 		// The runtime's prelude names; Experimental is D313's namespace.
 		`TaggedError pipe wire fork sync callback Resume runPromise runFork
-		runSync runCallback detach forkIn interrupt yieldNow uninterruptible restore interruptible customMatcher
+		runSync runCallback detach forkIn uninterruptible restore interruptible customMatcher
 		Experimental`,
 	} {
 		for _, name := range strings.Fields(list) {
