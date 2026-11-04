@@ -13,7 +13,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
-const nativeReadonlyUpgradeQuote = "preserves evaluation order, captures, the call-versus-run phase, coldness, error and environment channels, and public declarations."
+const nativeReadonlyUpgradeQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
 
 func nativeReadonlyUpgradeQuoted(t testing.TB) {
 	t.Helper()
