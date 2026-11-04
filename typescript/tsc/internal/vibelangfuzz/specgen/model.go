@@ -96,7 +96,7 @@ var Features = []Feature{
 	{"interruptible", "Ch 17 interruption rule (D180, D490): interruptible { } is Effect.interruptible, also under a mask and in cleanup"},
 	{"fail-cause", "Ch 17 throw rule (D406): Effect.failCause(cause) fails with every reason of an exit's cause"},
 	{"is-exit", "Ch 3 Matching (D208, D211): if (x is Exit.Failure(let cause)) and Exit.Success(let v)"},
-	{"is-data", "Ch 11 Data types (D211, D307): if (d is D.Variant) narrows to the variant"},
+	{"is-data", "Ch 11 Data types (D211, D307): if (d is { _tag: \"Variant\" }) narrows to the variant"},
 	{"custom-error-constructor", "Ch 3 Error classes and families (D278): an error's own constructor calls super with its fields"},
 	{"generic-data", "Ch 11 Data types (D307): a data declaration with a type parameter"},
 	{"hatch-promise", "Ch 10 (D439): sync(async (inputs) => ...) waits for a resolved or rejected promise, as Effect.promise"},
@@ -718,7 +718,7 @@ type (
 		Then      []Stmt
 		FailCause bool
 	}
-	// DataIs is `if (Var is D.Variant) { Then }` (D211, D307).
+	// DataIs is `if (Var is { _tag: "Variant" }) { Then }` (D211, D307).
 	DataIs struct {
 		Var     string
 		Variant *DataVariant

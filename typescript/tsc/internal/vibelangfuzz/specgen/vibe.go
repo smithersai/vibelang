@@ -602,7 +602,7 @@ func (v *vibePrinter) stmt(s Stmt) {
 		}
 		w.line("}")
 	case *DataIs:
-		w.line("if (%s is %s.%s) {", v.name(s.Var), s.Variant.Data.Name, s.Variant.Name)
+		w.line("if (%s is { _tag: %q }) {", v.name(s.Var), s.Variant.Name)
 		v.block(s.Then)
 		w.line("}")
 	default:
@@ -983,10 +983,11 @@ func (v *vibePrinter) match(m *Match) string {
 				pat += " and { let " + strings.Join(a.Binds, ", let ") + " }"
 			}
 		case a.Variant != nil:
-			pat = a.Variant.Data.Name + "." + a.Variant.Name
+			pat = "{ _tag: " + strconv.Quote(a.Variant.Name)
 			if len(a.Binds) > 0 {
-				pat += " { let " + strings.Join(a.Binds, ", let ") + " }"
+				pat += ", let " + strings.Join(a.Binds, ", let ")
 			}
+			pat += " }"
 		case a.Case == "Some" || a.Case == "None":
 			pat = "Option." + a.Case
 			if len(a.Binds) > 0 {

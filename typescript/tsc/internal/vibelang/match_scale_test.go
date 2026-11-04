@@ -36,12 +36,12 @@ func variantsSource(form string, n int) string {
 	if form == "match" {
 		b.WriteString("  return match (b) {\n")
 		for i := range n {
-			fmt.Fprintf(&b, "    when Big.V%d { let x }: x + %d;\n", i, i)
+			fmt.Fprintf(&b, "    when { _tag: \"V%d\", let x }: x + %d;\n", i, i)
 		}
 		b.WriteString("  }\n")
 	} else {
 		for i := range n {
-			fmt.Fprintf(&b, "  if (b is Big.V%d) return %d\n", i, i)
+			fmt.Fprintf(&b, "  if (b is { _tag: \"V%d\" }) return %d\n", i, i)
 		}
 		b.WriteString("  return -1\n")
 	}

@@ -185,10 +185,10 @@ function narrowedFirst(x: string): number {
 }
 
 function variantAfterIs(d: Delivery): number {
-  if (d is Delivery.Sent) return 0
+  if (d is { _tag: "Sent" }) return 0
+  // The early return narrows d to Waiting, so one arm is exhaustive.
   return match (d) {
-    when Delivery.Sent: 1;
-    when Delivery.Waiting: 2;
+    when { _tag: "Waiting" }: 2;
   }
 }
 

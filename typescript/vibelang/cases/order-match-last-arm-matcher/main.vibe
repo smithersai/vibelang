@@ -1,25 +1,26 @@
 // expect-result: ["waiting",1]
-// A match that D209 proves exhaustive may leave out its last arm's test
-// (D294), but not code the test runs: the getter that reads this arm's data
-// type still runs once, as it does when the match has a default arm.
-data State { Ready; Waiting }
+// An arm's matcher expression is evaluated once per match, in the last arm
+// as in any other: the getter that supplies this arm's class runs once, as it
+// does when the match has a default arm.
+class Ready {}
+class Waiting {}
 
 let reads = 0
 
 const registry = {
-  get State(): typeof State {
+  get Waiting(): typeof Waiting {
     reads++
-    return State
+    return Waiting
   }
 }
 
-function label(x: State) {
+function label(x: Ready | Waiting) {
   return match (x) {
-    when State.Ready: "ready";
-    when registry.State.Waiting: "waiting";
+    when Ready: "ready";
+    when registry.Waiting: "waiting";
   }
 }
 
 export effect function main() {
-  return [label(State.Waiting()), reads]
+  return [label(new Waiting()), reads]
 }

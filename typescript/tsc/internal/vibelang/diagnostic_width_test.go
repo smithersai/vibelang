@@ -13,7 +13,7 @@ func TestWideDiagnosticLists(t *testing.T) {
 		for i := 0; i < 301; i++ {
 			fmt.Fprintf(&source, "Case%03d; ", i)
 		}
-		source.WriteString("}\nexport function f(x: Wide) { return match (x) { when Wide.Case000: 0; } }")
+		source.WriteString("}\nexport function f(x: Wide) { return match (x) { when { _tag: \"Case000\" }: 0; } }")
 		program, file, _, _ := editorProgram(t, source.String())
 		found := false
 		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {

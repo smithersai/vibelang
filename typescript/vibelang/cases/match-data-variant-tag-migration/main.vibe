@@ -1,0 +1,5 @@
+// expect-result: [0,2,true,false]
+data D {A;B {n:number}}
+function f(x:D){return match(x){when {_tag:"A"}:0;when {_tag:"B",let n}:n;}}
+function a(x:unknown){return x is {_tag:"A"}}
+export effect function main(){return [f(D.A()),f(D.B({n:2})),a(D.A()),a(D.B({n:3}))]}

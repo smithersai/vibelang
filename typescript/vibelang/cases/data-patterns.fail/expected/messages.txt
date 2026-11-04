@@ -1,4 +1,4 @@
-Delivery has no case Phase.Draft, so this pattern never matches.
+Phase.Draft is a data variant constructor, not a class: match its tag with an object pattern, when { _tag: "Draft" }.
 Delivery has no variant Snet. Its variants are Waiting, Sent, and Rejected.
 Delivery.Sent is a data variant, not a class extractor; use an object pattern matching its _tag and fields.
 A brace field list cannot follow NotFound; write NotFound and { … } to match a class and its properties.

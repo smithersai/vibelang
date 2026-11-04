@@ -1,0 +1,6 @@
+// expect: EK0702
+data D {A;B {n:number}}
+export function bare(x:unknown){return match(x){when D.A:1;default:0;}}
+export function extract(x:unknown){return match(x){when D.A():1;default:0;}}
+export function test(x:unknown){return x is D.A}
+export function fields(x:unknown){return match(x){when D.B {let n}:1;default:0;}}

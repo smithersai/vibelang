@@ -13,8 +13,8 @@ export data Tree<A> {
 
 export function area(shape: Shape) {
   return match (shape) {
-    when Shape.Circle { let radius }: 3 * radius * radius;
-    when Shape.Square { let side }: side * side;
-    when Shape.Dot: 0;
+    when { _tag: "Circle", let radius }: 3 * radius * radius;
+    when { _tag: "Square", let side }: side * side;
+    when { _tag: "Dot" }: 0;
   }
 }

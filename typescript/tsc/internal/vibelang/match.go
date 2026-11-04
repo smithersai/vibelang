@@ -30,7 +30,8 @@ var (
 	// EK0702: a class pattern whose expression names a VibeLang value that is not a class (D67b). {0} is the expression.
 	EK0702 = message(702, errorCategory, "{0} is not a class, so it cannot be a class pattern: under the draft it would be called with the subject and match almost anything.")
 
-	ek0702Data      = EK0702.With("{0} is a data type, not a class: match one of its variants, when {0}.Variant, or a tag, when { _tag: \"Variant\" }.")
+	ek0702Data      = EK0702.With("{0} is a data type, not a class: match its tag with an object pattern, when { _tag: \"Variant\" }.")
+	ek0702Variant   = EK0702.With("{0} is a data variant constructor, not a class: match its tag with an object pattern, when { _tag: \"{1}\" }.")
 	ek0702Schema    = EK0702.With("{0} is a schema, not a class: test it in a guard, when let value and if (Schema.is({0})(value)).")
 	ek0702Reference = EK0702.With("{0} is a Context.Reference, not a class: read its value in effect code and match that value.")
 )

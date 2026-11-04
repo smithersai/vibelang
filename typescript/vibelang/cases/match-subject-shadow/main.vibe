@@ -3,15 +3,15 @@ data Shape { Sq { s: number }; Empty }
 
 function area(s: Shape): number {
   return match (s) {
-    when Shape.Sq { let s }: s * s;
-    when Shape.Empty: 0;
+    when { _tag: "Sq", let s }: s * s;
+    when { _tag: "Empty" }: 0;
   }
 }
 
 function expression(s: Shape): number {
   const area = match (s) {
-    when Shape.Sq { let s }: s * s;
-    when Shape.Empty: 0;
+    when { _tag: "Sq", let s }: s * s;
+    when { _tag: "Empty" }: 0;
   }
   return area
 }
@@ -28,8 +28,8 @@ export effect function main() {
   let size = 0
   const s: Shape = try sync((Shape) => Shape.Sq({ s: 5 }) as Shape, Shape)
   match (s) {
-    when Shape.Sq { let s }: size = s * s;
-    when Shape.Empty: size = 0;
+    when { _tag: "Sq", let s }: size = s * s;
+    when { _tag: "Empty" }: size = 0;
   }
   let calls = 0
   function subject() { calls++; return Shape.Sq({ s: 6 }) }

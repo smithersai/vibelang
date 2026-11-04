@@ -1,4 +1,4 @@
-// expect: EK2127 EK0702 EK0707 EK4707 EK4701
+// expect: EK2127 EK0702 EK0707 EK4701
 // What a data type's patterns and constructors check (D307).
 data Delivery {
   Waiting

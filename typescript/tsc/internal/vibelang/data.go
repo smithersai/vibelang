@@ -27,14 +27,16 @@ import (
 //     as ; and a line break do (Appendix A, Separator);
 //   - Name.Variant naming no variant, in a call, a pattern or anywhere else
 //     (EK2127, in place of TypeScript's TS2339);
-//   - patterns. A variant pattern, when Delivery.Sent or when Delivery.Sent
-//     { let tracking }, is a call of $is whose matcher is the variant's
-//     constructor. The checker narrows it by the variant's tag, as
-//     when { _tag: "Sent" } narrows (narrowDataVariant), and the lowering
-//     writes it as the data type's own guard, Delivery.$is("Sent")(d)
-//     (data_lower.go). A field list after anything but a variant, and an
-//     extractor's argument list after a variant, are EK0707 (or EK0702 for a data extractor); a variant that
-//     the subject's type has no case of is EK4707.
+//   - patterns. A variant constructor is a value, not a class: a class
+//     pattern naming one, when Delivery.Sent, when Delivery.Sent { let
+//     tracking } or when Delivery.Sent(let t), is EK0702 (reportValuePattern),
+//     and its quick fix writes the tag object pattern, when { _tag: "Sent" }
+//     (data_variant_pattern_fix.go). The parser still reads the retired form
+//     as a call of $is whose matcher is the constructor, so the checker keeps
+//     narrowing it by the variant's tag (narrowDataVariant) and the lowering
+//     keeps writing it as Delivery.$is("Sent")(d) (data_lower.go), which lets
+//     the rest of a file with that error check as it did. A field list after
+//     anything but a variant is EK0707.
 //
 // What makes Name a data type is its value's type, not its declaration:
 // Effect's constructors object, with the $is and $match that
@@ -56,8 +58,6 @@ var (
 	EK2127 = message(2127, errorCategory, "{0} has no variant {1}. Its variants are {2}.")
 	// EK0707 (or EK0702 for a data extractor): a field list after a matcher that is not a data variant. {0} is the matcher.
 	classFieldListDiagnostic = message(707, errorCategory, "A brace field list cannot follow {0}; write {0} and { … } to match a class and its properties.")
-	// EK4707: a variant pattern whose subject's type has no case of that variant. {0} is the type, {1} the variant.
-	EK4707 = message(4707, errorCategory, "{0} has no case {1}, so this pattern never matches.")
 
 	ek1606Mutable           = EK1606.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
 	ek1606Untyped           = EK1606.With("{0} has no type: write {0}: Type.")
@@ -66,7 +66,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK1601, EK1602, EK1606, EK2126, EK2801, EK2127, EK4707} {
+	for _, m := range []*Message{EK1601, EK1602, EK1606, EK2126, EK2801, EK2127} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkData)
@@ -290,20 +290,13 @@ func checkData(c *checker.Checker, file *ast.SourceFile) {
 			checkDataVariantName(c, node)
 		case isPatternCall(node, "$is"):
 			if !reportValuePattern(c, node.Arguments()[0]) {
-				checkVariantPattern(c, file, node)
+				checkFieldListPattern(c, file, node)
 				checkClassPatternDispatch(c, node.Arguments()[0], false)
 			}
 		case isPatternCall(node, "$extract"):
-			if reportValuePattern(c, node.Arguments()[0]) {
-				break
+			if !reportValuePattern(c, node.Arguments()[0]) {
+				checkClassPatternDispatch(c, node.Arguments()[0], true)
 			}
-			if _, _, ok := dataVariantOf(c, node.Arguments()[0]); ok {
-				matcher := node.Arguments()[0]
-				report(c, matcher, dataExtractorDiagnostic, scanner.GetTextOfNode(matcher))
-				cover(c, matcher)
-				break
-			}
-			checkClassPatternDispatch(c, node.Arguments()[0], true)
 		}
 		return node.ForEachChild(visit)
 	}
@@ -484,12 +477,23 @@ func joinNames(names []string) string {
 }
 
 // reportValuePattern reports EK0702 at matcher, a class pattern's expression,
-// when it names a data declaration (its constructors object) or a schema
-// declaration (D67b): neither is a class, and the draft would call it with the
-// subject. A variant, Name.Variant, is the admitted variant pattern instead.
+// when it names a data declaration (its constructors object), one of its
+// variant constructors, a schema declaration or a Context.Reference (D67b):
+// none is a class, and the draft would call it with the subject. A data value
+// is matched by its tag, when { _tag: "Sent" }.
 func reportValuePattern(c *checker.Checker, matcher *ast.Node) bool {
 	if matcher == nil || !(ast.IsIdentifier(matcher) || ast.IsPropertyAccessExpression(matcher)) {
 		return false
+	}
+	if tag, _, variant := dataVariantOf(c, matcher); variant {
+		if isPatternCall(matcher.Parent, "$extract") {
+			// An argument list after a variant was never valid: no quick fix.
+			report(c, matcher, dataExtractorDiagnostic, scanner.GetTextOfNode(matcher))
+		} else {
+			report(c, matcher, ek0702Variant, scanner.GetTextOfNode(matcher), tag)
+		}
+		cover(c, matcher)
+		return true
 	}
 	switch {
 	case isDataConstructors(c, c.TypeOfPatternMatcher(matcher)):
@@ -512,40 +516,16 @@ func isContextReference(c *checker.Checker, matcher *ast.Node) bool {
 	return t != nil && c.GetPropertyOfType(c.GetApparentType(t), "~effect/Context/Reference") != nil
 }
 
-// checkVariantPattern checks call, a pattern's $is call: a field list after
-// a matcher that is not a data variant is EK0707 (or EK0702 for a data extractor), and a variant that the
-// subject's declared type has no case of is EK4707.
-func checkVariantPattern(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
-	matcher, subject := call.Arguments()[0], call.Arguments()[1]
-	tag, _, ok := dataVariantOf(c, matcher)
-	if !ok {
-		// A pattern's matcher is source text; a field list follows it only in
-		// a variant pattern, Name.Variant { … }, since anything else there is
-		// a syntax error.
-		if after := scanner.SkipTrivia(file.Text(), matcher.End()); after < len(file.Text()) && file.Text()[after] == '{' && !isMissingVariant(c, matcher) {
-			report(c, matcher, classFieldListDiagnostic, scanner.GetTextOfNode(matcher))
-		}
-		return
+// checkFieldListPattern checks call, a pattern's $is call whose matcher is
+// not a data variant: a field list after it is EK0707.
+func checkFieldListPattern(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
+	matcher := call.Arguments()[0]
+	// A pattern's matcher is source text; a field list follows it only in
+	// the retired variant pattern form, Name.Variant { … }, since anything
+	// else there is a syntax error.
+	if after := scanner.SkipTrivia(file.Text(), matcher.End()); after < len(file.Text()) && file.Text()[after] == '{' && !isMissingVariant(c, matcher) {
+		report(c, matcher, classFieldListDiagnostic, scanner.GetTextOfNode(matcher))
 	}
-	symbol := c.GetSymbolAtLocation(declaredSubject(c, subject))
-	if symbol == nil {
-		return
-	}
-	declared := c.GetTypeOfSymbol(symbol)
-	if declared == nil || !isFiniteMatchType(c, declared) {
-		return
-	}
-	members := []*checker.Type{declared}
-	if declared.Flags()&checker.TypeFlagsUnion != 0 {
-		members = declared.Types()
-	}
-	for _, member := range members {
-		if tagMatchOf(c, member, tag) != tagNever {
-			return
-		}
-	}
-	names := dataNamesFor(c, symbol, matcher)
-	report(c, matcher, EK4707, names.typeText(c, declared), scanner.GetTextOfNode(matcher))
 }
 
 // isMissingVariant reports whether matcher is Name.Variant where Name is a

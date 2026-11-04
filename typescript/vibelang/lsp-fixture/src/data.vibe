@@ -7,17 +7,18 @@ export data Delivery {
 
 export function describe(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Waiting: "waiting";
-    when Delivery.Sent { let tracking }: tracking;
-    when Delivery.Rejected { let reason }: reason;
+    when { _tag: "Waiting" }: "waiting";
+    when { _tag: "Sent", let tracking }: tracking;
+    when { _tag: "Rejected", let reason }: reason;
   }
 }
 
 export const sent = Delivery.Sent({ tracking: "parcel-8" })
+export const waiting = Delivery.Waiting()
 
 export function latest(deliveries: ReadonlyArray<Delivery>): string {
   return match (deliveries.at(-1)) {
-    when Delivery.Sent { let tracking }: `latest ${tracking}`;
+    when { _tag: "Sent", let tracking }: `latest ${tracking}`;
     default: "none";
   }
 }

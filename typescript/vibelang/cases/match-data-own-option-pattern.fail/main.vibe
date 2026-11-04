@@ -1,0 +1,13 @@
+// expect: EK0702 EK0702 EK0702
+// A data type named Option is a data type, not effect's Option module: its
+// variants are not the Option.Some and Option.None matchers, so a class
+// pattern naming one is EK0702 like any variant constructor, in match and is.
+data Option { Some { value: number }; None }
+export function pick(x: Option) {
+  return match (x) {
+    when Option.Some { let value }: value;
+    when Option.None: -1;
+    default: 0;
+  }
+}
+export function none(x: Option) { return x is Option.None }

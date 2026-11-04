@@ -107,8 +107,8 @@ data HostShape {
 
 function hostArea(shape: HostShape) {
   return match (shape) {
-    when HostShape.Circle { let radius }: radius * radius * 3;
-    when HostShape.Square { let side }: side * side;
+    when { _tag: "Circle", let radius }: radius * radius * 3;
+    when { _tag: "Square", let side }: side * side;
   };
 }
 

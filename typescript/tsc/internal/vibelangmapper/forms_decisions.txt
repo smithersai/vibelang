@@ -2025,13 +2025,17 @@ typescript/vibelang/cases/d362-service-default.fail/main.vibe:3:34 lambda plain 
 typescript/vibelang/cases/d39-unions/main.vibe:12:34 lambda program annotation
 typescript/vibelang/cases/d39-unions/main.vibe:17:30 lambda effectFn keyword
 typescript/vibelang/cases/d39-unions/main.vibe:19:22 lambda effectFn keyword
+typescript/vibelang/cases/data-declaration/main.vibe:59:12 lambda plain fallback
+typescript/vibelang/cases/data-declaration/main.vibe:64:16 lambda plain fallback
 typescript/vibelang/cases/data-declarations-core/main.vibe:7:23 lambda plain fallback
 typescript/vibelang/cases/data-declarations-core/main.vibe:8:24 lambda plain fallback
+typescript/vibelang/cases/data-import/main.vibe:14:12 lambda plain fallback
+typescript/vibelang/cases/data-match-emit/main.vibe:18:16 lambda plain fallback
 typescript/vibelang/cases/data-methods-first-parameter.fail/main.vibe:10:43 lambda effectFn keyword
 typescript/vibelang/cases/data-methods-first-parameter/main.vibe:14:28 byname program table
 typescript/vibelang/cases/data-methods-first-parameter/main.vibe:21:51 lambda plain fallback
-typescript/vibelang/cases/data-patterns.fail/main.vibe:33:11 lambda dual fallback
-typescript/vibelang/cases/data-patterns.fail/main.vibe:37:11 lambda dual fallback
+typescript/vibelang/cases/data-patterns.fail/main.vibe:34:11 lambda dual fallback
+typescript/vibelang/cases/data-patterns.fail/main.vibe:38:11 lambda dual fallback
 typescript/vibelang/cases/data-variant-field-controls/main.vibe:11:23 lambda plain fallback
 typescript/vibelang/cases/data-variant-field-controls/main.vibe:11:44 lambda plain fallback
 typescript/vibelang/cases/decl-effect-types-lines/main.vibe:10:43 lambda program table
@@ -4210,6 +4214,7 @@ typescript/vibelang/cases/lsrules.fail/main.vibe:92:39 lambda plain fallback
 typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:40 lambda effectFn table
 typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:48 lambda effectFn table
 typescript/vibelang/cases/match-arm-grammar.fail/main.vibe:32:12 lambda plain fallback
+typescript/vibelang/cases/match-builtin-own-option/main.vibe:17:9 lambda plain fallback
 typescript/vibelang/cases/match-builtin-shadowed/main.vibe:29:28 lambda program table
 typescript/vibelang/cases/match-class-dispatch/main.vibe:7:18 lambda plain annotation
 typescript/vibelang/cases/match-class-pattern-values.fail/main.vibe:10:66 lambda plain table
@@ -4254,6 +4259,7 @@ typescript/vibelang/cases/match-computed-presence/main.vibe:11:38 lambda plain f
 typescript/vibelang/cases/match-computed-presence/main.vibe:12:39 lambda effectFn fallback
 typescript/vibelang/cases/match-computed-presence/main.vibe:14:80 lambda plain table
 typescript/vibelang/cases/match-computed-presence/main.vibe:9:38 lambda plain fallback
+typescript/vibelang/cases/match-data-variant-tag-migration/main.vibe:4:32 lambda plain fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:5:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:6:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:7:9 lambda dual fallback
@@ -4368,6 +4374,7 @@ typescript/vibelang/cases/match-last-arm-tested/main.vibe:24:53 lambda plain fal
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:85 byname program annotation
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:97 lambda plain table
 typescript/vibelang/cases/match-list-elision-optional/main.vibe:45:20 lambda dual fallback
+typescript/vibelang/cases/match-list-optional-absent/main.vibe:6:37 lambda effectFn fallback
 typescript/vibelang/cases/match-negated-ordinary-class/main.vibe:5:69 lambda plain table
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:12:8 lambda dual fallback
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:14:8 lambda dual fallback
@@ -4556,6 +4563,7 @@ typescript/vibelang/cases/match-subject-once/main.vibe:136:17 lambda plain fallb
 typescript/vibelang/cases/match-subject-once/main.vibe:144:9 lambda effectFn fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:152:14 lambda plain fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:157:12 lambda plain fallback
+typescript/vibelang/cases/match-subject-once/main.vibe:188:9 lambda plain fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:43:19 lambda dual fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:72:20 lambda plain fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:76:20 lambda plain fallback

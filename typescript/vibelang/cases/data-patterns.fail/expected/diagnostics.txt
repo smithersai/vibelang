@@ -3,6 +3,9 @@ main.vibe(23,28): error EK2127
 main.vibe(25,19): error EK2127
 main.vibe(34,12): error EK0702
 main.vibe(38,12): error EK0707
-main.vibe(46,10): error EK4707
+main.vibe(46,10): error EK0702
 main.vibe(53,10): error EK4701
+main.vibe(54,10): error EK0702
 main.vibe(59,10): error EK4701
+main.vibe(60,10): error EK0702
+main.vibe(61,10): error EK0702

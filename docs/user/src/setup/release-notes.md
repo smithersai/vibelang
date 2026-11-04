@@ -49,6 +49,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| A `data` variant constructor as a pattern: `when Delivery.Sent:`, `when Delivery.Sent { let tracking }:` or `delivery is Delivery.Sent` | Match the tag with an object pattern (`EK0702`): `when { _tag: "Sent" }:`, `when { _tag: "Sent", let tracking }:`, `delivery is { _tag: "Sent" }`. `vibelang --fix` rewrites a bare variant and a variant with a field list, and refuses a site whose rewrite would report another error. Two forms need a hand: a `let` binding of an optional field, which the tag pattern would require to be present, reads the field from the narrowed subject instead, `delivery.carrier`; a subject of no tagged type whose fields the arm reads needs the data type's own guard, `Delivery.$is("Sent")(value)`, since a tag pattern narrows only a tagged union. |
 | Node value imports written as `import FS = require("node:fs")` bypassed `EK4402` | `vibelang --fix` writes `import type` for aliases with no value use. Move actual Node value access to a `.ts` adapter or use the named Effect service. `export import` keeps its value export and requires that manual repair. |
 | Unicode escapes in an `error`, `schema`, `service` or `data` declaration keyword, such as `er\u0072or E` | Write the literal keyword (`TS1260`). Run `vibelang --fix` to unescape each keyword while preserving the declaration, escaped names and ordinary identifier expressions. |
 | `Key.Shape` for an ordinary native `Context.Service` class without a declared namespace | The native TypeScript namespace diagnostic now applies. The editor and `vibelang --fix` write `import("effect/Context").Service.Shape<typeof Key>` for a non-generic shape reference to that service key, including imported aliases. Explicit namespaces, shadows and type arguments remain unchanged. |
@@ -265,6 +266,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `yield` in a nonproducer Effect activation or an Effect callable's parameter initializer reported native generator errors; it now reports `EK2104`, including inside an outer producer, while retaining independent operand errors.
 
 - A `catch` handler missing `=>` could omit `EK0509`; recovery now reports it while retaining independent TypeScript errors in the parameters and body.
+- A `data` variant constructor was accepted as a class pattern, `when Delivery.Sent:`, and `when Delivery.Sent(let t):` gave an obsolete extractor error. Both now report `EK0702`, whose quick fix writes the tag object pattern, and the retired `EK4707` is no longer emitted.
 
 - Migration setup left forced Bun build checks such as `bun check --no-script -b` unable to resolve unchanged tests' imports after conversion; setup now selects VibeLang's build mode with the same projects and emit settings.
 - A member pattern on `super`, `when super.inherited:` or `s is super.inherited`, produced JavaScript that passed `super` to a function and failed to load. The member is now read in place with `this` as its receiver.

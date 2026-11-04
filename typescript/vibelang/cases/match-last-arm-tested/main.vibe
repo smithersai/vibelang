@@ -1,6 +1,6 @@
 // An exhaustive match tests its last arm like every other arm (D405): a
-// structurally valid Only whose _tag is a getter is read once, as Effect's
-// own variant test reads it, and a value outside the declared union fails
+// structurally valid Only whose _tag is a getter is read once by the tag
+// pattern, and a value outside the declared union fails
 // the last arm's test with a defect instead of taking it.
 data Only { One }
 
@@ -8,7 +8,7 @@ let reads = 0
 const counted = { get _tag(): "One" { reads++; return "One" } } as unknown as Only
 
 function only(value: Only) {
-  return match (value) { when Only.One: "one"; }
+  return match (value) { when { _tag: "One" }: "one"; }
 }
 
 function phase(value: "draft" | "published") {

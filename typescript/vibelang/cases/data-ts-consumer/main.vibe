@@ -14,7 +14,7 @@ export data Box<A> {
 
 export function track(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Sent { let tracking }: tracking;
+    when { _tag: "Sent", let tracking }: tracking;
     default: "none";
   }
 }

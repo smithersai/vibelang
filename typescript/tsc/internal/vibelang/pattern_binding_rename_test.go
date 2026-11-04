@@ -15,7 +15,7 @@ import (
 // rename writes as { value: fresh }.
 func TestPatternBindingRename(t *testing.T) {
 	for _, tc := range []struct{ name, source, want string }{
-		{"variant", `data D { V { value: number } }; function pick(x:D){return match(x){when D.V { let value }: value;}}`, `when D.V { value: let fresh }`},
+		{"variant", `data D { V { value: number } }; function pick(x:D){return match(x){when { _tag: "V", let value }: value;}}`, `when { _tag: "V", value: let fresh }`},
 		{"const", `function pick(x:{value:number}){return match(x){when { const value }: value;default:0;}}`, `{ value: const fresh }`},
 		{"is", `function pick(x:{value:number}){if(x is {let value})return value;return 0}`, `{value: let fresh}`},
 		{"comments", "function pick(x:{value:number}){return match(x){when {let /* keep */ value}:value;default:0;}}", `{value: let /* keep */ fresh}`},
@@ -53,8 +53,8 @@ func TestPatternBindingRename(t *testing.T) {
 // Keep the conformance census witness covered from both rename origins. The
 // property key stays value even when the exported entry function binds fresh.
 func TestPatternBindingRenameCensus(t *testing.T) {
-	const source = "data D { V { value: number } }\nexport function main(x: D) { return match (x) { when D.V { let value }: value; } }\n"
-	const want = "data D { V { value: number } }\nexport function main(x: D) { return match (x) { when D.V { value: let fresh }: fresh; } }\n"
+	const source = "data D { V { value: number } }\nexport function main(x: D) { return match (x) { when { _tag: \"V\", let value }: value; } }\n"
+	const want = "data D { V { value: number } }\nexport function main(x: D) { return match (x) { when { _tag: \"V\", value: let fresh }: fresh; } }\n"
 	for _, origin := range []struct {
 		name   string
 		offset int

@@ -1,7 +1,7 @@
 // expect-result: {"described":["waiting","parcel-8 by post","rejected: no address (none)"],"loads":[0,3,7],"sent":true,"same":true,"different":false,"matched":"parcel-8","guard":[false,true],"note":"left at the door","fromObject":["parcel-8","none"]}
 // data declares a tagged union with Effect's own Data.TaggedEnum (D307): the
 // type, the constructors, $is, $match and structural equality are Effect's,
-// and match narrows a variant pattern by its tag.
+// and a match narrows a tag pattern to its variant.
 
 /** A parcel on its way. */
 export data Delivery {
@@ -17,34 +17,35 @@ export data LoadState<A, E> {
   Failed { error: E }
 }
 
-// A match without default covers every variant, so its last arm needs no test (D294).
+// A match without default covers every variant. An optional field is read from
+// the narrowed subject: a `let` binding would require the field to be present.
 export function describe(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Waiting: "waiting";
-    when Delivery.Sent { let tracking, let carrier }: `${tracking} by ${carrier ?? "post"}`;
-    when Delivery.Rejected { let reason, let note }: `rejected: ${reason} (${note ?? "none"})`;
+    when { _tag: "Waiting" }: "waiting";
+    when { _tag: "Sent", let tracking }: `${tracking} by ${delivery.carrier ?? "post"}`;
+    when { _tag: "Rejected", let reason }: `rejected: ${reason} (${delivery.note ?? "none"})`;
   }
 }
 
 function size(state: LoadState<ReadonlyArray<string>, string>) {
   return match (state) {
-    when LoadState.Idle: 0;
-    when LoadState.Loaded { let value }: value.length;
-    when LoadState.Failed { let error }: error.length;
+    when { _tag: "Idle" }: 0;
+    when { _tag: "Loaded", let value }: value.length;
+    when { _tag: "Failed", let error }: error.length;
   }
 }
 
-// A variant's fields can hold patterns of their own.
+// A tag pattern's other properties can hold patterns of their own.
 function noted(delivery: Delivery) {
   return match (delivery) {
-    when Delivery.Rejected { reason: "absent", let note }: note ?? "";
+    when { _tag: "Rejected", reason: "absent" }: delivery.note ?? "";
     default: "";
   }
 }
 
-// A subject of no tagged type narrows to the variant's values.
+// A subject of no tagged type narrows through the data type's own $is guard.
 function trackingOf(value: object) {
-  if (value is Delivery.Sent) return value.tracking
+  if (Delivery.$is("Sent")(value)) return value.tracking
   return "none"
 }
 
@@ -55,12 +56,12 @@ export effect function main() {
   for (const delivery of [waiting, sent, rejected]) try Console.log(describe(delivery))
   let matched = ""
   // is narrows: sent.tracking is a string in the branch.
-  if (sent is Delivery.Sent) matched = sent.tracking
+  if (sent is { _tag: "Sent" }) matched = sent.tracking
   const isRejected = Delivery.$is("Rejected")
   return {
     described: [describe(waiting), describe(sent), describe(rejected)],
     loads: [size(LoadState.Idle()), size(LoadState.Loaded({ value: ["a", "b", "c"] })), size(LoadState.Failed({ error: "offline" }))],
-    sent: sent is Delivery.Sent,
+    sent: sent is { _tag: "Sent" },
     same: Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" })),
     different: Equal.equals(sent, Delivery.Sent({ tracking: "parcel-9" })),
     matched,

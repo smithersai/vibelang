@@ -1,6 +1,6 @@
-// Option.None is effect's built-in matcher only when Option names effect's
-// module (D213). A data type named Option has its own variants, so
-// when Option.None and is Option.None test its None.
+// A data type named Option is matched by tag like any data type; its
+// variants are not effect's Option matchers, and a class pattern naming one
+// is EK0702 (match-data-own-option-pattern.fail).
 data Option {
   Some { value: number }
   None
@@ -8,13 +8,13 @@ data Option {
 
 function ownOption(x: Option) {
   return match (x) {
-    when Option.Some { let value }: value;
-    when Option.None: -1;
+    when { _tag: "Some", let value }: value;
+    when { _tag: "None" }: -1;
   }
 }
 
 function isNone(x: Option) {
-  if (x is Option.None) return "none"
+  if (x is { _tag: "None" }) return "none"
   return "some"
 }
 

@@ -105,7 +105,7 @@ func dataRules() []dataRule {
 	} {
 		add("class-pattern-"+c.name, match, "a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`", c.source, "EK0702", "impl-hunt-data")
 	}
-	add("class-pattern-variant-control", match, "a class pattern naming a `data` declaration or variant, a `schema`", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D.A: 1; when D.B { let n }: n; default: 0; } }", "", "impl-hunt-data")
+	add("class-pattern-variant-control", match, "a class pattern naming a `data` declaration or variant, a `schema`", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D.A: 1; when D.B { let n }: n; default: 0; } }", "only:EK0702,EK0702", "impl-hunt-data")
 	// Decided detail 25: data Empty {} with zero variants is allowed:
 	// an exact empty Data.TaggedEnum (delete EK2122).
 	add("empty-data", data, "Zero variants are allowed", `data Empty {}; const empty: Empty = null as never`, "", "vip-core2")
@@ -374,6 +374,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataForeignClassCoverageRules()...)
 	rules = append(rules, schemaGroupedLiteralRules()...)
 	rules = append(rules, dataAmbientDeclarationRules()...)
+	rules = append(rules, dataVariantPatternRetirementRules()...)
 	return append(rules, dataUnreachableMatchRules()...)
 }
 

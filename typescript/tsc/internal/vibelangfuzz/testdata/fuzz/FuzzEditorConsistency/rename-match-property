@@ -1,3 +1,3 @@
 go test fuzz v1
-string("-- main.vibe --\ndata D { V { value: number } }\nexport function main(x: D) { return match (x) { when D.V { let value }: value; } }\n")
+string("-- main.vibe --\ndata D { V { value: number } }\nexport function main(x: D) { return match (x) { when { _tag: \"V\", let value }: value; } }\n")
 []byte("\x00\x5e")

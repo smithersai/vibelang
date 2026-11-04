@@ -5,22 +5,22 @@ import * as Shapes from "./shapes.vibe"
 
 function sum(tree: Tree<number>): number {
   return match (tree) {
-    when Tree.Leaf { let value }: value;
-    when Tree.Node { let left, let right }: sum(left) + sum(right);
+    when { _tag: "Leaf", let value }: value;
+    when { _tag: "Node", let left, let right }: sum(left) + sum(right);
   }
 }
 
 function leaves<A>(tree: Tree<A>): number {
-  if (tree is Tree.Leaf) return 1
+  if (tree is { _tag: "Leaf" }) return 1
   return leaves(tree.left) + leaves(tree.right)
 }
 
-// A namespace import names the variants too.
+// A namespace import's data type matches by tag too.
 function name(shape: Shapes.Shape) {
   return match (shape) {
-    when Shapes.Shape.Circle: "circle";
-    when Shapes.Shape.Square: "square";
-    when Shapes.Shape.Dot: "dot";
+    when { _tag: "Circle" }: "circle";
+    when { _tag: "Square" }: "square";
+    when { _tag: "Dot" }: "dot";
   }
 }
 

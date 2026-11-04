@@ -600,15 +600,15 @@ try {
     assert(declaration.includes("data Delivery {\n  Waiting\n  Sent { tracking: string }\n  Rejected { reason: string }\n}"), `got ${JSON.stringify(declaration)}`)
     const variant = await hover("src/data.vibe", "Sent({", {})
     assert(variant.includes("(variant) Delivery.Sent { tracking: string }"), `got ${JSON.stringify(variant)}`)
-    const pattern = await hover("src/data.vibe", "Waiting:", {})
-    assert(pattern.includes("(variant) Delivery.Waiting"), `got ${JSON.stringify(pattern)}`)
+    const bare = await hover("src/data.vibe", "Waiting()", {})
+    assert(bare.includes("(variant) Delivery.Waiting"), `got ${JSON.stringify(bare)}`)
   })
 
   await check("definition: a data variant goes to the variant in its declaration", async () => {
-    for (const needle of ["Sent({", "Sent { let"]) {
+    for (const [needle, target] of [["Sent({", "Sent { tracking"], ["Waiting()", "Waiting\n"]]) {
       const [location, ...rest] = await definition("src/data.vibe", needle)
       assert(location && rest.length === 0, `${needle}: expected one location, got ${JSON.stringify([location, ...rest])}`)
-      const want = at("src/data.vibe", "Sent { tracking")
+      const want = at("src/data.vibe", target)
       assert(location.uri === fileUri("src/data.vibe") && location.range.start.line === want.line && location.range.start.character === want.character, `${needle}: range ${JSON.stringify(location.range)}`)
     }
   })
