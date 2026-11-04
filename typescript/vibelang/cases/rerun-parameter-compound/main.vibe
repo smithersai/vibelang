@@ -1,4 +1,4 @@
-// Reusing an Effect never reuses a parameter binding.
+// VIP-1: each call binds parameters once; each run reuses that call's cells.
 export const compact = effect (n: number): Effect<number, never, never> => n += 1
 export const expanded = effect (n: number): Effect<number, never, never> => {
   const result = n += 1

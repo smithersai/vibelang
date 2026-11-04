@@ -1,24 +1,25 @@
+import assert from "node:assert/strict"
 import { Effect } from "effect"
 import * as program from "./out/main.js"
-
-{
-  const p = program.compact(1)
-  console.log("compact", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
+import * as twin from "./out/twin.js"
+for (const name of ["compact", "expanded", "declared", "expression", "declaredProgram"]) {
+  for (const start of [-5, 0, 1, 10]) {
+    const observe = (factory) => {
+      const p = factory(start)
+      return [Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]
+    }
+    const expected = observe(twin[name])
+    assert.deepEqual(expected, [start + 1, start + 2, start + 3])
+    assert.deepEqual(observe(program[name]), expected, name)
+  }
 }
-{
-  const p = program.expanded(1)
-  console.log("expanded", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
+for (const start of [-5, 0, 1, 10]) {
+  const observe = (factory) => {
+    const p = factory(start)
+    const closures = [Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]
+    return [closures.map((f) => f()), new Set(closures).size]
+  }
+  assert.deepEqual(observe(program.closure), observe(twin.closure))
+  assert.deepEqual(observe(program.closure), [[start + 1, start + 2, start + 3], 3])
 }
-{
-  const p = program.declared(1)
-  console.log("declaration", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
-}
-{
-  const p = program.expression(1)
-  console.log("expression", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
-}
-const p = program.declaredProgram(1)
-console.log("effect declaration", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
-const returned = program.closure(1)
-const closures = [Effect.runSync(returned), Effect.runSync(returned), Effect.runSync(returned)]
-console.log("returned closures", JSON.stringify(closures.map((f) => f())))
+console.log("call-bound parameters: ok")

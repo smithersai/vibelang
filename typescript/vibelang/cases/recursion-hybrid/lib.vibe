@@ -49,3 +49,8 @@ export effect function args(n: number, ...rest: number[]): Effect<number> {
   if (n === 0) return 1 + rest.length + rest.length
   return try args(n - 1, ...rest)
 }
+
+// VIP-1: call-time parameter binding does not start the body.
+let bodyStarts = 0
+export effect function coldProbe(): number!! { bodyStarts++; return bodyStarts }
+export function probeStarts(): number { return bodyStarts }

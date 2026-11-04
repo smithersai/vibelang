@@ -239,6 +239,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Lint output-preservation and public Effect-version citation checks now follow the current tooling text, retaining all refusal, output and public-authority assertions.
 
+- Parameter replay and deep-recursion checks expected fresh bindings on every run; they now verify call-time binding against native Effect TypeScript.
+
 - Catch regression checks no longer run their input twice, and ordinary handler parameter annotations keep their TypeScript meaning.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.

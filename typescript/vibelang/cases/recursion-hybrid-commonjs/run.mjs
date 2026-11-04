@@ -9,15 +9,29 @@ import * as m from "./out/main.js"
 // rest parameters, continues on Effect's heap frames at depth 100000. The
 // retired $direct variants and the $eager depth budget (D412) are not part of
 // the language after VIP-1, so nothing here reads them.
+
+// Check cold bodies directly, separately from call-time defaults.
+const cold = lib.coldProbe()
+let nativeStarts = 0
+const nativeCold = Effect.gen(function* () { return ++nativeStarts })
+assert.equal(lib.probeStarts(), 0, "constructing an Effect leaves its body cold")
+assert.equal(nativeStarts, 0)
+for (const expected of [1, 2]) {
+  assert.equal(Effect.runSync(cold), Effect.runSync(nativeCold))
+  assert.equal(lib.probeStarts(), expected)
+}
+
 const receivers = await import("./out/receiver-a.js")
 for (const n of [0, 1, 10, 11]) assert.equal(receivers.f(n), n % 2 === 0 ? 1 : 2)
 assert.equal(Effect.runSync(down(100000)), 0)
 assert.deepEqual(Effect.runSync(m.values()), [0, true, 7, 7, 9, 3, 5])
 assert.equal(lib.defaultCount(), 1, "running complex binds its default once")
 const lazy = lib.complex(100000)
-assert.equal(lib.defaultCount(), 1, "constructing the Effect must stay lazy")
+assert.equal(lib.defaultCount(), 2, "VIP-1 binds defaults at call time")
 assert.equal(Effect.runSync(lazy), 3)
-assert.equal(lib.defaultCount(), 2)
+assert.equal(lib.defaultCount(), 2, "running the body does not rebind defaults")
+assert.equal(Effect.runSync(lazy), 3)
+assert.equal(lib.defaultCount(), 2, "rerunning the body does not rebind defaults")
 assert.deepEqual(Effect.runSync(m.mapped()), [0, 0])
 // nested is plain (VIP-1), and its synchronous Array.map callback keeps
 // JavaScript's native stack limit.
