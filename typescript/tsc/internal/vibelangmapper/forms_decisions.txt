@@ -5865,6 +5865,7 @@ typescript/vibelang/cases/super-assignment-targets/child.vibe:55:11 lambda effec
 typescript/vibelang/cases/super-assignment-targets/child.vibe:55:52 lambda plain table
 typescript/vibelang/cases/super-assignment-targets/child.vibe:9:34 lambda plain table
 typescript/vibelang/cases/super-update-generator/counter.vibe:11:34 lambda plain table
+typescript/vibelang/cases/tagged-known-throws.fail/main.vibe:5:20 lambda plain fallback
 typescript/vibelang/cases/tagged-template-contexts.fail/main.vibe:11:18 lambda plain table
 typescript/vibelang/cases/tagged-template-runs/main.vibe:15:34 byname program table
 typescript/vibelang/cases/terse-contracts/main.vibe:16:3 lambda effectFn keyword

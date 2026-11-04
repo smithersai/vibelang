@@ -1,0 +1,11 @@
+// expect: EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401
+import {bad,unknownTag} from "./helpers.js"
+import * as Tags from "./helpers.js"
+export function direct(){return bad`x`}
+export const arrow=()=>bad`x`
+export class Box {value=bad`x`}
+export function qualified(){return Tags.bad`x`}
+export const top=bad`x`
+export function unknown(){return unknownTag`x`}
+export class Static {static {bad`x`}}
+export class Method {run(){return bad`x`}}

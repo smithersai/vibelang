@@ -1,0 +1,4 @@
+import {bad,safe} from "./helpers.ts"
+function caught(){try{return bad`x`}catch(error){return error instanceof Error?error.message:"other"}}
+// expect-result: {"caught":"bad","safe":1}
+export effect function main(){return {caught:caught(),safe:safe`x`}}

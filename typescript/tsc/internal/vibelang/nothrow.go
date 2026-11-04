@@ -81,7 +81,7 @@ func isSynthesizedCatchRethrow(node *ast.Node) bool {
 	return node.Flags&ast.NodeFlagsReparsed != 0 && ast.IsIdentifier(operand) && operand.Flags&ast.NodeFlagsReparserTransformedLiteral != 0
 }
 
-// knownThrows returns what node, a call or new expression, is known to throw
+// knownThrows returns what node, a call, new or tagged template, is known to throw
 // when nothing catches it: the failures its callee's contract lists, a
 // written @throws on a .ts or .d.ts declaration or a built-in's shipped
 // annotation, such as JSON.parse's SyntaxError. A call in the try block of a
@@ -91,7 +91,7 @@ func isSynthesizedCatchRethrow(node *ast.Node) bool {
 // A written @throws {unknown} is a contract: the call may throw unknown.
 // VibeLang callables carry no thrown types (trustES).
 func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
-	if !ast.IsCallExpression(node) && !ast.IsNewExpression(node) || inCatchingTry(node) {
+	if !ast.IsCallExpression(node) && !ast.IsNewExpression(node) && !ast.IsTaggedTemplateExpression(node) || inCatchingTry(node) {
 		return nil
 	}
 	if ast.IsCallExpression(node) && (ast.IsSuperCall(node) || ast.IsImportCall(node)) {

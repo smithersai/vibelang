@@ -75,8 +75,6 @@ FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
 
 # Additional chapter-3 boundaries on post-VIP-1 main.
-FuzzFailuresSpec feature:catch-tracked-template compiler VIP-5: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws no error; lane nothrow-impl
-FuzzFailuresSpec corpus:catch-tracked-template compiler VIP-4: minimized reproduction of feature:catch-tracked-template; lane w2-throw
 FuzzFailuresSpec feature:promise-new compiler VIP-4: chapter 3 contract promise-new fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
 FuzzFailuresSpec corpus:promise-new compiler VIP-4: minimized reproduction of feature:promise-new; lane w2-throw
 FuzzFailuresSpec feature:inferred-callable-alias compiler VIP-4: chapter 3 contract inferred-callable-alias fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
