@@ -45,6 +45,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The diagnostic code map displayed `EK0201` and `EK0202` descriptions as replacement codes. They now appear with their rules in the diagnostic reference.
 
+- The `Option.match` quick fix could refuse a payload whose type was private to another module because its generated annotation used an unresolved name. The repair now expands private interface payloads and preserves the public declaration.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11

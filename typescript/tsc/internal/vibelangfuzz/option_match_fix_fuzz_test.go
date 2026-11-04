@@ -28,6 +28,9 @@ func TestOptionMatchFixQuoted(t *testing.T) {
 // Vary imports, aliases, Some/None, payloads, callback defaults/early returns,
 // handler construction and getter reads. No second runtime oracle is needed.
 func optionMatchFixArchive(input string) string {
+	if data, ok := strings.CutPrefix(strings.TrimPrefix(input, optionMatchFixKey), "private-payload:"); ok {
+		return optionMatchPrivatePayloadArchive([]byte(data))
+	}
 	data := []byte(strings.TrimPrefix(input, optionMatchFixKey))
 	if len(data) > 8 && data[8]&1 != 0 {
 		return optionMatchProgramFixArchive(data)

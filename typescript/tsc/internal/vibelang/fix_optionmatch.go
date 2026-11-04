@@ -35,8 +35,10 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	payload := names.freshName("$optionValue")
 	none := names.freshName("$optionNone")
 	some := names.freshName("$optionSome")
+	// A foreign private payload has no name in this source scope. Preserve its
+	// structure instead of introducing an unresolved annotation in the repair.
 	handlerType := c.GetTypeAtLocation(handlers)
-	format := checker.TypeFormatFlagsNoTruncation | checker.TypeFormatFlagsUseFullyQualifiedType | checker.TypeFormatFlagsUseSourceScope
+	format := checker.TypeFormatFlagsNoTruncation | checker.TypeFormatFlagsUseFullyQualifiedType | checker.TypeFormatFlagsUseSourceScope | checker.TypeFormatFlagsUseStructuralFallback
 	handlersType := c.TypeToStringEx(handlerType, handlers, format, nil)
 	prefix := "do { const "
 	handlersAnnotation := ": " + handlersType

@@ -214,6 +214,14 @@ func (b *NodeBuilderImpl) isTypeOnStack(t *Type) bool {
 // Returns false when expansion is disabled (maxExpansionDepth < 0), the type
 // is not expandable, or the type is cyclic.
 func (b *NodeBuilderImpl) shouldExpandType(t *Type, isAlias bool) bool {
+	// Source repairs may need a foreign interface that has no accessible name.
+	// Structural fallback is independent of hover verbosity; keep nominal
+	// classes and recursive references on the normal named-type path.
+	if !isAlias && b.ctx.flags&nodebuilder.FlagsUseStructuralFallback != 0 &&
+		t.symbol != nil && t.symbol.Flags()&ast.SymbolFlagsInterface != 0 &&
+		!b.ch.IsTypeSymbolAccessible(t.symbol, b.ctx.enclosingDeclaration) && !b.isTypeOnStack(t) {
+		return true
+	}
 	if b.ctx.maxExpansionDepth < 0 {
 		return false
 	}
