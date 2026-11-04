@@ -1,3 +1,4 @@
+main.vibe(9,24): suggestion EK3858
 main.vibe(10,7): error EK3833
 main.vibe(25,14): warning EK4805
 main.vibe(27,35): error EK38108
