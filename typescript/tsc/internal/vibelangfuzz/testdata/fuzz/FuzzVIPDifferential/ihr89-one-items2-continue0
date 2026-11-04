@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip19.written-limit-one\000\000\000\000\000\000")

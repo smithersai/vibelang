@@ -48,7 +48,7 @@ A `return` cannot leave a `for concurrent` item, including its head binding init
 
 A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper.
 
-A written concurrency limit must be assignable to Effect's `Types.Concurrency` (`number | "unbounded"`). Other types, including explicit `undefined` and `null`, report `EK1907`. Omitting the limit uses the default concurrency. The `"unbounded"` sentinel also works through a variable, parameter, type alias or generic constrained to `Types.Concurrency`.
+A written concurrency limit must be assignable to Effect's `Types.Concurrency` (`number | "unbounded"`). Other types, including explicit `undefined` and `null`, report `EK1907`. Omitting the limit runs unbounded. Ordinary TypeScript assignability still admits `any` and `never`. If an unchecked written limit evaluates to `undefined` or `null`, Effect receives that value unchanged and runs items sequentially. The `"unbounded"` sentinel also works through a variable, parameter, type alias or generic constrained to `Types.Concurrency`.
 
 ## Interrupting computations
 

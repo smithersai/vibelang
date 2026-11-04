@@ -228,3 +228,86 @@ func init() {
 		},
 	})
 }
+
+// Written nullish limits retain Effect's native default; omission is the
+// distinct VIP-19 unbounded form. Observation uses only yieldNow and the
+// shared differential comparison.
+func init() {
+	for _, mode := range []string{"undefined", "null", "void", "held-undefined", "held-null", "factory-undefined", "factory-null", "grouped-undefined", "shadow-undefined", "one", "unbounded", "omitted"} {
+		Register(&Construct{
+			Key: "vip19.written-limit-" + mode, VIP: 19,
+			Requires: []string{"vip01.effect-function", "vip05.try", "vip19.for-concurrent"},
+			Citations: []Citation{{
+				VIP: 19, Template: "yield* Effect.forEach(‹xs›, (‹x›) => Effect.gen(function* () { ‹body› }), { concurrency: ‹n›, discard: true })",
+				Quote:   "In `for concurrent(n)`, `n` is any Effect `Concurrency`, passed straight to `concurrency`.",
+				Reading: "Ordinary any assignability admits nullish values. The written value reaches Effect unchanged; only the omitted form selects unbounded. Count active items across deterministic yieldNow, with once-only limit/RHS traces and continue controls.",
+			}},
+			Focus: func(g *Gen, s *Scope) []Stmt {
+				g.UseEffect()
+				count := 2 + g.Intn(3)
+				continued := g.Intn(2) != 0
+				items := make([]string, count)
+				for i := range items {
+					items[i] = strconv.Itoa(i + 1)
+				}
+				setup, refSetup := "", ""
+				expr, refExpr := "undefined as any", "undefined"
+				switch mode {
+				case "null":
+					expr, refExpr = "null as any", "null"
+				case "void":
+					expr, refExpr = "(void 0) as any", "void 0"
+				case "held-undefined", "held-null":
+					value := "undefined"
+					if mode == "held-null" {
+						value = "null"
+					}
+					setup, refSetup = "const held: any = "+value+";", "const held = "+value+";"
+					expr, refExpr = "held", "held"
+				case "factory-undefined", "factory-null":
+					value := "undefined"
+					if mode == "factory-null" {
+						value = "null"
+					}
+					setup = "const make = (): any => { ev(\"factory\"); return " + value + " };"
+					refSetup = "const make = () => { ev(\"factory\"); return " + value + " };"
+					expr, refExpr = "make()", "make()"
+				case "grouped-undefined":
+					expr, refExpr = "((undefined as any))", "((undefined))"
+				case "shadow-undefined":
+					setup, refSetup = "const undefined = 1;", "const undefined = 1;"
+					expr, refExpr = "undefined", "undefined"
+				case "one":
+					expr, refExpr = "1", "1"
+				case "unbounded":
+					expr, refExpr = "\"unbounded\"", "\"unbounded\""
+				}
+				prefix := "let active = 0, maximum = 0, limits = 0, collections = 0; "
+				collection := "(collections++, ev(\"items\"), [" + strings.Join(items, ",") + "])"
+				limit := "(limits++, ev(\"limit\"), " + expr + ")"
+				refLimit := "(limits++, ev(\"limit\"), " + refExpr + ")"
+				body := "active++; maximum = Math.max(maximum, active); try Effect.yieldNow; active--; "
+				refBody := "active++; maximum = Math.max(maximum, active); yield* Effect.yieldNow; active--; "
+				if continued {
+					body += "if (item === 2) continue; "
+					refBody += "if (item === 2) return; "
+				}
+				body += "ev(\"item\" + item);"
+				refBody += "ev(\"item\" + item);"
+				tail := "ev(\"joined:\" + active); return maximum * 100 + limits * 10 + collections;"
+				head := "for concurrent(" + limit + ")"
+				refHead := "const limit = " + refLimit + "; const items = " + collection + ";"
+				concurrency := "limit"
+				if mode == "omitted" {
+					head = "for concurrent"
+					refHead = "const items = " + collection + ";"
+					concurrency = "\"unbounded\""
+				}
+				return []Stmt{&catchEdge{
+					vibe: "{ " + prefix + setup + " " + head + " (const item of " + collection + ") { " + body + " }; " + tail + " }",
+					ref:  "{ " + prefix + refSetup + " " + refHead + " yield* Effect.forEach(items, (item) => Effect.gen(function* () { " + refBody + " }), { concurrency: " + concurrency + ", discard: true }); " + tail + " }",
+				}}
+			},
+		})
+	}
+}

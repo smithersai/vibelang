@@ -197,15 +197,17 @@ const firstExit = (fibers: ReadonlyArray<Fiber.Fiber<unknown, unknown>>) =>
 
 /**
  * VIP-19: delegate item execution to `Effect.forEach` with its native
- * `Types.Concurrency`; undefined selects `"unbounded"`. The loop joins
+ * `Types.Concurrency`. Legacy three-argument calls retain their unbounded nullish default;
+ * generated written limits pass their value unchanged. The loop joins
  * started item work, propagates its failure and discards its results.
  */
 export const $forConcurrent = <X, E, R>(
   items: Iterable<X>,
   concurrency: Types.Concurrency | undefined,
-  body: (item: X) => Effect.Effect<unknown, E, R>
+  body: (item: X) => Effect.Effect<unknown, E, R>,
+  limitWritten = false
 ): Effect.Effect<void, E, R> =>
-  Effect.forEach(items, body, { concurrency: concurrency ?? "unbounded", discard: true })
+  Effect.forEach(items, body, { concurrency: limitWritten ? concurrency : concurrency ?? "unbounded", discard: true })
 
 /** D170: starts a program in a fiber that nothing owns (Effect.forkDetach). */
 export const detach = <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>

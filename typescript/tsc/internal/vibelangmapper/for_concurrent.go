@@ -72,7 +72,11 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 		p.plan.insert(body.End(), " }")
 	}
 	p.plan.mark(editProgram, partClose, body.End(), body.End(), "")
-	p.plan.insert(call.End(), ")")
+	closing := ")"
+	if limitName != "" {
+		closing = ", true)"
+	}
+	p.plan.insert(call.End(), closing)
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 	if limitName != "" {
 		p.plan.insert(call.End(), "; }")

@@ -165,5 +165,10 @@ func (tx *lowering) concurrentForCall(node *ast.Node) *ast.Node {
 	visited := tx.Visitor().VisitNodes(node.ArgumentList()).Nodes
 	operands := tx.inOrder([]*ast.Node{visited[1], visited[0], visited[2]}, []*ast.Node{sources[1], sources[0], sources[2]}, []int{1, 0, 2})
 	f := tx.Factory()
+	// Only an omitted limit has the parser's Reparsed marker. Written
+	// nullish values admitted through any retain Effect's native default.
+	if sources[1].Flags&ast.NodeFlagsReparsed == 0 {
+		operands = append(operands, f.NewToken(ast.KindTrueKeyword))
+	}
 	return f.UpdateCallExpression(node.AsCallExpression(), tx.Visitor().VisitNode(node.Expression()), node.QuestionDotToken(), nil /*typeArguments*/, f.NewNodeList(operands), node.Flags)
 }
