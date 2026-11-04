@@ -610,10 +610,20 @@ func TestFormatModuleCases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			once, err := Format(input, string(source), formatter)
+			wantRefusal := ""
 			if strings.HasPrefix(string(source), "// expect: EK4003\n") {
-				if err == nil || !strings.Contains(err.Error(), "a module declaration needs a name") {
-					t.Fatalf("expected the nameless-module syntax refusal, got %v", err)
+				wantRefusal = "a module declaration needs a name"
+			} else if filepath.Base(filepath.Dir(input)) == "module-declaration-forms.fail" {
+				wantRefusal = "module text is declared twice"
+			}
+			hostCalls := 0
+			once, err := Format(input, string(source), func(text string) (string, error) {
+				hostCalls++
+				return formatter(text)
+			})
+			if wantRefusal != "" {
+				if err == nil || !strings.Contains(err.Error(), wantRefusal) || hostCalls != 0 || once != "" {
+					t.Fatalf("expected %q before calling the host, got calls=%d, output=%q, error=%v", wantRefusal, hostCalls, once, err)
 				}
 				return
 			}

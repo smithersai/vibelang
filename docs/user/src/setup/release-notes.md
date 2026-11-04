@@ -193,6 +193,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Optional-schema fuzz checks stopped before testing behavior because they quoted a superseded specification sentence. They now quote the conditional optional-property table while retaining the decoding and declaration comparisons.
 
+- Formatter regression checks treated an intentionally duplicated module declaration as valid input. They now verify its refusal before invoking the formatter, alongside the existing valid module round trips.
+
 
 - Stock-oracle and package-load migration checks could fail while reading an absent legacy setup receipt. Their fixtures now record complete public declaration metadata and real upstream packs before testing certification and load regressions.
 
