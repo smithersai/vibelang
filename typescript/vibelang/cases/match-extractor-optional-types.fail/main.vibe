@@ -1,0 +1,5 @@
+// expect: TS2454 TS2339
+import { Effect, Option } from "effect"
+function missing(value: Option.Option<number>) { return match(value) { when Option.None(let cell?): cell; default: 0; } }
+function wrong(value: Option.Option<number>) { return match(value) { when Option.Some(let cell?): cell.toUpperCase(); default: ""; } }
+export function main() { return Effect.succeed(0) }

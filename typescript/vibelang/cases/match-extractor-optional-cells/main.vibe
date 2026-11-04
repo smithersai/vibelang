@@ -1,0 +1,21 @@
+// expect-result: [[["tdz",true],["value","number","2"],["value","undefined","undefined"]],[["tdz",true],["value","string","x"],["value","undefined","undefined"]]]
+import { Effect, Option } from "effect"
+import { optionalRead } from "./native.js"
+function letRead(value: Option.Option<unknown>) {
+ return match(value) {
+  when Option.None(let cell?): optionalRead(()=>cell);
+  when Option.Some(let cell?): optionalRead(()=>cell);
+  default: ["miss"];
+ }
+}
+function constRead(value: Option.Option<unknown>) {
+ return match(value) {
+  when Option.None(const cell?): optionalRead(()=>cell);
+  when Option.Some(const cell?): optionalRead(()=>cell);
+  default: ["miss"];
+ }
+}
+export function main() { return Effect.succeed([
+ [letRead(Option.none()),letRead(Option.some(2)),letRead(Option.some(undefined))],
+ [constRead(Option.none()),constRead(Option.some("x")),constRead(Option.some(undefined))]
+]) }

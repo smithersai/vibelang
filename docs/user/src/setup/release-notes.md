@@ -240,6 +240,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration verification could miss factory snapshots moved from the call to execution. It now rejects deferred property reads, destructuring and spreads, with the moved operation in the report.
 
 - A generated lint bridge could crash on a type-aware rule before checking repository JavaScript plugin rules; type-aware TypeScript rules now stay with the native projection pass.
+
+- Optional extractor bindings were rejected as unsupported; they now initialize only for present values, and missing values retain native lexical binding behavior.
+
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
 
 - Stock TypeScript tools could receive an unchanged `.vibe` file for iterable `is` patterns because projection edits overlapped. Function and nested-block projections now preserve the iterator cache and its cleanup without overlapping edits.

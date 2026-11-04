@@ -2036,10 +2036,6 @@ func (p *Parser) compileList(pat *pattern, path matchPath, n int, element func(i
 		case item.kind == patternElision:
 		case !item.optional:
 			p.compilePattern(item, enter(element(i), item), steps, ctx)
-		case patternHasBindings(item):
-			// An absent element leaves its bindings uninitialized, which this
-			// lowering's const cannot express.
-			*steps = append(*steps, matchStep{test: p.patternErrorCall(4704, "Optional binding", item.anchor)})
 		default:
 			absent := p.mBinary(length(), ast.KindLessThanEqualsToken, p.mNumber(i, at), at)
 			matches := p.mParens(p.inlinePattern(item, element(i), ctx), at)
