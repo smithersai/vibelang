@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An inherited `schema error` could report an extra TypeScript base-type error alongside `EK2117`. It now reports the inheritance diagnostic while preserving independent errors inside the declaration.
 
 - The `data` guide left multiline assertions ambiguous; it now explains how parentheses preserve an assertion whose type continues on another line.
+
+- Migration-only fixes could leave foreign calls unwrapped in effect code or reject a private callback that accepted the original throwing function. They now preserve those exceptions as defects and retain supported private callback contracts through a TypeScript module body.
 - Migration batches still ran project-wide repairs before restoring unrelated files, making small retries slow in large packages. The flow now passes the selected files through `--only` and skips an empty batch.
 - Migration verification could report a missing declaration for a module returned to TypeScript when its package export kept a source `types` condition. Declaration snapshots now preserve that recorded source path and still reject changed types, documentation and missing provenance.
 

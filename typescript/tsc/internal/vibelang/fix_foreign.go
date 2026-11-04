@@ -50,6 +50,8 @@ import (
 
 func init() {
 	tsFormFixCodes = append(tsFormFixCodes, EK0403.Code, EK4401.Code)
+	// VIP-4 migration keeps exceptions in native effect code as defects.
+	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0403.Code)
 	ls.RegisterCodeFixProvider(foreignCallFix)
 }
 

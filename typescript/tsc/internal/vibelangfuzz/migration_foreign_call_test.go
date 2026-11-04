@@ -149,8 +149,15 @@ func migrationForeignCallErrors(all []*ast.Diagnostic) (left []string, refused b
 func checkMigrationForeignCall(t *testing.T, w *Workspace, api, input string) {
 	t.Helper()
 	TestMigrationForeignCallQuoted(t)
+	mode := ""
+	if prefix, witness, ok := strings.Cut(input, ":"); ok && (prefix == "migration" || prefix == "vip") {
+		mode, input = prefix, witness
+	}
 	position, call := parseMigrationForeignCall(input)
 	key := "position:" + position + ":" + call
+	if mode != "" {
+		key = "mode:" + mode + ":" + key
+	}
 	source, vibe := migrationForeignCallSource(position, call)
 	helpers := map[string]string{"helpers.ts": migrationForeignCallHelpers}
 	with := func(name, text string) map[string]string {
@@ -170,7 +177,7 @@ func checkMigrationForeignCall(t *testing.T, w *Workspace, api, input string) {
 		config := toolsConfig(w, renamed.Dir)
 		var result *vibelang.FixResult
 		toolsRun(t, migrationForeignCallTarget, "fix", vibe, nil, func() {
-			result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
+			result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{MigrationOnly: mode == "migration", VIPOnly: mode == "vip"})
 		})
 		if result.Err != nil {
 			Gap(t, migrationForeignCallTarget, key, "Chapter 3: --fix failed: %v\n%s", result.Err, vibe)

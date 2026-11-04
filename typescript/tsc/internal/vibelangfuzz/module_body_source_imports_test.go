@@ -26,6 +26,7 @@ func TestModuleBodySourceImportsQuoted(t *testing.T) {
 // depth, relocated layout, module name and import shape around the minimized
 // t3code helper; repeated discovery must not import an output as a new input.
 func FuzzModuleBodySourceImports(f *testing.F) {
+	startShortBudget(f)
 	for _, b := range []byte{0, 1, 7} {
 		f.Add("source-import", b)
 	}

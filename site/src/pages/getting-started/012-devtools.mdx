@@ -651,6 +651,8 @@ The CLI leaves its `try` span unchanged, including when another spelling fix cou
 An `EK4813` rename that changes a callback or result contract has no automatic fix.
 For `either`, `async` and `withFiberRuntime`, review the diagnostic's migration note and update callers explicitly.
 
+Migration-only fixes also apply the foreign-call defect bridge. A supported private callback parameter or object member can retain an explicit foreign `@throws {unknown}` signature in a type-only `module` body. Calls remain defects through `Effect.orDie(Effect.try(...))`; a synchronous `Effect.map` callback becomes an `Effect.flatMap` callback returning that Effect. Unsupported or declaration-changing shapes retain their diagnostic for an explicit repair.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/getting-started/devtools](https://effect.website/docs/v4/getting-started/devtools/)

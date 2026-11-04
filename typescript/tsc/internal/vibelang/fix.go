@@ -695,6 +695,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 					p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 				}
 			}
+			if options.MigrationOnly || options.VIPOnly {
+				p = p.withFixes(callbackMigrationFixes(ctx, program, file, g.refused))
+			}
 			p = p.withFixes(relicForkBlockFixes(file, g.refused))
 			p = p.withFixes(doNeverMigrationFixes(ctx, program, file, g.refused))
 			if len(p.fixes) == 0 {
