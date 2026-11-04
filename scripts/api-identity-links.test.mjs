@@ -1,13 +1,14 @@
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { basename, join } from "node:path"
 import { test } from "node:test"
 import { createRequire } from "node:module"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/foldkit-private-jsdoc-link.json", import.meta.url)))
 const ts = loadTypeScript()
+const options = { lib: ["lib.esnext.d.ts"], strict: true, noEmit: true, types: [] }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 function compare(before, after) {
   const root = mkdtempSync(join(tmpdir(), "api-link-"))
@@ -17,11 +18,13 @@ function compare(before, after) {
       mkdirSync(dir)
       const file = join(dir, "index.d.ts")
       writeFileSync(file, "export {};\n" + text)
-      const program = ts.createProgram([file], { strict: true, noEmit: true, types: [] })
+      const program = ts.createProgram([file], options)
+      assert.ok(!program.getSourceFiles().some(source => basename(source.fileName).startsWith("lib.dom.")),
+        "JSDoc link fixtures must not load browser libraries")
       const diagnostics = ts.getPreEmitDiagnostics(program)
       assert.equal(diagnostics.length, 0, JSON.stringify(diagnostics.map(d => ts.flattenDiagnosticMessageText(d.messageText,"\n"))))
     }
-    return compareApiIdentity(ts,join(root,"before"),join(root,"after"))
+    return compareApiIdentity(ts,join(root,"before"),join(root,"after"), { compilerOptions: options })
   } finally { rmSync(root, {recursive:true,force:true}) }
 }
 const declaration = (kind, target="Ref", label="", place="export") => {

@@ -1480,6 +1480,13 @@ target command, source-sync guard, property counts and failure rules are
 unchanged.
 
 
+The JSDoc-link API identity fixture explicitly loads `lib.esnext.d.ts` for
+both its independent TypeScript checks and the comparator. Its declarations
+need no browser globals. The fixture rejects accidental `lib.dom.*` loading
+while retaining strict diagnostics, all 24 generated samples, private-binding
+controls, and counterexamples for changed link targets, labels and rendering
+kinds. Keep browser-dependent API fixtures on the libraries they require.
+
 ## Retirement admission
 
 Will's codemod-before-error rule is recorded in the VIP process. The offline
