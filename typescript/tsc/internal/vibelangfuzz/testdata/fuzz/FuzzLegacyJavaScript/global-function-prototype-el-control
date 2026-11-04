@@ -1,0 +1,4 @@
+go test fuzz v1
+string("global-function-prototype-el-control")
+string("plain")
+byte(0)

@@ -16,6 +16,7 @@ var legacyJavaScriptQuotes = []string{
 	"Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 1 }`, are names, not references, and are unaffected",
 	"Reading a property named `constructor` from a value whose static type is a function type or `Function` is `EK0107`",
 	"A string-literal `data:` or `blob:` specifier, in `import(…)` or an `import` declaration, is `EK0107`",
+	"A member `eval` or `Function` is the global itself, so `globalThis.eval(s)` and `globalThis[\"Function\"](\"return 1\")` are `EK0107`, with the two `Function` exemptions above: `x instanceof globalThis.Function` and `globalThis.Function.prototype` are allowed.",
 }
 
 func requireLegacyJavaScriptQuotes(t testing.TB) {
@@ -108,6 +109,24 @@ var legacyJavaScriptForms = map[string]struct {
 	"constructor-assert-read":               {"function f(): number { return 1 }; function g(): number { return 2 }; return (f.constructor as Function)", 1},
 	"constructor-delete-base-read":          {"function f(): number { return 1 }; function g(): number { return 2 }; delete (f.constructor as any).property; return f", 1},
 	"constructor-delete-global":             {"function f(): number { return 1 }; function g(): number { return 2 }; delete Function.constructor; return f", 1},
+	"global-eval":                           {`return globalThis.eval("1")`, 1},
+	"global-eval-element":                   {`return globalThis["eval"]("1")`, 1},
+	"global-eval-template":                  {"return globalThis[`eval`](\"1\")", 1},
+	"global-eval-optional":                  {`return globalThis?.eval("1")`, 1},
+	"global-eval-parens":                    {`return (globalThis).eval`, 1},
+	"global-eval-nested":                    {`return globalThis.globalThis.eval`, 1},
+	"global-eval-alias":                     {`const e = globalThis.eval; return e`, 1},
+	"global-function-call":                  {`return globalThis.Function("return 1")`, 1},
+	"global-function-new":                   {`return new globalThis.Function("return 1")`, 1},
+	"global-function-element":               {`return globalThis["Function"]("return 1")`, 1},
+	"global-function-member":                {`return globalThis.Function.call(null, "return 7")`, 1},
+	"global-function-nested":                {`return globalThis["globalThis"].Function`, 1},
+	"global-function-instanceof-control":    {`const x: unknown = 1; return x instanceof globalThis.Function`, 0},
+	"global-function-prototype-control":     {`return globalThis.Function.prototype`, 0},
+	"global-function-prototype-el-control":  {`return globalThis["Function"]["prototype"]`, 0},
+	"global-function-type-control":          {`type F = typeof globalThis.Function; const n: F | number = 1; return n`, 0},
+	"global-member-control":                 {`return globalThis.Math.max(1, 2)`, 0},
+	"global-shadow-control":                 {`const globalThis = { eval: 1, Function: 2 }; return globalThis.eval + globalThis.Function`, 0},
 }
 
 func FuzzLegacyJavaScript(f *testing.F) {

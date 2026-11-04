@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Tooling validation still treated retired `control` and `handle` examples as valid source; its source-tree fixtures now test the first-release rejection and preserve coverage of supported declarations.
 - ESLint reported `no-unreachable` on reachable completions of `do` expressions containing `match`, including migrated lint rules; its source tree now keeps generated arm exits inside the match, while written unreachable code still reports.
 
+- Compiler regression checks now cover direct, optional, nested and statically keyed `globalThis.eval` and `globalThis.Function` references, including the `instanceof` and prototype exemptions.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

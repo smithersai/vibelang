@@ -1,0 +1,4 @@
+go test fuzz v1
+string("global-eval-nested")
+string("plain")
+byte(0)
