@@ -298,7 +298,7 @@ function parsed(s: string) {
 
 - **Parameter defaults and destructuring** run at the call, before the Effect exists. In an effectful function's parameter list a default whose thrown type is not `never` is `EK0401`, and in any other parameter list outside an `async` function a default known to throw is. A default that returns a Promise is a plain value. Destructuring can still throw an implicit `TypeError`: the call of an `effect` function then gives an Effect that dies with that value, and a producer's gives a `Stream` that dies with it, as an `async` function rejects. The call itself never throws.
 - **An ordinary `async` parameter list** rejects: a throwing default rejects the returned Promise, and an outward `return v` in a default (`x = do { return 7 }`) skips the body and fulfills the Promise with `v`.
-- **Field initializers and static blocks** run in `new X()` and at class evaluation; a non-`never` class evaluation is `EK0403` in effect code and `EK0401` elsewhere.
+- **Field initializers and static blocks** run in `new X()` and at class evaluation. Throw checks follow [Thrown types](/spec/003-failures#thrown-types) and [Plain code never throws](/spec/003-failures#plain-code-never-throws), with each expression's source context and the native caught-call exemption preserved.
 - **Arguments** are evaluated by the caller. **Wrapper thunks** run inside the Effect.
 
 ```vibe [VibeLang]

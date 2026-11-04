@@ -1092,7 +1092,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3003` | `new` on a service | 9 | [Services](/spec/005-services#static-rules) |
 | `EK3004` | `instanceof` a service, or a class pattern naming any `service` declaration, with or without `defaultValue` | 7, 9 | [Services](/spec/005-services#static-rules) |
 | `EK3005` | a generic service, or a service whose resolved member contracts capture an outer type parameter | 9 | [Services](/spec/005-services#static-rules) |
-| `EK3006` | an error code or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](/spec/007-tooling) |
+| `EK3006` | an error code, an interim `EK92xx` code (even one printed as a warning) or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](/spec/007-tooling) |
 | `EK3007` | an unknown `vibe` key, or a `vibe` value of the wrong type other than a `severities` entry (`EK3006`), including a `severities` value that is not an object | 30 | [Configuration and tooling](/spec/007-tooling#config-files) |
 | `EK3009` | warning: root `vibelang.diagnostics` or `compilerOptions.vibelang.diagnostics` in any supported config or extended config needs migration; supported legacy settings still apply, modern entries win, and `--fix` migrates eligible maps | 30 | [Legacy severity maps](/spec/007-tooling#legacy-severity-maps) |
 | `EK3010` | warning: retired `trustedPackages` is ignored in `vibe` and supported legacy sections; remove the key and use the ordinary foreign-callable contract | 4, 30 | [Configuration](/spec/007-tooling#config-files) |
@@ -1157,7 +1157,7 @@ The compiler also prints `EK0204`, a compiler gap rather than a language rule. W
 | --- | --- | --- | --- |
 | `EK0204` | compiler gap, not a language rule: a `return`, `var`, jump, `await` or `yield` that would leave a `do` the compiler still compiles to a function; admitted completions keep VIP-2’s meaning | 2 | [Running Effects](/spec/002-running#do-expressions) |
 
-The existing migration warnings retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
+The existing migration diagnostics retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
@@ -1166,9 +1166,9 @@ The existing migration warnings retain their emitted codes until the compiler an
 | `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK4855` | warning: preserving migration of a service's cached `static readonly default` to an equivalent native `Context.Service` class; retain its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure, or refuse | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK4856` | warning: a type use resolves to the retired global `Effect<A, E, R>` alias; write `A!E!R` or `Effect.Effect<A, E, R>`; local and imported types are unchanged | 3, 14, 34 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
-| `EK4857` | error: a legacy Effect return slot written `infer`; write the inferred slot type, or omit the whole return annotation | 3 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
+| `EK4857` | error: an immediate written `infer` channel in the [legacy return-slot set](/spec/001-functions#legacy-written-infer-return-slots); replaces `TS1338` for the same occurrence while the migration exists, preserving independent native errors; write the inferred channel type, or, only on an explicitly `effect`-marked callable with every channel `infer`, omit the annotation if preservation is proved | 3 | [Effect types](/spec/001-functions#the-aer-type-shorthand) |
 
-An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A legacy cached service default retains the native service and static field semantics described above; adoption of a Reference factory is an explicit semantic change. These warnings use the existing safe codemod and its refusal rules ([Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements)).
+An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A legacy cached service default retains the native service and static field semantics described above; adoption of a Reference factory is an explicit semantic change. These diagnostics use the existing safe codemod and its refusal rules ([Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements)).
 
 ### Imported lint codes
 
