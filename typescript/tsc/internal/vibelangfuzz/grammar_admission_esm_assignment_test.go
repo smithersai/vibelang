@@ -63,6 +63,7 @@ func TestGrammarAdmissionModuleAssignments(t *testing.T) {
 		{"const x = 1 ; export = x ;", 1203},
 		{"import x = require ( \"m\" ) ;", 0},
 		{"import y = N . a ;", 0},
+		{"import x = require ( ( \"m\" ) ) ; ; import y = N . a ;", 1141},
 		{"export default 1 ;", 0},
 	} {
 		t.Run(c.source, func(t *testing.T) {

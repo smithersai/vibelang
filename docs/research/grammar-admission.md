@@ -220,3 +220,8 @@ whose comma expression is ordinary.
 syntax before the checker: `EK1501` (`export default schema`) and `EK1502`
 (schema type parameters). A bare `schema C` is the known
 `admission:schema-no-body` gap.
+
+TypeScript's `ExternalModuleReference` is `require ( StringLiteral )`. Its
+parser reads any expression in the parentheses for recovery, and the
+checker rejects a non-literal with `TS1141`, which now counts as syntax
+rejection; campaign195 found `import x = require(("m"))`.

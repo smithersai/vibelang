@@ -627,6 +627,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar-admission census rejected the row for the `match` coverage-combinator helper, because it cited a chapter anchor where an Appendix A production is required. It now cites `MatchExpression` and the Match chapter.
 - The grammar-admission audit reported `[join throw e, 1]` as an unknown gap instead of the known temporary `EK1010` comma case. It now recognizes a throw after any operator or operand-taking word.
 - The grammar-admission audit reported a `schema` body member with no type, such as a bare `string`, as accepted although the compiler rejects it with `EK1505`. It now counts `EK1505` as a syntax rejection.
+- The grammar-admission audit reported `import x = require(("m"))` as accepted although TypeScript rejects a non-literal module reference (`TS1141`). It now counts `TS1141` as a syntax rejection.
 
 - Callable-contract documentation tests depended on removed examples; they now retain native witnesses and check the current wrapper example without losing defect, failure or default-callback coverage.
 

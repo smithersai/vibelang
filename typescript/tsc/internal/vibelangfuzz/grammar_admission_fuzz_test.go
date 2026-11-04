@@ -171,6 +171,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"data-member-not-field", "data D { A { x : number\nnumber } ; B }"},
 	{"throw-comma-join", "effect function f ( e ) { return [ join throw e , 1 ] ; }"},
 	{"schema-member-not-field", "schema C {\nstring }"},
+	{"module-reference-not-literal", "import x = require ( ( \"m\" ) ) ; ; import y = N . a ;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1601,6 +1602,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// grammar error TS1203 (checker.go, grammarErrorOnNode).
 	case 1203:
 		return true
+	// TypeScript's ExternalModuleReference is require ( StringLiteral ). Its
+	// parser reads any expression there for recovery and the checker rejects a
+	// non-literal with TS1141, e.g. `import x = require(("m"));`.
+	case 1141:
+		return true
 	// checkGrammarArrowFunction: a line break before => (TS1200); the
 	// checker's throw check: a line break after throw (TS1142).
 	case 1200, 1142:
@@ -1707,6 +1713,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-module-element-context-warning", "", diagnostics.CategoryWarning, 1231, false},
 		{"native-esm-export-assignment", "", diagnostics.CategoryError, 1203, true},
 		{"native-esm-export-assignment-warning", "", diagnostics.CategoryWarning, 1203, false},
+		{"native-module-reference-not-literal", "", diagnostics.CategoryError, 1141, true},
+		{"native-module-reference-not-literal-warning", "", diagnostics.CategoryWarning, 1141, false},
+		{"ek-module-reference-code-collision", "EK", diagnostics.CategoryError, 1141, false},
 		{"data-member-not-field", "EK", diagnostics.CategoryError, 1606, true},
 		{"data-member-not-field-warning", "EK", diagnostics.CategoryWarning, 1606, false},
 		{"native-data-member-code-collision", "", diagnostics.CategoryError, 1606, false},
