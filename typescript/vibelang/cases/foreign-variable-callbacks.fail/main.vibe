@@ -1,0 +1,15 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import {source,callable,consume,owner,generic,ForeignParent,type Handler,type API,type Program} from "./helpers.js"
+export const assigned:Handler=source
+export function argument(){consume(callable)}
+export function returned():Handler{return source}
+export const member:API={run:source}
+export class Box implements API {run=source}
+class Parent {run=source}
+export class Inherited extends Parent implements API {}
+const alias=source
+export const aliased:Handler=alias
+export const property:Handler=owner.run
+const instantiated=generic<Program>
+export const ownTypeArguments:Handler=instantiated
+export class ForeignInherited extends ForeignParent implements API {}

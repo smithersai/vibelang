@@ -10,7 +10,8 @@ import (
 
 // Retained foreign function declarations default to unknown (VIP-4, chapter
 // 003). Check their callback assignments and class fields with native-compatible
-// signatures. Accessor and function-type provenance is outside this slice.
+// signatures. Foreign callable variables retain their value provenance;
+// accessor and returned-callable provenance are outside this slice.
 func init() { fileChecks = append(fileChecks, checkDefaultForeignCallbacks) }
 
 func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
@@ -22,14 +23,14 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsClassLike(node) && classKindOf(node) == ordinaryClass {
 			checkDefaultForeignCallbackClass(c, node)
 		}
-		if defaultForeignValueContext(node) && !defaultForeignBindingTagged(c, node, map[*ast.Symbol]bool{}) {
+		if defaultForeignValueContext(node) && !defaultForeignIntrinsicMatcher(c, node) && !defaultForeignBindingTagged(c, node, map[*ast.Symbol]bool{}) {
 			target := c.GetContextualType(node, checker.ContextFlagsNone)
 			if target == nil {
 				return node.ForEachChild(visit)
 			}
 			source := c.GetTypeAtLocation(node)
 			owners := defaultForeignValueOwners(c, node)
-			if defaultForeignCallbackCandidate(c, source, owners) &&
+			if defaultForeignCallbackCandidate(c, source, owners, node) &&
 				!admittedByShippedContract(c, node) && !defaultForeignComputedWrapper(c, node) &&
 				!defaultForeignCallbackFits(c, source, target, owners, append([]*checker.Type{target}, owners...)) {
 				d := report(c, node, EK0402)
@@ -75,7 +76,7 @@ func checkDefaultForeignCallbackClass(c *checker.Checker, class *ast.Node) {
 			if declaration != nil && ast.IsPropertyDeclaration(declaration) && declaration.Initializer() != nil && defaultForeignBindingTagged(c, declaration.Initializer(), map[*ast.Symbol]bool{}) {
 				continue
 			}
-			if !defaultForeignCallbackCandidate(c, source, []*checker.Type{instance}) {
+			if !defaultForeignCallbackCandidate(c, source, []*checker.Type{instance}, declaration) {
 				continue
 			}
 			if defaultForeignCallbackFits(c, source, target, []*checker.Type{instance}, []*checker.Type{implemented}) {
@@ -275,9 +276,9 @@ func defaultForeignCallbackContract(c *checker.Checker, signature *checker.Signa
 	return contract, contract.tagged
 }
 
-// Only retained, unannotated foreign function declarations enter this slice.
-// Function-type and accessor provenance remains a separate contract-flow task.
-func defaultForeignCallbackCandidate(c *checker.Checker, t *checker.Type, owners []*checker.Type) bool {
+// Retained foreign callable variables keep their declaration provenance.
+// Accessor and returned-callable provenance remain separate contract-flow tasks.
+func defaultForeignCallbackCandidate(c *checker.Checker, t *checker.Type, owners []*checker.Type, origin *ast.Node) bool {
 	if t == nil {
 		return false
 	}
@@ -309,6 +310,10 @@ func defaultForeignCallbackCandidate(c *checker.Checker, t *checker.Type, owners
 			}
 			switch decl.Kind {
 			case ast.KindFunctionDeclaration, ast.KindMethodDeclaration, ast.KindMethodSignature, ast.KindArrowFunction, ast.KindFunctionExpression:
+			case ast.KindFunctionType, ast.KindCallSignature:
+				if !defaultForeignValueDeclaredAbroad(c, origin, map[*ast.Symbol]bool{}) {
+					return false
+				}
 			default:
 				return false
 			}
@@ -339,6 +344,22 @@ func defaultForeignValueContext(node *ast.Node) bool {
 	}
 	return false
 }
+
+// Intrinsic matcher names are pattern syntax, not foreign callback values
+// (chapter 004). Exempt only the matcher slot of a parser-written pattern
+// helper. User expressions in subjects, arms and guards still get checked.
+func defaultForeignIntrinsicMatcher(c *checker.Checker, node *ast.Node) bool {
+	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
+	}
+	call := node.Parent
+	if !(isPatternCall(call, "$is") || isPatternCall(call, "$extract")) || call.Arguments()[0] != node {
+		return false
+	}
+	_, builtin := builtinMatcherOf(c, ast.SkipParentheses(node))
+	return builtin
+}
+
 func defaultForeignValueOwners(c *checker.Checker, node *ast.Node) []*checker.Type {
 	owners := []*checker.Type{c.GetTypeAtLocation(node)}
 	if ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node) {
@@ -403,4 +424,59 @@ func defaultForeignComputedWrapper(c *checker.Checker, node *ast.Node) bool {
 	}
 	call := p.Parent.Parent
 	return call != nil && ast.IsCallExpression(call) && isExportOf(c, call, "effect", "Effect", []string{"try_", "try", "tryPromise"})
+}
+
+// Preserve the foreign declaration of a callable variable through untyped
+// aliases and fields. A written Vibe binding type or assertion is a boundary;
+// this check does not infer a callable contract from an implementation body.
+func defaultForeignValueDeclaredAbroad(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol]bool) bool {
+	node = ast.SkipParentheses(node)
+	if node == nil {
+		return false
+	}
+	if node.Kind == ast.KindExpressionWithTypeArguments {
+		return defaultForeignValueDeclaredAbroad(c, node.Expression(), seen)
+	}
+	if ast.IsPropertyDeclaration(node) || node.Kind == ast.KindPropertySignature {
+		file := ast.GetSourceFileOfNode(node)
+		foreign := file != nil && !isVibeLangFile(file)
+		for n := node; !foreign && n != nil; n = n.Parent {
+			foreign = isTypeScriptModule(n)
+		}
+		if foreign {
+			return true
+		}
+		return ast.IsPropertyDeclaration(node) && node.Type() == nil && node.Initializer() != nil && defaultForeignValueDeclaredAbroad(c, node.Initializer(), seen)
+	}
+	if !(ast.IsIdentifier(node) || ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node)) {
+		return false
+	}
+	symbol := c.GetSymbolAtLocation(node)
+	if symbol == nil {
+		return false
+	}
+	if symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol == nil || seen[symbol] {
+		return false
+	}
+	seen[symbol] = true
+	for _, decl := range symbol.Declarations() {
+		if decl.Kind == ast.KindGetAccessor || decl.Kind == ast.KindSetAccessor {
+			continue
+		}
+		file := ast.GetSourceFileOfNode(decl)
+		foreign := file != nil && !isVibeLangFile(file)
+		for n := decl; !foreign && n != nil; n = n.Parent {
+			foreign = isTypeScriptModule(n)
+		}
+		if foreign {
+			return true
+		}
+		if (ast.IsVariableDeclaration(decl) || ast.IsPropertyDeclaration(decl)) && decl.Type() == nil && decl.Initializer() != nil && defaultForeignValueDeclaredAbroad(c, decl.Initializer(), seen) {
+			return true
+		}
+	}
+	return false
 }

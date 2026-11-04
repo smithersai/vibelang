@@ -1,0 +1,21 @@
+// expect:
+import {safe,fx,source,admit,fxOwner,FxParent,type API,type Handler,type Admitting} from "./helpers.js"
+import * as Effect from "effect/Effect"
+function local(){return 1}
+const safeAlias=safe
+export const pure:Handler=local
+export const safeValue:Handler=safeAlias
+export const fxValue:Handler=fx
+export const capturedValue:Handler=fxOwner.run
+export const admitted:Admitting=source
+export function allowed(){admit(source);return Effect.try(source)}
+export function computed(){return Effect.try({["try"]:source,catch:()=>0})}
+export class Pure implements API {run=local}
+export class Safe implements API {run=safeAlias}
+export class Fx implements API {run=fx}
+export class Captured implements API {run=fxOwner.run}
+export class ForeignFxInherited extends FxParent implements API {}
+import * as Option from "effect/Option"
+import * as O from "effect/Option"
+export function pattern(x:Option.Option<number>){return match(x){when Option.Some(let value):value;when Option.None:0;}}
+export function aliasPattern(x:unknown){return x is O.None}
