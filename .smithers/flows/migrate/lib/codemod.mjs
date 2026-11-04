@@ -564,6 +564,34 @@ const specifierExtensions = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts
 
 export const importerFile = /\.(?:ts|tsx|mts|cts|vibe|js|jsx|mjs|cjs)$/
 
+// VIP-40 bodies retain TypeScript import spelling. Parse their ranges so
+// comments, strings, regexps and templates cannot impersonate a boundary.
+let importTypeScript
+function nativeImportRanges(text, root) {
+  if (!/\bmodule\b/.test(text)) return []
+  const ts = importTypeScript ??= loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
+  const source = ts.createSourceFile("imports.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const ranges = []
+  const native = node => node && ts.isModuleDeclaration(node) && ts.isIdentifier(node.name) && node.name.text && !(node.flags & ts.NodeFlags.Namespace) && node.body && ts.isModuleBlock(node.body)
+  const visit = node => {
+    if (native(node)) {
+      ranges.push([node.body.pos, node.body.end])
+      return
+    }
+    // TypeScript can consume `module` as a recovery expression after a
+    // VibeLang do expression. Parse again at that real identifier token;
+    // unlike a text search, this never starts inside a quoted literal.
+    if (ts.isIdentifier(node) && node.text === "module") {
+      const start = node.getStart(source)
+      const tail = ts.createSourceFile("imports.ts", text.slice(start), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS).statements[0]
+      if (native(tail)) ranges.push([start + tail.body.pos, start + tail.body.end])
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return ranges
+}
+
 /**
  * Rewrites the relative imports of every file in scope (repository-relative
  * paths after the renames) so each names its target as VibeLang reads it.
@@ -589,7 +617,9 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
     const path = join(root, file)
     const text = read(file)
     const changes = []
+    const nativeBodies = file.endsWith(".vibe") ? nativeImportRanges(text, root) : []
     for (const i of parseImports(text)) {
+      if (nativeBodies.some(([start, end]) => start <= i.start && i.start < end)) continue
       if (javascript && !/\.(?:[cm]?tsx?|vibe)$/.test(i.specifier)) continue
       if (kept.get(file)?.has(i.specifier)) continue
       // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).

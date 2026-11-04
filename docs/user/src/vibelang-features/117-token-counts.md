@@ -114,7 +114,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **7,000** |
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 2,900 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,500 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,600 |
 | **Build and test** | **18,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 14,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,500 |

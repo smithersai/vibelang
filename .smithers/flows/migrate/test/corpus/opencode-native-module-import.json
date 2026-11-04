@@ -1,0 +1,7 @@
+{
+  "key": "codemod-gap:native-module-import-ts5097",
+  "description": "Minimized shared dependency of a throwing helper and a migrated module",
+  "leaf": "export const value = 42; export interface Shape { value: number }\n",
+  "source": "module local {\nimport { value } from \"./leaf.js\";\nexport const result = value;\n}\nexport { result } from local;\n",
+  "before": "import { value } from \"./leaf.js\";\nexport function checked(n: number): number { if (n < 0) throw value; return n }\nexport const stable = 1;\n"
+}

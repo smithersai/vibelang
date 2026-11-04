@@ -19,6 +19,8 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 | record | none | Rejects foreign changes before formatting and before committing, including when forced; commits the batch with `jj`, naming its files, with o200k token counts before and after | `batches/NN/record.json` |
 | report | none | Batches, tests, declaration identity, tokens, codemod gaps, issues and idiom lessons | `report.md`, `report.json` |
 
+Imports and re-exports inside VIP-40 native `module` bodies keep their original TypeScript spelling when dependencies migrate, so `./leaf.js` does not become `./leaf.vibe` and introduce `TS5097`. The containing file's top-level imports retain the existing extension policy.
+
 An exact `paths` alias keeps its configuration key. When its target becomes `.vibe`, imports use a relative name of that same source, following the project's extension policy. The import journal restores the original alias on revert. Wildcard aliases continue to follow their existing configuration and native extension policy.
 
 Inside `types` or `typings`, nested conditions and fallback arrays keep declaration-sidecar targets, including `vibe.sidecarDir` layouts; they never gain runtime export wrappers.
