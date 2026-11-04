@@ -1,19 +1,42 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import ts from "typescript"
+import fc from "fast-check"
 import { chapter, read, tools } from "./spec-witness.mjs"
 import { join } from "node:path"
 
+const schemaDocClauses = [
+  "One written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias of `schema X`",
+  "in either order, each declaration keeping its own JSDoc and export status",
+  "Without one, the same bare alias is synthesized and the declaration's JSDoc belongs to its constant only",
+]
+function checkSchemaDocumentation(text) {
+  for (const clause of schemaDocClauses) assert.ok(text.includes(clause), "missing schema documentation contract: " + clause)
+}
+
 test("schema declaration documentation belongs to its constant", () => {
-  assert.ok(chapter("006-data").includes("A JSDoc comment on a `schema` declaration is emitted on its `declare const` only"))
-  assert.ok(chapter("006-data").includes("its `typeof Name.Type` alias has no comment"))
-  assert.ok(read("docs/design/vips/0027-declaration-output.md").includes("documented schemas"))
+  checkSchemaDocumentation(chapter("006-data"))
+  const vip = read("docs/design/vips/0027-declaration-output.md")
+  assert.ok(vip.includes("documented schemas"))
+  assert.ok(vip.includes("its synthesized `typeof Name.Type` alias has no comment"))
 })
 
-test("written schema companions keep their own declaration documentation", { skip: "pending fold-details: accepted foldkit-9 text in chapter 006" }, () => {
-  assert.ok(chapter("006-data").includes("its synthesized `typeof Name.Type` alias has no comment"))
-  assert.ok(chapter("006-data").includes("one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order"))
-  assert.ok(chapter("006-data").includes("Preserve each declaration’s own JSDoc, order and export status as on the native constant/type pair"))
+test("written schema companions keep their own declaration documentation", () => {
+  // VIP-27 and chapter 006 now publish the accepted written-companion rule;
+  // the old fold-details pending condition has been satisfied.
+  checkSchemaDocumentation(chapter("006-data"))
+})
+
+test("fast-check: schema documentation keeps alias ownership, order and visibility", () => {
+  const text = chapter("006-data")
+  fc.assert(fc.property(
+    fc.integer({ min: 0, max: schemaDocClauses.length - 1 }),
+    fc.stringMatching(/^[A-Za-z ]{0,60}$/),
+    (index, prose) => {
+      checkSchemaDocumentation(prose + "\n" + text + "\n" + prose)
+      assert.throws(() => checkSchemaDocumentation(text.replace(schemaDocClauses[index], "removed schema clause")), { code: "ERR_ASSERTION" })
+    }
+  ), { seed: 27006, numRuns: 200 })
 })
 
 test("native Effect pairs retain documentation and visibility on the constant", { timeout: 60000 }, () => {
