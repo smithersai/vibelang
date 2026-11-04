@@ -210,6 +210,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The Effect lint regression snapshot omitted the upstream `lazyEffect` suggestion on an exported lazy function; it now checks that suggestion as well as the existing lint errors.
 
+- The foreign-call regression cases still expected `EK4401` after unknown thrown contracts moved to `EK0403`; they now check `EK0403` and retain the separate diagnostic for an inaccessible declared error type.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

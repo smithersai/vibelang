@@ -1,0 +1,28 @@
+[
+  {
+    "code": "EK0403",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/ek4401-fix.fail",
+        "output": "typescript/vibelang/cases/ek4401-fix-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/opencode-narrowed-property-call.fail",
+        "output": "typescript/vibelang/cases/opencode-narrowed-property-call-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/vip4-ts-plain-still-throws.fail",
+        "output": "typescript/vibelang/cases/vip4-ts-plain-still-throws-fixed-output"
+      }
+    ]
+  },
+  {
+    "code": "EK4401",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/ek4401-fix.fail",
+        "output": "typescript/vibelang/cases/ek4401-fix-fixed-output"
+      }
+    ]
+  }
+]

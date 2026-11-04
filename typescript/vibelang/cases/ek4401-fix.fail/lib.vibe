@@ -1,4 +1,4 @@
-// expect: EK0403
+// expect: EK0403 EK4401
 // vibelang --fix preserves each foreign call: its value
 // is the same, and an exception is the defect it was in a generator.
 import { box, double, guarded, label, program, project, refuse } from "./plain.ts"

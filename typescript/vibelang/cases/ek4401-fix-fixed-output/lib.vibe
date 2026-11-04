@@ -1,0 +1,53 @@
+// expect: EK0403 EK4401
+// vibelang --fix preserves each foreign call: its value
+// is the same, and an exception is the defect it was in a generator.
+import { box, double, guarded, label, program, project, refuse } from "./plain.ts"
+
+const one = effect (): number!! => 1
+const text = effect (parts: TemplateStringsArray, ...values: ReadonlyArray<number>): string!! =>
+  parts.join("?") + values.join(",")
+
+// A const and a return.
+export const doubled = effect (n: number) => {
+  const m = try Effect.orDie(Effect.try({ try: () => double(n), catch: (error) => error }))
+  return try Effect.orDie(Effect.try({ try: () => label("doubled", m), catch: (error) => error }))
+}
+
+// An exception stays a defect.
+export const checked = effect (n: number): number!! => {
+  return try Effect.orDie(Effect.try({ try: () => refuse(n), catch: (error) => error }))
+}
+
+// An operand that runs an Effect runs first, as it did.
+export const operand = effect (n: number) => {
+  const n3 = try one()
+  const n2 = (try Effect.orDie(Effect.try({ try: () => double(n3), catch: (error) => error }))) + n
+  return try Effect.orDie(Effect.try({ try: () => label("operand", n2), catch: (error) => error }))
+}
+
+// A substitution of a template, a receiver, a branch, a condition.
+export const positions = effect (n: number) => {
+  const tagged = try text`a${try Effect.orDie(Effect.try({ try: () => double(n), catch: (error) => error }))}b`
+  const held = (try Effect.orDie(Effect.try({ try: () => box(n), catch: (error) => error }))).value
+  const branch = n > 0 ? try Effect.orDie(Effect.try({ try: () => double(n), catch: (error) => error })) : 0
+  if ((try Effect.orDie(Effect.try({ try: () => double(n), catch: (error) => error }))) > 100) return "large"
+  return `${tagged} ${held} ${branch} ${try Effect.orDie(Effect.try({ try: () => label("t", n), catch: (error) => error }))}`
+}
+
+// A function that returns an Effect can't throw (VIP-4): it stays a program.
+export const held = effect (n: number) => {
+  return try Effect.all({ one: program(n), two: program(2) })
+}
+
+// A destination that takes a program.
+export const projected = project({
+  reduce: effect (state: number) => {
+    if (state < 0) return state
+    return try Effect.orDie(Effect.try({ try: () => double(state), catch: (error) => error }))
+  },
+})
+
+// A function that runs no Effect stays plain. In effect code, a call known to
+// throw (a @throws naming a class this module can't reach) is wrapped too.
+export const shout = (name: string) => label(name, double(1)).toUpperCase()
+export const hidden = effect (n: number) => try Effect.orDie(Effect.try({ try: () => guarded(n), catch: (error) => error }))

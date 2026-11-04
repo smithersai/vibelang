@@ -1,4 +1,4 @@
-// expect: EK4401
+// expect: EK0403
 // opencode stats/core geo.ts: a guard proves a property, then a plain TypeScript
 // call reads it. Effect.try's function does not know what the guard proved.
 import { double } from "./plain.ts"

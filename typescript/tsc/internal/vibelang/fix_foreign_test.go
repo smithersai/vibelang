@@ -28,8 +28,8 @@ func TestForeignCallFix(t *testing.T) {
 			got = fixed.Text
 		}
 	}
-	if want := strings.TrimPrefix(string(want), "// expect: EK0403\n"); got != "// expect: EK0403\n"+want {
-		t.Errorf("--fix writes\n%s\nwant\n%s", got, want)
+	if expected := foreignCaseHeader(t, fixture) + string(want); got != expected {
+		t.Errorf("--fix writes\n%s\nwant\n%s", got, expected)
 	}
 	if len(result.Refused) != 0 {
 		t.Errorf("refused: %v", result.Refused)
@@ -146,7 +146,7 @@ func TestForeignCallFixNarrowedTwin(t *testing.T) {
 		t.Errorf("refused: %v", result.Refused)
 	}
 	for file, fixed := range result.Files {
-		if filepath.Base(file.AsString()) == "lib.vibe" && fixed.Text != "// expect: EK4401\n"+string(want) {
+		if filepath.Base(file.AsString()) == "lib.vibe" && fixed.Text != foreignCaseHeader(t, fixture)+string(want) {
 			t.Errorf("--fix writes\n%s\nwant\n%s", fixed.Text, want)
 		}
 	}
@@ -172,4 +172,19 @@ func TestForeignCallFixKeepsNarrowedReadOrder(t *testing.T) {
 			t.Errorf("--fix moved the read past a call:\n%s", fixed.Text)
 		}
 	}
+}
+
+// The fix preserves fixture metadata verbatim; diagnostic-code assertions
+// belong to the negative case rather than the generated program comparison.
+func foreignCaseHeader(t *testing.T, fixture string) string {
+	t.Helper()
+	source, err := os.ReadFile(filepath.Join(fixture, "lib.vibe"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	header, _, ok := strings.Cut(string(source), "\n")
+	if !ok || !strings.HasPrefix(header, "// expect: ") {
+		t.Fatal("foreign-call fixture needs its diagnostic header")
+	}
+	return header + "\n"
 }

@@ -1,0 +1,1 @@
+Exact output of `vibelang --fix`, including the input diagnostic header. The retirement gate compiles these golden sources under the input case’s `tsconfig.json`; runnable positive twins remain separate. Regenerate from the corresponding `.fail` sources in a scratch copy. Do not edit the golden source files by hand.

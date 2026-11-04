@@ -1,0 +1,3 @@
+// expect: EK0403
+import { plain } from "./helpers.ts"
+export effect function main() { return try Effect.orDie(Effect.try({ try: () => plain(), catch: (error) => error })) }
