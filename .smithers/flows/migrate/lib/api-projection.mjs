@@ -78,7 +78,22 @@ export function apiProjection(ts, directory, surface, files, { published = true 
         : `export * from ${reference};\n` + (hasDefault ? `export { default } from ${reference};\n` : ""))
       originals.set(destination, target)
     }
-    put("package.json", JSON.stringify(published ? { ...metadata.manifest, ...metadata.manifest.publishConfig } : metadata.manifest))
+    // Native source targets in conditional exports are exact paths. Resolve
+    // only recorded source aliases through the declarations reconstructed
+    // above, retaining condition order and the rest of the package manifest.
+    const sourceConditions = value => {
+      if (Array.isArray(value)) return value.map(sourceConditions)
+      if (value && typeof value === "object")
+        return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, sourceConditions(child)]))
+      if (typeof value !== "string" || !value.startsWith("./") || !/\.(?:[cm]?ts|tsx)$/.test(value)) return value
+      const name = posix.normalize(value)
+      if (!Object.hasOwn(metadata.aliases, name)) return value
+      return "./" + declaration(name)
+    }
+    const manifest = { ...(published ? { ...metadata.manifest, ...metadata.manifest.publishConfig } : metadata.manifest) }
+    for (const field of ["exports", "imports", "types", "typings"])
+      if (Object.hasOwn(manifest, field)) manifest[field] = sourceConditions(manifest[field])
+    put("package.json", JSON.stringify(manifest))
     return { directory: root, originals, destinations,
       cleanup() { rmSync(temporary, { recursive: true, force: true }) } }
   } catch (error) { rmSync(temporary, { recursive: true, force: true }); throw error }

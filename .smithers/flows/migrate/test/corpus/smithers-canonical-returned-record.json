@@ -1,0 +1,11 @@
+{
+  "key": "canonical-returned-native-source-condition",
+  "source": "/** Checks the container without inspecting its members.\n * @throws Propagates Array.isArray errors for revoked proxies.\n */\nexport function isRecord(value: unknown): value is Record<string, unknown> {\n  return typeof value === \"object\" && value !== null && !Array.isArray(value)\n}\n",
+  "declaration": "/** Checks the container without inspecting its members.\n * @throws Propagates Array.isArray errors for revoked proxies.\n */\nexport declare function isRecord(value: unknown): value is Record<string, unknown>;\n",
+  "before": "./src/Record.ts",
+  "after": {
+    "types": "./src/Record.ts",
+    "vibelang-source": "./src/Record.ts",
+    "default": "./.vibelang/js/src/Record.js"
+  }
+}

@@ -194,6 +194,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Stock TypeScript tools rejected the mapper prelude after the old interruption and yield factories were retired. The mapper now imports `interrupt` and `yieldNow` directly from Effect and preserves their native value identities.
 - Match-chain migration validation now retains the explicit fallback required for destructuring combinator arms and checks that exhaustive tagged handlers keep their results and public types.
 
+
+- Migration verification could report a missing declaration for a module returned to TypeScript when its package export kept a source `types` condition. Declaration snapshots now preserve that recorded source path and still reject changed types, documentation and missing provenance.
+
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
 
 - Stock TypeScript tools could receive an unchanged `.vibe` file for iterable `is` patterns because projection edits overlapped. Function and nested-block projections now preserve the iterator cache and its cleanup without overlapping edits.
