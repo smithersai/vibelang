@@ -1703,3 +1703,11 @@ the real ES5 library and reject unrelated browser libraries. All 80 generated
 samples, declaration suffix combinations, both `skipLibCheck` settings and
 real `TS2339` counterexamples remain enabled; every input file keeps its
 original content hash during compilation.
+
+Helper re-export fixtures select ES5 for native compilation and the stock
+TypeScript consumer. A separate `fixture-libraries.d.ts` selects the same
+environment for the migration API gate. The two native declaration outputs
+are counted and saved before adding that ambient fixture; their bytes and
+the throwing TypeScript helper remain unchanged. All eight generated samples
+and type, documentation and missing-dependency negatives remain enabled.
+Stock and native loaded-library guards retain the actual ES5 declarations.

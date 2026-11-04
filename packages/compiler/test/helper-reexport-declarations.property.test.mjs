@@ -18,13 +18,15 @@ test("helper declaration checks retain the published declaration contract", () =
   assert.ok(readFileSync(SpecPath("001-functions.md"), "utf8").includes("Declarations are exactly what idiomatic Effect TypeScript would declare."))
 })
 
-function check(input, { negative = false } = {}) {
+const libraryDeclarations = '/// <reference no-default-lib="true" />\n/// <reference lib="es5" />\n'
+
+function check(input, { negative = false, nativeLibraries = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "t3code-throw-helper-declarations-"))
   try {
     const helper = "export function " + input.name + "(" + input.parameter + ": string | undefined): string {\n" +
       "if (" + input.parameter + " === undefined) throw new Error(" + JSON.stringify(input.message) + ");\nreturn " + input.parameter + ";\n}\n"
     const size = "export function size(value: string): number { return value.length; }\n"
-    const dirs = {}
+    const dirs = {}, emitted = new Map()
     for (const side of ["before", "bare", "wrapped"]) {
       const directory = join(root, side), extension = side === "before" ? "ts" : "vibe"
       const put = (path, source) => { mkdirSync(dirname(join(directory, path)), { recursive: true }); writeFileSync(join(directory, path), source) }
@@ -32,7 +34,7 @@ function check(input, { negative = false } = {}) {
       put("required.ts", helper)
       put("main." + extension, side === "before" ? helper + size : side === "bare" ? 'export { ' + input.name + ' } from "./required.ts";\n' + size : 'import { ' + input.name + ' as implementation } from "./required.ts";\n' +
         "export function " + input.name + "(" + input.parameter + ": string | undefined): string { return implementation(" + input.parameter + "); }\n" + size)
-      put("tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler",
+      put("tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2022", lib: ["es5"], module: "ESNext", moduleResolution: "Bundler",
         strict: true, skipLibCheck: true, types: [], declaration: true, emitDeclarationOnly: true, allowImportingTsExtensions: true,
         rootDir: ".", outDir: "out" }, files: ["main." + extension, "required.ts"] }))
       const compiled = spawnSync(native, ["--singleThreaded", "--pretty", "false", "-p", "tsconfig.json"], { cwd: directory, encoding: "utf8" })
@@ -41,6 +43,25 @@ function check(input, { negative = false } = {}) {
       assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr)
       assert.equal(readFileSync(join(directory, "required.ts"), "utf8"), helper, "the throwing TypeScript body stays unchanged")
       dirs[side] = join(directory, "out")
+      assert.deepEqual(readdirSync(dirs[side]).sort(), ["main.d.ts", "required.d.ts"],
+        "Native emit keeps the original two declaration files")
+      for (const file of readdirSync(dirs[side])) {
+        const path = join(dirs[side], file)
+        emitted.set(path, readFileSync(path, "utf8"))
+      }
+      // This ambient fixture supplies the comparison environment without
+      // rewriting the native declarations under test.
+      writeFileSync(join(dirs[side], "fixture-libraries.d.ts"), libraryDeclarations)
+      if (nativeLibraries) {
+        const listing = spawnSync(native, ["--listFilesOnly", "--pretty", "false", "-p", "tsconfig.json"],
+          { cwd: directory, encoding: "utf8" })
+        assert.ifError(listing.error)
+        assert.equal(listing.signal, null)
+        assert.equal(listing.status, 0, listing.stdout + listing.stderr)
+        assert.ok(listing.stdout.includes("lib.es5.d.ts"), "Native helper projects must retain ES5 declarations")
+        assert.ok(!/[/\\]lib\.dom(?:\.iterable)?\.d\.ts/.test(listing.stdout),
+          "Native helper projects must not load unrelated browser libraries")
+      }
     }
     // Independent stock TypeScript proves that both exported callable types
     // agree. The shared API gate separately checks names, types and JSDoc.
@@ -50,19 +71,23 @@ function check(input, { negative = false } = {}) {
       'import { ' + input.name + ' as c } from "./bare/out/main.js";\n' +
       "type Equal<A,B>=(<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false;\n" +
       "const forward: true = null as unknown as Equal<typeof a,typeof b>;\nconst backward: true = null as unknown as Equal<typeof b,typeof a>;\nconst bareForward: true = null as unknown as Equal<typeof a,typeof c>;\nconst bareBackward: true = null as unknown as Equal<typeof c,typeof a>;\n")
-    const program = ts.createProgram([consumer], { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
+    const program = ts.createProgram([consumer], { lib: ["lib.es5.d.ts"], target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true, skipLibCheck: true, noEmit: true, types: [] })
+    assert.ok(program.getSourceFiles().some(source => /[/\\]lib\.es5\.d\.ts$/.test(source.fileName)),
+      "Helper declaration consumers must retain ES5 declarations")
+    assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+      "Helper declaration consumers must not load unrelated browser libraries")
     assert.deepEqual(ts.getPreEmitDiagnostics(program).filter(d => d.category === ts.DiagnosticCategory.Error).map(d => d.code), [])
     for (const directory of Object.values(dirs)) assert.equal(compareDeclarations(ts, directory, directory).identical, true)
     const bare = compareDeclarations(ts, dirs.before, dirs.bare)
-    assert.equal(bare.files, 2)
+    assert.equal(bare.files, 3)
     assert.deepEqual(bare.added, [])
     assert.deepEqual(bare.removed, [])
     assert.equal(bare.comparisonComplete, true, JSON.stringify(bare))
     assert.equal(bare.identical, true, "the API gate accepts an unchanged callable reexport")
     assert.deepEqual(bare.changed, [])
     const wrapped = compareDeclarations(ts, dirs.before, dirs.wrapped)
-    assert.equal(wrapped.files, 2)
+    assert.equal(wrapped.files, 3)
     assert.equal(wrapped.comparisonComplete, true, JSON.stringify(wrapped))
     assert.equal(wrapped.identical, true, JSON.stringify(wrapped))
 
@@ -90,6 +115,8 @@ function check(input, { negative = false } = {}) {
         }
       }
     }
+    for (const [path, declaration] of emitted)
+      assert.equal(readFileSync(path, "utf8"), declaration, "The API gate leaves native declarations unchanged")
 
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
@@ -101,3 +128,6 @@ test("helper boundary identity varies exported names, parameter spellings and ex
     parameter: fc.constantFrom("value", "input"), message: fc.constantFrom("missing", "required", "empty input"),
   }), check), { seed: 114204, numRuns: 8, endOnFailure: true })
 })
+
+
+test("helper declaration projects load only their required libraries", () => check(fixture.input, { nativeLibraries: true }))
