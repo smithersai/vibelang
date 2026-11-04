@@ -1,3 +1,3 @@
 go test fuzz v1
-string("EK9201@by-name-choice-program.fail")
-[]byte("\x00")
+string("EK9201@EK9201-refused-contract")
+[]byte("\u0000")

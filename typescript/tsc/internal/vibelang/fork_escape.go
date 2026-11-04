@@ -7,7 +7,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 // A fiber stays with its owner (D353, D386, D409; spec Chapter 7). A fork
@@ -535,35 +534,10 @@ func forkProgramText(file *ast.SourceFile, call *ast.Node) string {
 	return nodeText(file, program)
 }
 
-// escapingFiberFix is EK4838's quick fix (D386): Effect.forkScoped gives the
-// fiber the caller's lifetime, adding Scope to the function's requirements,
-// and detach gives it no owner. Each changes the fiber's lifetime, so each
-// is an editor action a person chooses, absent from --fix's safe list.
+// VIP-17 gives plain fork the native current-fiber owner. The old region
+// diagnostic cannot authorize an automatic lifetime change (Chapter 7).
 var escapingFiberFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4838.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		var call *ast.Node
-		var visit func(*ast.Node) bool
-		visit = func(node *ast.Node) bool {
-			if call != nil {
-				return true
-			}
-			if ast.IsCallExpression(node) && node.Expression().Kind == ast.KindIdentifier && node.Expression().Text() == "fork" && node.Expression().Loc.ContainsInclusive(fix.Span.Pos()) {
-				call = node
-				return true
-			}
-			return node.ForEachChild(visit)
-		}
-		fix.SourceFile.AsNode().ForEachChild(visit)
-		if call == nil || len(call.Arguments()) != 1 {
-			return nil, nil
-		}
-		program := forkProgramText(fix.SourceFile, call)
-		span := fix.LS.ToLSPRange(fix.SourceFile, tsFormSpan(fix.SourceFile, call))
-		return []*ls.CodeAction{
-			{Description: "Write Effect.forkScoped to give the fiber the caller's lifetime", Changes: []*lsproto.TextEdit{{Range: span, NewText: "Effect.forkScoped(" + program + ")"}}},
-			{Description: "Write detach to give the fiber no owner", Changes: []*lsproto.TextEdit{{Range: span, NewText: "detach(" + program + ")"}}},
-		}, nil
-	},
+	Source:         diagnosticSource,
+	ErrorCodes:     []int32{EK4838.Code},
+	GetCodeActions: func(_ context.Context, _ *ls.CodeFixContext) ([]*ls.CodeAction, error) { return nil, nil },
 }

@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"fmt"
 	"maps"
+	"strings"
 )
 
 // Each pair is a hand-written spelling of the same program from the cited
@@ -11,6 +12,13 @@ type quickfixGolden struct{ before, reference string }
 
 func quickfixGoldenPrograms() map[int32]quickfixGolden {
 	return map[int32]quickfixGolden{
+		704: {before: "class C{constructor(readonly n:number){}}\nexport function main(){return match(new C(7)){when C(let n):n;default:0;}}\n", reference: "class C{constructor(readonly n:number){}}\nexport function main(){return match(new C(7)){when C and {n:let n}:n;default:0;}}\n"},
+		// VIP-21: a Stream has no completion value, but return-expression evaluation is retained.
+		2128: {before: "let evaluated=0\nfunction note(){evaluated++;return evaluated}\neffect function* values(){yield 7;return note()}\nexport effect function main(){const items=try Stream.runCollect(values());return {items,evaluated}}\n", reference: "let evaluated=0\nfunction note(){evaluated++;return evaluated}\neffect function* values(){yield 7;{note();return}}\nexport effect function main(){const items=try Stream.runCollect(values());return {items,evaluated}}\n"},
+		// Explicit-key model for a private service; the key is not part of this program's API.
+		903:  {before: "export effect function main(){service Users {name:string};provide Layer.succeed(Users,{name:\"kept\"}) {return (try Users).name}}\n", reference: "export effect function main(){service Users {static readonly key=\"quickfix-users\";name:string};provide Layer.succeed(Users,{name:\"kept\"}) {return (try Users).name}}\n"},
+		4401: {before: "import {foreign} from \"./host.js\"\nexport effect function main(){return foreign(7)}\n", reference: "import {foreign} from \"./host.js\"\nexport effect function main(){return try Effect.orDie(Effect.try({try:()=>foreign(7),catch:error=>error}))}\n"},
+		4402: {before: "export effect function main(){console.log(\"kept\");return 7}\n", reference: "export effect function main(){try Console.log(\"kept\");return 7}\n"},
 		501:  {before: "export function main() { return try Effect.succeed(7) }\n", reference: "export effect function main() { return try Effect.succeed(7) }\n"},
 		1401: {before: "const value=Utils\nexport function main(){return typeof value}\n", reference: "import {Utils} from \"effect\"\nconst value=Utils\nexport function main(){return typeof value}\n"},
 		1703: {before: "export effect function main() { const task=fork (Effect.fail(\"oops\") catch () => 7); return join task }\n", reference: "export effect function main() { const task=fork (effect {return Effect.fail(\"oops\") catch () => 7}); return join task }\n"},
@@ -79,6 +87,13 @@ func quickfixGoldenReference(key string, files map[string]string) map[string]str
 		return nil
 	}
 	ref := maps.Clone(files)
+	if code == 4813 {
+		for _, suffix := range []string{"Cause", "Defect"} {
+			if strings.Contains(files[toolsMainFile(files)], "catchAll"+suffix) {
+				seed.reference = strings.ReplaceAll(seed.reference, "Effect.catch(", "Effect.catch"+suffix+"(")
+			}
+		}
+	}
 	ref[toolsMainFile(ref)] = seed.reference
 	return ref
 }

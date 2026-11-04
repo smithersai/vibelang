@@ -98,57 +98,52 @@ func TestFiberFlows(t *testing.T) {
 	}
 }
 
-// D386: the quick fix gives the fiber the caller's lifetime or no owner.
+// Chapter 7 / VIP-17: a legacy diagnostic must not rewrite ownership.
 func TestFiberFlowFixes(t *testing.T) {
-	const prefix = "effect function one() { try sleep(1); return 1 }\n"
-	for _, test := range []struct{ name, source, title, want string }{
-		{"forkScoped", "export effect function fib() { return fork one() }", "Write Effect.forkScoped to give the fiber the caller's lifetime", "export effect function fib() { return Effect.forkScoped(one()) }"},
-		{"detach", "export effect function fib() { return fork one() }", "Write detach to give the fiber no owner", "export effect function fib() { return detach(one()) }"},
-		{"arrow body", "export const fib = effect () => fork one()", "Write Effect.forkScoped to give the fiber the caller's lifetime", "export const fib = effect () => Effect.forkScoped(one())"},
-		{"fork block", "export effect function fib() { return fork { try one() } }", "Write detach to give the fiber no owner", "export effect function fib() { return detach(effect { try one() }) }"},
+	for _, source := range []string{
+		"effect function one(){return 1}\nexport effect function main(){return fork one()}",
+		"effect function one(){return 1}\nexport const main=effect ()=>fork one()",
+		"effect function one(){return 1}\nexport effect function main(){return fork {try one()}}",
+		"effect function one(){return 1}\nlet saved:unknown\nexport effect function main(){saved=fork one();return 7}",
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			program, file, service, converters := editorProgram(t, prefix+test.source)
-			var diagnostic *ast.Diagnostic
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() == EK4838.Code {
-					diagnostic = d
-				}
+		for _, crlf := range []bool{false, true} {
+			s := source
+			if crlf {
+				s = strings.ReplaceAll(s, "\n", "\r\n")
 			}
-			if diagnostic == nil {
-				t.Fatalf("missing EK4838 in %s", test.source)
-			}
-			d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
-			only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-			response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-				TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-				Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			var chosen *lsproto.CodeAction
-			if response.CommandOrCodeActionArray != nil {
-				for _, action := range *response.CommandOrCodeActionArray {
-					if action.CodeAction != nil && action.CodeAction.Title == test.title {
-						chosen = action.CodeAction
+			t.Run(s, func(t *testing.T) {
+				program, file, service, converters := editorProgram(t, s)
+				found := false
+				for _, diagnostic := range program.GetSemanticDiagnostics(t.Context(), file) {
+					if diagnostic.Code() != 4838 {
+						continue
+					}
+					found = true
+					if !strings.Contains(notesOf(diagnostic), "No automatic fix") {
+						t.Error("obsolete diagnostic needs a refusal explanation")
+					}
+					d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
+					only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
+					response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
+						TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
+						Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if response.CommandOrCodeActionArray != nil {
+						for _, item := range *response.CommandOrCodeActionArray {
+							if a := item.CodeAction; a != nil && a.Edit != nil && a.Edit.Changes != nil && len(*a.Edit.Changes) > 0 {
+								t.Errorf("legacy lifetime-changing quick fix: %s", a.Title)
+							}
+						}
 					}
 				}
-			}
-			if chosen == nil || chosen.Edit == nil || chosen.Edit.Changes == nil {
-				t.Fatalf("missing quick fix %q", test.title)
-			}
-			got := applyEditorEdits(t, file, converters, (*chosen.Edit.Changes)[lsconv.FileNameToDocumentURI(file.FileName())])
-			if got != prefix+test.want {
-				t.Fatalf("got %s\nwant %s", got, prefix+test.want)
-			}
-			checked, edited, _, _ := editorProgram(t, got)
-			for _, after := range checked.GetSemanticDiagnostics(t.Context(), edited) {
-				if after.Category() == diagnostics.CategoryError {
-					t.Errorf("the fix left an error: %s", after.String())
+				if !found {
+					t.Fatal("missing legacy EK4838 witness")
 				}
-			}
-		})
+			})
+		}
 	}
 }
 

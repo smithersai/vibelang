@@ -235,18 +235,8 @@ var styleFix = &ls.CodeFixProvider{
 		var description, newText string
 		switch fix.ErrorCode {
 		case EK4821.Code:
-			tag, field := taggedStructOf(c, call)
-			if tag == "" {
-				return nil, nil
-			}
-			var fields []string
-			for _, property := range call.Arguments()[0].AsObjectLiteralExpression().Properties.Nodes {
-				if property != field {
-					fields = append(fields, text(property))
-				}
-			}
-			callee := strings.TrimSuffix(text(call.Expression()), "Struct") + "TaggedStruct"
-			description, newText = "Write Schema.TaggedStruct", callee+"(\""+tag+"\", { "+strings.Join(fields, ", ")+" })"
+			// TaggedStruct changes make input and constructor behavior.
+			return nil, nil
 		case EK4824.Code:
 			description, newText = "Remove the pipe", text(pipeReceiver(c, call))
 		case EK4825.Code:

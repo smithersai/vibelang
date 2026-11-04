@@ -15,7 +15,7 @@ import (
 // never, and an effect function's failures are its Effect's error channel.
 // @throws and @rethrows describe TypeScript and JavaScript declarations only,
 // so any such tag in a .vibe file, on any declaration, signature or type, is
-// EK0406, and its quick fix removes the tag. Tags in .ts, .d.ts and
+// EK0406. Removing the tag is a manual documentation edit. Tags in .ts, .d.ts and
 // JavaScript inputs are read as before: file checks run only on .vibe files.
 //
 //	/** @throws {Absent} */ effect function find(): User!Absent { … }  // EK0406
@@ -44,7 +44,7 @@ func checkVibeThrowsTags(c *checker.Checker, file *ast.SourceFile) {
 				seen[tag.Pos()] = true
 				d := reportAt(c, file, tagNameRange(tag), EK0406, "@"+tag.TagName().Text())
 				note(d, "Remove the tag. An effect function writes its failures in its error type, such as number!NotFound; code that throws belongs in a .ts file, whose @throws tags VibeLang reads.")
-				note(d, "Its quick fix removes the tag; vibelang --fix applies every such fix in the project.")
+				note(d, "No automatic fix: the tag is part of a comment. Remove it manually while retaining the documentation.")
 			}
 		}
 		return n.ForEachChild(visit)
@@ -62,30 +62,11 @@ func tagNameRange(tag *ast.Node) core.TextRange {
 	return core.NewTextRange(tag.Pos(), tag.TagName().End())
 }
 
-// throwsTagFixActions removes the tag that the diagnostic marks: its whole
-// JSDoc comment when the comment holds nothing else, its line when the tag
-// stands on a line of its own, and otherwise the tag's text.
-func throwsTagFixActions(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	file := fix.SourceFile
-	var tag, comment *ast.Node
-	var find func(n *ast.Node) bool
-	find = func(n *ast.Node) bool {
-		for _, jsdoc := range n.JSDoc(nil) {
-			for _, t := range jsdocTags(jsdoc) {
-				if isContractTag(t) && t.Pos() == fix.Span.Pos() {
-					tag, comment = t, jsdoc
-					return true
-				}
-			}
-		}
-		return n.ForEachChild(find)
-	}
-	file.AsNode().ForEachChild(find)
-	if tag == nil {
-		return nil, nil
-	}
-	start, end := contractTagRemoval(file.Text(), comment, tag)
-	return []*ls.CodeAction{{Description: "Remove the @" + tag.TagName().Text() + " tag", Changes: replaceRange(fix, start, end, "")}}, nil
+// throwsTagFixActions refuses to rewrite documentation automatically.
+func throwsTagFixActions(_ context.Context, _ *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+	// Chapter 7 / VIP-34: the annotation is part of an author's comment.
+	// Removing it needs an explicit documentation edit.
+	return nil, nil
 }
 
 // contractTagRemoval returns the range of text that removing tag from

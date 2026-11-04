@@ -93,6 +93,9 @@ func quickfixBehaviorProgram(generators map[int32][]Seed, key string, choices []
 		source = fmt.Sprintf("import * as Effect from \"effect/Effect\"\nexport const refused = Effect.fn(\"refused\")(function* <A>(value: A): Effect.fn.Return<A> { return yield* Effect.succeed(value) })\nexport function main() { return refused(%d) }\n", n)
 	case "opencode-mixed-generators":
 		source = fmt.Sprintf("import * as Effect from \"effect/Effect\"\nexport const applied = () => Effect.gen(function* () { return yield* Effect.succeed(%d) })\nexport const refused = Effect.fn(\"refused\")(function* <A>(value: A): Effect.fn.Return<A> { return yield* Effect.succeed(value) })\nexport function main() { return Effect.all([applied(), refused(%d)]) }\n", n, n+1)
+	case "assertion-refused-overlap":
+		source = fmt.Sprintf("// @vibelang-diagnostics EK4824:warning\nimport type * as Native from \"effect/Effect\"\nexport const applied=pipe(%d)\nconst program:Native.Effect<number,string>=Effect.fail(\"oops\")\nexport function main(){return /* quickfix:refused:start */ program as Native.Effect<number> /* quickfix:refused:end */}\n", n)
+		return map[string]string{"main.vibe": source}, 4833, false
 	case "mixed-refused-file", "only-refused-file":
 		source = fmt.Sprintf("import * as Option from \"effect/Option\"\nexport const refused = (v: Option.Option<number>): number => /* quickfix:refused:start */ Option.match(v,\n /* keep the argument comment %d */\n { onNone: () => %d, onSome: (value): number => value }) /* quickfix:refused:end */\nexport function main() { return refused(Option.some(%d)) }\n", n, n, n+1)
 		if key == "mixed-refused-file" {
@@ -133,6 +136,13 @@ func quickfixBehaviorProgram(generators map[int32][]Seed, key string, choices []
 		}
 		source = fmt.Sprintf("import type * as Custom from \"./custom.js\"\nexport type Result = Custom.Effect<%s>\nexport function main() { return %d }\n", arguments, n)
 		return map[string]string{"custom.ts": helper, "main.vibe": source}, 4833, true
+	case "outdated-api-refused":
+		name := []string{"either", "async", "withFiberRuntime"}[variant%3]
+		source = "// preserve changed-contract note 🧪\nexport function main(){return typeof Effect./* quickfix:refused:start */" + name + "/* quickfix:refused:end */}\n"
+		if n&1 != 0 {
+			source = strings.ReplaceAll(source, "\n", "\r\n")
+		}
+		return map[string]string{"main.vibe": source}, 4813, false
 	case "cause-written-result":
 		source = fmt.Sprintf("export effect function main(): number!! { try { return %d } catch (cause: Cause) { return %d } }\n", n, n+1)
 		return map[string]string{"main.vibe": source}, 2113, false
@@ -176,6 +186,29 @@ func quickfixBehaviorProgram(generators map[int32][]Seed, key string, choices []
 			pair := pairs[variant%len(pairs)]
 			files[main] = fmt.Sprintf("export effect function main() { try { return %s } catch (cause: Cause) { return %s } }\n", pair[0], pair[1])
 		}
+		if code == 4813 {
+			name := []string{"catchAll", "catchAllCause", "catchAllDefect"}[variant%3]
+			files[main] = strings.ReplaceAll(files[main], "catchAll", name)
+		}
+		if code == 704 && selected.Name == "EK0704-runtime" {
+			if n&1 != 0 {
+				files[main] = strings.Replace(files[main], "C(let n)", "C(/* keep the capture */ let n)", 1)
+			}
+			if n&2 != 0 {
+				files[main] = strings.Replace(files[main], "when C(", "when C /* keep the matcher */ (", 1)
+			}
+		}
+		if code == 401 && selected.Name == "EK0401-native" && n&1 != 0 {
+			files[main] = fmt.Sprintf("export function main(){throw {marker:%d}}\n", n)
+		}
+		if code == 406 && selected.Name == "EK0406-comment" {
+			if n&1 != 0 {
+				files[main] = strings.Replace(files[main], "@throws {never}", "@rethrows f", 1)
+			}
+			if n&2 != 0 {
+				files[main] = strings.Replace(files[main], "/** ", "/** Keeps the documentation.\n * ", 1)
+			}
+		}
 		sentinel := "// quick-fix preservation sentinel " + strconv.Itoa(n) + "\n"
 		if n&1 != 0 {
 			sentinel = "/* quick-fix preservation sentinel " + strconv.Itoa(n) + " 🧪 */ "
@@ -203,7 +236,7 @@ func quickfixBehaviorProgram(generators map[int32][]Seed, key string, choices []
 				}
 			}
 		}
-		return files, code, false
+		return files, code, code == 401 && selected.Name == "EK0401-native"
 	}
 	code := int32(2128)
 	switch key {
@@ -290,6 +323,9 @@ func quickfixBehaviorCheck(t *testing.T, w *Workspace, binary, api, key string, 
 	if key == "mixed-refused-file" {
 		codes = append(codes, 4839)
 	}
+	if key == "assertion-refused-overlap" {
+		codes = append(codes, 4824)
+	}
 	plans, editorRefused, editorSeen := quickfixEditorPlans(t, w, before, files, codes)
 	if !native && !found && !editorSeen[code] {
 		Gap(t, quickfixBehaviorTarget, key+":trigger", "registered fix has no CLI or editor diagnostic on its keyed generator:\n%s\n%v", Archive(files), SortedKeys(Keys(before.Dir, before.Diagnostics)))
@@ -319,28 +355,40 @@ func quickfixBehaviorCheck(t *testing.T, w *Workspace, binary, api, key string, 
 	}
 	output := run.Stdout + "\n" + run.Stderr
 	refused := strings.Contains(output, "not fixed:") || strings.Contains(strings.ToLower(output), "refus")
-	// Until refusal ranges land, generators mark their exact refused declaration.
+	// Generator-owned spans additionally protect deliberately refused sites.
 	// Comparing these unique spans permits unrelated edits before and after them.
-	for name, text := range files {
-		if span, ok := quickfixMarkedRefusal(text); ok && (refused || strings.Contains(text, "/* quickfix:refused:start */")) {
-			lines := newToolsLines(text)
-			start, end := lines.position(span.start), lines.position(span.end)
-			refusedCode := code
-			if key == "mixed-refused-file" {
-				refusedCode = 4839
-			}
-			t.Logf("refused-site %s:%d:%d-%d:%d EK%04d (generator-owned original span)", name, start.Line+1, start.Character+1, end.Line+1, end.Character+1, refusedCode)
-			if !strings.Contains(afterState[name].text, text[span.start:span.end]) {
-				Gap(t, quickfixBehaviorTarget, key+":refused-span", "refused span %s:%d-%d changed\nbefore:\n%s\nafter:\n%s", name, span.start, span.end, text, afterState[name].text)
+	if !quickfixSubcheck(t, "cli-refused-spans", func(t *testing.T) {
+		quickfixCLIRefusals(t, before.Dir, output, files, fixed)
+		for name, text := range files {
+			if span, ok := quickfixMarkedRefusal(text); ok && (refused || strings.Contains(text, "/* quickfix:refused:start */")) {
+				lines := newToolsLines(text)
+				start, end := lines.position(span.start), lines.position(span.end)
+				refusedCode := code
+				if key == "mixed-refused-file" {
+					refusedCode = 4839
+				}
+				if key == "assertion-refused-overlap" {
+					refusedCode = 4810
+				}
+				t.Logf("refused-site %s:%d:%d-%d:%d EK%04d (generator-owned original span)", name, start.Line+1, start.Character+1, end.Line+1, end.Character+1, refusedCode)
+				if !strings.Contains(afterState[name].text, text[span.start:span.end]) {
+					Gap(t, quickfixBehaviorTarget, key+":refused-span", "refused span %s:%d-%d changed\nbefore:\n%s\nafter:\n%s", name, span.start, span.end, text, afterState[name].text)
+				}
 			}
 		}
+	}) {
+		pending = true
 	}
-	for name, state := range afterState {
-		if state.text == snapshot[name].text {
-			if !state.modified.Equal(snapshot[name].modified) {
-				Gap(t, quickfixBehaviorTarget, key+":noop-mtime", "unchanged file %s was rewritten", name)
+	if !quickfixSubcheck(t, "cli-noop-mtime", func(t *testing.T) {
+		for name, state := range afterState {
+			if state.text == snapshot[name].text {
+				if !state.modified.Equal(snapshot[name].modified) {
+					Gap(t, quickfixBehaviorTarget, key+":noop-mtime", "unchanged file %s was rewritten", name)
+				}
 			}
 		}
+	}) {
+		pending = true
 	}
 	if changed {
 		if !quickfixSubcheck(t, "cli", func(t *testing.T) { quickfixCompare(t, w, api, key+":cli", baseline, before, fixed) }) {
@@ -353,41 +401,50 @@ func quickfixBehaviorCheck(t *testing.T, w *Workspace, binary, api, key string, 
 	if second.Hung != "" || cliCrashed(second) {
 		t.Fatalf("second CLI run failed: %+v", second)
 	}
-	for name, state := range stable {
-		if state.text != afterState[name].text || !state.modified.Equal(afterState[name].modified) {
-			Gap(t, quickfixBehaviorTarget, key+":fixed-point", "second --fix changed %s (bytes or mtime)", name)
+	if !quickfixSubcheck(t, "cli-fixed-point", func(t *testing.T) {
+		stableText := maps.Clone(fixed)
+		for name, state := range stable {
+			stableText[name] = state.text
 		}
+		quickfixCLIRefusals(t, before.Dir, second.Stdout+"\n"+second.Stderr, fixed, stableText)
+		for name, state := range stable {
+			if state.text != afterState[name].text || !state.modified.Equal(afterState[name].modified) {
+				Gap(t, quickfixBehaviorTarget, key+":fixed-point", "second --fix changed %s (bytes or mtime)", name)
+			}
+		}
+	}) {
+		pending = true
 	}
 
 	// Every plan was requested from the original source before the CLI ran.
 	// Apply each independently; a refused diagnostic's range is protected
 	// against edits offered for any other site in this snapshot.
 	for i, plan := range plans {
-		edited := maps.Clone(files)
-		for name, changes := range plan.edits {
-			text := edited[name] // an action may create a foreign .ts boundary
-			updated, spans, err := toolsApply(text, changes)
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, site := range editorRefused {
-				if site.file == name {
-					if problem := quickfixRefusedEdit(text, updated, site.span, spans); problem != "" {
-						Gap(t, quickfixBehaviorTarget, key+":editor-refused-span", "%s EK%04d: %s", name, site.code, problem)
-					}
-				}
-			}
-			if site, ok := quickfixMarkedRefusal(text); ok {
-				atSite := name == plan.file && plan.start >= site.start && plan.start < site.end
-				if !atSite {
-					if problem := quickfixRefusedEdit(text, updated, site, spans); problem != "" {
-						Gap(t, quickfixBehaviorTarget, key+":editor-refused-span", "%s: %s", name, problem)
-					}
-				}
-			}
-			edited[name] = updated
-		}
 		if !quickfixSubcheck(t, fmt.Sprintf("editor-%d", i+1), func(t *testing.T) {
+			edited := maps.Clone(files)
+			for name, changes := range plan.edits {
+				text := edited[name] // an action may create a foreign .ts boundary
+				updated, spans, err := toolsApply(text, changes)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, site := range editorRefused {
+					if site.file == name {
+						if problem := quickfixRefusedEdit(text, updated, site.span, spans); problem != "" {
+							Gap(t, quickfixBehaviorTarget, key+":editor-refused-span", "%s EK%04d: %s", name, site.code, problem)
+						}
+					}
+				}
+				if site, ok := quickfixMarkedRefusal(text); ok {
+					atSite := name == plan.file && plan.start >= site.start && plan.start < site.end
+					if strings.Contains(text, "/* quickfix:refused:start */") || !atSite {
+						if problem := quickfixRefusedEdit(text, updated, site, spans); problem != "" {
+							Gap(t, quickfixBehaviorTarget, key+":editor-refused-span", "%s: %s", name, problem)
+						}
+					}
+				}
+				edited[name] = updated
+			}
 			quickfixCompare(t, w, api, key+":editor", baseline, before, edited)
 		}) {
 			pending = true
@@ -582,7 +639,14 @@ for(let n=0;n<modules.length;n++) {
    const params=ps.length?"<"+ps.map(p=>p.name.getText(tree)+(p.constraint?" extends "+p.constraint.getText(tree):"")+(p.default?" = "+p.default.getText(tree):"")).join(",")+">":"";
    // Keep constraints in their original module scope and quantify over them.
    // A self-import avoids shadowing an alias such as type T<T> = T[].
-   probes+="export declare function "+prefix+name+params+"(): import("+JSON.stringify("./"+path.basename(m)+".js")+")."+name+args+";\n";
+   probes+="export declare function "+prefix+"type_"+name+params+"(...values: ["+ps.map(p=>p.name.text).join(",")+"]): import("+JSON.stringify("./"+path.basename(m)+".js")+")."+name+args+";\n";
+   const omitted=ps.findIndex(p=>p.default);
+   if(omitted>=0) {
+    const rs=ps.slice(0,omitted), names=rs.map(p=>p.name.text);
+    const rparams=rs.length?"<"+rs.map(p=>p.name.getText(tree)+(p.constraint?" extends "+p.constraint.getText(tree):"")).join(",")+">":"";
+    const rargs=rs.length?"<"+names.join(",")+">":"";
+    probes+="export declare function "+prefix+"defaults_"+name+rparams+"(...values: ["+names.join(",")+"]): import("+JSON.stringify("./"+path.basename(m)+".js")+")."+name+rargs+";\n";
+   }
   }
   fs.appendFileSync(path.join(__dirname,side,m+".d.ts"),"\n"+probes);
  }

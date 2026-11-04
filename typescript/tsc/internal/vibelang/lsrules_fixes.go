@@ -55,14 +55,15 @@ func nodeStart(file *ast.SourceFile, node *ast.Node) int {
 	return scanner.SkipTrivia(file.Text(), node.Pos())
 }
 
-// callEffectFix runs the discarded Effect that EK4801 reports with try
-// (VIP-5): e becomes try e, a ?? b becomes try (a ?? b), and a program named
-// by reference, a function of no arguments, becomes try f(). Only effect
-// code runs an Effect, so plain code gets no fix.
+// callEffectFix keeps the diagnostic codes in the repair registry, but an
+// automatic execution changes returned data or discarded-program coldness.
 var callEffectFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4801.Code, EK4802.Code},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+		if fix.ErrorCode == EK4801.Code {
+			return nil, nil
+		} // keep discarded Effects cold
 		value := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
 			parent := node.Parent
 			switch {
@@ -214,7 +215,9 @@ func isEffect3Name(node *ast.Node) bool {
 
 // renameEffect3API returns the action that writes name's Effect 4 name.
 func renameEffect3API(fix *ls.CodeFixContext, name *ast.Node) []*ls.CodeAction {
-	if name == nil {
+	if name == nil || effect3API[name.Text()].note != "" {
+		// Chapter 7 / VIP-34: a different callback or result contract is
+		// a manual migration, not a behavior-preserving rename.
 		return nil
 	}
 	renamed := effect3API[name.Text()].renamed
@@ -230,16 +233,9 @@ func renameEffect3API(fix *ls.CodeFixContext, name *ast.Node) []*ls.CodeAction {
 var schemaIsFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4817.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		test := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
-			return ast.IsBinaryExpression(node) && node.AsBinaryExpression().OperatorToken.Kind == ast.KindInstanceOfKeyword
-		})
-		if test == nil {
-			return nil, nil
-		}
-		b := test.AsBinaryExpression()
-		text := "Schema.is(" + scanner.GetTextOfNode(b.Right) + ")(" + scanner.GetTextOfNode(b.Left) + ")"
-		return []*ls.CodeAction{{Description: "Test with Schema.is", Changes: replaceRange(fix, nodeStart(fix.SourceFile, test), test.End(), text)}}, nil
+	GetCodeActions: func(_ context.Context, _ *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+		// Chapter 7 / VIP-34: this rewrite changes the public API or behavior.
+		return nil, nil
 	},
 }
 

@@ -108,7 +108,7 @@ Each entry gives the condition and the repair. The examples and language-service
 | EK3002 | A class extends a service key. | Implement the service's shape instead of extending its key. |
 | EK3003 | `new` tries to construct a service key. | Read the provided implementation with `try Service`; create implementations as objects or classes implementing its shape. |
 | EK3004 | `instanceof` or a class pattern, `when Users:`, tests a service key, which is no base class. | Test the implementation's data or a concrete implementation class instead; match its members, `when { find: let find }`. |
-| EK4838 | An obsolete check from the old language, which tied a fiber to the region that forked it. Returning, storing or passing a `Fiber` is not a VibeLang error, and a plain `fork` child is still interrupted when its parent ends. | Use `fork.scoped p()` for the caller's scope, `fork.in(scope) p()` for a scope you hold, or `fork.detached p()` for a fiber nothing owns. |
+| EK4838 | An obsolete check from the old language, which tied a fiber to the region that forked it. Returning, storing or passing a `Fiber` is not a VibeLang error, and a plain `fork` child is still interrupted when its parent ends. | The legacy warning has no automatic lifetime conversion. Use `fork.scoped p()` for the caller's scope, `fork.in(scope) p()` for a scope you hold, or `fork.detached p()` for a fiber nothing owns. |
 | `EK1906` | A `for concurrent` head uses `var`, `using`, `await using`, or an assignment. | Declare the item with `const` or `let`; assign an existing variable inside the body. |
 | `EK2005` | A `for try` head uses `var`, `using`, `await using`, or an assignment. | Write `for try (const item of stream) { current = item }` to assign an existing variable. |
 | EK4611 | `join` receives something other than a Fiber. | Join one fiber at a time; run Effects with `try`, use `try Deferred.await(deferred)`, or wrap Promises with `tryPromise`. See [fiber lifetimes](../concurrency/047-fibers.md) for ownership forms. |
@@ -329,7 +329,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Correctness | `classSelfMismatch` | Not needed: a `service` has no `Self` parameter | `service Users { find(id: string): User!NotFound }` |
 | Correctness | `duplicatePackage` | EK4803, warning | two versions of `effect` in one program |
 | Correctness | `effectFnImplicitAny` | Not needed: parameters are TypeScript's, so `strict` reports TS7006 | `effect function load(id) { … }` |
-| Correctness | `floatingEffect` | EK4801, error | `program` alone on a line leaves an Effect unrun; use `try program` |
+| Correctness | `floatingEffect` | `EK4801`, error; no automatic execution repair | `program` alone on a line leaves an Effect unrun; choose `try program` explicitly when execution is intended |
 | Correctness | `genericEffectServices` | Covered: EK3005 | `service Repo<T> { … }` |
 | Correctness | `missingEffectContext` | Covered: `EK9202` (interim) at a contract, `EK3201` at a runner | `effect function f(): User!NotFound { return try (try Users).find(id) }` is `EK9202` |
 | Correctness | `missingEffectError` | Covered: `EK9201` (interim) | `effect function f(): User!! { return try (try Users).find(id) }` |
@@ -370,13 +370,13 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Effect-native | `globalRandomInEffect` | Not reported: `Math` is ECMAScript; use `Random` where a test controls it | `Math.random()` |
 | Effect-native | `globalTimers` | Covered: EK4402 | `setTimeout(f, 10)` |
 | Effect-native | `globalTimersInEffect` | Covered: EK4402 | `setTimeout(f, 10)` |
-| Effect-native | `instanceOfSchema` | EK4817, off by default, with a quick fix | `value instanceof Person`; the fix writes `Schema.is(Person)(value)` |
+| Effect-native | `instanceOfSchema` | `EK4817`, off by default; no automatic test conversion | `value instanceof Person`; choose `Schema.is(Person)(value)` explicitly when schema validation is intended |
 | Effect-native | `newPromise` | EK4812, warning | `new Promise((resolve) => …)`; use `callback((resume) => …)` |
 | Effect-native | `nodeBuiltinImport` | Covered: EK4402 at a value import of a Node.js module | `readFile(path)` from `node:fs/promises` |
 | Effect-native | `preferSchemaOverJson` | EK4818, off by default | `JSON.parse(text)` |
 | Effect-native | `processEnv` | Covered: EK4402 | `process.env.PORT`; use `Config` |
 | Effect-native | `processEnvInEffect` | Covered: EK4402 | `process.env.PORT` |
-| Effect-native | `unsafeEffectTypeAssertion` | `EK4810`, warning; removing the assertion has no automatic fix | `program as Effect.Effect<number>` drops a failure |
+| Effect-native | `unsafeEffectTypeAssertion` | `EK4810`, warning; removing the assertion has no automatic fix | `program as Effect.Effect<number>` drops a failure  A type-spelling repair also protects the whole refused assertion; unrelated annotations can still be repaired. |
 | Style | `catchAllToMapError` | Not needed: a catch that rethrows is the one form | `catch effect (e) => { throw new Failed({ cause: e }) }` |
 | Style | `deterministicKeys` | Not needed: the compiler derives each service key from its package, module, and name | `@acme/app/src/users#Users` |
 | Style | `effectDoNotation` | Not needed: `const` statements bind values | `const user = try (try Users).find(id)` |
@@ -389,7 +389,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Style | `missedPipeableOpportunity` | Refactor: "Convert to a pipe" | `f(g(h(x)))` becomes `x \|> h(%) \|> g(%) \|> f(%)` |
 | Style | `nestedEffectGenYield` | Effect functions use `try` | None |
 | Style | `redundantSchemaTagIdentifier` | Not needed: `error` and `schema` declarations take their tag from their name | `error NotFound { id: string }` |
-| Style | `schemaStructWithTag` | EK4821, off by default, with a quick fix to `Schema.TaggedStruct` | `Schema.Struct({ _tag: Schema.Literal("A"), … })` |
+| Style | `schemaStructWithTag` | `EK4821`, off by default; no automatic constructor conversion | `Schema.Struct({ _tag: Schema.Literal("A"), … })` |
 | Style | `schemaUnionOfLiterals` | Effect 3 only | None |
 | Style | `serviceNotAsClass` | Not needed: `service` declarations | `service Users { … }` |
 | Style | `strictBooleanExpressions` | EK4822, off by default | `if (count) { … }` |
@@ -630,3 +630,17 @@ For an inferred Effect argument such as `expect(awaited())`, `EK4802` offers `ex
 An ordinary namespace type such as `Names.Shape` follows TypeScript namespace resolution. A missing or out-of-scope qualifier reports a TypeScript diagnostic; a service's `Shape` qualifier keeps its service identity for references and rename.
 
 Native `Context.Service` classes keep TypeScript namespace rules: `Key.Shape` needs a declared namespace, while `Context.Service.Shape<typeof Key>` extracts the implementation without one. The `EK4831` style warning does not add members to a native class. The native namespace diagnostic offers a binding-safe shape-extractor repair for a genuine service key, also applied by `vibelang --fix`; it leaves an explicit namespace, a shadowing type and type arguments unchanged.
+
+The `EK0406` annotation diagnostic has no automatic comment rewrite. Remove `@throws` or `@rethrows` manually while preserving the documentation.
+
+For `EK0704`, the editor keeps captured variables and comments when it rewrites an extractor as a class and property pattern. It offers a bare class test only for an empty argument list.
+
+The CLI keeps verified checkpoints during a repair. If a completed run restores a refused file, it restores the original modification time as well as the bytes. Running `--fix` again leaves unchanged files untouched.
+
+`EK0501` requires reviewing callers before marking a plain function `effect`.
+The CLI leaves its `try` span unchanged, including when another spelling fix could simplify the operand.
+
+`--fix` also applies the editor's equivalent Effect 4 renames for `EK4813`, such as `Effect.catchAll` to `Effect.catch`.
+
+An `EK4813` rename that changes a callback or result contract has no automatic fix.
+For `either`, `async` and `withFiberRuntime`, review the diagnostic's migration note and update callers explicitly.

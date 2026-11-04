@@ -69,7 +69,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Early 0.0.11 experimental layer imports named `NodeServices`, `NodeCrypto` or `BrowserLocks` | Exports from `vibelang-runtime/experimental/platform-*` now start with `Experimental`: import `ExperimentalNodeServices`, `ExperimentalNodeCrypto` or `ExperimentalBrowserLocks`. Rename the other experimental layers the same way. Imports from Effect's `@effect/platform-*` packages keep their names. |
 | Both `import "vibelang/platform/node"` and `import "vibelang/platform/bun"` in one file | EK3206 rejects conflicting imports. Keep one platform import per file; use a separate entry file for each host. Repeating the same platform is allowed. |
 | A platform API in a hatch because Effect has no equivalent | Prefer the new `Experimental.FileSystem`, `Experimental.Crypto`, `Experimental.Process` or `Experimental.Locks` where covered. Their layers and platform limits are listed below; an uncovered API stays in TypeScript. |
-| `interrupt` alone as a statement | EK4801: it previously ran nothing. Write `interrupt()` (the quick fix), likewise `yieldNow()` and other zero-argument program references. |
+| `interrupt` alone as a statement | `EK4801`: it previously ran nothing. Choose `try interrupt()` explicitly when execution is intended, likewise `try yieldNow()` and other zero-argument program references; execution has no automatic quick fix. |
 | `return x ?? throw c ? a : b` | EK1010: it previously parsed as `(x ?? throw c) ? a : b`, throwing only `c`. Write `return x ?? throw (c ? a : b)`. |
 | `throw cause` where `cause` is a `Cause`, as in `when Exit.Failure(let cause): throw cause` | It now fails with the Cause object itself as an expected failure, as `Effect.fail(cause)` does: `throw` fails with the value it is given (VIP-4). It previously rethrew every reason the cause held. To keep that, write `return Effect.failCause(cause)`, as Effect code does. |
 | `control Ask { … }`, `try { … } handle Ask.ask(x) { … }`, continuation-runtime bindings or `select { … }` | Outside the first release (`EK3501`, or `EK4607` for `select`). Run `vibelang --fix` for the proven local-service subset; continuation-dependent behavior requires an explicit service or Effect redesign. |
@@ -86,6 +86,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | A block after an Effect dual, such as `withSpan("load") { … }`, `timeout("1 second") { … }` or `semaphore.withPermits(1) { … }` | A block is always its call's last argument, so the callee's type no longer moves it. Write the program first, `withSpan(effect { … }, "load")`, or use the curried form, `semaphore.withPermits(1)(effect { … })`. `vibelang --fix` rewrites each site. Where the appended call still type-checks, it is EK1023. |
 | `() => fork p()`, or a `fork` in an `if` branch or a bare block | A fiber belongs to its innermost named region: a function body (an arrow's expression body included), one loop iteration, a `try`, `catch` or `finally` block, a block that declares `using`, or a `provide` or mask block. `if` branches, bare blocks, `do` blocks and `match` own nothing. Passing an owned fiber out of its region (returning, storing, assigning outside it, or capturing it) is now the error EK4838. Use `Effect.forkScoped(() => p())` for a child the caller's scope owns, or `detach(() => p())`. |
 | A function that is an Effect function because of its body or its return annotation, such as `function load(id: string) { return try getUser(id) }`, a method like it, or a function literal passed where an Effect function is expected, as in `forEach(ids, (id) => getUser(id))` | Mark it `effect` (VIP-1), which goes exactly where TypeScript allows `async` (VIP-39): `effect function load(id: string)`, `effect (id) => try getUser(id)`, or a method `effect find(id)`. A function literal with no parameters that became a program where an Effect was expected, `retry(() => save(x), policy)`, is an effect block (VIP-2): `retry(effect { return try save(x) }, policy)`. `vibelang --fix --fix-vip-only` writes both, with `try` before a value such a function runs, and keeps a function that compiles to plain JavaScript unmarked. Only `effect` makes an Effect function: a function without it is plain JavaScript, returns an Effect it builds unrun, and gains no Effect type from its body or from where it is passed; `try` in it is `EK0501`, and a return type written on an `effect` function is an Effect type, `User!NotFound`, where `User` alone is `EK0106`. Run the codemod before you upgrade: this release no longer infers which functions to mark. A declaration without `function`, `effect load(id) { … }` or `async get(url) { … }`, is `EK0101`; its quick fix writes `effect function load(id)`. |
+| `() => fork p()`, or a `fork` in a branch or block | VIP-17 uses Effect's native current-fiber ownership for plain `fork`. Returning or storing the handle does not transfer that ownership. Legacy `EK4838` region diagnostics have no automatic lifetime conversion; choose `fork.scoped`, `fork.in(scope)` or `fork.detached` explicitly when intended. |
 | A call of an Effect value: `Users()` for a service, `Port()` for a Config, `body()` for an Effect parameter, or `Journal.read()` for a service member that is an Effect | `TS2349` or `TS2348`: an Effect is not a function, and only `try` runs it (VIP-5); a service is read with `try Users` (VIP-10). `vibelang --fix --fix-vip-only` writes `try Users`, `(try Users).find(id)`, `try body` and `try (try Journal).read`, and drops the argument list from `try Users()`. |
 | `async function load() { … }`, and `await` inside it | No longer EK1003: an `async` function means what it means in TypeScript (VIP-1), and `await` there waits for a promise. Awaiting an Effect there is EK4617: write `await runPromise(program)`. |
 | `using h = Effect.acquireRelease(() => openDisposable(), release)` with a plain-holder workaround | The acquisition's release is now the only release, so `using` no longer also calls `[Symbol.dispose]()`. Bind the Disposable directly and drop the holder. |
@@ -1389,6 +1390,34 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Returning an explicit service key widened its literal type to `string`; inferred function results now retain the key literal, as the native `Context.Service` counterpart does.
 - A method's custom `bind` property could reject calls with a `do` argument or give them incorrect declaration types; calls and template tags now keep the original method's signatures.
+- Removing an Effect type assertion in the editor could widen a public failure or requirement channel. The action now refuses instead of changing the exported contract.
+
+- The editor's `instanceof` repair could reverse the evaluation order of its operands. It now leaves the test unchanged and asks for an explicit choice of test.
+
+- The editor could replace `Schema.Struct` with `Schema.TaggedStruct`, changing which constructor inputs throw. It now keeps the original constructor and explains the difference.
+
+- Converting an old layer declaration with setup statements could introduce a retired trailing block. The CLI and editor now write the current block argument and keep the layer's setup and methods.
+
+- The editor could execute an Effect that the program deliberately left cold. It now keeps the expression unchanged and explains that execution must be chosen explicitly.
+
+- The editor could change a fiber's lifetime while repairing an obsolete region warning. It now leaves the fork unchanged and asks for an explicit ownership choice.
+
+- An editor type-spelling repair could modify an assertion whose unsafe channel conversion had been refused. It now protects the entire refused assertion while still repairing unrelated types.
+
+- Quick-fix regression checks could miss changes to generic defaults or stop after a known CLI failure. They now check generic calls, each editor action, and the CLI's reported refused spans independently.
+
+- Removing a forbidden throws annotation could delete its JSDoc comment. The CLI and editor now leave the documentation unchanged and ask for a manual annotation edit.
+
+- An editor class-pattern repair could discard captured variables or comments. It now keeps the property extraction and offers a bare class test only for an empty argument list.
+
+- A file restored after a refused repair could get a new modification time despite keeping its original bytes. Rollback now restores the saved original file and metadata, while interrupted runs still keep verified fixes.
+
+- `--fix` could simplify a `try` inside a plain function and hide `EK0501`; it now preserves that refused source span for manual repair.
+
+- The CLI could leave removed `Effect.catchAll` APIs in otherwise repaired code, causing a runtime `TypeError`; it now applies the same Effect 4 renames as the editor.
+
+- Effect 3 API repairs could rename functions whose callbacks or results changed in Effect 4. The editor and CLI now leave those sites unchanged and explain the manual migration.
+
 
 - Schema conformance checks rejected the dangling aliases that TypeScript itself emits with `stripInternal`; these cases now verify exact native output and the same TypeScript diagnostics.
 - `vibelang --fix` refused an `Effect.fn` whose parameter annotation was a type name's last read under `noUnusedLocals`, because writing the checked parameter type left the name unused (TS6133, TS6196), so the module stayed on `EK1002`; the fix now also removes that type-only import binding or module-local type alias.

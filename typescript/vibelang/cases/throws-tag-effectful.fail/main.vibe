@@ -3,7 +3,7 @@
 // thrown type, and a @throws or @rethrows tag anywhere in a .vibe file is
 // EK0406: on an effect function, arrow, method or producer, on a plain
 // function, on a function returning a Stream, a Layer or a union, and on a
-// type's member. Its quick fix removes the tag (throws-tag-effectful-fixed).
+// type's member. Remove the tag manually while retaining documentation (throws-tag-effectful-fixed).
 // Tags in TypeScript files are read as before (helpers.ts).
 import { tsLoad } from "./helpers.ts"
 

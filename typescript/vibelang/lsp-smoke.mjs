@@ -382,7 +382,7 @@ try {
     assert(fixed.includes("return sync((text: string) => text.length, text)"), `fixed text: ${fixed}`)
   })
 
-  await check("code action: Effect's language service rules report in .vibe, and their quick fixes run with try and rename", async () => {
+  await check("code action: Effect's language service rules report in .vibe, execution repairs refuse, and names can be repaired", async () => {
     open("src/lsrules.vibe", "vibe")
     const items = await diagnostics("src/lsrules.vibe")
     const codes = items.map((d) => `${d.source}${d.code}:${d.severity}`).sort()
@@ -398,8 +398,9 @@ try {
     const floating = items.find((d) => d.code === 4801)
     const start = at("src/lsrules.vibe", "program\n  //")
     assert(floating.range.start.line === start.line && floating.range.start.character === start.character, `range ${JSON.stringify(floating.range)}`)
-    const callEdits = await fixFor(floating, "Run it with try")
-    assert(callEdits.length === 1 && callEdits[0].newText === "try " && callEdits[0].range.start.character === start.character, `edits ${JSON.stringify(callEdits)}`)
+    const floatingActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: floating.range, context: { diagnostics: [floating], only: ["quickfix"] } })) ?? []
+    assert(!floatingActions.some((a) => a.title === "Run it with try"), `unsafe execution repair: ${JSON.stringify(floatingActions)}`)
+    assert(JSON.stringify(floating).includes("No automatic fix"), `missing refusal explanation: ${JSON.stringify(floating)}`)
     const nested = items.find((d) => d.code === 4808)
     const nestedActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: nested.range, context: { diagnostics: [nested], only: ["quickfix"] } })) ?? []
     assert(!nestedActions.some((a) => a.title === "Provide both layers in one block"), `unsafe nested provide merge: ${JSON.stringify(nestedActions)}`)

@@ -95,6 +95,16 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 	if !isEffectTypeName(c, reference) {
 		return nil
 	}
+
+	// A spelling repair cannot edit inside an assertion whose repair is refused.
+	// Keep the original EK4810 span, including its type and comments (Chapter 7).
+	for parent := reference.Parent; parent != nil; parent = parent.Parent {
+		if ast.IsAsExpression(parent) || ast.IsTypeAssertion(parent) {
+			if _, dropped := assertionDroppedChannel(c, parent); len(dropped) > 0 {
+				return &formRewrite{why: "This type lies inside an assertion that needs an explicit repair (EK4810); its source span is left unchanged."}
+			}
+		}
+	}
 	if reference.Parent != nil && ast.IsHeritageClause(reference.Parent) {
 		return nil // extends Effect.Effect<…> names an interface to extend, which A!E!R is not
 	}

@@ -19,7 +19,7 @@ func TestMatchVIP7QuickFixes(t *testing.T) {
 		wants        []string
 	}{
 		{"arity", "error E { id:string };export function f(s:unknown){return match(s){when E(let a,let b):1;default:0;}}", 703, []string{`when E:`, `when E\(let [A-Za-z_$][A-Za-z0-9_$]*\):`}},
-		{"constructor", "class C { constructor(readonly x:number,readonly y:number){} };export function f(s:unknown){return match(s){when C(let a,let b):1;default:0;}}", 704, []string{`when C:`, `when C and \{ x: let a, y: let b \}:`}},
+		{"constructor", "class C { constructor(readonly x:number,readonly y:number){} };export function f(s:unknown){return match(s){when C(let a,let b):1;default:0;}}", 704, []string{`when C and \{ x: let a, y: let b \}:`}},
 		{"predicate", "const p=(s:unknown)=>Promise.resolve(s);export function f(s:unknown){return match(s){when p:1;default:0;}}", 702, []string{`when let [A-Za-z_$][A-Za-z0-9_$]* and if \(p\(`}},
 		{"variant", "data D { V { n:number }; W };export function f(s:unknown){return match(s){when D.V(let n):1;default:0;}}", 702, []string{`_tag: "V"`}},
 		{"schema", "schema S { n:number };export function f(s:unknown){return match(s){when S:1;default:0;}}", 702, []string{`Schema.is\(S\)`}},

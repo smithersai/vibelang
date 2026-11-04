@@ -1,10 +1,10 @@
 package vibelang
 
-// effect3API lists the names of Effect 3's Effect module that Effect 4's no
-// longer has (EK4813), from the migration table of Effect's language service
-// (@effect/language-service 0.87.5, outdatedApi). A renamed one gives its
-// Effect 4 name, which the quick fix writes, and a note when the renamed
-// function also behaves differently; a removed one gives neither.
+// effect3API lists names removed by Effect 4 (EK4813), from the migration
+// table of @effect/language-service 0.87.5 (outdatedApi). An entry names its
+// replacement and notes any changed callback or result contract. Only an
+// equivalent rename has an automatic fix; a noted contract change or a
+// removed name requires a manual migration.
 var effect3API = map[string]apiChange{
 	"catchAll":               {renamed: "catch"},
 	"catchAllCause":          {renamed: "catchCause"},

@@ -33,9 +33,6 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 		{"catch comments all trivia", "error Gone\neffect function load(): number!Gone { throw new Gone() }\nexport effect function recover() {\n  try { return load() } catch (e: Gone) {\n    // before fallback\n    return /* value */ 0 /* before semi */; // after fallback\n    /* after statement */\n  }\n}", "Test the failure with match", "error Gone\neffect function load(): number!Gone { throw new Gone() }\nexport effect function recover() {\n  try { return load() } catch (e) {\n    return match (e) {\n      // before fallback\n      when Gone: /* value */ 0 /* before semi */; // after fallback\n      /* after statement */\n      default: throw e;\n    }\n  }\n}", 2112},
 		{"generic explicit opt out", "function take<T>(x: T[]): number { return 1 }; effect function main(job: Effect.Effect<number>) { return take([job]) }", keepInferredEffectTitle, "function take<T>(x: T[]): number { return 1 }; effect function main(job: Effect.Effect<number>) { return take<number!!>([job]) }", 4802},
 		{"generic argument", "function take<T>(x: T, message?: string): number { return 1 }; effect function main(job: Effect.Effect<number>) { return take(job) }", "Run it with try", "function take<T>(x: T, message?: string): number { return 1 }; effect function main(job: Effect.Effect<number>) { return take(try job) }", 4802},
-		{"run value", "effect function main(job: Effect.Effect<number>) { job }", "Run it with try", "effect function main(job: Effect.Effect<number>) { try job }", 4801},
-		{"run program by name", "export effect function main() { try Console.log(\"before\"); interrupt }", "Run it with try", "export effect function main() { try Console.log(\"before\"); try interrupt() }", 4801},
-		{"run conditional", "effect function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { flag ? a : b }", "Run it with try", "effect function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { try (flag ? a : b) }", 4801},
 		{"Effect 4 name", `function main() { return Effect.catchAll(Effect.fail("bad"), () => Effect.succeed(1)) }`, "Write Effect.catch", `function main() { return Effect.catch(Effect.fail("bad"), () => Effect.succeed(1)) }`, 4813},
 		{"empty pipe", "// @vibelang-diagnostics EK4824:warning\nexport const value = pipe(1)", "Remove the pipe", "// @vibelang-diagnostics EK4824:warning\nexport const value = 1", 4824},
 		{"arrow expression", "// @vibelang-diagnostics EK4823:warning\nexport const add = (x: number) => { return x + 1 }", "Write the value as the body", "// @vibelang-diagnostics EK4823:warning\nexport const add = (x: number) => x + 1", 4823},
@@ -47,9 +44,6 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 		{"service separator JSDoc", "service Flags { a: number /** @throws {Error} */ read(): string }", "Write ; between the members", "service Flags { a: number; /** @throws {Error} */ read(): string }", 908},
 		{"service separator Unicode", "service Flags { café: number /* 😀 */ b: string }", "Write ; between the members", "service Flags { café: number; /* 😀 */ b: string }", 908},
 		{"service member separator", "service Flags { a: number b: string }", "Write ; between the members", "service Flags { a: number; b: string }", 908},
-		{"tagged schema", `// @vibelang-diagnostics EK4821:warning
-export const Person = Schema.Struct({ _tag: Schema.Literal("Person"), name: Schema.String })`, "Write Schema.TaggedStruct", `// @vibelang-diagnostics EK4821:warning
-export const Person = Schema.TaggedStruct("Person", { name: Schema.String })`, 4821},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			const prefix = "// café 😀\n"

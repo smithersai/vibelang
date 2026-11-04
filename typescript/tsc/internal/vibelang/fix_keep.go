@@ -34,8 +34,11 @@ type fixKeeper struct {
 	stop     context.CancelFunc               // stops the run when a write fails
 	last     map[tspath.RootedFilePath]string // the text last written, by file
 	original map[tspath.RootedFilePath]string // the text before the run, by file written
-	wrote    bool                             // config written
-	err      error
+	infos    map[tspath.RootedFilePath]os.FileInfo
+	backups  map[tspath.RootedFilePath]fixBackup
+
+	wrote bool // config written
+	err   error
 }
 
 // keep writes the files of texts whose text is not on disk.
@@ -52,11 +55,24 @@ func (k *fixKeeper) keep(texts map[tspath.RootedFilePath]string) {
 		}
 		if _, ok := k.last[name]; !ok {
 			original, err := os.ReadFile(name.AsString())
-			if err == nil && string(original) == text {
+			if err != nil && !os.IsNotExist(err) {
+				k.fail(err)
+				return
+			}
+			k.original[name] = string(original)
+			if k.infos == nil {
+				k.infos = map[tspath.RootedFilePath]os.FileInfo{}
+			}
+			info, statErr := os.Stat(name.AsString())
+			if statErr != nil && !os.IsNotExist(statErr) {
+				k.fail(statErr)
+				return
+			}
+			k.infos[name] = info
+			if string(original) == text {
 				k.last[name] = text
 				continue
 			}
-			k.original[name] = string(original)
 		}
 		// The last line of defense for a list's promise: a run stopped at any
 		// moment leaves every unlisted file as it was.
@@ -76,6 +92,32 @@ func (k *fixKeeper) keep(texts map[tspath.RootedFilePath]string) {
 		if k.err != nil {
 			return
 		}
+		if texts[name] == k.original[name] {
+			if saved, ok := k.backups[name]; ok {
+				var err error
+				if saved.path != "" {
+					err = os.Rename(saved.path, saved.target)
+				} else {
+					err = os.Remove(saved.target)
+					if os.IsNotExist(err) {
+						err = nil
+					}
+				}
+				if err != nil {
+					saved.failed = true
+					k.backups[name] = saved
+					k.fail(fmt.Errorf("restore %s from %s: %w", saved.target, saved.path, err))
+					return
+				}
+				delete(k.backups, name)
+				k.last[name] = texts[name]
+				continue
+			}
+		}
+		if err := k.preserveOriginal(name); err != nil {
+			k.fail(err)
+			return
+		}
 		if err := writeFileAtomically(name.AsString(), texts[name]); err != nil {
 			k.fail(fmt.Errorf("%s: %w", relativeName(k.sys, name), err))
 			return
@@ -90,6 +132,12 @@ func (k *fixKeeper) close() string {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	k.closed = true
+	for name, saved := range k.backups {
+		if saved.path != "" && !saved.failed {
+			_ = os.Remove(saved.path)
+			delete(k.backups, name)
+		}
+	}
 	return k.kept()
 }
 
@@ -176,4 +224,64 @@ func writeFileAtomically(name, text string) error {
 		os.Remove(temp.Name())
 	}
 	return err
+}
+
+// A rollback restores a saved file, not a new file containing the same bytes.
+// This retains its modification time while checkpoints still reach disk.
+type fixBackup struct {
+	target, path string
+	failed       bool
+}
+
+func (k *fixKeeper) preserveOriginal(name tspath.RootedFilePath) error {
+	if k.backups == nil {
+		k.backups = map[tspath.RootedFilePath]fixBackup{}
+	}
+	if _, ok := k.backups[name]; ok {
+		return nil
+	}
+	target := name.AsString()
+	if resolved, err := filepath.EvalSymlinks(target); err == nil {
+		target = resolved
+	}
+	info := k.infos[name]
+	if info == nil {
+		k.backups[name] = fixBackup{target: target}
+		return nil
+	}
+	temp, err := os.CreateTemp(filepath.Dir(target), "."+filepath.Base(target)+".fix-original-*")
+	if err != nil {
+		return err
+	}
+	backup := temp.Name()
+	if err = temp.Close(); err != nil {
+		_ = os.Remove(backup)
+		return err
+	}
+	_ = os.Remove(backup)
+	linked := false
+	if os.Link(target, backup) == nil {
+		data, readErr := os.ReadFile(backup)
+		saved, statErr := os.Stat(backup)
+		linked = readErr == nil && statErr == nil && string(data) == k.original[name] && saved.ModTime().Equal(info.ModTime()) && saved.Mode().Perm() == info.Mode().Perm()
+		if !linked {
+			_ = os.Remove(backup)
+		}
+	}
+	if !linked {
+		// Hard links are not supported by every filesystem. A metadata-preserving
+		// copy also handles two source aliases whose target was already replaced.
+		if err = os.WriteFile(backup, []byte(k.original[name]), info.Mode().Perm()); err == nil {
+			err = os.Chmod(backup, info.Mode().Perm())
+		}
+		if err == nil {
+			err = os.Chtimes(backup, info.ModTime(), info.ModTime())
+		}
+		if err != nil {
+			_ = os.Remove(backup)
+			return err
+		}
+	}
+	k.backups[name] = fixBackup{target: target, path: backup}
+	return nil
 }

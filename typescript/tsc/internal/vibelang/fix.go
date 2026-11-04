@@ -210,6 +210,7 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	run, stop := context.WithCancel(ctx)
 	defer stop()
 	keeper := &fixKeeper{sys: sys, config: configChanges, scope: newFixScope(sys.FS(), options.Only), stop: stop, last: map[tspath.RootedFilePath]string{}, original: map[tspath.RootedFilePath]string{}}
+	defer keeper.close()
 	options.Verified = keeper.keep
 	if options.Progress == nil {
 		options.Progress = sys.ErrorWriter()
@@ -569,6 +570,18 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		return text
 	})
 	g.sites = sites
+	// EK0501 is intentionally editor-only: marking a plain function changes
+	// its callers. Protect the original try before another spelling repair
+	// erases it and its diagnostic (Chapter 7 / VIP-34).
+	if !options.VIPOnly && !options.MigrationOnly {
+		for _, file := range scope.fixable(program) {
+			for _, d := range program.GetSemanticDiagnostics(ctx, file) {
+				if d.Source() == diagnosticSource && d.Code() == EK0501.Code {
+					sites.add(file.FileName(), file.Text(), d.Pos(), d.End(), "EK0501", "marking the function effect requires reviewing its callers")
+				}
+			}
+		}
+	}
 	refusedWhy := map[string]string{}
 	refuse := func(refusal FixRefusal, key string) {
 		g.refused[key] = true

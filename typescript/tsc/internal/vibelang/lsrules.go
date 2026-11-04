@@ -83,6 +83,7 @@ func init() {
 	ls.RegisterCodeFixProvider(inferredEffectTypeArgumentFix)
 	ls.RegisterCodeFixProvider(mergeAllFix)
 	ls.RegisterCodeFixProvider(assertionFix)
+	tsFormFixCodes = append(tsFormFixCodes, EK4813.Code)
 	ls.RegisterCodeFixProvider(outdatedAPIFix)
 	ls.RegisterCodeFixProvider(outdatedAPITypeScriptFix)
 	ls.RegisterCodeFixProvider(schemaIsFix)
@@ -683,28 +684,36 @@ func isLeakable(t *checker.Type) bool {
 // assertion from one Effect type to another, drops failures or
 // requirements.
 func (r *ruleCheck) checkAssertion(assertion *ast.Node) {
-	source := r.c.GetTypeAtLocation(assertion.Expression())
-	target := r.c.GetTypeFromTypeNode(assertion.Type())
-	if !isEffectType(r.c, source) || !isEffectType(r.c, target) {
-		return
+	channel, dropped := assertionDroppedChannel(r.c, assertion)
+	if len(dropped) > 0 {
+		d := report(r.c, assertion, EK4810, strings.Join(dropped, " | "), channel)
+		note(d, "Remove the assertion, and handle or provide what it drops.")
+	}
+}
+
+// The diagnostic and repairs use the same test for a channel-dropping assertion.
+func assertionDroppedChannel(c *checker.Checker, assertion *ast.Node) (string, []string) {
+	source := c.GetTypeAtLocation(assertion.Expression())
+	target := c.GetTypeFromTypeNode(assertion.Type())
+	if !isEffectType(c, source) || !isEffectType(c, target) {
+		return "", nil
 	}
 	for _, channel := range []struct{ name, property string }{{"E", "_E"}, {"R", "_R"}} {
-		from, to := channelType(r.c, source, channel.property), channelType(r.c, target, channel.property)
+		from, to := channelType(c, source, channel.property), channelType(c, target, channel.property)
 		if from == nil || to == nil {
 			continue
 		}
 		var dropped []string
 		for _, t := range from.Distributed() {
-			if !r.c.IsTypeAssignableTo(t, to) {
-				dropped = append(dropped, r.c.TypeToString(t))
+			if !c.IsTypeAssignableTo(t, to) {
+				dropped = append(dropped, c.TypeToString(t))
 			}
 		}
 		if len(dropped) > 0 {
-			d := report(r.c, assertion, EK4810, strings.Join(dropped, " | "), channel.name)
-			note(d, "Remove the assertion, and handle or provide what it drops.")
-			return
+			return channel.name, dropped
 		}
 	}
+	return "", nil
 }
 
 // checkNew reports EK4812 at new Promise outside a hatch, and outside a
@@ -915,7 +924,7 @@ func (r *ruleCheck) checkOutdated(access *ast.Node) {
 	if change.renamed != "" {
 		d := report(r.c, name, EK4813, module, name.Text(), change.renamed)
 		if change.note != "" {
-			note(d, change.note)
+			note(d, "No automatic fix: "+change.note)
 		}
 	} else {
 		report(r.c, name, outdatedAPI, module, name.Text())

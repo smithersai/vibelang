@@ -227,13 +227,18 @@ var ordinaryExtractorFix = &ls.CodeFixProvider{
 							actions = append(actions, action("Write the class test and its parameter properties", bare+" and "+beforeOpen+"{ "+body.String()+" }"))
 						}
 					}
-					// --fix applies the first action, and a "Write" title names
-					// the rewrite it applies; the bare test is the alternative
-					// only where the parameter properties can be matched.
-					if len(actions) == 0 {
-						actions = append(actions, action("Write the bare class test", bare))
-					} else {
-						actions = append(actions, action("Test the class without extracting values", bare))
+					// A bare class test may only replace an empty argument list.
+					// Otherwise it discards captures, property reads or comments.
+					if _, inside, ok := ordinaryExtractorBindings(fix.SourceFile, matcher, span); ok && strings.TrimSpace(fix.SourceFile.Text()[inside.Pos():inside.End()]) == "" && strings.TrimSpace(fix.SourceFile.Text()[matcher.End():inside.Pos()-1]) == "" {
+						// --fix applies the first action, and a "Write" title names
+						// the rewrite it applies; the bare test is the alternative
+						// only where the parameter properties can be matched.
+						if len(actions) == 0 {
+							actions = append(actions, action("Write the bare class test", bare))
+						} else {
+							actions = append(actions, action("Test the class without extracting values", bare))
+						}
+
 					}
 					return true
 				}
