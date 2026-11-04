@@ -10,6 +10,9 @@
 //   - A failing case has a source whose first line is `// expect: EK9201 ...`.
 //     It passes when the error codes tsc reports are exactly those codes.
 //   - A runnable case has a source with a `// expect-result: <json>` line.
+//   - A case docs/design/retirement-fixes.json registers as a --fix output is
+//     compiled only and must report no errors; its `// expect:` header is its
+//     input's.
 //     That source must export main(), a function that returns an Effect. The
 //     harness writes out/run.mjs, which runs main() and prints the JSON of its
 //     success value on a line that starts with @@result, and the case passes
@@ -79,6 +82,14 @@ import { fileURLToPath } from "node:url"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const casesDir = path.join(root, "vibelang", "cases")
+// The outputs of the --fix witnesses docs/design/retirement-fixes.json
+// registers, by case name. The retirement gate requires each to compile
+// standalone; its sources keep the input's `// expect:` header.
+const fixOutputs = new Set((() => {
+  const manifest = path.join(root, "..", "docs", "design", "retirement-fixes.json")
+  if (!fs.existsSync(manifest)) return []
+  return JSON.parse(fs.readFileSync(manifest, "utf8")).flatMap((fix) => (fix.cases ?? []).map((c) => path.basename(c.output)))
+})())
 const tsc = path.join(root, "built", "local", "tsc")
 // scripts/build-vibelang.sh and the //typescript:compiler target write tsc. One older than a file that target builds
 // from (typescript/tsc without its tests and testdata) is an earlier compiler: the cases then say nothing about the
@@ -445,6 +456,14 @@ async function check(name, commands) {
   // successful compilation when the compiler reported no errors.
   if (compiled.code !== 0 && (errors.length === 0 || (compiled.code !== 1 && compiled.code !== 2))) {
     return { ok: false, detail: `tsc exited with ${compiled.code}`, log: output }
+  }
+
+  // A registered --fix output is compiled only: its `// expect:` header is
+  // the input's, and the retirement gate already requires the output to
+  // compile standalone.
+  if (fixOutputs.has(name)) {
+    if (errors.length > 0) return { ok: false, detail: `the --fix output reports ${[...new Set(errors.map((d) => d.code))].join(" ")}`, log: output }
+    return { ok: true, detail: "compiles standalone as a registered --fix output", log: output }
   }
 
   const diagnosticsFile = path.join(dir, "expected", "diagnostics.txt")
