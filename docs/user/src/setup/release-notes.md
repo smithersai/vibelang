@@ -194,6 +194,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration API verification reported valid declaration snapshots as unavailable with a relative `TMPDIR`; it now compares them using the resolved temporary directory.
 - Migration could convert a module reached by bare Node inside a build shell script; setup now names that runner and retains its source graph until a loader is proven.
 - The runtime package README omitted `vibelang-runtime/data-methods` and several experimental subpaths, and said generated code used only the root; it now documents those entry points and checks every exported path against the README.
+- Knip could mark native exports as unused when an import resolved to their compiled JavaScript. Migration setup now persists a patch for affected installed Knip releases under pnpm or Bun, so compiled output maps back to configured source extensions such as `.vibe` and `.vibex`.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.

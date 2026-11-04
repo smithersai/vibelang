@@ -161,6 +161,18 @@ package that installs Knip or sets a `knip` key in `package.json` a
 file replaces it, and a JSON file cannot hold a compiler, so Knip then does not
 read `.vibe` modules: such a command needs a JavaScript configuration.
 
+For an installed Knip release whose compiled-output mapper searches only its
+built-in extensions, setup also writes a versioned patch under `patches/` and
+registers it with pnpm's or Bun's `patchedDependencies`. The mapper then uses
+the extensions in Knip's compiler registry, including `.vibe` and `.vibex`,
+when resolving an import of `dist/main.js` back to `src/main.vibe`. Existing
+TypeScript candidates retain their precedence. A repeated setup keeps the patch.
+A release that already supports this mapping needs no patch. Setup preserves an
+authored patch and warns when it needs the mapping added, when Knip is not
+installed, when its mapper has an unsupported layout, or when the package manager
+cannot persist the patch. Apply setup's patch with the repository's normal
+install command before running Knip.
+
 ESLint treats an `effect { ... }` block as an Effect value. Callback-arity
 rules inspect written functions such as `effect (cause) => ...`, so a block
 passed as the program argument of `Effect.catchCause` is not mistaken for a

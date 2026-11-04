@@ -1,3 +1,4 @@
+import { wireKnipCompiledOutputs } from "./knip-tools.mjs"
 import { replaceBunCheck } from "./bun-check.mjs"
 import { bunProgramScope } from "./bun-scope.mjs"
 import { addBunBuildGlobs } from "./bun-globs.mjs"
@@ -1573,14 +1574,17 @@ export function wireKnip({ root, specs }) {
 export function wireKnips({ root, manifests, specsFor }) {
   const changed = []
   const warnings = []
+  manifests = manifests.filter(manifest => !/(?:^|\/)(?:fixtures|__fixtures__|testdata)\//.test(manifest))
   for (const manifest of manifests) {
-    if (/(?:^|\/)(?:fixtures|__fixtures__|testdata)\//.test(manifest)) continue
     const dir = posix.dirname(manifest)
     const name = (file) => (dir === "." ? file : `${dir}/${file}`)
     const wired = wireKnip({ root: join(root, dir), specs: specsFor(dir) })
     changed.push(...wired.changed.map(name))
     warnings.push(...wired.warnings.map((warning) => (dir === "." ? warning : `${dir}: ${warning}`)))
   }
+  const mapping = wireKnipCompiledOutputs({ root, manifests, manager: packageManager(readdirSync(root)) })
+  changed.push(...mapping.changed.filter(file => !changed.includes(file)))
+  warnings.push(...mapping.warnings)
   return { changed, warnings }
 }
 

@@ -1,0 +1,6 @@
+{
+  "version": "6.38.0",
+  "source": "src/main.vibe",
+  "output": "dist/main.js",
+  "mapper": "const sourceExtensions = ['.ts', '.tsx', '.js'];\nconst findFileWithExtensions = (path, extensions) => extensions.map(extension => path + extension).find(file => files.has(file));\nexport const getModuleSourcePathHandler = (chief) => {\n    const toSourceMapCache = new Map();\n    return (filePath) => {\n        const basePath = filePath.replace(/^dist\\//, 'src/').replace(/\\.js$/, '');\n        const srcFilePath = findFileWithExtensions(basePath, sourceExtensions);\n        return srcFilePath ?? filePath;\n    };\n};\n"
+}
