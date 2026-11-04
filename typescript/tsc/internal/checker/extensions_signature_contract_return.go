@@ -4,7 +4,9 @@ package checker
 // declared constraints before its own type arguments are substituted. Captured
 // object arguments are still applied, including parameters used only in metadata.
 func (c *Checker) SignatureReturnBeforeOwnTypeArguments(signature *Signature, owners []*Type) *Type {
-	for signature.Target() != nil {
+	// An instantiated signature has lost its own parameters. Stop at the
+	// first generic signature so its captured constraint mappings survive.
+	for signature.Target() != nil && len(signature.TypeParameters()) == 0 {
 		signature = signature.Target()
 	}
 	result := c.GetReturnTypeOfSignature(signature)

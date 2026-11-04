@@ -14,6 +14,11 @@ func (c *Checker) InstantiateWrittenSignatureType(signature *Signature, declared
 	// Retain the containing resolved objects' substitutions for that metadata.
 	for i := len(owners) - 1; i >= 0; i-- {
 		owner := owners[i]
+		// Union, intersection and primitive value owners carry no mapper.
+		// Mapper is defined only for these three type representations.
+		if owner == nil || owner.flags&(TypeFlagsObject|TypeFlagsTypeParameter|TypeFlagsConditional) == 0 {
+			continue
+		}
 		if owner.objectFlags&ObjectFlagsReference != 0 && owner.Target().objectFlags&ObjectFlagsClassOrInterface != 0 {
 			declared = c.instantiateType(declared, newTypeMapper(owner.TargetInterfaceType().TypeParameters(), c.getTypeArguments(owner)))
 		} else {

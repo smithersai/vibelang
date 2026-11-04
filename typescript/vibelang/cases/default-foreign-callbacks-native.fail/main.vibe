@@ -1,0 +1,5 @@
+// expect: TS2322 TS2345 TS2416
+import {numeric,consumeText,type TextAPI} from "./helpers.js"
+export const incompatible:(value:string)=>void=numeric
+export function pass(){consumeText(numeric)}
+export class Bad implements TextAPI {run=numeric}

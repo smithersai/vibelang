@@ -1941,6 +1941,7 @@ typescript/vibelang/cases/declaration-written-ts-import-vibe-target/consumer.vib
 typescript/vibelang/cases/declaration-written-ts-import-vibe-target/target.vibe:3:25 lambda plain annotation
 typescript/vibelang/cases/default-effect-block/program.vibe:4:22 lambda plain fallback
 typescript/vibelang/cases/default-effect-block/program.vibe:5:16 lambda plain fallback
+typescript/vibelang/cases/default-foreign-callbacks/main.vibe:13:68 lambda plain table
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:10:18 lambda effectFn keyword
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:17:18 lambda effectFn keyword
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:21:18 lambda effectFn keyword

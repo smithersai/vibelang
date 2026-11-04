@@ -1,0 +1,16 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import {type Handler,intersectionOwner,unionOwner,source,consume,Parent,instantiated,type API} from "./helpers.js"
+import * as Helpers from "./helpers.js"
+const alias=source
+export const bound:()=>unknown=source
+export function returned():()=>unknown{return source}
+export function passed(){consume(source)}
+export class Box implements API {run=source}
+export const member:API={run:source}
+export const boundAlias:()=>unknown=alias
+export function qualified(){consume(Helpers.source)}
+export class Derived extends Parent implements API {}
+export const ownGeneric:()=>unknown=instantiated
+export const intersected:Handler=intersectionOwner.method
+export const united:Handler=unionOwner.method
+export const primitive:Handler="value".foreignContractMethod
