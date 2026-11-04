@@ -1,6 +1,6 @@
 # The build graph
 
-The compiler package gate also runs `//typescript/tsc:go-vibelangfmt`, so formatter Go regressions run before a compiler change lands.
+The compiler package gate also runs `//typescript/tsc:go-vibelangfmt`, so formatter Go regressions run before a compiler change lands. Schema-optional oracles quote the conditional specification table and retain both project-setting branches; wording updates do not replace semantic or declaration checks.
 
 VibeLang's checks run as targets of `smthrs`, Smithers' build tool. Each
 `PACKAGE.ts` declares targets; the files, tools and targets a target names are

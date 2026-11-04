@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The run-phase binding corpus still quoted a retired migration paragraph. Its contract check now quotes the current evaluation-order and coldness requirement, while retaining every binding and eager-argument case.
 
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
+- Optional-schema fuzz checks stopped before testing behavior because they quoted a superseded specification sentence. They now quote the conditional optional-property table while retaining the decoding and declaration comparisons.
+
 
 - Stock-oracle and package-load migration checks could fail while reading an absent legacy setup receipt. Their fixtures now record complete public declaration metadata and real upstream packs before testing certification and load regressions.
 

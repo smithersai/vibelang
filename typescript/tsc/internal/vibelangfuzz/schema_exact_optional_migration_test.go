@@ -9,7 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
-const schemaOptionalDefaultQuote = "`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default."
+const schemaOptionalDefaultQuote = "| `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |"
 
 func TestSchemaExactOptionalQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("006-data.md"), schemaOptionalDefaultQuote) {
