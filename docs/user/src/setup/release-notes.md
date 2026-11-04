@@ -194,6 +194,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Loader validation tests failed after their documented contract moved to the migration guide; they now read its published location while retaining every receipt and failure check.
 - The diagnostic registry check could fail after a fixed fuzz witness left an orphaned pending record; graduated witnesses now stay active without waiving unassigned diagnostics.
 - Error declaration conformance checks still expected the retired generated matcher member in published types. Their TypeScript counterparts now match the accepted published API, while the runtime matcher checks remain active.
+- An Effect expression named `fork` or `join` could report `EK1702` twice. Its parser diagnostic now appears once, with the existing rename fix preserved.
 
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.

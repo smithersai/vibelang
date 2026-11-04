@@ -35,7 +35,7 @@ func FuzzCallableOwnNames(f *testing.F) {
 	requireCallableOwnNameQuotes(f)
 	keys := []string{"expression", "producer-expression", "declaration", "producer-declaration", "overload", "object-method", "class-method", "plain-boundary", "async-boundary", "arrow-boundary", "arrow-head", "do-declaration"}
 	for _, key := range keys {
-		for _, mode := range []uint8{0, 1, 2, 4, 5, 6, 12} {
+		for _, mode := range []uint8{0, 1, 2, 4, 5, 6, 12, 32, 33, 36, 37, 48, 49} {
 			f.Add(key, mode)
 		}
 	}
@@ -106,6 +106,10 @@ func FuzzCallableOwnNames(f *testing.F) {
 		}
 		if mode&16 != 0 {
 			source = "const café = '😀';\n" + source
+		}
+		if mode&32 != 0 {
+			source = strings.ReplaceAll(source, "fork", "f\\u006frk")
+			source = strings.ReplaceAll(source, "join", "j\\u006fin")
 		}
 		result, err := w.Compile(context.Background(), Single(source))
 		if err != nil {

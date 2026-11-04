@@ -70,3 +70,28 @@ func TestCallableOwnNameContext(t *testing.T) {
 		})
 	}
 }
+
+func TestEffectOwnNameHasOneParserDiagnostic(t *testing.T) {
+	for _, source := range []string{
+		"const f = effect function fork() { return 1 }",
+		"const f = effect function* join() { yield 1 }",
+		"const café = '😀'; const f = (effect function f\\u006frk() { return 1 })",
+		"effect function outer() { return effect function j\\u006fin() { return 1 } }",
+	} {
+		p, file, _, _ := editorProgram(t, source)
+		syntax, semantic := 0, 0
+		for _, d := range p.GetSyntacticDiagnostics(t.Context(), file) {
+			if d.Code() == 1702 {
+				syntax++
+			}
+		}
+		for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
+			if d.Code() == 1702 {
+				semantic++
+			}
+		}
+		if syntax != 1 || semantic != 0 {
+			t.Fatalf("EK1702 syntax=%d semantic=%d, want 1 and 0: %s", syntax, semantic, source)
+		}
+	}
+}
