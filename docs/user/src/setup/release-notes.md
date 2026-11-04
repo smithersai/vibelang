@@ -234,6 +234,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A permitted `globalThis.Function.prototype` access could receive `EK0107` when its literal key used parentheses or an erased assertion. Those keys now keep the prototype exemption; variable keys remain rejected.
 
 
+- Declaration identity checks could report `TS1262` for a valid export named `await`; keyword export aliases now compare normally, including through namespace re-exports.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.

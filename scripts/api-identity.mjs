@@ -1263,6 +1263,16 @@ function prepareComparison(ts, before, after, options, progress) {
   const bridges = new Map()
   const genericBridges = new Map()
   let counter = 0, sharedExportProofs = 0
+  const exportReference = (path, name) => {
+    // TypeScript accepts keyword export aliases, but a type query through
+    // import("...").await reports TS1262 in the generated module. A quoted
+    // imported name has the same symbol and gives every keyword a legal local.
+    if (ts.isIdentifierText(name, ts.ScriptTarget.Latest) && ts.stringToToken(name) === undefined)
+      return `import(${JSON.stringify(slash(path))}).${name}`
+    const alias = "__api_export_" + counter++
+    imports.push(`import type { ${JSON.stringify(name)} as ${alias} } from ${JSON.stringify(slash(path))};`)
+    return alias
+  }
   const printer = ts.createPrinter()
   const sourceExports = (file, entry, side) => {
     const sf = program.getSourceFile(file)
@@ -1531,7 +1541,7 @@ function prepareComparison(ts, before, after, options, progress) {
           // itself; ordinary declared namespaces keep their lexical path.
           const childPath = (symbol, path) => {
             const source = symbol.declarations?.find(ts.isSourceFile)
-            return (source ? `import(${JSON.stringify(slash(source.fileName))})` : path) + "." + child
+            return source ? exportReference(source.fileName, child) : path + "." + child
           }
           visit(ae.get(child), be.get(child), childPath(a, apath), childPath(b, bpath), entrypoint, name + "." + child, trail, sharedModule)
         }
@@ -1558,10 +1568,7 @@ function prepareComparison(ts, before, after, options, progress) {
             imports.push(`import type ${alias} from ${JSON.stringify(slash(path))};`)
             return alias
           }
-          if (ts.isIdentifierText(name, ts.ScriptTarget.Latest)) return `import(${JSON.stringify(slash(path))}).${name}`
-          const alias = "__api_export_" + counter++
-          imports.push(`import type { ${JSON.stringify(name)} as ${alias} } from ${JSON.stringify(slash(path))};`)
-          return alias
+          return exportReference(path, name)
         }
         const sharedModule = !a.refs?.has(name) && !b.refs?.has(name) &&
           (equivalents.get(left[key]) ?? left[key]) === (equivalents.get(right[key]) ?? right[key])

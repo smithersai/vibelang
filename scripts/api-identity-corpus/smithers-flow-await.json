@@ -1,0 +1,6 @@
+{
+  "repository": "smithersai/smithers",
+  "pattern": "flow Deferred.await re-export through the public namespace",
+  "keyword": "await",
+  "depth": 0
+}

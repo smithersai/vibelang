@@ -6,6 +6,8 @@ pinned stock TypeScript compiler API with
 `(cd docs/tools && bun install --frozen-lockfile)` first. The checker reads
 both inputs without writing to them.
 
+Exports named with keywords, such as `await`, are compared through local type-only import aliases. This also applies to namespace re-exports; a type change still produces a normal type difference.
+
 The command reports three lists: exported-name differences, type differences
 with the generated probe's `tsc` diagnostic, and doc-comment differences.
 Exit status `0` means the comparison completed and all three are empty;
