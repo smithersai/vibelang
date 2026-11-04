@@ -224,6 +224,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The exact-optional schema tables hid the explicit-undefined mappings; both settings now display their intended schema mapping.
 
+- Nominal declaration-reference regression tests repeatedly loaded browser libraries and could mask a missing `BigInt` library reference. Their native validation and comparison programs now share the fixture's library baseline and retain explicit reference checks.
+
 - Stock TypeScript tools rejected the mapper prelude after the old interruption and yield factories were retired. The mapper now imports `interrupt` and `yieldNow` directly from Effect and preserves their native value identities.
 - Match-chain migration validation now retains the explicit fallback required for destructuring combinator arms and checks that exhaustive tagged handlers keep their results and public types.
 

@@ -1683,3 +1683,10 @@ programs, including the migration gate's child worker, to the libraries the
 fixtures use. The resource regression checks both original declaration trees
 with native TypeScript. All 80 generated resolution samples and the export,
 type, literal, documentation and invalid-target controls remain in the suite.
+
+Nominal-reference API fixtures use `lib.es5.d.ts` in both native validation
+and comparison programs. Authored `es2020` directives still supply
+`BigInt`; removing one must produce `TS2583` and make comparison
+unavailable. Missing path references still require `TS6053`. The original
+24 generated path, ambient-value and library-reference samples remain active.
+Loaded-library guards run outside comparison failure handling.

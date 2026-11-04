@@ -7,9 +7,24 @@ import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/foldkit-nominal-ambient-reference.json", import.meta.url)))
-const ts = loadTypeScript()
+const stockTs = loadTypeScript()
+const libraryViolations = new Set()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  for (const source of program.getSourceFiles())
+    if (/[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)) libraryViolations.add(source.fileName)
+  return program
+} }
+const assertLibraries = () => assert.equal(libraryViolations.size, 0,
+  "Nominal reference fixtures must not load unrelated browser libraries")
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+function compare(before, after) {
+  const result = compareApiIdentity(ts, before, after, { compilerOptions })
+  assertLibraries()
+  return result
+}
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
-function verify({ lib = false, path = "ambient.d.ts", value = 1, missing = false } = {}) {
+function verify({ lib = false, path = "ambient.d.ts", value = 1, missing = false, missingLib = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "api-identity-nominal-reference-"))
   const before = join(root, "before"), after = join(root, "after")
   const ambient = n => corpus.before["ambient.d.ts"].replace("version: 1", `version: ${n}`)
@@ -21,28 +36,45 @@ function verify({ lib = false, path = "ambient.d.ts", value = 1, missing = false
       const index = corpus.before["index.d.ts"].replace("./ambient.d.ts", "./" + path)
         .replace("value: T;", "value: T;" + (lib ? " big: typeof BigInt;" : ""))
       writeFileSync(join(dir, "index.d.ts"), (lib ? '/// <reference lib="es2020" />\n' : '') + index)
-      const program = ts.createProgram([join(dir, "index.d.ts")], { strict: true, noEmit: true, types: [] })
+      const program = ts.createProgram([join(dir, "index.d.ts")], { ...compilerOptions, strict: true, noEmit: true, types: [] })
       const diagnostics = ts.getPreEmitDiagnostics(program)
+      assertLibraries()
       assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, { getCanonicalFileName:x=>x,getCurrentDirectory:()=>dir,getNewLine:()=>"\n" }))
+    }
+    if (missingLib) {
+      for (const dir of [before, after]) {
+        const file = join(dir, "index.d.ts")
+        writeFileSync(file, readFileSync(file, "utf8").replace('/// <reference lib="es2020" />\n', ''))
+        const program = ts.createProgram([file], { ...compilerOptions, strict: true, noEmit: true, types: [] })
+        assert.ok(ts.getPreEmitDiagnostics(program).some(diagnostic => diagnostic.code === 2583),
+          "Native TypeScript must require the authored BigInt library reference")
+      }
+      const invalid = compare(before, after)
+      assert.equal(invalid.comparisonComplete, false,
+        "A missing BigInt library must make the comparison unavailable: " + JSON.stringify(invalid))
+      assert.equal(invalid.identical, false, JSON.stringify(invalid))
+      assert.deepEqual(invalid.typeDifferences, [])
+      assert.ok(invalid.environmentDiagnostics.some(item => item.blocking && /TS2583/.test(item.diagnostic)), JSON.stringify(invalid))
+      return
     }
     if (missing) {
       for (const dir of [before, after]) {
         rmSync(join(dir, path))
-        const program = ts.createProgram([join(dir, "index.d.ts")], { strict: true, noEmit: true, types: [] })
+        const program = ts.createProgram([join(dir, "index.d.ts")], { ...compilerOptions, strict: true, noEmit: true, types: [] })
         assert.ok(ts.getPreEmitDiagnostics(program).some(diagnostic => diagnostic.code === 6053))
       }
-      const invalid = compareApiIdentity(ts, before, after)
+      const invalid = compare(before, after)
       assert.equal(invalid.comparisonComplete, false, JSON.stringify(invalid))
       assert.equal(invalid.identical, false, JSON.stringify(invalid))
       assert.deepEqual(invalid.typeDifferences, [])
       assert.ok(invalid.environmentDiagnostics.some(item => item.blocking && /TS6053/.test(item.diagnostic)), JSON.stringify(invalid))
       return
     }
-    const same = compareApiIdentity(ts, before, after)
+    const same = compare(before, after)
     assert.equal(same.comparisonComplete, true, JSON.stringify(same))
     assert.equal(same.identical, true, JSON.stringify(same))
     writeFileSync(join(after, path), ambient(value + 1))
-    const changed = compareApiIdentity(ts, before, after)
+    const changed = compare(before, after)
     assert.equal(changed.comparisonComplete, true, JSON.stringify(changed))
     assert.equal(changed.identical, false, JSON.stringify(changed))
     assert.ok(changed.typeDifferences.length, JSON.stringify(changed))
@@ -61,3 +93,5 @@ test("property: nominal identity keeps referenced ambient exports and mutations"
     check: verify,
   })
 })
+
+test("missing explicit library references keep BigInt unavailable", () => verify({ lib: true, missingLib: true }))
