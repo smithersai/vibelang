@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("esm:host:HostRuntime:alias-value\x00\x00")

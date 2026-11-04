@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("esm:child_process:type\x00\x00")

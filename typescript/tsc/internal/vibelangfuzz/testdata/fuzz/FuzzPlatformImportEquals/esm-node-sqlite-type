@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("esm:node:sqlite:type\x00\x00")

@@ -54,6 +54,18 @@ func fixPlatformTypeOnly(t *testing.T, source string) string {
 
 func TestPlatformTypeOnlyImportFix(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
+		{"external alias unused",
+			"import Hooks = require(\"node:async_hooks\")\nexport const marker = 1\n",
+			"import type Hooks = require(\"node:async_hooks\")\nexport const marker = 1\n"},
+		{"external alias type",
+			"import Hooks = require(\"node:async_hooks\")\nexport type C = Hooks.AsyncResource\n",
+			"import type Hooks = require(\"node:async_hooks\")\nexport type C = Hooks.AsyncResource\n"},
+		{"external alias typeof",
+			"import Hooks = require(\"node:async_hooks\")\nexport type C = typeof Hooks.AsyncResource\n",
+			"import type Hooks = require(\"node:async_hooks\")\nexport type C = typeof Hooks.AsyncResource\n"},
+		{"external alias trivia",
+			"// note\nimport /* keep */ Hooks = require(\"node:async_hooks\")\nexport type C = Hooks.AsyncResource\n",
+			"// note\nimport type /* keep */ Hooks = require(\"node:async_hooks\")\nexport type C = Hooks.AsyncResource\n"},
 		{"class read as a type",
 			"import { AsyncLocalStorage } from \"node:async_hooks\"\nexport type C = AsyncLocalStorage<unknown>\n",
 			"import type { AsyncLocalStorage } from \"node:async_hooks\"\nexport type C = AsyncLocalStorage<unknown>\n"},
@@ -84,13 +96,18 @@ func TestPlatformTypeOnlyImportFix(t *testing.T) {
 // A value read keeps the import and its EK4402, whatever else reads it as a type.
 func TestPlatformTypeOnlyImportFixLeaves(t *testing.T) {
 	for name, source := range map[string]string{
-		"new":               "import { AsyncResource } from \"node:async_hooks\"\nexport const r = new AsyncResource()\n",
-		"both":              "import { AsyncResource } from \"node:async_hooks\"\nexport const r: AsyncResource = new AsyncResource()\n",
-		"one of two":        "import { AsyncLocalStorage, AsyncResource } from \"node:async_hooks\"\nexport type C = AsyncLocalStorage<unknown>\nexport const r = new AsyncResource()\n",
-		"re-export":         "import { AsyncResource } from \"node:async_hooks\"\nexport { AsyncResource }\n",
-		"shorthand":         "import { AsyncResource } from \"node:async_hooks\"\nexport const o = { AsyncResource }\n",
-		"default and named": "import d, { AsyncResource } from \"node:async_hooks\"\nexport type C = typeof d | AsyncResource\n",
-		"in a closure":      "import { AsyncResource } from \"node:async_hooks\"\nexport const f = () => AsyncResource\n",
+		"external alias value":           "import Hooks = require(\"node:async_hooks\")\nexport const value = Hooks.AsyncResource\n",
+		"external alias export modifier": "export import Hooks = require(\"node:async_hooks\")\n",
+		"external alias re-export":       "import Hooks = require(\"node:async_hooks\")\nexport { Hooks }\n",
+		"external alias shorthand":       "import Hooks = require(\"node:async_hooks\")\nexport const value = { Hooks }\n",
+		"external alias closure":         "import Hooks = require(\"node:async_hooks\")\nexport const value = () => Hooks\n",
+		"new":                            "import { AsyncResource } from \"node:async_hooks\"\nexport const r = new AsyncResource()\n",
+		"both":                           "import { AsyncResource } from \"node:async_hooks\"\nexport const r: AsyncResource = new AsyncResource()\n",
+		"one of two":                     "import { AsyncLocalStorage, AsyncResource } from \"node:async_hooks\"\nexport type C = AsyncLocalStorage<unknown>\nexport const r = new AsyncResource()\n",
+		"re-export":                      "import { AsyncResource } from \"node:async_hooks\"\nexport { AsyncResource }\n",
+		"shorthand":                      "import { AsyncResource } from \"node:async_hooks\"\nexport const o = { AsyncResource }\n",
+		"default and named":              "import d, { AsyncResource } from \"node:async_hooks\"\nexport type C = typeof d | AsyncResource\n",
+		"in a closure":                   "import { AsyncResource } from \"node:async_hooks\"\nexport const f = () => AsyncResource\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if got := fixPlatformTypeOnly(t, source); got != source {

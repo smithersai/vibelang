@@ -44,6 +44,10 @@
       {
         "input": "typescript/vibelang/cases/platform-qualified-host-alias.fail",
         "output": "typescript/vibelang/cases/platform-qualified-host-alias-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-import-equals.fail",
+        "output": "typescript/vibelang/cases/platform-import-equals-fixed"
       }
     ]
   }

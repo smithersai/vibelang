@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("cjs:npm-prefix-only\x00\x00")

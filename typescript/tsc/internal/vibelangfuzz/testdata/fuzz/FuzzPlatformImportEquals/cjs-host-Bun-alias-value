@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("cjs:host:Bun:alias-value\x00\x00")

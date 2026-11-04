@@ -1,0 +1,3 @@
+import type /* keep */ FS = require("node:fs")
+export type Stat = FS.Stats
+export const n = 42

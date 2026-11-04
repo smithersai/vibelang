@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("cjs:node:sqlite:unused\x00\x00")

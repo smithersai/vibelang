@@ -1,0 +1,510 @@
+[
+  {
+    "key": "esm:node:fs:unused",
+    "source": "import Host0 = require(\"node:fs\"); export const marker=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:fs:used",
+    "source": "import Host0 = require(\"node:fs\"); export const marker=Host0.marker",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:fs:exported",
+    "source": "export import Host0 = require(\"node:fs\");",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:fs:type",
+    "source": "import type Host0 = require(\"node:fs\"); export type Marker=typeof Host0.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:fs:unused",
+    "source": "import Host1 = require(\"fs\"); export const marker=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:fs:used",
+    "source": "import Host1 = require(\"fs\"); export const marker=Host1.marker",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:fs:exported",
+    "source": "export import Host1 = require(\"fs\");",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:fs:type",
+    "source": "import type Host1 = require(\"fs\"); export type Marker=typeof Host1.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:node:fs/promises:unused",
+    "source": "import Host2 = require(\"node:fs/promises\"); export const marker=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:fs/promises:used",
+    "source": "import Host2 = require(\"node:fs/promises\"); export const marker=Host2.marker",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:fs/promises:exported",
+    "source": "export import Host2 = require(\"node:fs/promises\");",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:fs/promises:type",
+    "source": "import type Host2 = require(\"node:fs/promises\"); export type Marker=typeof Host2.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:child_process:unused",
+    "source": "import Host3 = require(\"child_process\"); export const marker=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:child_process:used",
+    "source": "import Host3 = require(\"child_process\"); export const marker=Host3.marker",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:child_process:exported",
+    "source": "export import Host3 = require(\"child_process\");",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:child_process:type",
+    "source": "import type Host3 = require(\"child_process\"); export type Marker=typeof Host3.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:node:test:unused",
+    "source": "import Host4 = require(\"node:test\"); export const marker=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:test:used",
+    "source": "import Host4 = require(\"node:test\"); export const marker=Host4.marker",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:test:exported",
+    "source": "export import Host4 = require(\"node:test\");",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:test:type",
+    "source": "import type Host4 = require(\"node:test\"); export type Marker=typeof Host4.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:node:sqlite:unused",
+    "source": "import Host5 = require(\"node:sqlite\"); export const marker=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:sqlite:used",
+    "source": "import Host5 = require(\"node:sqlite\"); export const marker=Host5.marker",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:sqlite:exported",
+    "source": "export import Host5 = require(\"node:sqlite\");",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:node:sqlite:type",
+    "source": "import type Host5 = require(\"node:sqlite\"); export type Marker=typeof Host5.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:local-alias",
+    "source": "namespace Local {export const marker=1}; import Alias = Local; export const marker=Alias.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:npm-prefix-only",
+    "source": "import Host = require(\"test\"); export const marker=Host.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:npm-module",
+    "source": "import Host = require(\"fs-extra\"); export const marker=Host.marker",
+    "mode": "esm",
+    "errors": []
+  },
+  {
+    "key": "esm:ordinary-import",
+    "source": "import * as Host from \"node:fs\"; export const marker=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:fs:unused",
+    "source": "import Host0 = require(\"node:fs\"); export const marker=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:fs:used",
+    "source": "import Host0 = require(\"node:fs\"); export const marker=Host0.marker",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:fs:exported",
+    "source": "export import Host0 = require(\"node:fs\");",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:fs:type",
+    "source": "import type Host0 = require(\"node:fs\"); export type Marker=typeof Host0.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:fs:unused",
+    "source": "import Host1 = require(\"fs\"); export const marker=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:fs:used",
+    "source": "import Host1 = require(\"fs\"); export const marker=Host1.marker",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:fs:exported",
+    "source": "export import Host1 = require(\"fs\");",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:fs:type",
+    "source": "import type Host1 = require(\"fs\"); export type Marker=typeof Host1.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:node:fs/promises:unused",
+    "source": "import Host2 = require(\"node:fs/promises\"); export const marker=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:fs/promises:used",
+    "source": "import Host2 = require(\"node:fs/promises\"); export const marker=Host2.marker",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:fs/promises:exported",
+    "source": "export import Host2 = require(\"node:fs/promises\");",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:fs/promises:type",
+    "source": "import type Host2 = require(\"node:fs/promises\"); export type Marker=typeof Host2.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:child_process:unused",
+    "source": "import Host3 = require(\"child_process\"); export const marker=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:child_process:used",
+    "source": "import Host3 = require(\"child_process\"); export const marker=Host3.marker",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:child_process:exported",
+    "source": "export import Host3 = require(\"child_process\");",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:child_process:type",
+    "source": "import type Host3 = require(\"child_process\"); export type Marker=typeof Host3.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:node:test:unused",
+    "source": "import Host4 = require(\"node:test\"); export const marker=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:test:used",
+    "source": "import Host4 = require(\"node:test\"); export const marker=Host4.marker",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:test:exported",
+    "source": "export import Host4 = require(\"node:test\");",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:test:type",
+    "source": "import type Host4 = require(\"node:test\"); export type Marker=typeof Host4.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:node:sqlite:unused",
+    "source": "import Host5 = require(\"node:sqlite\"); export const marker=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:sqlite:used",
+    "source": "import Host5 = require(\"node:sqlite\"); export const marker=Host5.marker",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:sqlite:exported",
+    "source": "export import Host5 = require(\"node:sqlite\");",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:node:sqlite:type",
+    "source": "import type Host5 = require(\"node:sqlite\"); export type Marker=typeof Host5.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:local-alias",
+    "source": "namespace Local {export const marker=1}; import Alias = Local; export const marker=Alias.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:npm-prefix-only",
+    "source": "import Host = require(\"test\"); export const marker=Host.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:npm-module",
+    "source": "import Host = require(\"fs-extra\"); export const marker=Host.marker",
+    "mode": "cjs",
+    "errors": []
+  },
+  {
+    "key": "cjs:ordinary-import",
+    "source": "import * as Host from \"node:fs\"; export const marker=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:host:Bun:capture",
+    "source": "export const native=Bun",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:host:Bun:alias-value",
+    "source": "import Alias = Bun; export const native=Alias",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:host:Bun:alias-unused",
+    "source": "import Alias = Bun; export const native=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:host:HostRuntime:capture",
+    "source": "export const native=HostRuntime",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:host:HostRuntime:alias-value",
+    "source": "import Alias = HostRuntime; export const native=Alias",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "esm:host:HostRuntime:alias-unused",
+    "source": "import Alias = HostRuntime; export const native=1",
+    "mode": "esm",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:host:Bun:capture",
+    "source": "export const native=Bun",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:host:Bun:alias-value",
+    "source": "import Alias = Bun; export const native=Alias",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:host:Bun:alias-unused",
+    "source": "import Alias = Bun; export const native=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:host:HostRuntime:capture",
+    "source": "export const native=HostRuntime",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:host:HostRuntime:alias-value",
+    "source": "import Alias = HostRuntime; export const native=Alias",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "cjs:host:HostRuntime:alias-unused",
+    "source": "import Alias = HostRuntime; export const native=1",
+    "mode": "cjs",
+    "errors": [
+      "EK4402"
+    ]
+  }
+]

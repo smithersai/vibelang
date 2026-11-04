@@ -509,6 +509,10 @@ func checkPlatform(c *checker.Checker, file *ast.SourceFile) {
 		case ast.IsImportDeclaration(node) || ast.IsExportDeclaration(node):
 			checkPlatformImport(c, node)
 			return false
+		case ast.IsImportEqualsDeclaration(node):
+			checkPlatformImport(c, node)
+			// Keep walking internal aliases so their existing host-global
+			// diagnostics remain visible.
 		case node.Kind == ast.KindTypeQuery:
 			// typeof setTimeout is a type, erased as host_global_declarations.go's
 			// unlisted globals are; the checker gives its operand value meaning.
@@ -540,8 +544,8 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 	if node.Parent == nil || !ast.IsSourceFile(node.Parent) {
 		return
 	}
-	specifier := node.ModuleSpecifier()
-	if specifier == nil || !ast.IsStringLiteral(specifier) {
+	specifier := platformImportSpecifier(node)
+	if specifier == nil {
 		return
 	}
 	module := specifier.Text()
@@ -553,6 +557,14 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 		ref := platformRef{replacement: replacement, module: module, name: importedName(module, decl)}
 		d := report(c, at, platformValueImport, local, module)
 		notePlatformAPI(d, platformAPIOf(ref, nil))
+	}
+	if ast.IsImportEqualsDeclaration(node) {
+		if !node.IsTypeOnly() {
+			if name := node.Name(); name != nil {
+				reportBinding(name, name.Text(), node)
+			}
+		}
+		return
 	}
 	var elements []*ast.Node
 	if ast.IsImportDeclaration(node) {
@@ -592,6 +604,26 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 			reportBinding(element, element.Name().Text(), element)
 		}
 	}
+}
+
+// platformImportSpecifier returns the string module specifier of a regular
+// import/export or an external import-equals declaration. Internal aliases and
+// incomplete parser recovery nodes do not name a module.
+func platformImportSpecifier(node *ast.Node) *ast.Node {
+	var specifier *ast.Node
+	if ast.IsImportEqualsDeclaration(node) {
+		reference := node.AsImportEqualsDeclaration().ModuleReference
+		if reference == nil || !ast.IsExternalModuleReference(reference) {
+			return nil
+		}
+		specifier = reference.AsExternalModuleReference().Expression
+	} else {
+		specifier = node.ModuleSpecifier()
+	}
+	if specifier != nil && ast.IsStringLiteral(specifier) {
+		return specifier
+	}
+	return nil
 }
 
 // platformModuleOf returns the name of module's replacement, and whether

@@ -27,8 +27,8 @@ func init() {
 // name EK4402 stands at, belongs to, when it imports a platform module; or nil.
 func platformImportOfBinding(node *ast.Node) *ast.Node {
 	for n := node; n != nil; n = n.Parent {
-		if ast.IsImportDeclaration(n) {
-			specifier := n.ModuleSpecifier()
+		if ast.IsImportDeclaration(n) || ast.IsImportEqualsDeclaration(n) {
+			specifier := platformImportSpecifier(n)
 			if specifier == nil || !ast.IsStringLiteral(specifier) {
 				return nil
 			}
@@ -46,6 +46,9 @@ func platformImportOfBinding(node *ast.Node) *ast.Node {
 
 // importBindingNames returns the names statement binds.
 func importBindingNames(statement *ast.Node) []*ast.Node {
+	if ast.IsImportEqualsDeclaration(statement) {
+		return []*ast.Node{statement.Name()}
+	}
 	clause := statement.ImportClause()
 	if clause == nil {
 		return nil
@@ -70,6 +73,9 @@ func importBindingNames(statement *ast.Node) []*ast.Node {
 // of statement's bindings as a value: a read, a shorthand property, or a
 // re-export, which keeps the value in the module's exports.
 func readsImportAsValue(c *checker.Checker, file *ast.SourceFile, statement *ast.Node) bool {
+	if ast.IsImportEqualsDeclaration(statement) && ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport) {
+		return true
+	}
 	symbols := map[*ast.Symbol]bool{}
 	for _, name := range importBindingNames(statement) {
 		symbols[c.GetSymbolAtLocation(name)] = true
@@ -103,6 +109,13 @@ func readsImportAsValue(c *checker.Checker, file *ast.SourceFile, statement *ast
 // nil when TypeScript has no such form: import type takes a default binding
 // or named ones, not both, and attributes or a phase change what it loads.
 func typeOnlyImportEdits(file *ast.SourceFile, statement *ast.Node) []sourceEdit {
+	if ast.IsImportEqualsDeclaration(statement) {
+		if statement.IsTypeOnly() || ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport) {
+			return nil
+		}
+		start := nodeStart(file, statement) + len("import")
+		return []sourceEdit{{start, start, " type"}}
+	}
 	clause := statement.ImportClause().AsImportClause()
 	if statement.AsImportDeclaration().Attributes != nil || clause.PhaseModifier != ast.KindUnknown || clause.IsTypeOnly() {
 		return nil
@@ -137,7 +150,7 @@ func platformTypeOnlyImportFix(ctx context.Context, fix *ls.CodeFixContext) ([]*
 	statement := platformImportOfBinding(reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
 		return ast.IsIdentifier(node) || ast.IsImportSpecifier(node) || ast.IsNamespaceImport(node)
 	}))
-	if statement == nil || statement.ImportClause() == nil || len(importBindingNames(statement)) == 0 {
+	if statement == nil || len(importBindingNames(statement)) == 0 {
 		return nil, nil
 	}
 	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
