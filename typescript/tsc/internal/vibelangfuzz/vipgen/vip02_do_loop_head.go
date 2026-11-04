@@ -24,7 +24,11 @@ func init() {
 
 func doLoopHead(g *Gen, s *Scope) Stmt {
 	kind := []string{"of", "in"}[g.Intn(2)]
-	declaration := []string{"let ", "const ", "", "var "}[g.Intn(4)]
+	// Keep selector slots and subsequent corpus choices stable. The old var
+	// slot reuses the already initialized outer binding with an assignment
+	// head; retired syntax is tested by FuzzVarDenial, not a value oracle.
+	declarationSlot := g.Intn(4)
+	declaration := []string{"let ", "const ", "", ""}[declarationSlot]
 	shape, count, mutation, shadow := g.Intn(6), g.Intn(3), g.Intn(2), g.Intn(2)
 	head, items := "[x]", "[[1], [2]]"
 	switch shape {
@@ -68,8 +72,7 @@ func doLoopHead(g *Gen, s *Scope) Stmt {
 		extra = "observe('other', () => y);"
 	}
 	outerDeclaration, outerType, outerValue, outerMutation := "let", ": any", "7", "99"
-	if declaration == "var " {
-		outerDeclaration, outerType = "var", ""
+	if declarationSlot == 3 {
 		if kind == "in" {
 			outerValue, outerMutation = "'outer'", "'mutated'"
 		}

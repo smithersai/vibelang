@@ -24,7 +24,10 @@ func init() {
 }
 
 func forOfHeadTDZ(g *Gen, s *Scope) Stmt {
-	kind := []string{"let", "const", "var", "assignment"}[g.Intn(4)]
+	// Preserve historical selector bytes. A var head reused the initialized
+	// outer binding, so its admitted counterpart is an assignment head.
+	// FuzzVarDenial separately checks rejection of the retired spelling.
+	kind := []string{"let", "const", "assignment", "assignment"}[g.Intn(4)]
 	shape := g.Intn(7)
 	count := g.Intn(4)
 	jump := []string{"exhaust", "break", "continue"}[g.Intn(3)]
@@ -37,9 +40,6 @@ func forOfHeadTDZ(g *Gen, s *Scope) Stmt {
 	declaration, outerKind := kind+" ", "let"
 	if kind == "assignment" {
 		declaration = ""
-	}
-	if kind == "var" {
-		outerKind = "var"
 	}
 	mutate := fmt.Sprintf("x+=%d;", mutation)
 	if kind == "const" {

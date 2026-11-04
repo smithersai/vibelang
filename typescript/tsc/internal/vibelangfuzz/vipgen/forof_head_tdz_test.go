@@ -10,7 +10,7 @@ import (
 )
 
 func TestForOfHeadTDZCorpus(t *testing.T) {
-	for kind, k := range []string{"let", "const", "var", "assignment"} {
+	for kind, k := range []string{"let", "const", "legacy-var-as-assignment", "assignment"} {
 		for shape, name := range []string{"array", "simple", "object", "nested", "multiple", "array-default", "object-default"} {
 			for _, count := range []int{0, 2} {
 				t.Run(fmt.Sprintf("%s-%s-%d", k, name, count), func(t *testing.T) {
@@ -34,7 +34,7 @@ func TestForOfHeadTDZCorpus(t *testing.T) {
 					v, e := PrintVibe(p), PrintEffect(p)
 					head := []string{"[x]", "x", "{x}", "{pair:[x]}", "[x,y]", "[x=10]", "{x=10}"}[shape]
 					decl := k + " "
-					if kind == 3 {
+					if kind >= 2 {
 						decl = ""
 					}
 					callback := "():number=>x"

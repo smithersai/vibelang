@@ -33,7 +33,7 @@ func TestDoLoopHeadCorpus(t *testing.T) {
 							t.Fatal("lost keyed plain probe")
 						}
 						source, reference := PrintVibe(p), PrintEffect(p)
-						head := "for (" + []string{"let ", "const ", "", "var "}[declaration]
+						head := "for (" + []string{"let ", "const ", "", ""}[declaration]
 						if !strings.Contains(source, head) {
 							t.Fatalf("lost declaration: %s", source)
 						}
