@@ -65,6 +65,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Generated declarations for a `module` body could import a relocated compiler output and make a rebuild fail with `TS5055`. They now retain source-module imports, and returning a migrated source to TypeScript removes the declarations owned by its module bodies.
 
 - A labeled `continue` naming its own `for concurrent` loop could produce invalid JavaScript. It now ends that item, including through nested native loops and chained labels.
+- A `catch` execution head wrapped in `satisfies` could report a generated TypeScript operand error beside `EK0505`. It now reports the source diagnostic while preserving independent wrapper type errors.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11
@@ -306,6 +308,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration left snippet imports and re-exports such as `"./counter.ts?raw"` pointing at renamed files; it now updates the source path while preserving query strings, fragments and exported names.
 - Migration inventories omitted `.vibex` sources and their import and test dependencies; they now include those modules and resolve their source and JavaScript output names.
 - Migration could redirect a Bun-only TypeScript source entry to emitted JavaScript because its relative imports needed emission for Node, changing worker-loader behavior. Native runtime roots now follow Node's selected conditions, preserving unrelated Bun and worker source entries.
+
+- Malformed JSX containers in `.vibex` could add the trailing-block migration diagnostic `EK1101` to native syntax errors; they now report the same errors as the `.tsx` twin, and `vibelang --fix` preserves the legacy callback as an explicit argument.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.
