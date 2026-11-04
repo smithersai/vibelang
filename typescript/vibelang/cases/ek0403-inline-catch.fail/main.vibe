@@ -1,0 +1,6 @@
+// expect: EK0403
+import { log } from "./foreign.ts"
+export const work = effect (x: string | undefined) => {
+  if (x) log.info(x)
+  return 1
+}

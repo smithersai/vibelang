@@ -84,3 +84,5 @@ An npm package's functions follow exactly the rule a local `.ts` file's do: no `
 ### Retirement of the empty legacy trust wrapper
 
 The historical `trusted(f, [])` runtime wrapper is not an accepted VIP form. It is retired with `EK0407`, which names `vibelang --fix`. `vibelang --fix` rewrites each private direct synchronous call in an explicit Effect body to the identity-mapped `Effect.try` / `Effect.orDie` bridge over `f`, captured at the original declaration; a rewrite that can't preserve types, behavior and declaration output refuses at that site. A reviewed TypeScript helper with `@throws {never}` is another replacement. Calls with listed failure classes are outside this retirement.
+
+The generated bridge is `Effect.orDie(Effect.try({ try: () => f(x), catch: (e) => e }))`, with no new `identity` import and existing imports left alone. Per the proxy ruling of 2026-11-04, the inline catch mapper provably cannot throw; an unannotated imported `identity` may throw `unknown` and cannot satisfy the catch callback's `never` contract. This changes the generated repair, not the throws rules.

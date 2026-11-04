@@ -70,10 +70,10 @@ func TestForeignCallFixKeepsWhatRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, body := range map[string]string{
-		"while":    "let i = 0\n  while (double(try one()) < 0) i++\n  return i",
-		"for":      "let t = 0\n  for (let i = 0; i < double(try one()); i++) t++\n  return t",
-		"ternary":  "return n > 0 ? double(try one()) : 0",
-		"and":      "return n > 0 && double(try one()) > 0",
+		"while":   "let i = 0\n  while (double(try one()) < 0) i++\n  return i",
+		"for":     "let t = 0\n  for (let i = 0; i < double(try one()); i++) t++\n  return t",
+		"ternary": "return n > 0 ? double(try one()) : 0",
+		"and":     "return n > 0 && double(try one()) > 0",
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek4401-fix.fail"), root)
@@ -99,11 +99,11 @@ func TestForeignCallFixKeepsNarrowing(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, tc := range map[string]struct{ body, want string }{
-		"ternary":        {"return o.p ? double(o.p) : 0", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : 0, catch: identity }))"},
-		"nested ternary": {"return o.p ? double(o.p) : n > 0 ? double(n) : double(0)", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : n > 0 ? double(n) : double(0), catch: identity }))"},
+		"ternary":        {"return o.p ? double(o.p) : 0", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : 0, catch: (e) => e }))"},
+		"nested ternary": {"return o.p ? double(o.p) : n > 0 ? double(n) : double(0)", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : n > 0 ? double(n) : double(0), catch: (e) => e }))"},
 		"and":            {"return o.p !== undefined && double(o.p) > 0", "try: () => o.p !== undefined && double(o.p) > 0"},
-		"if block":       {"if (o.p) {\n    const r = double(o.p)\n    return r\n  }\n  return 0", "const n2 = o.p\n    const r = try Effect.orDie(Effect.try({ try: () => double(n2), catch: identity }))"},
-		"early return":   {"if (!o.p) return 0\n  return double(o.p)", "const n2 = o.p\n  return try Effect.orDie(Effect.try({ try: () => double(n2), catch: identity }))"},
+		"if block":       {"if (o.p) {\n    const r = double(o.p)\n    return r\n  }\n  return 0", "const n2 = o.p\n    const r = try Effect.orDie(Effect.try({ try: () => double(n2), catch: (e) => e }))"},
+		"early return":   {"if (!o.p) return 0\n  return double(o.p)", "const n2 = o.p\n  return try Effect.orDie(Effect.try({ try: () => double(n2), catch: (e) => e }))"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek4401-fix.fail"), root)
@@ -239,7 +239,7 @@ func TestForeignCallFixBracesARunningOperand(t *testing.T) {
 	if len(result.Refused) != 0 {
 		t.Errorf("refused: %v", result.Refused)
 	}
-	want := "  if (n > 0) {\n    const n2 = try one()\n    return try Effect.orDie(Effect.try({ try: () => double(n2), catch: (error) => error }))\n  }\n  return 0\n"
+	want := "  if (n > 0) {\n    const n2 = try one()\n    return try Effect.orDie(Effect.try({ try: () => double(n2), catch: (e) => e }))\n  }\n  return 0\n"
 	for file, fixed := range result.Files {
 		if filepath.Base(file.AsString()) == "lib.vibe" && !strings.Contains(fixed.Text, want) {
 			t.Errorf("--fix writes\n%s\nwant it to hold\n%s", fixed.Text, want)

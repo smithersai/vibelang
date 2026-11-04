@@ -6,9 +6,9 @@ import { test } from "bun:test"
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 005: legacy boundary callback severity — During migration, `EK4402` in a formerly accepted `sync`, `callback`, `Effect.try` or `Effect.tryPromise` callback is a warning.")
 
-// rule-evidence: docs/design/src/007-tooling.md#01391efa8760ae12 — Chapter 007: synchronous defect bridge import hygiene
+// rule-evidence: docs/design/src/007-tooling.md#5f8d3350ff4ea0f0 — Chapter 007: synchronous defect bridge nonthrowing mapper
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
-test.todo("Chapter 007: synchronous defect bridge import hygiene — Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: identity }))` with `identity` from `effect/Function`, reusing an existing visible import or choosing an unshadowed binding.")
+test.todo("Chapter 007: synchronous defect bridge nonthrowing mapper — Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`.")
 
 // rule-evidence: docs/design/src/900-appendices.md#d5468a2f4b83ea40 — Chapter 900: vibex grammar and JSX variant
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.

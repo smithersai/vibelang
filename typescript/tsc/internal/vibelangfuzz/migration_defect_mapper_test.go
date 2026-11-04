@@ -78,15 +78,15 @@ func FuzzMigrationDefectMapper(f *testing.F) {
 				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
 			})
 			oracleKey := "mapper:" + p.key
-			if result.Err != nil {
-				Gap(t, migrationDefectMapperTarget, oracleKey, "Chapter 7: %q; fix failed: %v", migrationDefectMapperQuote, result.Err)
+			if result.Err != nil || len(result.Refused) != 0 {
+				Gap(t, migrationDefectMapperTarget, oracleKey, "Chapter 7: %q; fix failed: %v; refused: %v", migrationDefectMapperQuote, result.Err, result.Refused)
 			}
 			fixed := maps.Clone(files)
 			for name, file := range result.Files {
 				fixed[strings.TrimPrefix(name.AsString(), filepath.ToSlash(before.Dir)+"/")] = file.Text
 			}
-			if strings.Contains(fixed["main.vibe"], "catch: (error) => error") {
-				Gap(t, migrationDefectMapperTarget, oracleKey, "migration adds an uncovered catch closure instead of reusing Effect identity\n%s", fixed["main.vibe"])
+			if !strings.Contains(fixed["main.vibe"], "catch: (e) => e") || strings.Count(fixed["main.vibe"], "effect/Function") != strings.Count(source, "effect/Function") {
+				Gap(t, migrationDefectMapperTarget, oracleKey, "migration must emit a nonthrowing inline mapper and preserve existing imports\n%s", fixed["main.vibe"])
 			}
 			after := toolsCompile(t, w, migrationDefectMapperTarget, fixed)
 			defer after.Remove()

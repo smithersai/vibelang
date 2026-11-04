@@ -75,7 +75,6 @@ func trustedEmptyRewrite(c *checker.Checker, file *ast.SourceFile, decl *ast.Nod
 		{decl.Name().End(), decl.Name().End(), ": typeof " + impl},
 		{nodeStart(file, init), init.End(), "function (...args) { return " + impl + ".apply(void 0, args) }"},
 	}
-	identity, identityImport := defectBridgeIdentity(c, file, nil)
 	safe := true
 	calls := 0
 	var uses func(*ast.Node) bool
@@ -144,7 +143,7 @@ func trustedEmptyRewrite(c *checker.Checker, file *ast.SourceFile, decl *ast.Nod
 					return true
 				}
 			}
-			wrapped := "try Effect.orDie(Effect.try({ try: () => " + expressionText(file, call) + ", catch: " + identity + " }))"
+			wrapped := "try Effect.orDie(Effect.try({ try: () => " + expressionText(file, call) + ", catch: " + defectBridgeIdentity + " }))"
 			if !standsAlone(call) {
 				wrapped = "(" + wrapped + ")"
 			}
@@ -157,9 +156,6 @@ func trustedEmptyRewrite(c *checker.Checker, file *ast.SourceFile, decl *ast.Nod
 	file.AsNode().ForEachChild(uses)
 	if !safe || calls == 0 {
 		return nil
-	}
-	if identityImport != nil {
-		edits = append(edits, *identityImport)
 	}
 	for i, a := range edits {
 		for _, b := range edits[i+1:] {

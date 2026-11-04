@@ -311,16 +311,6 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 	if scan.usesThis && !g.isFn && !g.selfIsThis {
 		return refuse("the generator reads this, which Effect.gen leaves undefined, but the block would read the function's own this")
 	}
-	var identity string
-	if len(scan.throwing) > 0 {
-		var identityImport *sourceEdit
-		identity, identityImport = defectBridgeIdentity(c, file, scan.throwing)
-		defer func() {
-			if result.fixable() && identityImport != nil {
-				result.edits = append(result.edits, *identityImport)
-			}
-		}()
-	}
 	var edits []sourceEdit
 	for _, y := range scan.yields {
 		edit, why := effectGenTryEdit(c, file, y)
@@ -330,7 +320,7 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		edits = append(edits, edit...)
 	}
 	for _, thrower := range scan.throwing {
-		edits = append(edits, keepThrowDefect(file, thrower, identity)...)
+		edits = append(edits, keepThrowDefect(file, thrower)...)
 	}
 	// A .pipe in the body changes with it: try f().pipe(g) is EK4502.
 	for _, pipe := range scan.pipes {
@@ -1107,8 +1097,8 @@ func holdsYield(node *ast.Node) bool {
 // keepThrowDefect writes call through the wrapper EK4401's fix writes (it keeps
 // what TypeScript meant): Effect.orDie keeps the exception a defect, and the
 // declaration as it was.
-func keepThrowDefect(file *ast.SourceFile, call *ast.Node, identity string) []sourceEdit {
-	open, close := "try Effect.orDie(Effect.try({ try: () => ", ", catch: "+identity+" }))"
+func keepThrowDefect(file *ast.SourceFile, call *ast.Node) []sourceEdit {
+	open, close := "try Effect.orDie(Effect.try({ try: () => ", ", catch: "+defectBridgeIdentity+" }))"
 	if !standsAlone(call) {
 		open, close = "("+open, close+")"
 	}

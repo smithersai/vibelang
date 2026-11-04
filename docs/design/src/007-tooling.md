@@ -268,7 +268,7 @@ A run repairs only the selected project's own files ([VIP-34](../vips/0034-compi
 
 A forbidden write is refused with a not-fixed explanation and no change. A rewrite that can't preserve types, behavior and declaration output refuses at that site.
 
-Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: identity }))` with `identity` from `effect/Function`, reusing an existing visible import or choosing an unshadowed binding. The catch mapper adds no local function to the migrated module's coverage.
+Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`. The inline catch mapper provably cannot throw and preserves the exact thrown value as a defect. The fix adds no `identity` import and leaves existing imports alone. This follows the proxy ruling of 2026-11-04: an unannotated imported `identity` may throw `unknown` under VIP-4, while the catch callback admits only `never`.
 
 A program held in a variable keeps its initializer's original evaluation point: constructing the program and running it are distinct. The migration preserves eager factory calls, argument evaluation and closure state shared by repeated runs; it does not introduce a deferred factory around the initializer.
 

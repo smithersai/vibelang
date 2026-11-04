@@ -3,12 +3,11 @@ package vibelang
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 )
 
-func TestDefectBridgeMapperAvoidsLocalCatchClosure(t *testing.T) {
+func TestDefectBridgeMapperIsNonthrowing(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -42,8 +41,11 @@ func TestDefectBridgeMapperAvoidsLocalCatchClosure(t *testing.T) {
 					got = fixed.Text
 				}
 			}
-			if !regexp.MustCompile("catch: [A-Za-z_$][A-Za-z0-9_$]*[[:space:]]*}").MatchString(got) || strings.Contains(got, "catch: (error) => error") {
-				t.Fatalf("generated catch mapper must reuse a function, leaving no uncovered local catch closure:\n%s", got)
+			if !strings.Contains(got, "catch: (e) => e") {
+				t.Fatalf("generated catch mapper must be provably nonthrowing:\n%s", got)
+			}
+			if strings.Count(got, "effect/Function") != strings.Count(source, "effect/Function") || !strings.Contains(got, test.prefix) {
+				t.Fatalf("bridge must leave existing imports and bindings alone:\n%s", got)
 			}
 			for name, fixed := range result.Files {
 				if err := os.WriteFile(name.AsString(), []byte(fixed.Text), 0644); err != nil {
@@ -55,5 +57,31 @@ func TestDefectBridgeMapperAvoidsLocalCatchClosure(t *testing.T) {
 				t.Fatalf("bridge is not stable: err=%v files=%v", again.Err, again.Order)
 			}
 		})
+	}
+}
+
+func TestDefectBridgeOpencodeFixTwin(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(root, "typescript/vibelang/cases/ek0403-inline-catch.fail")
+	twin := filepath.Join(root, "typescript/vibelang/cases/ek0403-inline-catch-fixed")
+	want, err := os.ReadFile(filepath.Join(twin, "main.vibe"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := fixCase(t, copyCompilerFixture(t, fixture, root))
+	if result.Err != nil || len(result.Refused) != 0 {
+		t.Fatalf("fix: %v; refused: %v", result.Err, result.Refused)
+	}
+	var got string
+	for name, fixed := range result.Files {
+		if filepath.Base(name.AsString()) == "main.vibe" {
+			got = fixed.Text
+		}
+	}
+	if got != "// expect: EK0403\n"+string(want) {
+		t.Fatalf("fix writes:\n%s\nwant:\n%s", got, want)
 	}
 }

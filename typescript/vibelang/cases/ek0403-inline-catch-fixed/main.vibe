@@ -1,0 +1,5 @@
+import { log } from "./foreign.ts"
+export const work = effect (x: string | undefined) => {
+  if (x) try Effect.orDie(Effect.try({ try: () => log.info(x), catch: (e) => e }))
+  return 1
+}

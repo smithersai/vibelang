@@ -8,13 +8,13 @@ type Field = { readonly description?: string }
 export const unbraced = effect (field: Field) => {
   if (field.description) {
     const message = field.description
-    try Effect.orDie(Effect.try({ try: () => note(message), catch: (error) => error }))
+    try Effect.orDie(Effect.try({ try: () => note(message), catch: (e) => e }))
   }
   return seen.length
 }
 
 export const sameLine = effect (field: Field) => {
-  if (field.description) { const message = field.description; try Effect.orDie(Effect.try({ try: () => note(message), catch: (error) => error })) }
+  if (field.description) { const message = field.description; try Effect.orDie(Effect.try({ try: () => note(message), catch: (e) => e })) }
   return seen.length
 }
 
@@ -22,7 +22,7 @@ export const otherwise = effect (field: Field) => {
   if (!field.description) return 0
   else {
     const message = field.description
-    try Effect.orDie(Effect.try({ try: () => note(message), catch: (error) => error }))
+    try Effect.orDie(Effect.try({ try: () => note(message), catch: (e) => e }))
   }
   return seen.length
 }
@@ -31,7 +31,7 @@ export const chained = effect (field: Field, n: number) => {
   if (n > 0) return n
   else if (field.description) {
     const message = field.description
-    return try Effect.orDie(Effect.try({ try: () => size(message), catch: (error) => error }))
+    return try Effect.orDie(Effect.try({ try: () => size(message), catch: (e) => e }))
   }
   return 0
 }

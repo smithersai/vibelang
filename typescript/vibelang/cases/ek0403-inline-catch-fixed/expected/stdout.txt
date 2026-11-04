@@ -1,0 +1,1 @@
+inline catch: zero diagnostics; Exit preserved

@@ -25,7 +25,7 @@ import (
 // and Effect.orDie keeps the exception a defect and the declaration as it was:
 //
 //	const kind = Dialect.integer(sql)
-//	const kind = try Effect.orDie(Effect.try({ try: () => Dialect.integer(sql), catch: identity }))
+//	const kind = try Effect.orDie(Effect.try({ try: () => Dialect.integer(sql), catch: (e) => e }))
 //
 // Listing the function in trustedPackages or in trusted(impl, []) would say the
 // same to the compiler, but on no evidence: trust is a claim about the code,
@@ -157,11 +157,7 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	if !isMarkedEffect(fn) && (ast.IsArrowFunction(fn) || ast.IsFunctionExpression(fn)) {
 		edits = append(edits, sourceEdit{nodeStart(file, fn), nodeStart(file, fn), "effect "}) // try needs effect code
 	}
-	identity, identityImport := defectBridgeIdentity(c, file, []*ast.Node{call})
-	if identityImport != nil {
-		edits = append(edits, *identityImport)
-	}
-	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + identity + " }))"
+	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + defectBridgeIdentity + " }))"
 	// A tagged call formerly lowered through $trusted: listed classes failed
 	// through E; every other exception was a defect. Preserve that distinction.
 	if bound, written := foreignThrowsContract(c, call); written && bound != "" {
