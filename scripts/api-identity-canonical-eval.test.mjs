@@ -9,7 +9,14 @@ import { checkProperty } from "./testing/property.mjs"
 import { SpecPath } from "./testing/spec-path.mjs"
 
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/smithers-canonical-eval-api.json", import.meta.url)))
-const ts = loadTypeScript()
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Canonical eval fixtures must not load unrelated browser libraries")
+  return program
+} }
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const chapter = readFileSync(SpecPath("001-functions.md"), "utf8")
 
@@ -39,7 +46,7 @@ function verify({ mode = "docs", form = "function", tag = corpus.authoredThrows[
     put(before, manifest, docs(true) + signature)
     put(after, manifest, docs(true) + signature)
     const pair = reverse ? [after, before] : [before, after]
-    const same = compareApiIdentity(ts, ...pair)
+    const same = compareApiIdentity(ts, ...pair, { compilerOptions })
     assert.equal(same.comparisonComplete, true, JSON.stringify(same))
     assert.equal(same.identical, true, JSON.stringify(same))
     if (mode === "docs") {
@@ -53,7 +60,7 @@ function verify({ mode = "docs", form = "function", tag = corpus.authoredThrows[
     } else {
       assert.fail("unknown oracle mode " + mode)
     }
-    const changed = compareApiIdentity(ts, ...pair)
+    const changed = compareApiIdentity(ts, ...pair, { compilerOptions })
     assert.equal(changed.comparisonComplete, true, JSON.stringify(changed))
     const expectedSame = mode === "json-order"
     assert.equal(changed.identical, expectedSame, JSON.stringify(changed))
@@ -69,7 +76,7 @@ function verify({ mode = "docs", form = "function", tag = corpus.authoredThrows[
     const consumer = join(root, "consumer.ts")
     writeFileSync(consumer, `import before from "./before/package.json";\nimport after from "./after/package.json";\ntype Same<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\nconst same: Same<typeof before, typeof after> = true;\nexport { same };\n`)
     const program = ts.createProgram([consumer], {
-      strict: true, noEmit: true, types: [], resolveJsonModule: true, esModuleInterop: true,
+      ...compilerOptions, strict: true, noEmit: true, types: [], resolveJsonModule: true, esModuleInterop: true,
       module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
     })
     const diagnostics = ts.getPreEmitDiagnostics(program)

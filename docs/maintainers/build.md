@@ -1633,3 +1633,11 @@ and every comparator program. A native source-file guard rejects unrelated
 browser declarations. All 24 generated literal arguments, const type
 parameters, readonly arrays and tuple forms remain active, together with
 the path-looking literal mutation and dependency-shape mutation checks.
+
+Canonical declaration-identity fixtures select `lib.es5.d.ts` for comparison
+programs and the independent stock-TypeScript JSON consumer. A native
+source-file guard rejects unrelated browser declarations. All 32 generated
+cases retain authored `@throws` and `@rethrows` documentation, function,
+arrow and overload forms, JSON value types, export conditions and key order.
+The JSON consumer still independently requires `TS2322` for a changed value
+type and no diagnostic for key-order changes.

@@ -198,6 +198,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The shared bundler load hook skipped `.vibex` JSX modules; it now compiles explicit `.vibex` source IDs, including IDs with query strings, alongside `.vibe` modules.
 
+- Canonical declaration-identity tests checked unrelated browser declarations for plain generic functions and JSON; they now use the required libraries while retaining documentation, JSON type and generated regression checks.
+
 - The compiler fuzz suite stopped before running any test because one match witness was registered twice; it is registered once and the suite runs again.
 - A new fuzz target could land without its short-run CPU budget; the registry fuzz target now registers one, and the fast registry gate checks every target.
 - Geolocation, Permissions, UserDirectories and the experimental Process, FileSystem and Locks diagnostics suggested calling members on the module namespace, where they do not exist; their advice now obtains the injected service and runs its member.
