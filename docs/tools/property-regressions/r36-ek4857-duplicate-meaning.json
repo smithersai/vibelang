@@ -1,0 +1,8 @@
+{
+  "finding": "EK4857 link chose the first of two Meaning headings",
+  "code": "EK4857",
+  "first": "meaning",
+  "second": "meaning-1",
+  "parent": "the-aer-type-shorthand",
+  "source": "## Effect functions\n\n### Meaning\n\nAn ordinary function uses its own return annotation.\n\n## The `A!E!R` type shorthand\n\n### Meaning\n\nAn omitted slot is `never`. The transitional `EK4857` diagnostic covers legacy written infer return slots.\n"
+}
