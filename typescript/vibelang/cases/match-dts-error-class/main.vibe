@@ -1,15 +1,15 @@
 // expect-result: ["expired","gone"]
-// A declaration file's error class is closed when it extends effect's
-// YieldableError and declares no membership test of its own (D501), as a
-// Data.TaggedError class does, whoever wrote its declaration file. Expired's
-// arm covers it, so the match needs no default arm.
+// A declaration file's error class is an ordinary tagged class: its class
+// arm covers nothing (chapter 004, Coverage), so the match tests its tag with
+// an object pattern. An error declaration's own arm covers its case, so the
+// match needs no default arm.
 import { Expired } from "legacy-errors"
 
 error Gone { id: string }
 
 export function describe(e: Expired | Gone): string {
   return match (e) {
-    when Expired: "expired";
+    when { _tag: "Expired" }: "expired";
     when Gone: "gone";
   }
 }
