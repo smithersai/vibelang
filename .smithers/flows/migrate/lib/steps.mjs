@@ -2058,11 +2058,12 @@ export async function verify(options) {
     })
     const originalEmit = originalEmits[pkg.dir]
     const emitLog = join(logs, "dts-" + slug(pkg.dir) + ".log")
-    const errors = emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: emitLog, baseline: originalEmit })
+    const dependencyPathSubstitutions = []
+    const errors = emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: emitLog, baseline: originalEmit, cwd: join(t, pkg.dir), pathSubstitutions: dependencyPathSubstitutions })
     emitErrors.push(...errors)
     declarationEmits[pkg.dir] = { code: emitted.code, baselineCode: originalEmit?.code ?? null,
       diagnostics: emitted.diagnostics, baselineDiagnostics: originalEmit?.diagnostics?.length ?? null,
-      errors: errors.length, log: emitLog }
+      errors: errors.length, dependencyPathSubstitutions, log: emitLog }
     const stock = oracle?.[pkg.dir]
     const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
     const names = declarationNames(ts, join(t, pkg.dir), projects.map((tsconfig) => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })))

@@ -11,6 +11,7 @@ import { compareApiIdentityInWorker as compareApiIdentity, publishedEntrypoints 
 import { apiProjection } from "./api-projection.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
+import { dependencyEmitPathSubstitution } from "./dependency-emit-paths.mjs"
 
 /** The TypeScript compiler API (5.x or 6.x; TypeScript 7's package has no such API), from the first directory that has it. */
 export function loadTypeScript(directories) {
@@ -1009,25 +1010,41 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
 /**
  * New declaration emit errors compared with the saved original program.
  * Source locations may move during conversion; source identity, diagnostic
- * code, message, notes and multiplicity must agree. Without an original
+ * code, message, notes and multiplicity must agree, except a proved installed
+ * dependency-version path substitution. Without an original
  * receipt, retain the strict file/global errors and failing-exit check.
  */
-export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline } = {}) {
+export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd, pathSubstitutions = [] } = {}) {
   const current = diagnostics.filter(d => d.category === "error")
   const recorded = baseline && Number.isInteger(baseline.code) && Array.isArray(baseline.diagnostics)
-  const key = d => JSON.stringify([
-    (d.file ?? "").replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, ""),
-    d.code, d.message, d.notes ?? []
-  ])
+  const source = d => (d.file ?? "").replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, "")
+  const key = d => JSON.stringify([source(d), d.code, d.message, d.notes ?? []])
   const remaining = new Map()
   if (recorded) for (const d of baseline.diagnostics.filter(d => d.category === "error")) {
-    remaining.set(key(d), (remaining.get(key(d)) ?? 0) + 1)
+    const entry = remaining.get(key(d)) ?? { diagnostic: d, count: 0 }
+    entry.count++
+    remaining.set(key(d), entry)
   }
-  const added = current.filter(d => {
-    const count = remaining.get(key(d)) ?? 0
-    if (!count) return true
-    remaining.set(key(d), count - 1)
+  // Reserve exact matches first, so a version-path match cannot consume the
+  // only original copy available to a later byte-identical diagnostic.
+  const unmatched = current.filter(d => {
+    const entry = remaining.get(key(d))
+    if (!entry?.count) return true
+    entry.count--
     return false
+  })
+  const added = unmatched.filter(d => {
+    for (const entry of remaining.values()) {
+      const original = entry.diagnostic
+      if (!entry.count || source(original) !== source(d) ||
+        JSON.stringify(original.notes ?? []) !== JSON.stringify(d.notes ?? [])) continue
+      const proof = dependencyEmitPathSubstitution(original, d, { cwd })
+      if (!proof) continue
+      entry.count--
+      pathSubstitutions.push(proof)
+      return false
+    }
+    return true
   })
   const errors = recorded ? added : added.filter(d => !d.file || files.includes(d.file))
   // A failing exit is inherited only when matching original diagnostics

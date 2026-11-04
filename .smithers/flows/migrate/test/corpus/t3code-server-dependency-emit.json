@@ -1,0 +1,12 @@
+{
+  "source": "Server dependency upgrade: three inherited TS4023/TS4058 errors differ only in the resolved Effect package version",
+  "package": "effect",
+  "beforeVersion": "4.1.0",
+  "afterVersion": "4.1.1",
+  "module": "dist/Inspectable",
+  "diagnostics": [
+    { "file": "apps/server/src/guest/http.ts", "code": "TS4023", "message": "Exported variable 'layer' has or is using name 'NodeInspectSymbol' from external module \"$MODULE\" but cannot be named." },
+    { "file": "apps/server/src/http.ts", "code": "TS4023", "message": "Exported variable 'assetFileResponse' has or is using name 'NodeInspectSymbol' from external module \"$MODULE\" but cannot be named." },
+    { "file": "apps/server/src/orchestration-v2/testkit/ProviderReplayFixtures.ts", "code": "TS4058", "message": "Return type of exported function has or is using name 'NodeInspectSymbol' from external module \"$MODULE\" but cannot be named." }
+  ]
+}

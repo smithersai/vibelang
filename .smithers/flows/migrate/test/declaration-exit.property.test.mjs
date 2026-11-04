@@ -14,7 +14,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-ui-declaration-exit.json", import.meta.url)))
 
-async function check(code, diagnostic, { baselineEmit, migrated = true, expectedEmit = baselineEmit !== undefined || (code === 0 && !diagnostic) } = {}) {
+async function check(code, diagnostic, { baselineEmit, dependencyPaths = false, migrated = true, expectedEmit = baselineEmit !== undefined || (code === 0 && !diagnostic) } = {}) {
   const root = mkdtempSync(join(tmpdir(), "foldkit-declaration-exit-"))
   try {
     const target = join(root, "repo"), run = join(root, "run")
@@ -23,6 +23,18 @@ async function check(code, diagnostic, { baselineEmit, migrated = true, expected
     writeJson(join(target, "package.json"), corpus.manifest)
     writeJson(join(target, "tsconfig.json"), { compilerOptions: { rootDir: "." }, include: [migrated ? "*.vibe" : "*.ts"] })
     writeFileSync(join(target, migrated ? "main.vibe" : "main.ts"), "export const value: number = 1\n")
+    if (dependencyPaths) {
+      const module = version => {
+        const dir = join(target, "node_modules/.pnpm", "effect@" + version, "node_modules/effect")
+        mkdirSync(join(dir, "dist"), { recursive: true })
+        writeJson(join(dir, "package.json"), { name: "effect", version })
+        writeFileSync(join(dir, "dist/Inspectable.d.ts"), "export declare const NodeInspectSymbol: unique symbol;\n")
+        return join(dir, "dist/Inspectable")
+      }
+      const message = path => "main.vibe(3,1): error TS4023: Exported variable 'value' has or is using name 'NodeInspectSymbol' from external module " + JSON.stringify(path) + " but cannot be named."
+      baselineEmit = { code, diagnostics: parseDiagnostics(message(module("4.1.0")).replace("main.vibe", "main.ts")) }
+      diagnostic = message(module("4.1.1"))
+    }
     const declaration = "export declare const value: number;\n"
     writeFileSync(join(target, "node_modules/.bin/vibelang"), [
       "#!/usr/bin/env node",
@@ -67,6 +79,12 @@ async function check(code, diagnostic, { baselineEmit, migrated = true, expected
       assert.equal(result.compile.declarationEmits["."].code, code)
       assert.equal(result.compile.declarationEmits["."].errors, 0)
       assert.deepEqual(result.compile.declarationEmits["."].diagnostics, parseDiagnostics(diagnostic))
+      if (dependencyPaths) {
+        const substitutions = result.compile.declarationEmits["."].dependencyPathSubstitutions
+        assert.equal(substitutions.length, 1)
+        assert.equal(substitutions[0].before.version, "4.1.0")
+        assert.equal(substitutions[0].after.version, "4.1.1")
+      }
     } else assert.ok(result.compile.emitErrors.length, JSON.stringify(result))
     await report({ run })
     const summary = readFileSync(p.report, "utf8")
@@ -110,4 +128,9 @@ test("saved original emit diagnostics explain inherited exits through the real v
   await check(1, diagnostic, { baselineEmit })
   await check(1, diagnostic.replace("main.vibe", "main.ts"), { baselineEmit, migrated: false })
   await check(1, diagnostic + "\nmain.vibe(4,1): error TS2883: A newly unnameable exported type.", { baselineEmit, expectedEmit: false })
+})
+
+
+test("real verifier retains raw diagnostics and proof for inherited dependency-version paths", async () => {
+  await check(2, "", { dependencyPaths: true, expectedEmit: true })
 })
