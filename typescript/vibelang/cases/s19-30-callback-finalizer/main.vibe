@@ -1,10 +1,11 @@
+import { schedule } from "./timers.js"
 import { Effect, Fiber } from "effect"
 
 // S19-30's original repro: abort resolves pending only after cleanup finishes.
 export effect function waitWithAsyncCleanup(log: Array<string>) {
   return try callback((log: Array<string>, resume: Resume<string, never>, signal: AbortSignal) => {
     const pending = new Promise<string>((resolve) => {
-      signal.addEventListener("abort", () => setTimeout(() => {
+      signal.addEventListener("abort", () => schedule(() => {
         log.push("cleanup finished")
         resolve("aborted")
       }, 10), { once: true })
@@ -17,7 +18,7 @@ export effect function waitWithAsyncCleanup(log: Array<string>) {
 export effect function waitWithEffectCleanup(log: Array<string>) {
   return try callback((log: Array<string>, _resume: Resume<string, never>, signal: AbortSignal) => {
     // The finalizer runs after abort and is awaited, just as Effect.callback.
-    return Effect.promise(() => new Promise<void>((resolve) => setTimeout(() => {
+    return Effect.promise(() => new Promise<void>((resolve) => schedule(() => {
       log.push(signal.aborted ? "cleanup finished" : "not aborted")
       resolve()
     }, 10)))

@@ -1,3 +1,4 @@
+import { schedule, cancel } from "./timers.js"
 // Self-contained hatches (D229-D232): a hatch's TypeScript uses only its own
 // parameters and locals, globals, imports, and the file's error declarations.
 // Values reach it as inputs, the arguments after the function, which fill its
@@ -37,8 +38,8 @@ export effect function main() {
     asyncMapped = error._tag
   }
   const waited = try callback((ms, resume) => {
-    const timer = setTimeout(() => resume(ms), ms)
-    return () => clearTimeout(timer)
+    const timer = schedule(() => resume(ms), ms)
+    return () => cancel(timer)
   }, 2)
   const read = try callback((n, resume: Resume<number, Rejected>) => {
     if (n > 0) resume(n * 10)

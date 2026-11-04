@@ -1,6 +1,7 @@
+import { schedule, cancel } from "./timers.js"
 // Boundary hatches (D148): sync, try, and callback run plain TypeScript. In
 // a hatch's first argument calls do not run, throw and async keep their
-// JavaScript meaning, platform APIs such as setTimeout are allowed, and
+// JavaScript meaning, native timers are imported from a .ts module, and
 // runPromise leads back in to VibeLang. That TypeScript is self-contained
 // (D229): values reach it as inputs (D230).
 import { lengthOf as lengthOfText } from "./length.ts"
@@ -22,8 +23,8 @@ effect function later() {
 
 effect function tick() {
   return try callback<number>((resume) => {
-    const timer = setTimeout(() => resume(7), 1)
-    return () => clearTimeout(timer)
+    const timer = schedule(() => resume(7), 1)
+    return () => cancel(timer)
   })
 }
 

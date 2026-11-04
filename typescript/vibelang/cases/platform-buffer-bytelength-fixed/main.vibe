@@ -11,3 +11,8 @@ export const literal = (kind: "a" | "b"): number => new TextEncoder().encode(kin
 export effect function report(text: string): number!never!never {
   return new TextEncoder().encode(text).length
 }
+
+// expect-result: [2,4,0,2,1,3]
+export effect function main() {
+  return [plain("é"), named("🍎"), dashed(""), nested("a"), literal("b"), try report("✓")]
+}
