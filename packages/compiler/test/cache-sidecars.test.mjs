@@ -198,3 +198,24 @@ test("cache-relocated-sidecars", async (t) => {
     }
   })
 })
+
+test("native JSX sources invalidate directory snapshots while their generated sidecars stay outputs", async t => {
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom(undefined, "types", "gen/types"),
+    fc.constantFrom("Card", "View", "State"),
+    async (sidecarDir, name) => {
+      const source = name + ".vibex"
+      const { app, directory, cache, store } = await fixture(t, { [source]: "export const view = <div />\n" }, {
+        include: ["."], compilerOptions: { jsx: "preserve" }, ...(sidecarDir ? { vibe: { sidecarDir } } : {})
+      })
+      const snapshot = cache.begin()
+      const output = sidecarDir ? join(app, sidecarDir, "src", name + ".d.vibex.ts") : join(directory, name + ".d.vibex.ts")
+      mkdirSync(join(output, ".."), { recursive: true })
+      writeFileSync(output, "export declare const view: unknown;\n")
+      store(snapshot, [source])
+      assert.ok(cache.lookup().result, "a generated JSX sidecar is an output")
+      writeFileSync(join(directory, "Added.vibex"), "export const added = <div />\n")
+      assert.ok(cache.lookup().miss, "a newly included native JSX source invalidates the cache")
+    }
+  ), { numRuns: 20, seed: 18127 })
+})

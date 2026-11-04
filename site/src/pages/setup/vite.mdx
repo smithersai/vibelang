@@ -251,8 +251,8 @@ when requested.
 While serving a `.vibe` module, the compiler can write its `.d.vibe.ts`
 declaration beside it. The plugin ignores watcher events for that generated
 file while its owning `.vibe` source exists, keeping the served module and its
-importers cached. Changes to the source still trigger hot updates. An authored
-TypeScript declaration without a companion `.vibe` source remains an input.
+importers cached. Changes to the source still trigger hot updates. The same rule applies to `.d.vibex.ts` beside `.vibex`.
+An authored TypeScript declaration without a companion source remains an input.
 Set `VIBELANG_VITE_DEBUG=1` to trace ignored generated declaration events along
 with project compiles and invalidations.
 
@@ -271,6 +271,10 @@ Source maps keep the original `.vibe` positions and source text through repeated
 development requests and hot updates, including modules declared inside a
 `.vibe` file.
 
-The shared `vibelang-unplugin` load hook accepts explicit `.vibex` sources
-as well as `.vibe` sources, including module IDs with query strings. Configure
-`compilerOptions.jsx` as for the corresponding `.tsx` project.
+Both `vibelang-vite` and the shared `vibelang-unplugin` load hook accept
+`.vibex` sources. Configure `compilerOptions.jsx` as for the corresponding
+`.tsx` project. The Vite adapter compiles native JSX before JavaScript parsing
+and serves it with a virtual `.jsx` ID so framework plugins use their ordinary
+JSX filters. Source maps and diagnostics name the original `.vibex` file.
+Module queries such as `?import` keep compiling; resource queries such as
+`?raw` and `?url` keep their resource behavior.

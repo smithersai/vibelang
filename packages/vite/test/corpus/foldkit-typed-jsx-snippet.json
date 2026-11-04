@@ -1,0 +1,1 @@
+{"source":"export const View = (n: number) => <div>{n}</div>\n","result":7}

@@ -217,3 +217,9 @@ An unrelated file's type errors do not prevent loading a clean module. Run
 Workers use a separate plugin list. Add `worker: { plugins: () => [vibelang()] }`
 to the Vite config when a worker imports `.vibe`, including a worker started
 by a workspace dependency. The factory creates a fresh plugin for each build.
+
+Native JSX sources use `.vibex` with the same `compilerOptions.jsx` settings
+as `.tsx`. The adapter compiles them before JavaScript parsing and hands
+framework plugins a virtual `.jsx` module ID. Their ordinary JSX filters
+apply; source maps and diagnostics retain the original `.vibex` source.
+Development updates and dependency scanning include these modules.

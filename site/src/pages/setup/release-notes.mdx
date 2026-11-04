@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Long Go checks could omit compiler and test subprocesses from their progress records when Go started them on another thread. Progress sampling now includes those thread-owned subprocesses.
 - A whole-repository migration could change documentation examples or JSON test data and spend excessive time scanning prose. It now leaves those files unchanged while updating source and configuration paths.
 
+- Vite rejected typed `.vibex` inputs with a JavaScript parse error. The adapter now compiles native JSX before parsing, passes preserved JSX to framework transforms, and retains source locations through development updates.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

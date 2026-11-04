@@ -100,11 +100,11 @@ function matchingPattern(paths, specifier) {
 // of a .vibe name with no source, as in a published package, the .vibe or
 // TypeScript source of a .js name (D298), else extensionlessImport's rule.
 function loadFile(path) {
-  if (path.endsWith(".vibe")) return [path, path.slice(0, -".vibe".length) + ".d.ts"].find(isFile)
+  if (/\.vibex?$/.test(path)) return [path, path.replace(/\.vibex?$/, ".d.ts")].find(isFile)
   if (/\.(?:d\.[cm]?ts|[cm]?ts|tsx|json)$/.test(path)) return isFile(path) ? path : undefined
-  if (/\.js$/.test(path)) {
-    const stem = path.slice(0, -".js".length)
-    return [".ts", ".tsx", ".vibe", ".d.ts", ".js"].map((extension) => stem + extension).find(isFile)
+  if (/\.jsx?$/.test(path)) {
+    const stem = path.replace(/\.jsx?$/, "")
+    return (path.endsWith(".jsx") ? [".tsx", ".ts", ".vibex", ".vibe", ".d.ts", ".jsx", ".js"] : [".ts", ".tsx", ".vibe", ".vibex", ".d.ts", ".js"]).map((extension) => stem + extension).find(isFile)
   }
   if (/\.(?:[cm]js|jsx)$/.test(path)) return isFile(path) ? path : undefined
   return extensionlessImport(dirname(path), "./" + basename(path) + (/[\\/]$/.test(path) ? "/" : ""))
