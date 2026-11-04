@@ -30,9 +30,11 @@ function fixture(t) {
   const notes = join(root, "docs/user/src/setup/release-notes.md")
   mkdirSync(dirname(notes), { recursive: true })
   return {
-    check(row, location = "bugs") {
-      writeFileSync(notes, goodNotes.replace("<!-- injected-row -->", location === "bugs" ? row : "").replace("<!-- intro-row -->", location === "intro" ? row : ""))
+    check(row, location = "bugs", finalHeading = false) {
+      const source = goodNotes.replace("<!-- injected-row -->", location === "bugs" ? row : "").replace("<!-- intro-row -->", location === "intro" ? row : "")
+      writeFileSync(notes, finalHeading ? source.replace("## 0.0.11 (unreleased)", "## 0.0.11") : source)
       const env = { ...process.env, VIBELANG_RELEASE_NOTES_FINAL: "1" }
+      if (finalHeading) delete env.VIBELANG_RELEASE_NOTES_FINAL
       delete env.NODE_TEST_CONTEXT
       const result = spawnSync("node", ["--test", "--test-name-pattern=^current release notes describe user fixes without internal CI or fuzz bookkeeping$", join(root, "docs/tools/release-docs.test.mjs")], {
         env,
@@ -90,4 +92,13 @@ test("publication rejects internal suite and CI report records across spelling v
         .replace("<!-- intro-row -->", intro ? "- The " + text + " now passes." : "")
       assert.throws(() => assertReleasePublication(notes, "0.0.11"))
     }), { numRuns: 160, seed: 110039, examples: internalSuiteRecords.map(phrase => [phrase, " ", false, false]) })
+})
+
+
+test("a released heading enforces publication hygiene without an environment flag", t => {
+  const f = fixture(t)
+  const good = f.check(publicFix, "bugs", true)
+  assert.equal(good.status, 0, good.stdout + good.stderr)
+  const bad = f.check(witness, "bugs", true)
+  assert.equal(bad.status, 1, bad.stdout + bad.stderr)
 })

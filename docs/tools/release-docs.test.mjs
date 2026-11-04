@@ -11,6 +11,14 @@ import { releaseDocsProblems, renderReleasePage } from "./release-docs.mjs"
 // A compiler-version candidate may stay unreleased until npm publication.
 const releaseVersion = release => release.split("\n")[0].replace(/ \(unreleased\)$/, "")
 
+// A finalized release stays guarded when the queue runs ordinary docs checks.
+function finalPublication() {
+  if (process.env.VIBELANG_RELEASE_NOTES_FINAL) return true
+  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
+  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
+  return notes.split(/^## /m).slice(1).some(release => release.split("\n")[0] === version)
+}
+
 // Development headings may lead package versions for the next unreleased section.
 function assertReleaseHistory(notes, version, lastPublishedVersion) {
   const [current, previous] = notes.split(/^## /m).slice(1)
@@ -291,7 +299,7 @@ test("the 0.0.11 bug list covers the receiver report and service-alias diagnosti
 // Development commits record every fix. Enforce the curated publication list at release time.
 // VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs
 test("current release notes describe user fixes without internal CI or fuzz bookkeeping", {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
   const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
@@ -310,7 +318,7 @@ test("the release candidate follows the last npm publication", {
 
 // Publication excludes maintainer audit records while retaining product changes.
 test("current publication notes omit internal contrast audit records", {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
   const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
@@ -319,7 +327,7 @@ test("current publication notes omit internal contrast audit records", {
 
 // Release notes omit development-only vet and compiler-options guard records.
 test("current publication notes omit compiler-options vet records", {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
   const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
