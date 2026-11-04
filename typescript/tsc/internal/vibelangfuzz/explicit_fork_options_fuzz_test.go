@@ -10,7 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
-const explicitForkOptionsQuote = "writes `try Effect.forkChild(program, options)` for the legacy `fork(program, options)`."
+const explicitForkOptionsQuote = "The legacy `fork(program, options)` call becomes `try Effect.forkChild(program, options)`."
 const explicitForkOptionsStableQuote = "One `vibelang --fix` run applies fixes until none applies; running it again changes nothing."
 
 func explicitForkOptionsQuoted(t testing.TB) {
