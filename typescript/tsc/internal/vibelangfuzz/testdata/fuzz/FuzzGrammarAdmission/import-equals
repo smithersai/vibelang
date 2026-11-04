@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-equals\nimport x = require ( \"m\" ) ; import y = N . a ;")

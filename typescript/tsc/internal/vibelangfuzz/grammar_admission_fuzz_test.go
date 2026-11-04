@@ -166,6 +166,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"reserved-expression-name", "throw effect function join(p) { return try p; }"},
 	{"throw-comma-warning", "effect function f(e) { return [throw e, 1]; }"},
 	{"schema-effect-field", "schema S { effect id : string }"},
+	{"export-assignment", "export = 1 ;"},
+	{"import-equals", "import x = require ( \"m\" ) ; import y = N . a ;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1587,6 +1589,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// outside a source file or module block, e.g. `{ export = 1 }` (TS1231).
 	case 1231, 1232, 1233, 1234, 1235, 1258, 1473, 1474:
 		return true
+	// The oracle compiles with module NodeNext, an ES module: TypeScript's
+	// checker rejects an export assignment such as `export = 1;` with the
+	// grammar error TS1203 (checker.go, grammarErrorOnNode).
+	case 1203:
+		return true
 	// checkGrammarArrowFunction: a line break before => (TS1200); the
 	// checker's throw check: a line break after throw (TS1142).
 	case 1200, 1142:
@@ -1691,6 +1698,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-modifier-placement", "", diagnostics.CategoryError, 1184, true},
 		{"native-module-element-context", "", diagnostics.CategoryError, 1231, true},
 		{"native-module-element-context-warning", "", diagnostics.CategoryWarning, 1231, false},
+		{"native-esm-export-assignment", "", diagnostics.CategoryError, 1203, true},
+		{"native-esm-export-assignment-warning", "", diagnostics.CategoryWarning, 1203, false},
+		{"ek-esm-export-assignment-code-collision", "EK", diagnostics.CategoryError, 1203, false},
 		{"external-module-element-code-collision", "other", diagnostics.CategoryError, 1231, false},
 		{"ek-module-element-code-collision", "EK", diagnostics.CategoryError, 1231, false},
 		{"native-arrow-line-terminator", "", diagnostics.CategoryError, 1200, true},

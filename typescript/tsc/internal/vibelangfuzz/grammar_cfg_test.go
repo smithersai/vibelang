@@ -459,7 +459,7 @@ ScriptItem = Statement
 Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
-Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ExportDeclaration
+Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration
 HoistableDeclaration = FunctionDeclaration
 Block = "{" Statement* "}"
 FunctionBody = Statement*
@@ -506,6 +506,8 @@ InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
 TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier TypeParameters? "=" Type StatementEnd
 ImportDeclaration = "import" ImportClause "from" StringLiteral StatementEnd | "import" StringLiteral StatementEnd
 TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier StatementEnd | "import" ModuleSpecifier StatementEnd
+ImportEqualsDeclaration = "import" BindingIdentifier "=" ModuleReference StatementEnd | "import" "type" BindingIdentifier "=" ModuleReference StatementEnd
+ModuleReference = "require" "(" StringLiteral ")" | TypeName
 ModuleBody = Statement | ModuleBody Statement
 ImportClause = "{" "}" | "{" ImportsList ","? "}" | "*" "as" BindingIdentifier | BindingIdentifier | "type" "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier

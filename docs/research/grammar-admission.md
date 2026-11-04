@@ -190,3 +190,11 @@ diagnostic: the schema body parses through the type-member path, but its
 members are not children of a type literal or interface, so the `EK0108` rule
 never sees them. The `schema-effect-field` seed, corpus and inventory alias
 row keep that gap pending until the compiler rejects it.
+
+The oracle compiles with module `NodeNext`, an ES module. There
+TypeScript's checker rejects an export assignment (`export = 1;`) with the
+grammar error `TS1203`, which now counts as syntax rejection. It admits an
+import assignment, `import x = require("m")` or `import y = N.a`:
+TypeScript's `ImportEqualsDeclaration`, which VIP-40 forbids only inside a
+module body (`EK4008`). The lab's TypeScript subset now derives it.
+Campaign176 found both omissions.
