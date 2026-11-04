@@ -255,17 +255,19 @@ func preludeFixCase(t *testing.T, source string) (*FixResult, tspath.RootedFileP
 	return fixCase(t, dir), file.FileName()
 }
 
-// End to end: a value export still shortens outside a declined site, while
-// the same edit inside a plain generator's return is dropped and reported.
-// Qualified root types are deliberately no longer shortening candidates.
+// End to end: a module's name written for its export is repaired outside a
+// declined site (FileSystem.of becomes FileSystem.FileSystem.of, chapter 7),
+// while the same repair inside a plain generator's return is blocked by the
+// refused site and reported. A written FileSystem.FileSystem.of is kept.
 func TestFixPreludeKeepsRefusedSite(t *testing.T) {
 	source := `import { FileSystem } from "effect"
 
 function* g(x: unknown) {
   yield 1
-  return FileSystem.FileSystem.of
+  return FileSystem.of
 }
-const first = FileSystem.FileSystem.of
+const first = FileSystem.of
+const written = FileSystem.FileSystem.of
 `
 	result, name := preludeFixCase(t, source)
 	if len(result.Changed) != 0 {
@@ -275,22 +277,25 @@ const first = FileSystem.FileSystem.of
 	if fixed == nil {
 		t.Fatalf("no rewrite kept; sites %+v", result.Sites)
 	}
-	want := strings.Replace(strings.TrimPrefix(source, "import { FileSystem } from \"effect\"\n"), "const first = FileSystem.FileSystem.of", "const first = FileSystem.of", 1)
+	want := strings.Replace(strings.TrimPrefix(source, "import { FileSystem } from \"effect\"\n"), "const first = FileSystem.of", "const first = FileSystem.FileSystem.of", 1)
 	if fixed.Text != want || fixed.Rewrites[preludeKeyLabel] != 1 {
 		t.Fatalf("wrote %q\nwant %q\nrewrites %v", fixed.Text, want, fixed.Rewrites)
 	}
-	at := strings.Index(source, "FileSystem.FileSystem.of")
-	var declined, dropped bool
+	at := strings.Index(source, "FileSystem.of")
+	var declined, blocked bool
 	for _, site := range result.Sites {
-		if site.Code == "EK2128" && site.Start == at && site.End == at+len("FileSystem.FileSystem.of") {
+		if site.Code == "EK2128" && site.Start == at && site.End == at+len("FileSystem.of") {
 			declined = true
 		}
-		if site.Code == preludeKeyLabel && strings.HasPrefix(site.Reason, "its rewrite would edit the refused site EK2128 at 5:10") {
-			dropped = true
+		// The repair inside the site is either blocked by the site guard or
+		// refused by the gate (its text changes the EK2128 message); both
+		// report it at the written module name.
+		if site.Code == preludeKeyLabel && site.Start >= at && site.Start <= at+len("FileSystem.of") {
+			blocked = true
 		}
 	}
-	if !declined || !dropped {
-		t.Fatalf("sites %+v: want the EK2128 site at [%d,...) and the dropped rewrite", result.Sites, at)
+	if !declined || !blocked {
+		t.Fatalf("sites %+v: want the EK2128 site at [%d,...) and the repair reported inside it", result.Sites, at)
 	}
 }
 

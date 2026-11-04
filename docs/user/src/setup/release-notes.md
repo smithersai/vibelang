@@ -47,6 +47,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The `Option.match` quick fix could refuse a payload whose type was private to another module because its generated annotation used an unresolved name. The repair now expands private interface payloads and preserves the public declaration.
 
+- `vibelang --fix` shortened a written `Experimental.Process.Process` type to `Experimental.Process` and left the `Option<number>`, `Scope` and `FileSystem.of` shorthands as written; every `--fix` scope now writes the export (`Option.Option<number>`, `Scope.Scope`, `FileSystem.FileSystem.of`) and keeps written qualified types.
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11

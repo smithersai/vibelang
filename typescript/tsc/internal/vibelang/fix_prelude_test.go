@@ -426,7 +426,7 @@ effect function implementation() {
   return [try FileSystem.FileSystem, try Path.Path]
 }
 const host = effect () => try (try Experimental.Process.Process).hostname
-const running = (process: Experimental.Process, pid: number) => process.isRunning(pid)
+const running = (process: Experimental.Process.Process, pid: number) => process.isRunning(pid)
 `
 	_, file, _, _ := editorProgram(t, source)
 	dir := filepath.Dir(file.FileName().AsString())
@@ -447,12 +447,12 @@ const running = (process: Experimental.Process, pid: number) => process.isRunnin
 		}
 		t.Fatalf("--fix wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
 	}
-	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 1 {
-		t.Errorf("rewrites %v; want 5 imports and 1 module export", fixed.Rewrites)
+	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 0 {
+		t.Errorf("rewrites %v; want 5 imports and no module export", fixed.Rewrites)
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 6 fixes (prelude import ×5, module export ×1)") {
+	if !strings.Contains(report.String(), "main.vibe: 5 fixes (prelude import ×5)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 	if err := os.WriteFile(file.FileName().AsString(), []byte(want), 0o600); err != nil {

@@ -53,10 +53,12 @@ import (
 type preludeRewrite struct {
 	edits   []sourceEdit
 	imports int // imports of a module the prelude supplies, removed
-	// importEdits counts the first edits, which remove those imports; the
-	// rest each shorten one qualified export.
+	// importEdits counts the edits, which remove those imports.
 	importEdits int
-	keys        int // M.M written M
+	// keys counts edits after the imports. The prelude writes no shorthand
+	// (chapter 7, Legacy prelude shorthand), so none remain; the migration
+	// that writes a module's export counts under preludeKeyLabel instead.
+	keys int
 }
 
 // The kinds of rewrite, as the --fix report names them.
@@ -232,21 +234,6 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 		r.edits = append(r.edits, bindingRemovals(file, statement, going)...)
 	}
 	r.importEdits = len(r.edits)
-	// M.M becomes M where D311 gives M that meaning.
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if ast.IsImportDeclaration(node) {
-			return false
-		}
-		// A name the parser writes, as for a schema declaration, has no text of its own.
-		if inner, outer := shortenableExport(c, node, removed); inner != nil && node.Flags&ast.NodeFlagsReparsed == 0 && !kept[firstIdentifier(inner).Text()] &&
-			strings.TrimSpace(text[inner.End():outer.End()]) == "."+rightName(outer) {
-			r.edits = append(r.edits, sourceEdit{inner.End(), outer.End(), ""})
-			r.keys++
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
 	return r
 }
 
@@ -373,56 +360,6 @@ func moduleExports(c *checker.Checker, module *ast.Symbol, member string) bool {
 		module = c.GetAliasedSymbol(module)
 	}
 	return module != nil && c.TryGetMemberInModuleExports(member, module) != nil
-}
-
-// shortenableExport returns inner and outer when node writes a module's
-// export of the module's own name, M.M, as inner.outer's last name, where
-// writing M alone means the same (D311): M.M.member where the module exports
-// no member, or the type M.M.
-// removed holds the modules whose imports the rewrite removes, which then
-// reach the prelude.
-func shortenableExport(c *checker.Checker, node *ast.Node, removed map[string]bool) (inner *ast.Node, outer *ast.Node) {
-	switch {
-	case ast.IsPropertyAccessExpression(node) && ast.IsIdentifier(node.Name()):
-		module := node.Expression()
-		parent := node.Parent
-		member := ast.IsPropertyAccessExpression(parent) && parent.Expression() == node && ast.IsIdentifier(parent.Name())
-		if !member {
-			return nil, nil
-		}
-		symbol, export := exportOfModuleReference(c, module, node.Name(), removed)
-		if export == nil {
-			return nil, nil
-		}
-		if moduleExports(c, symbol, parent.Name().Text()) {
-			return nil, nil
-		}
-		return module, node
-	case ast.IsQualifiedName(node) && ast.IsTypeReferenceNode(node.Parent):
-		module := node.AsQualifiedName().Left
-		// Keep a written qualified type when shortening would leave a bare
-		// name. Another consumer config may supply an ambient type of that
-		// name (FileSystem in lib.dom, or an application's own global type).
-		// Nested qualification such as Experimental.Process remains stable.
-		if ast.IsIdentifier(module) {
-			return nil, nil
-		}
-		_, export := exportOfModuleReference(c, module, node.AsQualifiedName().Right, removed)
-		if export == nil || export.Flags()&ast.SymbolFlagsType == 0 || isBuiltinGlobalType(c, node.AsQualifiedName().Right.Text()) {
-			return nil, nil
-		}
-		return module, node
-	}
-	return nil, nil
-}
-
-// rightName returns the last name that node, a property access or a
-// qualified name, writes.
-func rightName(node *ast.Node) string {
-	if ast.IsQualifiedName(node) {
-		return node.AsQualifiedName().Right.Text()
-	}
-	return node.Name().Text()
 }
 
 // exportOfModuleReference returns the module that module refers to and its

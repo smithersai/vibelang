@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("shadow-local-option\u0000\u0000")

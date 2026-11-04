@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("member-module-export\u0000\u0000")

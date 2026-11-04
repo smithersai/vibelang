@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("type-nested-written\u0000\u0000")
