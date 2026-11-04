@@ -7,19 +7,30 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath, pathToFileURL } from "node:url"
 export function referenceModules() {
   if (process.env.VIBELANG_MATCH_REFERENCE_NODE_MODULES) return process.env.VIBELANG_MATCH_REFERENCE_NODE_MODULES
-  const cache = path.resolve(fileURLToPath(new URL("../../.cache/cov-ch004-reference/", import.meta.url)))
-  if (!fs.existsSync(path.join(cache, "node_modules/typescript/package.json"))) {
+  return installReference(path.resolve(fileURLToPath(new URL("../../.cache/cov-ch004-reference/", import.meta.url))))
+}
+// installReference fills cache with the reference TypeScript and Effect unless
+// it already holds them. A cache that an interrupted install left without its
+// node_modules is replaced; it used to make the rename of the fresh staging
+// copy fail with ENOTEMPTY on every later run.
+export function installReference(cache, install = npmInstall) {
+  const installed = dir => fs.existsSync(path.join(dir, "node_modules/typescript/package.json"))
+  if (!installed(cache)) {
     fs.mkdirSync(path.dirname(cache), { recursive: true })
     const staging = fs.mkdtempSync(cache + "-")
     try {
-      execFileSync("npm", ["install", "--prefix", staging, "--ignore-scripts", "--no-audit", "--no-fund",
-        "--save-exact", "typescript@5.9.3", "effect@4.1.0"], { stdio: "pipe", timeout: 120_000 })
+      install(staging)
+      if (!installed(cache)) fs.rmSync(cache, { recursive: true, force: true })
       try { fs.renameSync(staging, cache) } catch (error) {
-        if (!fs.existsSync(path.join(cache, "node_modules/typescript/package.json"))) throw error
+        if (!installed(cache)) throw error
       }
     } finally { fs.rmSync(staging, { recursive: true, force: true }) }
   }
   return path.join(cache, "node_modules")
+}
+function npmInstall(prefix) {
+  execFileSync("npm", ["install", "--prefix", prefix, "--ignore-scripts", "--no-audit", "--no-fund",
+    "--save-exact", "typescript@5.9.3", "effect@4.1.0"], { stdio: "pipe", timeout: 120_000 })
 }
 export async function compare(dir, Effect, expected) {
   const modules = referenceModules()
