@@ -269,6 +269,14 @@ parser/vibelang_syntax.go:Parser.recordVibeSyntaxClause	admission:syntax-records
 parser/vibelang_try.go:Parser.isStartOfVibeLangTry	admission:try	900-appendices.md#TryExpression,900-appendices.md#TryAll	support	Appendix A: TryExpression, TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_try.go:Parser.nextTokenStartsTryOperand	admission:try	900-appendices.md#TryExpression	support	VIP-5 try execution and VIP-18 operations
 parser/vibelang_try.go:Parser.parseVibeLangTry	admission:try	900-appendices.md#TryExpression,900-appendices.md#TryAll	support	Appendix A: TryExpression, TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+vibelang/try_operations.go:init	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: registers EK1801, its file check and the object quick fix; introduces no syntax
+vibelang/try_operations.go:tryOperationName	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: names the reparsed try.all, try.race, try.any or try.allSettled call; introduces no syntax
+vibelang/try_operations.go:checkTryOperations	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 rejects an operand that is not an array of Effects (Appendix B); introduces no syntax
+vibelang/try_operations.go:tryOperationArrayType	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 operand assignability to ReadonlyArray<Effect>; introduces no syntax
+vibelang/try_operations.go:tryOperationEffectType	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 element assignability to Effect; introduces no syntax
+vibelang/try_operations.go:tryOperationImportPosition	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: import placement for the EK1801 object quick fix; introduces no syntax
+vibelang/try_operations.go:trySettledLiteral	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: selects a no-spread array literal operand of try.allSettled for direct lowering (5c1a266c); introduces no syntax
+vibelang/try_operations.go:lowering.visitTrySettledLiteral	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: lowers try.allSettled over a no-spread array literal per element, without a helper array (5c1a266c); introduces no syntax
 parser/vibelang_try.go:triedChainOperand	admission:try	900-appendices.md#TryExpression	support	VIP-5 try execution and VIP-18 operations
 parser/vibelang_try.go:Parser.isVibeLangTryOperation	admission:try	900-appendices.md#TryAll	support	Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_try.go:Parser.parseVibeLangTryOperation	admission:try	900-appendices.md#TryAll	support	Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
