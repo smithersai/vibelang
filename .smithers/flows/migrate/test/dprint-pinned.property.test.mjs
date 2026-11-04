@@ -12,7 +12,7 @@ const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-pinned-dprint-rerun.json", import.meta.url)))
 const shipped = "npm:vibelang/dprint-plugin.json"
 const raw = process.env.VIBELANG_DPRINT_PINNED_RAW === "1"
-const quote = "Existing tools work."
+const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 
 function scenario(input) {
   const root = mkdtempSync(join(tmpdir(), "vibe-dprint-pins-"))

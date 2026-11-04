@@ -15,12 +15,12 @@ import { addBunBuildPlugin } from "../../../.smithers/flows/migrate/lib/wire.mjs
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const regressions = new URL("./property-regressions/", import.meta.url)
 const hasBun = spawnSync("bun", ["--version"]).status === 0
-const rule = 'docs/design/src/007-tooling.md: "Existing tools work." and "Bundler plugins use the same names"'
+const rule = 'docs/design/src/007-tooling.md: "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`." and "Bundler plugins use the same names"'
 let diagnostics = ""
 
 test("migration property oracles quote the current tooling contract", () => {
   const chapter = readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8")
-  for (const quote of ["Existing tools work.", "Bundler plugins use the same names"]) {
+  for (const quote of ["Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.", "Bundler plugins use the same names"]) {
     assert.ok(chapter.includes(quote), "tooling specification changed: " + quote)
   }
 })

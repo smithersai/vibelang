@@ -16,10 +16,10 @@ const ts = loadTypeScript([join(repo,"packages/runtime")])
 const tooling=readFileSync(join(repo,"docs/design/src/007-tooling.md"),"utf8")
 let diagnostics=""
 const write=(root,file,text)=>{const p=join(root,file);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,text)}
-test("migration helper oracles quote the current specification",()=>{ assert.ok(tooling.includes("Existing tools work.")) })
+test("migration helper oracles quote the current specification",()=>{ assert.ok(tooling.includes("Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.")) })
 test("mock.module reaches the generated source while unmigrated mocks keep their spelling",async()=>{
  await checkProperty(fc,{
-  name:"opencode-mock-source-paths",rule:'docs/design/src/007-tooling.md: "Existing tools work."; Bun mocks keep matching the renamed module',
+  name:"opencode-mock-source-paths",rule:'docs/design/src/007-tooling.md: "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."; Bun mocks keep matching the renamed module',
   command:"node --test test/migration-helpers.property.test.mjs",regressions,numRuns:50,
   arbitrary:fc.record({name:fc.constantFrom("mini","runtime","stats.core"),directory:fc.boolean(),extension:fc.constantFrom("none","js","ts"),mocked:fc.integer({min:2,max:999})}),
   diagnostics:()=>diagnostics,
@@ -51,7 +51,7 @@ test("mock.module reaches the generated source while unmigrated mocks keep their
 })
 test("setup wires named Vite configs in reaching packages and preserves excluded configs",async()=>{
  await checkProperty(fc,{
-  name:"opencode-named-vite-configs",rule:'docs/design/src/007-tooling.md: "Existing tools work."; migration setup wires configs that bundle migrated sources',
+  name:"opencode-named-vite-configs",rule:'docs/design/src/007-tooling.md: "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."; migration setup wires configs that bundle migrated sources',
   command:"node --test test/migration-helpers.property.test.mjs",regressions,numRuns:60,
   arbitrary:fc.record({name:fc.constantFrom("node","cli-node","browser","prod_1"),extension:fc.constantFrom("ts","mts","js","mjs"),prefix:fc.constantFrom("vite","vitest"),factory:fc.boolean(),supported:fc.boolean()}),
   diagnostics:()=>diagnostics,

@@ -9,7 +9,7 @@ import {pathReadDeferrals} from "../lib/references.mjs"
 import {checkProperty} from "../../../../scripts/testing/property.mjs"
 const fc=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))("fast-check")
 const put=(r,f,s)=>{mkdirSync(dirname(join(r,f)),{recursive:true});writeFileSync(join(r,f),s)}
-const rule="Existing tools work."
+const rule="Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const helper='import path from "node:path"; const pkgName="@demo/plugin"; const realDir=path.dirname(Bun.resolveSync(pkgName+"/package.json",import.meta.dirname)); const rootEntry=Bun.resolveSync(pkgName,import.meta.dirname); const relParts=path.relative(realDir,rootEntry).replaceAll("\\\\","/").split("/"); const scanDir=relParts.length>1?path.join(realDir,relParts[0]):realDir; const ext=path.extname(rootEntry)||".js"; const entries=[]; for(const file of new Bun.Glob("**/*"+ext).scanSync({cwd:scanDir})){const base=file.slice(0,-ext.length); if(base!=="index")entries.push(pkgName+"/"+base)}; console.log(JSON.stringify(entries));\n'
 function fixture(root){
  put(root,"package.json",'{"type":"module"}')

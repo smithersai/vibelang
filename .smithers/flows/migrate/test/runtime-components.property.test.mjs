@@ -10,7 +10,7 @@ import {checkProperty} from "../../../../scripts/testing/property.mjs"
 const require=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))
 const fc=require("fast-check"),ts=require("typescript")
 const put=(r,f,s)=>{mkdirSync(dirname(join(r,f)),{recursive:true});writeFileSync(join(r,f),s)}
-const rule="Existing tools work."
+const rule="Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 function scenario({pattern=false,bridge=false,dynamic=false,size=2,style="relative"}={}){
  const root=mkdtempSync(join(tmpdir(),"opencode-runtime-components-"))
  try{

@@ -9,7 +9,7 @@ import fc from "fast-check"
 import {checkProperty} from "../../../scripts/testing/property.mjs"
 
 const compilerPackage=fileURLToPath(new URL("../",import.meta.url))
-const rule="Existing tools work."
+const rule="Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const corpus=new URL("./corpus/",import.meta.url)
 function scenario({depth=2,state="missing",cache="default",async=false}={}) {
  const root=mkdtempSync(join(tmpdir(),"opencode-loader-temp-"))

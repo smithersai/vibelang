@@ -26,7 +26,7 @@ const fc = require("fast-check");
 const quote =
   "every package that runs `bun test` and reaches a migrated package through workspace dependencies";
 const toolingQuote =
-  "linters, Knip, bundlers and test runners each read `.vibe`.";
+  "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.";
 const corpus = new URL(
   "./corpus/workspace-cycle-preload.json",
   import.meta.url,
