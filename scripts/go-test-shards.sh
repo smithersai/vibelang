@@ -173,6 +173,9 @@ done
 if [ "$n" -eq 0 ]; then
   # Only a package that lists no names gets here: slice 1 always holds the first name.
   [ "$si" -eq 1 ] || { echo "go-test-shards: slice $slice: the package lists no tests, slice 1 runs it"; echo PASS; exit 0; }
+  # exec replaces this shell without running its EXIT trap. Discovery is
+  # finished; remove only its private scratch before handing off to TestMain.
+  rm -rf "$dir" || exit 1
   exec "$bin" "$@"
 fi
 wait

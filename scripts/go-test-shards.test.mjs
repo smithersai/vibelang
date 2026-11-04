@@ -372,3 +372,54 @@ for (const flag of ["memprofilerate", "blockprofilerate", "mutexprofilefraction"
     }
   })
 }
+
+for (const names of [[], ["BenchmarkOnly"]]) for (const status of [0, 7, 143]) {
+  test(`empty selectable package releases discovery scratch before native exit ${status}: ${names.join() || "no names"}`, () => {
+    const fixture = setup(names)
+    try {
+      const scratch = join(fixture.dir, "discovery with spaces")
+      mkdirSync(scratch)
+      mkdirSync(join(scratch, "unrelated"))
+      writeFileSync(join(scratch, "unrelated", "keep"), "retained")
+      // TestMain can do work even when -test.list finds no tests. Observe
+      // scratch during that work, before a process exit could clean it.
+      writeFileSync(join(fixture.dir, "pkg.test"), `#!/bin/sh
+for arg in "$@"; do
+  case $arg in -test.list) printf '%s\\n' "$NAMES"; exit 0 ;; esac
+done
+printf '%s\\n' "$@" > "$RUNS/native"
+printf 'native stdout\\n'
+printf 'native stderr\\n' >&2
+for path in "$TMPDIR"/go-test-shards.*; do
+  [ ! -d "$path" ] || printf 'discovery directory still present\\n'
+done
+exit ${status}
+`, { mode: 0o700 })
+      const result = fixture.run([], { TMPDIR: scratch, GO_TEST_SHARDS: "3" })
+      assert.equal(result.status, status, result.stdout + result.stderr)
+      assert.equal(result.stdout, "native stdout\n", "discovery scratch must be gone before the native fallback starts")
+      assert.equal(result.stderr.replace(/^go-test-shards: (?:listing tests|listed tests: exit 0)\n/gm, ""), "native stderr\n")
+      assert.deepEqual(result.runs, [["-test.timeout=40m0s", "-test.short=true"]])
+      assert.deepEqual(readdirSync(scratch), ["unrelated"])
+      assert.equal(readFileSync(join(scratch, "unrelated", "keep"), "utf8"), "retained")
+    } finally { fixture.done() }
+  })
+}
+
+test("generated empty-package slices leave no discovery directories", () => {
+  for (let seed = 0; seed < 32; seed++) {
+    const fixture = setup(seed % 2 ? ["BenchmarkOnly"] : [])
+    try {
+      const scratch = join(fixture.dir, "scratch")
+      mkdirSync(scratch)
+      const slices = 2 + seed % 5
+      const index = 1 + seed % slices
+      const result = fixture.run([], {
+        TMPDIR: scratch, GO_TEST_SHARDS: String(1 + seed % 8), GO_TEST_SLICE: `${index}/${slices}`,
+      })
+      assert.equal(result.status, 0, result.stdout + result.stderr)
+      assert.equal(result.runs.length, index === 1 ? 1 : 0)
+      assert.deepEqual(readdirSync(scratch), [], `layout ${seed} (${index}/${slices}) leaked scratch`)
+    } finally { fixture.done() }
+  }
+})

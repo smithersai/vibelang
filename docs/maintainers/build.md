@@ -811,6 +811,12 @@ returning `143`. This also covers cancellation while listing test names, when
 the package's `TestMain` can already be running. Discovery keeps the original
 test flags.
 
+When discovery finds no test, fuzz target or example, slice `1` runs the
+native binary unchanged and the other slices skip it. The launcher removes
+its discovery scratch before that native handoff, including for packages
+that contain only benchmarks; `TestMain` retains its arguments and exit status.
+Native output remains intact alongside the discovery diagnostics.
+
 Coverage and profiling runs (`-coverprofile`, `-cpuprofile`, `-memprofile`, `-blockprofile`, `-mutexprofile`, `-trace`)
 also run the binary once. The output file then contains the complete run;
 shards would overwrite the same file. Setting only a sampling rate or fraction
