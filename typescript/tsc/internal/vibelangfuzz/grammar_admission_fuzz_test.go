@@ -1520,11 +1520,9 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1101: // VIP-11 (amended 2026-11-01): a trailing block is the error EK1101.
 		return true
-	case 1007: // VIP-23 keeps TC39's topic grammar: % outside a pipe body is an early error.
+	case 2301: // VIP-23, Appendix B: the pinned pipe draft's early errors, a body with no topic and a % outside every pipe body.
 		return true
 	case 1201, 1902, 2001, 2201: // [+Effect] placement of provide, for concurrent, for try and interruption blocks.
-		return true
-	case 1006: // VIP-23: the pinned pipe draft's early error for a body with no topic.
 		return true
 	case 1017: // ProvideStatement is a statement: provide where an expression stands.
 		return true
@@ -1728,7 +1726,7 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"service-implementation", "EK", diagnostics.CategoryError, 9207, true},
 		{"service-class-warning", "EK", diagnostics.CategoryWarning, 2120, false},
 		{"native-generator-signature", "", diagnostics.CategoryError, 1222, true},
-		{"pipe-missing-topic", "EK", diagnostics.CategoryError, 1006, true},
+		{"pipe-missing-topic", "EK", diagnostics.CategoryError, 2301, true},
 		{"provide-expression", "EK", diagnostics.CategoryError, 1017, true},
 		{"native-jsdoc-type", "", diagnostics.CategoryError, 8020, true},
 		{"external-jsdoc-type-code-collision", "other", diagnostics.CategoryError, 8020, false},
@@ -1748,9 +1746,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"fiber-type-error", "EK", diagnostics.CategoryError, 1704, false},
 		{"trailing-block-error", "EK", diagnostics.CategoryError, 1101, true},
 		{"trailing-block-warning", "EK", diagnostics.CategoryWarning, 1101, false},
-		{"topic-outside-pipe-error", "EK", diagnostics.CategoryError, 1007, true},
-		{"topic-outside-pipe-warning", "EK", diagnostics.CategoryWarning, 1007, false},
-		{"native-topic-code-collision", "", diagnostics.CategoryError, 1007, false},
+		{"topic-outside-pipe-error", "EK", diagnostics.CategoryError, 2301, true},
+		{"topic-outside-pipe-warning", "EK", diagnostics.CategoryWarning, 2301, false},
+		{"native-topic-code-collision", "", diagnostics.CategoryError, 2301, false},
 		{"provide-placement", "EK", diagnostics.CategoryError, 1201, true},
 		{"for-concurrent-placement", "EK", diagnostics.CategoryError, 1902, true},
 		{"for-try-placement", "EK", diagnostics.CategoryError, 2001, true},

@@ -95,7 +95,7 @@ func topicSymbolsOf(c *checker.Checker) map[*ast.Node]*ast.Symbol {
 
 // resolveTopic resolves %, which no scope declares, to a value whose type is
 // the type of its pipe's left side. A % in no pipe's body resolves to a value
-// of the error type, so TypeScript reports nothing more than EK1007.
+// of the error type, so TypeScript reports nothing more than EK2301.
 func resolveTopic(c *checker.Checker, location *ast.Node, name string, meaning ast.SymbolFlags) *ast.Symbol {
 	if name != "%" || !isTopic(location) || meaning&ast.SymbolFlagsValue == 0 {
 		return nil
@@ -114,8 +114,8 @@ func resolveTopic(c *checker.Checker, location *ast.Node, name string, meaning a
 	return symbol
 }
 
-// checkPipes reports a pipe without a topic (EK1006) and a % in no pipe's body
-// (EK1007).
+// checkPipes reports the pipe proposal's two topic early errors under EK2301
+// (Appendix B): a pipe without a topic and a % in no pipe's body.
 func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 	if !isVibeLangFile(file) {
 		return
@@ -125,7 +125,7 @@ func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 		switch {
 		case isTopic(n):
 			if pipeOfTopic(n) == nil {
-				report(c, n, EK1007)
+				report(c, n, EK2301StrayTopic)
 			}
 		case isPipe(n):
 			body := n.AsBinaryExpression().Right
@@ -133,7 +133,7 @@ func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 				break // the parser already reports the missing operand
 			}
 			if len(topicsOf(n)) == 0 {
-				d := report(c, body, EK1006)
+				d := report(c, body, EK2301MissingTopic)
 				note(d, "Write % where the value goes:   {0} |> {1}", nodeText(file, n.AsBinaryExpression().Left), "f(%)")
 			}
 		}

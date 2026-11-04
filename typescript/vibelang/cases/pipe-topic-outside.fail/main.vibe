@@ -1,4 +1,4 @@
-// expect: EK1007
+// expect: EK2301
 // % stands only in a pipe's body (D154).
 export function half(n: number) {
   return % / 2

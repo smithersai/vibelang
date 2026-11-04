@@ -73,10 +73,12 @@ var (
 	EK1003 = message(1003, errorCategory, "{0} is not part of VibeLang: a call already waits.")
 	// EK1005: a runner inside code that a fiber runs. {0} is the runner, {1} the function.
 	EK1005 = message(1005, errorCategory, "{0} starts a new root fiber, but {1} already runs on one.")
-	// EK1006: a pipe whose body never uses its topic.
-	EK1006 = message(1006, errorCategory, "This pipe's body does not use its topic, %, so the value before |> would go nowhere.")
-	// EK1007: % outside every pipe's body.
-	EK1007 = message(1007, errorCategory, "% is the topic of a pipe and stands only in a pipe's body, after |>.")
+	// EK2301 (Appendix B, VIP-23): the pinned pipe proposal's missing-topic
+	// early error, a pipe whose body never uses its topic.
+	EK2301MissingTopic = message(2301, errorCategory, "This pipe's body does not use its topic, %, so the value before |> would go nowhere.")
+	// EK2301 (Appendix B, VIP-23): the pinned pipe proposal's early error for
+	// a % outside every pipe's body.
+	EK2301StrayTopic = message(2301, errorCategory, "% is the topic of a pipe and stands only in a pipe's body, after |>.")
 	// EK1010: a throw expression followed by a token VIP-41 forbids. {0} is its operand, {1} the token.
 	EK1010 = message(parser.VibeLangThrowLookaheadCode, errorCategory, parser.VibeLangThrowLookaheadMessage)
 	// EK1011: a function compiles to an Effect in a program without effect's Effect type. {0} is the function.
@@ -213,7 +215,7 @@ func init() {
 	for _, m := range []*Message{
 		EK0108,
 		EK1202,
-		EK1001, EK1002, EK1003, EK1005, EK1006, EK1007, EK1010, EK1011, EK1012, EK1023,
+		EK1001, EK1002, EK1003, EK1005, EK1010, EK1011, EK1012, EK1023,
 		EK0201, EK0202, EK0203, EK0204, EK0205,
 		EK9201, EK9202, EK9203, EK9204, EK2005, EK2006, EK9205, EK9206, EK9207, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,

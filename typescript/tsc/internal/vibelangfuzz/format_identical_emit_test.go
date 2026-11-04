@@ -16,7 +16,7 @@ func TestFormatIdenticalEmitQuoted(t *testing.T) {
 }
 
 func TestToolsFormatIdenticalInvalidEmit(t *testing.T) {
-	diagnostic := ast.NewDiagnosticFromText(nil, core.TextRange{}, 1007, diagnostics.CategoryError, "placeholder outside pipe", nil, nil, false, false)
+	diagnostic := ast.NewDiagnosticFromText(nil, core.TextRange{}, 2301, diagnostics.CategoryError, "placeholder outside pipe", nil, nil, false, false)
 	for _, name := range []string{"out/main.js", "out/main.d.ts"} {
 		t.Run(name, func(t *testing.T) {
 			before := &Result{Outputs: map[string]string{name: "export const result = %;"}, Diagnostics: []*ast.Diagnostic{diagnostic}}
@@ -61,10 +61,10 @@ func TestToolsFormatInvalidEmitWitness(t *testing.T) {
 		after := toolsRecompile(t, w, before, Single(once).Files)
 		found := false
 		for _, d := range before.Diagnostics {
-			found = found || d.Code() == 1007 && d.Source() == "EK" && d.Category() == diagnostics.CategoryError
+			found = found || d.Code() == 2301 && d.Source() == "EK" && d.Category() == diagnostics.CategoryError
 		}
 		if !found {
-			t.Fatalf("witness must report EK1007: %v", before.Diagnostics)
+			t.Fatalf("witness must report EK2301: %v", before.Diagnostics)
 		}
 		if before.Outputs["out/main.js"] != after.Outputs["out/main.js"] {
 			t.Fatalf("expected byte-identical emit:\n%s\n---\n%s", before.Outputs["out/main.js"], after.Outputs["out/main.js"])

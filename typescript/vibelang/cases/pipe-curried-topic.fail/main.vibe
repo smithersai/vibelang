@@ -1,4 +1,4 @@
-// expect: TS2345 EK1006
+// expect: TS2345 EK2301
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 // The stage's default must match the concrete schema; a missing topic stays invalid.

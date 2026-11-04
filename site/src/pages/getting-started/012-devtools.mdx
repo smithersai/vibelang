@@ -100,8 +100,7 @@ Each entry gives the condition and the repair. The examples and language-service
 
 | Code | Meaning | Remedy |
 | --- | --- | --- |
-| EK1006 | A pipe body never uses its input topic, `%`. | Put `%` where the input belongs in the call after the pipe. |
-| EK1007 | `%` appears outside a pipe body. | Use it only after the pipe operator, or name the value with a variable. |
+| EK2301 | A pipe body never uses its input topic, `%`, or `%` appears outside a pipe body. | Put `%` where the input belongs in the call after the pipe; use `%` only after the pipe operator, or name the value with a variable. |
 | EK1017 | A `provide` statement was used in an expression position. | Write `provide layer { statements }` as a statement and return from inside its block. |
 | EK2111 | A `restore` block has no enclosing `uninterruptible` block. | Put it inside `uninterruptible`, or use `interruptible { … }`. |
 | EK3001 | Two services share a key. | Rename one of the declarations named by the diagnostic. |

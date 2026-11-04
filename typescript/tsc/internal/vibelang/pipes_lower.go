@@ -162,7 +162,7 @@ func (tx *lowering) visitPipe(node *ast.Node) *ast.Node {
 func (tx *lowering) visitTopic(node *ast.Node) *ast.Node {
 	pipe := pipeOfTopic(node)
 	if pipe == nil {
-		return node // EK1007
+		return node // EK2301: a % in no pipe's body
 	}
 	if tx.plan.pipes[pipe] == pipeSubstitute {
 		return tx.Visitor().VisitNode(pipe.AsBinaryExpression().Left)

@@ -1,4 +1,4 @@
-// expect: EK1006
+// expect: EK2301
 // VIP-39 nested-topic: docs/design/vips/0039-vibex.md#20176ff57ae31542
 // VIP-39 nested-topic: docs/design/vips/0039-vibex.md#078bbbf31acdbb79
 declare global { namespace JSX { type Element=unknown; interface IntrinsicElements { [tag:string]: Record<string,unknown> } } }

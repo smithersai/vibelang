@@ -111,7 +111,7 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 	visit(pipe.AsBinaryExpression().Right)
 	if topics == 0 {
 		p.diagnostics = append(p.diagnostics, Diagnostic{
-			Start: p.tokenStart(pipe.AsBinaryExpression().OperatorToken), Length: len("|>"), Code: 1006,
+			Start: p.tokenStart(pipe.AsBinaryExpression().OperatorToken), Length: len("|>"), Code: 2301,
 			Message: "A pipe body must use its topic (%); the input value would otherwise be discarded.",
 		})
 		return false
