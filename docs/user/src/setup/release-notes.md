@@ -189,6 +189,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Automatic migration could discard an authored `@throws` or `@rethrows` paragraph. Descriptive and contract-only tags now retain their text with a located refusal, including neighboring tags and exported members.
 
+- The compiler package README omitted its formatter API and ast-grep export and gave no Prettier setup; it now documents `vibelang/prettier`, `vibelang/format` and `vibelang/ast-grep`, with export coverage checked against the package manifest.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.

@@ -349,6 +349,39 @@ The formatter and `vibelang/prettier` recognize `.vibe` and `.vibex`. Include `*
 configuration's `typescript` settings, so they read like the project's `.ts`
 files. See [Format with dprint](https://vibelang.sh/setup/formatting).
 
+## Format with Prettier or a JavaScript API
+
+Add `vibelang/prettier` to Prettier's `plugins`, or pass
+`--plugin vibelang/prettier`. It recognizes `.vibe` and `.vibex` and
+delegates the whole file to VibeLang's formatter. Prettier's `singleQuote`
+and `printWidth` control the quote style and line width; other Prettier
+layout options do not change the result.
+
+`vibelang/format` exposes the same formatter to JavaScript integrations:
+
+```js
+import { formatSource } from "vibelang/format"
+
+const formatted = formatSource(source, filePath)
+```
+
+`formatSource(text, filePath)` formats a supplied buffer, including an unsaved
+file whose path is ignored or under `node_modules`. The full path selects the
+repository's quote style and line width. File-scanning commands
+`vibelang-format --write` and `vibelang-format --check` apply ignore rules
+when selecting files. See [developer tools](https://vibelang.sh/setup/developer-tools#prettier-and-oxfmt)
+for configuration formats and Oxfmt integration.
+
+## Build an ast-grep grammar
+
+`vibelang/ast-grep` exports `buildAstGrep(output)`, also available as
+`vibelang-ast-grep <output>`. It compiles every shipped tree-sitter grammar
+into one shared library and returns its absolute path. It requires a C
+compiler; Windows developers use WSL. Register the library and the appropriate
+`vibe` or `vibex` grammar in `sgconfig.yml`. See
+[ast-grep setup](https://vibelang.sh/setup/developer-tools#ast-grep) for language
+symbols, trust settings and rule migration.
+
 ## Lint .vibe and .vibex files with ESLint
 
 `vibelang/eslint` is an ESLint parser for `.vibe` and `.vibex` files: it gives ESLint the
@@ -393,6 +426,15 @@ The
 [Devtools page](https://vibelang.sh/getting-started/012-devtools) lists the node types of VibeLang's own forms
 and shows the whole configuration.
 
+## Run Oxlint's native rules
+
+`vibelang/oxlint` runs native Oxlint rules on a temporary TypeScript projection
+of `.vibe` and `.vibex` sources, then maps diagnostics back to the original
+source. Reports on generated code are dropped. Migration setup wires this
+through `node .vibelang/oxlint.mjs --vibe-native`; use the
+[Oxlint integration](https://vibelang.sh/setup/developer-tools#oxlint) for
+configuration and rule coverage.
+
 ## Find unused code with Knip
 
 `vibelang/knip` is a [Knip compiler](https://knip.dev/features/compilers) for
@@ -419,6 +461,8 @@ runs `VIBELANG_BINARY` when set, then `native/vibelang` (`native/vibelang.exe` o
 VibeLang checkout, then the platform package. If you installed with optional
 dependencies omitted, reinstall without that option. The launcher forwards
 arguments, standard streams, signals, and the exit status.
+
+Package metadata is available through `vibelang/package.json`.
 
 ## License
 
