@@ -99,6 +99,8 @@ const specTests = [
   "TestGrammarAdmissionSchemaTypeDiagnostic",
   "TestGrammarAdmissionModuleRequireKeys",
   "TestGrammarAdmissionModuleRequireRegression",
+  "TestGrammarAdmissionSchemaJSDocKeys",
+  "TestGrammarAdmissionSchemaJSDocRegression",
   "TestGrammarAdmissionMutationKeys",
   "TestCurrentDiagnosticPolicyRegression",
   "TestCompileCurrentDiagnosticPolicy",

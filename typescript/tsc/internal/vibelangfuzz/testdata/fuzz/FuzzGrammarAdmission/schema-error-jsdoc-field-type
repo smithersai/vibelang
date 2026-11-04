@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-error-jsdoc-field-type\nschema error E { id: ?? string }")

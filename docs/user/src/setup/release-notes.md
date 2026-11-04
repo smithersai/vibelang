@@ -9,6 +9,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Grammar admission fuzzing now retains invalid JSDoc prefixes in schema types as pending witnesses, including optional and readonly fields and schema errors.
+
+
 - Grammar admission fuzzing now records identifier arguments in import-alias `require` references as a pending gap instead of stopping at an unclassified mismatch.
 
 

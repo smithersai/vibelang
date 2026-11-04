@@ -68,6 +68,16 @@ with an unadmitted `effect` modifier remains an admission mismatch when its
 type also reports `EK2109`. The keyed unsupported-field witness shares the
 existing `admission:schema-effect-field` pending family; ordinary, optional
 and readonly fields with unsupported types remain grammar-derived controls.
+
+Schema types with a leading JSDoc `?`, `??`, `!` or `*` are a separate
+`admission:schema-jsdoc-field-type` gap. The native parser recovers a
+JSDoc type, which the schema mapping replaces before the native
+source-type diagnostic runs; only `EK2109` remains. The exact type-prefix
+family stays pending, with optional, readonly, schema-alias and schema-error
+controls. Native schema-error methods and computed property names stay outside
+the mapped-type family.
+A tuple containing the same prefix remains a native rejection control.
+Ordinary nullable unions and expression coalescing retain their own grammar.
 Syntax-only legacy recovery also counts as rejection; this grants no authority to the corresponding form. The grammar lab models a
 bounded TypeScript subset, so an unrecognized program is triaged as either
 compiler admission or lab/spec coverage before it is made pending. The
