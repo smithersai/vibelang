@@ -253,6 +253,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Timer-cancellation errors suggested a legacy method without running its Effect; they now show how to run the public `Fiber.interrupt(fiber)` Effect.
 
+- Since vibe `db3327647f6b`, passing Effect's own callable values or factory results as callbacks, such as `Order.mapInput(Order.Number, f)` or `Schema.String.pipe(Schema.brand("Id"))`, reported `EK0402`. They compile again while the rule for unannotated foreign callable values is decided; written `@throws` contracts are still checked.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.

@@ -1,0 +1,1 @@
+impl-hunt-fail reverted 2026-11-04 (platform 13:16Z option (a)): foreign callable values and factory results are not EK0402 candidates until Will rules on Effect values such as Order.Number and Schema.brand(...) passed as callbacks (38 docs snippets, 2 migrate tests)

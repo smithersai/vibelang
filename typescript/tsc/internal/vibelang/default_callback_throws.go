@@ -324,9 +324,11 @@ func defaultForeignCallbackCandidate(c *checker.Checker, t *checker.Type, owners
 			switch decl.Kind {
 			case ast.KindFunctionDeclaration, ast.KindMethodDeclaration, ast.KindMethodSignature, ast.KindArrowFunction, ast.KindFunctionExpression:
 			case ast.KindFunctionType, ast.KindCallSignature:
-				if !defaultForeignValueDeclaredAbroad(c, origin, map[*ast.Symbol]bool{}) {
-					return false
-				}
+				// Reverted 2026-11-04 (platform option (a)): foreign callable
+				// values and factory results typed by a function type are not
+				// candidates until Will rules on Effect values such as
+				// Order.Number and Schema.brand(...) passed as callbacks.
+				return false
 			default:
 				return false
 			}
