@@ -367,6 +367,27 @@ func failuresCases() []*failCase {
 				Decls: "declare const dec: any; export " + form.prefix + " E { " + member.source + " }"})
 		}
 	}
+	// A field naming a rejected type parameter gets no second diagnostic,
+	// such as EK2109 for a schema error's field schema.
+	for _, form := range []struct {
+		prefix string
+		vip    int
+	}{{"error", 13}, {"schema error", 29}} {
+		for _, shape := range []struct{ key, params, fields string }{
+			{"value", "T", "value: T"},
+			{"array", "T", "items: T[]"},
+			{"optional", "T", "value?: T"},
+			{"union", "T", "value: T | string"},
+			{"tuple", "T, U", "pair: [T, U]"},
+			{"record", "K extends string", "map: Record<K, number>"},
+			{"mixed", "T", "id: string; value: T; count: number"},
+		} {
+			add(&failCase{Name: strings.ReplaceAll(form.prefix, " ", "-") + "-type-parameter-field-" + shape.key,
+				Chapter: failuresChapter, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none", Code: 1303, OneDiagnostic: true,
+				Quote: "| type parameters, such as `error Invalid<T> { value: T }`, in either error form | `EK1303` |",
+				Decls: "⟦export " + form.prefix + " Invalid<" + shape.params + "> { " + shape.fields + " }⟧"})
+		}
+	}
 	add(&failCase{Name: "schema-error-named-error", VIP: 29, Owner: "fix-vip-decls", Host: "none", Quote: "`schema error NotFound {` and a schema named `error` (`schema error = …`) differ at the next token. `schema error { id: string }` is a schema named `error`: `{` is not the name required after `schema error`.",
 		Decls: "schema error = \"a\" | \"b\"\nexport schema error NotFound { id: string }\nexport const n = new NotFound({ id: \"x\" })\nexport const e = Schema.decodeUnknownSync(error)(\"a\")"})
 	add(&failCase{Name: "assign-object-member", Quote: "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`", Host: "plain", Body: "⟦const r: { read: (s: string) => string } = { read: parse }⟧", Decls: "function parse(s: string) { if (!s) throw new Error(\"empty\"); return s }"})

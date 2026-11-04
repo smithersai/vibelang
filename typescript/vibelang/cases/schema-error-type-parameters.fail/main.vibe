@@ -1,0 +1,6 @@
+// expect: EK1303
+// A field naming a rejected type parameter gets no diagnostic of its own:
+// EK1303 on the parameters is the declaration's one diagnostic.
+export schema error Invalid<T> { value: T }
+export schema error Pair<T, U> { items: T[]; pair: [T, U]; label?: T | string }
+export schema error Keyed<K extends string> { map: Record<K, number> }

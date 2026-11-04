@@ -191,6 +191,12 @@ func checkSchemaValue(c *checker.Checker, file *ast.SourceFile, value *ast.Node,
 		if isDeclaredSchemaReference(c, value) {
 			return
 		}
+		// EK1303 already rejects an error's type parameters; a field naming
+		// one gets no second diagnostic (003 static rules: one per member).
+		if namesRejectedErrorTypeParameter(value) {
+			cover(c, value) // TypeScript's error that the parameter is not a value
+			return
+		}
 		if !isSchemaValue(c, c.GetTypeAtLocation(value)) {
 			d := report(c, value, EK2109.With("{0} is not a schema: a field's type names a schema declaration or a schema constant."), entityText(value))
 			note(d, "Declare {0} with schema, or name a schema constant, such as const When = Schema.DateTimeUtc.", entityText(value))
@@ -219,6 +225,35 @@ func isDeclaredSchemaReference(c *checker.Checker, value *ast.Node) bool {
 		if isSchemaAlias(declaration) || declaration.Initializer() != nil && isSchemaStruct(declaration.Initializer()) {
 			return true
 		}
+	}
+	return false
+}
+
+// namesRejectedErrorTypeParameter reports whether value, a field schema the
+// parser wrote from a field type, names a type parameter of the error
+// declaration whose heritage holds it. checkErrorTypeParameters reports
+// those parameters with EK1303.
+func namesRejectedErrorTypeParameter(value *ast.Node) bool {
+	if !ast.IsIdentifier(value) {
+		return false
+	}
+	for n := value.Parent; n != nil; n = n.Parent {
+		if !ast.IsClassDeclaration(n) {
+			continue
+		}
+		if !errorDeclarationBase(n) {
+			return false
+		}
+		parameters := n.ClassLikeData().TypeParameters
+		if parameters == nil {
+			return false
+		}
+		for _, parameter := range parameters.Nodes {
+			if parameter.Name().Text() == value.Text() {
+				return true
+			}
+		}
+		return false
 	}
 	return false
 }
