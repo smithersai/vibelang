@@ -1,0 +1,6 @@
+// expect: EK0107
+function f() { return 1 }
+export const a = f[("constructor")]
+export const b = f[("constructor" as const)]
+export const c = f[("constructor" satisfies string)]
+export const d = f["constructor"!]

@@ -207,6 +207,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Unannotated foreign function declarations could be passed or stored where callbacks must never throw; their default `unknown` contract now requires an admitting callback type, including for retained aliases and class fields.
 
+- Grouped string keys such as `f[("constructor")]` escaped the function-constructor restriction, while `Function[("prototype")]` was incorrectly rejected. Parentheses and erased assertions now preserve the same static member checks as the literal key.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

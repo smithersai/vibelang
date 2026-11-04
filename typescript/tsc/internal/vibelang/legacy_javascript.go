@@ -107,7 +107,11 @@ func legacyAccessedName(node *ast.Node) *ast.Node {
 	case ast.KindPropertyAccessExpression:
 		return node.Name()
 	case ast.KindElementAccessExpression:
-		if argument := node.AsElementAccessExpression().ArgumentExpression; argument != nil && ast.IsStringLiteralLike(argument) {
+		argument := node.AsElementAccessExpression().ArgumentExpression
+		for argument != nil && ast.IsOuterExpression(argument, ast.OEKParentheses|ast.OEKAssertions) {
+			argument = argument.Expression()
+		}
+		if argument != nil && ast.IsStringLiteralLike(argument) {
 			return argument
 		}
 	}
