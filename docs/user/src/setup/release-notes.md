@@ -215,7 +215,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Bare `interrupt` and `yieldNow` had legacy function types, so the documented `try interrupt` and `try yieldNow` failed; both now bind to the pinned Effect values. The redundant runtime wrappers are retired (VIP-6/VIP-33).
 
-
 - A `catch` over `(try x)` could infer the outer program's error type and reject a handler for the Effect it returned. It now catches that returned Effect with its own value and error types; failures while executing `x` escape to the enclosing activation.
 
 - EK2104 now offers an editor quick fix and `vibelang --fix` for Effect delegation in a nonproducer body: `yield* e` becomes `try e`, and `yield* try e` becomes `try e`. Native generators, producers, bare yields and parameter initializers keep their own rules.
@@ -223,6 +222,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `catch` could recover a failure while evaluating its head, before that head returned the Effect to protect. Head evaluation now happens first, its failures escape, and only the returned Effect is caught; `--fix` preserves the previous boundary for heads that produce plain values.
 
 - `yield` in a nonproducer Effect activation or an Effect callable's parameter initializer reported native generator errors; it now reports `EK2104`, including inside an outer producer, while retaining independent operand errors.
+
 - A `catch` handler missing `=>` could omit `EK0509`; recovery now reports it while retaining independent TypeScript errors in the parameters and body.
 
 - Migration setup left forced Bun build checks such as `bun check --no-script -b` unable to resolve unchanged tests' imports after conversion; setup now selects VibeLang's build mode with the same projects and emit settings.
