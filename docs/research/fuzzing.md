@@ -1053,3 +1053,5 @@ The alias-configuration Go guard shares the current tooling quotation with the m
 Owner-syntax coverage cites the complete current `EK0512` row and mutates closed block-bodied or parenthesized handlers, with grouped whole-catch controls. Existing owner-code cases, pending keys and native-diagnostic rejection checks remain unchanged.
 
 The failures matrix quotes the current field-initializer and static-block source-context rule. Its existing `EK0401` expectations, marked spans, programs and mutation model remain unchanged.
+
+Generic-assertion repair cites the current parse-preservation sentence in chapter 7. The existing token, comment, declaration-identity and idempotence checks remain active across every assertion and whitespace key.

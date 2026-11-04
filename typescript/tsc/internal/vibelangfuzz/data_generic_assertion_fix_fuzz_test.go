@@ -10,7 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
-const dataAssertionFixQuote = "\x60vibelang --fix\x60 keeps the existing safe-fix checks and refusal rules."
+const dataAssertionFixQuote = "Quick fixes and codemods use the formatter to preserve the parse under Appendix A."
 
 func TestDataGenericAssertionFixQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), dataAssertionFixQuote) {

@@ -178,6 +178,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Conformance checks for `catch` syntax could reject the expanded closed-handler rule. They now cite the current rule and cover block-bodied and parenthesized handlers.
 - Forms validation could reject the argument-forwarding regression fixture because its saved decisions treated explicit `effect` functions as plain lambdas. The snapshot now records their written keyword.
 - Class-field conformance checks could fail on an older throw-context quotation. They now cite the current source-context rule while retaining their existing diagnostic expectations.
+- Generic-assertion repair conformance checks could stop at an obsolete safe-fix quotation. They now check the current parse-preservation contract and retain the full repair property.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
