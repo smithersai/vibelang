@@ -35,7 +35,7 @@ function assertReleaseHistory(notes, version, lastPublishedVersion) {
     assert.match(lastPublishedVersion, /^\d+\.\d+\.\d+$/, "npm publication snapshot must be a stable version")
     const published = lastPublishedVersion.split(".").map(Number)
     assert.equal(version, [published[0], published[1], published[2] + 1].join("."), "candidate must advance the last npm patch version once")
-    assert.equal(current.split("\n")[0], version + " (unreleased)", "all unpublished fixes belong to the compiler candidate")
+    assert.ok([version, version + " (unreleased)"].includes(current.split("\n")[0]), "all release fixes belong to the compiler candidate")
     assert.equal(previousVersion, lastPublishedVersion, "release history starts at the version npm actually published")
   }
 }
@@ -61,6 +61,8 @@ test("release history accepts an unpublished candidate at the compiler version",
 })
 
 test("release history accepts the published and next unreleased states", () => {
+  // Preparing publication removes the marker before npm advances its latest tag.
+  assertReleaseHistory("## 9.8.7\n### Bugs fixed since 9.8.6\n## 9.8.6\n", "9.8.7", "9.8.6")
   assertReleaseHistory("## 9.8.7\n### Bugs fixed since 9.8.6\n## 9.8.6\n", "9.8.7")
   assertReleaseHistory("## 9.8.8 (unreleased)\n### Bugs fixed since 9.8.7\n## 9.8.7\n", "9.8.7")
 })
