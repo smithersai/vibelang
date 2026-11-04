@@ -95,7 +95,7 @@ func checkExhaustive(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	if left == c.GetErrorType() || left.Flags()&checker.TypeFlagsNever != 0 {
 		return
 	}
-	declaredText, leftText := diagnosticUnionText(c, declared), diagnosticUnionText(c, left)
+	declaredText, leftText := diagnosticUnionText(c, declared, call), diagnosticUnionText(c, left, call)
 	if symbol := c.GetSymbolAtLocation(declaredSubject(c, call.Arguments()[0])); symbol != nil {
 		// A data type's variants by name, Delivery.Sent, not their object types (D307).
 		if names := dataNamesFor(c, symbol, call); names.hasVariants(c, declared) {
