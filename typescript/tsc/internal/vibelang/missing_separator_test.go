@@ -10,6 +10,7 @@ import (
 // error or service body on one line with no separator get the body's code,
 // EK1306 or EK0908, never TypeScript's TS1442 or TS1005.
 func TestMissingBodySeparator(t *testing.T) {
+	// rule-evidence: docs/design/src/900-appendices.md#3932946f5bee79f3 — Chapter 900: custom versus native separator diagnostics
 	for _, tc := range []struct {
 		source, token string
 		code          int32
@@ -82,6 +83,7 @@ func TestBodySeparatorsAccepted(t *testing.T) {
 }
 
 func TestMissingBodySeparatorQuickFix(t *testing.T) {
+	// rule-evidence: docs/design/src/900-appendices.md#8d45f00465a15e43 — Chapter 900: missing member separator repair
 	for _, tc := range []struct {
 		source, want string
 		code         int32
@@ -104,6 +106,7 @@ func TestMissingBodySeparatorQuickFix(t *testing.T) {
 // Decided detail 241 preserves native TypeScript diagnostics, including inside
 // a nested native class or an object method in an error's method body.
 func TestNativeMissingSeparators(t *testing.T) {
+	// rule-evidence: docs/design/src/900-appendices.md#3932946f5bee79f3 — Chapter 900: custom versus native separator diagnostics
 	for _, tc := range []struct {
 		source string
 		code   int32
