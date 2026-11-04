@@ -141,6 +141,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-trailing-bang", "type T = number!string!;"},
 	{"effect-type-line-break", "type T = number !\n! ;"},
 	{"service-class", "service class S { n: number }"},
+	{"try-in-generator-effect-identifier", "function* g() { effect % try 1; }"},
 	{"try-in-generator", "function* g() { try 1; }"},
 	{"or-binding-reserved-name", "const b = x is [let let or a];"},
 	{"data-separators", "data D { A { x : number } ; ; B }"},
@@ -1120,6 +1121,25 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 // block, or an arrow's concise body) uses try or a catch expression, at any
 // depth, before it ends. A nested effect callable or block stops the scan: its
 // try is effect code.
+// grammarEffectFormStart reports whether the effect at ts[at] can start an
+// Effect form: Appendix A's EffectFunction (`effect function`, `effect
+// async function`), EffectArrow (`effect (…) =>`, `effect x =>`) or effect
+// block (`effect {`), each with effect and the next token on one line.
+// Elsewhere, as in `effect % try 1`, effect is an identifier and the code
+// around it stays plain.
+func grammarEffectFormStart(ts []grammarToken, at int) bool {
+	if at+1 >= len(ts) || ts[at+1].nl {
+		return false
+	}
+	switch next := ts[at+1]; {
+	case next.text == "function" || next.text == "async" || next.text == "{" || next.text == "(":
+		return true
+	case next.kind == 'w':
+		return at+2 < len(ts) && ts[at+2].text == "=>"
+	}
+	return false
+}
+
 func grammarPlainExecutes(ts []grammarToken, at int) bool {
 	if at >= len(ts) {
 		return false
@@ -1135,7 +1155,7 @@ func grammarPlainExecutes(ts []grammarToken, at int) bool {
 			depth--
 		case !block && depth == 0 && (t.text == "," || t.text == ";"):
 			return false
-		case t.kind == 'w' && t.text == "effect":
+		case t.kind == 'w' && t.text == "effect" && grammarEffectFormStart(ts, j):
 			return false
 		case t.kind == 'w' && t.text == "try" && j+1 < len(ts) && ts[j+1].text != "{":
 			return true
@@ -1793,6 +1813,25 @@ func TestGrammarAdmissionIsOperandPrecedenceForm(t *testing.T) {
 	} {
 		if got := grammarIsOperandPrecedence(grammarLexSource(source)); got != want {
 			t.Errorf("%s: is-operand-precedence = %v, want %v", source, got, want)
+		}
+	}
+}
+
+// An effect that starts no Effect form is an identifier: a try beside it in
+// a plain generator is still the try-in-generator family, while each Effect
+// form keeps its body out of plain code.
+func TestGrammarAdmissionEffectIdentifierStaysPlain(t *testing.T) {
+	for source, want := range map[string]string{
+		"function * g ( ) { effect % try 1 ; }":                      "admission:try-in-generator",
+		"function* g() { effect + try 1; }":                          "admission:try-in-generator",
+		"function* g() { effect\n{ try 1; } }":                       "admission:try-in-generator",
+		"function* g() { const p = effect { return try 1; }; }":      "",
+		"function* g() { const f = effect (p) => try p; }":           "",
+		"function* g() { const f = effect p => try p; }":             "",
+		"function* g() { const f = effect function () { try 1; }; }": "",
+	} {
+		if got := grammarAdmissionForm(source); got != want {
+			t.Errorf("%q: form %q, want %q", source, got, want)
 		}
 	}
 }
