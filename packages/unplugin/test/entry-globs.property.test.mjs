@@ -11,7 +11,7 @@ const require = createRequire(new URL("../package.json", import.meta.url))
 const fc = require("fast-check")
 const glob = require("fast-glob")
 const fixture = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-sidecar-entry-glob.json", import.meta.url), "utf8"))
-const quote = "Type checkers work through " + String.fromCharCode(96) + ".d.vibe.ts" + String.fromCharCode(96) + ", and linters, Knip, bundlers and test runners each read " + String.fromCharCode(96) + ".vibe" + String.fromCharCode(96) + "."
+const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 test("the entry oracle keeps the published tool interoperability contract", () => {
   assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(quote))
 })

@@ -1031,3 +1031,5 @@ The quick-fix behavior registry includes keyed `EK4856` alias, channel and herit
 Registered declaration-identity cases use their written VibeLang and Effect TypeScript counterparts. Unrecognized archives still test an unchanged `.ts`-to-`.vibe` rename. The short seed list, keyed corpus and half-admission guard remain unchanged.
 
 Four resolved data differential witnesses for local options, nested schemas, matcher-free matches and schema-error matcher properties now execute without stale pending exemptions. Their keyed corpus inputs and shared runtime comparisons are retained.
+
+The loader project-selection, Vite native-config, workspace-barrel and bundler sidecar-entry properties cite the current tooling interoperability sentence. Their Opencode, Foldkit and Alchemy corpus witnesses and generated cases remain intact when that sentence is reworded.

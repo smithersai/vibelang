@@ -5,7 +5,7 @@ import fc from "fast-check"
 import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 import plugin from "../src/rolldown.js"
 
-const sidecarRule = "Type checkers work through " + String.fromCharCode(96) + ".d.vibe.ts" + String.fromCharCode(96) + ", and linters, Knip, bundlers and test runners each read " + String.fromCharCode(96) + ".vibe" + String.fromCharCode(96) + "."
+const sidecarRule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const vibexRule = "This includes " + String.fromCharCode(96) + ".d.vibex.ts" + String.fromCharCode(96) + " and mapped sidecar locations."
 test("VIP-39 sidecar entry oracle quotes the tooling contract", () => {
   const chapter = readFileSync(SpecPath("007-tooling.md"), "utf8")

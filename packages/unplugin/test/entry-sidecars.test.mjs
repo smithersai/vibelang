@@ -10,7 +10,7 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
-const rule = "Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`."
+const rule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 function options(input, extra = {}) {
   const hook = plugin({ root: repo }).options
   return (typeof hook === "function" ? hook : hook.handler).call({}, { input, ...extra })

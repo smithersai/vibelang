@@ -5,6 +5,7 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import fc from "fast-check"
+import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { loadTypeScript } from "../../../.smithers/flows/migrate/lib/declarations.mjs"
 import { wireViteApps } from "../../../.smithers/flows/migrate/lib/wire.mjs"
@@ -15,6 +16,7 @@ const ts = loadTypeScript([join(repo, "packages/runtime")])
 const regressions = new URL("./property-regressions/", import.meta.url)
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/foldkit-vite-config-native-dependency.json", import.meta.url)))
 const write = (root, file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
+const toolingQuote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 let diagnostics = ""
 function generated(input) {
   const q = input.quote, suffix = input.extension
@@ -82,10 +84,10 @@ test("foldkit: real Vite config importing a native schema builds after setup", (
 })
 
 test("Vite config import shapes retain their values through native loading", async () => {
-  assert.ok(readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8").includes("Existing tools work."))
+  assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(toolingQuote))
   await checkProperty(fc, {
     name: "vite-config-native-dependency",
-    rule: 'docs/design/src/007-tooling.md: "Existing tools work."',
+    rule: toolingQuote,
     command: "node --test test/config-native.test.mjs", regressions, numRuns: 24,
     arbitrary: fc.record({ shape: fc.constantFrom("named", "namespace", "dynamic", "sideEffect", "empty", "template"), barrels: fc.integer({ min: 0, max: 2 }),
       extension: fc.constantFrom("ts", "mts", "mjs"), star: fc.boolean(), quote: fc.constantFrom("'", '"'), enabled: fc.boolean(),
