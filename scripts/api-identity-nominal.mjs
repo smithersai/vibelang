@@ -16,7 +16,40 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     factory.createLiteralTypeNode(literal(brandFile)), undefined, factory.createIdentifier(name), undefined, query)
   // A nested snapshot belongs to its most specific input root.
   const snapshots = [[entryMaps[0], before], [entryMaps[1], after]].sort((a, b) => b[1].length - a[1].length)
+  // Published export paths prove correspondence even when a declaration moves
+  // behind a private re-export. Local names and physical paths cannot do that.
+  // Keep one origin per symbol so splitting or merging public aliases still
+  // changes at least one exported identity.
+  const publicOrigins = new Map()
+  const unalias = symbol => symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+  for (const [entries, base] of snapshots) {
+    for (const [entry, file] of Object.entries(entries).sort(([a], [b]) => a.localeCompare(b))) {
+      const source = program.getSourceFile(file)
+      const module = source && checker.getSymbolAtLocation(source)
+      const seen = new Set()
+      const visit = (module, path) => {
+        if (seen.has(module)) return
+        seen.add(module)
+        for (const exported of checker.getExportsOfModule(module).sort((a, b) => a.name.localeCompare(b.name))) {
+          const symbol = unalias(exported)
+          const owned = symbol.declarations?.some(node => {
+            const file = node.getSourceFile().fileName
+            return file.startsWith(base + "/") && !file.includes("/node_modules/")
+          })
+          if (!owned) continue
+          const names = [...path, exported.name]
+          if (!publicOrigins.has(symbol)) publicOrigins.set(symbol, "public:" + JSON.stringify([entry, ...names]))
+          if (symbol.flags & ts.SymbolFlags.Module) visit(symbol, names)
+        }
+      }
+      if (module) visit(module, [])
+    }
+  }
   const keyFor = (source, node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+      const publicOrigin = publicOrigins.get(checker.getSymbolAtLocation(node.name))
+      if (publicOrigin) return publicOrigin
+    }
     let path
     for (const [entries, base] of snapshots) {
       if (source.fileName !== base && !source.fileName.startsWith(base + "/")) continue

@@ -1,0 +1,9 @@
+{
+  "before": {
+    "index.d.ts": "/** Metadata key. */\nexport declare const InputMeta: unique symbol;\nexport declare const Other: unique symbol;\n/** Input value. */\nexport interface Value { readonly [InputMeta]: string }\n"
+  },
+  "after": {
+    "index.d.ts": "export { rawKey as InputMeta, Other, type Value } from \"./internal/input.js\";\n",
+    "internal/input.d.ts": "/** Metadata key. */\nexport declare const rawKey: unique symbol;\nexport declare const Other: unique symbol;\n/** Input value. */\nexport interface Value { readonly [rawKey]: string }\n"
+  }
+}

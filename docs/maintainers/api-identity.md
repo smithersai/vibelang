@@ -44,7 +44,12 @@ type-only members, and generic aliases retain their constraints and defaults. A 
 Generic aliases of global library types are instantiated through their published names in the probe. The checker never appends exports to a global script such as `lib.es5.d.ts`, which would remove its declarations from the global environment.
 Corresponding nominal declarations in the two snapshots share virtual identity
 keys, so unchanged private classes, enums and `unique symbol` keys compare as
-one API despite their different snapshot paths. Private getters, setters and
+one API despite their different snapshot paths. An exported `unique symbol`
+also keeps its identity when it moves to a private module and is re-exported
+under the same public path, including an aliased local name. Distinct exported
+symbols stay distinct; splitting or merging their aliases remains a type
+difference. The keyed member types and authored documentation still have to
+match. Private getters, setters and
 methods retain their inferred types when declaration emit elides annotations;
 a getter/setter pair contributes one visibility marker on its instance or static
 side. Leading `/// <reference path="..." />` and `/// <reference lib="..." />`

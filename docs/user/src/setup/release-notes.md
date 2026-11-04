@@ -5,6 +5,12 @@ Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
+## 0.0.12 (unreleased)
+
+### Bugs fixed since 0.0.11
+
+- Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
+
 ## 0.0.11
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
