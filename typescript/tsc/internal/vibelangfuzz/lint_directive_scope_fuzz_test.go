@@ -25,9 +25,9 @@ func TestLintDirectiveScopeQuoted(t *testing.T) {
 	// directive comments select rules; string/template contents are ordinary data.
 	// The retained Oxlint adapter is selected explicitly by its .oxlintrc.json.
 	for _, rule := range []struct{ chapter, quote string }{
-		{"007-tooling.md", "A repository's existing Effect language-service configuration selects and configures them"},
+		{"007-tooling.md", "The separate Oxlint integration keeps its own configuration"},
 		{"000-intro.md", "Where a VIP is silent, its TypeScript or pinned TC39 counterpart applies."},
-		{"007-tooling.md", "A rule's severity resolves in this order, the more specific winning"},
+		{"007-tooling.md", "Once enabled, severity resolves from `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default"},
 	} {
 		if !strings.Contains(SpecText(rule.chapter), rule.quote) {
 			t.Fatalf("%s no longer says %q", rule.chapter, rule.quote)
@@ -128,7 +128,7 @@ func FuzzLintDirectiveScope(f *testing.F) {
 			defer os.RemoveAll(dir)
 			ctx, cancel := context.WithTimeout(t.Context(), cliDeadline)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, binary, "lint", "-p", dir)
+			cmd := exec.CommandContext(ctx, binary, "lint", "-c", ".oxlintrc.json", "-p", dir)
 			cmd.Dir = dir
 			cliIsolate(cmd)
 			output, err := cmd.CombinedOutput()

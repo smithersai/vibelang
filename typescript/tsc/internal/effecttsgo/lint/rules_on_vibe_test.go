@@ -211,15 +211,38 @@ func FuzzLintRulesMatchTypeScript(f *testing.F) {
 	})
 }
 
-func TestHelpIsTheLintHelpWithOrWithoutAConfiguration(t *testing.T) {
+// VIP-38's compiler-options-only amendment and native activation contract
+// require the normal lint help to describe compiler options. The explicit
+// compatibility adapter retains its separate help.
+func TestHelpUsesCompilerOptionsWithOrWithoutAConfiguration(t *testing.T) {
 	bare, configured := t.TempDir(), t.TempDir()
 	if err := os.WriteFile(filepath.Join(configured, ".oxlintrc.json"), []byte(`{}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	var nativeHelp string
 	for _, dir := range []string{bare, configured} {
 		sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-		if status := Command(context.Background(), sys, []string{"--help"}); status != 0 || !strings.HasPrefix(sys.out.String(), "Usage: vibelang lint") {
-			t.Errorf("%s: status %d\n%s", dir, status, sys.out.String())
+		status := Command(context.Background(), sys, []string{"--help"})
+		output := sys.out.String()
+		if status != 0 {
+			t.Fatalf("native help status=%d\n%s", status, output)
+		}
+		for _, option := range []string{"--project", "--strict", "--noEmit"} {
+			if !strings.Contains(output, option) {
+				t.Errorf("native help lacks %s\n%s", option, output)
+			}
+		}
+		if strings.Contains(output, "--deny-warnings") {
+			t.Errorf("native help describes the compatibility adapter\n%s", output)
+		}
+		if nativeHelp == "" {
+			nativeHelp = output
+		} else if output != nativeHelp {
+			t.Error("unrelated Oxlint config changes native help")
+		}
+		explicit := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
+		if status := Command(context.Background(), explicit, []string{"-c", ".oxlintrc.json", "--help"}); status != 0 || !strings.HasPrefix(explicit.out.String(), "Usage: vibelang lint") {
+			t.Errorf("explicit adapter help status=%d\n%s", status, explicit.out.String())
 		}
 	}
 }

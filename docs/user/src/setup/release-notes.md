@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- An unrelated Oxlint config could switch `vibelang lint` away from its compiler project, hide TypeScript errors and reject compiler flags. Native lint now keeps the selected project's options and diagnostics regardless of those files.
+
 - The compile fuzz check still marked the `EK4611` registry witness as pending after it began satisfying the checks. The retained corpus now runs normally.
 
 - Foreign-call, module-key and pipe-edge checks could stop on retired spec wording. They now read the current rules while retaining unknown-throws, module-classification and open-arrow-binding assertions.

@@ -38,7 +38,7 @@ func (s *testSys) Spawn([]string, string, io.Writer) (io.ReadWriteCloser, error)
 	return nil, errors.New("no processes in tests")
 }
 
-// TestCommandLintsVibeFilesWithTheOxlintConfiguration runs `vibelang lint` on a
+// TestCommandLintsVibeFilesWithTheOxlintConfiguration selects the explicit Oxlint adapter on a
 // project whose Oxlint configuration enables effecttsgo rules (VIP-38): a rule
 // that runs as Effect wrote it reports in a .vibe file, an override and an
 // ignore pattern silence it, the .ts file is left to Oxlint, a file the project
@@ -86,7 +86,7 @@ func TestCommandLintsVibeFilesWithTheOxlintConfiguration(t *testing.T) {
 	write("src/plain.ts", "import { Effect } from \"effect\"\n\nexport const pause = Effect.sleep(0)\n")
 
 	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-	status := Command(context.Background(), sys, nil)
+	status := Command(context.Background(), sys, []string{"-c", ".oxlintrc.json"})
 	out := sys.out.String()
 	if status != 1 {
 		t.Fatalf("status %d, want 1\n%s%s", status, out, sys.err.String())
@@ -113,7 +113,7 @@ func TestCommandLintsVibeFilesWithTheOxlintConfiguration(t *testing.T) {
 		}
 		for _, args := range [][]string{{"src"}, {"-p", ".", "src"}} {
 			sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-			if status := Command(context.Background(), sys, args); status != 1 || !strings.Contains(sys.out.String(), "error EK3833:") {
+			if status := Command(context.Background(), sys, append([]string{"-c", ".oxlintrc.json"}, args...)); status != 1 || !strings.Contains(sys.out.String(), "error EK3833:") {
 				t.Errorf("%s %v: status %d; want the built-in rule diagnostic\n%s%s", name, args, status, sys.out.String(), sys.err.String())
 			}
 		}
@@ -173,7 +173,7 @@ func TestCommandHonorsOxlintDisableComments(t *testing.T) {
 	write("src/enabled.vibe", pause("/* oxlint-disable "+rule+" */\n/* oxlint-enable "+rule+" */\n", ""))
 
 	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-	if status := Command(context.Background(), sys, nil); status != 1 {
+	if status := Command(context.Background(), sys, []string{"-c", ".oxlintrc.json"}); status != 1 {
 		t.Fatalf("status %d, want 1\n%s%s", status, sys.out.String(), sys.err.String())
 	}
 	out := sys.out.String()
@@ -219,7 +219,7 @@ func TestCommandRejectsInvalidProjectOptions(t *testing.T) {
 		}
 	}
 	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-	if status := Command(context.Background(), sys, nil); status != 2 || !strings.Contains(sys.err.String(), "TS5024") {
+	if status := Command(context.Background(), sys, []string{"-c", ".oxlintrc.json"}); status != 2 || !strings.Contains(sys.err.String(), "TS5024") {
 		t.Fatalf("status %d; want config error TS5024\n%s%s", status, sys.out.String(), sys.err.String())
 	}
 }

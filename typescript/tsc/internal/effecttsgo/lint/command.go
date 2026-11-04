@@ -68,24 +68,20 @@ func (analysisOnlySystem) LintExitPolicy() bool { return true }
 
 // Command runs `vibelang lint`.
 func Command(ctx context.Context, sys tsc.System, args []string) int {
-	if slices.Contains(args, "-h") || slices.Contains(args, "--help") {
-		fmt.Fprint(sys.Writer(), usage)
-		return 0
-	}
 	// The release command takes compiler flags and reports compiler diagnostics
 	// without emitting (VIP-38, detail 58). Retain the old Oxlint adapter for
-	// existing scripts that explicitly request it or have its config file.
+	// existing scripts that explicitly request it. An unrelated Oxlint file
+	// must not change the compiler project's inputs, options or diagnostics.
 	legacy := slices.ContainsFunc(args, func(arg string) bool {
 		name, _, _ := strings.Cut(arg, "=")
 		return slices.Contains([]string{"-c", "--config", "--deny-warnings", "--ignore-path", "--ignore-pattern", "--no-ignore"}, name)
 	})
-	for _, name := range []string{".oxlintrc.json", "oxlint.config.ts"} {
-		if _, err := os.Stat(filepath.Join(sys.GetCurrentDirectory().AsString(), name)); err == nil {
-			legacy = true
-		}
-	}
 	if !legacy {
 		return int(execute.CommandLine(ctx, analysisOnlySystem{sys}, append(slices.Clone(args), "--noEmit"), nil).Status)
+	}
+	if slices.Contains(args, "-h") || slices.Contains(args, "--help") {
+		fmt.Fprint(sys.Writer(), usage)
+		return 0
 	}
 	out, errOut := sys.Writer(), sys.ErrorWriter()
 	var configPath, project string

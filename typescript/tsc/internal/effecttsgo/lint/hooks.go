@@ -5,7 +5,8 @@
 // checker hooks as effect-tsgo's etscheckerhooks, so a tsconfig.json plugin entry
 // { "name": "@effect/language-service", ... } reports the rules' diagnostics in
 // builds and the language server, for .ts and .vibe files alike; Command is
-// `vibelang lint`, which takes the rules from an Oxlint configuration instead.
+// `vibelang lint`, which uses the same compiler configuration. An explicit
+// compatibility adapter can instead read an Oxlint configuration.
 package lint
 
 import (
