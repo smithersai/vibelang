@@ -48,7 +48,14 @@ function nodeTargets(value) {
   const pick = (item, conditions) => {
     if (item === null || typeof item === "string") return item
     if (Array.isArray(item)) {
-      for (const next of item) { const found = pick(next, conditions); if (found !== undefined) return found }
+      if (!item.length) return null
+      let fallback
+      for (const next of item) {
+        const found = pick(next, conditions)
+        if (found === null) fallback = null
+        else if (found !== undefined) return found
+      }
+      return fallback
     } else if (item && typeof item === "object") {
       for (const [key, next] of Object.entries(item)) {
         if (key !== "default" && !conditions.has(key)) continue

@@ -41,6 +41,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The diagnostic reference still listed the retired `EK4503` service error and linked to a removed example; it now records its retirement, and missing-provider examples use the current `EK9211` diagnostic.
 - Migration verification could accept a version-only dependency path change while an original declaration error was missing. It now requires the complete original error count before relaxing those paths.
 
+- Migrated packages could leave Node loading a TypeScript source graph when an export array began with `null`, or select a fallback behind an empty array. Runtime routing now follows Node's array fallbacks and condition blockers.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11

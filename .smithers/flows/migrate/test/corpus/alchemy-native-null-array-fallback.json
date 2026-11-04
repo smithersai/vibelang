@@ -1,0 +1,6 @@
+{
+  "exports": { "./entry": [null, "./src/native.ts"] },
+  "source": "export { value } from \"./leaf.js\";\n",
+  "leaf": "export const value = \"native\";\n",
+  "note": "Node skips null fallbacks in an export array before selecting a native source graph."
+}
