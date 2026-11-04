@@ -133,6 +133,9 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 			coverCodes(c, field, 2345, 2352, 2769)
 			reserved = true
 		}
+		if form == errorFormSchemaRoot && checkErrorComputedPayloadKeys(c, class) {
+			reserved = true
+		}
 		if reserved {
 			return
 		}

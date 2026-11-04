@@ -105,8 +105,6 @@ FuzzFailuresSpec feature:generic-unconstrained-substitution compiler VIP-4: 003-
 FuzzFailuresSpec corpus:generic-unconstrained-substitution compiler VIP-4: minimized reproduction of feature:generic-unconstrained-substitution; lane w2-throw
 FuzzFailuresSpec feature:promise-tagged-template compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main d0cdbe5a; lane w2-throw
 FuzzFailuresSpec corpus:promise-tagged-template compiler VIP-4: minimized reproduction of feature:promise-tagged-template; lane w2-throw
-FuzzFailuresSpec feature:schema-error-computed-key-broad compiler VIP-29: the chapter reports EK2117 at the marked code; the compiler draws TS2564 there on main d0cdbe5a; lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-computed-key-broad compiler VIP-29: minimized reproduction of feature:schema-error-computed-key-broad; lane fix-vip-decls
 
 # Extensible native bases witness the inheritance ban independently of tag compatibility.
 FuzzFailuresSpec feature:error-extends-native-string-empty compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native string-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail

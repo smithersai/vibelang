@@ -71,3 +71,43 @@ func checkErrorReservedMembers(c *checker.Checker, class *ast.Node) bool {
 	}
 	return found
 }
+
+// checkErrorComputedPayloadKeys reports each computed payload key of a schema
+// error whose runtime property-key domain is not proved to exclude "_tag"
+// (chapter 3 static rules, VIP-29; chapter 6 computed schema keys). The key
+// runs while building the schema-fields object, so a "_tag" key there would
+// replace the generated tag. It returns whether it reported any key.
+func checkErrorComputedPayloadKeys(c *checker.Checker, class *ast.Node) bool {
+	arguments := ast.GetClassExtendsHeritageElement(class).Expression().Arguments()
+	if len(arguments) < 2 || !ast.IsObjectLiteralExpression(arguments[1]) {
+		return false
+	}
+	found := false
+	for _, field := range arguments[1].AsObjectLiteralExpression().Properties.Nodes {
+		name := field.Name()
+		if name == nil || !ast.IsComputedPropertyName(name) || name.Flags&ast.NodeFlagsReparsed != 0 {
+			continue
+		}
+		t := c.GetTypeAtLocation(name.Expression())
+		if t != nil && checker.IsTypeUsableAsPropertyName(t) {
+			if checker.GetPropertyNameFromType(t) != "_tag" {
+				continue
+			}
+			report(c, name, EK2117.With("This computed key is \"_tag\", the name reserved for the error's generated tag. Rename the field, or write the explicit Effect TypeScript class to keep its contract."))
+		} else if key, known := keyDomainSingleString(c, t, 0); known {
+			if key != "_tag" {
+				continue
+			}
+			report(c, name, EK2117.With("This computed key is \"_tag\", the name reserved for the error's generated tag. Rename the field, or write the explicit Effect TypeScript class to keep its contract."))
+		} else if keyDomainMayBeTag(c, t, 0) {
+			report(c, name, EK2117.With("This computed key has the type {0}, which may be \"_tag\", the name reserved for the error's generated tag. Use a key whose type excludes \"_tag\", such as a literal or a symbol, or write the explicit Effect TypeScript class to keep it."), c.TypeToString(t))
+		} else {
+			continue
+		}
+		// Cover only the synthetic tag cast/base-call failures, as for a
+		// written _tag field. Errors inside the key expression stay visible.
+		coverCodes(c, field, 2345, 2352, 2769)
+		found = true
+	}
+	return found
+}
