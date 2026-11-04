@@ -1,14 +1,35 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
+import fc from "fast-check"
+import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { createHighlighter } from "shiki"
 import { addVibeLangSyntax } from "./vibelang-grammar.mjs"
 
 // Exercise the generator through the same TextMate engine used by editors.
 const grammar = addVibeLangSyntax(JSON.parse(readFileSync(new URL("../syntaxes/VibeLang.tmLanguage.json", import.meta.url), "utf8")))
+// Shiki computes scopes and colors in separate passes. Its 500 ms default
+// can truncate one cold pass on a loaded build host, leaving explanations
+// misaligned. Keep a bounded budget and report early termination explicitly.
+function tokenize(highlighter, source, options) {
+  const budget = 10_000
+  const grammar = highlighter.getLanguage(options.lang)
+  let stack
+  for (const line of source.split(/\r?\n/)) {
+    const start = performance.now()
+    const result = grammar.tokenizeLine(line, stack, budget)
+    assert.equal(result.stoppedEarly, false,
+      "TextMate scope pass stopped early: lang=" + options.lang +
+      " chars=" + line.length + " elapsed_ms=" + Math.round(performance.now() - start) +
+      " budget_ms=" + budget)
+    stack = result.ruleStack
+  }
+  return highlighter.codeToTokens(source, { ...options, tokenizeTimeLimit: budget })
+}
+
 const highlighter = await createHighlighter({ themes: ["github-light"], langs: [grammar, "typescript"] })
 function keyword(source, word) {
-  const { tokens } = highlighter.codeToTokens(source, { lang: "VibeLang", theme: "github-light", includeExplanation: "scopeName" })
+  const { tokens } = tokenize(highlighter, source, { lang: "VibeLang", theme: "github-light", includeExplanation: "scopeName" })
   return tokens.flat().filter(t => t.content.trim() === word).some(t =>
     t.explanation?.some(e => e.scopes.some(s => s.scopeName === "keyword.control.flow.ts")))
 }
@@ -39,7 +60,7 @@ test("interruption blocks have contextual keyword scopes", () => {
 // The scopes of the first grammar token whose text is word. Shiki merges
 // neighbors of one color, such as function and *, so read its explanation.
 function scopes(source, word) {
-  const { tokens } = highlighter.codeToTokens(source, { lang: "VibeLang", theme: "github-light", includeExplanation: "scopeName" })
+  const { tokens } = tokenize(highlighter, source, { lang: "VibeLang", theme: "github-light", includeExplanation: "scopeName" })
   const part = tokens.flat().flatMap(t => t.explanation).find(e => e.content.trim() === word)
   assert.ok(part, `no token ${word} in ${source}`)
   return part.scopes.map(s => s.scopeName)
@@ -116,4 +137,80 @@ test("provide lists layers and bindings, and declarations name their types (VIP-
   assert.ok(has("schema error FsError { method: string }", "FsError", "entity.name.type.class.ts"))
   assert.ok(has("schema User { id: string }", "User", "entity.name.type.class.ts"))
   assert.ok(has("data Delivery { Waiting; Sent { tracking: string } }", "Sent", "variable.other.enummember.ts"))
+})
+
+
+// VIP-39: JSX is TypeScript JSX; VibeLang forms apply inside containers.
+test("VIP-39: .vibex uses TSX scopes and confines VibeLang forms to code", async () => {
+  const jsx = JSON.parse(readFileSync(new URL("../syntaxes/VibeLangReact.tmLanguage.json", import.meta.url), "utf8"))
+  assert.equal(jsx.scopeName, "source.vibex")
+  const h = await createHighlighter({ themes: ["github-light"], langs: [jsx, "typescript"] })
+  try {
+    const parts = source => tokenize(h, source, { lang: jsx.name, theme: "github-light", includeExplanation: "scopeName" })
+      .tokens.flat().flatMap(t => t.explanation)
+    const code = "const view = <Box title={effect () => { return try load() }}>{value |> f(%)}</Box>"
+    const tokens = parts(code)
+    for (const [word, scope] of [["Box", "entity.name.tag.tsx"], ["effect", "storage.modifier.async.tsx"], ["try", "keyword.control.trycatch.ts"], ["|>", "keyword.operator.pipe.ts"], ["%", "variable.language.topic.ts"]]) {
+      assert.ok(tokens.some(t => t.content.trim() === word && t.scopes.some(s => s.scopeName === scope)), word + ": " + JSON.stringify(tokens))
+    }
+    for (const source of ['const v = <p>effect try match fork join % ! |&gt; &amp;</p>', 'const v = <p title="effect try match fork join % !"/>']) {
+      assert.ok(!parts(source).some(t => t.scopes.some(s => /(?:\.ts$|^storage\.modifier\.async\.tsx$)/.test(s.scopeName))), source)
+    }
+  } finally { h.dispose() }
+})
+
+test("VIP-39: generated JSX words stay literal while container expressions get scopes", async () => {
+  const jsx = JSON.parse(readFileSync(new URL("../syntaxes/VibeLangReact.tmLanguage.json", import.meta.url), "utf8"))
+  const h = await createHighlighter({ themes: ["github-light"], langs: [jsx, "typescript"] })
+  try {
+    await checkProperty(fc, {
+      name: "vibex-textmate-containers",
+      rule: "VIP-39: Tag names, attribute names, attribute strings and JSX text are JSX's alone.",
+      command: "node --test scripts/vibelang-grammar.test.mjs",
+      numRuns: 75,
+      arbitrary: fc.record({
+        tag: fc.constantFrom("Box", "UI.Box", "p", "match", "try", "effect", "fork"),
+        text: fc.constantFrom("try effect fork join match", "50% ! |&gt;", "// text &amp;", "hello 世界"),
+        form: fc.constantFrom(["try load()", "try", "keyword.control.trycatch.ts"], ["value |> f(%)", "|>", "keyword.operator.pipe.ts"], ["effect () => 1", "effect", "storage.modifier.async.tsx"]),
+        fragment: fc.boolean()
+      }),
+      check({ tag, text, form: [expression, word, scope], fragment }) {
+        const element = '<' + tag + ' title="effect try % !">' + text + '{' + expression + '}</' + tag + '>'
+        const source = "const v = " + (fragment ? "<>" + element + "</>" : element)
+        const tokens = tokenize(h, source, { lang: jsx.name, theme: "github-light", includeExplanation: "scopeName" }).tokens.flat().flatMap(t => t.explanation)
+        const relevant = tokens.filter(t => t.scopes.some(s => s.scopeName === scope))
+        assert.ok(relevant.some(t => t.content.trim() === word), source)
+        const vibeTokens = tokens.filter(t => t.scopes.some(s => /(?:\.ts$|^storage\.modifier\.async\.tsx$)/.test(s.scopeName)))
+        assert.ok(vibeTokens.every(t => t.scopes.some(s => s.scopeName === "meta.embedded.expression.tsx")), JSON.stringify(vibeTokens))
+      }
+    })
+  } finally { h.dispose() }
+})
+
+test("VIP-39: the extension registers the JSX grammar and its JSDoc injection", () => {
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
+  assert.deepEqual(pkg.contributes.languages.find(l => l.id === "vibex").extensions, [".vibex"])
+  const grammar = pkg.contributes.grammars.find(g => g.language === "vibex")
+  assert.equal(grammar.scopeName, "source.vibex")
+  assert.equal(grammar.path, "./syntaxes/VibeLangReact.tmLanguage.json")
+  const injection = pkg.contributes.grammars.find(g => g.scopeName === "documentation.injection.vibex")
+  assert.deepEqual(injection.injectTo, ["source.vibex"])
+  const text = readFileSync(new URL("../syntaxes/jsdoc.vibex.injection.tmLanguage.json", import.meta.url), "utf8")
+  assert.ok(text.includes("source.vibex#docblock"))
+  assert.ok(!text.includes("source.ts#docblock"))
+})
+
+test("VIP-39: Zed settings associate .vibex with TSX and the configured server", () => {
+  for (const file of ["../../README.md", "../../../docs/user/src/setup/zed.md"]) {
+    const text = readFileSync(new URL(file, import.meta.url), "utf8")
+    const blocks = [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map(m => JSON.parse(m[1]))
+    const settings = blocks.find(b => b.file_types)
+    assert.deepEqual(settings.file_types.TSX, ["vibex"])
+    assert.ok(settings.languages.TSX.language_servers.includes("vtsls"))
+  }
+})
+
+test("VIP-39: the literal-text oracle quotes the accepted rule", () => {
+  const spec = readFileSync(new URL("../../../docs/design/vips/0039-vibex.md", import.meta.url), "utf8")
+  assert.ok(spec.includes("Tag names, attribute names, attribute strings and JSX text are JSX's alone."))
 })

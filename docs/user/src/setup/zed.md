@@ -1,6 +1,6 @@
 # Zed
 
-Zed defines languages through extensions, so these settings treat `.vibe` files as TypeScript and replace the binary of Zed's TypeScript server, `vtsls`, with `vibelang`. Zed then sends `.vibe` files with the language id `typescript`, which the server accepts, and the server also serves the project's `.ts` files. In Zed 0.195.3 the server starts, but diagnostic requests fail: Zed sends `previousResultId: null`, which VibeLang rejects with `InvalidParams` (-32602). Until the client sends diagnostic requests without the null field, check the project with `npx vibelang --noEmit` in the terminal.
+Zed defines languages through extensions, so these settings treat `.vibe` files as TypeScript and `.vibex` files as TSX and replace the binary of Zed's TypeScript server, `vtsls`, with `vibelang`. Zed then sends `.vibe` files with the language id `typescript`, which the server accepts, and the server also serves the project's `.ts` files. In Zed 0.195.3 the server starts, but diagnostic requests fail: Zed sends `previousResultId: null`, which VibeLang rejects with `InvalidParams` (-32602). Until the client sends diagnostic requests without the null field, check the project with `npx vibelang --noEmit` in the terminal.
 
 ## 1. Find the compiler's absolute path
 
@@ -20,7 +20,8 @@ Put these settings in the project's `.zed/settings.json`, so other TypeScript pr
 ```json
 {
   "file_types": {
-    "TypeScript": ["vibe"]
+    "TypeScript": ["vibe"],
+    "TSX": ["vibex"]
   },
   "lsp": {
     "vtsls": {
@@ -32,6 +33,9 @@ Put these settings in the project's `.zed/settings.json`, so other TypeScript pr
   },
   "languages": {
     "TypeScript": {
+      "language_servers": ["vtsls"]
+    },
+    "TSX": {
       "language_servers": ["vtsls"]
     }
   }

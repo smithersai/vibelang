@@ -108,3 +108,7 @@ The server advertises these features to LSP clients. In VS Code and Cursor, use 
 | On-type formatting | Enable format-on-type for supported typed characters |
 
 These are language-server capabilities, not a guarantee that every construct offers a result. A client must enable and support each feature; for `.ts` files that import `.vibe`, use the VibeLang TypeScript handoff described above.
+
+## JSX highlighting
+
+Write JSX in `.vibex` files. The extension selects its TSX-derived `source.vibex` grammar, with VibeLang scopes inside JSX expression containers. Tag names, attribute strings and JSX text keep their JSX meaning, including `%` in text. Use `x as T` for assertions and `<T,>` for unconstrained generic arrows, as in `.tsx`.

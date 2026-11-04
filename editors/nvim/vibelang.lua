@@ -5,7 +5,7 @@
 --
 --   dofile("/path/to/vibelang/editors/nvim/vibelang.lua").setup()
 --
--- .vibe files then get the vibe filetype, highlighting, and
+-- .vibe and .vibex files get the vibe and vibex filetypes, highlighting, and
 -- `vibelang --lsp --stdio` as their language server: the project's
 -- node_modules/.bin/vibelang, else vibelang on PATH. Highlighting uses the
 -- vibe parser once it is installed (:TSInstall vibe with nvim-treesitter),
@@ -49,35 +49,40 @@ local function grammar_dir(opts)
   return nil
 end
 
--- highlight_language returns the parser that highlights .vibe files: vibe
--- when it is installed, else typescript.
-local function highlight_language()
-  if pcall(vim.treesitter.language.add, "vibe") then
-    return "vibe"
+-- Select each VibeLang parser when installed, else TypeScript or TSX.
+local function highlight_language(filetype)
+  local language = filetype or "vibe"
+  if pcall(vim.treesitter.language.add, language) then
+    return language
   end
-  return "typescript"
+  return language == "vibex" and "tsx" or "typescript"
 end
 
 function M.setup(opts)
   opts = opts or {}
-  vim.filetype.add({ extension = { vibe = "vibe" } })
+  vim.filetype.add({ extension = { vibe = "vibe", vibex = "vibex" } })
 
   local grammar = grammar_dir(opts)
   if grammar then
-    -- The grammar's queries/vibe/*.scm, which inherit TypeScript's.
+    -- The grammar's queries inherit TypeScript/TSX and add VibeLang forms.
     vim.opt.runtimepath:append(grammar)
     local ok, parsers = pcall(require, "nvim-treesitter.parsers")
     if ok and type(parsers.get_parser_configs) == "function" then
       -- :TSInstall vibe compiles the grammar's src/ into nvim-treesitter's parsers.
-      parsers.get_parser_configs().vibe = {
-        install_info = { url = grammar, files = { "src/parser.c", "src/scanner.c" } },
-        filetype = "vibe",
-      }
+      for _, language in ipairs({ "vibe", "vibex" }) do
+        local subdir = language == "vibex" and "vibex/" or ""
+        parsers.get_parser_configs()[language] = {
+          install_info = { url = grammar, files = { subdir .. "src/parser.c", subdir .. "src/scanner.c" } },
+          filetype = language,
+        }
+      end
     end
   end
-  vim.treesitter.language.register(highlight_language(), "vibe")
+  for _, language in ipairs({ "vibe", "vibex" }) do
+    vim.treesitter.language.register(highlight_language(language), language)
+  end
 
-  local filetypes = { "vibe" }
+  local filetypes = { "vibe", "vibex" }
   if opts.typescript then
     vim.list_extend(filetypes, typescript_filetypes)
   end
@@ -85,13 +90,14 @@ function M.setup(opts)
     group = vim.api.nvim_create_augroup("vibelang", { clear = true }),
     pattern = filetypes,
     callback = function(args)
-      if vim.bo[args.buf].filetype == "vibe" then
+      local filetype = vim.bo[args.buf].filetype
+      if filetype == "vibe" or filetype == "vibex" then
         -- A parser installed since setup takes over from TypeScript's.
-        local lang = highlight_language()
-        vim.treesitter.language.register(lang, "vibe")
+        local lang = highlight_language(filetype)
+        vim.treesitter.language.register(lang, filetype)
         if not pcall(vim.treesitter.start, args.buf, lang) then
           -- No tree-sitter parser for VibeLang or TypeScript: use Vim's TypeScript syntax.
-          vim.bo[args.buf].syntax = "typescript"
+          vim.bo[args.buf].syntax = filetype == "vibex" and "typescriptreact" or "typescript"
         end
       end
       local root = vim.fs.root(args.buf, { "tsconfig.json", "package.json", ".git" })

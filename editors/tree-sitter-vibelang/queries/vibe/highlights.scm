@@ -127,3 +127,17 @@
 (extractor_pattern
   extractor: (member_expression
     property: (property_identifier) @type))
+
+; VIP-1, VIP-2, VIP-5, VIP-18: modern forms, also inside JSX containers.
+"effect" @keyword.coroutine
+
+(try_expression
+  "try" @keyword.exception)
+
+(try_expression
+  [
+    "all"
+    "allSettled"
+    "race"
+    "any"
+  ] @keyword.coroutine)

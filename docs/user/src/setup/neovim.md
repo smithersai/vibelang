@@ -1,6 +1,6 @@
 # Neovim
 
-With one Lua module, Neovim 0.10 or later runs `vibelang --lsp --stdio` in its built-in LSP client. `.vibe` files get the `vibe` filetype, TypeScript highlighting, and the project's compiler as language server: `node_modules/.bin/vibelang`, else `vibelang` on `PATH`.
+With one Lua module, Neovim 0.10 or later runs `vibelang --lsp --stdio` in its built-in LSP client. `.vibe` and `.vibex` files get the `vibe` and `vibex` filetypes, TypeScript and TSX highlighting, and the project's compiler as language server: `node_modules/.bin/vibelang`, else `vibelang` on `PATH`.
 
 ## 1. Check Neovim
 
@@ -41,10 +41,11 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  vim.filetype.add({ extension = { vibe = "vibe" } })
+  vim.filetype.add({ extension = { vibe = "vibe", vibex = "vibex" } })
   vim.treesitter.language.register("typescript", "vibe")
+  vim.treesitter.language.register("tsx", "vibex")
 
-  local filetypes = { "vibe" }
+  local filetypes = { "vibe", "vibex" }
   if opts.typescript then
     vim.list_extend(filetypes, typescript_filetypes)
   end
@@ -52,9 +53,11 @@ function M.setup(opts)
     group = vim.api.nvim_create_augroup("vibelang", { clear = true }),
     pattern = filetypes,
     callback = function(args)
-      if vim.bo[args.buf].filetype == "vibe" and not pcall(vim.treesitter.start, args.buf, "typescript") then
+      local ft = vim.bo[args.buf].filetype
+      local lang = ft == "vibex" and "tsx" or "typescript"
+      if (ft == "vibe" or ft == "vibex") and not pcall(vim.treesitter.start, args.buf, lang) then
         -- No tree-sitter parser for TypeScript: use Vim's TypeScript syntax.
-        vim.bo[args.buf].syntax = "typescript"
+        vim.bo[args.buf].syntax = ft == "vibex" and "typescriptreact" or "typescript"
       end
       local root = vim.fs.root(args.buf, { "vibe.config.json", "tsconfig.json", "jsconfig.json", "package.json", ".git" })
       vim.lsp.start({
@@ -92,3 +95,7 @@ nvim --headless src/main.vibe "+lua vim.wait(5000, function() return #vim.lsp.ge
 It prints `1 vibelang client`. A language server spawn error means Neovim found no `vibelang`: install the project's dependencies.
 
 Support for the new forms arrives with the compiler's VIP implementation.
+
+The repository’s `editors/nvim/vibelang.lua` also registers the VibeLang tree-sitter grammars. With `nvim-treesitter` on its `master` branch, run `:TSInstall vibe vibex` for VibeLang forms inside JSX containers. The `vibex` queries inherit TSX and VibeLang highlights.
+
+JSX tag names, including member tags such as `<catch.Box/>`, follow JSX’s name rules in `.vibex` files. Keywords remain reserved in ordinary code.

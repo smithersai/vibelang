@@ -2357,6 +2357,14 @@
         },
         {
           "type": "SYMBOL",
+          "name": "try_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "effect_block"
+        },
+        {
+          "type": "SYMBOL",
           "name": "is_expression"
         },
         {
@@ -3705,8 +3713,17 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "STRING",
-                "value": "async"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "async"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "effect"
+                  }
+                ]
               },
               {
                 "type": "BLANK"
@@ -3758,8 +3775,17 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "STRING",
-                "value": "async"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "async"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "effect"
+                  }
+                ]
               },
               {
                 "type": "BLANK"
@@ -3815,8 +3841,17 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "STRING",
-                "value": "async"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "async"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "effect"
+                  }
+                ]
               },
               {
                 "type": "BLANK"
@@ -3872,8 +3907,17 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "STRING",
-                "value": "async"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "async"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "effect"
+                  }
+                ]
               },
               {
                 "type": "BLANK"
@@ -3930,8 +3974,17 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "STRING",
-              "value": "async"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "async"
+                },
+                {
+                  "type": "STRING",
+                  "value": "effect"
+                }
+              ]
             },
             {
               "type": "BLANK"
@@ -7630,8 +7683,17 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "STRING",
-                "value": "async"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "async"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "effect"
+                  }
+                ]
               },
               {
                 "type": "BLANK"
@@ -7912,8 +7974,17 @@
                   "value": "set"
                 },
                 {
-                  "type": "STRING",
-                  "value": "async"
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "async"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "effect"
+                    }
+                  ]
                 },
                 {
                   "type": "STRING",
@@ -8443,8 +8514,17 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "STRING",
-              "value": "async"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "async"
+                },
+                {
+                  "type": "STRING",
+                  "value": "effect"
+                }
+              ]
             },
             {
               "type": "BLANK"
@@ -8591,8 +8671,17 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "STRING",
-              "value": "async"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "async"
+                },
+                {
+                  "type": "STRING",
+                  "value": "effect"
+                }
+              ]
             },
             {
               "type": "BLANK"
@@ -12741,6 +12830,86 @@
         }
       ]
     },
+    "try_expression": {
+      "type": "PREC_RIGHT",
+      "value": "unary_void",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "try"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "."
+                  },
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "all"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "race"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "any"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "allSettled"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "FIELD",
+            "name": "argument",
+            "content": {
+              "type": "SYMBOL",
+              "name": "expression"
+            }
+          }
+        ]
+      }
+    },
+    "effect_block": {
+      "type": "PREC_DYNAMIC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "effect"
+          },
+          {
+            "type": "FIELD",
+            "name": "body",
+            "content": {
+              "type": "SYMBOL",
+              "name": "statement_block"
+            }
+          }
+        ]
+      }
+    },
     "catch_expression": {
       "type": "PREC_LEFT",
       "value": "catch",
@@ -13926,6 +14095,14 @@
               "name": "yield_expression"
             }
           ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "try_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "effect_block"
         },
         {
           "type": "ALIAS",
@@ -17477,6 +17654,40 @@
     ],
     [
       "primary_expression",
+      "effect_block"
+    ],
+    [
+      "_statement_primary_expression",
+      "effect_block"
+    ],
+    [
+      "primary_expression",
+      "_statement_primary_expression",
+      "effect_block"
+    ],
+    [
+      "arguments",
+      "formal_parameters"
+    ],
+    [
+      "parenthesized_expression",
+      "arguments"
+    ],
+    [
+      "sequence_expression",
+      "arguments"
+    ],
+    [
+      "_statement_sequence_expression",
+      "arguments"
+    ],
+    [
+      "sequence_expression",
+      "_statement_sequence_expression",
+      "arguments"
+    ],
+    [
+      "primary_expression",
       "await_expression"
     ],
     [
@@ -17696,6 +17907,195 @@
       "binary_expression",
       "_statement_binary_expression",
       "fork_expression"
+    ],
+    [
+      "call_expression",
+      "instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "_statement_instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "_statement_instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "_statement_binary_expression",
+      "try_expression"
+    ],
+    [
+      "call_expression",
+      "_statement_call_expression",
+      "instantiation_expression",
+      "_statement_instantiation_expression",
+      "binary_expression",
+      "_statement_binary_expression",
+      "try_expression"
     ],
     [
       "call_expression",

@@ -51,7 +51,8 @@
       {
         "id": "vibex",
         "aliases": [
-          "VibeLang JSX"
+          "VibeLang JSX",
+          "vibex"
         ],
         "extensions": [
           ".vibex"
@@ -91,6 +92,35 @@
         "path": "./syntaxes/jsdoc.vibe.injection.tmLanguage.json",
         "injectTo": [
           "source.vibe"
+        ]
+      },
+      {
+        "language": "vibex",
+        "scopeName": "source.vibex",
+        "path": "./syntaxes/VibeLangReact.tmLanguage.json",
+        "unbalancedBracketScopes": [
+          "keyword.operator.relational",
+          "storage.type.function.arrow",
+          "keyword.operator.bitwise.shift",
+          "meta.brace.angle",
+          "punctuation.definition.tag",
+          "keyword.operator.assignment.compound.bitwise.ts"
+        ],
+        "tokenTypes": {
+          "meta.template.expression": "other",
+          "meta.template.expression string": "string",
+          "meta.template.expression comment": "comment",
+          "entity.name.type.instance.jsdoc": "other",
+          "entity.name.function.tagged-template": "other",
+          "meta.import string.quoted": "other",
+          "variable.other.jsdoc": "other"
+        }
+      },
+      {
+        "scopeName": "documentation.injection.vibex",
+        "path": "./syntaxes/jsdoc.vibex.injection.tmLanguage.json",
+        "injectTo": [
+          "source.vibex"
         ]
       }
     ],

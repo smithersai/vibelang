@@ -10,6 +10,8 @@ The server reports a file's diagnostics when the editor asks (LSP 3.17 pull diag
 | Neovim 0.10 or later | [nvim/vibelang.lua](nvim/vibelang.lua) and the [tree-sitter grammar](tree-sitter-vibelang/), below | `editors/nvim/test.sh`, on Neovim 0.10.3 with nvim-treesitter `master` |
 | Zed | Settings, below | No: Zed has no headless mode |
 
+`.vibex` files contain JSX and use the TSX-derived `source.vibex` grammar in VS Code and Cursor. VibeLang forms are highlighted inside JSX containers; tag names, attribute strings and JSX text keep their JSX scopes.
+
 ## Neovim
 
 Load `nvim/vibelang.lua` from your clone of this repository, so it finds the tree-sitter grammar in `tree-sitter-vibelang/` next to it. Add this line to `init.lua`, with your clone's path for `<vibelang checkout>`:
@@ -18,20 +20,21 @@ Load `nvim/vibelang.lua` from your clone of this repository, so it finds the tre
 dofile(vim.fn.expand("<vibelang checkout>/editors/nvim/vibelang.lua")).setup()
 ```
 
-`.vibe` files then get the `vibe` filetype, highlighting, and `vibelang --lsp --stdio` as their language server. The server is the project's `node_modules/.bin/vibelang`, else `vibelang` on `PATH`; `setup({ cmd = "/path/to/vibelang" })` names another. Neovim's built-in LSP client shows diagnostics, and its defaults give hover on `K`, go to definition on `<C-]>` (through 'tagfunc'), and completion on `<C-x><C-o>` (through 'omnifunc').
+`.vibe` and `.vibex` files then get the `vibe` and `vibex` filetypes, highlighting, and `vibelang --lsp --stdio` as their language server. The server is the project's `node_modules/.bin/vibelang`, else `vibelang` on `PATH`; `setup({ cmd = "/path/to/vibelang" })` names another. Neovim's built-in LSP client shows diagnostics, and its defaults give hover on `K`, go to definition on `<C-]>` (through 'tagfunc'), and completion on `<C-x><C-o>` (through 'omnifunc').
 
 Highlighting uses the `vibe` parser once installed, else tree-sitter's TypeScript parser, else Vim's TypeScript syntax. The TypeScript parser reads VibeLang's forms, such as `A!E!R`, `match`, and `provide`, as errors. With [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) (its `master` branch, for Neovim 0.10), `setup()` registers the grammar, so this command compiles it with your C compiler and installs it:
 
 ```vim
-:TSInstall vibe
+:TSInstall vibe vibex
 ```
 
-Then reopen your `.vibe` buffers. Without nvim-treesitter, compile the parser into Neovim's `site` directory, from the repository root:
+Then reopen your `.vibe` and `.vibex` buffers. The `vibex` parser extends TSX; without it, `.vibex` falls back to the `tsx` parser or Vim’s `typescriptreact` syntax. Without nvim-treesitter, compile the parser into Neovim's `site` directory, from the repository root:
 
 ```sh
 cd editors/tree-sitter-vibelang
 mkdir -p ~/.local/share/nvim/site/parser
 cc -o ~/.local/share/nvim/site/parser/vibe.so -shared -fPIC -Os -I src src/parser.c src/scanner.c
+cc -o ~/.local/share/nvim/site/parser/vibex.so -shared -fPIC -Os -I vibex/src vibex/src/parser.c vibex/src/scanner.c
 ```
 
 The highlight queries, `tree-sitter-vibelang/queries/vibe/*.scm`, inherit nvim-treesitter's TypeScript queries and color VibeLang's words in the same groups as the VS Code extension. If you copy `vibelang.lua` elsewhere, `setup({ grammar = "<vibelang checkout>/editors/tree-sitter-vibelang" })` names the grammar.
@@ -42,7 +45,7 @@ The highlight queries, `tree-sitter-vibelang/queries/vibe/*.scm`, inherit nvim-t
 
 ## Tree-sitter grammar
 
-`tree-sitter-vibelang/` extends tree-sitter-typescript's grammar with VibeLang's forms; `grammar.js` names each form's decision and the compiler's parser file. A module declaration (`module text { ... }`, D283) is a `module_declaration` whose body is a `statement_block` of tree-sitter-typescript's own nodes, so the inherited TypeScript queries color it as they color a `.ts` file, without a `typescript` injection. The grammar's `src/` is generated and committed, so editors compile the parser without Node. After changing `grammar.js` or `src/scanner.h`:
+`tree-sitter-vibelang/` extends tree-sitter-typescript's TypeScript and TSX grammars with the same VibeLang forms for `.vibe` and `.vibex`; `grammar.js` names each form's decision and the compiler's parser file. A module declaration (`module text { ... }`, D283) is a `module_declaration` whose body is a `statement_block` of tree-sitter-typescript's own nodes, so the inherited TypeScript queries color it as they color a `.ts` file, without a `typescript` injection. The grammar's `src/` is generated and committed, so editors compile the parser without Node. After changing `grammar.js` or `src/scanner.h`:
 
 ```sh
 cd editors/tree-sitter-vibelang
@@ -73,12 +76,13 @@ declaration, following the normative appendix.
 
 ## Zed
 
-Zed defines languages through extensions, so these settings treat `.vibe` files as TypeScript and replace the binary of Zed's TypeScript server, `vtsls`, with `vibelang`. Put them in the project's `.zed/settings.json`, so other TypeScript projects keep `vtsls`:
+Zed defines languages through extensions, so these settings treat `.vibe` files as TypeScript and `.vibex` files as TSX and replace the binary of Zed's TypeScript server, `vtsls`, with `vibelang`. Put them in the project's `.zed/settings.json`, so other TypeScript projects keep `vtsls`:
 
 ```json
 {
   "file_types": {
-    "TypeScript": ["vibe"]
+    "TypeScript": ["vibe"],
+    "TSX": ["vibex"]
   },
   "lsp": {
     "vtsls": {
@@ -90,6 +94,9 @@ Zed defines languages through extensions, so these settings treat `.vibe` files 
   },
   "languages": {
     "TypeScript": {
+      "language_servers": ["vtsls", "!typescript-language-server", "..."]
+    },
+    "TSX": {
       "language_servers": ["vtsls", "!typescript-language-server", "..."]
     }
   }

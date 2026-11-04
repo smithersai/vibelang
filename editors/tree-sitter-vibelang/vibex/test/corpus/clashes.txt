@@ -1,0 +1,851 @@
+=====
+r01 generic arrow comma
+=====
+const id = <T,>(x: T) => x;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (arrow_function
+        (type_parameters
+          (type_parameter
+            (type_identifier)))
+        (formal_parameters
+          (required_parameter
+            (identifier)
+            (type_annotation
+              (type_identifier))))
+        (identifier)))))
+
+=====
+r02 effect generic arrow
+=====
+const id = effect <T,>(x: T) => x;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (arrow_function
+        (type_parameters
+          (type_parameter
+            (type_identifier)))
+        (formal_parameters
+          (required_parameter
+            (identifier)
+            (type_annotation
+              (type_identifier))))
+        (identifier)))))
+
+=====
+r03 assertion in container
+=====
+const v = <p>{value as string}</p>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element
+          (identifier))
+        (jsx_expression
+          (as_expression
+            (identifier)
+            (predefined_type)))
+        (jsx_closing_element
+          (identifier))))))
+
+=====
+r04 unary JSX operands
+=====
+effect function f() { const a = fork <A/>; const b = join <B/>; return try <C/>; }
+
+---
+
+(program
+  (function_declaration
+    (identifier)
+    (formal_parameters)
+    (statement_block
+      (lexical_declaration
+        (variable_declarator
+          (identifier)
+          (fork_expression
+            (jsx_self_closing_element
+              (identifier)))))
+      (lexical_declaration
+        (variable_declarator
+          (identifier)
+          (join_expression
+            (jsx_self_closing_element
+              (identifier)))))
+      (return_statement
+        (try_expression
+          (jsx_self_closing_element
+            (identifier)))))))
+
+=====
+r05 generic catch handler
+=====
+const v = x catch <E,>(e: E) => <b/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (catch_expression
+        (identifier)
+        (arrow_function
+          (type_parameters
+            (type_parameter
+              (type_identifier)))
+          (formal_parameters
+            (required_parameter
+              (identifier)
+              (type_annotation
+                (type_identifier))))
+          (jsx_self_closing_element
+            (identifier)))))))
+
+=====
+r07 comparisons and calls
+=====
+const v = <Box v={id<T>(x)} less={a < b}/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_self_closing_element
+        (identifier)
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (call_expression
+              (identifier)
+              (type_arguments
+                (type_identifier))
+              (arguments
+                (identifier)))))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (binary_expression
+              (identifier)
+              (identifier))))))))
+
+=====
+r08 type arguments and shifts
+=====
+const v = <Box<Array<T>> v={n >> 1}/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_self_closing_element
+        (identifier)
+        (type_arguments
+          (generic_type
+            (type_identifier)
+            (type_arguments
+              (type_identifier))))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (binary_expression
+              (identifier)
+              (number))))))))
+
+=====
+r09 fragments
+=====
+const v = <>{x}<p/></>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element)
+        (jsx_expression
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_closing_element)))))
+
+=====
+r10 member and namespace names
+=====
+const v = <><a:b c:d="1"/><Foo.Bar/></>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element)
+        (jsx_self_closing_element
+          (jsx_namespace_name
+            (identifier)
+            (identifier))
+          (jsx_attribute
+            (jsx_namespace_name
+              (identifier)
+              (identifier))
+            (string
+              (string_fragment))))
+        (jsx_self_closing_element
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (jsx_closing_element)))))
+
+=====
+r13 Effect type argument
+=====
+const v = <Comp<User!NotFound> v={1}/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_self_closing_element
+        (identifier)
+        (type_arguments
+          (effect_type
+            (type_identifier)
+            (type_identifier)))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (number)))))))
+
+=====
+r14 operators in containers
+=====
+const v = <p>{u!.name}{!x}{x != y}{x !== y}</p>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element
+          (identifier))
+        (jsx_expression
+          (member_expression
+            (non_null_expression
+              (identifier))
+            (property_identifier)))
+        (jsx_expression
+          (unary_expression
+            (identifier)))
+        (jsx_expression
+          (binary_expression
+            (identifier)
+            (identifier)))
+        (jsx_expression
+          (binary_expression
+            (identifier)
+            (identifier)))
+        (jsx_closing_element
+          (identifier))))))
+
+=====
+r15 omitted Effect slots
+=====
+const v = <p>{do { const p: User!!=src; p; }}</p>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element
+          (identifier))
+        (jsx_expression
+          (do_expression
+            (statement_block
+              (lexical_declaration
+                (variable_declarator
+                  (identifier)
+                  (type_annotation
+                    (effect_type
+                      (type_identifier)))
+                  (identifier)))
+              (expression_statement
+                (identifier)))))
+        (jsx_closing_element
+          (identifier))))))
+
+=====
+r16 Effect type at boundary
+=====
+const v = <Comp<A!!>>text</Comp>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element
+          (identifier)
+          (type_arguments
+            (effect_type
+              (type_identifier))))
+        (jsx_text)
+        (jsx_closing_element
+          (identifier))))))
+
+=====
+r18 constrained arrow
+=====
+const f = <T extends User!NotFound>(v: T) => v;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (arrow_function
+        (type_parameters
+          (type_parameter
+            (type_identifier)
+            (constraint
+              (effect_type
+                (type_identifier)
+                (type_identifier)))))
+        (formal_parameters
+          (required_parameter
+            (identifier)
+            (type_annotation
+              (type_identifier))))
+        (identifier)))))
+
+=====
+r19 contextual tags
+=====
+const v = <><try/><match/><effect/><service/><data/><fork/><join/><provide/><catch/><when/><is/></>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element)
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_closing_element)))))
+
+=====
+r20 contextual attributes
+=====
+const v = <Show when={x} is="a" match={1} try={2} effect={3} fork provide="y"/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_self_closing_element
+        (identifier)
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (identifier)))
+        (jsx_attribute
+          (property_identifier)
+          (string
+            (string_fragment)))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (number)))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (number)))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (number)))
+        (jsx_attribute
+          (property_identifier))
+        (jsx_attribute
+          (property_identifier)
+          (string
+            (string_fragment)))))))
+
+=====
+r21 member tags and operation
+=====
+const v = <><try.all/><fork.in/><fork.scoped/>{try.all [a,b]}</>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element)
+        (jsx_self_closing_element
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (jsx_self_closing_element
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (jsx_self_closing_element
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (jsx_expression
+          (try_expression
+            (array
+              (identifier)
+              (identifier))))
+        (jsx_closing_element)))))
+
+=====
+r22 ordinary component names
+=====
+const v = <><Match/><Option/></>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element)
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_closing_element)))))
+
+=====
+r23 lowercase tags
+=====
+const v = <><map/><select/></>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element)
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_self_closing_element
+          (identifier))
+        (jsx_closing_element)))))
+
+=====
+r24 Effect method JSX
+=====
+class C { effect render() { return <b/>; } }
+
+---
+
+(program
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (method_definition
+        (property_identifier)
+        (formal_parameters)
+        (statement_block
+          (return_statement
+            (jsx_self_closing_element
+              (identifier))))))))
+
+=====
+r25 escaped text arrow
+=====
+const v = <p>a |&gt; b</p>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element
+          (identifier))
+        (jsx_text)
+        (html_character_reference)
+        (jsx_text)
+        (jsx_closing_element
+          (identifier))))))
+
+=====
+r26 text and quoted topic
+=====
+const v = x |> <b title="%">50% off!{%}</b>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (pipe_expression
+        (identifier)
+        (jsx_element
+          (jsx_opening_element
+            (identifier)
+            (jsx_attribute
+              (property_identifier)
+              (string
+                (string_fragment))))
+          (jsx_text)
+          (jsx_expression
+            (topic_reference))
+          (jsx_closing_element
+            (identifier)))))))
+
+=====
+r27 quoted braces
+=====
+const v = <Box title="{try p}"/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_self_closing_element
+        (identifier)
+        (jsx_attribute
+          (property_identifier)
+          (string
+            (string_fragment)))))))
+
+=====
+r28 lexical states
+=====
+const v = <p>// text{/* try p */}{/[!%>]/.test(s)}{`! % |> ${x}`}</p>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element
+          (identifier))
+        (jsx_text)
+        (jsx_expression
+          (comment))
+        (jsx_expression
+          (call_expression
+            (member_expression
+              (regex
+                (regex_pattern))
+              (property_identifier))
+            (arguments
+              (identifier))))
+        (jsx_expression
+          (template_string
+            (string_fragment)
+            (template_substitution
+              (identifier))))
+        (jsx_closing_element
+          (identifier))))))
+
+=====
+r29 match container
+=====
+const v = <p>{match (x) { when 0: <Zero/>; default: <Other/>; }}</p>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element
+          (identifier))
+        (jsx_expression
+          (match_expression
+            (parenthesized_expression
+              (identifier))
+            (match_body
+              (match_arm
+                (number)
+                (jsx_self_closing_element
+                  (identifier)))
+              (match_arm
+                (jsx_self_closing_element
+                  (identifier))))))
+        (jsx_closing_element
+          (identifier))))))
+
+=====
+r30 topics and remainder
+=====
+const v = x |> <Box f={() => %}>{%}{n % 2}</Box>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (pipe_expression
+        (identifier)
+        (jsx_element
+          (jsx_opening_element
+            (identifier)
+            (jsx_attribute
+              (property_identifier)
+              (jsx_expression
+                (arrow_function
+                  (formal_parameters)
+                  (topic_reference)))))
+          (jsx_expression
+            (topic_reference))
+          (jsx_expression
+            (binary_expression
+              (identifier)
+              (number)))
+          (jsx_closing_element
+            (identifier)))))))
+
+=====
+r31 Effect block and object
+=====
+const v = <Box task={effect { return 1; }} value={{effect: 1}}/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_self_closing_element
+        (identifier)
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (effect_block
+              (statement_block
+                (return_statement
+                  (number))))))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (object
+              (pair
+                (property_identifier)
+                (number)))))))))
+
+=====
+r33 do return
+=====
+function f() { return <Box v={do { return 7; }}/>; }
+
+---
+
+(program
+  (function_declaration
+    (identifier)
+    (formal_parameters)
+    (statement_block
+      (return_statement
+        (jsx_self_closing_element
+          (identifier)
+          (jsx_attribute
+            (property_identifier)
+            (jsx_expression
+              (do_expression
+                (statement_block
+                  (return_statement
+                    (number)))))))))))
+
+=====
+r34 is pattern
+=====
+const v = <Box ok={x is { let name }} label={name}/>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_self_closing_element
+        (identifier)
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (is_expression
+              (identifier)
+              (object_match_pattern
+                (binding_pattern
+                  (identifier))))))
+        (jsx_attribute
+          (property_identifier)
+          (jsx_expression
+            (identifier)))))))
+
+=====
+r37 ASI
+=====
+function f() { return
+<div/>; }
+
+---
+
+(program
+  (function_declaration
+    (identifier)
+    (formal_parameters)
+    (statement_block
+      (return_statement
+        (jsx_self_closing_element
+          (identifier))))))
+
+=====
+r38 Effect function container
+=====
+effect function f() { return <div>{try load()}</div>; }
+
+---
+
+(program
+  (function_declaration
+    (identifier)
+    (formal_parameters)
+    (statement_block
+      (return_statement
+        (jsx_element
+          (jsx_opening_element
+            (identifier))
+          (jsx_expression
+            (try_expression
+              (call_expression
+                (identifier)
+                (arguments))))
+          (jsx_closing_element
+            (identifier)))))))
+
+=====
+Contextual effect heritage keeps the class body
+=====
+class C extends effect { effect read() { return <p>{try load()}</p>; } }
+
+---
+
+(program
+  (class_declaration
+    (type_identifier)
+    (class_heritage
+      (extends_clause
+        (identifier)))
+    (class_body
+      (method_definition
+        (property_identifier)
+        (formal_parameters)
+        (statement_block
+          (return_statement
+            (jsx_element
+              (jsx_opening_element
+                (identifier))
+              (jsx_expression
+                (try_expression
+                  (call_expression
+                    (identifier)
+                    (arguments))))
+              (jsx_closing_element
+                (identifier)))))))))
+
+=====
+r19 reserved words in member tag names
+=====
+const v = <><catch.Box/><Box.catch/><catch.Box.Leaf/></>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      (identifier)
+      (jsx_element
+        (jsx_opening_element)
+        (jsx_self_closing_element
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (jsx_self_closing_element
+          (member_expression
+            (identifier)
+            (property_identifier)))
+        (jsx_self_closing_element
+          (member_expression
+            (member_expression
+              (identifier)
+              (property_identifier))
+            (property_identifier)))
+        (jsx_closing_element)))))

@@ -69,3 +69,7 @@ Select a TypeScript `module` declaration and request **Move module to a .ts file
 | `vibelang.trace.server` | `"off"` | Set `"messages"` or `"verbose"` to log LSP traffic |
 
 After changing the executable or rebuilding the compiler, run **VibeLang: Restart Language Server** from the command palette. Use **VibeLang: Show Language Server Output** to inspect the server log. For protocol problems, enable tracing, restart, reproduce, then turn tracing off. Review logs before sharing them: protocol traffic can contain source text and file paths.
+
+## JSX highlighting
+
+Write JSX in `.vibex` files. The extension selects its TSX-derived `source.vibex` grammar, with VibeLang scopes inside JSX expression containers. Tag names, attribute strings and JSX text keep their JSX meaning, including `%` in text. Use `x as T` for assertions and `<T,>` for unconstrained generic arrows, as in `.tsx`.

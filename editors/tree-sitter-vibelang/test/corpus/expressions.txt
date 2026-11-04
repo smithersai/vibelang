@@ -682,48 +682,48 @@ function hatches(text: string, url: string) {
       (lexical_declaration
         (variable_declarator
           name: (identifier)
-          value: (call_expression
-            function: (identifier)
-            arguments: (arguments
-              (arrow_function
-                parameters: (formal_parameters
-                  (required_parameter
-                    pattern: (identifier)))
-                body: (call_expression
-                  function: (member_expression
-                    object: (identifier)
-                    property: (property_identifier))
-                  arguments: (arguments
-                    (identifier))))
-              (arrow_function
-                parameters: (formal_parameters
-                  (required_parameter
-                    pattern: (identifier)))
-                body: (new_expression
-                  constructor: (identifier)
-                  arguments: (arguments
-                    (object
-                      (shorthand_property_identifier)))))
-              (identifier)))))
+          value: (try_expression
+            argument: (parenthesized_expression
+              (sequence_expression
+                (arrow_function
+                  parameters: (formal_parameters
+                    (required_parameter
+                      pattern: (identifier)))
+                  body: (call_expression
+                    function: (member_expression
+                      object: (identifier)
+                      property: (property_identifier))
+                    arguments: (arguments
+                      (identifier))))
+                (arrow_function
+                  parameters: (formal_parameters
+                    (required_parameter
+                      pattern: (identifier)))
+                  body: (new_expression
+                    constructor: (identifier)
+                    arguments: (arguments
+                      (object
+                        (shorthand_property_identifier)))))
+                (identifier))))))
       (lexical_declaration
         (variable_declarator
           name: (identifier)
-          value: (call_expression
-            function: (identifier)
-            arguments: (arguments
-              (arrow_function
-                parameters: (formal_parameters
-                  (required_parameter
-                    pattern: (identifier))
-                  (required_parameter
-                    pattern: (identifier)))
-                body: (call_expression
-                  function: (identifier)
-                  arguments: (arguments
-                    (identifier)
-                    (object
-                      (shorthand_property_identifier)))))
-              (identifier)))))
+          value: (try_expression
+            argument: (parenthesized_expression
+              (sequence_expression
+                (arrow_function
+                  parameters: (formal_parameters
+                    (required_parameter
+                      pattern: (identifier))
+                    (required_parameter
+                      pattern: (identifier)))
+                  body: (call_expression
+                    function: (identifier)
+                    arguments: (arguments
+                      (identifier)
+                      (object
+                        (shorthand_property_identifier)))))
+                (identifier))))))
       (return_statement
         (object
           (shorthand_property_identifier)

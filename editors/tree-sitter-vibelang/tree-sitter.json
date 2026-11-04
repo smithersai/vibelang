@@ -26,6 +26,34 @@
         "node_modules/tree-sitter-javascript/queries/locals.scm"
       ],
       "injection-regex": "^(vibe|vibelang)$"
+    },
+    {
+      "name": "vibex",
+      "camelcase": "VibeLangJSX",
+      "scope": "source.vibex",
+      "path": "vibex",
+      "external-files": [
+        "src/scanner.h"
+      ],
+      "file-types": [
+        "vibex"
+      ],
+      "highlights": [
+        "queries/vibe/highlights.scm",
+        "node_modules/tree-sitter-typescript/queries/highlights.scm",
+        "node_modules/tree-sitter-javascript/queries/highlights.scm",
+        "node_modules/tree-sitter-javascript/queries/highlights-jsx.scm"
+      ],
+      "injections": [
+        "queries/vibe/injections.scm",
+        "node_modules/tree-sitter-javascript/queries/injections.scm"
+      ],
+      "locals": [
+        "queries/vibe/locals.scm",
+        "node_modules/tree-sitter-typescript/queries/locals.scm",
+        "node_modules/tree-sitter-javascript/queries/locals.scm"
+      ],
+      "injection-regex": "^(vibex)$"
     }
   ],
   "metadata": {

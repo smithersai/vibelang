@@ -110,6 +110,10 @@
         "named": true
       },
       {
+        "type": "effect_block",
+        "named": true
+      },
+      {
         "type": "fork_expression",
         "named": true
       },
@@ -151,6 +155,10 @@
       },
       {
         "type": "throw_expression",
+        "named": true
+      },
+      {
+        "type": "try_expression",
         "named": true
       },
       {
@@ -2626,6 +2634,22 @@
     }
   },
   {
+    "type": "effect_block",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "statement_block",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "effect_type",
     "named": true,
     "fields": {
@@ -3124,6 +3148,10 @@
           "named": true
         },
         {
+          "type": "effect_block",
+          "named": true
+        },
+        {
           "type": "false",
           "named": true
         },
@@ -3233,6 +3261,10 @@
         },
         {
           "type": "true",
+          "named": true
+        },
+        {
+          "type": "try_expression",
           "named": true
         },
         {
@@ -7914,6 +7946,22 @@
     "fields": {}
   },
   {
+    "type": "try_expression",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "try_statement",
     "named": true,
     "fields": {
@@ -8946,6 +8994,10 @@
   },
   {
     "type": "do",
+    "named": false
+  },
+  {
+    "type": "effect",
     "named": false
   },
   {

@@ -55,6 +55,11 @@ ln -s ../vibelang/bin/vibelang "$project/node_modules/.bin/vibelang"
 mkdir -p "$scratch/runtime/parser"
 "${CC:-cc}" -o "$scratch/runtime/parser/vibe.so" -shared -fPIC -Os -I "$grammar/src" "$grammar/src/parser.c" "$grammar/src/scanner.c"
 
+# Both variants, including a TSX fallback without a language server.
+"${CC:-cc}" -o "$scratch/runtime/parser/vibex.so" -shared -fPIC -Os -I "$grammar/vibex/src" "$grammar/vibex/src/parser.c" "$grammar/vibex/src/scanner.c"
+"$nvim" --headless --clean -l "$here/filetype.test.lua" "$here/vibelang.lua"
+"$nvim" --headless --clean -l "$here/filetype.test.lua" "$here/vibelang.lua" "$scratch/runtime"
+
 echo "nvim: $("$nvim" --version | head -1)"
 echo "nvim-treesitter: ${nvim_treesitter:-none}"
 # Without nvim-treesitter, whose parsers may include vibe.
