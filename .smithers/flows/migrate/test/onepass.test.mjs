@@ -34,7 +34,7 @@ async function fixture() {
   put(target, "consumer/src/index.ts", 'import { value } from "../../core/src/index.ts"\nexport const result = value\n')
   put(target, "app/src/view.tsx", "export const view = <div />\n")
   put(target, "entry.vibe", 'import { value } from "./core/src/index.ts"\n')
-  put(target, "run.sh", "node core/src/index.ts\n")
+  put(target, "run.sh", "node --import=vibelang/register core/src/index.ts\n")
   put(target, "PACKAGE.ts", 'const source = "core/src/index.ts"\n')
   // Compiler traces and installed dependencies are instrumentation, never batch source.
   put(target, ".gitignore", "node_modules/\nchecks.log\n")

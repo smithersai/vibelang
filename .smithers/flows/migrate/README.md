@@ -963,3 +963,5 @@ name, reason and message without depending on host locale. Only current
 warnings in the migrated scope are included; errors and reverted modules
 never become exceptions. Rechecking replaces this snapshot rather than
 accumulating old sites.
+
+Setup also scans owned shell scripts used by build targets for bare source runners. Its bare-runner receipt preserves the shell path, line and original command. A reached module stays TypeScript until the runner has a loader. Literal working-directory changes are followed; a dynamic directory keeps matching source graphs deferred even when the command mentions a loader. The shell script itself keeps its original bytes.

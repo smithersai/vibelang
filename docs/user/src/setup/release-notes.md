@@ -192,6 +192,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The compiler package README omitted its formatter API and ast-grep export and gave no Prettier setup; it now documents `vibelang/prettier`, `vibelang/format` and `vibelang/ast-grep`, with export coverage checked against the package manifest.
 - Platform extraction skipped JSX sources or misread their callbacks; it now splits `.tsx` and `.vibex` in JSX mode and preserves native companions and exported signatures.
 - Migration API verification reported valid declaration snapshots as unavailable with a relative `TMPDIR`; it now compares them using the resolved temporary directory.
+- Migration could convert a module reached by bare Node inside a build shell script; setup now names that runner and retains its source graph until a loader is proven.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.

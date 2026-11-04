@@ -1,0 +1,10 @@
+{
+  "command": "node fixtures/check-offline-target.mjs",
+  "files": {
+    "package.json": "{\"private\":true,\"scripts\":{\"check\":\"sh scripts/check-offline.sh\"}}",
+    "scripts/check-offline.sh": "#!/bin/sh\nset -eu\nnode fixtures/check-offline-target.mjs\n",
+    "fixtures/check-offline-target.mjs": "import \"../src/ProcessFault.ts\"\n",
+    "src/ProcessFault.ts": "import { Effect } from \"effect\"\nexport const value = Effect.void\n",
+    "src/Independent.ts": "import { Effect } from \"effect\"\nexport const value = Effect.void\n"
+  }
+}

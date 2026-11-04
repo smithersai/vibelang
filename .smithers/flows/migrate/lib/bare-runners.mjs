@@ -3,10 +3,11 @@
 // preloads vibelang/bun, or Playwright's Babel. Compile, declarations and tests
 // pass, and the tool fails only when someone runs it. Setup wires what it can, so
 // what is left here stays TypeScript: each module such an entry reaches, by name.
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { parseImports } from "./imports.mjs"
 import { sourceGraph } from "./test-bundles.mjs"
+import { ownedPaths } from "./wire.mjs"
 
 const loader = /\bvibelang\/(?:register|bun)\b/
 const runners = new Set(["node", "bun", "tsx", "ts-node"])
@@ -24,10 +25,13 @@ const playwrightTest = /\.(?:test|spec)\.[cm]?[jt]sx?$/
  * `{ runner, file, cwd, wired }`, file relative to the script's package.
  * `wired` says the command itself names VibeLang's loader.
  */
-export function scriptEntries(script) {
+export function scriptEntries(script, { locations = false } = {}) {
   const found = []
   let cwd = "."
-  for (const part of script.split(/&&|\|\||;|\|/)) {
+  let cursor = 0
+  for (const part of script.split(/&&|\|\||;|\||\r?\n/)) {
+    const start = script.indexOf(part, cursor)
+    cursor = start + part.length
     const words = part.replace(/[()"']/g, " ").trim().split(/\s+/).filter(Boolean)
     while (words[0] && /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0])) words.shift()
     if (words[0] === "cd" && words[1]) { cwd = posix.normalize(posix.join(cwd, words[1])); continue }
@@ -53,7 +57,7 @@ export function scriptEntries(script) {
       if (runner === "bun" && bunCommands.has(word)) { file = false; break }
       file = scriptEntry.test(word) ? word : false
     }
-    if (file) found.push({ runner, file, cwd: at, wired })
+    if (file) found.push({ runner, file, cwd: at, wired, ...(locations ? { line: script.slice(0, start).split("\n").length, command: part.trim() } : {}) })
   }
   return found
 }
@@ -101,6 +105,35 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts } = {}) {
       }
     }
   }
+  // Build targets can invoke a shell outside package scripts. Inspect owned
+  // shells without executing or rewriting them; an unproved cwd retains all
+  // matching source entries rather than certifying a loader from the wrong cwd.
+  const owns = ownedPaths(root)
+  const shells = dir => {
+    for (const item of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const file = posix.join(dir, item.name)
+      if (item.isDirectory()) {
+        if (!item.name.startsWith(".") && !["node_modules", "dist", "build", "coverage"].includes(item.name) && owns(file + "/_probe.ts")) shells(file)
+      } else if (item.isFile() && file.endsWith(".sh") && owns(file)) {
+        const source = readFileSync(join(root, file), "utf8").replace(/\\\r?\n/g, " ")
+        for (const command of scriptEntries(source, { locations: true })) {
+          const uncertain = /[$`]/.test(command.cwd)
+          const candidates = uncertain ? [] : [posix.join(command.cwd, command.file), posix.join(posix.dirname(file), command.cwd, command.file)]
+          let targets = [...new Set(candidates.map(candidate => runtimeFile(candidate)).filter(Boolean))]
+          if (!targets.length) {
+            const suffix = command.file.replace(/^\.\//, "")
+            targets = files.filter(candidate => candidate === suffix || candidate.endsWith("/" + suffix))
+          }
+          for (const entry of targets) {
+            const receipt = { runner: command.runner, entry, cwd: uncertain ? null : command.cwd,
+              via: file + ":" + command.line, command: command.command }
+            add(!(command.wired && !uncertain), receipt)
+          }
+        }
+      }
+    }
+  }
+  shells(".")
   for (const file of files) {
     // A script its shebang runs from any directory: `./scripts/clean.ts`, and only a loader it names itself is sure.
     const shebang = /^#!.*\b(node|bun|tsx|ts-node)\b.*$/.exec(text(file).split("\n", 1)[0])
