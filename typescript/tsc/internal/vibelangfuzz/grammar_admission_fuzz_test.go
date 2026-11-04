@@ -72,6 +72,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"catch-arrow", "effect function f(p) { return p catch () => 1; }"},
 	{"fork", "effect function f(p) { return fork p; }"},
 	{"join", "effect function f(p) { return join p; }"},
+	{"is-operand-precedence", "const b = x is 1 + 1;"},
 	{"pipe", "const n = 1 |> % + 1;"},
 	{"pipe-chain", "const n = 1 |> % + 1 |> % * 2;"},
 	{"function-kind", "function f(p) { return try p; }"},
@@ -177,6 +178,52 @@ func FuzzGrammarAdmission(f *testing.F) {
 		key, source := grammarAdmissionInput(data)
 		checkGrammarAdmission(t, w, key, source)
 	})
+}
+
+// grammarIsOperandPrecedence reports an is pattern followed, at the same
+// bracket depth, by an operator that binds tighter than relational
+// operators. The pinned TC39 grammar is RelationalExpression
+// [no LineTerminator here] `is` MatchPattern, so an is expression is a
+// RelationalExpression and can't be the left operand of +, * or <<; no
+// MatchPattern contains them either. The compiler reads `x is 1 + 1` as
+// `(x is 1) + 1`. A pattern's own leading sign or relational operator
+// (`is -1`, `is < 5`) is not counted; <, &&, ?? and the rest are derivable.
+func grammarIsOperandPrecedence(ts []grammarToken) bool {
+	tighter := map[string]bool{"+": true, "-": true, "*": true, "/": true, "%": true, "**": true, "<<": true, ">>": true, ">>>": true}
+	for i, tok := range ts {
+		if tok.kind != 'w' || tok.text != "is" || i == 0 || i+1 >= len(ts) || tok.nl || ts[i+1].nl {
+			continue
+		}
+		switch ts[i+1].text {
+		case "<", "<=", ">", ">=", "==", "===", "!=", "!==", "+", "-":
+			continue
+		}
+		depth := 0
+	scan:
+		for k, next := range ts[i+1:] {
+			// The lab lexes << and >> as two tokens; two in a row are a shift.
+			if depth == 0 && (next.text == "<" || next.text == ">") && i+2+k < len(ts) && ts[i+2+k].text == next.text {
+				return true
+			}
+			switch next.text {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				if depth--; depth < 0 {
+					break scan
+				}
+			case ";", ",", "?", ":", "=", "&&", "||", "??", "|>", "=>":
+				if depth == 0 {
+					break scan
+				}
+			default:
+				if depth == 0 && tighter[next.text] {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func grammarAdmissionInput(data []byte) (string, string) {
@@ -820,6 +867,9 @@ func grammarAdmissionForm(source string) string {
 		case parser.VibeSyntaxForkBlock:
 			return "admission:fork-block"
 		}
+	}
+	if grammarIsOperandPrecedence(ts) {
+		return "admission:is-operand-precedence"
 	}
 	return ""
 }
@@ -1716,6 +1766,33 @@ func TestGrammarAdmissionOrBindingReservedNameForm(t *testing.T) {
 	} {
 		if got := grammarOrBindingReservedName(grammarLexSource(source)); got != want {
 			t.Errorf("%s: or-binding-reserved-name = %v, want %v", source, got, want)
+		}
+	}
+}
+
+// The is-operand-precedence family is a tighter-binding operator after an
+// is pattern at its own depth; relational, logical and pipe operators after
+// it, and signs inside the pattern, are derivable and stay outside it.
+func TestGrammarAdmissionIsOperandPrecedenceForm(t *testing.T) {
+	for source, want := range map[string]bool{
+		"const b = x is 1 + 1;":                true,
+		"const b = x is 1 * 2;":                true,
+		"const b = x is a << 2;":               true,
+		"const b = x is a >> 2;":               true,
+		"const n = 1 |> % is 1 + 1 |> % * 2 ;": true,
+		"const b = f(x is [1] - 1);":           true,
+		"const b = x is 1;":                    false,
+		"const b = x is -1;":                   false,
+		"const b = x is < 5;":                  false,
+		"const b = x is 1 < 2;":                false,
+		"const b = x is 1 && y + 1;":           false,
+		"const b = x is [1 + 1];":              false,
+		"const b = (x is 1) + 1;":              false,
+		"const n = 1 |> % is 1 |> % * 2;":      false,
+		"const b = x is 1 ? y + 1 : z - 1;":    false,
+	} {
+		if got := grammarIsOperandPrecedence(grammarLexSource(source)); got != want {
+			t.Errorf("%s: is-operand-precedence = %v, want %v", source, got, want)
 		}
 	}
 }
