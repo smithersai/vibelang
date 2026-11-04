@@ -47,6 +47,8 @@ The `//:api-identity-test` target checks [published declaration identity](api-id
 
 Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
 
+Migration tool-configuration tests load generated Knip modules and check both `.vibe` and `.vibex` compiler bindings, retained package settings and sidecar excludes.
+
 The `//:release` target runs Node's test files with `--test-concurrency=8`.
 This bounds the number of simultaneous file workers independently of the host's
 CPU count and the graph's `--jobs` setting. Every selected file still runs,

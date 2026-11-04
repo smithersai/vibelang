@@ -3,7 +3,8 @@
 // (Smithers: a `debugger` planted in a .vibe module passed every lint command).
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
-import { createRequire } from "node:module"
+import { createRequire, stripTypeScriptTypes } from "node:module"
+import { pathToFileURL } from "node:url"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -124,7 +125,7 @@ test("setup wires a repository's own ESLint configurations and lint scripts, onc
   assert.deepEqual(wireDeveloperTools({ root, specsFor: () => ({ vibelang: "0.0.11" }) }).changed, [])
 })
 
-test("each package that installs Knip gets its compiler; a test's fixture does not", t => {
+test("each package that installs Knip gets its compiler; a test's fixture does not", async t => {
   const root = fixture(t, {
     "package.json": JSON.stringify({ name: "root" }),
     "packages/a/package.json": JSON.stringify({ name: "a", devDependencies: { knip: "6.34.0" } }),
@@ -135,7 +136,21 @@ test("each package that installs Knip gets its compiler; a test's fixture does n
   const manifests = ["package.json", "packages/a/package.json", "packages/b/package.json", "packages/c/package.json", "packages/d/test/fixtures/x/package.json"]
   const wired = wireKnips({ root, manifests, specsFor: dir => ({ vibelang: `file:${dir}` }) })
   assert.deepEqual(wired.changed, ["packages/a/knip.config.ts", "packages/a/package.json", "packages/c/knip.config.ts", "packages/c/package.json"])
-  assert.match(readFileSync(join(root, "packages/a/knip.config.ts"), "utf8"), /compilers: \{ vibe: vibelang \}/)
+  for (const name of ["a", "c"]) {
+    const home = join(root, "packages", name), modules = join(home, "node_modules/vibelang")
+    mkdirSync(modules, { recursive: true })
+    writeFileSync(join(modules, "package.json"), JSON.stringify({ name: "vibelang", type: "module", exports: { "./knip": "./knip.mjs" } }))
+    writeFileSync(join(modules, "knip.mjs"), 'export default function compile() {}\n')
+    const executable = join(home, "knip.generated.mjs")
+    writeFileSync(executable, stripTypeScriptTypes(readFileSync(join(home, "knip.config.ts"), "utf8")))
+    const config = (await import(pathToFileURL(executable).href)).default
+    const compiler = (await import(pathToFileURL(join(modules, "knip.mjs")).href)).default
+    assert.equal(config.compilers.vibe, compiler)
+    assert.equal(config.compilers.vibex, compiler)
+    assert.ok(config.ignore.includes("**/*.d.vibe.ts"))
+    assert.ok(config.ignore.includes("**/*.d.vibex.ts"))
+    if (name === "c") assert.deepEqual(config.entry, ["src/main.ts"])
+  }
   assert.equal(JSON.parse(readFileSync(join(root, "packages/a/package.json"), "utf8")).devDependencies.vibelang, "file:packages/a")
   assert.equal(existsSync(join(root, "packages/d/test/fixtures/x/knip.config.ts")), false)
 })
