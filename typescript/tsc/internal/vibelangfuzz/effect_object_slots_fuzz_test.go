@@ -10,6 +10,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
+const effectSlotNonNullQuote = "An additional `!` follows the existing bang and non-null rules, rather than starting a JSDoc requirement."
+
 const effectObjectSlotQuote = "A required error or requirement slot admits an ordinary object type"
 const effectOptionalObjectQuote = "The unparenthesized `{` exclusion applies only to the optional `R` after `!!`"
 const effectObjectSlotDanglingQuote = "A `!` after a type with no slot and no second `!` after it on its line is a syntax error"
@@ -20,7 +22,7 @@ func requireEffectObjectSlotQuotes(t testing.TB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, quote := range []string{effectObjectSlotQuote, effectOptionalObjectQuote, effectObjectSlotDanglingQuote} {
+	for _, quote := range []string{effectSlotNonNullQuote, effectObjectSlotQuote, effectOptionalObjectQuote, effectObjectSlotDanglingQuote} {
 		if !strings.Contains(string(chapter), quote) {
 			t.Fatalf("missing Effect object slot rule: %q", quote)
 		}
@@ -33,7 +35,7 @@ func TestEffectObjectSlotsQuoted(t *testing.T) { requireEffectObjectSlotQuotes(t
 func FuzzEffectObjectTypeSlots(f *testing.F) {
 	startShortBudget(f)
 	requireEffectObjectSlotQuotes(f)
-	for _, key := range []string{"required-R", "both-objects", "callable", "property", "method", "tuple", "array", "legacy-body", "optional-R-parenthesized", "optional-R-excluded", "next-line-block"} {
+	for _, key := range []string{"nonnull-assertion", "conformance-witness", "required-R", "both-objects", "callable", "property", "method", "tuple", "array", "legacy-body", "optional-R-parenthesized", "optional-R-excluded", "next-line-block"} {
 		for _, mode := range []uint8{0, 1, 2} {
 			f.Add(key, mode)
 		}
@@ -48,6 +50,12 @@ func FuzzEffectObjectTypeSlots(f *testing.F) {
 		expanded := "Effect.Effect<" + scalar + ", string, " + requirement + ">"
 		source := "type Value = " + short
 		switch key {
+		case "nonnull-assertion":
+			source = "declare const input: unknown; const value = (input as " + scalar + "!!)!; type Value = typeof value"
+			expanded = "Effect.Effect<" + scalar + ">"
+		case "conformance-witness":
+			source = "export type RequiredObjects = " + scalar + "!{ reason: string }!{ service: " + scalar + " }; type Value = RequiredObjects"
+			expanded = "Effect.Effect<" + scalar + ", { reason: string }, { service: " + scalar + " }>"
 		case "both-objects":
 			source = "type Value = " + scalar + "!{ readonly why: string }!" + gap + requirement
 			expanded = "Effect.Effect<" + scalar + ", { readonly why: string }, " + requirement + ">"

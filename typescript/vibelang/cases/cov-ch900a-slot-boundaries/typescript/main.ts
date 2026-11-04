@@ -22,8 +22,9 @@ function assertions(x: unknown) {
 }
 
 function lineBreak(x: unknown, B: unknown) {
-  x as Effect.Effect<number, never, as>
+  const value = x as Effect.Effect<number, never, as>
   B
+  return value
 }
 
 

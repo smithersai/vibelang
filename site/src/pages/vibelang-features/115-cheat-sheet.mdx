@@ -32,7 +32,7 @@ effect function release(version: string) {
 
 ## Types
 
-**Effect types**. `A!E!R` means exactly `Effect.Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type. A line break ends the type: each `!` and its slot stay on one line, `A!!` may end a line, and a slot in parentheses may span lines; a `!` with no slot on its line is `TS17019`.
+**Effect types**. `A!E!R` means exactly `Effect.Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type. A line break ends the type: each `!` and its slot stay on one line, `A!!` may end a line, and a slot in parentheses may span lines; a `!` with no slot on its line is `TS17019`. Both slots can be object types: `number!{ reason: string }!{ service: number }`. After `!!`, parenthesize an object requirement as `number!!({ service: number })` so `{` can still begin a function body. In an expression, write `(value as number!!)!` to apply a non-null assertion to the asserted value. Store or return an asserted Effect; discarding it in an expression statement is `EK4801`.
 
 :::code-group
 

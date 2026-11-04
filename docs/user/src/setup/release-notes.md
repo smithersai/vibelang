@@ -20,6 +20,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The grammar admission audit could miss invalid `async` schema fields when an unresolved type hid their syntax diagnostic; it now records that gap explicitly.
 - The producer guide left mixed files unclear; it now explains that nearby Effect code preserves plain generators’ native calls and `yield*` delegation.
+- Effect type examples could fail on a missing non-null assertion group or a discarded Effect value. They now use `(value as number!!)!` and retain the asserted value.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.

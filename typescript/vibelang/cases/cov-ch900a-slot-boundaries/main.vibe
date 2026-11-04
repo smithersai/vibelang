@@ -21,8 +21,9 @@ function assertions(x: unknown) {
 }
 
 function lineBreak(x: unknown, B: unknown) {
-  x as number!!as
+  const value = x as number!!as
   B // a second statement: the assertion above supplies R = as
+  return value
 }
 
 export effect function main() {
@@ -40,7 +41,7 @@ function preference(x: unknown, B: unknown) {
 function operands(x: unknown) {
   const compact: Effect.Effect<number, never, -1> = x as number!!-1
   const spaced: Effect.Effect<number, never, -1> = x as number!! - 1
-  const nonnull: Effect.Effect<number> = x as number!!!
+  const nonnull: Effect.Effect<number> = (x as number!!)!
   const chosen = x as number!! ? 1 : 2
   // @ts-expect-error: Effect values are not arithmetic operands
   const product = x as number!! * 2
