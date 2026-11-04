@@ -105,6 +105,15 @@ const migrateTest = S.Shell.Test({
 // this checkout's compiler into its fixtures and builds a private copy of the
 // runtime's sources with the native compiler, under test/.fixtures: it never
 // writes packages/runtime, which the runtime and compiler targets read.
+const migrateToolchainBaseline = S.Shell.Test({
+  summary: "Reject toolchain regressions after valid target dependency probes.",
+  shell: "node --test .smithers/flows/migrate/test/toolchain-baseline.property.test.mjs",
+  data: [migrationSources, ...install],
+  tools: [S.Host.bin("node"), S.Host.bin("jj")],
+  sandbox: "none",
+  timeout: "3m"
+})
+
 const pluginTest = (name: string, summary: string, timeout: string) => S.Shell.Test({
   summary,
   shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/${name}/test/run.sh`,
@@ -140,6 +149,7 @@ export const Package = S.Package({
     "runtime-package": runtimePackageTest,
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
+    "migrate-toolchain-baseline": migrateToolchainBaseline,
     "compiler-test": compilerTest,
     "migrate-test": migrateTest,
     "compiler-tools-test": compilerToolsTest,

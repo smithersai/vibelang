@@ -922,6 +922,8 @@ The VibeLang compiler checks both extensions; its TypeScript path checks
 `effect-ts`. This verifies fixture correctness and equivalence, without
 measuring compiler performance.
 
+The `//packages:migrate-toolchain-baseline` target runs the complete upgrade-baseline regression file when baseline admission, capability probing, its fixtures, or the target definition changes. Its offline installer checks the staged runtime and Effect pins; its compiler separates successful capability probes from failing project compiles. The tests retain new collection failures, missing tests, exit regressions, compiler errors and downstream refusal checks.
+
 ## Cache contracts
 
 The `cache-loaders` property logs each child before and after execution with

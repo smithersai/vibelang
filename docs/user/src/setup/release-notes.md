@@ -182,6 +182,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Upgrade-baseline regression tests could stop at an incomplete target-dependency fixture before checking compiler errors. They now complete the capability probe and verify that new compiler errors still reject the upgrade.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.

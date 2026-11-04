@@ -4,8 +4,9 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { pathToFileURL } from "node:url"
-import { test } from "node:test"
+import { after, before, test } from "node:test"
 import * as Jj from "../lib/jj.mjs"
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import { must } from "../lib/util.mjs"
 const steps = await import(process.env.MIGRATE_BASELINE_STEPS
   ? pathToFileURL(process.env.MIGRATE_BASELINE_STEPS) : new URL("../lib/steps.mjs", import.meta.url))
@@ -14,6 +15,34 @@ const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-toolchain-collection-regression.json", import.meta.url)))
 const put = (path, value) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, typeof value === "string" ? value : JSON.stringify(value)) }
 const failure = /toolchain baseline regression/
+
+// The capability probe installs the staged compiler's own dependencies.
+// Keep this fixture offline while checking the exact requested pins.
+const installerRoot = mkdtempSync(join(tmpdir(), "baseline-target-installer-"))
+const originalPath = process.env.PATH
+before(() => {
+  put(join(installerRoot, "npm"), `#!/usr/bin/env node
+const fs = require("node:fs"), path = require("node:path")
+const args = process.argv.slice(2)
+if (!args.includes("--ignore-scripts") || !args.includes("--package-lock=false") || !args.includes("effect@4.1.0")) process.exit(97)
+const runtime = args.at(-1)
+if (!runtime.endsWith("runtime.tgz")) process.exit(98)
+const manifest = JSON.parse(fs.readFileSync(runtime, "utf8"))
+if (manifest.name !== "vibelang-runtime" || manifest.version !== "0.0.11") process.exit(99)
+const prefix = args[args.indexOf("--prefix") + 1]
+for (const [name, version] of [["effect", "4.1.0"], ["vibelang-runtime", manifest.version]]) {
+  const dir = path.join(prefix, "node_modules", name)
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name, version }))
+}
+`)
+  chmodSync(join(installerRoot, "npm"), 0o755)
+  process.env.PATH = installerRoot + ":" + originalPath
+})
+after(() => {
+  process.env.PATH = originalPath
+  rmSync(installerRoot, { recursive: true, force: true })
+})
 
 async function fixture(root, { testsFail = true, compilerFail = false } = {}) {
   const target = join(root, "target"), toolchain = join(root, "toolchain"), run = join(root, "run")
@@ -30,10 +59,11 @@ async function fixture(root, { testsFail = true, compilerFail = false } = {}) {
     'writeFileSync(process.argv.find(arg => arg.startsWith("--outputFile.json=")).split("=").slice(1).join("="), JSON.stringify(report))',
     'process.exit(failed ? 2 : 0)'
   ].join("\n"))
-  put(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.1.0", compiler: "native/vibelang", packages: {} })
+  put(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.1.0", compiler: "native/vibelang", packages: { "vibelang-runtime": "runtime.tgz" } })
+  put(join(toolchain, "runtime.tgz"), { name: "vibelang-runtime", version: "0.0.11" })
   for (const [file, name, broken] of [[join(target, "node_modules/.bin/vibelang"), "previous", false],
     [join(toolchain, "native/vibelang"), "candidate", compilerFail]]) {
-    put(file, '#!/bin/sh\nif [ "$1" = --version ]; then echo ' + name + '; exit 0; fi\n' +
+    writeProbeAwareCompiler(file, '#!/bin/sh\nif [ "$1" = --version ]; then echo ' + name + '; exit 0; fi\n' +
       (broken ? 'echo "src/main.vibe(1,1): error EK4402: HTMLElement is platform code"; exit 2\n' : "exit 0\n"))
     chmodSync(file, 0o755)
   }
@@ -69,6 +99,10 @@ test("foldkit-104: compiler errors fail the switch even when every test stays gr
     const admission = JSON.parse(readFileSync(join(p.baseline, "admission.json")))
     assert.equal(admission.tests.every(check => check.ok), true)
     assert.equal(admission.compile[0].newErrors[0].code, corpus.diagnostic)
+    const probes = JSON.parse(readFileSync(p.upgrade)).vipFixes.probes
+    assert.equal(probes.target.side, "pre", JSON.stringify(probes))
+    assert.deepEqual(probes.target.dependencies, { effect: "4.1.0", "vibelang-runtime": "0.0.11" })
+    assert.equal(probes.installed[0].side, "pre", JSON.stringify(probes))
     const before = JSON.parse(readFileSync(join(p.baseline, "upstream-checks.json")))["."]
     const after = JSON.parse(readFileSync(join(p.baseline, "upgraded-checks.json")))["."]
     assert.equal(before.compiler.version, "previous")
