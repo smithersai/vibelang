@@ -251,6 +251,8 @@ effect function browser() {
 }
 ```
 
+Pure `Experimental.Encoding.decodeBase64Lenient` replaces Node's lenient base64 decoding without a service or layer. `Experimental.Dns` extends Effect's `Dns` service only with direct-authority TXT queries (NS/A discovery stays Effect's) through `ExperimentalNodeDns.layer` or `ExperimentalWorkerDns.layer`; the Worker requires AA or fails typed, without recursive TXT fallback.
+
 VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` and `MediaQuery` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md) has the details:
 
 ```vibe

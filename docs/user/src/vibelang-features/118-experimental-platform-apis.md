@@ -2,8 +2,10 @@
 
 VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream.
 
-| Service | Adds | Layers |
+| Module | Adds | Layers |
 | --- | --- | --- |
+| `Experimental.Encoding` | pure lenient base64 decode returning a typed result | none |
+| `Experimental.Dns` | Effect Dns extended only with direct authoritative-server TXT queries | Node; Worker TCP, or typed `Unsupported` |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |
 | `Experimental.Crypto` | `hmac`, `sign`, `verify`, beside the members of Effect 4.0's `Crypto` | Node, Bun, browser |
 | `Experimental.Stdio` | Effect standard I/O plus `awaitInputClosed` without consuming input | Node, Bun |
@@ -29,11 +31,57 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 
 | Module | Layers |
 | --- | --- |
-| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`, `ExperimentalNodeStdio.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig` |
+| `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns.layer`, requiring Effect `HttpClient`; `layerWith` for an injected TCP adapter |
+| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`, `ExperimentalNodeStdio.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig`; `ExperimentalNodeDns.layer` and `layerWith` |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer`, `ExperimentalBunStdio.layer` |
 | `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserInfo.layer`, `ExperimentalBrowserWindow.layer`, `ExperimentalBrowserDocument.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
+
+## Encoding
+
+`Experimental.Encoding.decodeBase64Lenient(input)` returns a pure `Result<Uint8Array, EncodingError>`, with no service or layer. It matches Node's `Buffer.from(input, "base64")`: standard and URL-safe alphabets may mix, whitespace and other non-alphabet characters are ignored, padding is optional, the first `=` ends the input, and a final lone base64 character is discarded. Errors redact the input, which may contain a private key.
+
+Effect 4.0.6 and 4.1.1 already provide `Base64` and `Base64Url` in `effect/encoding`. Use those for strict decoding; neither accepts all the inputs above. This extension delegates the byte decoding to Effect after normalization. Convert its result to an Effect explicitly:
+
+```vibe
+// run: try Console.log((try decodeLenient(" Z g ")).length)
+export effect function decodeLenient(input: string) {
+  return try Effect.fromResult(Experimental.Encoding.decodeBase64Lenient(input))
+}
+// Output: 1
+```
+
+For Alchemy's `ServiceAccountKey`, decode the bytes this way, then use `TextDecoder` for UTF-8 and `Effect.try` around `JSON.parse`. Map both failures to the existing domain error without attaching the input or the cause. This needs no platform layer.
+
+## Dns
+
+Effect 4.0.6 and 4.1.1 already ship `effect/net/Dns`: `lookup`, `resolve(name, type)`, `reverse`, typed records, static test zones, and a configurable `NodeDns` resolver. Use those directly for ordinary DNS and NS/A discovery. `Experimental.Dns` extends that service with only `resolveTxtAt(server, fqdn)`, the direct-authority operation Alchemy needs. Its `Service` extends `Dns.Dns["Service"]`; its key is distinct, as `Experimental.FileSystem`'s is. A platform layer provides both keys from the same implementation, preserving Effect's existing members.
+
+| Expression | Guarantee |
+| --- | --- |
+| `try (try Dns.Dns).resolve(candidate, "NS")` | Effect's NS records at a candidate zone apex; recursive discovery, potentially cached |
+| `try (try Dns.Dns).resolve(nameserver, "A")` | Effect's IPv4 records; read `NetAddress.formatIp(record.address)` |
+| `try (try Experimental.Dns.Dns).resolveTxtAt(server, fqdn)` | TXT queried directly from the supplied nameserver; one string per RR, its chunks joined |
+
+Alchemy walks the challenge name's parent labels until the NS query finds a zone, reads each `record.host`, resolves its A records, then queries each returned IP directly. Its polling policy decides when to retry failures. It does not need experimental `resolveNs` or `resolve4` wrappers.
+
+```vibe
+// run: provide Experimental.Dns.layerTest({ resolveTxtAt: (_server, _name) => succeed(["challenge-value"]) }) { try Console.log((try authoritativeTxt("192.0.2.53", "_acme-challenge.example.test"))[0]) }
+export effect function authoritativeTxt(server: string, fqdn: string) {
+  const dns = try Experimental.Dns.Dns
+  return try dns.resolveTxtAt(server, fqdn)
+}
+// Output: challenge-value
+```
+
+Provide `ExperimentalNodeDns.layer` from `vibelang-runtime/experimental/platform-node` on Node. The ordinary members come directly from Effect's `NodeDns.make`. The extension reuses `NodeDns.make({ nameServers: [server] })` in a fresh query Scope, so only the supplied server receives that TXT query and closing the query Scope cancels its resolver. Node does not expose the authoritative-answer (AA) bit: the caller must supply a zone's actual authority, and port 53 interception remains possible. `layerWith(options)` takes Effect's own `NodeDns.Options` (`nameServers`, `timeout`, `tries`) for discovery and limits. This layer is provided separately from the platform bundle. Ordinary configured Node DNS needs only Effect's own layer.
+
+On Cloudflare Workers, provide `Layer.provide(ExperimentalWorkerDns.layer, FetchHttpClient.layer)`, importing `ExperimentalWorkerDns` from `vibelang-runtime/experimental/platform-worker` and `FetchHttpClient` from `effect/http`. The Worker platform adapter uses Effect's `Dns.make`, record constructors and IP/name parsers for recursive NS/A discovery through the injected `HttpClient`. Other recursive record types fail Effect's typed `Unsupported`. The experimental TXT operation uses `cloudflare:sockets.connect({ hostname: server, port: 53 })`, sends DNS-over-TCP with recursion disabled, and requires AA. It checks transaction and question identity, frame bounds, TXT lengths and compression pointers. It never substitutes a recursive DoH TXT answer or follows a CNAME through a recursive resolver. Authoritative NODATA returns an empty array.
+
+A Worker without `cloudflare:sockets` fails the authoritative operation with `AuthoritativeDnsError` reason `Unsupported`, explaining why recursive DoH cannot replace it. A refused or blocked socket fails typed `Transport`. [Cloudflare blocks TCP to its IP ranges, private addresses and localhost](https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/#considerations), so authorities there cannot be queried by that layer. `layerWith({ connect, discoveryUrl, timeout })` accepts another host's TCP adapter. Neither layer authenticates DNS cryptographically.
+
+Ordinary operations keep Effect's `DnsError`. The added operation fails with `AuthoritativeDnsError`: `operation` is `resolveTxtAt`; `reason` is `Unsupported`, `BadArgument`, `InvalidData`, `NotAuthoritative`, `NotFound`, `Timeout` or `Transport`. Its message never includes TXT payloads. The Worker timeout closes its socket. `Experimental.Dns.layerTest({ ... })` uses Effect's static resolver and replaces the members a test chooses; the default authoritative answer is empty. Both keys share that test implementation too.
 
 ## FileSystem
 

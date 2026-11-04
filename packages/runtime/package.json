@@ -116,6 +116,21 @@
       "types": "./dist/experimental/Stdio.d.ts",
       "import": "./dist/experimental/Stdio.js",
       "default": "./dist/experimental/Stdio.js"
+    },
+    "./experimental/Dns": {
+      "types": "./dist/experimental/Dns.d.ts",
+      "import": "./dist/experimental/Dns.js",
+      "default": "./dist/experimental/Dns.js"
+    },
+    "./experimental/Encoding": {
+      "types": "./dist/experimental/Encoding.d.ts",
+      "import": "./dist/experimental/Encoding.js",
+      "default": "./dist/experimental/Encoding.js"
+    },
+    "./experimental/platform-worker": {
+      "types": "./dist/experimental/platform-worker/index.d.ts",
+      "import": "./dist/experimental/platform-worker/index.js",
+      "default": "./dist/experimental/platform-worker/index.js"
     }
   },
   "files": [
