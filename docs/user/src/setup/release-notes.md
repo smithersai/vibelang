@@ -236,6 +236,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Several compiler and tooling property checks still cited older diagnostic, tool-input and configuration paragraphs. Their citations now follow the current specific rules, including the severity-entry exception, without changing their behavioral checks or sample counts.
 
+
+- Lint output-preservation and public Effect-version citation checks now follow the current tooling text, retaining all refusal, output and public-authority assertions.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 

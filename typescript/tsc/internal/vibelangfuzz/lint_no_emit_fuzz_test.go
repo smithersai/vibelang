@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-const lintNoEmitQuote = "The lint command emits no files"
+const lintNoEmitQuote = "Emits no files, fails on errors, and exits `0` for warnings or suggestions alone."
 
 var lintNoEmitKeys = []string{"sidecar", "existing-sidecar", "incremental-ts", "incremental-vibe", "existing-buildinfo", "error"}
 
