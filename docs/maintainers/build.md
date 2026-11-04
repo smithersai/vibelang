@@ -159,7 +159,7 @@ still too large runs only on the build hosts.
 The hosted workflow installs Chromium only when browser prerequisites cannot
 be ruled out. `scripts/ci-browser-needed.mjs` asks `smthrs ci --plan` for the
 complete dependency plan of explicit, reviewed targets such as `//:release`
-and `//packages:compiler-test`. Every executable target in that closure must
+and `//packages:compiler-test-1` to `-4`. Every executable target in that closure must
 be on its reviewed list; a browser target reached through another target
 therefore keeps setup. Broad selectors, new targets, unfamiliar rules, incomplete
 plans and planner failures all retain `npm ci` and Chromium installation.
@@ -312,7 +312,7 @@ They use the repository inputs and runtime that the seed oracles read.
 Run the same selection locally, or inspect the labels without running tests:
 
 ```sh
-CI_GATE_BASE=main@github sh scripts/ci.sh //packages:compiler-test --jobs 8
+CI_GATE_BASE=main@github sh scripts/ci.sh //packages:compiler-test-1 //packages:compiler-test-2 //packages:compiler-test-3 //packages:compiler-test-4 --jobs 8
 printf '%s\n' docs/design/src/003-failures.md | node scripts/fuzz-gate/select.mjs
 ```
 
@@ -404,7 +404,7 @@ renamed or synthesized label remains a corpus failure; normal unused-label
 diagnostics remain visible to ESLint users.
 
 `packages/compiler/test/eslint-corpus-labels.test.mjs` runs the native guard in
-`//packages:compiler-test` without the optional ESLint install. The standalone
+the `//packages:compiler-test-N` shards without the optional ESLint install. The standalone
 suite also checks minimized real corpus runs and generated labels with ESLint's
 actual `no-unused-labels` rule.
 
@@ -532,7 +532,7 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :srcs                         Filegroup: what go build reads (no *_test.go, no testdata/)
   :go-checker :go-parser :go-ls go test, one target per Go package tree (merge gate,
   :go-format :go-core           when the change edits that tree)
-  :go-vibelangfmt               VibeLang formatter Go tests; required by :compiler-test
+  :go-vibelangfmt               VibeLang formatter Go tests; required by :compiler-test-1
   :go-project-vibelang          VibeLang manifest-change invalidation tests
   :go-tsoptions-vibelang        VibeLang configuration and diagnostic tests
   :go-tspath-vibelang           VibeLang and .vibex extension recognition tests
@@ -548,7 +548,7 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :runtime-dist                 bun run build -> packages/runtime/dist
   :runtime-test                 bun test (runtime)
   :compiler-native              the binary and dprint plugin in packages/compiler
-  :compiler-test                node --test (compiler package)
+  :compiler-test-1 .. -4        node --test (compiler package), sharded by file
   :migrate-test                 node --test (the migrate and convert flows)
   :vite-test :unplugin-test      the bundler plugins' test/run.sh (source maps, builds, watch)
 //                              repository and focused checks
@@ -576,8 +576,8 @@ Migration and convert suites run only in `//packages:migrate-test`. The compiler
 
 
 ```text
-:srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test, :migrate-test
-                    ├─► :compiler-native ─► :compiler-test, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
+:srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test-N, :migrate-test
+                    ├─► :compiler-native ─► :compiler-test-N, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
                     ├─► :lsp-smoke ◄─ :runtime-dist
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
@@ -991,7 +991,7 @@ A cached result is only as correct as its key is complete. Each target names:
   and `jj file list`, which the docs check runs while other targets restore
   their outputs, snapshots the working copy: an unignored temporary tree is
   tracked, then vanishes before the check reads it. Discovery prunes the Vite
-  The compiler-package migration properties also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test` and `//packages:migrate-test`.
+  The compiler-package migration properties also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test-1` to `-4` and `//packages:migrate-test`.
   and unplugin test `.fixtures/` trees and the compiler case directory, which
   has no package declarations: their generated outputs may change while the
   compiler tests explain their migration-source cache inputs. This excludes

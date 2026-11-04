@@ -7,7 +7,7 @@ import { test } from "node:test"
 const root = process.env.VIBELANG_BUILD_GRAPH_ROOT ?? fileURLToPath(new URL("../", import.meta.url))
 
 test("the compiler gate selects the VibeLang formatter's Go regressions", () => {
-  const compiler = "//packages:compiler-test"
+  const compiler = "//packages:compiler-test-1"  // shard 1 carries the formatter edge (packages/PACKAGE.ts)
   const formatter = "//typescript/tsc:go-vibelangfmt"
   const result = spawnSync(process.execPath, [join(root, ".smithers/node_modules/@smthrs/cli/bin/smithers.mjs"),
     "graph", compiler, "--workspace", root, "--format", "json", "--silent"

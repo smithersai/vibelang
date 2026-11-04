@@ -15,7 +15,7 @@ const workflow = readFileSync(new URL("../.github/workflows/mq-pregate.yml", imp
 const node = (label, dependencies = [], target = "Shell.Test") => ({ label, dependencies, target })
 const plan = (targets, roots = ["//:release"]) => ({ roots, targets, warnings: [] })
 
-for (const label of ["//:release", "//:tokens", "//:spec-tests", "//packages:compiler-test"]) {
+for (const label of ["//:release", "//:tokens", "//:spec-tests", "//packages:compiler-test-1"]) {
   test(`verified ${label} omits browser setup`, () => {
     assert.equal(classifyPlan(label, plan([node(label)], [label])), false)
   })
@@ -23,7 +23,7 @@ for (const label of ["//:release", "//:tokens", "//:spec-tests", "//packages:com
 
 test("a known selection retains browser setup through every dependency depth", () => {
   for (let depth = 0; depth < 8; depth++) {
-    const labels = ["//:release", "//:tokens", "//:spec-tests", "//:docs-tools", "//:docs-check", "//:snippets", "//packages:compiler-test", "//packages:runtime-test"].slice(0, depth + 1)
+    const labels = ["//:release", "//:tokens", "//:spec-tests", "//:docs-tools", "//:docs-check", "//:snippets", "//packages:compiler-test-1", "//packages:runtime-test"].slice(0, depth + 1)
     const targets = labels.map((label, i) => node(label, [labels[i + 1] ?? "//:site-contrast"]))
     targets.push(node("//:site-contrast"))
     assert.equal(classifyPlan("//:release", plan(targets)), true)
@@ -51,7 +51,7 @@ test("incomplete, conflicting and unfamiliar plans retain browser setup", () => 
 })
 
 test("generated known dependency graphs retain browser and unknown descendants", () => {
-  const labels = ["//:release", "//:tokens", "//:spec-tests", "//:docs-tools", "//:docs-check", "//:snippets", "//packages:compiler-test", "//packages:runtime-test"]
+  const labels = ["//:release", "//:tokens", "//:spec-tests", "//:docs-tools", "//:docs-check", "//:snippets", "//packages:compiler-test-1", "//packages:runtime-test"]
   let seed = 114
   const random = n => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed % n }
   for (let i = 0; i < 256; i++) {

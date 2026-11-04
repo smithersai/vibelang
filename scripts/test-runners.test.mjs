@@ -35,7 +35,8 @@ const runs = [
   [".smithers/flows/effect-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
   ["docs/tools/*.test.*", "PACKAGE.ts", "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.*"],
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
-  ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test test/*.test.mjs"],
+  // Sharded by file: each shard runs node --test --test-shard=<n>/<total> over the same glob (checked below).
+  ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-shard=${shard}/${COMPILER_TEST_SHARDS} test/*.test.mjs"],
   ["packages/compiler/test/tools/*.test.mjs", "packages/compiler/test/tools/run.sh", "./*.test.mjs"],
   [".smithers/flows/migrate/test/*.test.mjs", "packages/PACKAGE.ts", "migrate/test/*.test.mjs"],
   [".smithers/flows/convert/*.test.mjs", "packages/PACKAGE.ts", "convert/*.test.mjs"],
@@ -273,4 +274,14 @@ test("release and API globs give prefixed files one runner without dropping thei
     assert.equal(release.test(file), true)
     assert.equal(api.test(file), false)
   }
+})
+
+test("every compiler-test shard is a target, so together they run every compiler test file", () => {
+  const pkg = read("packages/PACKAGE.ts")
+  const total = Number(/const COMPILER_TEST_SHARDS = (\d+)/.exec(pkg)?.[1])
+  assert.ok(total >= 2, "packages/PACKAGE.ts declares COMPILER_TEST_SHARDS")
+  for (let shard = 1; shard <= total; shard++) {
+    assert.ok(pkg.includes(`"compiler-test-${shard}": compilerTest(${shard})`), `compiler-test-${shard} is declared`)
+  }
+  assert.ok(!pkg.includes(`"compiler-test-${total + 1}"`), "no shard beyond COMPILER_TEST_SHARDS")
 })

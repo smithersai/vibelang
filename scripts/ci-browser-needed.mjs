@@ -8,7 +8,8 @@ const root = fileURLToPath(new URL("../", import.meta.url))
 const tests = new Set([
   "//:release", "//:tokens", "//:spec-tests", "//:forms", "//:snippets",
   "//:docs-tools", "//:docs-check", "//:site-spec-links",
-  "//packages:compiler-test", "//packages:migrate-test", "//packages:runtime-test",
+  "//packages:compiler-test-1", "//packages:compiler-test-2", "//packages:compiler-test-3", "//packages:compiler-test-4",
+  "//packages:migrate-test", "//packages:runtime-test",
   "//packages:compiler-tools-test", "//packages:vite-test", "//packages:unplugin-test",
 ])
 const builds = new Set([

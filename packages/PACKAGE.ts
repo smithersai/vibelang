@@ -59,12 +59,21 @@ const compilerNative = S.Shell.Build({
   timeout: "5m"
 })
 
-const compilerTest = S.Shell.Test({
-  summary: "The compiler package's node tests.",
-  shell: "cd packages/compiler && bun install --frozen-lockfile && VIBELANG_BINARY=\"$PWD/native/vibelang\" node --test test/*.test.mjs",
+// The compiler package's node tests run in COMPILER_TEST_SHARDS targets split by file (node --test-shard), each on its
+// own box. One target took over its 15-minute timeout on a post-merge box (failed 901.3s), and a gate that ran out of
+// time before it finished could not land anything that changed the compiler package. scripts/test-runners.test.mjs
+// checks that every shard exists and that together they cover test/*.test.mjs.
+const COMPILER_TEST_SHARDS = 4
+const compilerTest = (shard: number) => S.Shell.Test({
+  summary: `The compiler package's node tests, shard ${shard} of ${COMPILER_TEST_SHARDS}.`,
+  shell: "cd packages/compiler && bun install --frozen-lockfile && VIBELANG_BINARY=\"$PWD/native/vibelang\" " +
+    `node --test --test-shard=${shard}/${COMPILER_TEST_SHARDS} test/*.test.mjs`,
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
-  data: [compilerNative, Tsc["go-vibelangfmt"], runtimeDist, S.glob("compiler/**"), migrationSources,
+  // Shard 1 carries the edge to the formatter's Go tests, so a compiler gate still selects them
+  // (scripts/compiler-formatter-gate.test.mjs). They write no output the node tests read, and in every shard they cost
+  // 206-297 s of a box before the tests start (measured 2026-11-04).
+  data: [compilerNative, ...(shard === 1 ? [Tsc["go-vibelangfmt"]] : []), runtimeDist, S.glob("compiler/**"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
     S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"),
@@ -225,7 +234,10 @@ export const Package = S.Package({
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
     "migrate-toolchain-baseline": migrateToolchainBaseline,
-    "compiler-test": compilerTest,
+    "compiler-test-1": compilerTest(1),
+    "compiler-test-2": compilerTest(2),
+    "compiler-test-3": compilerTest(3),
+    "compiler-test-4": compilerTest(4),
     "migrate-helper-identity": migrateHelperIdentity,
     "migrate-test": migrateTest,
     "migrate-lost-wrapper": migrateLostWrapper,
