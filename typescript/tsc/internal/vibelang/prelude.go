@@ -289,9 +289,10 @@ func mayLowerToEffect(file *ast.SourceFile) (effect bool, runtime bool) {
 		case node.Kind == ast.KindThrowStatement, namesParsingBuiltin(node):
 			effect = true
 		case node.Kind == ast.KindVariableDeclarationList && isUsingList(node),
-			(node.Kind == ast.KindFunctionDeclaration || node.Kind == ast.KindFunctionExpression) && node.Body() != nil &&
+			(node.Kind == ast.KindFunctionDeclaration || node.Kind == ast.KindFunctionExpression ||
+				node.Kind == ast.KindMethodDeclaration && isMarkedEffect(node)) && node.Body() != nil &&
 				ast.GetFunctionFlags(node)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) == ast.FunctionFlagsGenerator &&
-				!vibelangmapper.HasJavaScriptIteratorReturn(node):
+				(!vibelangmapper.HasJavaScriptIteratorReturn(node) || isMarkedEffect(node)):
 			effect, runtime = true, true
 		}
 		if effect && runtime {

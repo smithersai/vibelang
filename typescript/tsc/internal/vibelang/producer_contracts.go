@@ -14,7 +14,7 @@ func init() {
 // JavaScript iterator annotation cannot turn an effect producer into a native
 // generator, and native generators keep their own annotation checks.
 func hasWrittenProducerContract(fn *ast.Node) bool {
-	if fn == nil || (fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindFunctionExpression) || fn.Body() == nil || fn.Type() == nil {
+	if fn == nil || (fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindFunctionExpression && fn.Kind != ast.KindMethodDeclaration) || fn.Body() == nil || fn.Type() == nil {
 		return false
 	}
 	flags := ast.GetFunctionFlags(fn)
@@ -22,8 +22,8 @@ func hasWrittenProducerContract(fn *ast.Node) bool {
 }
 
 // producerContract resolves a written Stream contract, including aliases and
-// normalized unions. Erased contracts and genuine container unions are not a
-// Stream contract (VIP-21, decided detail 287).
+// normalized unions. Other annotations are checked against the inferred Stream
+// result instead (VIP-21, written producer contracts clarification).
 func producerContract(c *checker.Checker, fn *ast.Node) *checker.Type {
 	if !hasWrittenProducerContract(fn) {
 		return nil
@@ -51,7 +51,10 @@ func producerBodyContract(c *checker.Checker, fn *ast.Node, t *checker.Type) *ch
 	}
 	contract := producerContract(c, fn)
 	if contract == nil {
-		return c.GetAnyType() // EK2102 owns the invalid exposed contract.
+		// A broad or union annotation supplies no single Stream channel
+		// contract. Check the generator body without imposing yield channels;
+		// checkProducerContracts validates its inferred Stream result.
+		return c.CreateGeneratorType(c.GetAnyType(), c.GetVoidType(), c.GetUndefinedType(), false)
 	}
 	return c.CreateGeneratorType(streamChannel(c, contract, "_A"), c.GetVoidType(), c.GetUndefinedType(), false)
 }
@@ -65,7 +68,13 @@ func checkProducerContracts(c *checker.Checker, file *ast.SourceFile) {
 		if hasWrittenProducerContract(fn) {
 			contract := producerContract(c, fn)
 			if contract == nil {
-				report(c, fn.Type(), EK2102)
+				// Infer all body channels before checking assignability, just as
+				// TypeScript checks the Stream.callback result against a written
+				// return annotation. In particular, any and unknown are valid.
+				result := producerType(c, fn, c.GetReturnTypeFromBody(fn))
+				if !c.IsTypeAssignableTo(result, c.GetTypeFromTypeNode(fn.Type())) {
+					report(c, fn.Type(), EK2102)
+				}
 			} else if info := analyzerFor(c).effectOf(fn); info != nil {
 				// Readonly/mapped and inherited aliases keep ordinary structural
 				// checking. The constructed Stream must also supply any extra

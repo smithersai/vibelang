@@ -1,0 +1,20 @@
+// expect-result: [1,7]
+// VIP-21: compatible written contracts follow the Stream.callback counterpart.
+import * as Stream from "effect/Stream";
+export effect function* values(): any { yield 1 }
+export effect function* opaque(): unknown { yield 1 }
+type Opaque = unknown
+type Numbers = Stream.Stream<number>
+export effect function* alias(): Opaque { yield 2 }
+export effect function* optional(): Numbers | undefined { yield 3 }
+export effect function* alternatives(): Numbers | Stream.Stream<string> { yield 4 }
+export effect function* structural(): {} { yield 5 }
+export effect function* errors(): unknown { try Effect.fail("bad"); yield 6 }
+export effect function* empty(): unknown {}
+export const expression = effect function* (): any { yield 7 }
+export effect function main() {
+  return [
+    try Stream.runFold(values() as Stream.Stream<number>, () => 0, (sum: number, n: number) => sum + n),
+    try Stream.runFold(expression() as Stream.Stream<number>, () => 0, (sum: number, n: number) => sum + n)
+  ]
+}

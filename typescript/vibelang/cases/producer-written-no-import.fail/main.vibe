@@ -1,0 +1,4 @@
+// expect: EK2102 EK2102
+// Marked generators need Stream contract metadata even without a Stream name.
+export effect function* nativeAnnotation(): Generator<number> { yield 7 }
+export class Holder { effect *values(): Generator<number> { yield 7 } }

@@ -1,0 +1,6 @@
+// expect: EK2102 EK2102 EK2102 EK2102
+// No union member can accept the inferred Stream result.
+export effect function* mixed(): Stream.Stream<number> | Stream.Stream<string> { yield 1; yield "x" }
+export effect function* optional(): Stream.Stream<string> | undefined { yield 1 }
+export const holder = { effect *values(): Stream.Stream<string> | undefined { yield 1 } }
+export class Holder { effect *values(): Stream.Stream<string> | undefined { yield 1 } }

@@ -4,11 +4,12 @@ import (
 	"context"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"slices"
+	"strings"
 	"testing"
 )
 
 const producerContractTarget = "FuzzProducerWrittenContracts"
-const producerContractQuote = "The return type, when written, is `Stream.Stream<A, E, R>`"
+const producerContractQuote = "Annotation compatibility is as in TypeScript on the `Stream.callback` counterpart: aliases, `any`, `unknown` and compatible unions are admitted; an incompatible annotation, including `never` for a returning producer, is `EK2102`."
 
 func producerContractVIP(t testing.TB) {
 	t.Helper()
@@ -22,6 +23,12 @@ func FuzzProducerWrittenContracts(f *testing.F) {
 	startShortBudget(f)
 	producerContractVIP(f)
 	domains := []struct{ key, contract, body, code string }{
+		{"bare-any", "any", "yield 7", ""},
+		{"bare-unknown", "unknown", "yield 7", ""},
+		{"bare-never", "never", "yield 7", "EK2102"},
+		{"bare-array", "number[]", "yield 7", "EK2102"},
+		{"bare-iterator", "Generator<number>", "yield 7", "EK2102"},
+		{"bare-object", "{}", "yield 7", ""},
 		{"direct", "Stream.Stream<number>", "yield 7", ""},
 		{"alias", "Numbers", "yield 7", ""},
 		{"readonly-alias", "ReadonlyNumbers", "yield 7", ""},
@@ -29,12 +36,18 @@ func FuzzProducerWrittenContracts(f *testing.F) {
 		{"inherited-alias", "InheritedNumbers", "yield 7", ""},
 		{"normalized", "Stream.Stream<number> | never", "yield 7", ""},
 		{"success-union", "Stream.Stream<number | string>", "yield 7; yield \"x\"", ""},
-		{"any", "any", "yield 7", "EK2102"},
-		{"unknown", "unknown", "yield 7", "EK2102"},
+		{"any", "any", "yield 7", ""},
+		{"unknown", "unknown", "yield 7", ""},
 		{"never", "never", "yield 7", "EK2102"},
-		{"optional", "Stream.Stream<number> | undefined", "yield 7", "EK2102"},
-		{"container-union", "Stream.Stream<number> | Stream.Stream<string>", "yield 7", "EK2102"},
-		{"object", "{}", "yield 7", "EK2102"},
+		{"optional", "Stream.Stream<number> | undefined", "yield 7", ""},
+		{"container-union", "Stream.Stream<number> | Stream.Stream<string>", "yield 7", ""},
+		{"object", "{}", "yield 7", ""},
+		{"any-alias", "Erased", "yield 7", ""},
+		{"unknown-alias", "Opaque", "yield 7", ""},
+		{"union-other", "Stream.Stream<number> | string", "yield 7", ""},
+		{"bad-union-yield", "Stream.Stream<number> | Stream.Stream<string>", "yield 7; yield \"x\"", "EK2102"},
+		{"bad-optional-yield", "Stream.Stream<string> | undefined", "yield 7", "EK2102"},
+		{"bad-extra-property", "Stream.Stream<number> & {extra: number}", "yield 7", "TS2322"},
 		{"array", "number[]", "yield 7", "EK2102"},
 		{"promise", "Promise<number>", "yield 7", "EK2102"},
 		{"effect", "Effect.Effect<number>", "yield 7", "EK2102"},
@@ -51,9 +64,9 @@ func FuzzProducerWrittenContracts(f *testing.F) {
 		{"contextual-object", "Stream.Stream<{kind:\"x\"}>", "yield {kind:\"x\"}", ""},
 		{"nested-native", "Stream.Stream<number>", "function* nested(): Generator<string> { yield \"x\" }; yield 7", ""},
 	}
-	keys := make([]string, 0, len(domains)*2)
+	keys := make([]string, 0, len(domains)*4)
 	for _, site := range domains {
-		for _, form := range []string{"declaration", "expression"} {
+		for _, form := range []string{"declaration", "expression", "object-method", "class-method"} {
 			key := site.key + ":" + form
 			keys = append(keys, key)
 			f.Add([]byte(key))
@@ -62,12 +75,20 @@ func FuzzProducerWrittenContracts(f *testing.F) {
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		choice, _ := keyedChoice(keys, data)
-		site := domains[choice/2]
-		source := "import {Effect,Scope,Stream} from \"effect\";\ninterface A {readonly a:number}; type Numbers=Stream.Stream<number>; type ReadonlyNumbers=Readonly<Stream.Stream<number>>; type PickedNumbers=Pick<Stream.Stream<number>,keyof Stream.Stream<number>>; interface InheritedNumbers extends Stream.Stream<number> {} declare const needsA:Effect.Effect<number,never,A>; declare const scoped:Effect.Effect<number,never,Scope.Scope>; declare const scopedA:Effect.Effect<number,never,Scope.Scope|A>;\n"
-		if choice%2 == 0 {
+		site := domains[choice/4]
+		source := "import {Effect,Scope,Stream} from \"effect\";\ninterface A {readonly a:number}; type Erased=any; type Opaque=unknown; type Numbers=Stream.Stream<number>; type ReadonlyNumbers=Readonly<Stream.Stream<number>>; type PickedNumbers=Pick<Stream.Stream<number>,keyof Stream.Stream<number>>; interface InheritedNumbers extends Stream.Stream<number> {} declare const needsA:Effect.Effect<number,never,A>; declare const scoped:Effect.Effect<number,never,Scope.Scope>; declare const scopedA:Effect.Effect<number,never,Scope.Scope|A>;\n"
+		if strings.HasPrefix(site.key, "bare-") {
+			source = ""
+		}
+		if choice%4 == 0 {
 			source += "export effect function* values(): " + site.contract + " { " + site.body + " }\n"
-		} else {
+		} else if choice%4 == 1 {
 			source += "export const values=effect function* (): " + site.contract + " { " + site.body + " }\n"
+		}
+		if choice%4 == 2 {
+			source += "export const holder = { effect *values(): " + site.contract + " { " + site.body + " } };\n"
+		} else if choice%4 == 3 {
+			source += "export class Holder { effect *values(): " + site.contract + " { " + site.body + " } }\n"
 		}
 		source += "export {}"
 		r, err := w.Compile(context.Background(), Single(source))
