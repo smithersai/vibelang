@@ -168,6 +168,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-effect-field", "schema S { effect id : string }"},
 	{"export-assignment", "export = 1 ;"},
 	{"import-equals", "import x = require ( \"m\" ) ; import y = N . a ;"},
+	{"data-member-not-field", "data D { A { x : number\nnumber } ; B }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1558,6 +1559,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 908, 1306: // A service member or error Field with no Separator after it.
 		return true
+	case 1606: // VIP-16: a malformed data variant or a payload member that is not a Field (Appendix B).
+		return true
 	}
 	return false
 }
@@ -1700,6 +1703,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-module-element-context-warning", "", diagnostics.CategoryWarning, 1231, false},
 		{"native-esm-export-assignment", "", diagnostics.CategoryError, 1203, true},
 		{"native-esm-export-assignment-warning", "", diagnostics.CategoryWarning, 1203, false},
+		{"data-member-not-field", "EK", diagnostics.CategoryError, 1606, true},
+		{"data-member-not-field-warning", "EK", diagnostics.CategoryWarning, 1606, false},
+		{"native-data-member-code-collision", "", diagnostics.CategoryError, 1606, false},
 		{"ek-esm-export-assignment-code-collision", "EK", diagnostics.CategoryError, 1203, false},
 		{"external-module-element-code-collision", "other", diagnostics.CategoryError, 1231, false},
 		{"ek-module-element-code-collision", "EK", diagnostics.CategoryError, 1231, false},

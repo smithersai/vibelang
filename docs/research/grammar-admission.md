@@ -198,3 +198,10 @@ import assignment, `import x = require("m")` or `import y = N.a`:
 TypeScript's `ImportEqualsDeclaration`, which VIP-40 forbids only inside a
 module body (`EK4008`). The lab's TypeScript subset now derives it.
 Campaign176 found both omissions.
+
+`EK1606` is a syntax rejection when its source is `EK` and its category is
+an error: VIP-16's rejection of a malformed `data` variant or a payload
+member that is not a `Field`, the data counterpart of `EK2109` and
+`EK2125`. The checker reports it, so the parse gate never saw it; campaign183
+found `data D { A { x : number` and a line break before `number } ; B }`,
+whose second member has no type.

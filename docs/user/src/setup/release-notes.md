@@ -501,6 +501,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar-admission census reported eight `try.all`-family check and lowering helpers as unaccounted once `try.allSettled` gained a direct lowering. It now lists them under VIP-18's `TryAll` authority.
 - The grammar-admission audit did not count `EK0108`, an `effect` modifier on an interface or type literal member, as a syntax rejection. It now does, and it records `schema S { effect id: string }`, which compiles with no error, as a known gap.
 - The grammar-admission audit reported `export = 1;` as accepted although TypeScript rejects it (`TS1203`) under ES modules, and it had no derivation for TypeScript's `import x = require("m")`. It now counts `TS1203` as a syntax rejection and derives import assignments.
+- The grammar-admission audit reported a `data` variant member with no type, such as a bare `number` on its own line, as accepted although the compiler rejects it with `EK1606`. It now counts `EK1606` as a syntax rejection.
 
 - Callable-contract documentation tests depended on removed examples; they now retain native witnesses and check the current wrapper example without losing defect, failure or default-callback coverage.
 
