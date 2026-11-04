@@ -1,0 +1,10 @@
+// expect: EK0702
+// Chapter 004: an extractor return type must be assignable to Iterable<unknown> | false.
+declare function notCallable(s: unknown): { [Symbol.iterator]: number }
+declare function badNext(s: unknown): { [Symbol.iterator](): { next: number } }
+export function first(s: unknown) {
+  return match (s) { when notCallable(let value): value; default: 0; }
+}
+export function second(s: unknown) {
+  return match (s) { when badNext(let value): value; default: 0; }
+}

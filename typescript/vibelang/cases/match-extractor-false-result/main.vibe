@@ -1,0 +1,19 @@
+// expect-result: ["zero","single","pair",3,"branded","generic"]
+// A false-only extractor never enters an arm; generated list reads remain valid.
+let calls = 0
+function no(s: unknown): false { calls++; return false }
+function zero(s: unknown) {
+  return match (s) { when no(): "unreachable"; default: "zero"; }
+}
+function single(s: unknown) {
+  return match (s) { when no(let value): value; default: "single"; }
+}
+function pair(s: unknown) {
+  return match (s) { when no(let first, let second): [first, second]; default: "pair"; }
+}
+type BrandedFalse = false & { readonly marker: unique symbol }
+function branded(_s: unknown): BrandedFalse { return false as BrandedFalse }
+function generic<T extends Iterable<unknown> | false>(_s: unknown): T { return false as T }
+function brandedResult(s: unknown) { return match(s) { when branded(let value): value; default: "branded"; } }
+function genericResult(s: unknown) { return match(s) { when generic(let value): value; default: "generic"; } }
+export effect function main() { return [zero(1), single(1), pair(1), calls, brandedResult(1), genericResult(1)] }

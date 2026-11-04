@@ -58,3 +58,10 @@ func (c *Checker) IteratedType(t *Type) *Type {
 func (c *Checker) CreatePatternExtractionType(values []*Type) *Type {
 	return c.getUnionType([]*Type{c.createTupleType(values), c.falseType})
 }
+
+// IsExtractorResultType checks native assignability to Iterable<unknown> |
+// false, including iterator signatures, intersections and generic constraints.
+func (c *Checker) IsExtractorResultType(t *Type) bool {
+	iterable := c.createTypeFromGenericGlobalType(c.getGlobalIterableTypeChecked(), []*Type{c.unknownType, c.anyType, c.anyType})
+	return c.isTypeAssignableTo(t, c.getUnionType([]*Type{iterable, c.falseType}))
+}

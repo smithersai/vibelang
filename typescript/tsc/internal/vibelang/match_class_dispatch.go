@@ -140,16 +140,5 @@ func hasOwnPatternMatcher(c *checker.Checker, t *checker.Type) bool {
 
 // isExtractorResult reports whether t is assignable to Iterable<unknown> | false.
 func isExtractorResult(c *checker.Checker, t *checker.Type) bool {
-	if t.Flags()&checker.TypeFlagsUnion != 0 {
-		for _, member := range t.Types() {
-			if !isExtractorResult(c, member) {
-				return false
-			}
-		}
-		return true
-	}
-	if t.Flags()&checker.TypeFlagsBooleanLiteral != 0 {
-		return c.TypeToString(t) == "false"
-	}
-	return c.GetPropertyOfType(c.GetApparentType(t), c.GetPropertyNameForKnownSymbolName("iterator")) != nil
+	return c.IsExtractorResultType(t)
 }

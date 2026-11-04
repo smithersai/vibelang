@@ -182,7 +182,7 @@ An `error` or `schema error` class has a `Symbol.customMatcher` that tests `_tag
 
 Changing an `error` or `schema error` declaration's name also changes its `_tag`; update any `catchTag` or `catchTags` key that names it.
 
-An extractor on a class without its own matcher is `EK0704`: use `when C:`, or `when C and { x: let x }:` to read its properties. A callee that returns neither a boolean nor, as an extractor, an iterable or `false`, and one with no call or construct signature, is `EK0702`; test it in a guard.
+An extractor on a class without its own matcher is `EK0704`: use `when C:`, or `when C and { x: let x }:` to read its properties. A callee that returns neither a boolean nor, as an extractor, an iterable or `false`, and one with no call or construct signature, is `EK0702`; test it in a guard. An extractor function’s return type must be assignable to `Iterable<unknown> | false`, including a callable `Symbol.iterator` that returns a valid iterator. Merely declaring that symbol property is insufficient; `never` remains assignable as in TypeScript. A matcher returning only `false` is valid and always takes the next arm. Intersections and constrained generic return types use that same assignment rule.
 
 The runtime installs `Symbol.customMatcher` on engines that lack it and declares its type for stock TypeScript. Declaration files containing an `error` or `schema error` keep the static `[Symbol.customMatcher]` member and begin with `/// <reference types="vibelang-runtime" />`, so downstream TypeScript consumers see the matcher without a VibeLang prelude. This also works for errors exported from namespaces with their own `Symbol` binding.
 

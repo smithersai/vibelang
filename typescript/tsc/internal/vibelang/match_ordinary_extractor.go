@@ -87,6 +87,13 @@ func ordinaryExtractorType(c *checker.Checker, call *ast.Node) *checker.Type {
 // as any so tuple indices and arity comparisons do not add generated errors;
 // source expressions and arm bodies keep their own native diagnostics.
 func ordinaryExtractorRecoveryType(c *checker.Checker, call *ast.Node, t *checker.Type) *checker.Type {
+
+	// A false-only result makes the generated success branch unreachable.
+	// Give its synthetic list reads an array of never rather than reporting
+	// a native missing-property error at a source pattern that is valid.
+	if isPatternCall(call, "$extract") && t.Flags()&checker.TypeFlagsBooleanLiteral != 0 && c.TypeToString(t) == "false" {
+		return c.GetUnionType([]*checker.Type{t, c.CreateArrayType(c.GetNeverType(), true)})
+	}
 	if ordinaryExtractorType(c, call) != nil {
 		return c.GetAnyType()
 	}
