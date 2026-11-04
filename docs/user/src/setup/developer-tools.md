@@ -295,6 +295,11 @@ entries. Each child receives a `vibelang/register` preload resolved from its
 parent package, including a child with another `cwd`. Starting the parent
 with `--import vibelang/register` alone does not preload a child Node process.
 The launcher's process options and `execFile` callback keep their order and values.
+Built JavaScript entries constructed by direct, unmodified `node:path` `join`
+or `resolve` calls need no loader when the argument proof excludes a typed
+entry. Setup preserves those launcher bytes, including scripts evaluated by
+native tests with `vm.Script`, and removes its earlier unnecessary helper on
+repeated setup. Typed or uncertain entries keep their native preloads.
 
 ## ast-grep
 

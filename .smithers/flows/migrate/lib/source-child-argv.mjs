@@ -84,11 +84,60 @@ export function sourceChildArgvProof({ source, ts, checker, template }) {
     }
     return facts
   }
+  // A native path constructor preserves the final JavaScript suffix, even
+  // when the directory is unknown. Imported bindings must have only direct
+  // calls: aliases, writes or other observations could replace the method.
+  const pathBindings = new Map()
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier) ||
+      !["node:path", "path"].includes(statement.moduleSpecifier.text) || statement.importClause?.isTypeOnly) continue
+    const clause = statement.importClause
+    if (clause?.name) pathBindings.set(symbol(clause.name), "namespace")
+    const named = clause?.namedBindings
+    if (named && ts.isNamespaceImport(named)) pathBindings.set(symbol(named.name), "namespace")
+    if (named && ts.isNamedImports(named)) for (const item of named.elements) {
+      if (!item.isTypeOnly) pathBindings.set(symbol(item.name), (item.propertyName ?? item.name).text)
+    }
+  }
+  const pathMethod = callee => {
+    callee = unwrap(callee)
+    if (ts.isIdentifier(callee)) {
+      const method = pathBindings.get(symbol(callee))
+      return ["join", "resolve"].includes(method) ? method : null
+    }
+    if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) &&
+      pathBindings.get(symbol(callee.expression)) === "namespace" &&
+      ["join", "resolve"].includes(callee.name.text)) return callee.name.text
+    return null
+  }
+  let observedPath = false
+  const inspectPath = node => {
+    if (ts.isImportDeclaration(node)) return
+    let binding = ts.isIdentifier(node) ? symbol(node) : undefined
+    if (ts.isIdentifier(node) && ts.isShorthandPropertyAssignment(node.parent)) binding = checker.getShorthandAssignmentValueSymbol(node.parent) ?? binding
+    if (ts.isIdentifier(node) && ts.isExportSpecifier(node.parent)) binding = checker.getExportSpecifierLocalTargetSymbol(node.parent) ?? binding
+    if (ts.isIdentifier(node) && pathBindings.has(binding)) {
+      const callee = pathBindings.get(binding) === "namespace" ? node.parent : node
+      if (!pathMethod(callee) || !ts.isCallExpression(callee.parent) || callee.parent.expression !== callee) observedPath = true
+    }
+    ts.forEachChild(node, inspectPath)
+  }
+  inspectPath(source)
+  const javascriptPath = node => {
+    if (observedPath || !ts.isCallExpression(node) || node.arguments.some(ts.isSpreadElement)) return null
+    const method = pathMethod(node.expression), last = node.arguments.at(-1)
+    if (!method || !last || !ts.isStringLiteralLike(unwrap(last)) || !/\.(?:[cm]?js)$/.test(unwrap(last).text)) return null
+    // resolve is absolute, so it cannot be mistaken for a runtime option.
+    // join can still start with "--import=", so its remaining argv is checked.
+    return { suffix: unwrap(last).text, entry: method === "resolve" }
+  }
   const domain = (node, facts) => {
     node = unwrap(node)
     if (ts.isStringLiteralLike(node)) return { values: [node.text] }
     const values = finite(checker.getTypeAtLocation(node))
     if (values && values.length <= 16) return { values }
+    const path = javascriptPath(node)
+    if (path) return path
     const fact = facts.find(f => f.text === node.getText(source))
     return fact ? { suffix: fact.suffix } : null
   }
@@ -148,6 +197,7 @@ export function sourceChildArgvProof({ source, ts, checker, template }) {
       if (at >= sequence.length) return true
       const token = sequence[at]
       if (!token) return false
+      if (token.entry) return true
       if (token.suffix) {
         // A suffix ending in .js/.mjs/.cjs cannot name typed source. It may
         // still be an inline option (--require=cli.js), so prove its tail too.

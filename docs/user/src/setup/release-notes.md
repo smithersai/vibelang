@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Migration API verification could stop before comparing apps that import declarations from sibling packages or scripts. Those declarations now resolve inside the isolated comparison layout, while real API changes and paths escaping that layout still fail.
+- Migration setup could add a loader helper to a script that launches built JavaScript and break tests evaluating it in a VM. Proven JavaScript paths now preserve the script’s original bytes, and repeated setup removes the unnecessary generated helper.
 
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 

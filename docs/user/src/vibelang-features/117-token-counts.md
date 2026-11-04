@@ -111,7 +111,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,900 |
 | [Known limitations](../setup/known-limitations.md) | 550 |
-| **Start a project** | **7,300** |
+| **Start a project** | **7,400** |
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 3,200 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,600 |
@@ -120,7 +120,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vite and Vitest](../setup/vite.md) | 3,600 |
 | **Format and lint** | **10,000** |
 | [Format with dprint](../setup/formatting.md) | 2,700 |
-| [Developer tools](../setup/developer-tools.md) | 7,600 |
+| [Developer tools](../setup/developer-tools.md) | 7,700 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |

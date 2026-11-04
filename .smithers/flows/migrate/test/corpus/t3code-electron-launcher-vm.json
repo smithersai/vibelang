@@ -1,0 +1,5 @@
+{
+  "repo": "t3code",
+  "origin": "apps/desktop/scripts/dev-electron.mjs; minimized built-JavaScript child and VM startup-cleanup observer",
+  "source": "import * as NodeChildProcess from \"node:child_process\";\nimport * as NodePath from \"node:path\";\nconst desktopDir = \"fixture\";\nNodeChildProcess.execFileSync(process.execPath, [NodePath.join(desktopDir, \"scripts/build-browser-secret.mjs\")], { stdio: \"inherit\" });\nNodeChildProcess.spawnSync(\"pkill\", [\"-f\", \"--\", `root=${desktopDir}`], { stdio: \"ignore\" });\n"
+}
