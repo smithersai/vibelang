@@ -7,7 +7,9 @@ export function answer() {
         return 42;
     }).apply(this, arguments);
 }
-export const half = Effect.fnUntraced(function* half(n) {
-    yield* Console.log(`halving ${n}`);
-    return n / 2;
-});
+export const half = (n) => {
+    return Effect.gen(function* half() {
+        yield* Console.log(`halving ${n}`);
+        return n / 2;
+    });
+};

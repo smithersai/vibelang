@@ -417,6 +417,8 @@ The `async` conversion keeps returns only when their values are known to be prim
 
 Build with `"sourceMap": true` in `compilerOptions`, then run `node --enable-source-maps dist/main.js`. Source maps translate JavaScript locations to `.vibe` locations. They do not record the logical caller chain.
 
+Generated effect-function bodies preserve the source function name in JavaScript stack frames, including functions with parameters. Parameters still bind when the function is called.
+
 VibeLang adds no spans of its own, so a defect can show only one frame, even with source maps enabled. Wrap work that needs a meaningful operation name in `try withSpan(effect { ... }, "checkout")`. More spans add runtime work.
 
 The Node runner can exit with only `Error: message`. For a debugging run, call your application's exported `main` from a TypeScript entry and print the rejected error's stack:

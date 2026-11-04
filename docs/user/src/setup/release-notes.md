@@ -179,6 +179,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.
+
+- Parameterized effect functions showed anonymous generator frames in debugging stacks. Generated bodies now keep their source function names while parameters still bind when the function is called, including recursive function expressions.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 
 - Stock-oracle and package-load migration checks could fail while reading an absent legacy setup receipt. Their fixtures now record complete public declaration metadata and real upstream packs before testing certification and load regressions.

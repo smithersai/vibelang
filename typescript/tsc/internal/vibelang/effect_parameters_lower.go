@@ -6,7 +6,12 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 // All executions of the resulting Effect share that call's parameter cells.
 func (tx *lowering) callTimeEffectBody(node *ast.Node, parameters *ast.NodeList, body *ast.Node) (*ast.NodeList, *ast.Node) {
 	f := tx.Factory()
-	generator := tx.generatorExpression(node, "", f.NewNodeList(nil), body)
+	// Preserve the source frame while keeping parameters in the outer callable.
+	// A named expression's recursive references must keep the outer binding.
+	generator := tx.generatorExpression(node, sourceName(node), f.NewNodeList(nil), body)
+	if refersToOwnName(node) {
+		generator = tx.nameFreeGenerator(node, sourceName(node), f.NewNodeList(nil), body)
+	}
 	tx.EmitContext().SetOriginal(generator, node)
 	tx.generatedFunctions(generator)
 	arguments := []*ast.Node{generator}
