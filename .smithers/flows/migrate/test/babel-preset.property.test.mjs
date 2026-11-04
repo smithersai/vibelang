@@ -11,7 +11,7 @@ import { addBabelPreset } from "../lib/react-tools.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
-const quote = "Existing tools work."
+const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-babel-preset-tuple-consumer.json", import.meta.url), "utf8"))
 const emptyCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-babel-empty-tuple-consumer.json", import.meta.url), "utf8"))
 

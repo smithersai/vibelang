@@ -11,12 +11,15 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
-const configSpanQuote = "An unknown `vibe` key or a value of the wrong type is a config error (`EK3007`), as for TypeScript’s `compilerOptions`"
+const configSpanQuote = "| `EK3007` | Error | An unknown `vibe` key or a wrong-typed value other than a severity entry, including a non-object `severities` | Remove the key or supply its declared type. |"
+const configSeveritySpanQuote = "| `EK3006` | Error | A disallowed code or a severity entry whose value is not one of the four strings, whatever its JSON type | Remove the code or use a permitted value. |"
 
 func configSpansQuoted(t testing.TB) {
 	t.Helper()
-	if !strings.Contains(SpecText("007-tooling.md"), configSpanQuote) {
-		t.Fatal(configSpanQuote)
+	for _, quote := range []string{configSpanQuote, configSeveritySpanQuote} {
+		if !strings.Contains(SpecText("007-tooling.md"), quote) {
+			t.Fatal(quote)
+		}
 	}
 }
 func TestConfigDiagnosticSpansQuoted(t *testing.T) { configSpansQuoted(t) }

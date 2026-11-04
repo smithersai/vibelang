@@ -11,7 +11,7 @@ import (
 
 const catchValueDiagnosticQuote = "Anything else after `catch` is a syntax error (`EK0509`): a name, a call, any other value"
 const catchInvalidGeneratorQuote = "or a generator or `async` generator expression."
-const catchSourceDiagnosticQuote = "TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types."
+const catchSourceDiagnosticQuote = "Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types."
 
 func TestCatchValueDiagnosticsQuoted(t *testing.T) {
 	for _, rule := range []struct{ chapter, quote string }{

@@ -7,7 +7,7 @@ import { inspectWorkspaceBarrel } from "./workspace-barrel-fixture.mjs"
 
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-58-bare-typescript-barrel-vibe.json", import.meta.url), "utf8"))
 const chapter = readFileSync(SpecPath("007-tooling.md"), "utf8")
-const quote = "Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`."
+const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 
 test("alchemy-58: bare TypeScript barrel, relative VibeLang and actual Bun/Rolldown stages", () => {
   assert.ok(chapter.includes(quote), "Chapter 7's existing-tools contract")
