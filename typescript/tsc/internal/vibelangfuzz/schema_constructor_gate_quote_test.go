@@ -10,7 +10,7 @@ import (
 func TestSchemaConstructorGateQuoted(t *testing.T) {
 	for chapter, quote := range map[string]string{
 		"003-failures.md": "a constructor in an `error` or `schema error` body",
-		"007-tooling.md":  "`vibelang --fix` keeps the existing safe-fix checks and refusal rules.",
+		"007-tooling.md":  "`vibelang --fix` retains its safety checks and refusal rules.",
 	} {
 		if !strings.Contains(SpecText(chapter), quote) {
 			t.Fatalf("%s no longer says %q", chapter, quote)

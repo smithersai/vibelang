@@ -8,7 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
-const errorSignatureSpanQuote = "4. **Existing tools work.**"
+const errorSignatureSpanQuote = "The language server prefers an in-program `./x.vibe` source to its stale adjacent or relocated `x.d.vibe.ts`."
 
 func TestErrorSignatureSpanQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), errorSignatureSpanQuote) {

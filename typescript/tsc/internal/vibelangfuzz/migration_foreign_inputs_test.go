@@ -12,7 +12,7 @@ import (
 )
 
 const migrationForeignInputsTarget = "FuzzMigrationForeignInputs"
-const migrationForeignInputsQuote = "`vibelang --fix` keeps the existing safe-fix checks and refusal rules."
+const migrationForeignInputsQuote = "`vibelang --fix` retains its safety checks and refusal rules."
 
 // EK4401's fix moves a call's Effect operand to a const before the statement.
 // --fix plans a round's fixes on one tree, and two calls of one function each

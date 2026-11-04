@@ -15,7 +15,7 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const runtime = join(repo, "packages/runtime")
 const readmeQuote = "Set `VIBELANG_PROJECT` to a tsconfig path to\nchoose another project, such as `tsconfig.test.json` for an example beside a\nlibrary; it compiles the modules in its directory, and a module of another\nworkspace package, such as a dependency linked to its source, still compiles\nwith that package's own `tsconfig.json`."
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/opencode-script-outside-project.json", import.meta.url), "utf8"))
-const chapterQuote = "**Existing tools work.**"
+const chapterQuote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 
 function check(input) {
   assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(chapterQuote))

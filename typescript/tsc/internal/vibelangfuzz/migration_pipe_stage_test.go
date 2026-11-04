@@ -12,7 +12,7 @@ import (
 )
 
 const migrationPipeStageTarget = "FuzzMigrationPipeStage"
-const migrationPipeStageQuote = "`vibelang --fix` keeps the existing safe-fix checks and refusal rules."
+const migrationPipeStageQuote = "`vibelang --fix` retains its safety checks and refusal rules."
 
 // A .pipe stage migrates to |>, and only a stage whose first data-first
 // parameter is the piped value takes it as %, first. Effect's Semaphore

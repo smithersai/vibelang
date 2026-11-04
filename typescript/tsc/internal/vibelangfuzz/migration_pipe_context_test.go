@@ -12,7 +12,7 @@ import (
 )
 
 const migrationPipeContextTarget = "FuzzMigrationPipeContext"
-const migrationPipeContextQuote = "`vibelang --fix` keeps the existing safe-fix checks and refusal rules."
+const migrationPipeContextQuote = "`vibelang --fix` retains its safety checks and refusal rules."
 
 // In .pipe a curried generic stage takes its type arguments from the stage's
 // contextual type; standing alone in f(cb)(%) it takes their constraints, and

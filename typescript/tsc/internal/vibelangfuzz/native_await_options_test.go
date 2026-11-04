@@ -20,7 +20,7 @@ var nativeAwaitOptionQuotes = []string{
 	"The ordinary TypeScript module emission and host rules still apply, including diagnostics for incompatible options.",
 	// VIP-26: a namespace wrapper is not a module top level. Native syntax
 	// keeps TypeScript diagnostics, including TS1308 inside that wrapper.
-	"TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types.",
+	"Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types.",
 }
 
 func TestNativeAwaitOptionsQuoted(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const declarationEditorQuote = "4. **Existing tools work.**"
+const declarationEditorQuote = "The language server prefers an in-program `./x.vibe` source to its stale adjacent or relocated `x.d.vibe.ts`."
 
 func TestServiceEditorTokenSpanQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), declarationEditorQuote) {

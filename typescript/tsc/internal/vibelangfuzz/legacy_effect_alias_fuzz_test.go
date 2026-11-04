@@ -104,7 +104,7 @@ func FuzzLegacyEffectAlias(f *testing.F) {
 // compiles and means the same type as Effect.Effect<…> in that position, and
 // wherever it picks the qualified form, the shorthand without new
 // parentheses does not.
-const legacyAliasRepairQuote = "with `A!E!R` where that needs no new parentheses, and with qualified `Effect.Effect<A, E, R>` otherwise, heritage elements included"
+const legacyAliasRepairQuote = "Write `A!E!R` where it needs no new parentheses, otherwise `Effect.Effect<A, E, R>`, including heritage elements"
 
 func TestLegacyEffectAliasRepairQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), legacyAliasRepairQuote) {
@@ -245,7 +245,7 @@ func aliasSameType(name, got, want string) string {
 // Local/imported aliases remain TypeScript types under the same spellings.
 var legacyHeritageKeys = []string{"legacy-interface", "legacy-class", "local-interface", "local-class", "imported-interface", "imported-class"}
 
-const legacyHeritageQuote = "and with qualified `Effect.Effect<A, E, R>` otherwise, heritage elements included"
+const legacyHeritageQuote = "otherwise `Effect.Effect<A, E, R>`, including heritage elements"
 
 func legacyHeritageProject(key string, shape uint8, native bool) (map[string]string, string) {
 	typ := []string{"number", "string", "number | string", "readonly number[]"}[int(shape)%4]
