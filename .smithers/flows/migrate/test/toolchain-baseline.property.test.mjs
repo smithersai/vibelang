@@ -17,7 +17,7 @@ const failure = /toolchain baseline regression/
 
 async function fixture(root, { testsFail = true, compilerFail = false } = {}) {
   const target = join(root, "target"), toolchain = join(root, "toolchain"), run = join(root, "run")
-  put(join(target, "package.json"), { name: "foldkit-collection-corpus", type: "module", dependencies: { effect: "4.0.6" } })
+  put(join(target, "package.json"), { name: "foldkit-collection-corpus", version: "1.0.0", type: "module", dependencies: { effect: "4.0.6" } })
   put(join(target, ".gitignore"), "node_modules/\ndist/\n")
   put(join(target, "tsconfig.json"), { compilerOptions: { types: [] }, include: ["src/**/*"] })
   put(join(target, "src/main." + (compilerFail ? "vibe" : "ts")), "export const value = 1\n")

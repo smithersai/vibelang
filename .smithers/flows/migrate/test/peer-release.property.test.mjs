@@ -19,7 +19,7 @@ test("foldkit-79: upgrade-effect keeps a published plugin peer range and optiona
     mkdirSync(target); mkdirSync(toolchain)
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", {cwd:target})
     writeJson(join(target, "package.json"), {...corpus, dependencies:{effect:"4.0.6"}})
-    writeFileSync(join(target, "bun.lock"), "")
+    writeJson(join(target, "bun.lock"), {lockfileVersion:2,configVersion:1,workspaces:{"":{name:corpus.name,version:corpus.version}},packages:{}})
     writeFileSync(join(target, ".gitignore"), ".vibelang-toolchain/\n")
     const base = await Jj.commit(target, "original foldkit plugin")
     writeFileSync(join(toolchain, "vibelang-new.tgz"), "tarball\n")

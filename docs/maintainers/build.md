@@ -51,6 +51,8 @@ Migration tool-configuration tests load generated Knip modules and check both `.
 
 The formatted-declaration certification file must parse and execute its complete property suites: 40 signature cases and 12 formatter-mutation runs plus explicit mutation examples. A file-level syntax failure is a failed suite, not an omitted property.
 
+Upgrade fixtures use real named and versioned toolchain archives. Public workspaces assert the release dependency and the managed local install pin separately, and compare the staged archive bytes with the producing artifact.
+
 The `//:release` target runs Node's test files with `--test-concurrency=8`.
 This bounds the number of simultaneous file workers independently of the host's
 CPU count and the graph's `--jobs` setting. Every selected file still runs,

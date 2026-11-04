@@ -180,6 +180,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The formatted-declaration certification property suite could not load because an assertion lacked a closing parenthesis. All declaration and formatter-mutation cases now execute again.
 
 - The direct-consumer migration regression expected its specification comments to disappear and failed the compiler gate. Its fixed example now preserves those comments and checks diagnostics at the corresponding source lines.
+- Upgrade regression checks could stop at an invalid fixture lockfile, missing package version or text placeholder used as a toolchain archive. Valid package fixtures now reach the upgrade gates and verify public release dependencies alongside exact staged development pins.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 

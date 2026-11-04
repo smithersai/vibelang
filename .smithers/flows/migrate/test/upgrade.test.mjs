@@ -108,7 +108,7 @@ test("setJsonOverrides adds missing pins to each table it names, creating it", (
 test("planUpgrade writes a new pin to every overrides table, in each one's quoting", () => {
   const yaml = 'packages:\n  - "packages/*"\n\nallowBuilds:\n  "esbuild": false\n\noverrides:\n  "@types/bun": "1.4.4"\n  "effect": "4.0.5"\n'
   const root = '{\n  "name": "fixture",\n  "overrides": {\n    "@types/bun": "1.4.4",\n    "effect": "4.0.5"\n  }\n}\n'
-  const core = '{ "name": "core", "dependencies": { "effect": "4.0.5", "@effect/sql-pg": "4.0.5" } }\n'
+  const core = '{ "name": "core", "version": "1.0.0", "dependencies": { "effect": "4.0.5", "@effect/sql-pg": "4.0.5" } }\n'
   const plan = planUpgrade([{ path: "package.json", text: root }, { path: "pnpm-workspace.yaml", text: yaml }, { path: "packages/core/package.json", text: core }], "4.1.0", "pnpm")
   const written = Object.fromEntries(plan.files.map((f) => [f.path, f.text]))
   assert.equal(written["pnpm-workspace.yaml"], yaml.replace('"effect": "4.0.5"', '"effect": "4.1.0"') + '  "@effect/sql-pg": "4.1.0"\n')
@@ -119,7 +119,7 @@ test("planUpgrade writes a new pin to every overrides table, in each one's quoti
 })
 
 test("planUpgrade moves Effect and its major line wherever a pnpm workspace declares them, keeping formatting and references", () => {
-  const core = '{\n  "name": "core",\n  "files": ["dist"],\n  "dependencies": { "effect": "catalog:" },\n  "peerDependencies": { "effect": "^4.0.5" }\n}\n'
+  const core = '{\n  "name": "core", "version": "1.0.0",\n  "files": ["dist"],\n  "dependencies": { "effect": "catalog:" },\n  "peerDependencies": { "effect": "^4.0.5" }\n}\n'
   const plan = planUpgrade([{ path: "package.json", text: "{}\n" }, { path: "pnpm-workspace.yaml", text: workspaceYaml }, { path: "packages/core/package.json", text: core }], "4.0.6", "pnpm")
   assert.equal(plan.from, "4.0.5")
   assert.deepEqual(plan.pins, { effect: "4.0.6", "@effect/vitest": "4.0.6", "@effect/platform-node": "4.0.6", "@effect/platform-node-shared": "4.0.6" })
@@ -218,7 +218,7 @@ test("upgrade-effect retains the Effect upgrade evidence and rejects new test fa
   try {
     mkdirSync(join(target, "packages/core"), { recursive: true })
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
-    const core = '{\n  "name": "core",\n  "type": "module",\n  "files": ["dist"],\n  "dependencies": { "effect": "catalog:" },\n  "peerDependencies": { "effect": "^4.0.5" }\n}\n'
+    const core = '{\n  "name": "core", "version": "1.0.0",\n  "type": "module",\n  "files": ["dist"],\n  "dependencies": { "effect": "catalog:" },\n  "peerDependencies": { "effect": "^4.0.5" }\n}\n'
     writeFileSync(join(target, "package.json"), '{ "name": "fixture", "private": true, "scripts": { "format": "oxfmt", "format:check": "oxfmt --check" } }\n')
     // The repository's formatter: it records the files it is given.
     mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
@@ -277,7 +277,7 @@ test("upgrade-effect carries pnpm's patched dependency and selectors to the new 
     writeFileSync(join(target, "pnpm-workspace.yaml"), yaml)
     const patch = 'diff --git a/package.json b/package.json\n--- a/package.json\n+++ b/package.json\n@@ -1,4 +1,3 @@\n {\n-  "vitest": "5",\n   "effect": "^4.0.5"\n }\n'
     writeFileSync(join(target, "patches/@effect__vitest@4.0.5.patch"), patch)
-    writeFileSync(join(target, "packages/core/package.json"), '{ "name": "core", "dependencies": { "effect": "catalog:" } }\n')
+    writeFileSync(join(target, "packages/core/package.json"), '{ "name": "core", "version": "1.0.0", "dependencies": { "effect": "catalog:" } }\n')
     writeFileSync(join(target, "packages/core/core.test.ts"), 'import { expect, test } from "bun:test"\ntest("runs", () => expect(1).toBe(1))\n')
     const base = await Jj.commit(target, "base")
     mkdirSync(toolchain)
@@ -315,24 +315,32 @@ test("upgrade-effect moves a repository VibeLang set up to this run's VibeLang i
     writeFileSync(join(target, `.vibelang-toolchain/vibelang-runtime-0.0.11-${old}.tgz`), "old runtime")
     writeFileSync(join(target, "pnpm-lock.yaml"), "")
     writeFileSync(join(target, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n")
-    const core = `{\n  "name": "core",\n  "dependencies": {\n    "effect": "4.0.5",\n    "vibelang-runtime": "file:../../.vibelang-toolchain/vibelang-runtime-0.0.11-${old}.tgz"\n  }\n}\n`
+    const core = `{\n  "name": "core", "version": "1.0.0",\n  "dependencies": {\n    "effect": "4.0.5",\n    "vibelang-runtime": "file:../../.vibelang-toolchain/vibelang-runtime-0.0.11-${old}.tgz"\n  }\n}\n`
     writeFileSync(join(target, "packages/core/package.json"), core)
     writeFileSync(join(target, "packages/core/core.test.ts"), 'import { expect, test } from "bun:test"\ntest("runs", () => expect(1).toBe(1))\n')
     const base = await Jj.commit(target, "base")
     mkdirSync(toolchain)
-    writeFileSync(join(toolchain, "vibelang-0.0.11.tgz"), "new compiler")
-    writeFileSync(join(toolchain, "vibelang-runtime-0.0.11.tgz"), "new runtime")
+    for (const name of ["vibelang", "vibelang-runtime"]) {
+      mkdirSync(join(toolchain, "package"))
+      writeJson(join(toolchain, "package/package.json"), { name, version: "0.0.11" })
+      writeFileSync(join(toolchain, "package/index.js"), "new " + name + "\n")
+      await must("tar -czf " + name + "-0.0.11.tgz package", { cwd: toolchain })
+      rmSync(join(toolchain, "package"), { recursive: true })
+    }
     writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.0.6", compiler: "native/vibelang", packages: { vibelang: "vibelang-0.0.11.tgz", "vibelang-runtime": "vibelang-runtime-0.0.11.tgz" } })
 
     const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["packages/core"], test: "bun test", testCwd: "packages/core", toolchain, install: "true", base })
     const runtime = readJson(join(target, "packages/core/package.json")).dependencies["vibelang-runtime"]
-    assert.match(runtime, /^file:\.\.\/\.\.\/\.vibelang-toolchain\/vibelang-runtime-0\.0\.11-[0-9a-f]{12}\.tgz$/)
-    assert.equal(readFileSync(join(target, "packages/core", runtime.slice("file:".length)), "utf8"), "new runtime")
+    assert.equal(runtime, "0.0.11")
+    const pins = readJson(join(target, ".vibelang/toolchain-publication.json")).localPins
+    assert.match(pins["vibelang-runtime"], /^file:\.\/\.vibelang-toolchain\/vibelang-runtime-0\.0\.11-[0-9a-f]{12}\.tgz$/)
+    assert.deepEqual(readFileSync(join(target, pins["vibelang-runtime"].slice(5))), readFileSync(join(toolchain, "vibelang-runtime-0.0.11.tgz")))
+    assert.ok(readFileSync(join(target, "pnpm-workspace.yaml"), "utf8").includes(pins["vibelang-runtime"]))
     const compiler = readJson(join(target, "package.json")).devDependencies.vibelang
     assert.match(compiler, /^file:\.\/\.vibelang-toolchain\/vibelang-0\.0\.11-[0-9a-f]{12}\.tgz$/)
-    assert.equal(readFileSync(join(target, compiler.slice("file:".length)), "utf8"), "new compiler")
+    assert.deepEqual(readFileSync(join(target, compiler.slice(5))), readFileSync(join(toolchain, "vibelang-0.0.11.tgz")))
     // Effect and VibeLang move together in the upgrade's commit, and each file keeps its formatting.
-    assert.equal(readFileSync(join(target, "packages/core/package.json"), "utf8"), core.replace("4.0.5", "4.0.6").replace(`vibelang-runtime-0.0.11-${old}.tgz`, runtime.split("/").at(-1)))
+    assert.equal(readFileSync(join(target, "packages/core/package.json"), "utf8"), JSON.stringify({ ...JSON.parse(core), dependencies: { effect: "4.0.6", "vibelang-runtime": "0.0.11" } }, null, 2) + "\n")
     assert.deepEqual(result.vibelang, ["package.json", "packages/core/package.json"])
     const { stdout } = await must(`jj diff --summary -r ${result.jj.commit}`, { cwd: target })
     const files = stdout.trim().split("\n")
@@ -425,7 +433,7 @@ async function vibeLangPatchFixture(root, register) {
   writeFileSync(join(target, "pnpm-workspace.yaml"), yaml)
   writeFileSync(join(target, "patches/vibelang@0.0.10.patch"), vibelangFix)
   writeFileSync(join(target, "patches/@vitest__coverage-v8@5.0.0.patch"), "")
-  writeFileSync(join(target, "packages/core/package.json"), '{ "name": "core", "dependencies": { "effect": "4.0.6" } }\n')
+  writeFileSync(join(target, "packages/core/package.json"), '{ "name": "core", "version": "1.0.0", "dependencies": { "effect": "4.0.6" } }\n')
   writeFileSync(join(target, "packages/core/core.test.ts"), 'import { expect, test } from "bun:test"\ntest("runs", () => expect(1).toBe(1))\n')
   const base = await Jj.commit(target, "base")
   mkdirSync(join(toolchain, "package"), { recursive: true })
