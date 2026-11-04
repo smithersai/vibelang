@@ -1,13 +1,16 @@
 package ls
 
 import (
+	"context"
 	"slices"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/astnav"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
 )
 
 // A module name is a lexical binding, but its identifier specifiers are
@@ -97,12 +100,12 @@ func (l *LanguageService) moduleDeclarationOccurrences(uri lsproto.DocumentUri, 
 			span, fidelity := l.converters.ToLSPRange(file, core.NewTextRange(start, target.End()))
 			if fidelity.IsExact() {
 				name := target.Text()
-                if reference {
-                    if module := file.EmbeddedModuleBySpecifier(node.Text()); module != nil {
-                        name = module.EmbeddedModule().Name
-                    }
-                }
-                occurrences = append(occurrences, occurrence{name, span, declaration})
+				if reference {
+					if module := file.EmbeddedModuleBySpecifier(node.Text()); module != nil {
+						name = module.EmbeddedModule().Name
+					}
+				}
+				occurrences = append(occurrences, occurrence{name, span, declaration})
 			}
 			return false
 		}
@@ -211,22 +214,148 @@ func (l *LanguageService) followModuleDeclarationReferences(response lsproto.Ref
 	}
 }
 
-// Module bindings keep their own references even when TypeScript merges a
-// type-only import into the namespace-shaped recovery declaration.
-func (l *LanguageService) moduleDeclarationReferences(params *lsproto.ReferenceParams) (lsproto.ReferencesResponse, bool) {
-	_, _, occurrences, ok := l.moduleDeclarationOccurrences(params.TextDocument.Uri, params.Position)
-	if !ok {
-		return lsproto.ReferencesResponse{}, false
-	}
-	var locations []lsproto.Location
-	for _, item := range occurrences {
-		if !item.declaration || params.Context.IncludeDeclaration {
-			locations = append(locations, lsproto.Location{Uri: params.TextDocument.Uri, Range: item.span})
-		}
-	}
-	return lsproto.ReferencesResponse{Locations: &locations}, true
-}
-
 func isModuleDeclarationName(node *ast.Node) bool {
 	return node != nil && node.Parent != nil && parser.IsVibeLangModuleDeclaration(node.Parent) && node.Parent.Name() == node
+}
+
+// followModuleDeclarationHighlights follows the reference set of a module
+// binding, including native symbols merged with it during error recovery.
+func (l *LanguageService) followModuleDeclarationHighlights(response lsproto.MultiDocumentHighlightsOrNull, references lsproto.ReferencesResponse) {
+	if response.MultiDocumentHighlights == nil || references.Locations == nil {
+		return
+	}
+	moduleBinding := false
+	for _, location := range *references.Locations {
+		_, trigger, occurrences, ok := l.moduleDeclarationOccurrences(location.Uri, location.Range.Start)
+		if ok && trigger == location.Range && slices.ContainsFunc(occurrences, func(item moduleOccurrence) bool { return item.declaration && item.span == trigger }) {
+			moduleBinding = true
+			break
+		}
+	}
+	if !moduleBinding {
+		return
+	}
+	documents := map[lsproto.DocumentUri]*lsproto.MultiDocumentHighlight{}
+	seen := map[lsproto.DocumentUri]map[lsproto.Range]bool{}
+	for _, document := range *response.MultiDocumentHighlights {
+		documents[document.Uri] = document
+		seen[document.Uri] = map[lsproto.Range]bool{}
+		for _, highlight := range document.Highlights {
+			seen[document.Uri][highlight.Range] = true
+		}
+	}
+	for _, location := range *references.Locations {
+		document := documents[location.Uri]
+		if document == nil || seen[location.Uri][location.Range] {
+			continue
+		}
+		seen[location.Uri][location.Range] = true
+		highlight := &lsproto.DocumentHighlight{Range: location.Range}
+		_, _, occurrences, ok := l.moduleDeclarationOccurrences(location.Uri, location.Range.Start)
+		if ok {
+			kind := lsproto.DocumentHighlightKindRead
+			if slices.ContainsFunc(occurrences, func(item moduleOccurrence) bool { return item.declaration && item.span == location.Range }) {
+				kind = lsproto.DocumentHighlightKindWrite
+			}
+			highlight.Kind = &kind
+		}
+		document.Highlights = append(document.Highlights, highlight)
+	}
+}
+
+// referenceCanMergeModule limits alias closure to identifiers whose spelling
+// is also a module declaration of their file. Other symbols keep native queries.
+func (l *LanguageService) referenceCanMergeModule(location lsproto.Location) bool {
+	_, file := l.tryGetProgramAndFile(location.Uri.FileName())
+	if file == nil {
+		return false
+	}
+	if _, _, _, module := l.moduleDeclarationOccurrences(location.Uri, location.Range.Start); module {
+		return false
+	}
+	for _, mapped := range l.converters.FromLSPPositionForSourceFile(file, location.Range.Start, spanmap.FeatureReferences) {
+		if !mapped.Fidelity.IsSingleSegment() {
+			continue
+		}
+		node := astnav.GetTouchingPropertyName(mapped.Script, int(mapped.Position))
+		if node == nil || !ast.IsIdentifier(node) {
+			continue
+		}
+		if slices.ContainsFunc(file.Statements.Nodes, func(statement *ast.Node) bool {
+			return parser.IsVibeLangModuleDeclaration(statement) && statement.Name().Text() == node.Text()
+		}) {
+			return true
+		}
+	}
+	return false
+}
+
+// expandModuleReferenceAliases closes the native alias path before adding
+// written module specifiers. Looking up the imported declaration must find
+// the same recovery binding as looking up its alias in the containing file.
+func (l *LanguageService) expandModuleReferenceAliases(ctx context.Context, params *lsproto.ReferenceParams, orchestrator CrossProjectOrchestrator, response lsproto.ReferencesResponse) error {
+	if response.Locations == nil {
+		return nil
+	}
+	includeDeclaration := params.Context != nil && params.Context.IncludeDeclaration
+	seen := map[lsproto.Location]bool{}
+	for _, location := range *response.Locations {
+		seen[location] = true
+	}
+	appendLocation := func(location lsproto.Location) {
+		if !seen[location] {
+			seen[location] = true
+			*response.Locations = append(*response.Locations, location)
+		}
+	}
+	for index := 0; index < len(*response.Locations); index++ {
+		location := (*response.Locations)[index]
+		if !l.referenceCanMergeModule(location) {
+			continue
+		}
+		at := *params
+		at.TextDocument = lsproto.TextDocumentIdentifier{Uri: location.Uri}
+		at.Position = location.Range.Start
+		at.Context = &lsproto.ReferenceContext{IncludeDeclaration: true}
+		native, err := l.handleCrossProject(ctx, &at, orchestrator, (*LanguageService).symbolAndEntriesToReferences,
+			combineReferences, false, false, symbolEntryTransformOptions{}, nil)
+		if err != nil {
+			return err
+		}
+		if native.Locations == nil {
+			continue
+		}
+		if includeDeclaration {
+			for _, found := range *native.Locations {
+				appendLocation(found)
+			}
+		} else {
+			at.Context = &lsproto.ReferenceContext{IncludeDeclaration: false}
+			uses, err := l.handleCrossProject(ctx, &at, orchestrator, (*LanguageService).symbolAndEntriesToReferences,
+				combineReferences, false, false, symbolEntryTransformOptions{}, nil)
+			if err != nil {
+				return err
+			}
+			if uses.Locations != nil {
+				for _, found := range *uses.Locations {
+					appendLocation(found)
+				}
+			}
+		}
+		for _, found := range *native.Locations {
+			_, trigger, occurrences, ok := l.moduleDeclarationOccurrences(found.Uri, found.Range.Start)
+			if !ok || trigger != found.Range {
+				continue
+			}
+			if !slices.ContainsFunc(occurrences, func(item moduleOccurrence) bool { return item.declaration && item.span == trigger }) {
+				continue
+			}
+			for _, item := range occurrences {
+				if includeDeclaration || !item.declaration {
+					appendLocation(lsproto.Location{Uri: found.Uri, Range: item.span})
+				}
+			}
+		}
+	}
+	return nil
 }

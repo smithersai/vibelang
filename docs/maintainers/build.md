@@ -283,6 +283,7 @@ queue:
 | `//typescript/vibelang:lsp-smoke` | `typescript/vibelang/lsp-*`, its `PACKAGE.ts`, or the compiler's `format.mjs` |
 | `//:go-vibelangfuzz-editor` | the language service, `typescript/tsc/internal/ls/` |
 | `//:go-error-inheritance` | Error declaration parsing/checking, diagnostic filtering and their regression tests; checks `EK2117` ownership and preserves independent native errors. |
+| `//:go-module-highlights` | Module reference/rename and document-highlight implementations and regression tests; verifies merged module bindings in ordinary and multi-document highlighting. |
 | `//:go-vibelang-fix-twins` | a non-test Go source in the parser, `internal/vibelang/` or `internal/effectglobals/` |
 
 The complete parser package takes less than a second after compilation and includes the clash-corpus expectations. Parser and corpus changes select it from their first matching train.

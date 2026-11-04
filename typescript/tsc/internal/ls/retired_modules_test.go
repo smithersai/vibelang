@@ -1,6 +1,7 @@
 package ls_test
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -226,8 +227,8 @@ func FuzzModuleDeclarationRename(f *testing.F) {
 	})
 }
 
-// VIP-40: "The name is a lexical binding of the file." A type-only import
-// with the same spelling remains a separate TypeScript type binding.
+// VIP-40: "The name is a lexical binding of the file." When TypeScript
+// merges recovery symbols, references, highlights and rename agree on them.
 func TestTypeOnlyImportModuleRename(t *testing.T) {
 	for _, name := range []string{"M", "Text", "shape"} {
 		t.Run(name, func(t *testing.T) { checkTypeOnlyImportModuleRename(t, name) })
@@ -263,9 +264,9 @@ func checkTypeOnlyImportModuleRename(t *testing.T, name string) {
 		t.Fatal(err)
 	}
 	modulePos, _ := converters.ToLSPPosition(file, core.TextPos(strings.Index(source, "module ")+len("module ")))
-    if refs.Locations == nil || !slices.ContainsFunc(*refs.Locations, func(loc lsproto.Location) bool { return loc.Uri == uri && loc.Range.Start == modulePos }) {
-        t.Error("merged type references lost the module declaration")
-    }
+	if refs.Locations == nil || !slices.ContainsFunc(*refs.Locations, func(loc lsproto.Location) bool { return loc.Uri == uri && loc.Range.Start == modulePos }) {
+		t.Error("merged type references lost the module declaration")
+	}
 
 	highlights, err := service.ProvideDocumentHighlights(t.Context(), uri, pos)
 	if err != nil {
@@ -273,8 +274,8 @@ func checkTypeOnlyImportModuleRename(t *testing.T, name string) {
 	}
 	if highlights.DocumentHighlights != nil {
 		for _, h := range *highlights.DocumentHighlights {
-			if h.Range.Start == modulePos {
-				t.Error("type highlight includes independent module declaration")
+			if !slices.ContainsFunc(*refs.Locations, func(loc lsproto.Location) bool { return loc.Uri == uri && loc.Range == h.Range }) {
+				t.Error("type highlight is not a reference")
 			}
 		}
 	}
@@ -286,15 +287,25 @@ func checkTypeOnlyImportModuleRename(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if moduleRefs.Locations == nil || moduleHighlights.DocumentHighlights == nil || len(*moduleRefs.Locations) != len(*moduleHighlights.DocumentHighlights) {
-		t.Errorf("module highlights do not match module references: %v, %v", moduleRefs, moduleHighlights)
-	} else {
-		for _, h := range *moduleHighlights.DocumentHighlights {
-			if !slices.ContainsFunc(*moduleRefs.Locations, func(loc lsproto.Location) bool { return loc.Uri == uri && loc.Range == h.Range }) {
-				t.Errorf("module highlight crossed type binding: %v", h)
+	var referenceRanges, highlightRanges []string
+	if moduleRefs.Locations != nil {
+		for _, item := range *moduleRefs.Locations {
+			if item.Uri == uri {
+				referenceRanges = append(referenceRanges, fmt.Sprint(item.Range))
 			}
 		}
 	}
+	if moduleHighlights.DocumentHighlights != nil {
+		for _, item := range *moduleHighlights.DocumentHighlights {
+			highlightRanges = append(highlightRanges, fmt.Sprint(item.Range))
+		}
+	}
+	slices.Sort(referenceRanges)
+	slices.Sort(highlightRanges)
+	if !slices.Equal(referenceRanges, highlightRanges) {
+		t.Errorf("module document highlights %v, want current-document references %v", highlightRanges, referenceRanges)
+	}
+
 	response, err := service.ProvideRename(t.Context(), &lsproto.RenameParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Position: pos, NewName: replacement}, nil)
 	if err != nil {
 		t.Fatal(err)

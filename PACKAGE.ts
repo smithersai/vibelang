@@ -802,6 +802,14 @@ const targets = {
     [go, node],
     "15m"
   ),
+  "go-module-highlights": S.Shell.Test({
+    summary: "Merged module names retain every reference in document highlights and rename.",
+    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestMergedModuleDeclarationHighlights|FuzzMergedModuleDeclarationHighlights|TestModuleDeclarationReferences|FuzzModuleDeclarationReferences|TestMergedModuleDeclarationRename|TestTypeOnlyImportModuleRename|FuzzTypeOnlyImportModuleRename)$' ./internal/ls",
+    data: [Tsc.srcs, S.Filegroup({ srcs: [...S.glob(["typescript/tsc/internal/ls/**"])] })],
+    tools: [go],
+    sandbox: "none",
+    timeout: "10m"
+  }),
   "tooling-citations": S.Shell.Test({
     summary: "Native diagnostic, actionable advice and retired-setting fuzz oracles match the published tooling contracts.",
     shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(Test(NativeServiceKeyNamespaceQuoted|ServiceShapeQualifierFallbackQuoted|PlatformYieldAdviceQuoted|RetiredConfigOptionsQuoted)|FuzzRetiredConfigOptions)$' ./internal/vibelangfuzz/",

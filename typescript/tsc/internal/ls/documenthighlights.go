@@ -10,6 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsutil"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
 	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
@@ -41,28 +42,10 @@ func (l *LanguageService) ProvideMultiDocumentHighlights(ctx context.Context, do
 
 func (l *LanguageService) provideDocumentHighlightsWorker(ctx context.Context, documentUri lsproto.DocumentUri, documentPosition lsproto.Position, filesToSearch []lsproto.DocumentUri) (lsproto.MultiDocumentHighlightsOrNull, error) {
 	program, sourceFile := l.getProgramAndFile(documentUri)
-	// Module bindings have identifier specifiers instead of TypeScript symbol references.
-	if _, _, occurrences, ok := l.moduleDeclarationOccurrences(documentUri, documentPosition); ok {
-		searchCurrent, validSearch := false, false
-		for _, uri := range filesToSearch {
-			if sf := program.GetSourceFile(uri.FileName()); sf != nil {
-				validSearch = true
-				searchCurrent = searchCurrent || sf.OriginalFileName() == sourceFile.OriginalFileName()
-			}
-		}
-		var documents []*lsproto.MultiDocumentHighlight
-		if !validSearch || searchCurrent {
-			var highlights []*lsproto.DocumentHighlight
-			for _, item := range occurrences {
-				kind := lsproto.DocumentHighlightKindRead
-				if item.declaration {
-					kind = lsproto.DocumentHighlightKindWrite
-				}
-				highlights = append(highlights, &lsproto.DocumentHighlight{Range: item.span, Kind: &kind})
-			}
-			documents = append(documents, &lsproto.MultiDocumentHighlight{Uri: documentUri, Highlights: highlights})
-		}
-		return lsproto.MultiDocumentHighlightsOrNull{MultiDocumentHighlights: &documents}, nil
+	// An identifier specifier names the declaration's binding, including any
+	// native symbol the checker merges with it during error recovery.
+	if declaration, _, ok := l.moduleDeclarationAt(documentUri, documentPosition); ok {
+		documentPosition = declaration
 	}
 	positions := l.converters.FromLSPPositionForSourceFile(sourceFile, documentPosition, spanmap.FeatureDocumentHighlights)
 	results := make([]lsproto.MultiDocumentHighlightsOrNull, 0, len(positions))
@@ -71,7 +54,18 @@ func (l *LanguageService) provideDocumentHighlightsWorker(ctx context.Context, d
 			results = append(results, l.provideDocumentHighlightsAtPosition(ctx, documentUri, int(mapped.Position), program, mapped.Script, filesToSearch))
 		}
 	}
-	return combineMultiDocumentHighlights(results), nil
+	result := combineMultiDocumentHighlights(results)
+	if slices.ContainsFunc(sourceFile.Statements.Nodes, parser.IsVibeLangModuleDeclaration) {
+		references, err := l.ProvideReferences(ctx, &lsproto.ReferenceParams{
+			TextDocument: lsproto.TextDocumentIdentifier{Uri: documentUri}, Position: documentPosition,
+			Context: &lsproto.ReferenceContext{IncludeDeclaration: true},
+		}, nil)
+		if err != nil {
+			return lsproto.MultiDocumentHighlightsOrNull{}, err
+		}
+		l.followModuleDeclarationHighlights(result, references)
+	}
+	return result, nil
 }
 
 func (l *LanguageService) provideDocumentHighlightsAtPosition(ctx context.Context, documentUri lsproto.DocumentUri, position int, program *compiler.Program, sourceFile *ast.SourceFile, filesToSearch []lsproto.DocumentUri) lsproto.MultiDocumentHighlightsOrNull {
@@ -171,9 +165,6 @@ func (l *LanguageService) getSemanticDocumentHighlights(ctx context.Context, pos
 	fileHighlights := make(map[string][]*lsproto.DocumentHighlight)
 	for _, entry := range referenceEntries {
 		for _, ref := range entry.references {
-			if isModuleDeclarationName(ref.node) {
-				continue
-			}
 			fileName, highlight := l.toDocumentHighlight(ref)
 			if highlight == nil {
 				continue
