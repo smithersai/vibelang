@@ -1649,3 +1649,12 @@ run outside the comparison call so its failure-reporting contract cannot
 absorb them. All 13 tests retain fresh-versus-cached result equality, actual
 cache hits, content and resolution invalidation, documentation changes,
 18 changing environments, 20 file-group errors and bounded retention.
+
+Pure declaration and JSON helpers in `scripts/api-identity.test.mjs` select
+`lib.es5.d.ts` for comparison and independent native validation. The resource
+guard inspects the actual programs and asserts after comparison returns, so
+an intentional invalid-comparison result cannot absorb a library violation.
+All property samples, type/name/comment mutations, private-member native
+assignability checks and JSON rejection controls remain enabled. Direct
+configuration discovery, caller-option overrides, CLI and compiler-exception
+tests keep their existing environments.

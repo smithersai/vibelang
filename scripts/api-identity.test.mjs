@@ -26,7 +26,26 @@ function fixture(before, after, fn, manifest) {
     return fn(join(root, "before"), join(root, "after"))
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
-const compare = (a, b, manifest) => fixture(a, b, (a, b) => compareApiIdentity(ts, a, b), manifest)
+const pureLibraries = { lib: ["lib.es5.d.ts"] }
+
+// Guard outside comparison: an expected invalid result must not absorb a
+// resource violation as one of the comparator's intentional failure records.
+function withPureFixtureCompiler(fn) {
+  let browserLibraries = 0
+  const compiler = { ...ts, createProgram(...args) {
+    const program = ts.createProgram(...args)
+    browserLibraries += program.getSourceFiles().filter(source =>
+      /[/\\]lib\.(?:dom|webworker)(?:\.[\w.]+)?\.d\.ts$/.test(source.fileName)).length
+    return program
+  } }
+  const result = fn(compiler)
+  assert.equal(browserLibraries, 0, "Pure API fixtures must not load unrelated browser libraries")
+  return result
+}
+const comparePure = (a, b, compilerOptions = {}) => withPureFixtureCompiler(compiler =>
+  compareApiIdentity(compiler, a, b, { compilerOptions: { ...pureLibraries, ...compilerOptions } }))
+
+const compare = (a, b, manifest) => fixture(a, b, comparePure, manifest)
 const pass = (a, b, manifest) => {
   const result = compare(a, b, manifest)
   assert.equal(result.identical, true, JSON.stringify(result, null, 2))
@@ -274,8 +293,8 @@ const privateMembers = [
 ]
 
 function nativeDiagnostics(files) {
-  const options = { strict: true, noEmit: true, skipLibCheck: false, types: [], target: ts.ScriptTarget.ESNext }
-  return ts.getPreEmitDiagnostics(ts.createProgram(files, options))
+  const options = { ...pureLibraries, strict: true, noEmit: true, skipLibCheck: false, types: [], target: ts.ScriptTarget.ESNext }
+  return withPureFixtureCompiler(compiler => ts.getPreEmitDiagnostics(compiler.createProgram(files, options)))
 }
 
 test("private member alignment preserves valid elided signatures", () => {
@@ -794,22 +813,24 @@ const jsonCorpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/foldki
 const jsonManifest = jsonCorpus.manifest
 const jsonCompare = (a, b, compilerOptions = { resolveJsonModule: true }) => fixture(
   { "all.json": JSON.stringify(a) }, { "all.json": JSON.stringify(b) },
-  (a, b) => compareApiIdentity(ts, a, b, { compilerOptions }), jsonManifest)
+  (a, b) => comparePure(a, b, compilerOptions), jsonManifest)
 
 test("JSON assets use stock resolveJsonModule types and remain compared", () => {
   const input = jsonCorpus.before
   assert.equal(jsonCompare(input, jsonCorpus.after).identical, true)
   fixture({ "all.json": JSON.stringify(input) }, { "all.json": JSON.stringify(input) }, (a, b) => {
     for (const dir of [a, b]) {
-      const program = ts.createProgram([join(dir, "all.json")], {
-        noEmit: true, resolveJsonModule: true, module: ts.ModuleKind.ESNext,
-        moduleResolution: ts.ModuleResolutionKind.Bundler, types: [],
+      withPureFixtureCompiler(compiler => {
+        const program = compiler.createProgram([join(dir, "all.json")], {
+          ...pureLibraries, noEmit: true, resolveJsonModule: true, module: ts.ModuleKind.ESNext,
+          moduleResolution: ts.ModuleResolutionKind.Bundler, types: [],
+        })
+        assert.deepEqual(ts.getPreEmitDiagnostics(program), [], "stock tsc 5.9.3 accepts the fixture")
       })
-      assert.deepEqual(ts.getPreEmitDiagnostics(program), [], "stock tsc 5.9.3 accepts the fixture")
     }
     assert.equal(ts.version, "5.9.3")
     for (const after of [a, b]) {
-      const result = compareApiIdentity(ts, a, after, { compilerOptions: { resolveJsonModule: true } })
+      const result = comparePure(a, after, { resolveJsonModule: true })
       assert.equal(result.identical, true, JSON.stringify(result))
     }
   }, jsonManifest)
@@ -922,4 +943,14 @@ test("fatal worker signals and empty successful exits are invalid CLI receipts",
       assert.ok(result.environmentDiagnostics.some(d => d.blocking))
     }
   })
+})
+
+test("pure declaration fixtures retain utility types and reject missing browser bindings", () => {
+  const text = "export type X = Readonly<Partial<{ items: ReadonlyArray<string> }>>;"
+  pass(text, text)
+  fail(text, text.replace("string", "number"))
+  const missing = compare("export type X = Window;", "export type X = Window;")
+  assert.equal(missing.comparisonComplete, false)
+  assert.deepEqual(missing.typeDifferences, [])
+  assert.ok(missing.environmentDiagnostics.some(item => item.blocking && /TS2304/.test(item.diagnostic)))
 })
