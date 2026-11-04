@@ -8,10 +8,10 @@ import ts from "../../../docs/tools/node_modules/typescript/lib/typescript.js"
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-const spec = readFileSync(new URL("../../../docs/design/src/007-tooling.md",import.meta.url),"utf8")
+const spec = readFileSync(new URL("../../../docs/design/src/001-functions.md",import.meta.url),"utf8")
 
 test("native declarations preserve unrelated written TypeScript specifiers",()=>{
- assert.ok(spec.includes("every other written specifier stays as written"))
+ assert.ok(spec.includes("written `./user.js`, `./App.jsx`, `./user` and native `./plain.ts` keep their spelling."))
  fc.assert(fc.property(fc.constantFrom("helper","file space"),fc.constantFrom("'",'"'),(name,quote)=>{
   const dir=mkdtempSync(join(tmpdir(),"declaration-spelling-"))
   try {

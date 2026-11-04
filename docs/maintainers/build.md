@@ -1229,3 +1229,5 @@ Async conversion integration tests retain every refusal fixture in the LSP proje
 Declaration comparison fixtures follow the API identity contract in Functions: equivalent target spellings may compare equal only with matching exported names, mutually identical types and export documentation. Preserve explicit type/name/doc counterexamples and incomplete-environment refusals alongside the original 80-run module-resolution property.
 
 The Knip JSDoc and local-type-query properties and their paired Go citation guard share the exact current Chapter 007 tool-input sentence. Refresh the Go and Node citations atomically; retain the Chapter 000 counterpart rule, all 300/80 discovery samples and strict saved-regression guards.
+
+The native declaration-spelling property reads the current Specifiers contract in Functions. Its 12 stock TypeScript cases continue to check written .ts imports, quote styles and actual emitted declaration text; moving the citation changes neither compiler options nor emit assertions.
