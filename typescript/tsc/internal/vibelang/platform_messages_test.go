@@ -71,7 +71,7 @@ export const run = (name: string) => path.join("dist", name)`, []string{
 		{"child process", `import { execFileSync } from "node:child_process"
 export const run = () => execFileSync("git", ["status"])`, []string{
 			"execFileSync from node:child_process is platform code, which a .vibe file does not import as a value.",
-			"Use the ChildProcessSpawner service:   ChildProcessSpawner.string(ChildProcess.make(command, args))",
+			"Use the ChildProcessSpawner service:   try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))",
 			provideNodeServices,
 		}},
 		{"http client", `export const run = (url: string) => fetch(url)`, []string{
@@ -165,7 +165,7 @@ export const run = () => homedir()`, []string{
 		{"experimental service with a note", `export const run = (pid: number) => process.kill(pid, "SIGINT")`, []string{
 			"process.kill is platform code, which VibeLang code does not use directly.",
 			"Use the experimental Process service:   Experimental.Process.kill(pid, { killSignal })", provideExperimental,
-			"Signal 0 is Experimental.Process.isRunning(pid); a child that ChildProcessSpawner.spawn started also stops with its handle's kill().",
+			"Signal 0 is Experimental.Process.isRunning(pid); a child that the injected ChildProcessSpawner service started also stops with its handle's kill().",
 		}},
 		{"experimental locks", `export const run = (name: string) => navigator.locks.request(name, () => undefined)`, []string{
 			"navigator.locks is platform code, which VibeLang code does not use directly.",

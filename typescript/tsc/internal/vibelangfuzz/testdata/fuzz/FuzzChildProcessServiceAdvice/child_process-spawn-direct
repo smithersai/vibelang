@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("child_process:spawn:direct\x00\x00")

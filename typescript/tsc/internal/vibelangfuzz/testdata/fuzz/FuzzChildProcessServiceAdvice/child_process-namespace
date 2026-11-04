@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("child_process:namespace\x00\x00")

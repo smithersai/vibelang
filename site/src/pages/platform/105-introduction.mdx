@@ -45,11 +45,13 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 
 `try FileSystem.FileSystem` gets the implementation from the current environment. `try fs.readFileString(file)` runs its method and returns the text. Its `PlatformError` joins E. The module's own exports keep their meaning, as `FileSystem.layerNoop` does, and the service's type is `FileSystem.FileSystem` ([Effect's modules](/getting-started/008-importing-effect#a-modules-own-export)). `scoped` closes the temporary directory's scope when the block completes, fails, or is interrupted.
 
+The child-process `EK4402` examples obtain `ChildProcessSpawner.ChildProcessSpawner` with `try`, then run its `string` or `spawn` method. A spawned handle needs `Scope`; keep it inside `scoped`, as in the example above.
+
 Calling `main()` builds an Effect. `NodeRuntime.runMain` runs it, and `Effect.provide` supplies `NodeServices.layer`. Shared modules declare effect functions and leave platform selection to the entry module or test.
 
 ## Replacing Node.js and web calls
 
-Each Node.js or web call has an Effect replacement, which needs no import. EK4402 names it and its layer. `Date.now` and `Math.random` are ECMAScript and allowed; their rows give the replacement a test can control:
+Each Node.js or web call has an Effect replacement, which needs no import. `EK4402` names it and its layer. `Date.now` and `Math.random` are ECMAScript and allowed; their rows give the replacement a test can control:
 
 | Call | Effect | Layer |
 | --- | --- | --- |

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("node:child_process:spawn:alias\x00\x00")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("node:child_process:execFile:alias\x00\x00")

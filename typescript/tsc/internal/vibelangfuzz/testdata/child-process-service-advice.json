@@ -1,0 +1,142 @@
+[
+  {
+    "key": "node:child_process:spawn:direct",
+    "source": "import { spawn } from \"node:child_process\";export const value=spawn",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).spawn(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:spawn:alias",
+    "source": "import { spawn as Native } from \"node:child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).spawn(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:spawnSync:direct",
+    "source": "import { spawnSync } from \"node:child_process\";export const value=spawnSync",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:spawnSync:alias",
+    "source": "import { spawnSync as Native } from \"node:child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:exec:direct",
+    "source": "import { exec } from \"node:child_process\";export const value=exec",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:exec:alias",
+    "source": "import { exec as Native } from \"node:child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:execSync:direct",
+    "source": "import { execSync } from \"node:child_process\";export const value=execSync",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:execSync:alias",
+    "source": "import { execSync as Native } from \"node:child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:execFile:direct",
+    "source": "import { execFile } from \"node:child_process\";export const value=execFile",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:execFile:alias",
+    "source": "import { execFile as Native } from \"node:child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:execFileSync:direct",
+    "source": "import { execFileSync } from \"node:child_process\";export const value=execFileSync",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:execFileSync:alias",
+    "source": "import { execFileSync as Native } from \"node:child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:namespace",
+    "source": "import * as Native from \"node:child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "node:child_process:side-effect",
+    "source": "import \"node:child_process\";export const value=1",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:spawn:direct",
+    "source": "import { spawn } from \"child_process\";export const value=spawn",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).spawn(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:spawn:alias",
+    "source": "import { spawn as Native } from \"child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).spawn(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:spawnSync:direct",
+    "source": "import { spawnSync } from \"child_process\";export const value=spawnSync",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:spawnSync:alias",
+    "source": "import { spawnSync as Native } from \"child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:exec:direct",
+    "source": "import { exec } from \"child_process\";export const value=exec",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:exec:alias",
+    "source": "import { exec as Native } from \"child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:execSync:direct",
+    "source": "import { execSync } from \"child_process\";export const value=execSync",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:execSync:alias",
+    "source": "import { execSync as Native } from \"child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:execFile:direct",
+    "source": "import { execFile } from \"child_process\";export const value=execFile",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:execFile:alias",
+    "source": "import { execFile as Native } from \"child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:execFileSync:direct",
+    "source": "import { execFileSync } from \"child_process\";export const value=execFileSync",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:execFileSync:alias",
+    "source": "import { execFileSync as Native } from \"child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:namespace",
+    "source": "import * as Native from \"child_process\";export const value=Native",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  },
+  {
+    "key": "child_process:side-effect",
+    "source": "import \"child_process\";export const value=1",
+    "advice": "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))"
+  }
+]
