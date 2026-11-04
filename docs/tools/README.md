@@ -427,10 +427,11 @@ import { test } from "bun:test"
 test.todo("rule-evidence: docs/design/src/001-functions.md#rules | explicit run | present | `try` must run.")
 ```
 
-Use `removed` instead of `present` for a removed rule. The chapter, heading,
-state and canonical sentence must all match; a chapter or heading alone
-cannot cover another rule. A renamed or unchanged pending test, a comment,
-a fixture string, a skipped suite or an uncalled function does not count.
+Use `present` for a new or changed rule; deleted rules need no pending receipt
+because they add no obligation. The chapter, heading, state and canonical
+sentence must all match; a chapter or heading alone cannot cover another rule.
+A renamed or unchanged pending test, a comment, a fixture string, a skipped
+suite or an uncalled function does not count.
 Pending tests are reported separately from executable cases and compiled
 twins, so passing this obligation check does not claim implementation coverage.
 
