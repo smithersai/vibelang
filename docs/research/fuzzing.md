@@ -1051,3 +1051,5 @@ Layer-composition advice keeps its native `Layer.provide` and `Layer.provideMerg
 The alias-configuration Go guard shares the current tooling quotation with the migration property suite. Its route matrix, compiler consumers, path rewrites, corpus and property sample counts remain unchanged.
 
 Owner-syntax coverage cites the complete current `EK0512` row and mutates closed block-bodied or parenthesized handlers, with grouped whole-catch controls. Existing owner-code cases, pending keys and native-diagnostic rejection checks remain unchanged.
+
+The failures matrix quotes the current field-initializer and static-block source-context rule. Its existing `EK0401` expectations, marked spans, programs and mutation model remain unchanged.

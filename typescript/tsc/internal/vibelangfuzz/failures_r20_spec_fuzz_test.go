@@ -83,8 +83,8 @@ func failuresRound20Cases() []*failCase {
 	const (
 		r20Section        = "This section is the one definition of throw tracking; every other chapter refers to it."
 		r20EffectfulBody  = "- A plain function whose return type is wholly effectful, and an effectful function's parameter list, are stricter: any thrown type other than `never` is `EK0401`"
-		r20StaticBullet   = "- **Field initializers and static blocks** run in `new X()` and at class evaluation; a non-`never` class evaluation is `EK0403` in effect code and `EK0401` elsewhere."
-		r20InstanceBullet = "- **Field initializers and static blocks** run in `new X()` and at class evaluation; a non-`never` class evaluation is `EK0403` in effect code and `EK0401` elsewhere."
+		r20StaticBullet   = "- **Field initializers and static blocks** run in `new X()` and at class evaluation. Throw checks follow [Thrown types](#thrown-types) and [Plain code never throws](#plain-code-never-throws), with each expression's source context and the native caught-call exemption preserved."
+		r20InstanceBullet = "- **Field initializers and static blocks** run in `new X()` and at class evaluation. Throw checks follow [Thrown types](#thrown-types) and [Plain code never throws](#plain-code-never-throws), with each expression's source context and the native caught-call exemption preserved."
 		r20Own            = "| `/** @throws {T} */` on it or its call signature | `T`, trusted, not checked |"
 		r20TagEffectful   = "A written `@throws` or `@rethrows` tag there, on a function, service member or function-type signature, is `EK0406`: remove it"
 		r20Where          = "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`"
