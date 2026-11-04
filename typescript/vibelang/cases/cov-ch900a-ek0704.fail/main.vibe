@@ -2,3 +2,4 @@
 // Appendix B: EK0704 — spec-rule: docs/design/src/900-appendices.md#e0d2faaf2665e5fb
 class C {}
 export function load(x: unknown) { return match (x) { when C(): 1; default: 0; } }
+// Chapter 900: EK0704 diagnostic - spec-rule: docs/design/src/900-appendices.md#ee514506d39d05d8

@@ -13,3 +13,4 @@ export service Implemented implements Shape { n: number }
 
 // Appendix A: ek0904-service-heritage.fail — spec-rule: docs/design/src/900-appendices.md#1eba818f1336dccc
 // Appendix A: ek0904-service-heritage.fail — spec-rule: docs/design/src/900-appendices.md#e018c7622d2d7a10
+// Chapter 900: EK0904 diagnostic - spec-rule: docs/design/src/900-appendices.md#0c567ffba8750055

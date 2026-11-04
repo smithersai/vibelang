@@ -23,3 +23,4 @@ export effect function main() {
 // rule: docs/design/src/003-failures.md#ab456b1c6564f3f7
 
 // Appendix B: EK0703 — spec-rule: docs/design/src/900-appendices.md#390a394d4f968a08
+// Chapter 900: EK0703 diagnostic - spec-rule: docs/design/src/900-appendices.md#e645fb3d93d7d6b3

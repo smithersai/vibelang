@@ -2,3 +2,4 @@
 // rule-evidence: docs/design/src/002-running.md#7e05391862e172e9
 // Chapter 002: Effect block outward jumps
 export effect function invalid() { outer: for(;;) { const a = effect { break outer }; const b = effect { continue outer }; break } }
+// Chapter 900: EK0202 diagnostic - spec-rule: docs/design/src/900-appendices.md#6c4454821e9fbb08

@@ -12,3 +12,4 @@ export effect function held() { return Effect.fail(0) catch Effect.succeedNone }
 export effect function called() { return Effect.fail(0) catch Effect.succeed(7) }
 export effect function invalidCall() { return Effect.fail(0) catch Effect.succeedNone() }
 export effect function invalidArgument() { return Effect.fail(0) catch needsNumber("bad") }
+// Chapter 900: EK0509 diagnostic - spec-rule: docs/design/src/900-appendices.md#a1585d98bef76a2c

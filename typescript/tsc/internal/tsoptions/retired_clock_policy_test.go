@@ -8,6 +8,7 @@ import (
 
 // Chapter007 supports only printed legacy codes; VIP33 uses nonconfigurable
 // EK4402 for host values. Obsolete4403 cannot survive an accepted policy map.
+// Chapter 900: EK4403 retirement and reassignment rule - spec-rule: docs/design/src/900-appendices.md#bfe29d7926e1f5d9
 func TestVibeLangRetiredClockSeverityCode(t *testing.T) {
 	for _, root := range []bool{false, true} {
 		t.Run(fmt.Sprintf("root-%t-valid-map", root), func(t *testing.T) {

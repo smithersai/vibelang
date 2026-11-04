@@ -32,3 +32,4 @@ export effect function main() {
   const refused = (try exit(Schema.decodeUnknownEffect(Order)({ items: 1 }))) is Exit.Failure
   return { user, order, refused, local: try local({ value: "v" }), exact: try Schema.decodeUnknownEffect(Exact)({}) }
 }
+// Chapter 900: EK2113 diagnostic - spec-rule: docs/design/src/900-appendices.md#43eb28994ffd66c7

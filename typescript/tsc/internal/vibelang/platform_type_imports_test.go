@@ -64,6 +64,7 @@ declare module "ordinary" { export interface Stats { size: number } }
 	return program, file, service, converters
 }
 
+// Chapter 900: EK4402 diagnostic - spec-rule: docs/design/src/900-appendices.md#e6d5dcb09e498dc2
 func TestPlatformInlineTypeImports(t *testing.T) {
 	for _, test := range []struct {
 		name, source string

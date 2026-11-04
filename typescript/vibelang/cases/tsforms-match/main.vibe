@@ -73,3 +73,4 @@ export effect function main() {
     sizes2: [scale(10), scale(1)],
   }
 }
+// Chapter 900: EK4839 diagnostic - spec-rule: docs/design/src/900-appendices.md#4a8fdc6b1538d93e

@@ -8,3 +8,4 @@ function f(){return 0}
 export const invalid=1 |> f()
 
 // Chapter 900: Appendix B EK2301 pipe missing topic — spec-rule: docs/design/src/900-appendices.md#dc40286816b41b66
+// Chapter 900: for an unparenthesized conditional at either - spec-rule: docs/design/src/900-appendices.md#2045270d8c380fe5

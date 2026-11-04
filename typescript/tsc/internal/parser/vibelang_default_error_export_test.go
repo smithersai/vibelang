@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// Chapter 900: EK1305 diagnostic - spec-rule: docs/design/src/900-appendices.md#8ef7238967dd6e87
 func TestVibeLangDefaultErrorExportDiagnostic(t *testing.T) {
 	for _, source := range []string{
 		"export default error Missing",

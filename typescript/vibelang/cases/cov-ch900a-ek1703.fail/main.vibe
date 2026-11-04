@@ -2,3 +2,4 @@
 export effect function load() { return fork 1 }
 
 // Appendix B: EK1703 — spec-rule: docs/design/src/900-appendices.md#f1d14ba93268620e
+// Chapter 900: EK1703 diagnostic - spec-rule: docs/design/src/900-appendices.md#8d02f6fbbbf574ba

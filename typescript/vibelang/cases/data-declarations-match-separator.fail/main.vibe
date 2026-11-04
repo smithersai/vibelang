@@ -10,3 +10,4 @@ export function describe(state: State) {
 // VIP-13 every match arm needs a semicolon, including the last; rule: docs/design/vips/0013-error-declarations.md#4fa0bef7a356de99
 
 // VIP-16 every match arm needs a semicolon, including the last; rule: docs/design/vips/0016-data-declarations.md#4fa0bef7a356de99
+// Chapter 900: EK0701 diagnostic - spec-rule: docs/design/src/900-appendices.md#68da0630e9efa9b5

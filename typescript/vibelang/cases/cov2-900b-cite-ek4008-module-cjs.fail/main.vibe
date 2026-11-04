@@ -6,3 +6,4 @@ module text {
 import text
 
 // Chapter 900: Appendix B EK4008 export assignment in a module body — spec-rule: docs/design/src/900-appendices.md#7355813037a6df7c
+// Chapter 900: EK4008 diagnostic - spec-rule: docs/design/src/900-appendices.md#e3a67a6fc20c9180

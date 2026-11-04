@@ -18,3 +18,4 @@ module twice { export const e = 5 }
 module twice { export const f = 6 }
 
 export const kept = [text, tool, Shape, other]
+// Chapter 900: EK4408 diagnostic - spec-rule: docs/design/src/900-appendices.md#85a0165d6b4a0c34

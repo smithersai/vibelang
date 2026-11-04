@@ -46,3 +46,4 @@ fixed(source,(after,result) => {
   ]) assert.ok(after.includes(preserved), "preserve " + preserved)
 })
 console.log("advisory fix distinguishes direct try and negative execution consumers")
+// Chapter 900: EK4834 diagnostic - spec-rule: docs/design/src/900-appendices.md#8bdb4cb00479f0f4

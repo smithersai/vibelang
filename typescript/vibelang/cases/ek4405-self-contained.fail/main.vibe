@@ -31,3 +31,4 @@ export effect function label(text: string) {
 }
 
 export effect function main() { return try label("text") }
+// Chapter 900: EK4405 diagnostic - spec-rule: docs/design/src/900-appendices.md#2a2db9a62b172ab6

@@ -470,6 +470,7 @@ func TestTrailingBlockRecoverySeparator(t *testing.T) {
 	}
 }
 
+// Chapter 900: EK1101 diagnostic - spec-rule: docs/design/src/900-appendices.md#3a2118530ddd56d4
 func TestTrailingBlockRecoveryKeepsIndependentNativeErrors(t *testing.T) {
 	for _, source := range []string{
 		"export const n = 1 export const m = 2",

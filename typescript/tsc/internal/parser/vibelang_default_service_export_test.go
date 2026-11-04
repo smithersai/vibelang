@@ -8,6 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
+// Chapter 900: EK0905 diagnostic - spec-rule: docs/design/src/900-appendices.md#9b3fb5b944b4d493
 func TestVibeLangDefaultServiceExportDiagnostic(t *testing.T) {
 	for _, source := range []string{
 		"export default service Missing { value: number }",

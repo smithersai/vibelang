@@ -14,3 +14,4 @@ console.log(await Effect.runPromise(Effect.provide(greet("1"), Layer.mergeAll(Us
 console.log(await Effect.runPromise(Effect.provide(greet("7"), Layer.mergeAll(UsersTest, SettingsLive))))
 const missing = await Effect.runPromise(Effect.flip(Effect.provide(greet("9"), Layer.mergeAll(UsersTest, SettingsLive))))
 console.log(missing._tag, missing.id)
+// Chapter 900: EK2120 diagnostic - spec-rule: docs/design/src/900-appendices.md#3a445779d60e4ddc

@@ -6,3 +6,4 @@ export service Flags { a: number b: string }
 export service Methods { first(): number second(): string }
 
 // Chapter 900: Appendix B EK0908 service member separator — spec-rule: docs/design/src/900-appendices.md#445fd57a539d7e98
+// Chapter 900: EK0908 diagnostic - spec-rule: docs/design/src/900-appendices.md#0d8da457e5a49930

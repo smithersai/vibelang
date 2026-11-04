@@ -195,6 +195,7 @@ export declare function make(): Schema`,
 // D22 trusts the values that a trusted call returns, so a method of the spy
 // that @effect/vitest's vi.spyOn returns is trusted whether the call is chained
 // or its value is held in a const. A let can be reassigned, so it is not.
+// Chapter 900: EK1011 diagnostic - spec-rule: docs/design/src/900-appendices.md#9784033faf45ac67
 func TestTrustedValueHeldInConst(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

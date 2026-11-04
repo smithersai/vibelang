@@ -4,3 +4,4 @@ data Payloads { A { x: number y: string } }
 data Nested { A { x: { n: number } /* keep */ y: string } B }
 
 // Chapter 900: Appendix B EK1605 data variant separator — spec-rule: docs/design/src/900-appendices.md#e604a349ef087595
+// Chapter 900: EK1605 diagnostic - spec-rule: docs/design/src/900-appendices.md#50cf92510a5f93c9

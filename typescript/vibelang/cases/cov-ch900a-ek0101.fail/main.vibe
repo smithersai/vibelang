@@ -3,3 +3,4 @@
 effect load() { return 1 }
 
 // Appendix A: cov-ch900a-ek0101.fail — spec-rule: docs/design/src/900-appendices.md#268a8e8be5deafec
+// Chapter 900: EK0101 diagnostic - spec-rule: docs/design/src/900-appendices.md#04c2230c3fea7969

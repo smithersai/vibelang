@@ -2,3 +2,4 @@
 export default schema User { name: string }
 
 // Appendix B: EK1501 — spec-rule: docs/design/src/900-appendices.md#b54aa918ad36b227
+// Chapter 900: EK1501 diagnostic - spec-rule: docs/design/src/900-appendices.md#77a33f41d0d0d73c
