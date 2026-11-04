@@ -8,3 +8,4 @@ export effect function attempt() {
     return "error"
   }
 }
+// Chapter 900: EK2105 diagnostic - spec-rule: docs/design/src/900-appendices.md#2ad16cbec46d7848

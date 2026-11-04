@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// Chapter 900: EK4825 diagnostic - spec-rule: docs/design/src/900-appendices.md#527be10e85136146
 func TestStyleKeepsNativePipeStages(t *testing.T) {
 	pipeline := "s |> Stream.filter((x) => x > 0)(%) |> Stream.map((x) => x + 1)(%) |> Stream.runCollect(%)"
 	for _, tc := range []struct {

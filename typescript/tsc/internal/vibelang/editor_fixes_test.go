@@ -13,6 +13,8 @@ import (
 
 // D33 and D240 promise mechanical fixes that leave usable source. Request the
 // public LSP action, compare all edits, and type-check the resulting document.
+// Chapter 900: EK4823 diagnostic - spec-rule: docs/design/src/900-appendices.md#36f0ff422faafb2c
+// Chapter 900: EK4824 diagnostic - spec-rule: docs/design/src/900-appendices.md#d56ddbce30f1dcc9
 func TestEditorQuickFixGoldens(t *testing.T) {
 	for _, test := range []struct {
 		name, source, title, want string

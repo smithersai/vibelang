@@ -29,3 +29,4 @@ export function mixed(n: number) {
     default: "other";
   }
 }
+// Chapter 900: EK4703 diagnostic - spec-rule: docs/design/src/900-appendices.md#7926a62b6bfb0571

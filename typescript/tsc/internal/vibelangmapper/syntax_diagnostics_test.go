@@ -96,6 +96,7 @@ func TestSyntaxPlainContractIdentity(t *testing.T) {
 }
 
 // TestSyntaxEK2006 distinguishes exits from local targets in finally (D15).
+// Chapter 900: EK2006 diagnostic - spec-rule: docs/design/src/900-appendices.md#362c0f7f978822b3
 func TestSyntaxEK2006(t *testing.T) {
 	checkSyntaxFixture(t, "ek2006-finally-jump", 2006, 2)
 	for _, jump := range []string{"return", "break", "continue"} {

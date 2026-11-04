@@ -40,3 +40,4 @@ export effect function main() {
   const timer = try Effect.promise(() => later())
   return { counted, args: passed, evaluated, timer, hasFetch, max }
 }
+// Chapter 900: EK4812 diagnostic - spec-rule: docs/design/src/900-appendices.md#c4f760ec0a07708a

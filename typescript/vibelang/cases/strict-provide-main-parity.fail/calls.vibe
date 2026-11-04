@@ -7,3 +7,4 @@ export function main(): Effect.Effect<number> {
 export function other(): Effect.Effect<number> {
   return Effect.provide(Effect.succeed(1), Layer.empty)
 }
+// Chapter 900: EK4816 diagnostic - spec-rule: docs/design/src/900-appendices.md#2eec56375214fe89

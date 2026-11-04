@@ -5,3 +5,4 @@ effect function bad() { return Effect.fail("x") catch function* () { yield 7 } }
 effect function effectGenerator() { return Effect.fail("x") catch effect function* () { yield 7 } }
 effect function groupedGenerator() { return Effect.fail("x") catch (function* () { yield 7 }) }
 effect function sourceError() { return Effect.fail("x") catch function* () { yield missingHandlerValue } }
+// Chapter 900: native function retains javascript generator semantics - spec-rule: docs/design/src/900-appendices.md#30e8f2d37ad63911

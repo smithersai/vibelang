@@ -7,6 +7,7 @@ import (
 
 // VIP-1: a callback without effect remains TypeScript, including when the
 // caller is Effect code. Returned and argument callbacks have the same kind.
+// Chapter 900: EK1005 diagnostic - spec-rule: docs/design/src/900-appendices.md#6625589078a9f830
 func TestPlainRunnerCallbackBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name, body     string

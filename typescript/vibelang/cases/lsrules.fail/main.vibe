@@ -116,3 +116,6 @@ export effect function thrown(program: Effect.Effect<number, NotFound>) {
 export effect function parsed(text: string) {
   return JSON.parse(text) as number
 }
+// Chapter 900: EK4805 diagnostic - spec-rule: docs/design/src/900-appendices.md#39c3d2a974ab9d59
+// Chapter 900: EK4806 diagnostic - spec-rule: docs/design/src/900-appendices.md#00a184596eb76e88
+// Chapter 900: EK4813 diagnostic - spec-rule: docs/design/src/900-appendices.md#b62224ef4c52eb1f
