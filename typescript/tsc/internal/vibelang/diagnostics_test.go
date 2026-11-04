@@ -92,9 +92,6 @@ var specAhead = map[int32]string{
 	3010: "lane no-trusted-packages registers EK3010 (claim trustedPackages:deprecation)",
 	3011: renumbering,
 	3410: "lane relic-mutable registers EK3410 (claim diagnostic:EK3410:retired-mutable)",
-	4005: "lane vip40-core registers EK4005 (queued 14d1abd64058)",
-	4007: "lane vip40-core registers EK4007 (queued 14d1abd64058)",
-	4009: "lane vip40-core registers EK4009 (queued 14d1abd64058)",
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the
