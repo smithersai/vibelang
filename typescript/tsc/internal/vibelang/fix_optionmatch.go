@@ -3,6 +3,7 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
 )
 
 // Direct Option.match is an eager choice. Keep callback construction, property
@@ -34,15 +35,50 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	payload := names.freshName("$optionValue")
 	none := names.freshName("$optionNone")
 	some := names.freshName("$optionSome")
-	handlersType := c.TypeToStringEx(c.GetTypeAtLocation(handlers), handlers, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+	handlerType := c.GetTypeAtLocation(handlers)
+	format := checker.TypeFormatFlagsNoTruncation | checker.TypeFormatFlagsUseFullyQualifiedType | checker.TypeFormatFlagsUseSourceScope
+	handlersType := c.TypeToStringEx(handlerType, handlers, format, nil)
 	prefix := "do { const "
+	handlersAnnotation := ": " + handlersType
+	destructureAnnotation := ""
+	// Option.match accepts a callback that ignores its argument. Keep its
+	// contextual type at the first binding, then widen only the extracted
+	// callable to accept the ignored value as unknown. A local unique symbol
+	// is named through its source scope. If a factory keeps that symbol
+	// private, infer the factory result and use scoped type queries instead.
+	actualSome := c.GetPropertyOfType(c.GetTypeAtLocation(handlers), "onSome")
+	if actualSome != nil {
+		for _, signature := range c.GetSignaturesOfType(c.GetTypeOfSymbol(actualSome), checker.SignatureKindCall) {
+			parameters := c.GetExpandedParameters(signature, true)
+			if len(parameters) != 1 || len(parameters[0]) != 0 {
+				continue
+			}
+			// An opaque factory return can contain a unique symbol that has no
+			// name here. Detect the type operator, not a string literal with
+			// the words "unique symbol", before choosing inference.
+			typeNode := c.TypeToTypeNode(handlerType, handlers, nodebuilder.Flags(format)|nodebuilder.FlagsIgnoreErrors, nil)
+			var unnamedSymbol func(*ast.Node) bool
+			unnamedSymbol = func(n *ast.Node) bool {
+				return n.Kind == ast.KindTypeOperator && n.AsTypeOperatorNode().Operator == ast.KindUniqueKeyword || n.ForEachChild(unnamedSymbol)
+			}
+			if typeNode != nil && unnamedSymbol(typeNode) {
+				handlersAnnotation = ""
+			}
+			result := names.freshName("$optionResult")
+			args := names.freshName("$optionArgs")
+			destructureAnnotation = ": { readonly onNone: (typeof " + callbacks + ")[\"onNone\"]; readonly onSome: (" + payload +
+				": unknown) => ((typeof " + callbacks +
+				")[\"onSome\"] extends (..." + args + ": never[]) => infer " + result + " ? " + result + " : never); }"
+			break
+		}
+	}
 	// At the start of an expression statement, do denotes do/while.
 	// A plain block preserves the discarded result and callback order.
 	if ast.IsExpressionStatement(call.Parent) {
 		prefix = "{ const "
 	}
-	text := prefix + input + " = " + expressionText(file, value) + "; const " + callbacks + ": " + handlersType + " = " + expressionText(file, handlers) +
-		"; const { onNone: " + none + ", onSome: " + some + " } = " + callbacks + "; match (" + input + ") { when " + option + ".Some(let " + payload + "): " + some + "(" + payload + "); default: " + none + "(); }; }"
+	text := prefix + input + " = " + expressionText(file, value) + "; const " + callbacks + handlersAnnotation + " = " + expressionText(file, handlers) +
+		"; const { onNone: " + none + ", onSome: " + some + " }" + destructureAnnotation + " = " + callbacks + "; match (" + input + ") { when " + option + ".Some(let " + payload + "): " + some + "(" + payload + "); default: " + none + "(); }; }"
 	if !ast.IsExpressionStatement(call.Parent) {
 		// A call/property/binary chain can begin an expression statement too.
 		// Keep do in expression position when this call supplies its first token.

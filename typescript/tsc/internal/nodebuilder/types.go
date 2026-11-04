@@ -44,6 +44,7 @@ const (
 	FlagsOmitParameterModifiers              Flags = 1 << 13
 	FlagsUseAliasDefinedOutsideCurrentScope  Flags = 1 << 14
 	FlagsUseSingleQuotesForStringLiteralType Flags = 1 << 28
+	FlagsUseSourceScope                      Flags = 1 << 31 // Source repairs may name lexically accessible local unique symbols
 	FlagsNoTypeReduction                     Flags = 1 << 29
 	FlagsUseInstantiationExpressions         Flags = 1 << 30
 	FlagsOmitThisParameter                   Flags = 1 << 25

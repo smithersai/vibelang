@@ -3616,7 +3616,11 @@ func (b *NodeBuilderImpl) typeToTypeNode(t *Type) *ast.TypeNode {
 	}
 	if t.flags&TypeFlagsUniqueESSymbol != 0 {
 		if b.ctx.flags&nodebuilder.FlagsAllowUniqueESSymbolType == 0 {
-			if b.ch.IsValueSymbolAccessible(t.symbol, b.ctx.enclosingDeclaration) {
+			accessible := b.ch.IsValueSymbolAccessible(t.symbol, b.ctx.enclosingDeclaration)
+			if !accessible && b.ctx.flags&nodebuilder.FlagsUseSourceScope != 0 {
+				accessible = len(b.ch.getAccessibleSymbolChain(t.symbol, b.ctx.enclosingDeclaration, ast.SymbolFlagsValue, false)) != 0
+			}
+			if accessible {
 				b.ctx.approximateLength += 6
 				return b.symbolToTypeNode(t.symbol, ast.SymbolFlagsValue, nil)
 			}

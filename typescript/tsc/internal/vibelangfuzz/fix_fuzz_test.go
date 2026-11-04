@@ -197,7 +197,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 				Gap(t, "FuzzFix", "fix:legacy-data-method:missing", "the legacy data method must have a preserving namespace fix: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 			}
 			if directOption && len(result.Files) == 0 {
-				Gap(t, target, "fix:direct-option-match:missing", "the direct Option.match must have a safe fix:\n%s", archive)
+				Gap(t, target, "fix:direct-option-match:missing", "the direct Option.match must have a safe fix (error %v, refused %+v, remaining %+v):\n%s", result.Err, result.Refused, result.Remaining, archive)
 			}
 			if trailingWhitespace && len(result.Files) == 0 {
 				Gap(t, target, "fix:trailing-whitespace:missing", "Chapter 7 requires the mechanical trailing-block migration:\n%s", archive)

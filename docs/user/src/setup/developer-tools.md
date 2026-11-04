@@ -422,7 +422,7 @@ after a refused migration, even if its partial edits make ordinary checks pass.
 
 The `EK1101` trailing-block repair accepts JavaScript whitespace between the call and block, including nonbreaking spaces, thin spaces and byte-order marks. An intervening comment still requires a manual edit.
 
-The `Option.match` repair preserves qualified callback payload types and complete record annotations, including types inferred from Effect modules.
+The `Option.match` repair preserves qualified callback payload types and complete record annotations, including types inferred from Effect modules. A callback that ignores the `Some` payload retains its contextual result type, including literal and local symbol types, and still receives the original argument, including when it observes `arguments.length`.
 
 ## Published packages
 

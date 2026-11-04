@@ -1,5 +1,1 @@
 # Chapter 28: every automatic change keeps the program (D291, D372); VIP-27 safe quick fixes.
-FuzzEditor editor:quickfix-error:EK4839:TS2554 compiler VIP-27: a zero-parameter Some handler is annotated as nullary but called with the payload; lane codemod-alchemy (foldkit-109)
-FuzzEditor corpus:foldkit-109-optionmatch-ignored compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
-FuzzEditor corpus:foldkit-109-optionmatch-ignored-block compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
-FuzzEditor corpus:foldkit-109-optionmatch-ignored-method compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
