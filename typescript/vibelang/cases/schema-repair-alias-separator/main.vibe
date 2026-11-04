@@ -1,0 +1,2 @@
+import{Schema}from"effect";const Base=Schema.String;const Basevalue=Schema.Number;const value=7;
+export const X=Base;export type X=typeof X.Type;value;

@@ -113,7 +113,13 @@ func schemaAliasRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node
 		start = scanner.SkipTrivia(text, modifiers.End())
 	}
 	declarationText := "schema " + name.Text() + " = " + typeText
-	edits = append([]sourceEdit{{start, statement.End(), declarationText}}, edits...)
+	replacementText := declarationText
+	// Removing the companion type must not join the following token to
+	// the initializer (Base; type X = typeof X.Type; value -> Basevalue).
+	if strings.HasSuffix(text[start:statement.End()], ";") {
+		replacementText += ";"
+	}
+	edits = append([]sourceEdit{{start, statement.End(), replacementText}}, edits...)
 	rewrite := &formRewrite{edits: edits, description: shortText(declarationText, "schema "+name.Text()+" = …")}
 	if isSchemaCall(c, schema, "Struct", 1) {
 		// The generated struct still names Schema in its declaration even
