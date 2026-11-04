@@ -401,6 +401,7 @@ type diagnosticsState struct {
 type coveredCodes struct {
 	loc   core.TextRange
 	codes []int32
+	exact bool
 }
 
 type diagnosticsStateKey struct{}
@@ -426,7 +427,15 @@ func cover(c *checker.Checker, node *ast.Node) {
 func coverCodes(c *checker.Checker, node *ast.Node, codes ...int32) {
 	file := ast.GetSourceFileOfNode(node)
 	state := diagnosticsStateOf(c)
-	state.codes[file] = append(state.codes[file], coveredCodes{core.NewTextRange(scanner.SkipTrivia(file.Text(), node.Pos()), node.End()), codes})
+	state.codes[file] = append(state.codes[file], coveredCodes{loc: core.NewTextRange(scanner.SkipTrivia(file.Text(), node.Pos()), node.End()), codes: codes})
+}
+
+// coverExactCodes hides only diagnostics whose complete span is the generated
+// node. Authored nodes nested inside that span keep diagnostics with the same code.
+func coverExactCodes(c *checker.Checker, node *ast.Node, codes ...int32) {
+	file := ast.GetSourceFileOfNode(node)
+	state := diagnosticsStateOf(c)
+	state.codes[file] = append(state.codes[file], coveredCodes{loc: core.NewTextRange(scanner.SkipTrivia(file.Text(), node.Pos()), node.End()), codes: codes, exact: true})
 }
 
 // coverArgument hides TypeScript's error that argument's type does not fit
@@ -481,7 +490,7 @@ func filterCoveredDiagnostics(c *checker.Checker, file *ast.SourceFile, diagnost
 			return true
 		}
 		if slices.ContainsFunc(codes, func(r coveredCodes) bool {
-			return slices.Contains(r.codes, d.Code()) && r.loc.Pos() <= d.Pos() && d.End() <= r.loc.End()
+			return slices.Contains(r.codes, d.Code()) && r.loc.Pos() <= d.Pos() && d.End() <= r.loc.End() && (!r.exact || r.loc.Pos() == d.Pos() && r.loc.End() == d.End())
 		}) {
 			return true
 		}

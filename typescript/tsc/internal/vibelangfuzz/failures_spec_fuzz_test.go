@@ -559,6 +559,8 @@ func failuresCases() []*failCase {
 		for _, shape := range []struct{ key, base, sub string }{
 			{"empty", " {}", " {}"},
 			{"fields", " { id: string }", " { code: number }"},
+			{"optional", " { id?: string }", " { code?: number }"},
+			{"commented", " { /* parent */ id: string }", " { /* child */ code: number }"},
 			{"bodyless", "", ""},
 			{"getter", " { id: string; get label() { return this.id } }", " { code: number }"},
 		} {

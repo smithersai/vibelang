@@ -780,6 +780,12 @@ const targets = {
   // parser and prelude change, made 3f57b5b4694e's prelude pass rewrite every Effect.x call to its bare global:
   // the tsforms and migrate fixed twins changed again on a second --fix run and TestFixGateChecksAFewTimes built
   // more programs than its bound, and only post-merge's //:go-vibelang and //:spec-tests saw it.
+  "go-error-inheritance": goVibelang(
+    "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
+    `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,
+    [Tsc["vibelang-files"]],
+    "10m"
+  ),
   "go-vibelang-fix-twins": goVibelang(
     "What --fix writes for the TypeScript-form, migration and pipeline-stage cases is their fixed twin, within the --fix cost bounds, and platform wrappers move into their companion.",
     `CGO_ENABLED=0 ${effect} go test -count=1 -timeout 20m -trimpath -run '^(TestTypeScriptFormCasesFix|TestMigrationCasesFix|TestEffectStageFixes|TestEffectStageFixesRefuse|${fixCostTests.join("|")}|${platformWrapperFixTests.join("|")})$' ./internal/vibelang/`,
