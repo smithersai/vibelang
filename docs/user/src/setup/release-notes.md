@@ -390,6 +390,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar-admission audit reported a rejected Effect expression name as accepted syntax. It now counts the `EK1702` reserved-name error as syntax rejection while preserving warning, diagnostic-source, and operand-type checks.
 - The grammar-admission audit read the temporary `EK1010` comma warning as a syntax rejection, so it never checked programs such as `[throw e, 1]` that the compiler accepts. It now counts only errors, records that comma case as a known gap until the error returns, and lists two new parser hooks in its census.
 - The grammar-admission census reported eight `try.all`-family check and lowering helpers as unaccounted once `try.allSettled` gained a direct lowering. It now lists them under VIP-18's `TryAll` authority.
+- The grammar-admission audit did not count `EK0108`, an `effect` modifier on an interface or type literal member, as a syntax rejection. It now does, and it records `schema S { effect id: string }`, which compiles with no error, as a known gap.
 
 - Callable-contract documentation tests depended on removed examples; they now retain native witnesses and check the current wrapper example without losing defect, failure or default-callback coverage.
 

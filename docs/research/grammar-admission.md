@@ -180,3 +180,13 @@ accepts those programs, so the oracle now checks them instead of reading the
 warning as rejection. The `throw-comma-warning` seed and corpus stay pending
 until the comma is an error again; then both XPASS and their pending lines go.
 Operator-left `EK1010` violations stay errors and remain syntax rejection.
+
+`EK0108` is a syntax rejection when its source is `EK` and its category is an
+error. Appendix A recognizes `effect` in TypeScript's `async` recovery
+positions and rejects it with `EK0108` on an `interface` or type literal
+member, an `abstract` declaration or an ambient context. A schema field has no
+modifier at all, yet `schema S { effect id: string }` compiles with no
+diagnostic: the schema body parses through the type-member path, but its
+members are not children of a type literal or interface, so the `EK0108` rule
+never sees them. The `schema-effect-field` seed, corpus and inventory alias
+row keep that gap pending until the compiler rejects it.

@@ -165,6 +165,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-for-await-placement", "async\nfunction f ( xs ) { for await ( const of xs ) effect { x ; } }"},
 	{"reserved-expression-name", "throw effect function join(p) { return try p; }"},
 	{"throw-comma-warning", "effect function f(e) { return [throw e, 1]; }"},
+	{"schema-effect-field", "schema S { effect id : string }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -877,6 +878,9 @@ func grammarAdmissionForm(source string) string {
 	if grammarIsOperandPrecedence(ts) {
 		return "admission:is-operand-precedence"
 	}
+	if grammarSchemaEffectField(ts) {
+		return "admission:schema-effect-field"
+	}
 	if grammarThrowCommaWarning(ts) {
 		return "admission:throw-comma-warning"
 	}
@@ -1510,6 +1514,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 501, 504, 1701, 1001: // [+Effect] placement; EK1001 is legacy module-level try rejection.
 		return true
+	case 108: // VIP-1: a recognized effect modifier on an interface or type literal member, abstract or ambient (Appendix A).
+		return true
 	case 1702: // VIP-17: reserved fork/join names are a syntax error, including expression-owned names.
 		return true
 	case 509: // CatchHandler must be a function literal.
@@ -1657,6 +1663,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"reserved-fiber-name-error", "EK", diagnostics.CategoryError, 1702, true},
 		{"reserved-fiber-name-warning", "EK", diagnostics.CategoryWarning, 1702, false},
 		{"reserved-fiber-name-suggestion", "EK", diagnostics.CategorySuggestion, 1702, false},
+		{"effect-type-member-error", "EK", diagnostics.CategoryError, 108, true},
+		{"effect-type-member-warning", "EK", diagnostics.CategoryWarning, 108, false},
+		{"native-effect-type-member-code-collision", "", diagnostics.CategoryError, 108, false},
 		{"native-reserved-fiber-code-collision", "", diagnostics.CategoryError, 1702, false},
 		{"external-reserved-fiber-code-collision", "other", diagnostics.CategoryError, 1702, false},
 		{"fork-operand-type-error", "EK", diagnostics.CategoryError, 1703, false},
@@ -1886,6 +1895,41 @@ func grammarThrowCommaWarning(ts []grammarToken) bool {
 				break operand
 			}
 			first = false
+		}
+	}
+	return false
+}
+
+// grammarSchemaEffectField reports a schema body field written with the
+// effect modifier, as in schema S { effect id: string }. SchemaDeclaration's
+// Field has no modifier, and the same member in a type literal is EK0108.
+func grammarSchemaEffectField(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.kind != 'w' || tok.text != "schema" {
+			continue
+		}
+		open := i + 1
+		for open < len(ts) && ts[open].text != "{" && ts[open].text != ";" {
+			open++
+		}
+		depth := 0
+		for k := open; k < len(ts); k++ {
+			switch ts[k].text {
+			case "{", "(", "[":
+				depth++
+			case "}", ")", "]":
+				depth--
+			}
+			if depth == 0 {
+				break
+			}
+			if depth != 1 || ts[k].kind != 'w' || ts[k].text != "effect" || k+2 >= len(ts) {
+				continue
+			}
+			start := ts[k].nl || ts[k-1].text == "{" || ts[k-1].text == ";" || ts[k-1].text == ","
+			if start && ts[k+1].kind != 'p' && !ts[k+1].nl && (ts[k+2].text == ":" || ts[k+2].text == "?") {
+				return true
+			}
 		}
 	}
 	return false
