@@ -1,0 +1,10 @@
+import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
+
+// VIP-18 uses native ReadonlyArray<Effect.Effect<any, any, any>> assignability.
+export effect function probe(input: any) { return try.all input }
+export effect function race(input: any) { return try.race input }
+export effect function any(input: any) { return try.any input }
+export effect function settled(input: any) { return try.allSettled input }
+export effect function elements(input: any[]) { return try.all input }
+export effect function tuple(input: readonly [any]) { return try.all input }

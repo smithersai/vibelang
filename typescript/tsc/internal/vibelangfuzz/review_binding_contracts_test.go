@@ -32,6 +32,8 @@ func TestReviewBindingContractsQuoted(t *testing.T) {
 
 func reviewContractCases(target string) []reviewContractCase {
 	switch target {
+	case "FuzzTryOperationOperandDomain":
+		return tryOperationOperandCases()
 	case "FuzzCollectionOperandDomain":
 		return []reviewContractCase{
 			{key: "all-any-direct", source: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\nexport effect function probe(input: any) { return try.all input; }\n", code: 0, native: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\ndeclare const input: any;\nconst check: ReadonlyArray<Effect.Effect<any, any, any>> = input;\nexport {check};\n", nativeReject: false, config: "", extras: map[string]string{}},
@@ -156,6 +158,9 @@ func fuzzReviewContract(f *testing.F, target string) {
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string) {
 		TestReviewBindingContractsQuoted(t)
+		if target == "FuzzTryOperationOperandDomain" {
+			TestTryOperationOperandQuoted(t)
+		}
 		index := slices.IndexFunc(rows, func(row reviewContractCase) bool { return row.key == key })
 		if index < 0 {
 			if len(key) == 0 {

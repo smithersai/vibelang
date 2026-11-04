@@ -12,6 +12,11 @@ func TestTryOperationArrayConstraints(t *testing.T) {
 		name, source string
 		reject       bool
 	}{
+		{"any operand", "effect function f(xs: any) { return try.all xs }", false},
+		{"any elements", "effect function f(xs: any[]) { return try.all xs }", false},
+		{"any tuple element", "effect function f(xs: readonly [any]) { return try.all xs }", false},
+		{"unknown operand", "effect function f(xs: unknown) { return try.all xs }", true},
+		{"unknown elements", "effect function f(xs: unknown[]) { return try.all xs }", true},
 		{"generic array", "effect function f<T extends ReadonlyArray<Effect.Effect<number>>>(xs: T) { return try.all xs }", false},
 		{"generic element", "effect function f<T extends Effect.Effect<number>>(xs: ReadonlyArray<T>) { return try.all xs }", false},
 		{"never array", "effect function f(xs: never[]) { return try.all xs }", false},

@@ -96,7 +96,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Installation](../getting-started/004-installation.md) | 2,900 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,100 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
-| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,000 |
+| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,100 |
 | **Core Concepts** | **28,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,400 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,000 |

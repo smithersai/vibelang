@@ -95,36 +95,19 @@ var tryOperationObjectFix = &ls.CodeFixProvider{
 	},
 }
 
-// Array constraints and derived array interfaces have the same numeric
-// element type as their array base. Never is a valid empty element type.
+// VIP-18 uses native array assignability, including any, never, generic
+// constraints and the project's null-checking options.
 func tryOperationArrayType(c *checker.Checker, t *checker.Type) bool {
 	if t == nil {
 		return false
 	}
-	if t.Flags()&checker.TypeFlagsNever != 0 {
-		return true
-	}
-	if t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 {
+	base := analyzerFor(c).programEffectInterface()
+	if base == nil {
 		return false
 	}
-	if t.Flags()&checker.TypeFlagsUnion != 0 {
-		for _, member := range t.Types() {
-			if !tryOperationArrayType(c, member) {
-				return false
-			}
-		}
-		return true
-	}
-	t = c.GetApparentType(t)
-	if !c.IsArrayLikeType(t) {
-		return false
-	}
-	element := c.GetIndexTypeOfType(t, c.GetNumberType())
-	return element != nil && tryOperationEffectType(c, element)
-}
-
-func tryOperationEffectType(c *checker.Checker, t *checker.Type) bool {
-	return isEffectOperandType(c, t)
+	any := c.GetAnyType()
+	effect := c.NewTypeReference(base, []*checker.Type{any, any, any})
+	return c.IsTypeAssignableTo(t, c.CreateArrayType(effect, true))
 }
 
 // Keep file comments and directive prologues before an inserted import.
@@ -188,3 +171,4 @@ func (tx *lowering) visitTrySettledLiteral(node *ast.Node) *ast.Node {
 	}
 	return call
 }
+
