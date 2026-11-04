@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+export function main() { return Effect.succeed("companion witness") }
+
+// "Platform repairs from one source share one fresh `<source>.platform.ts` companion."
+// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation
+// run.mjs migrates two host wrappers in both modes, then checks one stable
+// companion, unchanged declarations, cold evaluation, Exit, and fixed points.

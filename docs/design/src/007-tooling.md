@@ -270,6 +270,8 @@ A program held in a variable keeps its initializer's original evaluation point: 
 
 [Scope flags](#fix-scopes) select passes; [`--only`](#selecting-ordinary-fix-files) further limits ordinary repairs.
 
+Platform repairs from one source share one fresh `<source>.platform.ts` companion. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten.
+
 ### Trailing-block migration
 
 | Code | Trigger | Repair |

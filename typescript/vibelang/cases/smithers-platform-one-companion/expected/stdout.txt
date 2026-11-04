@@ -1,0 +1,1 @@
+one stable companion; declarations, cold phase, Exit and fixed points preserved

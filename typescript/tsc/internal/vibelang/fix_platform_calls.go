@@ -101,15 +101,10 @@ func platformCallSplit(c *checker.Checker, fs vfs.FS, file *ast.SourceFile, text
 	}
 	start := nodeStart(file, moved)
 	name := file.FileName()
-	foreign := tspath.RootedFilePath(strings.TrimSuffix(name.AsString(), ".vibe") + fmt.Sprintf(".platform-%d.ts", start))
+	foreign, previous, companionRefusal := platformCompanion(fs, file, texts)
 	stem := strings.TrimSuffix(foreign.AsString(), ".ts")
-	for _, suffix := range []string{".ts", ".tsx", ".js", ".d.ts"} {
-		if fs.FileExists(tspath.RootedFilePath(stem + suffix)) {
-			return nil, "the sibling TypeScript module already exists; existing foreign files are never rewritten"
-		}
-	}
-	if _, exists := texts[foreign]; exists {
-		return nil, "the sibling TypeScript module is already reserved"
+	if companionRefusal != "" {
+		return nil, companionRefusal
 	}
 	local := (&freshNames{file: file}).freshName("$platform")
 	body := callee
@@ -123,7 +118,7 @@ func platformCallSplit(c *checker.Checker, fs vfs.FS, file *ast.SourceFile, text
 			body = "new " + body
 		}
 	}
-	helper := "export function " + local + "(" + strings.Join(params, ", ") + ") { return " + body + "; }\n"
+	helper := appendPlatformCompanion(previous, "", "export function "+local+"("+strings.Join(params, ", ")+") { return "+body+"; }\n")
 	insert := nodeStart(file, file.Statements.Nodes[0])
 	importPrefix := ""
 	for _, statement := range file.Statements.Nodes {

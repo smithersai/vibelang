@@ -84,11 +84,11 @@ func platformCallProgram(t *testing.T, dir string) *compiler.Program {
 	return compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
 }
 
-func platformCallErrors(t *testing.T, dir string) []string {
+func platformCallProblems(t *testing.T, dir string) []string {
 	t.Helper()
 	var errs []string
 	for _, d := range platformCallProgram(t, dir).GetSemanticDiagnostics(t.Context(), nil) {
-		if d.Category() == errorCategory {
+		if d.Category() == errorCategory || d.Code() == EK4402.Code {
 			errs = append(errs, fmt.Sprintf("TS%d %s", d.Code(), d.String()))
 		}
 	}
@@ -104,7 +104,7 @@ func TestFixPlatformCallInCapturingWrapper(t *testing.T) {
 			}
 			t.Run(site+" "+mode, func(t *testing.T) {
 				dir := platformCallCase(t, body)
-				if errs := platformCallErrors(t, dir); len(errs) != 1 || !strings.HasPrefix(errs[0], "TS4402 Buffer.from") {
+				if errs := platformCallProblems(t, dir); len(errs) != 1 || !strings.HasPrefix(errs[0], "TS4402 Buffer.from") {
 					t.Fatalf("fixture should draw exactly the EK4402 on Buffer.from: %v", errs)
 				}
 				fs := bundled.WrapFS(osvfs.FS())
@@ -129,7 +129,7 @@ func TestFixPlatformCallInCapturingWrapper(t *testing.T) {
 				if !strings.Contains(helper, "return Buffer.from(arg0);") {
 					t.Fatalf("helper:\n%s", helper)
 				}
-				if errs := platformCallErrors(t, dir); len(errs) != 0 {
+				if errs := platformCallProblems(t, dir); len(errs) != 0 {
 					t.Fatalf("fixed program: %v", errs)
 				}
 				if again := fixCase(t, dir); again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
@@ -155,7 +155,7 @@ func TestFixPlatformCallInCompositeProject(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if errs := platformCallErrors(t, dir); len(errs) != 2 || !strings.HasPrefix(errs[0], "TS4402 Buffer.from") || !strings.HasPrefix(errs[1], "TS4402 Buffer.from") {
+	if errs := platformCallProblems(t, dir); len(errs) != 2 || !strings.HasPrefix(errs[0], "TS4402 Buffer.from") || !strings.HasPrefix(errs[1], "TS4402 Buffer.from") {
 		t.Fatalf("fixture should draw exactly two EK4402 on Buffer.from: %v", errs)
 	}
 	fs := bundled.WrapFS(osvfs.FS())
@@ -175,7 +175,7 @@ func TestFixPlatformCallInCompositeProject(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if errs := platformCallErrors(t, dir); len(errs) != 0 {
+	if errs := platformCallProblems(t, dir); len(errs) != 0 {
 		t.Fatalf("fixed program: %v", errs)
 	}
 }

@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"fmt"
 	"path"
 	"strings"
 
@@ -81,6 +80,11 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			}
 			c, done := program.GetTypeCheckerForFile(g.ctx, file)
 			refusal = platformWrapperCapture(c, file, candidate)
+			params, inputs := "", ""
+			tail := file.Text()[candidate.Expression().End():candidate.End()]
+			if refusal != "" && wrapperModule == runtimeModule && wrapper == "sync" && len(candidate.Arguments()) > 1 {
+				params, inputs, tail, refusal = platformWrapperInputs(c, file, candidate)
+			}
 			calleeText := nodeText(file, candidate.Expression())
 			if strings.Contains(calleeText, "/*") || strings.Contains(calleeText, "//") {
 				refusal = "the wrapper callee has comments that cannot be moved unchanged"
@@ -90,15 +94,10 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			if candidate.Flags&ast.NodeFlagsVibeLangTry != 0 {
 				start = scanner.SkipTrivia(file.Text(), tryKeyword(file, candidate).End())
 			}
-			foreign := tspath.RootedFilePath(strings.TrimSuffix(name.AsString(), ".vibe") + fmt.Sprintf(".platform-%d.ts", start))
+			foreign, previous, companionRefusal := platformCompanion(fs, file, texts)
 			stem := strings.TrimSuffix(foreign.AsString(), ".ts")
-			for _, suffix := range []string{".ts", ".tsx", ".js", ".d.ts"} {
-				if fs.FileExists(tspath.RootedFilePath(stem + suffix)) {
-					refusal = "the sibling TypeScript module already exists; existing foreign files are never rewritten"
-				}
-			}
-			if _, exists := texts[foreign]; exists {
-				refusal = "the sibling TypeScript module is already reserved"
+			if companionRefusal != "" {
+				refusal = companionRefusal
 			}
 			// Chapter 7: under --only the repairs write no other file, and a
 			// fix that would edit another file is not applied. The new module
@@ -112,8 +111,8 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			if wrapperModule == runtimeModule {
 				callee, imports = wrapper, "import { "+wrapper+" } from \"vibelang-runtime\";\n"
 			}
-			expression := callee + file.Text()[candidate.Expression().End():candidate.End()]
-			helper := imports + "/** @throws {never} */\nexport function " + local + "() { return " + expression + "; }\n"
+			expression := callee + tail
+			helper := appendPlatformCompanion(previous, imports, "/** @throws {never} */\nexport function "+local+"("+params+") { return "+expression+"; }\n")
 			// Keep shebangs and file-level directive/comment positions.
 			insert := nodeStart(file, file.Statements.Nodes[0])
 			importPrefix := ""
@@ -125,7 +124,7 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			}
 			updated := applyEdits(file.Text(), []sourceEdit{
 				{insert, insert, importPrefix + "import { " + local + " } from \"./" + path.Base(stem) + ".js\";\n"},
-				{start, candidate.End(), local + "()"},
+				{start, candidate.End(), local + "(" + inputs + ")"},
 			})
 			overlay := map[tspath.RootedFilePath]string{name: updated, foreign: helper}
 			if refusal == "" {
@@ -202,9 +201,20 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 // survive unchanged. Even an imported project binding can carry initialization
 // order or type dependencies, so leave it for a human rather than copy imports.
 func platformWrapperCapture(c *checker.Checker, file *ast.SourceFile, call *ast.Node) string {
+	return platformWrapperCaptureWithInputs(c, file, call, false)
+}
+
+func platformWrapperCaptureWithInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node, skipInputs bool) string {
 	why := ""
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
+		if skipInputs {
+			for _, input := range call.Arguments()[1:] {
+				if n == input {
+					return false
+				}
+			}
+		}
 		if n == call.Expression() {
 			return false
 		} // normalized to the resolved Effect export

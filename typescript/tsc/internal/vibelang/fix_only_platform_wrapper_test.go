@@ -9,7 +9,7 @@ import (
 
 // Alchemy reconvert c6 on RC6 (2026-11-04): five shards exited 3 with "a fix
 // reached a file --only does not list; wrote nothing" and kept no fix. The
-// platform wrapper repair writes a new X.platform-N.ts file, which no --only
+// platform wrapper repair writes a new X.platform.ts file, which no --only
 // list names, and it also walked unlisted modules. Chapter 7: under --only "a
 // fix that would edit another file is not applied" and "the repairs write no
 // other file". So it is refused at its site, the run's other fixes are kept,
@@ -50,10 +50,10 @@ func TestFixOnlyRefusesPlatformWrapperFile(t *testing.T) {
 				if strings.Contains(after["a.vibe"], "Effect.Effect<number>") {
 					t.Fatalf("a.vibe lost its other fix:\n%s", after["a.vibe"])
 				}
-				if strings.Contains(after["a.vibe"], "$platform") || strings.Contains(after["a.vibe"], ".platform-") {
+				if strings.Contains(after["a.vibe"], "$platform") || strings.Contains(after["a.vibe"], ".platform") {
 					t.Fatalf("a.vibe moved its wrapper out under --only:\n%s", after["a.vibe"])
 				}
-				matches, _ := filepath.Glob(filepath.Join(dir, "*.platform-*.ts"))
+				matches, _ := filepath.Glob(filepath.Join(dir, "*.platform*.ts"))
 				if len(matches) != 0 {
 					t.Fatalf("--only wrote %v", matches)
 				}
@@ -70,8 +70,8 @@ func TestFixPlatformWrapperAlchemyCorpusWithoutOnly(t *testing.T) {
 	}
 	dir := onlyProject(t, map[string]string{"a.vibe": string(source)})
 	status, plain := runFix(t, dir)
-	if matches, _ := filepath.Glob(filepath.Join(dir, "a.platform-*.ts")); status != 0 || len(matches) != 1 {
-		t.Fatalf("plain --fix: status %d, wrote %v, want one a.platform-N.ts\n%s%s\n%s", status, matches, plain.stdout.String(), plain.stderr.String(), projectBytes(t, dir)["a.vibe"])
+	if matches, _ := filepath.Glob(filepath.Join(dir, "a.platform*.ts")); status != 0 || len(matches) != 1 || filepath.Base(matches[0]) != "a.platform.ts" {
+		t.Fatalf("plain --fix: status %d, wrote %v, want exactly a.platform.ts\n%s%s\n%s", status, matches, plain.stdout.String(), plain.stderr.String(), projectBytes(t, dir)["a.vibe"])
 	}
 	only := onlyProject(t, map[string]string{"a.vibe": string(source)})
 	status, sys := runFix(t, only, "--only", "a.vibe")

@@ -778,7 +778,16 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 		name += " from " + ref.module
 	}
 	members, _ := accessChain(id)
-	d := report(c, use, EK4402, name)
+	message := EK4402
+	if inHatch(id) {
+		// Older releases accepted host operations in boundary callbacks.
+		// Keep the retirement diagnostic nonfatal while the preserving
+		// migration still refuses some captured or stateful wrappers.
+		warning := *EK4402
+		warning.Category = warningCategory
+		message = &warning
+	}
+	d := report(c, use, message, name)
 	notePlatformAPI(d, platformAPIOf(ref, members))
 	if call, method := consoleCall(use); call != nil {
 		if why := consoleFixRefusal(c, call, method); why != "" {

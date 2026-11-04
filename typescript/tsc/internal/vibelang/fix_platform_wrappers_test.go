@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,10 +87,8 @@ func TestFixPlatformWrapperRefusesExistingFiles(t *testing.T) {
 		t.Run(test.why, func(t *testing.T) {
 			_, file, _, _ := editorProgram(t, test.source)
 			dir := filepath.Dir(file.FileName().AsString())
-			existing := filepath.Join(dir, "main.platform-"+"0.ts")
+			existing := filepath.Join(dir, "main.platform.ts")
 			if test.existing {
-				pos := strings.Index(test.source, "Effect.try")
-				existing = filepath.Join(dir, "main.platform-"+fmt.Sprint(pos)+".ts")
 				if err := os.WriteFile(existing, []byte("export const sentinel = 7\n"), 0600); err != nil {
 					t.Fatal(err)
 				}
@@ -101,7 +98,7 @@ func TestFixPlatformWrapperRefusesExistingFiles(t *testing.T) {
 				t.Fatalf("missing refusal %q: %+v", test.why, result)
 			}
 			for name := range result.Files {
-				if strings.Contains(name.AsString(), ".platform-") {
+				if strings.Contains(name.AsString(), ".platform.") {
 					t.Fatal("refused migration created a foreign module")
 				}
 			}
@@ -172,7 +169,7 @@ func TestFixPlatformWrapperMissingPrelude(t *testing.T) {
 	_, file, _, _ := editorProgramWith(t, "export effect function probe() { return try sync(() => window.location.origin); }", map[string]string{})
 	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
 	for name := range result.Files {
-		if strings.Contains(name.AsString(), ".platform-") {
+		if strings.Contains(name.AsString(), ".platform.") {
 			t.Fatal("unresolved wrapper was extracted")
 		}
 	}
