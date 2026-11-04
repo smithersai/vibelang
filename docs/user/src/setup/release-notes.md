@@ -41,6 +41,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A closure in the iterable expression of `for concurrent` could not refer to the loop-head binding, or captured an outer binding instead. It now retains the uninitialized head binding, including destructuring, so calling it after the loop throws `ReferenceError`; a written limit still reads the enclosing scope. When the corrected head type rejects an old outer capture, `--fix` renames the item binding and its uses while preserving that outer capture.
 - Migration receipts could label an older native compiler as a newer producer; staged conversions now pin the executable digest and revision, and reject mixed compiler receipts.
 
+- `FuzzFixGate` could pass without exercising cross-file refusals after explicit effects were introduced; its two saved examples now require a real narrowing refusal.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

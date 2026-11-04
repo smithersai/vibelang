@@ -43,6 +43,9 @@ func TestFixGateQuoted(t *testing.T) {
 func FuzzFixGate(f *testing.F) {
 	startShortBudget(f)
 	for _, seed := range []string{
+		"cross",
+		"hidden",
+		"good,cross,hidden",
 		"match,good,cross",
 		"good,match,match,good,match",
 		"cross,cross,good",
@@ -115,16 +118,16 @@ var fixGateFiles = []struct {
 	// which push("slow") fits, and "fast" alone, which it does not.
 	{"cross", func(i int) map[string]string {
 		return map[string]string{
-			fmt.Sprintf("modes%d.vibe", i): "export function modes() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n",
-			fmt.Sprintf("uses%d.vibe", i):  fmt.Sprintf("import { modes } from \"./modes%d.vibe\"\nexport function more() {\n  const all = modes()\n  all.push(\"slow\")\n  return all\n}\n", i),
+			fmt.Sprintf("modes%d.vibe", i): "export effect function modes() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n",
+			fmt.Sprintf("uses%d.vibe", i):  fmt.Sprintf("import { modes } from \"./modes%d.vibe\"\nexport effect function more() {\n  const all = try modes()\n  all.push(\"slow\")\n  return all\n}\n", i),
 		}
 	}},
 	// The same fix, read through a string in an import type: nothing the
 	// error's statement names reaches the fix, so the gate halves.
 	{"hidden", func(i int) map[string]string {
 		return map[string]string{
-			fmt.Sprintf("modes%d.vibe", i): "export function modes() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n",
-			fmt.Sprintf("uses%d.vibe", i):  fmt.Sprintf("export function more() {\n  const all: ReturnType<(typeof import(\"./modes%d.vibe\"))[\"modes\"]> = []\n  all.push(\"slow\")\n  return all\n}\n", i),
+			fmt.Sprintf("modes%d.vibe", i): "export effect function modes() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n",
+			fmt.Sprintf("uses%d.vibe", i):  fmt.Sprintf("export const more: ReturnType<(typeof import(\"./modes%d.vibe\"))[\"modes\"]> extends (\"fast\"[]!!) ? false : true = true\n", i),
 		}
 	}},
 	// A refused fix behind a syntax error, which hides no type error.
