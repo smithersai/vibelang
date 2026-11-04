@@ -638,9 +638,16 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (fileComment) head.unshift(fileComment)
   const movedReads = new Set(movedList.flatMap((d) => [...d.reads]))
   const bodyImports = imports.map((i) => i.importClause ? bare(i, (b) => movedReads.has(b.name)) : null).filter(Boolean)
-  // Every name a body declares is exported, read or not: a kept declaration's
-  // inferred type may name it, which TypeScript could do in one file (TS4023 across two).
-  const bodyStatements = movedList.map((d) => (!d.exported && !isDefault(d) && d.names.size ? exportedText(source, d.statement) : statementText(source, d.statement)))
+  // A body exports a private declaration that kept code reads, and every one a
+  // kept declaration's inferred type may name, which TypeScript could do in one
+  // file (TS4023 across two): a type, class, enum or function, and a variable
+  // only through typeof (a unique symbol, a class expression). Any other export
+  // is a declaration the original never wrote, and TypeScript may be unable to
+  // write it: TS2883 on t3code web themePalette's `const convertToOklch =
+  // converter("oklch")`, whose type culori does not export.
+  const queried = typeQueryNames(source, ts)
+  const seam = (d) => !ts.isVariableStatement(d.statement) || [...d.names].some((n) => keptReads.has(n) || queried.has(n)) || namesItsOwnType(d.statement, ts)
+  const bodyStatements = movedList.map((d) => (!d.exported && !isDefault(d) && d.names.size && seam(d) ? exportedText(source, d.statement) : statementText(source, d.statement)))
   const body = [`module ${name} {`, joinParts(fileDirectives(source, ts), bodyImports, bodyStatements).trimEnd(), "}"].join("\n")
   const from = []
   if (imports_.length) from.push(`import { ${[...imports_].sort().join(", ")} } from ${name}`)
@@ -658,6 +665,36 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
 }
 
 const intersect = (a, b) => new Set([...a].filter((x) => b.has(x)))
+
+// The names a `typeof x` type query reads anywhere in source.
+function typeQueryNames(source, ts) {
+  const names = new Set()
+  const visit = (node) => {
+    if (ts.isTypeQueryNode(node)) {
+      let e = node.exprName
+      while (ts.isQualifiedName(e)) e = e.left
+      if (ts.isIdentifier(e)) names.add(e.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return names
+}
+
+// A variable whose type TypeScript writes as typeof the variable: a unique
+// symbol (Symbol(), Symbol.for(), or written unique symbol) or a class expression.
+function namesItsOwnType(statement, ts) {
+  return statement.declarationList.declarations.some((v) => {
+    if (v.type && ts.isTypeOperatorNode(v.type) && v.type.operator === ts.SyntaxKind.UniqueKeyword) return true
+    let init = v.initializer
+    while (init && (ts.isParenthesizedExpression(init) || ts.isAsExpression(init) || ts.isSatisfiesExpression(init))) init = init.expression
+    if (!init) return false
+    if (ts.isClassExpression(init)) return true
+    if (!ts.isCallExpression(init)) return false
+    const callee = init.expression
+    return (ts.isIdentifier(callee) && callee.text === "Symbol") || (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === "Symbol" && callee.name.text === "for")
+  })
+}
 
 // The names statement reads that it does not bind itself at the read: a
 // parameter or local of the name is no read of the top-level binding, and an

@@ -1,0 +1,12 @@
+{
+  "finding": "platform-body:internal-export-TS2883",
+  "note": "Minimized from t3code apps/web/src/themePalette.ts (drive-t3code-apps 2026-11-04T02:23:57Z, 8341e3fa217c). The throw route moved the private `const convertToOklch = converter(\"oklch\")` into `module throwing { }` with the throwing helpers that read it, and exported it from the body though the kept module never reads it. Its type is culori's ConvertFn, which culori/fn does not export, so the body's declarations failed TS2883, as a sibling .ts exporting it would (VIP-40 copy rule). culori is replaced by `dep`, whose make() returns an interface from an unexported file.",
+  "file": "src/x.ts",
+  "text": "import { make } from \"dep\"\n\nconst hidden = make()\n\nexport function read(): number {\n  if (hidden.n < 0) throw new Error(\"negative\")\n  return hidden.n\n}\n\nexport const kept = 41 + 1\n",
+  "dep": {
+    "package.json": "{\"name\":\"dep\",\"version\":\"1.0.0\",\"type\":\"module\",\"exports\":{\".\":{\"types\":\"./index.d.ts\",\"default\":\"./index.js\"}}}",
+    "index.d.ts": "import type { Hidden } from \"./src/hidden.js\";\nexport declare function make(): Hidden;\n",
+    "src/hidden.d.ts": "export interface Hidden { readonly n: number }\n",
+    "index.js": "export function make() { return { n: 7 } }\n"
+  }
+}
