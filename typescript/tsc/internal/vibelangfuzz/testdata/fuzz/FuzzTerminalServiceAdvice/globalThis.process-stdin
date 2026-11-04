@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("globalThis.process:stdin\x00\x00")

@@ -76,7 +76,7 @@ var platformServices = map[string]*platformService{
 	"ChildProcess": {"the ChildProcessSpawner service", "try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))",
 		"", nodeServices},
 	"Crypto":   {"Effect's crypto services", "try (try SecureRandom.SecureRandom).randomBytes(size)", "", cryptoLayers},
-	"Terminal": {"the Terminal service", "Terminal.readLine()", "", nodeServices},
+	"Terminal": {"the Terminal service", "try (try Terminal.Terminal).readLine", "", nodeServices},
 	"Stdio":    {"the Stdio service", "try (try Stdio.Stdio).args", "", nodeServices},
 	"HttpClient": {"HttpClient", "HttpClient.get(url)", "",
 		`FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node"`},
@@ -358,7 +358,7 @@ var platformAPIs = map[string]platformAPI{
 	"process.cwd":            {"Path", "(try Path.Path).resolve()", ""},
 	"process.stdout":         {"Console", "Console.log(text)", "For bytes, (try Stdio.Stdio).stdout() is a Sink."},
 	"process.stderr":         {"Console", "Console.error(text)", "For bytes, (try Stdio.Stdio).stderr() is a Sink."},
-	"process.stdin":          {"Terminal", "Terminal.readLine()", "(try Stdio.Stdio).stdin streams the bytes."},
+	"process.stdin":          {"Terminal", "try (try Terminal.Terminal).readLine", "(try Stdio.Stdio).stdin streams the bytes."},
 	"process.hrtime":         {"Clock", "Clock.monotonicTimeNanos()", "Clock.monotonicTimeNanos() is a bigint of nanoseconds, as process.hrtime.bigint() is."},
 	"process.nextTick":       {"Yield", "", "yieldNow lets other fibers run; it does not queue a microtask."},
 	"process.exit":           {"Exit", "", processExit},
@@ -388,7 +388,7 @@ const (
 	documentGap    = "Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's."
 	domGap         = "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's."
 	frameGap       = "Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file."
-	dialogGap      = "Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine()."
+	dialogGap      = "Effect has no service for the browser's dialogs; a terminal program asks with try (try Terminal.Terminal).readLine."
 	runtimeGap     = "A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file."
 	processExit    = "Let main return or fail: NodeRuntime.runMain, which runs it, exits with 0 when it succeeds and 1 when it fails."
 	processEvents  = "NodeRuntime.runMain handles SIGINT and SIGTERM, and (try Experimental.Process.Process).observeSignals(signals) tells a finalizer which arrived; Effect has no service for other process events."

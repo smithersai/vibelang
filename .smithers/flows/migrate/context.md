@@ -862,6 +862,8 @@ For storage diagnostics, `KeyValueStore` names a namespace. Obtain `KeyValueStor
 
 For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr()` methods return sinks, and its `stdin` property is a stream. Its `args` property is an Effect: use `try (try Stdio.Stdio).args`, without calling `args`. The platform diagnostic's replacement examples use these service members.
 
+The terminal diagnostic examples obtain `Terminal.Terminal` with `try` and run its `readLine` Effect property to read a line.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

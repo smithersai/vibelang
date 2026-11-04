@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("readline:namespace\x00\x00")

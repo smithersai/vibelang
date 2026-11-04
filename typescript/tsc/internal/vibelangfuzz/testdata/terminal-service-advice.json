@@ -1,0 +1,142 @@
+[
+  {
+    "key": "node:readline:namespace",
+    "source": "import * as Native from \"node:readline\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:readline:side-effect",
+    "source": "import \"node:readline\";export const value=1",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:readline:createInterface:direct",
+    "source": "import { createInterface } from \"node:readline\";export const value=createInterface",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:readline:createInterface:alias",
+    "source": "import { createInterface as Native } from \"node:readline\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline:namespace",
+    "source": "import * as Native from \"readline\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline:side-effect",
+    "source": "import \"readline\";export const value=1",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline:createInterface:direct",
+    "source": "import { createInterface } from \"readline\";export const value=createInterface",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline:createInterface:alias",
+    "source": "import { createInterface as Native } from \"readline\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:readline/promises:namespace",
+    "source": "import * as Native from \"node:readline/promises\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:readline/promises:side-effect",
+    "source": "import \"node:readline/promises\";export const value=1",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:readline/promises:createInterface:direct",
+    "source": "import { createInterface } from \"node:readline/promises\";export const value=createInterface",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:readline/promises:createInterface:alias",
+    "source": "import { createInterface as Native } from \"node:readline/promises\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline/promises:namespace",
+    "source": "import * as Native from \"readline/promises\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline/promises:side-effect",
+    "source": "import \"readline/promises\";export const value=1",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline/promises:createInterface:direct",
+    "source": "import { createInterface } from \"readline/promises\";export const value=createInterface",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "readline/promises:createInterface:alias",
+    "source": "import { createInterface as Native } from \"readline/promises\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:tty:namespace",
+    "source": "import * as Native from \"node:tty\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "node:tty:side-effect",
+    "source": "import \"node:tty\";export const value=1",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "tty:namespace",
+    "source": "import * as Native from \"tty\";export const value=Native",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "tty:side-effect",
+    "source": "import \"tty\";export const value=1",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "process:stdin",
+    "source": "export const value=process.stdin",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "globalThis.process:stdin",
+    "source": "export const value=globalThis.process.stdin",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "alert:dialog",
+    "source": "export const value=alert",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "globalThis.alert:dialog",
+    "source": "export const value=globalThis.alert",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "confirm:dialog",
+    "source": "export const value=confirm",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "globalThis.confirm:dialog",
+    "source": "export const value=globalThis.confirm",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "prompt:dialog",
+    "source": "export const value=prompt",
+    "advice": "try (try Terminal.Terminal).readLine"
+  },
+  {
+    "key": "globalThis.prompt:dialog",
+    "source": "export const value=globalThis.prompt",
+    "advice": "try (try Terminal.Terminal).readLine"
+  }
+]
