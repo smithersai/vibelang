@@ -1,0 +1,9 @@
+// expect: EK4802
+// The same generic call that try consumes still reports once it escapes
+// without try: assigned, passed, returned or pushed (ruling 2026-11-04).
+function take<T>(x: T): T { return x }
+function sink(x: unknown): number { return 1 }
+export effect function assigned(job: Effect.Effect<number>) { const value = take(job); return 1 }
+export effect function passed(job: Effect.Effect<number>) { return sink(take(job)) }
+export effect function returned(job: Effect.Effect<number>) { return take(job) }
+export effect function pushed(job: Effect.Effect<number>) { const xs: unknown[] = []; xs.push(take(job)); return xs.length }

@@ -22,6 +22,14 @@ func inferredEffectArguments(c *checker.Checker, call *ast.Node) []*ast.Node {
 	if !ast.IsCallExpression(call) || len(call.TypeArguments()) != 0 || isKeywordFormCall(call) || isTryCall(call) || fiberHelper(call) != "" || !inEffectCode(call) || inHatch(call) {
 		return nil
 	}
+	// try consumes the call that is its direct operand, through parentheses:
+	// `try x.pipe(Stream.runCollect)` and `try take(job)` run the inferred
+	// Effect at once, so nothing receives it unrun (VIP-1, inferred Effect
+	// arguments; ruling 2026-11-04). The same call assigned, passed, returned
+	// or pushed without try still warns. No callee name is exempt.
+	if triedFlag(call) {
+		return nil
+	}
 	signature := c.GetResolvedSignature(call)
 	if signature == nil {
 		return nil

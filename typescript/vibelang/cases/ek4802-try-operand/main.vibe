@@ -1,0 +1,10 @@
+// try consumes a generic call that is its direct operand and runs the inferred
+// Effect at once, so EK4802 stays silent (ruling 2026-11-04). No callee name is exempt.
+function take<T>(x: T): T { return x }
+function f<T>(x: T): T { return x }
+export effect function probe(job: Effect.Effect<number>, x: Effect.Effect<number>) {
+  const collected = try Stream.make(1, 2).pipe(Stream.runCollect)
+  const taken = try take(job)
+  const parenthesized = try (f(x))
+  return [collected, taken, parenthesized]
+}
