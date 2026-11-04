@@ -61,7 +61,13 @@ func FuzzDoNeverCompletion(f *testing.F) {
 		for range int(variant % 4) {
 			body = "(do { " + body + " })"
 		}
-		source := "function stopped(condition: boolean): number { " + before + "const value: never = do { " + body + " }; return value; " + after + " return 0 }"
+		callable := "function stopped(condition: boolean): number"
+		if key == "throw" || key == "branches" || key == "switch" {
+			// VIP-4 permits native throw in async code, not plain VibeLang code.
+			// Preserve the VIP-2 completion oracle in a legal enclosing callable.
+			callable = "async function stopped(condition: boolean): Promise<number>"
+		}
+		source := callable + " { " + before + "const value: never = do { " + body + " }; return value; " + after + " return 0 }"
 		codes := doContextualNegativeCodes(t, w, "main.vibe", source)
 		want := "[]"
 		if wantError {

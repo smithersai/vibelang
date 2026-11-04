@@ -198,6 +198,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The async conversion integration check could fail on a neighbouring negative fixture or run an asynchronous repair synchronously. It now isolates the repaired module and awaits its result, retaining every refusal check.
 
 - Declaration-comparison fixtures now follow the published API identity contract for equivalent module targets and extension spellings. The original 80-run property and eight mode cases remain, with specific export, type and documentation differences and incomplete environments still required to reject comparison.
+
+- A `do` expression after an unreachable outer statement lost its normal-completion type and reported property errors on `never`. It now retains the type of its local normal completions, while a `do` with no normal completion still has type `never`.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 

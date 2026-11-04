@@ -1,0 +1,3 @@
+go test fuzz v1
+string("branch-number")
+byte(2)

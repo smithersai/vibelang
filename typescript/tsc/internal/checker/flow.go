@@ -113,7 +113,11 @@ func (c *Checker) getFlowTypeOfReferenceEx(reference *ast.Node, declaredType *Ty
 	// an ordinary source local in unreachable code, that expression has no
 	// normal value (VIP-2), so it must not take the declared/auto-any fallback.
 	if declaration := c.doCompletionDeclaration(reference); declaration != nil && declaration.Initializer() == nil && c.doTemporarySite(declaration) == reference && !c.isReachableFlowNode(flowNode) {
-		return c.neverType
+		// An unreachable enclosing statement does not make this do's own
+		// normal completion abrupt. Let the local entry reset below check it.
+		if entry := getFlowNodeOfNode(declaration.Name()); entry == nil || c.isReachableFlowNode(entry) {
+			return c.neverType
+		}
 	}
 	f := c.getFlowState()
 	f.reference = reference
