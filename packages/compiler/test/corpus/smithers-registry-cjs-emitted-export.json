@@ -1,0 +1,20 @@
+{
+  "repository": "smithersai/smithers",
+  "pattern": "agent/registry CJS artifact requires a migrated dependency through its emitted export",
+  "source": "pkg/src/leaf.ts",
+  "emitted": "pkg/.vibelang/js/src/leaf.js",
+  "exports": {
+    "./leaf": "./.vibelang/js/src/leaf.js"
+  },
+  "consumer": "require",
+  "expected": {
+    "text": "source",
+    "same": true
+  },
+  "case": {
+    "name": "leaf",
+    "extension": "ts",
+    "consumer": "require",
+    "present": true
+  }
+}

@@ -237,6 +237,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` checked again, in each later pass of a run, every prelude rewrite it had refused, though nothing the refusal read had changed; on a Smithers slice that was 13 or 14 rewrites a pass and about a fifth of each run. A run now refuses such a rewrite again without a check while its file, the files it reads and their imports, and the files that declare globals are unchanged.
 - Plain functions with written `Effect` return types previously widened object literals and rejected valid returns such as `Effect.succeed({ type: "dataUrl", value })`; return expressions now keep their literal types from the written `Effect` result, as in TypeScript.
 
+- A CommonJS program loading a migrated package through `vibelang/register` could fail with `Cannot find module` and a `file:` URL; it now resolves the source with the same module identity as an ESM import.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

@@ -144,7 +144,16 @@ const compiled = (url) => url.startsWith("file:") && (clean(url).endsWith(".vibe
 function toSource(result, context, nextResolve) {
   if (!result?.url?.startsWith("file:")) return result
   const source = sourceOfEmitted(fileURLToPath(clean(result.url)))
-  return source === undefined ? result : nextResolve(pathToFileURL(source).href, context)
+  if (source === undefined) return result
+  try {
+    return nextResolve(pathToFileURL(source).href, context)
+  } catch (error) {
+    // Node's CommonJS resolver accepts filesystem paths, not file: URLs.
+    // Keep ESM's URL spelling (including encoded # and %) and preserve all
+    // other resolver failures rather than retrying them as filesystem paths.
+    if (error?.code !== "MODULE_NOT_FOUND") throw error
+    return nextResolve(source, context)
+  }
 }
 
 registerHooks({
