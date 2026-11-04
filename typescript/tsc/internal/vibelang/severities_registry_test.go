@@ -35,7 +35,7 @@ func appendixBSeverityCodes(t *testing.T) map[string]bool {
 	appendix, _, _ = strings.Cut(appendix, "\n## ")
 	codes := map[string]bool{}
 	for _, row := range regexp.MustCompile("(?m)^\\| `?(EK[0-9]{4,})`? \\| (.*)").FindAllStringSubmatch(appendix, -1) {
-		codes[row[1]] = regexp.MustCompile(`^(?:lint )?warning\b`).MatchString(row[2])
+		codes[row[1]] = !strings.Contains(row[2], "Category variants:") && regexp.MustCompile(`^(?:lint )?warning\b`).MatchString(row[2])
 	}
 	if len(codes) == 0 {
 		t.Fatal("Appendix B assigns no codes")

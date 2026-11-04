@@ -33,7 +33,11 @@ var VibeDiagnosticCategories = map[string]string{
 ${entries.join("\n")}
 }
 `
-const result = spawnSync("gofmt", [], {input: output, encoding: "utf8"})
+const errorVariants = rows
+  .filter(([, , rule]) => /Category variants:[^.]*\x60error\x60/.test(rule))
+  .map(([, code]) => "\t" + JSON.stringify(code) + ": true,")
+const eligibility = "\n// VibeDiagnosticErrorVariants keeps codes with context-specific errors out of\n// severity configuration, even when another variant defaults to a warning.\nvar VibeDiagnosticErrorVariants = map[string]bool{\n" + errorVariants.join("\n") + "\n}\n"
+const result = spawnSync("gofmt", [], {input: output + eligibility, encoding: "utf8"})
 if (result.error) throw result.error
 if (result.status !== 0) throw new Error(result.stderr)
 const formatted = result.stdout

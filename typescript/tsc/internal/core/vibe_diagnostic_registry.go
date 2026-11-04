@@ -174,3 +174,10 @@ var VibeDiagnosticCategories = map[string]string{
 	"EK4856": "warning",
 	"EK4857": "error",
 }
+
+// VibeDiagnosticErrorVariants keeps codes with context-specific errors out of
+// severity configuration, even when another variant defaults to a warning.
+var VibeDiagnosticErrorVariants = map[string]bool{
+	"EK1010": true,
+	"EK4402": true,
+}

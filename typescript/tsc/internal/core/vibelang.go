@@ -59,6 +59,9 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 // checker messages outside Appendix B remain available only through the legacy
 // configuration. Appendix B categories, not legacy defaults, decide admission.
 func VibeSeverityCode(code string) bool {
+	if VibeDiagnosticErrorVariants[code] {
+		return false
+	}
 	category := VibeDiagnosticCategories[code]
 	if category == "warning" || category == "lint warning" {
 		return true
