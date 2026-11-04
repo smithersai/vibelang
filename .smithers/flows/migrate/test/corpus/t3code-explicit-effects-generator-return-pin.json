@@ -1,0 +1,9 @@
+{
+  "key": "codemod:explicit-effects-generator-return-pin",
+  "note": "Minimized from t3code's DesktopSshPasswordPrompts generator contract. The inline rewriteWitness alone need not trigger annotation planning. The imported builder models the multi-module overload choice between Effect-returning and generator callbacks.",
+  "files": {
+    "contract.ts": "import type * as Effect from \"effect/Effect\";\nexport type Request = (input: string) => Effect.Effect<string, Error>;\nexport declare const builder: {\n  (body: (input: string) => Effect.Effect<string, Error>): Request;\n  (body: (input: string) => Generator<Effect.Effect<string>, string, unknown>): Request;\n};\n",
+    "request.ts": "import * as Effect from \"effect/Effect\";\nimport { builder, type Request } from \"./contract.js\";\nexport const request: Request = Effect.fn(\"request\")(function* (input) { return yield* Effect.succeed(input); });\nexport const wrapped: Request = builder(function* (input) { return yield* Effect.succeed(input); });\n"
+  },
+  "rewriteWitness": "import * as Effect from \"effect/Effect\";\ntype Request = (input: string) => Effect.Effect<string, Error>;\nexport const request: Request = Effect.fn(\"request\")(function* (input) { return yield* Effect.succeed(input); });\n"
+}

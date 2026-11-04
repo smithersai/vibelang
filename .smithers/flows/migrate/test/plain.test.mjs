@@ -139,8 +139,8 @@ test("callbacks of one signature, or whose chosen overload takes an Effect, stay
 
 // Decided detail 269: after VIP-1's flip `: infer _` means nothing and
 // TypeScript rejects it, so on a flipped toolchain the pass writes none; a
-// plain generator still gets its written Generator type.
-test("on a toolchain that keeps functions plain, the pass writes no infer _", () => {
+// plain generator also keeps its unwritten return type.
+test("on a toolchain that keeps functions plain, the pass writes no return annotation", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-plain-flipped-"))
   try {
     symlinkSync(join(runtime, "node_modules"), join(root, "node_modules"))
@@ -149,7 +149,7 @@ test("on a toolchain that keeps functions plain, the pass writes no infer _", ()
     const source = "export const inc = (n: number) => n + 1\nexport function* ids() { yield 1 }\n"
     writeFileSync(join(root, "m.ts"), source)
     markPlainFunctions(ts, root, ["m.ts"], ["tsconfig.json"], { flipped: true })
-    assert.equal(readFileSync(join(root, "m.ts"), "utf8"), source.replace("function* ids()", "function* ids(): Generator<number, void, unknown>"))
+    assert.equal(readFileSync(join(root, "m.ts"), "utf8"), source)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

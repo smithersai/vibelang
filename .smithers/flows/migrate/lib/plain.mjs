@@ -1,24 +1,10 @@
-// Plain functions stay plain. Every function in a .ts module is plain: calling
-// it gives its result (VIP-1). On this toolchain a .vibe function with no
-// modifier and no return annotation compiles to an Effect function instead,
-// unless it is an inline callback (rules.md, "A function with no modifier is
-// plain"), so a renamed helper's callers and declarations would change:
+// Plain functions stay plain (VIP-1). A plain-by-syntax compiler needs no
+// preservation annotations: keep unwritten return types unwritten, including
+// generators handed to Effect.fn, whose inference --fix must retain.
 //
-//   const makeId = (brand: string) => Schema.String.pipe(Schema.brand(brand))
-//   export const ThreadId = makeId("ThreadId")   // EK1001; importers see Effect<Schema>
-//
-// Before the rename, the codemod writes `: infer _`, which keeps TypeScript's
-// inferred return type, on each such function whose TypeScript return type is
-// not an Effect. A Layer or a Stream it builds is a value, as a schema is, and
-// so is a yieldable error, which carries the Effect brand only so `yield*`
-// fails with it:
-//
-//   const makeId = (brand: string): infer _ => Schema.String.pipe(Schema.brand(brand))
-//
-// A plain generator gets its inferred Generator type written out, since
-// `infer _` names no generator type; one whose type cannot be written without
-// a new import is left, and listed. A function that returns an Effect is left
-// for vibelang --fix, whose TypeScript-form fixes make it an effect function.
+// Legacy-inference compilers instead need `: infer _` on value-only helpers
+// and a written Generator type on ordinary generators. Functions returning
+// Effects stay available for the compiler's TypeScript-form fixes.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { isAbsolute, join, relative, sep } from "node:path"
 import { quote, run } from "./util.mjs"
@@ -94,13 +80,14 @@ function annotation(ts, sf, node, text) {
 }
 
 /**
- * The edits that keep sf's plain functions plain: `: infer _` on each candidate
- * whose TypeScript return type is no program, a written Generator type on a
- * plain generator. Also the generators left, by line.
+ * Legacy-inference edits: `: infer _` for value-only functions, a written
+ * Generator type for plain generators, and unprintable generators by line.
+ * Plain-by-syntax needs none of these edits or legacy leftovers.
  */
 export function plainEdits(ts, checker, sf, { flipped = false } = {}) {
   const edits = []
   const left = []
+  if (flipped) return { edits, left }
   const visit = (node) => {
     if (candidate(ts, checker, node)) {
       const signature = checker.getSignatureFromDeclaration(node)
@@ -113,7 +100,7 @@ export function plainEdits(ts, checker, sf, { flipped = false } = {}) {
           const written = checker.typeToString(returned, node, ts.TypeFormatFlags.NoTruncation)
           if (/^(Generator|Iterable|IterableIterator)</.test(written) && !written.includes("import(")) edits.push(...annotation(ts, sf, node, written))
           else left.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1)
-        } else if (!flipped) {
+        } else {
           edits.push(...annotation(ts, sf, node, "infer _"))
         }
       }
