@@ -1965,3 +1965,10 @@ typescript/vibelang/cases/vibe-callee-channel-reduction/main.vibe:8:24 lambda: c
 typescript/vibelang/cases/vibe-callee-channel-reduction/main.vibe:9:24 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect modifier is decisive; preserve explicit keyword provenance from 18f822cc.
 typescript/vibelang/lsp-fixture/src/declarations.vibe:42:24 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect modifier is decisive; preserve explicit keyword provenance from 18f822cc.
 typescript/vibelang/lsp-fixture/src/forms.vibe:37:20 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect modifier is decisive; preserve explicit keyword provenance from 18f822cc.
+
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.

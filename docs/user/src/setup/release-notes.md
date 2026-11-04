@@ -172,6 +172,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.
