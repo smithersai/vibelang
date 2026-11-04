@@ -20,7 +20,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,876 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,506 |
 | The skill and the user guide (142 pages) | 480,000 |
-| The user guide alone | 470,000 |
+| The user guide alone | 480,000 |
 | The specification (11 chapters) | 240,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -143,7 +143,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
 | **Error Management** | **21,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 9,800 |
+| [Expected Errors](../error-management/014-expected-errors.md) | 10,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,500 |
 | [Fallback](../error-management/016-fallback.md) | 2,300 |
 | [Matching](../error-management/017-matching.md) | 790 |
@@ -157,7 +157,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Requirements Management** | **11,000** |
 | [Managing Services](../requirements-management/025-services.md) | 5,200 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
-| [Managing Layers](../requirements-management/027-layers.md) | 3,400 |
+| [Managing Layers](../requirements-management/027-layers.md) | 3,600 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
 | **Resource Management** | **4,600** |
 | [Introduction](../resource-management/029-introduction.md) | 1,800 |
@@ -268,7 +268,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 260 |
 | [Producers](112-producers.md) | 3,500 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
-| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 8,800 |
+| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 9,200 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 10,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,900 |

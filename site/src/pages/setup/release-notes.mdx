@@ -184,6 +184,14 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
+
+- Formatter regression checks still expected retired handlers and selection blocks to format successfully. They now require a clear rejection before the host formatter runs, including Windows line endings and JSX files.
+
+- A list pattern with an elision or an optional element, such as `when [,,3]:` or `when [1?, 2?]:`, was a syntax error; it now matches as chapter 4 says. A binding in an optional element reports `EK4704`.
+
+- Importing the runtime could fail with a duplicate-binding `SyntaxError`; matcher registration is now exported once so the entry module loads normally.
+- The specification coverage census now retains generated grammar admission rows and cites their source sync check as coverage; handwritten rules still require independent evidence.
+
 - A `match` over an ordinary tagged-error class could appear exhaustive although a structurally compatible instance fell through with `TypeError`. Ordinary constructor patterns now cover no finite case; cover the tag explicitly or add a `default`.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
@@ -275,6 +283,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `return`, `break`, or `continue` inside `do` in a flat array declaration default could be rejected with `EK0204`. These defaults now run in the enclosing function or loop, skip later bindings on a jump, and close unfinished iterators with native exception precedence. Effect defaults also preserve failure channels and close before enclosing `Scope` finalizers. Generated cleanup keeps the existing checks on source calls known to throw.
 - Unchecked pattern values could reach a matcher call without a valid static signature. They now report `EK0702` for `any`, `unknown`, `Function`, and noncallable objects, including indexed references and values typed as `object`; `vibelang --fix` preserves legacy dynamic matching with an explicit runtime guard.
+
+- A generic `schema error`, such as `schema error Invalid<T> { value: T }`, reported `EK2109` for each field naming a type parameter beside the `EK1303` that rejects the parameters; it now reports `EK1303` only.
+
+- A `schema error` extending another `schema error`, such as `schema error UserNotFound extends NotFound {}`, reported TypeScript's `TS2509` ("Base constructor return type 'never'") beside its `EK2117`; it now reports `EK2117` only, as `error` does.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
@@ -1201,6 +1213,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Generic `data` declarations now accept line breaks and comments before their type parameters. `--fix` preserves affected `data as` and `data satisfies` assertions with parentheses.
 
 - Documentation said a written `.ts` import could find only a `.ts` file. It now preserves TypeScript's native source and declaration substitutions while rejecting stale VibeLang fallbacks.
+
+- Combining `effect` and `async`, as in `effect async function f() {}`, produced generic syntax errors or no specific diagnostic. Both orders now report `EK0105`; the editor offers removal of either function modifier, or removal of `async` from an Effect block. `vibelang --fix` removes `effect` from functions to preserve their previously emitted `Promise` API, and removes `async` from blocks.
 
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
