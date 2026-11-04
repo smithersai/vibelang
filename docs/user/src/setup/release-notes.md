@@ -30,6 +30,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Severity settings could accept a diagnostic code that still reports mandatory errors in some contexts. Codes with both error and warning variants now reject those settings with `EK3006`.
 
 - `Map(let m)` and `Set(let s)` patterns lost the subject's type arguments; their bindings now keep the matched collection's specialized type.
+
+- Plain functions with an inferred return type keep the `EK0107` check for `var` declarations; write `let` or `const`, or keep JavaScript `var` behavior in a `.ts` file.
 - An inherited `schema error` could report an extra TypeScript base-type error alongside `EK2117`. It now reports the inheritance diagnostic while preserving independent errors inside the declaration.
 
 - The `data` guide left multiline assertions ambiguous; it now explains how parentheses preserve an assertion whose type continues on another line.

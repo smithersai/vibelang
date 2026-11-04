@@ -26,7 +26,7 @@ func TestVarDenialQuoted(t *testing.T) { requireVarDenialQuotes(t) }
 func FuzzVarDenial(f *testing.F) {
 	startShortBudget(f)
 	requireVarDenialQuotes(f)
-	for _, key := range []string{"plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "do", "do-call-argument", "do-nested", "do-for-head", "generator-do-loop-head", "generator-for-of-head", "property-control", "literal-control", "let-control", "for-in-assignment-control", "for-of-assignment-control", "for-of-array-assignment-control", "for-of-object-assignment-control"} {
+	for _, key := range []string{"conformance-witness", "plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "do", "do-call-argument", "do-nested", "do-for-head", "generator-do-loop-head", "generator-for-of-head", "property-control", "literal-control", "let-control", "for-in-assignment-control", "for-of-assignment-control", "for-of-array-assignment-control", "for-of-object-assignment-control"} {
 		for _, mode := range []uint8{0, 1, 2} {
 			f.Add(key, mode)
 		}
@@ -38,6 +38,8 @@ func FuzzVarDenial(f *testing.F) {
 		source := "export function load(): number { " + declaration + "; return value }"
 		want := 1
 		switch key {
+		case "conformance-witness":
+			source = "export function probe() { var x = 1; return x }"
 		case "effect":
 			source = "export effect function load() { " + declaration + "; return value }"
 		case "async":

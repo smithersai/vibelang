@@ -1,0 +1,2 @@
+// expect: EK0107
+export function probe() { var x = 1; return x }

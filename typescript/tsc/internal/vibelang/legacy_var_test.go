@@ -11,6 +11,7 @@ func TestLegacyVarDeclarations(t *testing.T) {
 		name, source string
 		count        int
 	}{
+		{"conformance-witness", "export function probe() { var x = 1; return x }", 1},
 		{"plain", "export function value(): number { var result = 1; return result }", 1},
 		{"top-level", "export var value = 1", 1},
 		{"for", "export function value(): number { for (var i = 0; i < 2; i++) {}; return 1 }", 1},
