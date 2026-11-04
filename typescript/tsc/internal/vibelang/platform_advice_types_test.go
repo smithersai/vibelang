@@ -139,6 +139,20 @@ func TestPlatformAdviceExamplesTypecheck(t *testing.T) {
 			rows = append(rows, row{"platformAPIs[" + api + "]", entry.example, s.imports})
 		}
 	}
+	for read, entry := range clockReads {
+		// A clock read's use leads with the replacement expression; prose follows ": " or ", which".
+		example := entry.use
+		for _, stop := range []string{": ", ", which"} {
+			if i := strings.Index(example, stop); i >= 0 {
+				example = example[:i]
+			}
+		}
+		imports := ""
+		if s := platformServices[entry.service]; s != nil {
+			imports = s.imports
+		}
+		rows = append(rows, row{"clockReads[" + read + "]", example, imports})
+	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].where < rows[j].where })
 	fixture := t.TempDir()
 	for name, text := range map[string]string{
