@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { createRequire } from "node:module"
 import { dirname, resolve, relative, join, basename } from "node:path"
 import { tmpdir } from "node:os"
+import { matchesGlob } from "node:path"
 import { test } from "node:test"
 
 // Every test file in the repository runs in a build-graph target, or is listed in `unrun` with what keeps it out.
@@ -18,7 +19,8 @@ const runs = [
   ["site/scripts/not-found.test.mjs", "docs/tools/site-contrast.test.ts", "test:404"],
   ["site/scripts/patch-vocs-search.test.mjs", "site/package.json", "scripts/patch-vocs-search.test.mjs"],
   ["site/scripts/patch-vocs-llms.test.mjs", "site/package.json", "scripts/patch-vocs-llms.test.mjs"],
-  ["scripts/*.test.mjs", "PACKAGE.ts", "scripts/*.test.mjs"],
+  ["scripts/!(api-identity*).test.mjs", "PACKAGE.ts", "scripts/!(api-identity*).test.mjs"],
+  ["scripts/api-identity*.test.mjs", "PACKAGE.ts", "node --test scripts/api-identity*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
   ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],
   ["typescript/native-deps.test.mjs", "typescript/PACKAGE.ts", "node --test typescript/native-deps.test.mjs"],
@@ -77,9 +79,8 @@ const unrun = [
   [".smithers/flows/migrate/fixture/**", "the migrate eval's fixture package (@smthrs/canonical); eval.ts runs its tests before and after the flow"],
 ]
 
-// A glob as the shell and `smthrs` read one: `**` crosses directories, `*` does not.
-const matcher = (glob) =>
-  new RegExp("^" + glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\0").replace(/\*/g, "[^/]*").replace(/\0/g, ".*") + "$")
+// Node expands the quoted release glob and the API target uses the same matcher.
+const matcher = glob => ({ test: file => matchesGlob(file, glob) })
 
 // The checkout's test files, without dependencies, fixtures, build output and other tools' directories. It walks
 // the tree rather than asking jj: a graph mirror has no .jj.
@@ -257,4 +258,19 @@ test("entrypoint audit agrees with Node for a multi-suite forwarder and repeated
       rmSync(dir, { recursive: true, force: true })
     }
   }), { seed: 110026, numRuns: 32 })
+})
+
+test("release and API globs give prefixed files one runner without dropping their neighbours", () => {
+  const release = matcher("scripts/!(api-identity*).test.mjs")
+  const api = matcher("scripts/api-identity*.test.mjs")
+  for (const name of ["api-identity", "api-identity-extra", "api-identity space", "api-identityλ"]) {
+    const file = "scripts/" + name + ".test.mjs"
+    assert.equal(release.test(file), false)
+    assert.equal(api.test(file), true)
+  }
+  for (const name of ["ordinary", "xapi-identity", "api_identity", "space name", "λ"]) {
+    const file = "scripts/" + name + ".test.mjs"
+    assert.equal(release.test(file), true)
+    assert.equal(api.test(file), false)
+  }
 })

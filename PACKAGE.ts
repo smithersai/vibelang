@@ -386,6 +386,8 @@ const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress
 
 const apiIdentityFiles = createApiIdentityInputs(S, Packages.tree)
 
+const apiIdentityTest = check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node], undefined, {}, [apiIdentityFiles])
+
 const declarationPreservation = S.Shell.Test({
   summary: "VIP-27 declaration-preservation prose uses API identity; regression and generated wording checks.",
   shell: "node --test docs/tools/spec-declaration-preservation.test.mjs",
@@ -462,7 +464,7 @@ const targets = {
     sandbox: "none",
     timeout: "1m"
   }),
-  "api-identity-test": check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node], undefined, {}, [apiIdentityFiles]),
+  "api-identity-test": apiIdentityTest,
   "spec-shared-tables": specSharedTables,
   "spec-copy-sections": specCopySections,
   "spec-registry": specRegistry,
@@ -502,11 +504,11 @@ const targets = {
   "spec-catch-diagnostics": specCatchDiagnostics,
   release: check(
     "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
-    "node --test --test-concurrency=8 scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
+    "node --test --test-concurrency=8 scripts/release/*.test.mjs 'scripts/!(api-identity*).test.mjs' typescript/vibelang/harness.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
       "site/scripts/sync-spec-docs.test.mjs site/scripts/sync-user-docs.test.mjs " +
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",
-    [Typescript["forms-generator"], Packages["compiler-native"], Packages["runtime-dist"]],
+    [apiIdentityTest, Typescript["forms-generator"], Packages["compiler-native"], Packages["runtime-dist"]],
     [node, bun, gofmt, bun, go, S.Host.bin("diff3")]
   ),
   "starter-templates": check(

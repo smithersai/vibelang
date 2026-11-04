@@ -1512,3 +1512,12 @@ The captured parser-arity failure in
 covers a real compiler error before testing. The observer tests also check
 mixed test/build events, 128 stream partitions, oversized output recovery
 and a real native Go compilation failure.
+
+The release script glob excludes `scripts/api-identity*.test.mjs`. The release
+target depends on `//:api-identity-test`, so a focused release runs the API
+prerequisite and full CI shares its result. The exclusion is a quoted Node glob,
+so the shell leaves its negated prefix for Node to expand. The dedicated API
+target retains its source-sync check, regression assertions, property sample
+counts and the precise inputs declared in `api-inputs.ts`. Real SDK fixtures
+check shared execution, cache replay and failure propagation; generated
+filename neighbours check complete ownership of the two commands.
