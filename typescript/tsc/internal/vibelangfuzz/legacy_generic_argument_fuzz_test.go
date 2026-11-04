@@ -121,7 +121,7 @@ function plain(n: number): number {
 `
 
 // The migration's run phase is a tooling rule, rather than a new language rule.
-const legacyGenericArgumentQuote = "The rewrite preserves runtime behavior."
+const legacyGenericArgumentQuote = "It writes `try` before each call that ran where it stood before VIP-1"
 
 func legacyGenericArgumentQuoted(t testing.TB) {
 	t.Helper()
