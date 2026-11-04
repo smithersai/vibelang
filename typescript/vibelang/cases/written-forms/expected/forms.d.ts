@@ -6,10 +6,8 @@ export declare const api: {
 };
 /** @throws {never} */
 export declare function double(n: number): number;
-export declare const half: {
-    /** @throws {never} */
-    (n: number): number;
-};
+/** @throws {never} */
+export declare const half: (n: number) => number;
 /** @throws {never} */
 export declare function makeApi(): {
     /** @throws {never} */
@@ -27,6 +25,7 @@ export declare const madeThird: number;
 export declare const label: {
     /** @throws {never} */
     toString(): string;
+    /** @throws {never} */
     toJSON: () => number;
 };
 export declare function main(): Effect.Effect<number[], never, never>;

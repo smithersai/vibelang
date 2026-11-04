@@ -4,6 +4,7 @@ export declare const TextPart: Schema.Struct<{
     readonly type: Schema.Literal<"text">;
     readonly text: Schema.String;
 }> & {
+    /** @throws {never} */
     make: (input: {
         readonly text: string;
     }) => TextPart;

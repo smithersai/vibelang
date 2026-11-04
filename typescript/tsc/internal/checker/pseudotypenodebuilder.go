@@ -190,7 +190,7 @@ func (b *NodeBuilderImpl) pseudoTypeToNode(t *pseudochecker.PseudoType) *ast.Nod
 		}
 		params := b.pseudoParametersToNodeList(d.Parameters)
 		returnType := b.pseudoTypeToNode(d.ReturnType)
-		return b.f.NewFunctionTypeNode(typeParams, params, returnType)
+		return b.preserveVibeSignatureOrigin(b.f.NewFunctionTypeNode(typeParams, params, returnType), d.Signature)
 	case pseudochecker.PseudoTypeKindTuple:
 		var res []*ast.Node
 		elements := t.AsPseudoTypeTuple().Elements

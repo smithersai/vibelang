@@ -16,7 +16,7 @@ const chapter = readFileSync(SpecPath("001-functions.md"), "utf8")
 test("canonical eval oracles quote the declaration identity contract", () => {
   assert.ok(chapter.includes("the same doc comment on each export"))
   assert.ok(chapter.includes("each export's type identical to `tsc`'s in both directions"))
-  assert.ok(chapter.includes("Preserve the source documentation and add that tag to the twin's JSDoc"))
+  assert.ok(chapter.includes("Compare the ordinary stock-`tsc` twin without adding generated tags to it."))
 })
 
 function verify({ mode = "docs", form = "function", tag = corpus.authoredThrows[0], description = "Copies entries behind a frozen facade.", reverse = false, pretty = false } = {}) {

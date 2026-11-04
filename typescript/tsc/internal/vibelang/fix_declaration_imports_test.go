@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -141,7 +142,9 @@ func TestFixedEffectFnParametersKeepTheOriginalDeclaration(t *testing.T) {
 				if err := os.WriteFile(file.FileName().AsString(), []byte(rewritten.Text), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				if after := declarationText(t, config); after != before {
+				// API identity allows VIP-27's generated contract on the fixed
+				// file's callable parameter, and nothing else (Will, 2026-11-04).
+				if after := declarationText(t, config); withoutGeneratedThrows(after) != before {
 					t.Fatalf("--fix wrote\n%s\nwhose declaration\n%s\nwas\n%s", rewritten.Text, after, before)
 				}
 			})
@@ -183,4 +186,14 @@ func declarationText(t *testing.T, config string) string {
 		t.Fatal("no main.d.ts emitted")
 	}
 	return dts
+}
+
+// generatedThrowsBlock is VIP-27's generated contract as a block of its own,
+// written where a signature has no authored JSDoc. Authored tags differ.
+var generatedThrowsBlock = regexp.MustCompile(`/\*\* @throws \{never\} \*/\s*`)
+
+// withoutGeneratedThrows removes the one declaration difference API identity
+// allows against the TypeScript twin.
+func withoutGeneratedThrows(declaration string) string {
+	return generatedThrowsBlock.ReplaceAllString(declaration, "")
 }

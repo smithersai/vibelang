@@ -3,6 +3,7 @@ package vibelang
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -608,7 +609,8 @@ func effectGenNotes(t *testing.T, source string) string {
 // changes nothing. The smoke harness runs both and checks that they return
 // the same result. The case's expected/ declarations are the TypeScript's;
 // applying the migration rules' own fixes, before --fix's other rules and its
-// prelude rewrites, emits them unchanged (Chapter 28).
+// prelude rewrites, preserves their API with VIP-27’s generated-contract
+// allowance. Keep the unannotated stock-twin goldens unchanged.
 func TestMigrationCasesFix(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -667,15 +669,43 @@ func TestMigrationCasesFix(t *testing.T) {
 			if len(goldens) == 0 {
 				return
 			}
-			declarations := migrationRuleDeclarations(t, migrated(), []int32{EK1002.Code, EK4841.Code, EK4842.Code})
+			directory := migrated()
+			declarations := migrationRuleDeclarations(t, directory, []int32{EK1002.Code, EK4841.Code, EK4842.Code})
+			before, after := filepath.Join(directory, "api-before"), filepath.Join(directory, "api-after")
+			for _, dir := range []string{before, after} {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			// Emit the complete unchanged TypeScript twin, including supporting
+			// modules (services.ts has no separate golden in migrate-effect-gen).
+			// Keep checking its goldens before applying API identity to the candidate.
+			stock := migrationRuleDeclarations(t, copyCompilerFixture(t, fixture, root), nil)
 			for _, golden := range goldens {
 				want, err := os.ReadFile(golden)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got := declarations[filepath.Base(golden)]; got != string(want) {
-					t.Errorf("after the migration rules, %s is\n%s\nwant the TypeScript's\n%s", filepath.Base(golden), got, want)
+				if got := stock[filepath.Base(golden)]; got != string(want) {
+					t.Errorf("TypeScript twin %s is\n%s\nwant its golden\n%s", filepath.Base(golden), got, want)
 				}
+			}
+			for _, output := range []struct {
+				directory    string
+				declarations map[string]string
+			}{{before, stock}, {after, declarations}} {
+				for name, text := range output.declarations {
+					if err := os.WriteFile(filepath.Join(output.directory, name), []byte(text), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			// Exercise the same exported-name/type/JSDoc gate migration uses, including
+			// its narrow added-tag allowance and authored-contract negative controls.
+			command := exec.CommandContext(t.Context(), "node", filepath.Join(root, "scripts/api-identity.mjs"), "--before", before, "--after", after, "--json")
+			command.Dir = directory
+			if output, err := command.CombinedOutput(); err != nil {
+				t.Errorf("migration declaration API identity: %v\n%s", err, output)
 			}
 		})
 	}

@@ -5,7 +5,8 @@ export declare function bytes<Format extends "bytes" | "hex">(options: {
 export type Success = Effect.Effect<string | number, boolean>;
 export type Failure = Effect.Effect<string, number | boolean>;
 export type Requirement = Effect.Effect<string, boolean, Path.Path | Clock.Clock>;
-export type Callback = Effect.Effect<() => void, string>;
+export type Callback = Effect.Effect</** @throws {never} */
+() => void, string>;
 export type Nested = Effect.Effect<Effect.Effect<string, number>, boolean>;
 export type Inside = Effect.Effect<(keyof (A | B))[], string>;
 export type Written = Effect.Effect<(string | number), boolean>;

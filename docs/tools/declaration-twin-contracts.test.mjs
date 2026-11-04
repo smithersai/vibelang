@@ -8,10 +8,10 @@ const require = createRequire(new URL("../../packages/runtime/package.json", imp
 const fc = require("fast-check")
 const ts = createRequire(import.meta.url)("typescript")
 
-test("Chapter 001 requires a contract-complete TypeScript twin", () => {
+test("Chapter 001 allows only the generated VIP-27 contract difference", () => {
   const chapter = readFileSync(SpecPath("001-functions.md"), "utf8")
-  assert.ok(chapter.includes("Construct the twin with the explicit `@throws {never}` contract on each non-effectful signature for which VibeLang emits it."))
-  assert.ok(chapter.includes("Preserve the source documentation and add that tag to the twin's JSDoc before running `tsc`"))
+  assert.ok(chapter.includes("Compare the ordinary stock-`tsc` twin without adding generated tags to it."))
+  assert.ok(chapter.includes("Authored throw tags must remain unchanged."))
 })
 
 function declaration(source) {
@@ -54,7 +54,7 @@ test("ASTRA-5: tsc preserves explicit never contracts and documentation across s
   }), { seed: 0x27cafe, numRuns: 200 })
 })
 
-test("t3code Mobile: generated never metadata requires a contract-complete twin", () => {
+test("t3code Mobile: generated never metadata is the single declaration difference", () => {
   const fixture = JSON.parse(readFileSync(new URL("./fixtures/t3code-mobile-generated-throws-never.json", import.meta.url), "utf8"))
   const raw = declaration("/** " + fixture.authoredDoc + " */\n" + fixture.signature)
   const twin = declaration("/** " + fixture.authoredDoc + "\n * @throws {never}\n */\n" + fixture.signature)

@@ -67,7 +67,14 @@ Several peer variants of one package can coexist in a self-comparison without
 being merged or reported as one ambiguous ambient origin. Dependency pair candidates
 are seeded independently of entry syntax, so reordering entry imports preserves
 unchanged external `unique symbol` types without hiding dependency changes. JSDoc is read through the TypeScript API, normalizing whitespace and retaining
-tags. Inline `{@link ...}`, `{@linkcode ...}` and `{@linkplain ...}` comments
+tags. VIP-27 permits one difference in twin-to-emitted order: adding the generated
+`@throws {never}` on a callable without an authored throw contract. Each
+overload may gain its own tag. Authored throw tags, prose and every other
+JSDoc tag remain observable; a changed or removed authored tag, duplicate
+generated tags, a tag description or a tag on non-callable data fails.
+Callable parameter and return signatures keep their own documentation in the comparison, including inline function types. The compiler’s migration-fixture Go test uses this same gate while retaining its unannotated stock-twin goldens.
+This implements Will’s 2026-11-04 answer: “Yes this is normal that it doesn't
+exactly match”. Inline `{@link ...}`, `{@linkcode ...}` and `{@linkplain ...}` comments
 retain their targets, labels and rendering kinds when a private target resolves
 in only one snapshot. Link formatting is normalized through TypeScript display
 parts, including the boundary between a resolved target and its label.
@@ -348,3 +355,5 @@ result. Checker code, corpus, specification chapters, package sources,
 staged copies, root JSON configurations and install declarations still invalidate it. See
 [the build graph](build.md) before adding another repository input to an API
 test.
+
+The generated-tag exception also preserves authored JSDoc block counts: repeated prose blocks remain a difference even when TypeScript coalesces identical documentation text.

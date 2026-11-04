@@ -2120,7 +2120,20 @@ func (b *NodeBuilderImpl) signatureToSignatureDeclarationHelper(signature *Signa
 			b.e.SetOriginal(node, original)
 		}
 	}
+	b.preserveVibeSignatureOrigin(node, signature.declaration)
 	cleanup()
+	return node
+}
+
+// preserveVibeSignatureOrigin lets VIP-27 annotate both semantic and fast
+// syntactic serialization of inferred local callables. Foreign signatures keep
+// their own contracts and never acquire the caller's source identity.
+func (b *NodeBuilderImpl) preserveVibeSignatureOrigin(node, declaration *ast.Node) *ast.Node {
+	if declaration != nil && b.ctx.enclosingFile != nil &&
+		!b.ctx.enclosingFile.IsDeclarationFile && b.ctx.enclosingFile.FileName().IsVibeLangSource() &&
+		ast.GetSourceFileOfNode(declaration) != nil {
+		b.e.SetOriginalEx(node, declaration, true)
+	}
 	return node
 }
 

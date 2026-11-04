@@ -1,4 +1,2 @@
-export declare const build: {
-    /** @throws {never} */
-    (): number;
-};
+/** @throws {never} */
+export declare const build: () => number;

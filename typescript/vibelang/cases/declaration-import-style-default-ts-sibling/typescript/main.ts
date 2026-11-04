@@ -4,7 +4,4 @@ import type { Helper } from "./helper.ts"
 
 export * as Runtime from "./runtime.js"
 export { helper } from "./helper.ts"
-export const twice: {
-    /** @throws {never} */
-    (x: Helper): number;
-} = (x: Helper): number => x.n * 2
+export const twice = (x: Helper): number => x.n * 2

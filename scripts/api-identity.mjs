@@ -307,6 +307,80 @@ function docs(ts, checker, symbol) {
   return [text, ...tags].join("\n").trim()
 }
 
+// TypeScript does not attach JSDoc between a type alias's "=" (or a
+// property's ":") and its function type. Those comments are still published
+// docs; read that leading trivia rather than silently losing authored tags.
+function signatureDocs(ts, checker, signature) {
+  const ordinary = docs(ts, checker, signature)
+  const node = signature.getDeclaration()
+  if (!node) return ordinary
+  if (ordinary && !ts.isFunctionTypeNode(node) && !ts.isConstructorTypeNode(node)) return ordinary
+  const source = node.getSourceFile()
+  // Same-line trivia after "=" or ":" is classified as trailing by the
+  // scanner even though it precedes this type node.
+  const ranges = new Map([...(ts.getLeadingCommentRanges(source.text, node.pos) ?? []),
+    ...(ts.getTrailingCommentRanges(source.text, node.pos) ?? [])].map(range => [range.pos, range]))
+  const comments = [...ranges.values()].sort((a, b) => a.pos - b.pos)
+    .map(range => source.text.slice(range.pos, range.end)).filter(text => text.startsWith("/**"))
+  // Function-type signatures inherit a binding's prose through TypeScript's
+  // symbol API. That prose is already compared on the binding itself. An own
+  // inline tag must not make that inherited prose appear removed or replaced.
+  if (!comments.length) return ts.isFunctionTypeNode(node) || ts.isConstructorTypeNode(node) ? "" : ordinary
+  const parsed = ts.createSourceFile("docs.ts", comments.join("\n") + "\nfunction documented() {}", ts.ScriptTarget.Latest, true)
+  const blocks = parsed.statements[0]?.jsDoc ?? []
+  const text = normalized(blocks.map(doc => ts.getTextOfJSDocComment(doc.comment) ?? "").join(" "))
+  const tags = blocks.flatMap(doc => [...doc.tags ?? []]).map(tag => normalized(tag.getText(parsed).replace(/\r?\n[ \t]*\*[ \t]?/gu, "\n")))
+  return [text, ...tags].join("\n").trim()
+}
+
+// TypeScript coalesces identical prose across JSDoc blocks. Keep the block
+// count as well so adding a duplicate authored comment cannot disappear in
+// that normalized documentation view. A generated-only block contributes no
+// authored content; existing authored throws remain checked by sameExportDocs.
+function authoredDocBlocks(ts, symbol) {
+  const seen = new Set()
+  const declarations = symbol?.declarations ?? [symbol?.getDeclaration?.() ?? symbol?.valueDeclaration]
+  for (let host of declarations) {
+    if (!host) continue
+    if (ts.isVariableDeclaration(host) && host.parent && ts.isVariableDeclarationList(host.parent) && host.parent.parent && ts.isVariableStatement(host.parent.parent)) host = host.parent.parent
+    for (const doc of host.jsDoc ?? []) {
+      const text = normalized(ts.getTextOfJSDocComment(doc.comment) ?? "")
+      const tags = [...doc.tags ?? []]
+      if (!text && tags.length <= 1 && tags.every(tag => normalized(tag.getText()) === "@throws {never}")) continue
+      seen.add(doc)
+    }
+  }
+  return seen.size
+}
+function docBlockDifference(ts, before, after) {
+  const a = authoredDocBlocks(ts, before), b = authoredDocBlocks(ts, after)
+  return a === b ? {} : { beforeDocBlocks: a, afterDocBlocks: b }
+}
+
+// Will, 2026-11-04 / VIP-27: only an added generated never contract is
+// discretionary. Compare in twin -> emitted order; an authored tag on the twin
+// is never removed, replaced or normalized away.
+function sameExportDocs(ts, checker, symbol, before = "", after = "", beforeSymbol) {
+  if (authoredDocBlocks(ts, beforeSymbol) !== authoredDocBlocks(ts, symbol)) return false
+  if (before === after) return true
+  if (!symbol || /^@(?:throws|exception|rethrows)\b/mu.test(before)) return false
+  const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0] ?? symbol.getDeclaration?.()
+  if (!declaration) return false
+  if (!symbol.getDeclaration) {
+    const direct = ts.isFunctionDeclaration(declaration) || ts.isMethodDeclaration(declaration) || ts.isMethodSignature(declaration)
+    const binding = ts.isVariableDeclaration(declaration) || ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration)
+    if (!direct && !binding) return false
+    if (binding && !checker.getNonNullableType(checker.getTypeOfSymbolAtLocation(symbol, declaration)).getCallSignatures().length) return false
+  }
+  const tags = after.split("\n").filter(line => line.startsWith("@throws "))
+  if (!tags.length || tags.length > (symbol.declarations?.length ?? 1) || tags.some(tag => tag !== "@throws {never}")) return false
+  // One generated tag per emitted overload, never duplicate tags on one node.
+  for (const node of symbol.declarations ?? [declaration]) {
+    if (ts.getJSDocTags(node).filter(tag => tag.tagName.text === "throws").length > 1) return false
+  }
+  return before === after.split("\n").filter(line => line !== "@throws {never}").join("\n").trim()
+}
+
 const identityPrelude = `type __Assignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type __Same<A, B> =
   (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2)
@@ -499,6 +573,10 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
       for (const doc of node.jsDoc ?? []) texts.push(source.text.slice(doc.pos, doc.end).replace(/\s+/gu, " ").trim())
       ts.forEachChild(node, child => { pending.push(child) })
     }
+    // Detached JSDoc on inline function types is absent from node.jsDoc.
+    // Include doc-shaped lexical blocks conservatively in this reuse proof:
+    // even one inside a literal may invalidate reuse, never establish it.
+    texts.push(...(source.text.match(/\/\*\*[\s\S]*?\*\//gu) ?? []).map(text => text.replace(/\s+/gu, " ").trim()))
     const text = texts.join("\0")
     comments.set(file, text)
     return text
@@ -1225,6 +1303,7 @@ function prepareComparison(ts, before, after, options, progress) {
   }
   function memberDocs(symbol) {
     const found = new Map(), seen = new Set()
+    found.symbols = new Map()
     const own = s => s?.declarations?.some(d => [before, after].some(base =>
       (d.getSourceFile().fileName === base || d.getSourceFile().fileName.startsWith(base + "/")) &&
       !d.getSourceFile().fileName.includes("/node_modules/")))
@@ -1239,15 +1318,27 @@ function prepareComparison(ts, before, after, options, progress) {
         for (const property of checker.getPropertiesOfType(type).sort((a, b) => a.name.localeCompare(b.name))) {
           if (!own(property)) continue
           const key = path + "." + property.name
+          found.symbols.set(key, property)
           const text = docs(ts, checker, property)
           if (text) found.set(key, text)
           const declaration = property.valueDeclaration ?? property.declarations?.[0]
           if (declaration) children.push([checker.getTypeOfSymbolAtLocation(property, declaration), key])
         }
-        for (const signature of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
-          const declaration = signature.getDeclaration()
-          if (declaration && [before, after].some(base => declaration.getSourceFile().fileName.startsWith(base + "/")))
-            children.push([checker.getReturnTypeOfSignature(signature), path + "()"])
+        for (const [kind, signatures] of [["call", type.getCallSignatures()], ["construct", type.getConstructSignatures()]]) {
+          for (const [index, signature] of signatures.entries()) {
+            const declaration = signature.getDeclaration()
+            if (declaration && [before, after].some(base => declaration.getSourceFile().fileName.startsWith(base + "/"))) {
+              const key = path + "#" + kind + index
+              found.symbols.set(key, signature)
+              const text = signatureDocs(ts, checker, signature)
+              if (text) found.set(key, text)
+              for (const [parameterIndex, parameter] of signature.getParameters().entries()) {
+                const host = parameter.valueDeclaration ?? parameter.declarations?.[0] ?? declaration
+                children.push([checker.getTypeOfSymbolAtLocation(parameter, host), key + ".parameter" + parameterIndex])
+              }
+              children.push([checker.getReturnTypeOfSignature(signature), path + "()"])
+            }
+          }
         }
         for (let i = children.length - 1; i >= 0; i--) pending.push(children[i])
       }
@@ -1261,7 +1352,7 @@ function prepareComparison(ts, before, after, options, progress) {
     const unalias = s => s.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(s) : s
     const adoc = docs(ts, checker, a) || docs(ts, checker, unalias(a))
     const bdoc = docs(ts, checker, b) || docs(ts, checker, unalias(b))
-    if (adoc !== bdoc) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc })
+    if (!sameExportDocs(ts, checker, unalias(b), adoc, bdoc, unalias(a))) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc, ...docBlockDifference(ts, unalias(a), unalias(b)) })
     const aliases = [a, b]
     a = unalias(a); b = unalias(b)
     if (absentScope) {
@@ -1291,8 +1382,8 @@ function prepareComparison(ts, before, after, options, progress) {
     const amembers = equalDocs ? new Map() : memberDocs(a)
     const bmembers = equalDocs ? new Map() : memberDocs(b)
     for (const key of [...new Set([...amembers.keys(), ...bmembers.keys()])].sort()) {
-      if (amembers.get(key) !== bmembers.get(key)) result.docDifferences.push({
-        entrypoint, export: name + key, before: amembers.get(key) ?? "", after: bmembers.get(key) ?? ""
+      if (!sameExportDocs(ts, checker, bmembers.symbols?.get(key), amembers.get(key), bmembers.get(key), amembers.symbols?.get(key))) result.docDifferences.push({
+        entrypoint, export: name + key, before: amembers.get(key) ?? "", after: bmembers.get(key) ?? "", ...docBlockDifference(ts, amembers.symbols?.get(key), bmembers.symbols?.get(key))
       })
     }
     const amask = a.flags & (ts.SymbolFlags.Type | ts.SymbolFlags.Value | ts.SymbolFlags.Namespace)
@@ -1372,9 +1463,11 @@ function prepareComparison(ts, before, after, options, progress) {
     // Member documentation is observable even when its type is unchanged.
     const members = (symbol) => {
       const out = new Map()
+      out.symbols = new Map()
       for (const table of [symbol.members, symbol.exports]) {
         for (const [key, member] of table ?? []) {
           if (key === "prototype" || key.startsWith("__")) continue
+          out.symbols.set(key, member)
           const doc = docs(ts, checker, member)
           if (doc) out.set(key, doc)
         }
@@ -1383,8 +1476,8 @@ function prepareComparison(ts, before, after, options, progress) {
     }
     const amd = members(a), bmd = members(b)
     for (const child of new Set([...amd.keys(), ...bmd.keys()])) {
-      if ((amd.get(child) ?? "") !== (bmd.get(child) ?? ""))
-        result.docDifferences.push({ entrypoint, export: name + "." + child, before: amd.get(child) ?? "", after: bmd.get(child) ?? "" })
+      if (!sameExportDocs(ts, checker, bmd.symbols.get(child), amd.get(child), bmd.get(child), amd.symbols.get(child)))
+        result.docDifferences.push({ entrypoint, export: name + "." + child, before: amd.get(child) ?? "", after: bmd.get(child) ?? "", ...docBlockDifference(ts, amd.symbols.get(child), bmd.symbols.get(child)) })
     }
     // A namespace's runtime shape omits type-only members.
     if (((amask | bmask) & ts.SymbolFlags.Namespace) && !((a.flags | b.flags) & ts.SymbolFlags.Enum)) {

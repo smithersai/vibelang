@@ -10,6 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/effectglobals"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
@@ -225,9 +226,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		slots.NewTransformer(slots.visit, resolver.EmitContext())
 		declarations = slots.TransformSourceFile(declarations)
 		r.WithChecker(func(c *checker.Checker) {
-			throws := &declarationThrows{checker: c, source: sourceFile}
-			throws.NewTransformer(throws.visit, resolver.EmitContext())
-			declarations = throws.TransformSourceFile(declarations)
+			annotateExportThrows(c, resolver.EmitContext(), sourceFile, declarations.AsNode())
 		})
 		if added := moduleImportDeclarations(resolver.EmitContext().Factory, moduleImports, declarations); len(added) > 0 {
 			statements := resolver.EmitContext().Factory.NewNodeList(append(added, declarations.Statements.Nodes...))
@@ -1248,6 +1247,233 @@ func (tx *computedKeyRewriter) entityExpression(key *ast.Node) *ast.Node {
 	return identifier
 }
 
+// annotateExportThrows writes VIP-27's local non-Effect callable contracts.
+// The declaration tree already contains only the surface native emit retains,
+// including local declarations reached by an export, methods and overloads.
+// Imported callable aliases keep their foreign contract.
+func annotateExportThrows(c *checker.Checker, context *printer.EmitContext, source *ast.SourceFile, root *ast.Node) {
+	// Inferred object members have no Original link: nodebuilder retains their
+	// source comment range instead. Resolve that range within this source only,
+	// so inferred foreign signatures never acquire a local contract.
+	hosts := map[core.TextRange]*ast.Node{}
+	var collect func(*ast.Node) bool
+	collect = func(node *ast.Node) bool {
+		if ast.IsFunctionLike(node) || node.Kind == ast.KindPropertyDeclaration || node.Kind == ast.KindPropertyAssignment || node.Kind == ast.KindPropertySignature || node.Kind == ast.KindVariableStatement || node.Kind == ast.KindExportAssignment {
+			if node.Pos() >= 0 && node.End() >= node.Pos() {
+				hosts[node.Loc] = node
+			}
+		}
+		return node.ForEachChild(collect)
+	}
+	source.AsNode().ForEachChild(collect)
+	covered := map[*ast.Node]bool{}
+	var visit func(*ast.Node)
+	visit = func(node *ast.Node) {
+		if covered[node] {
+			node.ForEachChild(func(child *ast.Node) bool { visit(child); return false })
+			return
+		}
+		original := context.MostOriginal(node)
+		if ast.GetSourceFileOfNode(original) == nil || ast.NodeIsSynthesized(original) {
+			if host := hosts[context.CommentRange(node)]; host != nil {
+				original = host
+			}
+		}
+		var callable, docHost *ast.Node
+		docHost = original
+		tagNode := node
+		switch node.Kind {
+		case ast.KindFunctionDeclaration, ast.KindMethodDeclaration, ast.KindMethodSignature,
+			ast.KindCallSignature, ast.KindConstructSignature, ast.KindConstructor,
+			ast.KindFunctionType, ast.KindConstructorType:
+			if node.Kind == ast.KindConstructSignature && ast.IsClassLike(original) {
+				// Inferred class expressions expose their implicit constructor.
+				callable = original
+			} else if ast.IsFunctionLike(original) {
+				callable = implementationOf(original)
+			} else if original.Kind == ast.KindExportAssignment {
+				expression := ast.SkipOuterExpressions(original.Expression(), ast.OEKExpressionTypePassthrough)
+				if ast.IsFunctionLike(expression) {
+					callable = expression
+				}
+			}
+		case ast.KindVariableStatement:
+			if original.Kind == ast.KindVariableStatement {
+				declarations := original.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+				if len(declarations) == 1 {
+					init := localCallableInitializer(c, declarations[0])
+					if init != nil {
+						callable = init
+						emitted := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+						if len(emitted) == 1 && emitted[0].Type() != nil {
+							covered[emitted[0].Type()] = true
+						}
+					}
+				}
+			}
+		case ast.KindVariableDeclaration:
+			// A multi-binding const has one outer doc comment. Put each generated
+			// contract on its own function type, leaving that shared prose untouched.
+			if original.Kind == ast.KindVariableDeclaration && original.Parent != nil && original.Parent.Kind == ast.KindVariableDeclarationList && len(original.Parent.AsVariableDeclarationList().Declarations.Nodes) > 1 && node.Type() != nil {
+				init := localCallableInitializer(c, original)
+				if init != nil {
+					callable = init
+					tagNode = node.Type()
+					covered[tagNode] = true
+				}
+			}
+		case ast.KindPropertyDeclaration, ast.KindPropertySignature:
+			// Native emit elides private method/arrow types as opaque properties.
+			// They expose no call signature to annotate.
+			if node.Type() == nil {
+				break
+			}
+			if original.Kind == ast.KindMethodDeclaration || original.Kind == ast.KindMethodSignature {
+				callable = implementationOf(original)
+			} else if original.Kind == ast.KindPropertyDeclaration || original.Kind == ast.KindPropertyAssignment {
+				init := localCallableInitializer(c, original)
+				if init != nil {
+					callable = init
+				}
+			} else if original.Kind == ast.KindPropertySignature && original.Type() != nil && original.Type().Kind == ast.KindFunctionType {
+				callable = original.Type()
+			}
+		}
+		if callable != nil && (node.Kind == ast.KindPropertyDeclaration || node.Kind == ast.KindPropertySignature) && node.Type() != nil {
+			covered[node.Type()] = true
+		}
+		if callable != nil && isVibeLangFile(ast.GetSourceFileOfNode(callable)) && !inHatch(callable) && !isMarkedEffect(callable) &&
+			!writtenThrowsContract(docHost) && !writtenThrowsContract(callable) &&
+			!writtenFunctionTypeContract(original) &&
+			!(original.Kind == ast.KindVariableDeclaration && original.Parent != nil && writtenThrowsContract(original.Parent.Parent)) {
+			// Return-channel failures are described by Effect, not a throws tag.
+			signatureNode := callable
+			if ast.IsFunctionLike(original) {
+				signatureNode = original
+			}
+			var signature *checker.Signature
+			if ast.IsClassLike(signatureNode) {
+				if signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(signatureNode), checker.SignatureKindConstruct); len(signatures) > 0 {
+					signature = signatures[0]
+				}
+			} else {
+				signature = c.GetSignatureFromDeclaration(signatureNode)
+			}
+			effectful := signature != nil && isEffectfulType(c, c.GetReturnTypeOfSignature(signature))
+			if !effectful {
+				if ast.GetSourceFileOfNode(callable) != source {
+					// Foreign-source provenance is not a range into this file.
+					// Keep synthesized docs, without publishing body comments.
+					context.SetCommentRange(tagNode, core.UndefinedTextRange())
+				}
+				addThrowsNever(context, source, tagNode)
+			}
+		}
+		node.ForEachChild(func(child *ast.Node) bool {
+			visit(child)
+			return false
+		})
+	}
+	visit(root)
+}
+
+// addThrowsNever writes the generated contract into the JSDoc block TypeScript
+// reads. TypeScript takes prose and tags from the last JSDoc block before a
+// declaration only (tsc 5.9.3 getDocumentationComment), so a separate trailing
+// `/** @throws {never} */` would hide the authored documentation. The tag joins
+// that last block; without authored JSDoc it is a block of its own.
+func addThrowsNever(context *printer.EmitContext, source *ast.SourceFile, node *ast.Node) {
+	const tag = "* @throws {never} "
+	// Documentation a node builder already attached as synthesized comments.
+	synthesized := context.GetSyntheticLeadingComments(node)
+	for i := len(synthesized) - 1; i >= 0; i-- {
+		if c := synthesized[i]; c.Kind == ast.KindMultiLineCommentTrivia && isJSDocText(c.Text) {
+			joined := slices.Clone(synthesized)
+			joined[i].Text = joinThrowsNever("/*" + c.Text + "*/")
+			context.SetSyntheticLeadingComments(node, joined)
+			return
+		}
+	}
+	// Source documentation the printer would copy from the node's comment
+	// range. Declaration emit prints only JSDoc-style and pinned comments
+	// (OnlyPrintJSDocStyle); replay exactly those, joining the last JSDoc block.
+	rng := context.CommentRange(node)
+	text := source.Text()
+	if rng.Pos() < 0 || rng.Pos() > len(text) {
+		context.AddSyntheticLeadingComment(node, ast.KindMultiLineCommentTrivia, tag, true)
+		return
+	}
+	var kept []ast.CommentRange
+	last := -1
+	for comment := range scanner.GetLeadingCommentRanges(&ast.NodeFactory{}, text, rng.Pos()) {
+		body := text[comment.Pos():comment.End()]
+		if comment.Kind != ast.KindMultiLineCommentTrivia {
+			continue
+		}
+		jsdoc := isJSDocText(body[2 : len(body)-2])
+		if !jsdoc && !strings.HasPrefix(body, "/*!") {
+			continue
+		}
+		if jsdoc {
+			last = len(kept)
+		}
+		kept = append(kept, comment)
+	}
+	if last < 0 {
+		context.AddSyntheticLeadingComment(node, ast.KindMultiLineCommentTrivia, tag, true)
+		return
+	}
+	context.SetCommentRange(node, core.UndefinedTextRange())
+	suppressLeadingCommentsAt(context, node, rng.Pos())
+	comments := slices.Clone(synthesized)
+	for i, comment := range kept {
+		body := dedentComment(text, comment.Pos(), text[comment.Pos():comment.End()])
+		inner := body[2 : len(body)-2]
+		if i == last {
+			inner = joinThrowsNever(body)
+		}
+		comments = append(comments, printer.SynthesizedComment{Kind: ast.KindMultiLineCommentTrivia, Loc: core.UndefinedTextRange(), HasTrailingNewLine: true, Text: inner})
+	}
+	context.SetSyntheticLeadingComments(node, comments)
+}
+
+// suppressLeadingCommentsAt stops descendants that start where node's
+// documentation starts, such as a reused `export` modifier or member name,
+// from printing that documentation a second time.
+func suppressLeadingCommentsAt(context *printer.EmitContext, node *ast.Node, pos int) {
+	node.ForEachChild(func(child *ast.Node) bool {
+		switch at := context.CommentRange(child).Pos(); {
+		case at == pos:
+			context.SetCommentRange(child, core.UndefinedTextRange())
+			suppressLeadingCommentsAt(context, child, pos)
+		case at < 0:
+			suppressLeadingCommentsAt(context, child, pos)
+		}
+		return false
+	})
+}
+
+// isJSDocText reports whether the text between a comment's /* and */ makes it a
+// JSDoc block: it starts with another * and is not the empty comment /**/.
+func isJSDocText(inner string) bool {
+	return strings.HasPrefix(inner, "*") && inner != "*" && !strings.HasPrefix(inner, "*/")
+}
+
+// dedentComment removes the source column of a multi-line comment from its
+// continuation lines, so the printer re-indents it at the emitted position.
+func dedentComment(text string, pos int, comment string) string {
+	column := pos - (strings.LastIndexByte(text[:pos], '\n') + 1)
+	lines := strings.Split(comment, "\n")
+	for i := 1; i < len(lines); i++ {
+		trim := 0
+		for trim < column && trim < len(lines[i]) && (lines[i][trim] == ' ' || lines[i][trim] == '\t') {
+			trim++
+		}
+		lines[i] = lines[i][trim:]
+	}
+	return strings.Join(lines, "\n")
+}
+
 // joinThrowsNever returns the text between the /* and */ of doc, a JSDoc
 // block, with a `@throws {never}` line added.
 func joinThrowsNever(doc string) string {
@@ -1256,4 +1482,47 @@ func joinThrowsNever(doc string) string {
 		body = "*\n * " + strings.TrimSpace(strings.TrimPrefix(body, "*"))
 	}
 	return strings.TrimRight(body, " \t\r\n") + "\n * @throws {never}\n "
+}
+
+func localCallableInitializer(c *checker.Checker, declaration *ast.Node) *ast.Node {
+	node := declaration.Initializer()
+	if node == nil {
+		return nil
+	}
+	node = ast.SkipOuterExpressions(node, ast.OEKAll)
+	if (ast.IsArrowFunction(node) || ast.IsFunctionExpression(node)) && len(c.GetSignaturesOfType(c.GetNonNullableType(c.GetTypeAtLocation(declaration)), checker.SignatureKindCall)) > 0 {
+		return node
+	}
+	return nil
+}
+
+// A callable type's authored contract may be written on its owning binding,
+// property or alias. Variable statements own the docs of declared consts.
+func writtenFunctionTypeContract(node *ast.Node) bool {
+	if node.Kind != ast.KindFunctionType && node.Kind != ast.KindConstructorType {
+		return false
+	}
+	owner := node.Parent
+	for owner != nil && (owner.Kind == ast.KindParenthesizedType || owner.Kind == ast.KindUnionType) {
+		owner = owner.Parent
+	}
+	if writtenThrowsContract(owner) {
+		return true
+	}
+	return owner != nil && owner.Kind == ast.KindVariableDeclaration && owner.Parent != nil && writtenThrowsContract(owner.Parent.Parent)
+}
+
+// Even an untyped authored tag is a contract; never overwrite one.
+func writtenThrowsContract(node *ast.Node) bool {
+	if node == nil {
+		return false
+	}
+	for _, doc := range node.JSDoc(nil) {
+		for _, tag := range jsdocTags(doc) {
+			if name := tag.TagName(); name != nil && (name.Text() == "throws" || name.Text() == "exception" || name.Text() == "rethrows") {
+				return true
+			}
+		}
+	}
+	return false
 }

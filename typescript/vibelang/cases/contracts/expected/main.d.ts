@@ -31,10 +31,8 @@ export declare function named(id: string): Effect.Effect<{
     name: string;
 }, UserNotFound, never>;
 export declare function everything(id: string): Effect.Effect<User, UserNotFound, never>;
-export declare const twice: {
-    /** @throws {never} */
-    (n: number): number;
-};
+/** @throws {never} */
+export declare const twice: (n: number) => number;
 export declare function main(): Effect.Effect<{
     find: string;
     wide: string;

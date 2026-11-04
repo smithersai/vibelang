@@ -1,0 +1,1 @@
+every local non-Effect export keeps its generated throws contract

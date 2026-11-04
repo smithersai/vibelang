@@ -3,12 +3,6 @@ import { greeting } from './target.js'
 
 export type { Factory as Maker } from './target.js'
 
-export const invoke: {
-    /** @throws {never} */
-    (fn: Factory): string;
-} = (fn: Factory): string => fn()
+export const invoke = (fn: Factory): string => fn()
 
-export const greet: {
-    /** @throws {never} */
-    (): string;
-} = (): string => invoke(greeting)
+export const greet = (): string => invoke(greeting)

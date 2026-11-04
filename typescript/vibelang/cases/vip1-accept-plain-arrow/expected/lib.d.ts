@@ -1,4 +1,2 @@
-export declare const inc: {
-    /** @throws {never} */
-    (x: number): number;
-};
+/** @throws {never} */
+export declare const inc: (x: number) => number;

@@ -11,12 +11,16 @@ import (
 const declarationThrowsContractQuote = "functions, methods, constructors, callable `const`s, `async` functions, and each call, construct or method signature of an exported `interface`, type literal or `type` alias carry `@throws {never}`."
 const declarationThrowsExceptionsQuote = "An effectful function carries no `@throws`. A bare function type stays a function type, and getters and setters carry none."
 
+const declarationThrowsDocsQuote = "Preserve its source documentation; only the generated contract described above is an allowed addition in the emitted declaration."
+
 type declarationThrowsShape struct {
 	key, source string
 	count       int
 }
 
 var declarationThrowsShapes = []declarationThrowsShape{
+	{"foldkit-section-docs", "// SELECTORS\n\n/** Selects a value. @deprecated old */\nexport const select = (value: VALUE): VALUE => value", 1},
+	{"smithers-callable-docs", "export interface Runner {\n/** Runs a task. */\ncallback: (value: VALUE) => VALUE }", 1},
 	{"cross-vibe", "export const fnAlias = sharedFn; export const objAlias = sharedObj; export const CtorAlias = makeClass()", 2},
 	{"foreign-values", "export const fnAlias = sharedFn; export const objAlias = sharedObj; export const CtorAlias = makeClass()", 0},
 	{"function", "export function identity(x: VALUE): VALUE { return x }", 1},
@@ -44,7 +48,7 @@ var declarationThrowsShapes = []declarationThrowsShape{
 	{"nested", "export interface Box { child: { read(x: VALUE): VALUE } }", 1},
 	{"overload", "export function read(x: VALUE): VALUE; export function read(x: VALUE, y: VALUE): VALUE; export function read(x: VALUE, y?: VALUE) { return x }", 2},
 	{"accessors", "export class Box { get value(): VALUE { return undefined as unknown as VALUE } set value(x: VALUE) {} }", 0},
-	{"bare", "export type Box = (x: VALUE) => VALUE; export interface Other { callback: (x: VALUE) => VALUE }", 0},
+	{"bare", "export type Box = (x: VALUE) => VALUE; export interface Other { callback: (x: VALUE) => VALUE }", 2},
 	{"effect-constructor", "export declare const Base: { new (): Effect.Effect<VALUE> }; export class Box extends Base { constructor() { super() } }", 0},
 	{"effect-function", "export function read(): Effect.Effect<VALUE> { return undefined as unknown as Effect.Effect<VALUE> }", 0},
 	{"effect-arrow", "export const read = (): Effect.Effect<VALUE> => undefined as unknown as Effect.Effect<VALUE>", 0},
@@ -54,7 +58,7 @@ var declarationThrowsShapes = []declarationThrowsShape{
 }
 
 func TestDeclarationThrowsContractQuoted(t *testing.T) {
-	for _, quote := range []string{declarationThrowsContractQuote, declarationThrowsExceptionsQuote} {
+	for _, quote := range []string{declarationThrowsContractQuote, declarationThrowsExceptionsQuote, declarationThrowsDocsQuote} {
 		if !strings.Contains(SpecText("001-functions.md"), quote) {
 			t.Fatalf("Chapter 1 no longer contains %q", quote)
 		}
@@ -132,6 +136,16 @@ func FuzzDeclarationThrowsContract(f *testing.F) {
 		}
 		if got := strings.Count(output, "@throws {never}"); got != shape.count {
 			Gap(t, "FuzzDeclarationThrowsContract", "shape:"+key, "Chapter 1: %s; %s\nwant %d signature tags, got %d\n%s", declarationThrowsContractQuote, declarationThrowsExceptionsQuote, shape.count, got, output)
+		}
+		// Bare function types retain native syntax; the generated contract
+		// is inline JSDoc, not a rewrite into a type literal.
+		if key == "bare" && strings.Contains(output, "type Box = {") {
+			t.Fatal("VIP-27: a bare function type must stay a function type")
+		}
+		for corpusKey, prose := range map[string]string{"foldkit-section-docs": "Selects a value.", "smithers-callable-docs": "Runs a task."} {
+			if key == corpusKey && strings.Count(output, prose) != 1 {
+				Gap(t, "FuzzDeclarationThrowsContract", "docs:"+key, "Chapter 1: %s; got:\n%s", declarationThrowsDocsQuote, output)
+			}
 		}
 		ExpectPending(t, "FuzzDeclarationThrowsContract", "shape:"+key)
 		if !strings.Contains(output, "Keep this documentation.") {

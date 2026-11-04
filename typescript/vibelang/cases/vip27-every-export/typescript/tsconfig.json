@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "strict": true,
+    "types": [],
+    "declaration": true,
+    "outDir": "out"
+  },
+  "include": [
+    "*.ts"
+  ]
+}

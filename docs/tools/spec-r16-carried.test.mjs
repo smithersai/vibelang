@@ -59,7 +59,7 @@ function violations(key, source) {
   if (key === "ASTRA-5" && text("src/001-functions.md").includes("**API identity.**")) {
     for (const file of ["src/001-functions.md", "vips/0027-declaration-output.md"]) {
       require(text(file).includes("same doc comment on each export"), `${file}: lost comment identity`)
-      require(text(file).includes("Construct the twin with the explicit `@throws {never}` contract"), `${file}: incomplete twin contract`)
+      require(text(file).includes("2026-11-04") && text(file).includes("generated") && text(file).includes("authored"), `${file}: missing Will’s generated-contract exception`)
     }
   }
   return problems

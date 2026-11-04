@@ -1,6 +1,3 @@
 export type Factory = () => string
 
-export const greeting: {
-    /** @throws {never} */
-    (): string;
-} = (): string => 'hello'
+export const greeting = (): string => 'hello'
