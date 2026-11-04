@@ -185,6 +185,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An `EK4833` warning on an Effect type with a union slot lost its concrete shorthand suggestion when the automatic fix was unsafe; it now shows the required parentheses while retaining the refusal to change grouping or declarations. Legacy `Effect<…>` annotations in callback and service cases also retain their required `EK4856` warning coverage.
 
+- Migration oracle regression tests treated changed documentation as harmless spelling and overlooked unchanged declarations in a failed API proof; they now check documentation and the full comparison closure.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

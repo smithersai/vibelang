@@ -77,11 +77,14 @@ test("alchemy-23: a batch that migrates a module whose declaration the native ba
   const pkg = tree({ "tsconfig.json": packageTsconfig, ...corpus.source })
   try {
     const oracle = unprovenDeclarations(ts, stock, native)
-    assert.deepEqual(oracle.files, ["Pipes/builders.d.ts"])
+    assert.deepEqual(oracle.files, ["Ok.d.ts", "Pipes/builders.d.ts"])
     assert.deepEqual(oracle.missing, ["Pipes/builders.d.ts"])
     const names = declarationNames(ts, pkg, [{ tsconfig: "tsconfig.json", prefix: "." }])
     const found = unprovenMigrations({ migrated: corpus.migrated, pkgDir: corpus.package, names, oracle })
-    assert.deepEqual(found.map((x) => x.file), corpus.unproven)
+    // 011d4ca1e887 made every compared declaration unproven when a
+    // published API differs; unchanged companions cannot certify the closure.
+    assert.deepEqual(found.map((x) => x.file), corpus.migrated)
+    assert.equal(corpus.unproven.every(file => found.some(x => x.file === file)), true)
     assert.match(found[0].reason, /no declaration/)
     // Another package's file of the same name is not this package's.
     assert.deepEqual(unprovenMigrations({ migrated: ["packages/gcp/src/Pipes/builders.vibe"], pkgDir: corpus.package, names, oracle }), [])
@@ -117,32 +120,58 @@ test("a missing or unavailable stock oracle cannot certify a migrated declaratio
   assert.deepEqual(unavailable.map(x => x.file), ["src/main.vibe"])
 })
 
-test("property: spelling never makes a declaration unproven, and every type or file difference does", () => {
+test("property: equivalent spelling proves the API, while type, documentation or file changes invalidate its comparison closure", () => {
   fc.assert(fc.property(
     fc.array(fc.record({
       type: fc.constantFrom("string", "number", "boolean", '"a" | "b"', "ReadonlyArray<string>"),
-      change: fc.constantFrom("same", "spelling", "type", "missing")
+      change: fc.constantFrom("same", "spelling", "type", "docs", "missing")
     }), { minLength: 1, maxLength: 8 }), fc.boolean(),
     (modules, extra) => {
-      const stock = {}, native = {}, expected = new Set()
+      const stock = {}, native = {}, changed = new Set(), missing = []
       for (const [i, { type, change }] of modules.entries()) {
         const name = "m" + i + ".d.ts"
-        stock[name] = "export declare const v" + i + ": " + type + ";\nexport interface I" + i + " { a: string; b: number }\n"
+        stock[name] = "/** doc */\nexport declare const v" + i + ": " + type + ";\nexport interface I" + i + " { a: string; b: number }\n"
         if (change === "same") native[name] = stock[name]
         else if (change === "spelling") native[name] = "/** doc */\nexport declare const v" + i + ": (" + (type.includes("|") ? "'b' | 'a'" : type) + ");\nexport interface I" + i + " { b: number; a: string; }\n"
         else {
-          expected.add(name)
-          if (change === "type") native[name] = "export declare const v" + i + ": " + (type === "string" ? "number" : "string") + ";\nexport interface I" + i + " { a: string; b: number }\n"
+          changed.add(name)
+          if (change === "missing") missing.push(name)
+          if (change === "docs") native[name] = stock[name].replace("/** doc */", "/** changed doc */")
+          if (change === "type") native[name] = "/** doc */\nexport declare const v" + i + ": " + (type === "string" ? "number" : "string") + ";\nexport interface I" + i + " { a: string; b: number }\n"
         }
       }
       if (extra) {
         native["extra.d.ts"] = "export declare const extra: string;\n"
-        expected.add("extra.d.ts")
+        changed.add("extra.d.ts")
       }
       const a = tree(stock), b = tree(native)
-      try { assert.deepEqual(unprovenDeclarations(ts, a, b).files, [...expected].sort()) }
+      try {
+        const oracle = unprovenDeclarations(ts, a, b)
+        const closure = changed.size ? [...new Set([...Object.keys(stock), ...Object.keys(native)])].sort() : []
+        assert.deepEqual(oracle.files, closure)
+        assert.equal(oracle.identical, changed.size === 0)
+        assert.deepEqual(oracle.missing, missing)
+        assert.deepEqual(oracle.extra, extra ? ["extra.d.ts"] : [])
+      }
       finally { rmSync(a, { recursive: true, force: true }); rmSync(b, { recursive: true, force: true }) }
     }), { seed: 50123, numRuns: 100 })
+})
+
+test("documentation is part of the stock oracle, while equivalent spelling with the same documentation passes", () => {
+  const declaration = "/** Published description. */\nexport declare const value: \"a\" | \"b\";\n"
+  const stock = tree({ "main.d.ts": declaration })
+  const same = tree({ "main.d.ts": "/** Published description. */\nexport declare const value: ('b' | 'a');\n" })
+  const changed = tree({ "main.d.ts": declaration.replace("Published description.", "Different description.") })
+  try {
+    assert.equal(unprovenDeclarations(ts, stock, same).identical, true)
+    const oracle = unprovenDeclarations(ts, stock, changed)
+    assert.equal(oracle.identical, false)
+    assert.deepEqual(oracle.files, ["main.d.ts"])
+    assert.deepEqual(oracle.missing, [])
+    assert.deepEqual(oracle.extra, [])
+  } finally {
+    for (const dir of [stock, same, changed]) rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test("property: oracle availability gates only the migrated modules in its declaration projects", () => {
