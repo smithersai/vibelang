@@ -100,6 +100,16 @@ const migrateTest = S.Shell.Test({
   timeout: "90m"
 })
 
+const migrateHelperIdentity = S.Shell.Test({
+  summary: "Preserve authored helper declarations while accepting generated never contracts.",
+  shell: "node --test --test-name-pattern='helper declaration identity' " +
+    ".smithers/flows/migrate/test/source-child-vibe-module.property.test.mjs",
+  data: [migrationSources, ...install],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "3m"
+})
+
 // The bundler plugins compile through vibelang/project and pass its source
 // maps on, so a change to the compiler package reruns them. Each run.sh links
 // this checkout's compiler into its fixtures and builds a private copy of the
@@ -151,6 +161,7 @@ export const Package = S.Package({
     "compiler-native": compilerNative,
     "migrate-toolchain-baseline": migrateToolchainBaseline,
     "compiler-test": compilerTest,
+    "migrate-helper-identity": migrateHelperIdentity,
     "migrate-test": migrateTest,
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,

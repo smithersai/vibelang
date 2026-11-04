@@ -1008,6 +1008,14 @@ copying a malformed response's body. Hover generation can then close its
 server and remove its temporary projects; a server that ignores termination
 is killed after the existing two-second cleanup deadline.
 
+Source-child loader declaration tests use the migration API identity gate in
+twin-to-emitted order. VIP-27 allows an added generated `@throws {never}`
+contract when the twin has no authored throw contract. Changes to descriptions,
+other tags, authored throw contracts and exported types still fail; mutation
+controls exercise that boundary alongside the native Node and Bun helpers.
+
+The targeted `//packages:migrate-helper-identity` gate runs the identity controls on changes to declaration comparison, the helper fixture, or its target definition. The complete native helper tests retain their file-placement and runtime assertions in the full migration suite.
+
 ## Mapper protocol checks
 
 The mapper test client's `packages/ts-mapper/test/protocol-client.mjs`

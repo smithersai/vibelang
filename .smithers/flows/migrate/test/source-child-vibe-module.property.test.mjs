@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { addSourceChildLoaders } from "../lib/source-children.mjs"
 import { prepareState, applyState } from "../lib/codemod-state.mjs"
+import { compareDeclarations } from "../lib/declarations.mjs"
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const require = createRequire(join(repo, "packages/runtime/package.json"))
@@ -106,9 +107,36 @@ for(const childRuntime of ["node","bun"])test("native: "+childRuntime+" helpers 
   rmSync(join(f.root,"out"),{recursive:true,force:true})
   const state=f.plan();applyState(f.root,state)
   const after=native();assert.equal(after.status,0,after.stdout+after.stderr)
-  assert.equal(readFileSync(join(f.root,"out/Trace.d.ts"),"utf8"),declaration)
+  assertHelperDeclarations(declaration, readFileSync(join(f.root,"out/Trace.d.ts"),"utf8"))
   const afterRun=observe();assert.equal(afterRun.status,0,afterRun.stderr)
   assert.equal(afterRun.stdout,beforeRun.stdout)
   assert.ok(!existsSync(join(f.root,"src/Trace.platform.ts")))
  }finally{f.dispose()}
+})
+
+// VIP-27 permits an added generated never contract; all authored docs stay exact.
+function assertHelperDeclarations(before, after) {
+  const root = mkdtempSync(join(tmpdir(), "source-child-declarations-"))
+  try {
+    symlinkSync(join(repo, "packages/runtime/node_modules"), join(root, "node_modules"), "dir")
+    for (const [side, text] of [["before", before], ["after", after]]) {
+      mkdirSync(join(root, side))
+      writeFileSync(join(root, side, "package.json"), JSON.stringify({type: "module", types: "./index.d.ts"}))
+      writeFileSync(join(root, side, "index.d.ts"), text)
+    }
+    const result = compareDeclarations(ts, join(root, "before"), join(root, "after"))
+    assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+    assert.equal(result.identical, true, JSON.stringify(result))
+  } finally { rmSync(root, {recursive: true, force: true}) }
+}
+test("helper declaration identity preserves JSDoc apart from generated never contracts", () => {
+  const declaration = "export declare function launch(): string[];\n"
+  assertHelperDeclarations(declaration, "/** @throws {never} */\n" + declaration)
+  assert.throws(() => assertHelperDeclarations("/** Stable */\n" + declaration, "/** Changed */\n" + declaration))
+  assert.throws(() => assertHelperDeclarations("/** @throws {Error} */\n" + declaration, "/** @throws {never} */\n" + declaration))
+  fc.assert(fc.property(fc.constantFrom("description", "@deprecated", "@example", "@param unused"), fc.integer({min: 1, max: 999}), (tag, n) => {
+    const before = "/** " + tag + " before" + n + " */\n" + declaration
+    const after = "/** " + tag + " after" + n + " */\n" + declaration
+    assert.throws(() => assertHelperDeclarations(before, after))
+  }), { seed: 27137, numRuns: 8 })
 })
