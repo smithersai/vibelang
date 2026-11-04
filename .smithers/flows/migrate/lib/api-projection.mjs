@@ -18,7 +18,7 @@ export function apiProjection(ts, directory, surface, files, { published = true 
   const direct = { directory: original, originals: new Map(files.map(file => [file, file])),
     destinations: new Map(files.map(file => [file, file])), cleanup() {} }
   if (!metadata) return direct
-  const temporary = mkdtempSync(join(tmpdir(), "migrate-api-projection-"))
+  const temporary = resolve(mkdtempSync(join(tmpdir(), "migrate-api-projection-")))
   const ancestors = []
   for (let cursor = resolve(metadata.packageDir); ; cursor = dirname(cursor)) {
     ancestors.push(cursor)

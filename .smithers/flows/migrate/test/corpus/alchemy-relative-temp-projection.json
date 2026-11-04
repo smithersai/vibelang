@@ -1,0 +1,13 @@
+{
+  "repo": "alchemy",
+  "property": "api-projection-temp",
+  "rule": "Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin",
+  "input": {
+    "temporary": "tmp",
+    "layout": "dist",
+    "module": "entry",
+    "escape": "../outside.d.ts",
+    "absolute": false
+  },
+  "spec": "docs/design/src/001-functions.md#api-identity"
+}

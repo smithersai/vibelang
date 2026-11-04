@@ -899,6 +899,8 @@ still applies: a native module reached through both graphs can have two instance
 Consumer runtime tests and API comparisons remain required; this routing is not
 a claim that every mixed graph preserves identity.
 
+Declaration snapshot verification accepts absolute and relative `TMPDIR` settings. It resolves each temporary projection root before reconstructing the package layout, while still rejecting declaration paths that leave that projection. A temporary-directory spelling alone does not make an API comparison unavailable.
+
 ### Published declaration files
 
 Setup keeps declaration sidecars out of public packages: it appends `!**/*.d.vibe.ts` and `!**/*.d.vibex.ts` to an existing `files` allowlist, or excludes both suffixes in `.npmignore`, retaining the `.gitignore` fallback when it creates that file. Tests, fixtures and vendored package manifests stay untouched (decided detail 272). This leaves source tooling's adjacent sidecars and an existing `vibe.sidecarDir` layout intact.

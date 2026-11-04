@@ -2070,3 +2070,7 @@ typescript/vibelang/cases/catch-expression/main.vibe:40:11 lambda: effectFn tabl
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # The catch handler now writes effect explicitly.
 typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # The service implementation now writes an effect arrow for its Effect-valued member.
 typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # The lookup helper now writes effect explicitly.
+
+typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-1: the existing catch mapper has an explicit effect keyword, which determines its function kind.
+typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the existing service implementation arrow has an explicit effect keyword, which determines its function kind.
+typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the existing underRoot arrow has an explicit effect keyword, which determines its function kind.
