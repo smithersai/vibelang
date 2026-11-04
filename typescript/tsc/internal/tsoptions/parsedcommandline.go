@@ -45,10 +45,11 @@ func (p *ParsedCommandLine) fileGlobPatterns() (fileGlob string, recursiveFileGl
 type ParsedCommandLine struct {
 	ParsedConfig *ParsedOptions `json:"parsedConfig"`
 
-	ConfigFile    *TsConfigSourceFile `json:"configFile"` // TsConfigSourceFile, used in Program and ExecuteCommandLine
-	Errors        []*ast.Diagnostic   `json:"errors"`
-	Raw           any                 `json:"raw"`
-	CompileOnSave *bool               `json:"compileOnSave"`
+	ConfigFile       *TsConfigSourceFile `json:"configFile"` // TsConfigSourceFile, used in Program and ExecuteCommandLine
+	Errors           []*ast.Diagnostic   `json:"errors"`
+	Raw              any                 `json:"raw"`
+	EffectivePlugins []any               `json:"-"`
+	CompileOnSave    *bool               `json:"compileOnSave"`
 
 	configFileSpecs         *configFileSpecs
 	baseDirectory           tspath.RootedDirectoryPath
@@ -106,6 +107,7 @@ func (p *ParsedCommandLine) WithFileNames(fileNames []tspath.RootedFilePath) *Pa
 		ConfigFile:                  p.ConfigFile,
 		Errors:                      p.Errors,
 		Raw:                         p.Raw,
+		EffectivePlugins:            p.EffectivePlugins,
 		CompileOnSave:               p.CompileOnSave,
 		configFileSpecs:             p.configFileSpecs,
 		baseDirectory:               p.baseDirectory,
@@ -479,7 +481,7 @@ func (p *ParsedCommandLine) ExtendedSourceFiles() []tspath.RootedFilePath {
 func (p *ParsedCommandLine) GetConfigFileParsingDiagnostics() []*ast.Diagnostic {
 	if p.ConfigFile != nil {
 		// todo: !!! should be ConfigFile.ParseDiagnostics, check if they are the same
-		return applyConfigSeverities(slices.Concat(p.ConfigFile.SourceFile.Diagnostics(), p.Errors, p.ConfigFile.LegacyWarnings, configMigrationWarnings(p.ConfigFile.SourceFile)), p.CompilerOptions().VibeLang)
+		return applyConfigSeverities(slices.Concat(p.ConfigFile.SourceFile.Diagnostics(), p.Errors, p.ConfigFile.LegacyWarnings, configMigrationWarnings(p.ConfigFile.SourceFile), lintPluginMigrationWarnings(p)), p.CompilerOptions().VibeLang)
 	}
 	return p.Errors
 }
@@ -566,6 +568,7 @@ func (p *ParsedCommandLine) ReloadFileNamesOfParsedCommandLine(fs vfs.FS) *Parse
 		ConfigFile:                  p.ConfigFile,
 		Errors:                      p.Errors,
 		Raw:                         p.Raw,
+		EffectivePlugins:            p.EffectivePlugins,
 		CompileOnSave:               p.CompileOnSave,
 		configFileSpecs:             p.configFileSpecs,
 		baseDirectory:               p.baseDirectory,

@@ -1,6 +1,8 @@
 package lint
 
 import (
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etsexecutehooks"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rules"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
@@ -39,7 +41,10 @@ var effectRuleCodes = func() map[int32]int32 {
 func filterForExitCode(opts *shimcore.CompilerOptions, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
 	effect := opts.Effect
 	if effect == nil {
-		return diagnostics
+		if !core.VibeNeedsLintPlugin(opts) {
+			return diagnostics
+		}
+		effect = etscore.ParseFromPlugins([]any{map[string]any{"name": etscore.EffectPluginName}})
 	}
 	judged := make([]*ast.Diagnostic, len(diagnostics))
 	printed := map[*ast.Diagnostic]*ast.Diagnostic{}

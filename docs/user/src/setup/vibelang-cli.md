@@ -465,3 +465,7 @@ The explicit upgrade also writes `readonly` on legacy `service` body fields and 
 When `--fix` checks declaration imports across several modules, declaration emission runs in parallel and collects every module's result before comparing the proposed imports.
 
 For `EK0505`, `vibelang --fix` keeps a running `try` or operator head in an explicit `effect` block. Direct `join` and `fork` heads use `Fiber.join` and child-side recovery. Source jumps and wrapped forks need an explicit boundary choice; see [fallbacks](../error-management/016-fallback.md).
+
+### Preserve imported lint activation
+
+A configuration with an assigned `EK38xx` entry in `vibe.severities` and no resolved `@effect/language-service` plugin reports `EK3012`. During migration it retains the legacy default plugin, including when the entry is `"off"`. Run `vibelang --fix` to add the explicit plugin to the selected project configuration. Existing plugin options, inherited entries and comments stay intact; explicit `diagnostics: false` and `diagnosticSeverity: null` stay disabled. Selected-file `--fix --only` does not write configurations.

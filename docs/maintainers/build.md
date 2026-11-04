@@ -245,7 +245,7 @@ queue:
 | Target | Runs when a batch changes |
 | --- | --- |
 | `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
-| `//:docs-contracts` | Specification chapters/VIPs, user pages, covered contract tests and fixtures, or `docs/tools` dependencies; runs native examples and mutation guards without building the compiler. Appendix B owner checks run here; the complete compiler-backed no-throw suite remains in `//:docs-tools`. |
+| `//:lint-config` | Configuration/core options, imported lint options or hooks, fixer/config diagnostics, lint fuzz tests, or the VIP-38 contract; checks warning, activation and preserving migration without building runtime packages. |\n| `//:docs-contracts` | Specification chapters/VIPs, user pages, covered contract tests and fixtures, or `docs/tools` dependencies; runs native examples and mutation guards without building the compiler. Appendix B owner checks run here; the complete compiler-backed no-throw suite remains in `//:docs-tools`. |
 | `//packages:runtime-package` | `packages/runtime/`, `packages/PACKAGE.ts` or `docs/tools/bugbash4-docs.test.mjs` |
 | `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
 | `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
@@ -1409,7 +1409,7 @@ optional-`do` witness and checks generated scope, provenance and write controls.
 The Go target catalog declares every literal target name once. `scripts/fast-gate-targets.test.mjs` rejects duplicate declarations before a later object property can silently replace one, and exercises nonadjacent duplicates across generated layouts.
 
 
-The `//:docs-contracts` target runs the published colon/example, catch-pipe, sidecar-root, schema-documentation, direct-try-advisory and sidecar-input contracts, their mutation properties and native TypeScript/Effect counterparts. It needs no VibeLang compiler build. Its inputs match those read by the six tests, so unrelated compiler edits reuse the cached result. The merge gate selects it from its first declared train; the complete `//:docs-tools` suite remains in post-merge validation.
+The `//:docs-contracts` target runs the published colon/example, catch-pipe, sidecar-root, schema-documentation, direct-try-advisory and sidecar-input contracts, their mutation properties and native TypeScript/Effect counterparts. It needs no VibeLang compiler build. Its inputs cover the contract tests and their native counterparts, so unrelated compiler edits reuse the cached result. The merge gate selects it from its first declared train; the complete `//:docs-tools` suite remains in post-merge validation.
 
 
 The ESTree token and synthesized-name fixture matrix keeps both an ordinary

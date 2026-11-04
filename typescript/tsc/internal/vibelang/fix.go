@@ -16,6 +16,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/autoimport"
@@ -1928,5 +1929,37 @@ func migrateSeverityConfigs(sys tsc.System, name tspath.RootedFilePath) error {
 			fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: migrated vibelang.diagnostics to vibe.severities.\n", relativeName(sys, name))
 		}
 	}
+	// Reparse after legacy severity edits, then materialize only the selected
+	// project's plugin list. Shared or external bases remain byte-for-byte intact.
+	config, _ = tsoptions.GetParsedCommandLineOfConfigFilePath(name, path, nil, nil, sys.FS(), &tsc.ExtendedConfigCache{})
+	if config != nil && core.VibeNeedsLintPlugin(config.CompilerOptions()) {
+		for _, diagnostic := range config.GetConfigFileParsingDiagnostics() {
+			if diagnostic.Category() == diagnostics.CategoryError && !(diagnostic.Source() == "EK" && diagnostic.Code() == core.VibeLintPluginCode) {
+				fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: not fixed: resolve config errors before preserving inherited plugin settings.\n", relativeName(sys, name))
+				return nil
+			}
+		}
+		if !owned(name) {
+			fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: not fixed: config is outside repository ownership or under node_modules.\n", relativeName(sys, name))
+			return nil
+		}
+		text, ok := sys.FS().ReadFile(name)
+		if ok {
+			fixed, changed := tsoptions.MigrateLintPlugin(name, text, config.EffectivePlugins)
+			if !changed {
+				fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: not fixed: cannot preserve the authored compilerOptions.plugins value.\n", relativeName(sys, name))
+				return nil
+			}
+			info, err := os.Stat(name.AsString())
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(name.AsString(), []byte(fixed), info.Mode().Perm()); err != nil {
+				return err
+			}
+			fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: added the explicit Effect language-service plugin, preserving legacy lint activation.\n", relativeName(sys, name))
+		}
+	}
+
 	return nil
 }

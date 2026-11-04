@@ -14,9 +14,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
-// VIP-38: severity entries configure a resolved plugin; they never activate
-// an absent plugin or override its explicit diagnosticSeverity:null disable.
-func TestImportedLintSeverityRequiresEnabledPlugin(t *testing.T) {
+// VIP-38 preserving transition: assigned severity entries retain legacy default
+// activation until the explicit plugin migration; native disables stay disabled.
+func TestImportedLintSeverityPreservingMigration(t *testing.T) {
 	modules := os.Getenv("EFFECT_NODE_MODULES")
 	if modules == "" {
 		modules = "../../../../../experiments/node_modules"
@@ -35,11 +35,11 @@ func TestImportedLintSeverityRequiresEnabledPlugin(t *testing.T) {
 		{"no vibe options", ``, "", false},
 		{"a VibeLang warning", `,"vibe":{"severities":{"EK4842":"off"}}`, "", false},
 		{"two VibeLang warnings", `,"vibe":{"severities":{"EK0801":"error","EK4842":"warning"}}`, "", false},
-		{"an imported lint code", `,"vibe":{"severities":{"EK3801":"error"}}`, "", false},
+		{"an imported lint code", `,"vibe":{"severities":{"EK3801":"error"}}`, "", true},
 		{"an imported lint code turned off", `,"vibe":{"severities":{"EK3801":"off"}}`, "", false},
 		{"disabled plugin", `,"vibe":{"severities":{"EK3801":"warning"}}`, `,"plugins":[{"name":"@effect/language-service","diagnosticSeverity":null}]`, false},
 		{"diagnostics disabled", `,"vibe":{"severities":{"EK3801":"error"}}`, `,"plugins":[{"name":"@effect/language-service","diagnostics":false}]`, false},
-		{"unrelated plugin", `,"vibe":{"severities":{"EK3801":"error"}}`, `,"plugins":[{"name":"other"}]`, false},
+		{"unrelated plugin", `,"vibe":{"severities":{"EK3801":"error"}}`, `,"plugins":[{"name":"other"}]`, true},
 		{"enabled plugin", `,"vibe":{"severities":{"EK3801":"error"}}`, `,"plugins":[{"name":"@effect/language-service","diagnosticSeverity":{"floatingEffect":"off"}}]`, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {

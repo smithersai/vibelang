@@ -647,6 +647,13 @@ const targets = {
     [Tsc["vibelang-files"]],
     "30m"
   ),
+  "lint-config": check(
+    "Imported lint activation and config migration preserve diagnostics, exit judgment, emission, plugins and authored settings.",
+    `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -p 8 -count=1 -trimpath -run '^(TestLintPlugin.*|TestImportedLint.*|TestLintActivationQuoted|TestRegistryMatchesSpec|FuzzLintPluginMigration|FuzzLintActivation|FuzzEffectExitOptions)$' ./internal/tsoptions ./internal/vibelang ./internal/effecttsgo/lint ./internal/vibelangfuzz`,
+    [],
+    [go, node],
+    "15m"
+  ),
   "spec-registry-go": S.Shell.Test({
     summary: "Every code Appendix B assigns is registered, or specAhead names the lane that registers it.",
     shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath -run '^TestRegistryMatchesSpec$' ./internal/vibelang/`,

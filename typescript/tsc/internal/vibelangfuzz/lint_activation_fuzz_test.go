@@ -9,11 +9,13 @@ import (
 )
 
 // VIP-38 / Chapter 007 selects rules through the existing resolved plugin,
-// while the severity table configures only the selected rules.
+// while the severity table configures selected rules. Its preserving migration
+// retains legacy activation only when the resolved plugin is absent.
+const lintMigrationQuote = "an assigned `EK38xx` key in a config without a resolved plugin entry still activates the whole default plugin"
 const lintActivationQuote = "The existing Effect language-service configuration in `compilerOptions.plugins` selects the imported `effecttsgo/*` rules."
 
 func TestLintActivationQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("007-tooling.md"), lintActivationQuote) {
+	if !strings.Contains(SpecText("007-tooling.md"), lintActivationQuote) || !strings.Contains(SpecText("007-tooling.md"), lintMigrationQuote) {
 		t.Fatalf("Chapter 007 no longer says %q", lintActivationQuote)
 	}
 }
@@ -91,7 +93,7 @@ func checkLintActivation(t *testing.T, w *Workspace, input string, inherited boo
 		}
 	}
 	want := 0
-	if mode == "enabled" && severity != "off" {
+	if (mode == "enabled" || mode == "absent" || mode == "empty" || mode == "unrelated") && severity != "off" {
 		want = 1
 	}
 	if count != want {

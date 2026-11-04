@@ -32,6 +32,7 @@ func RegisterValidateCompilerOptionsCallback(cb func(*core.CompilerOptions, *ast
 }
 
 type extendsResult struct {
+	plugins             []any
 	options             *parsedCompilerOptions
 	include             []any
 	exclude             []any
@@ -92,6 +93,7 @@ func (e *ExtendedConfigCacheEntry) ExtendedFileNames() []tspath.RootedFilePath {
 }
 
 type parsedTsconfig struct {
+	plugins                 []any
 	vibeSeverityDiagnostics map[string]*ast.Diagnostic
 	raw                     any
 	options                 *parsedCompilerOptions
@@ -1102,10 +1104,15 @@ func parseConfig(
 					result.compileOnSave = compileOnSave
 				}
 			}
+			if extendedConfig.plugins != nil {
+				result.plugins = extendedConfig.plugins
+			}
 			mergeParsedCompilerOptions(result.options, extendedConfig.options, extendsRaw, extendedConfigPath.AsString(), basePath.AsString())
 		}
 	}
 
+	plugins, ownPlugins := rawLintPlugins(ownConfig.raw)
+	ownConfig.plugins = plugins
 	if len(ownConfig.extendedConfigPaths) != 0 {
 		// copy the resolution stack so it is never reused between branches in potential diamond-problem scenarios.
 		resolutionStack = append(resolutionStack, resolvedPath)
@@ -1139,6 +1146,9 @@ func parseConfig(
 					sourceFile.ExtendedSourceFiles = core.InsertSorted(sourceFile.ExtendedSourceFiles, extendedSourceFile, cmp.Compare)
 				}
 			}
+		}
+		if !ownPlugins {
+			ownConfig.plugins = result.plugins
 		}
 		ownConfig.options = mergeParsedCompilerOptions(result.options, ownConfig.options, ownConfig.raw, configFileName.AsString(), basePath.AsString())
 	}
@@ -1518,10 +1528,11 @@ func parseJsonConfigFileContentWorker(
 			ProjectReferences: getProjectReferences(basePathForFileNames),
 			ContentMappers:    contentMappers,
 		},
-		ConfigFile:    sourceFile,
-		Raw:           parsedConfig.raw,
-		Errors:        errors,
-		CompileOnSave: compileOnSave,
+		ConfigFile:       sourceFile,
+		Raw:              parsedConfig.raw,
+		EffectivePlugins: parsedConfig.plugins,
+		Errors:           errors,
+		CompileOnSave:    compileOnSave,
 
 		configFileSpecs:     &configFileSpecs,
 		baseDirectory:       basePathForFileNames,

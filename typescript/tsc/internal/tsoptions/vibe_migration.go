@@ -224,7 +224,7 @@ func applyConfigSeverities(ds []*ast.Diagnostic, options *core.VibeLangOptions) 
 	}
 	var result []*ast.Diagnostic
 	for _, d := range ds {
-		if d.Source() == "EK" && (d.Code() == core.VibeLegacyConfigCode || d.Code() == core.VibeRetiredTrustedPackagesCode || d.Code() == core.VibeRetiredDeclarationStyleCode) {
+		if d.Source() == "EK" && (d.Code() == core.VibeLegacyConfigCode || d.Code() == core.VibeRetiredTrustedPackagesCode || d.Code() == core.VibeRetiredDeclarationStyleCode || d.Code() == core.VibeLintPluginCode) {
 			category := diagnostics.CategoryWarning
 			switch options.Severities["EK"+strconv.FormatInt(int64(d.Code()), 10)] {
 			case "off":

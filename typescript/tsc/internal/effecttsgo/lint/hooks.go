@@ -45,10 +45,12 @@ func init() {
 
 func afterCheckSourceFile(ctx context.Context, program checker.Program, c *checker.Checker, sf *ast.SourceFile) {
 	options := program.Options().Effect
-	// A release severity configures an enabled plugin; it is not an opt-in.
-	// ParseFromPlugins also returns nil for diagnosticSeverity:null.
+	// VIP-38 keeps legacy activation until its preserving config migration.
 	if options == nil {
-		return
+		if !core.VibeNeedsLintPlugin(program.Options()) {
+			return
+		}
+		options = etscore.ParseFromPlugins([]any{map[string]any{"name": etscore.EffectPluginName}})
 	}
 	for _, d := range run(ctx, program, c, sf, options) {
 		c.AddDiagnostic(d)
