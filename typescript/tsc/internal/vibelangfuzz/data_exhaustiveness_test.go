@@ -73,3 +73,15 @@ func dataExhaustivenessRules() []dataRule {
 		{name: "exhaustive-retained-error-complete", chapter: "004-match.md", quote: "a retained error covers its case when it is bare", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;when Cause.TimeoutError(let e):0;}}", code: "", owner: "vip-match"},
 	}
 }
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#8679ee3f59945039
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#8115e279d032c9ec
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#a31f7267ead610b5
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#9205bca49be48ab7
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#ba9399b72861cb16
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#6b2c020d0a84d8a4
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#a6a71ebbf2a37a84
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#f8f25b7d1205cf7c
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#a1921a6ffdb19ee2
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#bd89ada485c504ca
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#19563001cfab08be
+// VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#b54ac2d6fadfac56

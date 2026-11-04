@@ -3,6 +3,9 @@ package vibelangfuzz
 // VIP-7: tagged members and async-match jumps quote the landed chapter.
 func dataTaggedMembersRules() []dataRule {
 	return []dataRule{
+		{name: "tagged-symbol-missing", chapter: "004-match.md", quote: "a `unique symbol`, or a union of those.", source: "const A:unique symbol=Symbol();const B:unique symbol=Symbol();function f(s:{_tag:typeof A}|{_tag:typeof B}){return match(s){when if(false):0;}}", code: "EK4701", owner: "cov-match"},
+		{name: "tagged-interface-missing", chapter: "004-match.md", quote: "it is an object, interface or class instance", source: "interface A{_tag:\"A\"};interface B{_tag:\"B\"};function f(s:A|B){return match(s){when {_tag:\"A\"}:1;}}", code: "EK4701", owner: "cov-match"},
+		{name: "tagged-class-missing", chapter: "004-match.md", quote: "it is an object, interface or class instance", source: "class A{readonly _tag=\"A\" as const};class B{readonly _tag=\"B\" as const};function f(s:A|B){return match(s){when {_tag:\"A\"}:1;}}", code: "EK4701", owner: "cov-match"},
 		{name: "tagged-shared-bare", chapter: "004-match.md", quote: "Members that share a tag are covered one at a time, and one left uncovered stays uncovered.", source: "type S={_tag:\"A\";x:number}|{_tag:\"A\";y:number};function f(s:S){return match(s){when {_tag:\"A\"}:1;}}", code: "", owner: "vip-match"},
 		{name: "tagged-shared-required", chapter: "004-match.md", quote: "Members that share a tag are covered one at a time, and one left uncovered stays uncovered.", source: "type S={_tag:\"A\";x:number}|{_tag:\"A\";y:number};function f(s:S){return match(s){when {_tag:\"A\",let x}:x;}}", code: "EK4701", owner: "vip-match"},
 		{name: "tagged-shared-required-both", chapter: "004-match.md", quote: "Members that share a tag are covered one at a time, and one left uncovered stays uncovered.", source: "type S={_tag:\"A\";x:number}|{_tag:\"A\";y:number};function f(s:S){return match(s){when {_tag:\"A\",x:let x}:x;when {_tag:\"A\",y:let y}:y;}}", code: "", owner: "impl-hunt-data"},
@@ -40,3 +43,19 @@ func dataTaggedMembersRules() []dataRule {
 		{name: "async-match-continue-rejected", chapter: "004-match.md", quote: "a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.", source: "function f(){for(let i=0;i<1;i++){const x=async match(1){default:do{continue};};}}", code: "EK0706", owner: "conf-auto-async-match-lowering"},
 	}
 }
+
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#6ddc62088e0f9b97
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#097bf17eb9302db5
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#e4530996b2ceb59f
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#30582fa5f6fb5f0d
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#1382860bdf564804
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#688a052a286b9642
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#d76d2e39e0847eae
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#29ca12a5d2229575
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#21b64a0a5a389cc7
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#5513365644ef7710
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#0b4abae9f4a232a3
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#b871ef8c1f1bbc86
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#3edd13c1d5576c20
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#404738b2765d7ee1
+// VIP-7 literal tag cases, optional tag absence, repeated tags and required-property coverage; rule: docs/design/vips/0007-match.md#ccc6889765f9da87

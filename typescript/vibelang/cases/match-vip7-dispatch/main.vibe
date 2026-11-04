@@ -39,3 +39,4 @@ export function main(): Effect.Effect<readonly unknown[]> {
 // VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#fd58597434947898
 // VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#996acde3a286e3a7
 // VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#c4c91cefc442f1e7
+// VIP-7 static construct signature selects class matching; rule: docs/design/vips/0007-match.md#9efb8598e772c4c9

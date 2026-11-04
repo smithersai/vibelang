@@ -1,0 +1,10 @@
+// expect: EK4701 EK4701 EK4701
+const A:unique symbol=Symbol();const B:unique symbol=Symbol();
+interface IA{_tag:"A"};interface IB{_tag:"B"};
+class CA{readonly _tag="A" as const};class CB{readonly _tag="B" as const};
+function symbols(s:{_tag:typeof A}|{_tag:typeof B}){return match(s){when if(false):0;}}
+function interfaces(s:IA|IB){return match(s){when {_tag:"A"}:1;}}
+function classes(s:CA|CB){return match(s){when {_tag:"A"}:1;}}
+// VIP-7 literal symbol/interface/class subjects require complete coverage; rule: docs/design/vips/0007-match.md#6ddc62088e0f9b97
+// VIP-7 literal symbol/interface/class subjects require complete coverage; rule: docs/design/vips/0007-match.md#e4530996b2ceb59f
+// VIP-7 literal symbol/interface/class subjects require complete coverage; rule: docs/design/vips/0007-match.md#29ca12a5d2229575

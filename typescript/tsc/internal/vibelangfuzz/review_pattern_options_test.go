@@ -121,3 +121,23 @@ func FuzzReviewPatternOptions(f *testing.F) {
 		ExpectPending(t, reviewPatternOptionsTarget, specCorpusKey(t))
 	})
 }
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#1427e4d6b181f70e
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#021d0d8b108648f2
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#0152143a72e9d2c0
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#86f60f6f70df4213
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#529afa875695a5ca
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#cb7f95f00dc6a449
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#69ee8e46180dc542
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#e77ff765c929c00e
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#e949727c169e716d
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#b7dff24ee9c74f94
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#3982ab0e9319ecd4
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#84c9f7f8c951d5af
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#54b02de13f62ac02
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#4d14fd61714ff50d
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#abb8adfb3e534523
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#97eeadb15de185ca
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#3d03a116b031f0ca
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#9f934464f9f4b303
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#5c1f3fcee35cbf26
+// VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#63495d7641d04b8f
