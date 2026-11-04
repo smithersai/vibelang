@@ -317,6 +317,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration-eval declaration failures lacked nearby regression coverage. Authored throw documentation and exported package metadata now have separate mutation checks, with native TypeScript controls for metadata types.
 
+- Large compiler messages containing Unicode could display replacement characters in bundlers or misidentify source files; their text and paths now stay intact, and old cached warnings are refreshed.
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

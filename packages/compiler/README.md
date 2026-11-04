@@ -277,6 +277,9 @@ runs the native compiler the launcher would run, without starting Node for it. `
 `projects` take `cache: false` to turn the cache off, or `cache: { directory }`
 to move it.
 
+Asynchronous project compiles preserve Unicode file names and diagnostic text,
+including in large compiler output.
+
 Await `close()` on the object returned by `projectBackend` or `projects` when
 the tool stops using it. It gives an active compile 500 ms to finish, sends
 `SIGTERM`, and after another 500 ms sends `SIGKILL` and closes its output

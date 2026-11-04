@@ -6,6 +6,7 @@ Compile `.vibe` modules with the native VibeLang compiler in Vite and Vitest.
 The compiler owns type and language diagnostics. The plugin serves its JavaScript
 and source maps, reports errors in the terminal and Vite overlay, and invalidates
 source modules and their importers after edits.
+Unicode file names and diagnostic text are preserved, including in large compiler output.
 
 The plugin selects `vibelang-source` package exports for application and SSR
 bundles, preserving the existing resolution conditions. Under Vitest, which

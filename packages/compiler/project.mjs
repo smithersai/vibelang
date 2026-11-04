@@ -368,8 +368,8 @@ export function projectBackend({ root, compiler, cache, debug = () => {} }) {
       let output = "", error
       const child = spawn(file, argv, { cwd: root, stdio: ["ignore", "pipe", "pipe"] })
       children.add(child)
-      child.stdout.on("data", (data) => { output += data })
-      child.stderr.on("data", (data) => { output += data })
+      child.stdout.setEncoding("utf8").on("data", (data) => { output += data })
+      child.stderr.setEncoding("utf8").on("data", (data) => { output += data })
       child.on("error", (value) => { error = value })
       child.on("close", (status, signal) => {
         children.delete(child)

@@ -7,6 +7,7 @@ Rollup, Rolldown, esbuild, and Bun. The compiler owns type and language
 diagnostics. The plugin serves its JavaScript and source maps, reports its
 diagnostics as build errors with file, line, and column, and recompiles in
 watch mode. For Vite and Vitest, use [vibelang-vite](../vite/README.md).
+Unicode file names and diagnostic text are preserved, including in large compiler output.
 
 ## Install
 

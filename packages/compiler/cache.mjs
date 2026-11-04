@@ -36,7 +36,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 // 7: configured sidecar layouts fingerprint inputs, including overlapping roots.
 // 8: discard cached results populated by text-rewriting loader records.
 // 9: a pattern that writes a leading dot scans dotted names.
-const format = 9
+// 10: decode compiler UTF-8 incrementally; discard corrupted cached warnings.
+const format = 10
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed
