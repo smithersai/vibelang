@@ -1,0 +1,20 @@
+// expect-result: [true,true,false,3]
+// Smithers Command.test.vibe: a generic test callback must not turn the
+// generated Exit predicate into a recursive source function.
+function test<A, E, R>(body: () => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
+  return body()
+}
+export effect function main() {
+  let evaluations = 0
+  const observe = effect () => {
+    evaluations++
+    return try exit(Effect.fail("bad"))
+  }
+  const first = test(effect () => (try observe()) is Exit.Failure)
+  const second = test(effect () => (try observe()) is Exit.Failure or Exit.Success)
+  const third = test(effect () => (try observe()) is Exit.Success)
+  const a = try first
+  const b = try second
+  const c = try third
+  return [a, b, c, evaluations]
+}

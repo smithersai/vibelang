@@ -189,6 +189,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 
+- An `is` pattern inside a generic Effect callback could report `EK9206` even though no source function called itself. Pattern predicates now keep their Boolean meaning without inventing a recursive contract requirement.
+
 - `vibelang --fix` delayed construction of an Effect held in a variable and recreated its closure state on every run, moving startup errors to later requests and allowing a transaction-close guard to run twice. It now constructs the program once at its original binding and reuses that value.
 
 

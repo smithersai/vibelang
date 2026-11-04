@@ -315,6 +315,13 @@ func (a *analyzer) runsVariant(call *ast.Node) bool {
 
 // runs reports whether call runs an Effect, which the lowering spells yield*.
 func (a *analyzer) runs(call *ast.Node) bool {
+	// A generated pattern predicate is always a boolean operation. Resolving
+	// its generic signature while discovering an enclosing callback's callees
+	// can reenter the predicate's own channel inference through its contextual
+	// subject type, even though no source function calls itself.
+	if isPatternCall(call, "$is") {
+		return false
+	}
 	if inHatch(call) {
 		return false
 	}

@@ -3324,6 +3324,14 @@ typescript/vibelang/cases/interruption-placement.fail/main.vibe:6:15 lambda choi
 typescript/vibelang/cases/interruption-placement.fail/main.vibe:7:62 lambda choice fallback
 typescript/vibelang/cases/interruption-placement.fail/main.vibe:8:53 lambda dual fallback
 typescript/vibelang/cases/interruption-placement.fail/main.vibe:9:34 lambda dual fallback
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:11:21 byname program table
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:13:22 lambda effectFn annotation
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:13:51 lambda plain fallback
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:14:23 lambda effectFn annotation
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:14:52 lambda effectFn fallback
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:15:22 lambda effectFn annotation
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:15:51 lambda plain fallback
+typescript/vibelang/cases/is-effect-callback-inference/main.vibe:9:19 lambda dual fallback
 typescript/vibelang/cases/is-home-arm-and-field/main.vibe:22:17 lambda plain fallback
 typescript/vibelang/cases/is-home-arm-and-field/main.vibe:23:11 lambda dual fallback
 typescript/vibelang/cases/is-home-arm-scope.fail/main.vibe:13:7 lambda dual fallback

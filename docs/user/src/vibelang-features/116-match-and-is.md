@@ -228,6 +228,8 @@ function classify(job: { status: string; attempts: number }) {
 
 ## is
 
+An `is` expression returns a `boolean` even when its subject runs an Effect with `try`, including inside a generic Effect callback. Passing the result to an assertion or another generic function does not require a recursive function contract.
+
 In `while` and `do…while`, lexical `is` bindings belong to a loop head and get fresh cells for each condition. A true condition and its following body share those cells. A skipped binding stays in TDZ, and the initial `do` body has uninitialized head cells; a closure captured there stays in TDZ later. Outer names remain unchanged outside the loop.
 
 `value is pattern` is `true` when the pattern matches. It binds as tightly as `instanceof`:
