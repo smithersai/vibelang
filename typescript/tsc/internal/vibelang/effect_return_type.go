@@ -20,6 +20,15 @@ import (
 // the written type, {1} the Effect type to write instead.
 var EK0106 = message(106, errorCategory, "An effect function returns an Effect, so its return type can't be {0}: write {1}, or leave the return type out.")
 
+// inferredEffectReturn describes EK0106's repair that removes a broad
+// annotation, any or unknown, so the function infers its Effect.
+const inferredEffectReturn = "no return annotation (infer the Effect)"
+
+// effectReturnTypeOmitted is EK0106's text when the repair removes the
+// annotation: "write <the repair>, or leave the return type out" would say
+// the same thing twice. {0} is the written type.
+var effectReturnTypeOmitted = EK0106.With("An effect function returns an Effect, so its return type can't be {0}: leave the return type out, and the function infers its Effect.")
+
 func init() {
 	registry[EK0106.Code] = EK0106
 	tsFormFixCodes = append(tsFormFixCodes, EK0106.Code)
@@ -54,9 +63,17 @@ func checkEffectReturnTypes(c *checker.Checker, file *ast.SourceFile) {
 			if written := c.GetTypeFromTypeNode(t); !isEffectType(c, written) && written != c.GetErrorType() {
 				text := nodeText(file, t)
 				rewrite := effectReturnTypeRewrite(c, file, t)
-				d := reportAt(c, file, tsFormSpan(file, t), EK0106, text, rewrite.description)
+				omits := rewrite.description == inferredEffectReturn
+				var d *ast.Diagnostic
+				if omits {
+					d = reportAt(c, file, tsFormSpan(file, t), effectReturnTypeOmitted, text)
+				} else {
+					d = reportAt(c, file, tsFormSpan(file, t), EK0106, text, rewrite.description)
+				}
 				available := preserveRewriteComments(file, rewrite)
-				if available.fixable() {
+				if available.fixable() && omits {
+					note(d, "Its quick fix removes the return type.")
+				} else if available.fixable() {
 					note(d, "Its quick fix writes {0}.", rewrite.description)
 				} else if available.why != "" {
 					note(d, "{0}", available.why)
@@ -104,7 +121,7 @@ func effectReturnTypeRewrite(c *checker.Checker, file *ast.SourceFile, t *ast.No
 					text.WriteByte('\n')
 				}
 			}
-			return &formRewrite{edits: []sourceEdit{{colon, t.End(), text.String()}}, description: "no return annotation (infer the Effect)"}
+			return &formRewrite{edits: []sourceEdit{{colon, t.End(), text.String()}}, description: inferredEffectReturn}
 		}
 	}
 	text := nodeText(file, t)

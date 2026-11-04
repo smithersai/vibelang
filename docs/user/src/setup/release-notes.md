@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.11 (unreleased)
 
 
+- `EK0106` on an `effect` function annotated `any` or `unknown` read "write no return annotation (infer the Effect), or leave the return type out", naming the same repair twice. It now says to leave the return type out, and its quick fix is described as removing the return type.
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.1`, the earliest Effect version VibeLang
 now supports, with matching `@effect/platform-*` and `@effect/vitest` when

@@ -169,3 +169,33 @@ func TestEffectWrittenContainerLiteralCommentsDeclined(t *testing.T) {
 		t.Fatalf("ambiguous literal text should offer no destructive edit: %+v", result)
 	}
 }
+
+// EK0106's text names one repair. A broad annotation's repair removes the
+// annotation, so the message says only that; a narrow one's repair writes
+// T!!, and the message offers that or leaving the type out.
+func TestEffectWrittenContainerMessage(t *testing.T) {
+	for _, test := range []struct{ annotation, want string }{
+		{"any", "its return type can't be any: leave the return type out, and the function infers its Effect."},
+		{"unknown", "its return type can't be unknown: leave the return type out, and the function infers its Effect."},
+		{"number", "its return type can't be number: write number!!, or leave the return type out."},
+		{"never", "its return type can't be never: write never!!, or leave the return type out."},
+	} {
+		t.Run(test.annotation, func(t *testing.T) {
+			source := "export effect function f(): " + test.annotation + " { return 1 }"
+			program, file, _, _ := editorProgram(t, source)
+			found := false
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+				if d.Source() != diagnosticSource || d.Code() != EK0106.Code {
+					continue
+				}
+				found = true
+				if text := d.String(); !strings.Contains(text, test.want) || strings.Contains(text, "write no return annotation") {
+					t.Fatalf("EK0106 text %q, want it to contain %q", text, test.want)
+				}
+			}
+			if !found {
+				t.Fatalf("no EK0106 in %s", source)
+			}
+		})
+	}
+}
