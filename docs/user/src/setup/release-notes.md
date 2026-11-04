@@ -374,6 +374,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration fuzzing could exceed its short-test CPU limit while repeatedly checking the same dependencies. Bounded worker reuse now reduces repeated parsing and diagnostics while retaining every input and public API check.
 - The optional-schema compatibility upgrade kept decoded values but changed the published codec to `Schema.optional<Schema.Union<…>>`. It now writes the original `Schema.optional` codec explicitly, preserving declarations, constructors and matchers.
+- Regression coverage now checks that migration preserves plain Effect factories' captured values and repeated result or error identity, including Smithers patterns that had changed in earlier converted files. Fresh ordinary `--fix` already preserves these minimized cases.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 

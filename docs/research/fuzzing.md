@@ -1077,3 +1077,11 @@ The retired-formatter and public compatibility-code fuzz targets register the sa
 The mapper non-field schema oracle follows `f41346523af5` (`EK1505`): a method recovers as `Schema.Never`, while an unsupported field type keeps `Schema.Unknown`. Parameter and return-type mutations preserve the two recovery diagnostics and the rejecting method codec.
 
 The ten failure contracts graduated by `588d171a7946` also retire their matching `corpus:` debt rows. Original saved inputs and thirty mutation corpus files remain active. `TestPendingLines` validates the ledger and the original ten named inputs run through `FuzzFailuresSpec` without new pending entries.
+
+## Smithers factory-construction regressions
+
+`FuzzMigrationFactoryBinding` compares migrated code with the original TypeScript under Chapter 7's preservation rule. Its Smithers corpus covers repeated result and error identity, captured map values and directory arrays, call-time property reads, validation of a synthetic redacted wrapper, and held operations crossing callbacks or getters. Named functions, inferred arrows, written return types and object methods retain the reported forms. Deliberately lazy success and failure factories are controls.
+
+For plain factories, only `factory.vibe` is migrated; the observer remains `main.ts`. For held-operation cases, the observer body is the migration input and the factory remains TypeScript. Both paths use the existing outcome comparator. The minimized pin19 witnesses already pass fresh ordinary `--fix`; this coverage does not claim a new compiler repair or validate an old converted application module. Retrying a previously converted module starts from its original TypeScript and retains the application and public-declaration gates.
+
+The foreign `count` fixture declares `@throws {never}`: it only reads its module counter. Chapter 3 requires a written contract for this plain `.ts` call inside effect code. The quoted guard checks that rule alongside the migration-preservation rule; the factory-construction and identity observations stay unchanged.
