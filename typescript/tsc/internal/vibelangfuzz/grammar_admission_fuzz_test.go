@@ -154,6 +154,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"service-rejected-async-member", "service S { n : number ; async static readonly key : string = \"k\" ; }"},
 	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
+	{"interruption-in-generator", "function* f() { uninterruptible { return 1; } }"},
 	{"error-no-end", "error E effect { id: string }"},
 	{"error-no-end-schema", "schema error E effect { id: string }"},
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
@@ -821,6 +822,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	for _, at := range grammarInterruptionBlock.FindAllStringIndex(source, -1) {
 		if !grammarAdmissionEffectAt(file, at[0]) {
+			if grammarAdmissionPlainGeneratorAt(file, at[0]) {
+				return "admission:interruption-in-generator"
+			}
 			return "admission:interruption-outside-effect"
 		}
 	}

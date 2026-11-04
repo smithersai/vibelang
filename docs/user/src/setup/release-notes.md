@@ -309,6 +309,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The concurrent-operation regression check could inspect a helper import and miss lazily wrapped element calls. It now checks the operation call itself, including direct `Effect.all` output, and rejects lazy-element mutants.
 - Tooling regression checks stopped at an outdated specification quote; loader, Vite and bundler properties now run against the current interoperability contract.
 - Ambient-error repair regressions stopped on old tooling prose; they now cite the current safe-repair and native-diagnostic contracts.
+- Admission fuzzing treated interruption blocks in plain generators as an already fixed placement gap. It now tracks that remaining form separately, with a stable regression corpus.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 

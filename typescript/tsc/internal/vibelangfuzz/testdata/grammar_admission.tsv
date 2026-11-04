@@ -880,3 +880,4 @@ parser/vibelang_primitives.go:Parser.isStartOfVibeLangMaskBlock@interruption-out
 vibelang/frames_lower.go:lowering.bindSuperMethod	admission:effect-function-support	001-functions.md	support	VIP-1 Bindings: preserves the receiver of a super method or tag without reading its own call property; no new syntax
 parser/vibelang_match.go:Parser.inlineBinding	admission:match	004-match.md	support	VIP-7: a name bound inside or and not patterns shares one cell
 parser/vibelang_schema_type_parameters.go:Parser.parseVibeLangSchemaTypeParameters	admission:schema-type-parameters	006-data.md,900-appendices.md#SchemaDeclaration	recovery	VIP-15: consume a forbidden generic schema header and anchor its preserving empty-body repair
+vibelang/producers.go:isProducer@interruption-in-generator	admission:interruption-in-generator	-	pending	VIP-1/21/22 require an effect marker: the legacy unannotated native-generator producer predicate admits interruption blocks in a plain callable

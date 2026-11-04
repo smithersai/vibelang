@@ -71,6 +71,14 @@ positions: `effect[a]` is an element access, though `[` follows `effect` on an
 Type-directed meaning such as aggregate `join` is outside this syntax oracle.
 Saved interruption-block witnesses outside Effect code are rejection controls
 for `EK2201`; their former pending entries are removed after XPASS.
+Unannotated synchronous generator declarations and expressions remain a separate
+`admission:interruption-in-generator` gap: the compiler still treats them as
+implicit producers. Their interruption blocks have no Appendix A derivation,
+even when a producer return diagnostic such as `EK2128` rejects the program.
+The precise pending family excludes annotated native iterators, async generators,
+generator methods and nested plain callables. Explicit `effect` generators and
+blocks remain separate controls. A keyed corpus retains this remaining gap
+without restoring the retired general outside-Effect exemption.
 The outside-Effect prefix family includes `join {}`, which has no native
 call or element-access reading; `join(p)`, `join[0]` and an identifier before
 a line break and block remain separate native controls.
