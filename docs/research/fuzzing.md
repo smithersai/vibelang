@@ -1099,3 +1099,5 @@ The plain-runner property covers async callbacks invoked through `tryPromise`, p
 `FuzzProducerContractCLIRepair` crosses declaration and method forms with direct, readonly, and aliased incompatible `Stream` contracts. It requires project fixes to preserve the producer body, remove the annotation error, and retain independent assignment errors.
 
 `FuzzExplicitDiagnosticCategoryVariants` checks every diagnostic category against Appendix B’s explicit error/warning rows for `EK1010` and `EK4402`. Suggestions and messages remain invalid, and all configured overrides remain rejected. Source-context generators continue to determine where each allowed category applies.
+
+Service-lookup fixtures record written `effect` arrows as keyword-selected forms. The forms-table check verifies these explicit classifications alongside inferred forms.

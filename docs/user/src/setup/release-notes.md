@@ -182,6 +182,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Ambient declaration API tests repeatedly loaded browser libraries for pure module and global fixtures. Those fixtures now use their required ECMAScript library; browser augmentation tests retain the native `Window` and `Request` bindings.
 - Diagnostic validation now recognizes the specification’s contextual error and warning variants for `EK1010` and `EK4402`, while continuing to reject severity overrides for them.
+- Forms validation now recognizes the explicit `effect` arrows in service-lookup examples instead of treating their intended classifications as unapproved changes.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.
