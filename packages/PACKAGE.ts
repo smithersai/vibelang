@@ -84,6 +84,15 @@ const compilerTest = S.Shell.Test({
 // leave all file selections, property samples and per-worker limits intact.
 // //:migration-sources keys both flows; scripts/test-runners.test.mjs fails
 // when a test file runs in no target.
+const migrateLostWrapper = S.Shell.Test({
+  summary: "Check wrapper loss against normal and scratch migration emission.",
+  shell: "node --test .smithers/flows/migrate/test/lost-wrapper.test.mjs",
+  data: [migrationSources, ...install],
+  tools: [S.Host.bin("node"), S.Host.bin("jj")],
+  sandbox: "none",
+  timeout: "3m"
+})
+
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
@@ -163,6 +172,7 @@ export const Package = S.Package({
     "compiler-test": compilerTest,
     "migrate-helper-identity": migrateHelperIdentity,
     "migrate-test": migrateTest,
+    "migrate-lost-wrapper": migrateLostWrapper,
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,

@@ -184,6 +184,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Upgrade-baseline regression tests could stop at an incomplete target-dependency fixture before checking compiler errors. They now complete the capability probe and verify that new compiler errors still reject the upgrade.
 - Source-child helper validation rejected the compiler's permitted generated `@throws {never}` contract; it now uses the declaration identity gate while preserving checks for authored documentation and type changes.
+- Migration wrapper-loss checks could fail their regression suite after private packages gained normal emission. Separate checks now cover private-package output and scratch fallback while preserving lost-wrapper rejection.
 
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.

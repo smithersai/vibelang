@@ -1039,6 +1039,8 @@ The declaration and runtime columns of mapper parity share `packages/ts-mapper/t
 
 The mapper runtime parity column requires stock TypeScript to exit `0` before it runs any emitted JavaScript. `noCheck` deliberately skips type checking, but syntax errors still fail compilation even when `noEmitOnError: false` leaves executable output. A failure names the compile stage, exit status and first diagnostic, bounded to `300` characters. `node --test scripts/mapper-runtime-compile.test.mjs` uses the pinned real compiler to cover emitted output after syntax errors, verify that top-level side effects never run after a failed compile, and retain healthy and deliberately unchecked controls. Generated mixed batches check isolation between failing and passing cases; the release target runs the suite.
 
+The `//packages:migrate-lost-wrapper` gate runs the wrapper-loss suite when migration emission, wrapper analysis, its fixtures, or the package target declaration changes. It checks normal emission for private packages without exports and the scratch fallback for a skipped project. Both paths must still report a function that lost its Effect wrapper; scratch output must stay outside the target tree.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes

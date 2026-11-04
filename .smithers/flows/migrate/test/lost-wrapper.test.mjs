@@ -9,9 +9,9 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { emittedPathOf, functionsOf, lostWrapperCheck, lostWrappers, readAllowList } from "../lib/lost-wrapper.mjs"
-import { makeConfig, paths, verify } from "../lib/steps.mjs"
+import { checkLostWrappers, emitMigratedJs, makeConfig, paths, verify } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
-import { must, slug, writeJson } from "../lib/util.mjs"
+import { must, readJson, slug, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
@@ -278,12 +278,29 @@ test("verify passes a batch whose emit keeps the wrapper", async () => {
   })
 })
 
-test("a package the flow's emit skips is emitted to the batch's scratch, not into the tree, and still gated", async () => {
+test("a project skipped by normal emission uses scratch and keeps the lost-wrapper gate", async () => {
   await inFixture({ before, emitted: `export const f = () => 1;\n`, exportsJs: false }, async ({ run, target, p }) => {
-    const result = await verify({ run, batch: "01" })
-    assert.deepEqual(result.lostWrappers.blocking.map(f => f.function), ["/f"], JSON.stringify(result.lostWrappers))
+    // Verify also requires manifests for build and declaration checks. Exercise
+    // its fallback directly with the real emitter's skipped-project result.
+    const config = readJson(p.config), plan = readJson(p.plan)
+    const logs = join(p.batch("01"), "logs")
+    rmSync(join(target, "package.json"))
+    const emittedJs = await emitMigratedJs(config, target, logs)
+    assert.equal(emittedJs.some(entry => !entry.restored), false)
+    const result = await checkLostWrappers({ config, p, plan, batch: "01", migrated: ["main.vibe"], emittedJs, ts, logs })
+    assert.deepEqual(result.blocking.map(f => f.function), ["/f"], JSON.stringify(result))
     assert.equal(existsSync(join(target, ".vibelang/js/main.js")), false)
     assert.equal(existsSync(join(p.batch("01"), "lost-wrapper-js", slug("."), "main.js")), true)
+  })
+})
+
+test("a private package without exports uses normal emission and keeps the lost-wrapper gate", async () => {
+  await inFixture({ before, emitted: "export const f = () => 1;\n", exportsJs: false }, async ({ run, target, p }) => {
+    const result = await verify({ run, batch: "01" })
+    assert.equal(result.checks.lostWrappers, false)
+    assert.deepEqual(result.lostWrappers.blocking.map(f => f.function), ["/f"], JSON.stringify(result.lostWrappers))
+    assert.equal(existsSync(join(target, ".vibelang/js/main.js")), true)
+    assert.equal(existsSync(join(p.batch("01"), "lost-wrapper-js", slug("."), "main.js")), false)
   })
 })
 

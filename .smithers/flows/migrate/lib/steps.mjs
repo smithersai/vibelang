@@ -1957,11 +1957,11 @@ export async function testEdits(config, p, plan, b, ts) {
 /** verify: tests against the baseline, declaration identity, and no TypeScript-style form or platform global in the batch. */
 /**
  * verify's lost-wrapper check, on the JavaScript this verify already emitted.
- * A package that step skips (no export names the emitted tree) has no such
+ * A project that step skips (no package manifest) has no such
  * JavaScript, so it is emitted once here, into the batch's scratch, never into
  * the tree.
  */
-async function checkLostWrappers({ config, p, plan, batch, migrated, emittedJs, ts, logs }) {
+export async function checkLostWrappers({ config, p, plan, batch, migrated, emittedJs, ts, logs }) {
   const t = config.target
   const dirs = config.packages.map(pkg => pkg.dir)
   const written = new Set(emittedJs.filter(entry => !entry.restored).map(entry => entry.package))
