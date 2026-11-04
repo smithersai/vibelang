@@ -3,6 +3,7 @@ package vibelang
 import (
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -49,6 +50,8 @@ type fixProgress struct {
 	phasePartial int
 	next         string // what the next program built is for
 	nextPartial  bool   // the next program built is checked in some files
+	stageName    string
+	stageSince   time.Time
 	activity     string
 	since        time.Time
 }
@@ -128,11 +131,18 @@ func (p *fixProgress) line(now time.Time) string {
 		this = "round"
 	}
 	fmt.Fprintf(&b, "; %d %s, %d this %s (%d whole, %d partial); %s for %s", p.checks, plural(p.checks, "check", "checks"), p.phaseChecks, this, p.phaseChecks-p.phasePartial, p.phasePartial, p.activity, now.Sub(p.since).Round(time.Second))
+	if p.stageName != "" {
+		fmt.Fprintf(&b, "; %s for %s", p.stageName, now.Sub(p.stageSince).Round(time.Second))
+	}
+	var memory runtime.MemStats
+	runtime.ReadMemStats(&memory)
+	fmt.Fprintf(&b, "; heap %d MiB, goal %d MiB, %d GCs", memory.HeapAlloc>>20, memory.NextGC>>20, memory.NumGC)
 	return b.String()
 }
 
 func (p *fixProgress) doing(activity string) {
 	p.activity, p.since = activity, time.Now()
+	p.stageName, p.stageSince = "", p.since
 }
 
 // enter starts phase, in round when it is not 0, with the fixes applied
@@ -205,6 +215,13 @@ func (p *fixProgress) building() {
 			p.next = "checking the project"
 		}
 		p.doing(p.next)
+		p.stageName, p.stageSince = "building program", p.since
 		p.next = ""
 	})
+}
+
+// stage distinguishes program construction, checking and fix analysis within
+// the same trial. It contains only a fixed label, never source text or paths.
+func (p *fixProgress) stage(name string) {
+	p.update(func() { p.stageName, p.stageSince = name, time.Now() })
 }

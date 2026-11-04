@@ -51,6 +51,8 @@ func FuzzFixGate(f *testing.F) {
 		"cross,match,cross,cross,good",
 		"hidden,match,hidden,good",
 		"hidden,cross,twice,hidden",
+		"rounds,good,rounds",
+		"rounds,match,hidden",
 	} {
 		f.Add(seed)
 	}
@@ -87,6 +89,14 @@ var fixGateFiles = []struct {
 	key   string
 	files func(i int) map[string]string
 }{
+	// Nested contracts expose one repair per round. Mix them with refusals
+	// so releasing an old checker cannot change a later round's decisions.
+	// Smithers' flows exhausted memory while retaining earlier programs.
+	{"rounds", func(i int) map[string]string {
+		depth := 2 + i%3
+		return map[string]string{fmt.Sprintf("rounds%d.vibe", i): fmt.Sprintf("export type Nested%d = ", i) + strings.Repeat("Effect.Effect<Array<", depth) + "number" + strings.Repeat(">>", depth) + "\n"}
+	}},
+
 	// A fix that adds no error.
 	{"good", func(i int) map[string]string {
 		return map[string]string{fmt.Sprintf("good%d.vibe", i): fmt.Sprintf("export type T%d = Effect.Effect<number>\n", i)}

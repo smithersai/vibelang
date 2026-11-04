@@ -100,6 +100,9 @@ const FixFlag = "--fix"
 // them. Only, when not nil, limits the run to those modules (fix_only.go),
 // and --only sets it.
 type FixOptions struct {
+	// programBuilt observes allocation lifetimes in the fixer resource tests.
+	// It must not retain the program. No command line or external caller sets it.
+	programBuilt                         func(*compiler.Program)
 	MigrationOnly, VIPOnly, CheckEachFix bool
 	Only                                 []tspath.RootedFilePath
 	onlyGiven, onlyNoValue               bool
@@ -504,10 +507,15 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			progress.building()
 			last = nil // the last program can go while the next is built
 			last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), key
+			progress.stage("program built")
+			if options.programBuilt != nil {
+				options.programBuilt(last)
+			}
 		}
 		return last
 	}
 	program := build(texts)
+	progress.stage("checking baseline")
 	if done.Err() != nil {
 		return result
 	}
@@ -523,6 +531,10 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		progress.building()
 		last = nil
 		last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), overlayKey(overlay)
+		progress.stage("program built")
+		if options.programBuilt != nil {
+			options.programBuilt(last)
+		}
 		return last
 	}
 	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineFrom(program, scope.errors(ctx, program)), scope: scope, refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst}
@@ -674,6 +686,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			// program that a later round or rewrite repaired is no site, and
 			// one the run moved is where it now stands.
 			final := build(texts)
+			progress.stage("finding remaining fix sites")
 			for _, file := range fixableFiles(final) {
 				for _, d := range fileFixes(ctx, final, file, g.refused, codes).declined {
 					reason := refusedWhy[d.key]
@@ -721,6 +734,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			}
 			round++
 			progress.enter("round", round, fixesApplied(result), len(result.Refused), "finding fixes")
+			progress.stage("finding fixes")
 			proposals := propose(program)
 			if len(proposals) == 0 {
 				if changed && len(roundRefusals) > 0 {
@@ -740,11 +754,16 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				accept = g.acceptEach
 			}
 			refusedBefore := len(roundRefusals)
+			// Proposals hold the immutable source and edits they need, not the
+			// old checker. Keeping program live across accept retains all its
+			// type caches while the trial checks another complete program.
+			program = nil
 			accepted := accept(texts, proposals, refuse)
 			if done.Err() != nil {
 				return result
 			}
 			if len(accepted) == 0 {
+				program = build(texts)
 				continue // every fix refused; the next round tries the rest
 			}
 			for _, p := range accepted {
@@ -1545,7 +1564,10 @@ func (g *fixGate) passes(texts, overlay map[tspath.RootedFilePath]string) (strin
 
 // errors returns the errors of program the gate counts.
 func (g *fixGate) errors(program *compiler.Program) []*ast.Diagnostic {
-	return g.scope.errors(g.ctx, program)
+	g.progress.stage("checking diagnostics")
+	result := g.scope.errors(g.ctx, program)
+	g.progress.stage("diagnostics collected")
+	return result
 }
 
 // errorCounts counts the errors of program the gate counts, as errorCounts does.

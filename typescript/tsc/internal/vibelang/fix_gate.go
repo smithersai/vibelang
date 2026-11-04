@@ -33,6 +33,11 @@ import (
 // goes (gateRound.checkpoint), and a round that has checked
 // fixIsolationChecks programs refuses the fixes it has not told apart.
 func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []proposal, refuse func(FixRefusal, string)) []proposal {
+	// Error origins guide this round only. A rejected checker from an earlier
+	// round must not survive while this round allocates its own type caches.
+	g.lastFailed = nil
+	defer func() { g.lastFailed = nil }()
+
 	r := &gateRound{g: g, texts: texts, proposals: proposals, kept: map[int][]int{}, nextCheckpoint: g.checkpointFirstAt()}
 	var all []part
 	for i, p := range proposals {
@@ -80,6 +85,11 @@ func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []pro
 // it, and refused otherwise. It is the oracle accept is fuzzed against
 // (FixOptions.CheckEachFix).
 func (g *fixGate) acceptEach(texts map[tspath.RootedFilePath]string, proposals []proposal, refuse func(FixRefusal, string)) []proposal {
+	// Error origins guide this round only. A rejected checker from an earlier
+	// round must not survive while this round allocates its own type caches.
+	g.lastFailed = nil
+	defer func() { g.lastFailed = nil }()
+
 	r := &gateRound{g: g, texts: texts, proposals: proposals, kept: map[int][]int{}, wholeOnly: true}
 	for i, p := range proposals {
 		for f := range p.fixes {
@@ -225,6 +235,7 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 	r.g.progress.label("")
 	var errors []*ast.Diagnostic
 	if first != nil {
+		r.g.progress.stage("checking partial diagnostics")
 		errors = fileErrors(r.g.ctx, program, first)
 	}
 	added := r.addedBy(errors)
@@ -298,7 +309,10 @@ func (r *gateRound) likelyFiles(parts []part) []tspath.RootedFilePath {
 // addedBy returns the errors of errors that the baseline does not hold,
 // by key and number.
 func (r *gateRound) addedBy(errors []*ast.Diagnostic) map[string]int {
-	return addedCounts(errors, r.g.baseline)
+	r.g.progress.stage("comparing diagnostics")
+	result := addedCounts(errors, r.g.baseline)
+	r.g.progress.stage("diagnostics compared")
+	return result
 }
 
 // beyondOrder returns added, the errors a check of only files adds, without
@@ -862,6 +876,7 @@ func (r *gateRound) held(t checked, named map[[2]int]bool) (map[[2]int][]string,
 // error. It returns, by culprit, the errors of its group's files the fix
 // brings back.
 func (r *gateRound) culprits(parts []part, t checked) []gateCulprit {
+	r.g.progress.stage("tracing error origins")
 	if r.exhausted() {
 		return nil
 	}

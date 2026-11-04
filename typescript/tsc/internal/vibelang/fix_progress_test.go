@@ -12,7 +12,7 @@ import (
 )
 
 // fixProgressLine is a line fixProgress prints.
-var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try( [0-9]+)?|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?, [0-9]+ this (round|phase) \([0-9]+ whole, [0-9]+ partial\); (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+$`)
+var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try( [0-9]+)?|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?, [0-9]+ this (round|phase) \([0-9]+ whole, [0-9]+ partial\); (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+(; (building program|program built|checking baseline|finding fixes|checking diagnostics|diagnostics collected|comparing diagnostics|diagnostics compared|checking partial diagnostics|tracing error origins) for [0-9hms]+)?; heap [0-9]+ MiB, goal [0-9]+ MiB, [0-9]+ GCs$`)
 
 // A --fix run says on stderr what it is doing, at most once each
 // ProgressEvery: its phase and round, the fixes applied and pending, the
@@ -114,4 +114,38 @@ func TestFixProgressCountsTheChecksOfARound(t *testing.T) {
 	if want := "; 6 checks, 0 this phase (0 whole, 0 partial); "; !strings.Contains(line, want) {
 		t.Fatalf("line %q does not say %q", line, want)
 	}
+}
+
+// Stage transitions retain the round and trial identity, so a slow diagnostic
+// comparison cannot look like a checker that never returned.
+func TestFixProgressIdentifiesStageAndHeap(t *testing.T) {
+	var out strings.Builder
+	p := newFixProgress(&out, time.Hour)
+	defer p.close()
+	p.enter("round", 4, 225, 99, "finding fixes")
+	p.offered(2)
+	p.checkFixes(2, 1)
+	p.building()
+	p.stage("comparing diagnostics")
+	line := p.line(time.Now())
+	for _, want := range []string{
+		"round 4: 225 fixes applied, 2 pending, 99 refused",
+		"1 check, 1 this round (1 whole, 0 partial)",
+		"checking 2 fixes in 1 file",
+		"comparing diagnostics for ",
+		"; heap ", " MiB, goal ", " GCs",
+	} {
+		if !strings.Contains(line, want) {
+			t.Errorf("missing %q in %q", want, line)
+		}
+	}
+	if !fixProgressLine.MatchString(line) {
+		t.Fatalf("invalid progress line: %q", line)
+	}
+	p.enter("round", 5, 227, 99, "finding fixes")
+	if strings.Contains(p.line(time.Now()), "comparing diagnostics") {
+		t.Fatal("stale stage survived a round transition")
+	}
+	var quiet *fixProgress
+	quiet.stage("checking diagnostics")
 }
