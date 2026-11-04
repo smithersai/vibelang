@@ -192,8 +192,8 @@ export const run = () => constants.O_NONBLOCK`, []string{
 		{"hmac", `import { createHmac } from "node:crypto"
 export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 			"createHmac from node:crypto is platform code, which a .vibe file does not import as a value.",
-			"Use Effect's crypto services:   Mac.sign(key, data)", provideCrypto,
-			"Mac.key(Mac.hmacSha256, bytes) makes the key, and Mac.sign takes all the data in one call.",
+			"Use Effect's crypto services:   try (try Mac.Mac).sign(key, data)", provideCrypto,
+			"try Mac.key(Mac.hmacSha256, bytes) makes the key, and the sign method takes all the data in one call.",
 		}},
 		{"signatures", `export const run = (key: CryptoKey, data: Uint8Array) => crypto.subtle.sign("Ed25519", key, data)`, []string{
 			"crypto.subtle is platform code, which VibeLang code does not use directly.",

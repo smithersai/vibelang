@@ -880,6 +880,8 @@ Digest diagnostic examples obtain `Digest.Digest` with `try`, then run its `dige
 
 For `os.tmpdir()`, use `try (try Experimental.Process.Process).temporaryDirectory`. It queries the native temporary directory without creating a directory or file.
 
+MAC diagnostic examples obtain `Mac.Mac` with `try`, then run its `sign(key, data)` method. Build an HMAC key with `try Mac.key(Mac.hmacSha256, bytes)` before signing the data.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

@@ -1,0 +1,72 @@
+[
+  {
+    "key": "node:crypto:createHmac:direct",
+    "source": "import { createHmac } from \"node:crypto\";export const value=createHmac",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "node:crypto:createHmac:alias",
+    "source": "import { createHmac as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "node:crypto:subtle:direct",
+    "source": "import { subtle } from \"node:crypto\";export const value=subtle",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "node:crypto:subtle:alias",
+    "source": "import { subtle as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "node:crypto:webcrypto:direct",
+    "source": "import { webcrypto } from \"node:crypto\";export const value=webcrypto",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "node:crypto:webcrypto:alias",
+    "source": "import { webcrypto as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "crypto:createHmac:direct",
+    "source": "import { createHmac } from \"crypto\";export const value=createHmac",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "crypto:createHmac:alias",
+    "source": "import { createHmac as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "crypto:subtle:direct",
+    "source": "import { subtle } from \"crypto\";export const value=subtle",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "crypto:subtle:alias",
+    "source": "import { subtle as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "crypto:webcrypto:direct",
+    "source": "import { webcrypto } from \"crypto\";export const value=webcrypto",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "crypto:webcrypto:alias",
+    "source": "import { webcrypto as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "crypto:subtle",
+    "source": "export const value=crypto.subtle",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  },
+  {
+    "key": "globalThis.crypto:subtle",
+    "source": "export const value=globalThis.crypto.subtle",
+    "advice": "try (try Mac.Mac).sign(key, data)"
+  }
+]

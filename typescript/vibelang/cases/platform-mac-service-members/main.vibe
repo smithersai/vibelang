@@ -1,0 +1,14 @@
+import { Mac } from "effect/crypto"
+import { fixed, expected, keyBytes, data } from "./native.js"
+
+effect function actual() {
+  const key = try Mac.key(Mac.hmacSha256, keyBytes)
+  provide Layer.succeed(Mac.Mac, fixed) {
+    const bytes = try (try Mac.Mac).sign(key, data)
+    return bytes[0]
+  }
+}
+// expect-result: [2, 2]
+export effect function main() {
+  return [try actual(), try expected]
+}
