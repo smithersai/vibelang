@@ -203,6 +203,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `do` expression after an unreachable outer statement lost its normal-completion type and reported property errors on `never`. It now retains the type of its local normal completions, while a `do` with no normal completion still has type `never`.
 
+- The lower and inference examples’ emitted JavaScript snapshots expected older arrow wrappers and anonymous generators. They now record the compiler’s equivalent explicit-return wrappers and preserved `greet` and `lookup` frames; their runtime checks remain in place.
+
 - Parameterized effect functions showed anonymous generator frames in debugging stacks. Generated bodies now keep their source function names while parameters still bind when the function is called, including recursive function expressions.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
