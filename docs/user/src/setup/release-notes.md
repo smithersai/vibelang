@@ -209,6 +209,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration setup made Bun build checks with `-p` or `--project` fail with `TS5072`; it now selects the same project using TypeScript build-mode arguments.
 
+- Grammar admission fuzzing still marked a missing schema body as an unresolved gap; its saved witness now checks the existing `EK1503` rejection without a stale pending entry.
+
 - The grammar admission inventory failed after schema header diagnostics were added; the declaration dispatcher and missing-body recovery now name their existing grammar authority.
 
 - Geolocation, Permissions, UserDirectories and the experimental Process, FileSystem and Locks diagnostics suggested calling members on the module namespace, where they do not exist; their advice now obtains the injected service and runs its member.

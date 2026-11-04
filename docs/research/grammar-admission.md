@@ -221,8 +221,9 @@ whose comma expression is ordinary.
 `Field`, counts the same way; campaign192 found `schema C {` followed by
 `string }` on the next line. Its declaration-level siblings already reject
 syntax before the checker: `EK1501` (`export default schema`) and `EK1502`
-(schema type parameters). A bare `schema C` is the known
-`admission:schema-no-body` gap.
+(schema type parameters). A bare `schema C` now reports `EK1503`. The former
+`admission:schema-no-body` pending entries are retired; the original seed
+and keyed corpus remain rejection controls.
 
 TypeScript's `ExternalModuleReference` is `require ( StringLiteral )`. Its
 parser reads any expression in the parentheses for recovery, and the
