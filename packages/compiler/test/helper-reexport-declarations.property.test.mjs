@@ -99,16 +99,24 @@ function check(input, { negative = false, nativeLibraries = false } = {}) {
         ["type", changedType],
         ["doc", "/** changed API documentation */\n" + main],
         ["missing", 'export { ' + input.name + ' } from "pmfix-identity-missing-dependency";\n'],
+        ["missing-library", main.replace(/(\): )string;/, "$1typeof BigInt;")],
       ]) {
         const directory = join(root, "negative-" + kind)
         mkdirSync(directory)
         for (const file of readdirSync(dirs.before)) copyFileSync(join(dirs.before, file), join(directory, file))
         writeFileSync(join(directory, "main.d.ts"), source)
+        if (kind === "missing-library") {
+          const program = ts.createProgram([join(directory, "main.d.ts")],
+            { lib: ["lib.es5.d.ts"], strict: true, skipLibCheck: false, noEmit: true, types: [] })
+          assert.ok(ts.getPreEmitDiagnostics(program).some(diagnostic => diagnostic.code === 2583),
+            "Stock TypeScript must require the unavailable BigInt library")
+        }
         const result = compareDeclarations(ts, dirs.before, directory)
         assert.equal(result.identical, false, JSON.stringify(result))
-        if (kind === "missing") {
+        if (kind === "missing" || kind === "missing-library") {
           assert.equal(result.comparisonComplete, false, JSON.stringify(result))
-          assert.ok(result.environmentDiagnostics.some(row => /TS2307/.test(row.diagnostic)), JSON.stringify(result))
+          const expected = kind === "missing" ? /TS2307/ : /TS2583/
+          assert.ok(result.environmentDiagnostics.some(row => expected.test(row.diagnostic)), JSON.stringify(result))
         } else {
           assert.equal(result.comparisonComplete, true, JSON.stringify(result))
           assert.ok((kind === "type" ? result.typeDifferences : result.docDifferences).length > 0, JSON.stringify(result))
