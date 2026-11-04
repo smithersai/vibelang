@@ -147,3 +147,8 @@ parser-generated in-place arrows for `do` and `match` preserve the source
 context. These parser flags choose only the known-gap key. Appendix A
 remains the independent derivation oracle. The nested plain-callable `join`
 witness stays under `admission:join-outside-effect`, with corpus XPASS coverage.
+
+Reserved binding names inside `or` and `not` patterns now retain their
+native syntax diagnostics after lowering. The former
+`or-binding-reserved-name` pending entries are retired; the original keyed
+corpus and seed continue to check that these names have no derivation.
