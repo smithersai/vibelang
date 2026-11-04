@@ -255,19 +255,17 @@ func preludeFixCase(t *testing.T, source string) (*FixResult, tspath.RootedFileP
 	return fixCase(t, dir), file.FileName()
 }
 
-// End to end: the prelude's module export rewrite would shorten
-// Option.Option inside a plain generator's return, a site --fix declines.
-// That edit goes and is reported, and the one outside the site stays. Before,
-// the edit inside changed the diagnostic, so the gate refused the file's
-// whole rewrite and no export was shortened.
+// End to end: a value export still shortens outside a declined site, while
+// the same edit inside a plain generator's return is dropped and reported.
+// Qualified root types are deliberately no longer shortening candidates.
 func TestFixPreludeKeepsRefusedSite(t *testing.T) {
-	source := `import { Option } from "effect"
+	source := `import { FileSystem } from "effect"
 
 function* g(x: unknown) {
   yield 1
-  return x as Option.Option<number>
+  return FileSystem.FileSystem.of
 }
-const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
+const first = FileSystem.FileSystem.of
 `
 	result, name := preludeFixCase(t, source)
 	if len(result.Changed) != 0 {
@@ -277,14 +275,14 @@ const first = (value: Option.Option<number>): number => Option.getOrElse(value, 
 	if fixed == nil {
 		t.Fatalf("no rewrite kept; sites %+v", result.Sites)
 	}
-	want := strings.Replace(strings.TrimPrefix(source, "import { Option } from \"effect\"\n"), "(value: Option.Option<number>)", "(value: Option<number>)", 1)
+	want := strings.Replace(strings.TrimPrefix(source, "import { FileSystem } from \"effect\"\n"), "const first = FileSystem.FileSystem.of", "const first = FileSystem.of", 1)
 	if fixed.Text != want || fixed.Rewrites[preludeKeyLabel] != 1 {
 		t.Fatalf("wrote %q\nwant %q\nrewrites %v", fixed.Text, want, fixed.Rewrites)
 	}
-	at := strings.Index(source, "x as Option.Option<number>")
+	at := strings.Index(source, "FileSystem.FileSystem.of")
 	var declined, dropped bool
 	for _, site := range result.Sites {
-		if site.Code == "EK2128" && site.Start == at && site.End == at+len("x as Option.Option<number>") {
+		if site.Code == "EK2128" && site.Start == at && site.End == at+len("FileSystem.FileSystem.of") {
 			declined = true
 		}
 		if site.Code == preludeKeyLabel && strings.HasPrefix(site.Reason, "its rewrite would edit the refused site EK2128 at 5:10") {
@@ -296,7 +294,29 @@ const first = (value: Option.Option<number>): number => Option.getOrElse(value, 
 	}
 }
 
-// Property: whatever mix of qualified module exports sits inside a declined
+// Preserve the original Smithers type witness too: qualification stays both
+// inside and outside the declined site, independently of its refusal.
+func TestFixPreludeQualifiedTypesAroundRefusedSite(t *testing.T) {
+	source := `import { Option } from "effect"
+
+function* g(x: unknown) {
+  yield 1
+  return x as Option.Option<number>
+}
+const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
+`
+	result, name := preludeFixCase(t, source)
+	if len(result.Changed) != 0 {
+		t.Fatalf("changed refused site: %+v", result.Changed)
+	}
+	fixed := result.Files[name]
+	want := strings.TrimPrefix(source, "import { Option } from \"effect\"\n")
+	if fixed == nil || fixed.Text != want || fixed.Rewrites[preludeKeyLabel] != 0 {
+		t.Fatalf("qualified type changed: %+v; want %q", fixed, want)
+	}
+}
+
+// Property: whatever mix of qualified value exports sits inside a declined
 // site and outside it, --fix changes no refused site (no exit 3), every
 // declined site keeps its bytes, and only the exports outside are shortened.
 func FuzzFixPreludeRefusedSite(f *testing.F) {
@@ -306,16 +326,16 @@ func FuzzFixPreludeRefusedSite(f *testing.F) {
 	f.Fuzz(func(t *testing.T, inside, outside uint8) {
 		inside, outside = inside%3, outside%3
 		var b strings.Builder
-		b.WriteString("import { Option } from \"effect\"\n\nfunction* g(x: unknown) {\n  yield 1\n  return [")
+		b.WriteString("import { FileSystem } from \"effect\"\n\nfunction* g(x: unknown) {\n  yield 1\n  return [")
 		for i := range inside {
 			if i > 0 {
 				b.WriteString(", ")
 			}
-			b.WriteString("x as Option.Option<number>")
+			b.WriteString("FileSystem.FileSystem.of")
 		}
 		b.WriteString("]\n}\n")
 		for i := range outside {
-			fmt.Fprintf(&b, "const f%d = (v: Option.Option<number>): number => Option.getOrElse(v, () => %d)\n", i, i)
+			fmt.Fprintf(&b, "const f%d = FileSystem.FileSystem.of\n", i)
 		}
 		source := b.String()
 		result, name := preludeFixCase(t, source)
@@ -331,8 +351,8 @@ func FuzzFixPreludeRefusedSite(f *testing.F) {
 				t.Fatalf("site %+v changed:\n%s", site, text)
 			}
 		}
-		if got := strings.Count(text, "Option.Option"); got != int(inside) {
-			t.Fatalf("%d Option.Option left, want the %d inside the site:\n%s", got, inside, text)
+		if got := strings.Count(text, "FileSystem.FileSystem.of"); got != int(inside) {
+			t.Fatalf("%d FileSystem.FileSystem.of left, want the %d inside the site:\n%s", got, inside, text)
 		}
 	})
 }

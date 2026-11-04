@@ -99,6 +99,34 @@ func preludePackageOf(name string) string {
 	return ""
 }
 
+// importHasBareTypeUse keeps an explicit binding whose unqualified type
+// references would become ambient-sensitive if the import disappeared. A
+// shared source may be checked again with a different lib or @types set;
+// the selected program alone cannot prove that a bare prelude type is stable.
+func importHasBareTypeUse(c *checker.Checker, file *ast.SourceFile, binding *ast.Node) bool {
+	symbol := c.GetSymbolAtLocation(binding)
+	if symbol == nil {
+		return true
+	}
+	name := binding.Text()
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsImportDeclaration(node) {
+			return false
+		}
+		if ast.IsIdentifier(node) && node.Text() == name {
+			parent := node.Parent
+			bareType := ast.IsTypeReferenceNode(parent) ||
+				ast.IsExpressionWithTypeArguments(parent) && parent.Expression() == node && ast.IsPartOfTypeNode(parent)
+			if bareType && c.ResolveName(name, node, ast.SymbolFlagsType|ast.SymbolFlagsNamespace, false) == symbol {
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	return file.AsNode().ForEachChild(visit)
+}
+
 // preludeRewritesOf plans the rewrites of file, a .vibe file that c checked.
 // declared holds the imports file's declaration file keeps, by
 // declaredImportKey, in a project that emits declarations. A named import
@@ -108,7 +136,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 	var r preludeRewrite
 	text := file.Text()
 	removed := map[string]bool{} // names whose imports go, so the prelude supplies them
-	kept := map[string]bool{}    // imports the declaration file writes in their own spelling, so M.M stays
+	kept := map[string]bool{}    // explicit type/declaration bindings whose spelling stays
 	gone := map[*ast.Node]bool{} // the import bindings that go
 	for _, statement := range file.Statements.Nodes {
 		if !ast.IsImportDeclaration(statement) || statement.ImportClause() == nil || !ast.IsStringLiteral(statement.ModuleSpecifier()) {
@@ -124,7 +152,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 			if preludeModulePath(name) != specifier || implicitEffectModuleDisabled(c, file, name) || isBuiltinGlobal(c, name) {
 				continue
 			}
-			if declared[declaredImportKey(specifier, name)] {
+			if declared[declaredImportKey(specifier, name)] || importHasBareTypeUse(c, file, clause.NamedBindings.Name()) {
 				kept[name] = true
 				continue
 			}
@@ -138,6 +166,11 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 				continue
 			}
 			if isBuiltinGlobal(c, name) || implicitEffectModuleDisabled(c, file, name) {
+				continue
+			}
+			if (preludePackageOf(name) == specifier || preludeModulePath(name) == specifier) &&
+				importHasBareTypeUse(c, file, element.Name()) {
+				kept[name] = true
 				continue
 			}
 			switch {
@@ -367,6 +400,13 @@ func shortenableExport(c *checker.Checker, node *ast.Node, removed map[string]bo
 		return module, node
 	case ast.IsQualifiedName(node) && ast.IsTypeReferenceNode(node.Parent):
 		module := node.AsQualifiedName().Left
+		// Keep a written qualified type when shortening would leave a bare
+		// name. Another consumer config may supply an ambient type of that
+		// name (FileSystem in lib.dom, or an application's own global type).
+		// Nested qualification such as Experimental.Process remains stable.
+		if ast.IsIdentifier(module) {
+			return nil, nil
+		}
 		_, export := exportOfModuleReference(c, module, node.AsQualifiedName().Right, removed)
 		if export == nil || export.Flags()&ast.SymbolFlagsType == 0 || isBuiltinGlobalType(c, node.AsQualifiedName().Right.Text()) {
 			return nil, nil

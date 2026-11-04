@@ -418,7 +418,7 @@ const running = (process: Experimental.Process.Process, pid: number) => process.
 
 const read = (path: string) => FileSystem.readFileString(Path.join(path, "a"))
 const key = FileSystem.FileSystem
-const first = (value: Option<number>): number => Option.getOrElse(value, () => 0)
+const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
 const get = (url: string) => HttpClient.get(url)
 const command = ChildProcess.make("ls")
 const two = Arr.take([1, 2, 3], 2)
@@ -447,12 +447,12 @@ const running = (process: Experimental.Process, pid: number) => process.isRunnin
 		}
 		t.Fatalf("--fix wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
 	}
-	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 4 {
-		t.Errorf("rewrites %v; want 5 imports and 4 module exports", fixed.Rewrites)
+	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 3 {
+		t.Errorf("rewrites %v; want 5 imports and 3 module exports", fixed.Rewrites)
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 9 fixes (prelude import ×5, module export ×4)") {
+	if !strings.Contains(report.String(), "main.vibe: 8 fixes (prelude import ×5, module export ×3)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 	if err := os.WriteFile(file.FileName().AsString(), []byte(want), 0o600); err != nil {

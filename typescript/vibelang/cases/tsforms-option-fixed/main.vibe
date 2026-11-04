@@ -2,15 +2,15 @@
 // An Option pipeline whose every stage is a function of the Option module
 // draws EK4840 (D473), whose quick fix writes it with Option's methods.
 // tsforms-option-fixed is what vibelang --fix writes.
-export const name = (nick: Option<string>) => Option.getOrElse(Option.map(nick, (s) => s.trim().toUpperCase()), () => "anon")
+export const name = (nick: Option.Option<string>) => Option.getOrElse(Option.map(nick, (s) => s.trim().toUpperCase()), () => "anon")
 
-export const next = (o: Option<number>) => Option.getOrNull(Option.map(o, (n) => n + 1))
+export const next = (o: Option.Option<number>) => Option.getOrNull(Option.map(o, (n) => n + 1))
 
 export const size = (id: string | null) => Option.getOrElse(Option.map(Option.fromNullishOr(id), (s) => s.length), () => 0)
 
-export const value = (o: Option<number>) => Option.getOrNull(o)
+export const value = (o: Option.Option<number>) => Option.getOrNull(o)
 
-export const label = (o: Option<string>) =>
+export const label = (o: Option.Option<string>) =>
   Option.getOrElse(Option.map(o
     , (s) => s.toUpperCase())
     , () => "")
@@ -21,7 +21,7 @@ function five() {
   return 5
 }
 
-export const hasFive = (o: Option<number>) => do { const $optionInput = o; const $optionArg0 = five(); Option.contains($optionInput, $optionArg0); }
+export const hasFive = (o: Option.Option<number>) => do { const $optionInput = o; const $optionArg0 = five(); Option.contains($optionInput, $optionArg0); }
 
 export effect function main() {
   return {
