@@ -1,6 +1,6 @@
-// expect: EK3201
+// expect: EK9211
 // A test never runs the entry statement, so it gets no platform layer: it
-// provides its own, and EK3201 names what it leaves out.
+// provides its own, and EK9211 names what it leaves out.
 import { it } from "@effect/vitest"
 import { main } from "./platform.vibe"
 

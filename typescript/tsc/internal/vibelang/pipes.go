@@ -6,6 +6,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
+// VIP-23 assigns one identity to several early errors; retain each trigger's
+// repair message instead of borrowing the conditional-expression wording.
+
 // The pipe operator (VIP-23). In a .vibe file,
 //
 //	fetchUser(id) |> retry(%, policy) |> timeout(%, "1 second")

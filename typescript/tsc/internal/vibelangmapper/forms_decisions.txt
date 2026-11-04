@@ -3092,6 +3092,9 @@ typescript/vibelang/cases/ek4617-await-effect.fail/main.vibe:11:24 lambda choice
 typescript/vibelang/cases/ek4802-declared-effect-parameter/main.vibe:11:36 lambda plain table
 typescript/vibelang/cases/ek4802-declared-effect-parameter/main.vibe:12:39 lambda effectFn table
 typescript/vibelang/cases/ek4802-declared-effect-parameter/main.vibe:9:40 byname program table
+typescript/vibelang/cases/ek4802-returned-program-trigger/main.vibe:12:19 lambda effectFn table
+typescript/vibelang/cases/ek4802-returned-program-trigger/main.vibe:5:22 lambda effectFn keyword
+typescript/vibelang/cases/ek4802-returned-program-trigger/main.vibe:9:54 lambda effectFn keyword
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:10:15 lambda plain annotation
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:13:26 lambda effectFn keyword
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:6:23 lambda plain fallback

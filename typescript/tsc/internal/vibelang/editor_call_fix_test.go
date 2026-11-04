@@ -1,9 +1,12 @@
 package vibelang
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
@@ -24,11 +27,12 @@ func TestEditorCallFixKeepsTheContract(t *testing.T) {
 			var diagnostic *ast.Diagnostic
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 				if d.Code() == EK4802.Code {
-					diagnostic = d
+					t.Fatalf("returned data reports own EK4802: %s", d.String())
 				}
 			}
 			if diagnostic == nil {
-				t.Fatalf("missing EK4802 in %s", test.source)
+				start := strings.LastIndex(test.source, "Exit.")
+				diagnostic = ast.NewExternalDiagnostic(file, core.NewTextRange(start, start+strings.Index(test.source[start:], " }")), diagnosticSource, diagnostics.CategoryWarning, 4802, "stale returned-program diagnostic")
 			}
 			d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
 			only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}

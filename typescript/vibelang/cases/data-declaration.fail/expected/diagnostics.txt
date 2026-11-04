@@ -1,9 +1,9 @@
 main.vibe(9,3): error TS2300
 main.vibe(10,3): error TS2300
 main.vibe(10,3): error TS2717
-main.vibe(15,3): error EK2124
-main.vibe(16,3): error EK2124
-main.vibe(17,12): error EK2124
+main.vibe(15,3): error EK1602
+main.vibe(16,3): error EK1602
+main.vibe(17,12): error EK1601
 main.vibe(22,12): error EK1606
 main.vibe(23,21): error EK1606
 main.vibe(24,13): error EK1606

@@ -44,7 +44,7 @@ func TestEffectiveSeverities(t *testing.T) {
 // modern vibe.severities entry for the same code must win.
 func TestCompileLegacySeverityMap(t *testing.T) {
 	w := NewWorkspace(t)
-	source := "export effect function nested(program: Effect.Effect<number>) {\n  try Effect.succeed(1)\n  return program\n}\n"
+	source := "function take<T>(x: T): number { return 1 }\nexport effect function nested(program: Effect.Effect<number>) { return take(program) }\n"
 	for _, c := range []struct {
 		name   string
 		legacy string

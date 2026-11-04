@@ -232,7 +232,7 @@ function classify(job: { status: string; attempts: number }) {
 // Output: ["escalate","retry","running","leave","leave"]
 ```
 
-`and`, `or`, and `not` cannot share a level: write `(a and b) or c`, not `a and b or c` (EK4705). An `or` or `not` pattern may bind names under the pinned TC39 binding rules. A name bound in every `or` alternative gets the union of its types.
+`and`, `or`, and `not` cannot share a level: write `(a and b) or c`, not `a and b or c` (EK0707). An `or` or `not` pattern may bind names under the pinned TC39 binding rules. A name bound in every `or` alternative gets the union of its types.
 
 ## is
 
@@ -366,7 +366,7 @@ An arm that only binds the value, `when let other:`, matches every value, as `de
 | Code | Cause | Fix |
 | --- | --- | --- |
 | EK4701 | A match without `default` misses a case of a finite union | Add an arm for each case left, or a `default` arm |
-| EK4705 | `and`, `or`, and `not` at one level without parentheses | Add parentheses |
+| EK0707 | `and`, `or`, and `not` at one level without parentheses | Add parentheses |
 
 The pinned design gives an ordinary `is` expression's `let` and `const` bindings the enclosing block's scope, including both `if` branches and code after it. A name remains in TDZ until its binding pattern runs; a later pattern failure does not undo an earlier initialization. The implementation limits below still apply.
 

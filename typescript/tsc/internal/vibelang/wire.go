@@ -20,7 +20,7 @@ import (
 // (EK3203), and an argument whose type does not name its outputs (EK3204).
 // An input that no argument provides stays in the result's In, as with
 // Layer.provide, and is reported with the provider that needs it where the
-// program's requirements must be empty, at a runner (EK3201).
+// program's requirements must be empty, at a runner (EK9211).
 
 // layerTypeID names the variance property of every Effect 4 Layer:
 // `readonly [TypeId]: { _ROut: Contravariant<ROut>; _E; _RIn }`.
@@ -28,11 +28,11 @@ const layerTypeID = "~effect/Layer"
 
 func init() { fileChecks = append(fileChecks, checkWires, checkRunners) }
 
-// anyProgram and anyMain are EK3201's and EK3205's text for a program whose
+// anyProgram and anyMain are EK9211's and EK3205's text for a program whose
 // type is any, such as an Effect.gen program after EK1002, whose services
 // TypeScript's type cannot name. {0} is the program.
 var (
-	anyProgram = EK3201.With("{0} has type any, so the services it needs are unknown.")
+	anyProgram = EK9211.With("{0} has type any, so the services it needs are unknown.")
 	anyMain    = EK3205.With("{0} has type any, so the services it needs are unknown.")
 )
 
@@ -442,7 +442,7 @@ const (
 	runnerEntry                   // an entry module's main, which its entry statement runs (D135)
 )
 
-// checkRunners reports EK3201 at a runner whose program still needs a
+// checkRunners reports EK9211 at a runner whose program still needs a
 // service that a wire call in the program leaves unprovided: the dependency
 // path names the provider that needs it. An entry module's main is checked
 // as a root runner's program, since its entry statement runs it with
@@ -554,11 +554,11 @@ func checkTest(c *checker.Checker, call *ast.Node) {
 	}
 }
 
-// checkProgram reports EK3201 for the services that program, the program a
+// checkProgram reports EK9211 for the services that program, the program a
 // runner receives, needs and accepted does not include: a root runner such
 // as Effect.runPromise or NodeRuntime.runMain starts with an empty Context,
 // so accepted is nil. TypeScript would report that the program's type does
-// not fit the parameter; EK3201 names the services instead, and the wire
+// not fit the parameter; EK9211 names the services instead, and the wire
 // arguments that need them. For an entry module, program is main's name,
 // and the code is EK3205. It returns the diagnostic it reports, or nil.
 func checkProgram(c *checker.Checker, program *ast.Node, accepted *checker.Type, site runnerSite) *ast.Diagnostic {
@@ -596,7 +596,7 @@ func checkProgram(c *checker.Checker, program *ast.Node, accepted *checker.Type,
 	if len(names) == 0 {
 		return nil
 	}
-	code := EK3201
+	code := EK9211
 	if site == runnerEntry {
 		code = EK3205
 	}

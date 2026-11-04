@@ -1,0 +1,17 @@
+// expect-result: true
+// VIP-1/5: returning a program keeps it as data; own EK4802 is for inferred arguments.
+export function plain() { return Effect.succeed(1) }
+export effect function held(job: number!!) { return job }
+export const arrow = effect (job: number!!) => job
+export effect function subtype() { return Exit.succeed(1) }
+export effect function union(job: (number!!) | undefined): unknown!! { return job }
+export effect function program(job: () => number!!): unknown!! { return job }
+export effect function literal(): unknown!! { return effect () => 1 }
+export effect function main() {
+  const job = Effect.succeed(7)
+  const factory = () => job
+  return (try held(job)) === job
+    && (try arrow(job)) === job
+    && (try union(job)) === job
+    && (try program(factory)) === factory
+}

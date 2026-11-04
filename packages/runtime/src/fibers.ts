@@ -57,7 +57,7 @@ type NotJoinable = Effect.Effect<any, any, any> | Deferred.Deferred<any, any> | 
 
 /**
  * The value `join x` returns: a Fiber's value, or an array or object of them
- * with the same shape. never for an operand join cannot join (EK4611).
+ * with the same shape. never for an operand join cannot join (EK1704).
  * Elements must be Fibers themselves.
  */
 export type JoinedValue<T> =

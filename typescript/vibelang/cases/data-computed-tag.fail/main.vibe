@@ -1,0 +1,43 @@
+// expect: EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 EK1601 TS2344 TS1170 TS1170 TS1170
+// Chapter 006: a variant field named _tag is EK1601; native enum, index and symbol keys keep TypeScript behavior.
+// computed-tag-literal-double
+namespace Case0 { export data D { A { readonly ["_tag"]:string } } }
+// computed-tag-literal-single
+namespace Case1 { export data D { A { readonly ['_tag']:string } } }
+// computed-tag-literal-escaped
+namespace Case2 { export data D { A { readonly ["\u005ftag"]:string } } }
+// computed-tag-entity
+namespace Case3 { const key="_tag";export data D { A { readonly [key]:string } } }
+// computed-tag-entity-const
+namespace Case4 { const key="_tag" as const;export data D { A { readonly [key]:string } } }
+// computed-tag-qualified
+namespace Case5 { const names={tag:"_tag"} as const;export data D { A { readonly [names.tag]:string } } }
+// computed-tag-literal-double-optional
+namespace Case6 { export data D { A { readonly ["_tag"]?:string } } }
+// computed-tag-literal-single-optional
+namespace Case7 { export data D { A { readonly ['_tag']?:string } } }
+// computed-tag-literal-escaped-optional
+namespace Case8 { export data D { A { readonly ["\u005ftag"]?:string } } }
+// computed-tag-entity-optional
+namespace Case9 { const key="_tag";export data D { A { readonly [key]?:string } } }
+// computed-tag-entity-const-optional
+namespace Case10 { const key="_tag" as const;export data D { A { readonly [key]?:string } } }
+// computed-tag-qualified-optional
+namespace Case11 { const names={tag:"_tag"} as const;export data D { A { readonly [names.tag]?:string } } }
+// computed-tag-enum-control
+namespace Case12 { enum Key { Tag="_tag" };export data D { A { readonly [Key.Tag]:string } } }
+// computed-tag-broad-control
+namespace Case13 { declare const key:string;export data D { A { readonly [key]:string } } }
+// computed-tag-symbol-control
+namespace Case14 { declare const key:unique symbol;export data D { A { readonly [key]:string } } }
+// computed-tag-ordinary-control
+namespace Case15 { const key="field";export data D { A { readonly [key]:string } } }
+
+// computed-tag-invalid-parenthesized
+namespace Case16 { const key="_tag";export data D { A { readonly [(key)]:string } } }
+
+// computed-tag-invalid-element
+namespace Case17 { const names={tag:"_tag"} as const;export data D { A { readonly [names["tag"]]:string } } }
+
+// computed-tag-invalid-call
+namespace Case18 { function key():"_tag"{return "_tag"}export data D { A { readonly [key()]:string } } }

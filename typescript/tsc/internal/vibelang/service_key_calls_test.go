@@ -13,8 +13,8 @@ func TestServiceKeyCallQuickFix(t *testing.T) {
 	const source = "service Fn: (n: number) => number\nexport effect function f() { return Fn(3) }\n"
 	program, file, service, converters := editorProgram(t, source)
 	items := program.GetSemanticDiagnostics(t.Context(), file)
-	if len(items) != 1 || items[0].Source() != "EK" || items[0].Code() != EK3007.Code {
-		t.Fatalf("want one EK3007, got %v", items)
+	if len(items) != 1 || items[0].Source() != "EK" || items[0].Code() != EK9214.Code {
+		t.Fatalf("want one EK9214, got %v", items)
 	}
 	d := lsconv.DiagnosticToLSPPush(t.Context(), converters, items[0])
 	only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}

@@ -1,2 +1,0 @@
-chosen can be a program, and this function's success type, void, names no value, so this function succeeds with that program instead of running it.
-Return the program where it is chosen, as an if statement that returns its call does. To return it itself, write its type as the success type: ((() => void!!) | undefined)!E!R.

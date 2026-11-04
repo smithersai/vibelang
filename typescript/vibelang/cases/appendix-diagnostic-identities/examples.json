@@ -1,0 +1,844 @@
+[
+  {
+    "name": "pipe-no-topic",
+    "code": "EK2301",
+    "source": "export const noTopic = 1 |> 2",
+    "messageIncludes": "does not use its topic"
+  },
+  {
+    "name": "pipe-topic-outside",
+    "code": "EK2301",
+    "source": "export const outside = %",
+    "messageIncludes": "stands only in a pipe's body"
+  },
+  {
+    "name": "pipe-control",
+    "code": "EK2301",
+    "source": "export const piped = 1 |> % + 2",
+    "control": true
+  },
+  {
+    "name": "service-key-not-readonly",
+    "code": "EK0901",
+    "source": "service Users { static key = \"Users\"; get(): string }"
+  },
+  {
+    "name": "service-key-control",
+    "code": "EK0901",
+    "source": "service Users { static readonly key = \"Users\"; get(): string }",
+    "control": true
+  },
+  {
+    "name": "join-invalid-operand",
+    "code": "EK1704",
+    "source": "export effect function f() { return join 1 }"
+  },
+  {
+    "name": "pattern-mixed-operators",
+    "code": "EK0707",
+    "source": "export function f(n: number) { return match (n) { when 1 and Number or 3: 1; default: 0; } }"
+  },
+  {
+    "name": "data-variant-extractor",
+    "code": "EK0702",
+    "source": "data D { A { x: number } }; export function f(d: D) { return match (d) { when D.A(let x): x; default: 0; } }"
+  },
+  {
+    "name": "class-brace-list",
+    "code": "EK0707",
+    "source": "error E { x: number }; export function f(e: E) { return match (e) { when E { let x }: x; default: 0; } }"
+  },
+  {
+    "code": "EK2301",
+    "name": "pipe-bare-arrow",
+    "source": "export const piped = 1 |> () => %"
+  },
+  {
+    "code": "EK2301",
+    "name": "pipe-parenthesized-arrow",
+    "source": "export const piped = 1 |> (() => %)",
+    "control": true
+  },
+  {
+    "code": "EK2301",
+    "name": "pipe-conditional-unparenthesized",
+    "source": "function f(n: number) { return n }; const x=1, a=2, b=3; export const piped = x |> f(%) ? a : b"
+  },
+  {
+    "code": "EK2301",
+    "name": "pipe-conditional-result",
+    "source": "function f(n: number) { return n }; const x=1, a=2, b=3; export const piped = (x |> f(%)) ? a : b",
+    "control": true
+  },
+  {
+    "code": "EK2301",
+    "name": "pipe-conditional-body",
+    "source": "function f(n: number) { return n }; const x=1, a=2, b=3; export const piped = x |> (f(%) ? a : b)",
+    "control": true
+  },
+  {
+    "name": "appendix-EK4601",
+    "code": "EK4601",
+    "source": "import {Effect} from \"effect\";\ndeclare function f(): Effect.Effect<number>;\nexport function run() { return await Effect.succeed(1) }",
+    "at": {
+      "file": "main.vibe",
+      "line": 3,
+      "column": 32
+    },
+    "also": []
+  },
+  {
+    "name": "appendix-EK1011",
+    "code": "EK1011",
+    "source": "export effect function run() { return 1 }",
+    "at": {
+      "file": "main.vibe",
+      "line": 1,
+      "column": 24
+    },
+    "also": [],
+    "effectPeer": false
+  },
+  {
+    "name": "appendix-EK2112",
+    "code": "EK2112",
+    "source": "import {Effect} from \"effect\";\nexport effect function run() { try { return try Effect.fail(\"x\") } catch (e: string) { return 1 } }",
+    "at": {
+      "file": "main.vibe",
+      "line": 2,
+      "column": 78
+    },
+    "also": [
+      "EK2105"
+    ]
+  },
+  {
+    "name": "appendix-EK2113",
+    "code": "EK2113",
+    "source": "import {Effect, Cause} from \"effect\";\nexport effect function run() { try { return try Effect.fail(\"x\") } catch (e: Cause.Cause<string>) { return 1 } }",
+    "at": {
+      "file": "main.vibe",
+      "line": 2,
+      "column": 78
+    },
+    "also": []
+  },
+  {
+    "name": "typescript-control-EK4819",
+    "code": "EK4819",
+    "source": "import {Effect} from 'effect'; export function* g() { yield Effect.succeed(1) }",
+    "control": true,
+    "files": {
+      "main.ts": "import {Effect} from 'effect'; export function* g() { yield Effect.succeed(1) }",
+      "tsconfig.json": "{\"compilerOptions\": {\"target\": \"ESNext\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"noEmit\": true, \"skipLibCheck\": true, \"types\": []}, \"files\": [\"main.ts\"]}"
+    },
+    "configName": "tsconfig.json"
+  },
+  {
+    "name": "typescript-control-EK4820",
+    "code": "EK4820",
+    "source": "import {Effect} from 'effect'; export function* g() { yield* Effect.fail('x') }",
+    "control": true,
+    "files": {
+      "main.ts": "import {Effect} from 'effect'; export function* g() { yield* Effect.fail('x') }",
+      "tsconfig.json": "{\"compilerOptions\": {\"target\": \"ESNext\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"noEmit\": true, \"skipLibCheck\": true, \"types\": []}, \"files\": [\"main.ts\"]}"
+    },
+    "configName": "tsconfig.json"
+  },
+  {
+    "code": "EK2115",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/diagnostic_appendix_hosts_test.go",
+    "testName": "TestAppendixMapperHostExamples"
+  },
+  {
+    "code": "EK4612",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/diagnostic_appendix_hosts_test.go",
+    "testName": "TestAppendixMapperHostExamples"
+  },
+  {
+    "code": "EK9203",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/diagnostic_appendix_hosts_test.go",
+    "testName": "TestAppendixMapperHostExamples"
+  },
+  {
+    "code": "EK9005",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/diagnostic_appendix_hosts_test.go",
+    "testName": "TestAppendixMapperHostExamples"
+  },
+  {
+    "code": "EK9006",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/diagnostic_appendix_hosts_test.go",
+    "testName": "TestAppendixMapperHostExamples"
+  },
+  {
+    "code": "EK9100",
+    "host": true,
+    "testPath": "typescript/tsc/internal/ls/inferred_form_fix_test.go",
+    "testName": "TestInferredFormFix"
+  },
+  {
+    "code": "EK9101",
+    "host": true,
+    "testPath": "typescript/tsc/internal/ls/inferred_receiver_fix_test.go",
+    "testName": "TestInferredReceiverFix"
+  },
+  {
+    "code": "EK9001",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/project_test.go",
+    "testName": "TestUnprojectedForm"
+  },
+  {
+    "code": "EK2005",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_compatibility_identity_test.go",
+    "testName": "TestCompatibilityIdentityPrimaryMessages"
+  },
+  {
+    "code": "EK3007",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_compatibility_identity_test.go",
+    "testName": "TestCompatibilityIdentityPrimaryMessages"
+  },
+  {
+    "code": "EK3201",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_compatibility_identity_test.go",
+    "testName": "TestCompatibilityIdentityPrimaryMessages"
+  },
+  {
+    "code": "EK0511",
+    "retired": true
+  },
+  {
+    "code": "EK4407",
+    "retired": true
+  },
+  {
+    "code": "EK4843",
+    "retired": true
+  },
+  {
+    "code": "EK9002",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/render_exec_test.go",
+    "testName": "TestRenderExec"
+  },
+  {
+    "code": "EK9003",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/tracing_removed_test.go",
+    "testName": "TestAutomaticTracingOptionRejected"
+  },
+  {
+    "code": "EK9004",
+    "host": true,
+    "testPath": "typescript/tsc/internal/vibelangmapper/server_test.go",
+    "testName": "TestVersionMismatchDiagnostic"
+  },
+  {
+    "name": "appendix-archive-EK0101",
+    "code": "EK0101",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0202",
+    "code": "EK0202",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0301",
+    "code": "EK0301",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0509",
+    "code": "EK0509",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0510",
+    "code": "EK0510",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0701",
+    "code": "EK0701",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0703",
+    "code": "EK0703",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0704",
+    "code": "EK0704",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0904",
+    "code": "EK0904",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0905",
+    "code": "EK0905",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK0908",
+    "code": "EK0908",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1101",
+    "code": "EK1101",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1305",
+    "code": "EK1305",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1306",
+    "code": "EK1306",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1501",
+    "code": "EK1501",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1603",
+    "code": "EK1603",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1605",
+    "code": "EK1605",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1703",
+    "code": "EK1703",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2301",
+    "code": "EK2301",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4008",
+    "code": "EK4008",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4402",
+    "code": "EK4402",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4609",
+    "code": "EK4609",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4610",
+    "code": "EK4610",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4830",
+    "code": "EK4830",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4834",
+    "code": "EK4834",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4839",
+    "code": "EK4839",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2112",
+    "code": "EK2112",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2113",
+    "code": "EK2113",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2120",
+    "code": "EK2120",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2121",
+    "code": "EK2121",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK9204",
+    "code": "EK9204",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1001",
+    "code": "EK1001",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1003",
+    "code": "EK1003",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1015",
+    "code": "EK1015",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1017",
+    "code": "EK1017",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2114",
+    "code": "EK2114",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2118",
+    "code": "EK2118",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2127",
+    "code": "EK2127",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK3206",
+    "code": "EK3206",
+    "archive": true
+  },
+  {
+    "code": "EK4201",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "name": "appendix-archive-EK4401",
+    "code": "EK4401",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4410",
+    "code": "EK4410",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4501",
+    "code": "EK4501",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4502",
+    "code": "EK4502",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4602",
+    "code": "EK4602",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4603",
+    "code": "EK4603",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4703",
+    "code": "EK4703",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4805",
+    "code": "EK4805",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4806",
+    "code": "EK4806",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4812",
+    "code": "EK4812",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4813",
+    "code": "EK4813",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4816",
+    "code": "EK4816",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4818",
+    "code": "EK4818",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4821",
+    "code": "EK4821",
+    "archive": true,
+    "messageIncludes": "Schema.TaggedStruct"
+  },
+  {
+    "name": "appendix-archive-EK4822",
+    "code": "EK4822",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4823",
+    "code": "EK4823",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4824",
+    "code": "EK4824",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4825",
+    "code": "EK4825",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1002",
+    "code": "EK1002",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1005",
+    "code": "EK1005",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK1012",
+    "code": "EK1012",
+    "archive": true
+  },
+  {
+    "code": "EK1013",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "name": "appendix-archive-EK2006",
+    "code": "EK2006",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2105",
+    "code": "EK2105",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK2106",
+    "code": "EK2106",
+    "archive": true
+  },
+  {
+    "code": "EK2107",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "code": "EK2108",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "code": "EK2110",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "code": "EK2119",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "name": "appendix-archive-EK3101",
+    "code": "EK3101",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK3202",
+    "code": "EK3202",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK3203",
+    "code": "EK3203",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK3204",
+    "code": "EK3204",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK3205",
+    "code": "EK3205",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK3207",
+    "code": "EK3207",
+    "archive": true
+  },
+  {
+    "code": "EK4202",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "name": "appendix-archive-EK4301",
+    "code": "EK4301",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4405",
+    "code": "EK4405",
+    "archive": true
+  },
+  {
+    "code": "EK4406",
+    "host": "registration-only",
+    "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
+    "testName": "TestAppendixRegisteredOnlyHostExamples",
+    "emissionPending": true
+  },
+  {
+    "name": "appendix-archive-EK4604",
+    "code": "EK4604",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4616",
+    "code": "EK4616",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4704",
+    "code": "EK4704",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4707",
+    "code": "EK4707",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4801",
+    "code": "EK4801",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4803",
+    "code": "EK4803",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4804",
+    "code": "EK4804",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4807",
+    "code": "EK4807",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4808",
+    "code": "EK4808",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4809",
+    "code": "EK4809",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4810",
+    "code": "EK4810",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4811",
+    "code": "EK4811",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4814",
+    "code": "EK4814",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4815",
+    "code": "EK4815",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4817",
+    "code": "EK4817",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4840",
+    "code": "EK4840",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4403",
+    "code": "EK4403",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4409",
+    "code": "EK4409",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4503",
+    "code": "EK4503",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK4838",
+    "code": "EK4838",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK9209",
+    "code": "EK9209",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK9210",
+    "code": "EK9210",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK9211",
+    "code": "EK9211",
+    "archive": true
+  },
+  {
+    "name": "appendix-archive-EK9214",
+    "code": "EK9214",
+    "archive": true
+  },
+  {
+    "name": "throw-operator-error",
+    "code": "EK1010",
+    "source": "declare const e: unknown; export const x = throw e + 1",
+    "categoryVariant": "error",
+    "at": {
+      "file": "main.vibe",
+      "line": 1,
+      "column": 44
+    }
+  },
+  {
+    "name": "throw-comma-warning",
+    "code": "EK1010",
+    "source": "declare const e: unknown; export const xs = [throw e, 1]",
+    "categoryVariant": "warning",
+    "at": {
+      "file": "main.vibe",
+      "line": 1,
+      "column": 46
+    }
+  },
+  {
+    "name": "platform-hatch-warning",
+    "code": "EK4402",
+    "source": "export const value = sync(() => console)",
+    "categoryVariant": "warning",
+    "at": {
+      "file": "main.vibe",
+      "line": 1,
+      "column": 33
+    }
+  },
+  {
+    "name": "platform-error",
+    "code": "EK4402",
+    "source": "export const value = console",
+    "categoryVariant": "error",
+    "at": {
+      "file": "main.vibe",
+      "line": 1,
+      "column": 22
+    }
+  },
+  {
+    "code": "EK4821",
+    "name": "tagged-struct-default-off",
+    "source": "export const Opened = Schema.Struct({ _tag: Schema.Literal(\"Opened\"), at: Schema.Number })\n",
+    "files": {
+      "main.vibe": "export const Opened = Schema.Struct({ _tag: Schema.Literal(\"Opened\"), at: Schema.Number })\n",
+      "tsconfig.json": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"lib\": [\n      \"esnext\",\n      \"dom\"\n    ],\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"strict\": true,\n    \"types\": [],\n    \"skipLibCheck\": true,\n    \"outDir\": \"out\",\n    \"vibelang\": {\n      \"diagnostics\": {\n        \"EK4822\": \"error\",\n        \"EK4823\": \"error\",\n        \"EK4824\": \"error\",\n        \"EK4825\": \"error\"\n      }\n    }\n  },\n  \"include\": [\n    \"*.vibe\"\n  ]\n}"
+    },
+    "configName": "tsconfig.json",
+    "also": [],
+    "at": {
+      "file": "main.vibe",
+      "line": 1,
+      "column": 23,
+      "category": "error"
+    },
+    "control": true
+  },
+  {
+    "name": "abstract-error-root",
+    "code": "EK1308",
+    "source": "export abstract error Root\n",
+    "messageIncludes": "An abstract error root is a legacy declaration form."
+  }
+]

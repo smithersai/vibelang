@@ -25,7 +25,7 @@ var formChoiceAhead = map[string]string{
 	"docs/user/src/error-management/016-fallback.md#block-4":                    "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/schema/086-getting-started.md#block-7":                       "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/vite.md#block-6":                                       "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/vibelang-features/118-experimental-platform-apis.md#block-6": "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/118-experimental-platform-apis.md#block-9": "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/error-management/006-two-error-types.md#block-1":             "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/scheduling/037-using-schedules.md#block-5":                   "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/schema/091-transformations.md#block-4":                       "mapper:effect-block-catch-head (impl-hunt-run)",
@@ -189,6 +189,6 @@ process.stdout.write(JSON.stringify(cases));`
 			}
 		}
 	}
-	t.Logf("docs corpus: %d modules, %d projector EK9100 sites", len(docs), choices)
+	t.Logf("docs corpus: %d modules, %d projector EK9005 sites", len(docs), choices)
 	return cases
 }

@@ -20,7 +20,7 @@ const toolingChapter = "007-tooling.md"
 
 // Verbatim current-spec sentences. Rewording one requires reviewing its
 // derivation, rather than silently using an empty oracle.
-const defaultCategoryQuote = `A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error.`
+const defaultCategoryQuote = `A row whose rule starts "warning" or "lint warning" is a warning; a row starting "suggestion" is an editor suggestion; an interim row starting "off by default" is a disabled warning. Other VibeLang rows are errors; the imported table gives each lint rule’s explicit default.`
 const adjustableQuote = "Only a warning's code, or an `EK38xx` code, may appear in `vibe.severities`"
 const reusedQuote = "Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below."
 const retiredQuote = "The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed."
@@ -234,6 +234,11 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 		facts.Defaults[codes[0]] = DefaultError
 		if strings.HasPrefix(cells[1], "warning") {
 			facts.Defaults[codes[0]] = DefaultWarning
+		} else if strings.HasPrefix(cells[1], "suggestion") {
+			facts.Defaults[codes[0]] = DefaultSuggestion
+		} else if strings.HasPrefix(cells[1], "off by default") {
+			// Interim inventory records activation without adding configurable keys.
+			facts.Defaults[codes[0]] = DefaultOff
 		}
 	}
 	// The reused sentence uses inclusive ranges ("EK2001 to EK2005",

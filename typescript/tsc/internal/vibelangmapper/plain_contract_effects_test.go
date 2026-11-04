@@ -91,7 +91,7 @@ func assertPlainContractDiagnostic(t *testing.T, source string, want bool) {
 	for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
 		count := 0
 		for _, diagnostic := range projection.Diagnostics {
-			if diagnostic.Code != 2003 {
+			if diagnostic.Code != CodePlainContractEffect {
 				t.Fatalf("unexpected diagnostic: %+v\n%s", diagnostic, source)
 			}
 			count++
@@ -138,7 +138,7 @@ func TestPlainGeneratorThrows(t *testing.T) {
 		for _, projection := range []Projection{Project(test.source, testContext), Executable(test.source, testContext)} {
 			count := 0
 			for _, d := range projection.Diagnostics {
-				if d.Code == 2003 && strings.Contains(d.Message, "A JavaScript generator can't throw") {
+				if d.Code == CodePlainContractEffect && strings.Contains(d.Message, "A JavaScript generator can't throw") {
 					count++
 				}
 			}

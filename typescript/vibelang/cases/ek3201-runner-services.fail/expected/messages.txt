@@ -1,3 +1,3 @@
-error EK3201: Nothing provides Todos, which this program needs.
-error EK3201: Nothing provides Clock2, Todos, which this program needs.
+error EK9211: Nothing provides Todos, which this program needs.
+error EK9211: Nothing provides Clock2, Todos, which this program needs.
 Provide it inside the test with provide layer { … }, or register the test inside layer(…).

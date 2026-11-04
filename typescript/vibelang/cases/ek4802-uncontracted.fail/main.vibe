@@ -1,4 +1,4 @@
-// expect: EK4802
+// VIP-1/5: returned programs are data, without own EK4802.
 import { Effect } from "effect"
 export effect function load(migration: Effect.Effect<void>) { try Effect.yieldNow; return migration }
 

@@ -1,0 +1,10 @@
+// expect: EK4005 EK4005
+// VIP-40: a duplicate module and a module/value collision are both the error EK4005.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics
+module twice { export const a = 1 }
+module twice { export const b = 2 }
+
+module shared { export const c = 3 }
+const shared = 4
+
+export const kept = shared

@@ -81,7 +81,7 @@ func TestFactoryImportedContextNeedsChoice(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("missing factory-context EK9100: %v\n%s", p.Diagnostics, p.Text)
+		t.Fatalf("missing factory-context EK9005: %v\n%s", p.Diagnostics, p.Text)
 	}
 }
 

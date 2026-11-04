@@ -44,7 +44,8 @@ export effect function main(){
 `
  fs.writeFileSync(path.join(dir,"main.vibe"),source)
  const diagnostics=run(compiler,["-p",".","--pretty","false"],dir,true)
- assert.match(diagnostics,/warning EK1308:/,"missing abstract root migration diagnostic")
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK1308` | warning: an abstract error root is a legacy declaration form.
+ assert.match(diagnostics,/warning EK1308: An abstract error root is a legacy declaration form\./,"missing abstract root migration diagnostic")
  const beforeDts=fs.readFileSync(path.join(dir,"out/main.d.ts"),"utf8")
  const exit=()=>run(process.execPath,["--input-type=module","-e",'import{Effect}from"effect";import{main}from"./out/main.js";console.log(JSON.stringify(Effect.runSyncExit(main())))'],dir)
  const beforeExit=exit();assert.equal(JSON.parse(beforeExit).value.matcher,"function")

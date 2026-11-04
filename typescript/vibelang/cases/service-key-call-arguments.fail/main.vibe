@@ -1,6 +1,6 @@
-// expect: EK3007
+// expect: EK9214
 // A service key is not a function: try S gives the implementation (VIP-5,
-// VIP-10). Calling it with arguments is EK3007, in place of TypeScript's
+// VIP-10). Calling it with arguments is EK9214, in place of TypeScript's
 // TS2348, whose suggestion of new would be EK3003. (try Fn)(3) calls the
 // implementation.
 service Fn: (n: number) => number

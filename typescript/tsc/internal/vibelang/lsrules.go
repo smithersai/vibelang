@@ -25,8 +25,8 @@ import (
 var (
 	// EK4801 (floatingEffect): a statement that discards an Effect value. {0} is the expression.
 	EK4801 = message(4801, errorCategory, "{0} is an Effect value, and this statement discards it without running it.")
-	// EK4802 (returnEffectInGen, effectInVoidSuccess): an Effect function that returns an Effect value. {0} is the value, {1} the function.
-	EK4802 = message(4802, warningCategory, "{0} is an Effect value, but {1} already runs Effects, so its caller gets this program instead of its result.")
+	// EK4802: an inferred Effect argument outside a declared Effect position (VIP-1). {0} is the argument.
+	EK4802 = message(4802, warningCategory, "{0} infers an Effect in a plain function's generic parameter, so the function receives the unrun program instead of its result.")
 	// EK4803 (duplicatePackage): two versions of an Effect package. {0} is the package, {1} the number of versions.
 	EK4803 = message(4803, warningCategory, "This program loads {1} versions of {0}, so services, fibers, and types can differ between its modules.")
 	// EK4804 (globalErrorInEffectFailure, globalErrorInEffectCatch): an expected failure that is a global Error. {0} is its type.
@@ -107,12 +107,6 @@ func checkEffectRules(c *checker.Checker, file *ast.SourceFile) {
 			r.checkProvide(node)
 		case ast.IsExpressionStatement(node):
 			r.checkFloating(node)
-		case ast.IsReturnStatement(node):
-			if fn := ast.GetContainingFunction(node); fn != nil && node.Expression() != nil {
-				r.checkReturnedEffect(fn, node.Expression())
-			}
-		case ast.IsArrowFunction(node) && !ast.IsBlock(node.Body()):
-			r.checkReturnedEffect(node, node.Body())
 		case ast.IsThrowStatement(node):
 			r.checkThrow(node)
 		case ast.IsClassLike(node):
@@ -215,169 +209,6 @@ func isDiscardingForm(expression *ast.Node) bool {
 	return ast.IsAssignmentExpression(expression, false)
 }
 
-// checkReturnedEffect reports EK4802 when fn, an Effect function without a
-// written contract, returns value, an Effect value: its caller runs fn and
-// gets the program back. When value as a whole is not an Effect, each part of
-// it that can be what fn returns is asked about the same way: an arm of a
-// conditional, an operand of ?? or ||, the right side of &&. In
-// `n === 0 ? Effect.interrupt : Console.log(n)` the call runs and the other
-// arm is the success value, so emit(0) succeeded with the interruption.
-//
-// Where fn's success type names no value (successNamesNoValue), every value
-// is accepted as the success value, so a returned Effect value, program
-// literal or program named by reference returns as data (D24, D269) where
-// Effect code would run it. EK4802
-// reports that too, with the two spellings that say which was meant; a
-// written contract counts then as well.
-func (r *ruleCheck) checkReturnedEffect(fn *ast.Node, value *ast.Node) {
-	if !isLowerable(fn) || isProducer(fn) {
-		return
-	}
-	if fn.Type() != nil {
-		// A written contract says what fn succeeds with, unless its success
-		// names no value; then a plain variant's Effect form returns the
-		// value as data too.
-		if r.a.successNamesNoValue(fn) == nil || !r.a.isEffect(fn) {
-			return
-		}
-	} else if !r.a.isEffect(fn) {
-		return
-	}
-	r.checkReturnedValue(fn, value)
-}
-
-func (r *ruleCheck) checkReturnedValue(fn *ast.Node, value *ast.Node) {
-	if isInvocation(ast.SkipParentheses(value)) && r.a.runs(ast.SkipParentheses(value)) {
-		return // the call runs here; its success value is the result
-	}
-	valueType := r.c.GetTypeAtLocation(value)
-	if literal := ast.SkipParentheses(value); isLambda(literal) && len(literal.Parameters()) == 0 {
-		if success := r.a.successNamesNoValue(fn); success != nil {
-			d := report(r.c, value, returnedLiteralAsValue, messageText(value, "The returned function"), functionDisplayName(fn), r.c.TypeToString(success))
-			note(d, "Write its body in place to run it, or write its type as the success type to return it: ({0})!E!R.", bangTypes(r.c.TypeToString(valueType)))
-		}
-		return
-	}
-	if !isEffectType(r.c, valueType) {
-		if r.a.programOf(valueType) != nil {
-			// A program named by reference, such as a module-level
-			// `const list = () => { ... }` or a parameter, returns as data
-			// where the success type names no value, as a program literal
-			// does: a handler `() => list` under a void!! contract succeeded
-			// with the function and ran none of it.
-			if success := r.a.successNamesNoValue(fn); success != nil {
-				d := report(r.c, value, returnedProgramAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(success))
-				note(d, "Run it with try: {0}. To return the function itself, write its type as the success type: ({1})!E!R.", r.runText(value), bangTypes(r.c.TypeToString(valueType)))
-			}
-			return
-		}
-		if isEffectSubtype(r.c, valueType) {
-			r.checkReturnedSubtype(fn, value, valueType)
-			return
-		}
-		parts := returnedParts(value)
-		if len(parts) == 0 {
-			r.checkReturnedUnion(fn, value, valueType)
-		}
-		for _, part := range parts {
-			r.checkReturnedValue(fn, part)
-		}
-		return
-	}
-	accepted := false
-	declared := r.a.declaredProgramReturn(fn)
-	if declared != nil {
-		success := successType(r.c, declared)
-		accepted = success != nil && r.c.IsTypeAssignableTo(valueType, success)
-	}
-	if declared == nil || accepted {
-		if named := r.a.successNamesNoValue(fn); named != nil {
-			d := report(r.c, value, returnedEffectAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(named))
-			note(d, "Run it with try: {0}. To return the program itself, write its type as the success type: ({1})!E!R.", r.runText(value), bangTypes(r.c.TypeToString(valueType)))
-			return
-		}
-	}
-	if accepted || fn.Type() != nil || r.blockDeclaresEffectSuccess(fn, valueType) {
-		return // TypeScript reports a value the written contract rejects
-	}
-	d := report(r.c, value, EK4802, messageText(value, "This value"), functionDisplayName(fn))
-	note(d, "Run it with try to return its result: {0}. To return the program itself, write the contract.", r.runText(value))
-}
-
-// blockDeclaresEffectSuccess reports whether fn is an effect block whose
-// declared type, such as const load: Effect<Effect<void>> = effect { return
-// migration }, succeeds with valueType: that type is the block's contract,
-// so it returns the program unrun as written (VIP-5, return values stay
-// unflattened).
-func (r *ruleCheck) blockDeclaresEffectSuccess(fn *ast.Node, valueType *checker.Type) bool {
-	if !isEffectBlock(fn) {
-		return false
-	}
-	declared := r.c.GetContextualType(fn, checker.ContextFlagsNone)
-	if declared == nil || !isEffectType(r.c, declared) {
-		return false
-	}
-	success := successType(r.c, declared)
-	return success != nil && isEffectType(r.c, success) && r.c.IsTypeAssignableTo(valueType, success)
-}
-
-// checkReturnedSubtype reports EK4802 where fn returns value, an Effect
-// subtype with structure of its own (an Exit, a Config, a sql Statement, a
-// class that extends Effect), as data because fn's success type names no
-// value. A returned subtype stays fn's success value (VIP-5, return values
-// stay unflattened), so `Effect.suspend(effect () => sql`...`)` succeeds with
-// the statement and never runs it. Only a written contract that rejects value
-// stays TypeScript's to report.
-func (r *ruleCheck) checkReturnedSubtype(fn *ast.Node, value *ast.Node, valueType *checker.Type) {
-	named := r.a.subtypeSuccessNamesNoValue(fn, valueType)
-	if named == nil {
-		return
-	}
-	d := report(r.c, value, returnedEffectAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(named))
-	note(d, "Run it with try: {0}. To return it itself, write its type as the success type: ({1})!E!R.", r.runText(value), bangTypes(r.c.TypeToString(valueType)))
-}
-
-// subtypeSuccessNamesNoValue returns the success type of fn's Effect when it
-// names no value and fn, returning valueType, an Effect subtype, gives that
-// subtype as its success: a written contract must accept valueType, and
-// without one the success is inferred from what fn returns.
-func (a *analyzer) subtypeSuccessNamesNoValue(fn *ast.Node, valueType *checker.Type) *checker.Type {
-	named := a.successNamesNoValue(fn)
-	if named == nil {
-		return nil
-	}
-	if fn.Type() == nil {
-		return named
-	}
-	declared := a.declaredProgramReturn(fn)
-	if declared == nil {
-		return nil
-	}
-	if success := successType(a.checker, declared); success == nil || !a.checker.IsTypeAssignableTo(valueType, success) {
-		return nil
-	}
-	return named
-}
-
-// checkReturnedUnion reports EK4802 where fn returns value, whose type is a
-// union with an Effect value or a program among its members, as data because
-// fn's success type names no value. A local that a conditional between an
-// Effect value and a running call initialized is one: in
-// `Effect.suspend(() => { const r = c ? Effect.void : set(c); return r })`
-// the call runs where it stands, and when c holds the thunk succeeds with
-// Effect.void instead of running it.
-func (r *ruleCheck) checkReturnedUnion(fn *ast.Node, value *ast.Node, valueType *checker.Type) {
-	if some, _ := r.a.programMembers(valueType); !some {
-		return
-	}
-	named := r.a.successNamesNoValue(fn)
-	if named == nil {
-		return
-	}
-	d := report(r.c, value, returnedUnionAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(named))
-	note(d, "Return the program where it is chosen, as an if statement that returns its call does. To return it itself, write its type as the success type: ({0})!E!R.", bangTypes(r.c.TypeToString(valueType)))
-}
-
 // programMembers reports whether t, a union, has a member that is an Effect
 // value or a program (programOf), and whether every member is one.
 func (a *analyzer) programMembers(t *checker.Type) (some bool, all bool) {
@@ -396,15 +227,6 @@ func isEffectSubtype(c *checker.Checker, t *checker.Type) bool {
 	}
 	return effectInterfaceSymbol(c, t) != nil
 }
-
-// EK4802's text where fn's success type names no value. {0} is the value, {1}
-// the function, {2} the success type.
-var (
-	returnedEffectAsValue  = EK4802.With("{0} is an Effect value, and {1}'s success type, {2}, names no value, so {1} succeeds with this program instead of running it.")
-	returnedLiteralAsValue = EK4802.With("{0} is a program literal, and {1}'s success type, {2}, names no value, so {1} succeeds with the function instead of running it.")
-	returnedProgramAsValue = EK4802.With("{0} is a program, and {1}'s success type, {2}, names no value, so {1} succeeds with the function instead of running it.")
-	returnedUnionAsValue   = EK4802.With("{0} can be a program, and {1}'s success type, {2}, names no value, so {1} succeeds with that program instead of running it.")
-)
 
 // successNamesNoValue returns the success type of fn's Effect when it names
 // no value: void, unknown, any, or an unconstrained type parameter that fn's

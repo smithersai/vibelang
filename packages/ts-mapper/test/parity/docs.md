@@ -39,7 +39,7 @@ artifacts. A docs-only run updates the docs fields and line in the existing
 summary; the normal full run regenerates the declaration results and adds docs.
 
 `--self-test` materializes a scratch Markdown page using the same pipeline and
-requires exactly one newly surfaced EK9100; it also runs the existing parity
+requires exactly one newly surfaced EK9005; it also runs the existing parity
 mutation tests. This fixture is never included in the corpus denominator.
 
 A declaration measurement requires at least one selected case. With no matching

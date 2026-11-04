@@ -5,13 +5,9 @@ import (
 	"testing"
 )
 
-// A returned Effect subtype is its function's success value (VIP-5, return
-// values stay unflattened). Where the success type names no value, nothing
-// asks for that, so EK4802 reports it as it does an Effect (Smithers' journal
-// migrations: `Effect.suspend(effect () => sql`...`)` ran no statement). A
-// function with no contract and no context, and a run, stay quiet: D24 keeps
-// a subtype as data there.
-func TestReturnedEffectSubtypeReported(t *testing.T) {
+// VIP-5 keeps returned Effect subtypes as success data. Own EK4802
+// belongs to inferred arguments, including in broad success contexts.
+func TestReturnedEffectSubtypeIsData(t *testing.T) {
 	const prelude = "interface Statement extends Effect.Effect<number> { readonly sql: string }\n" +
 		"declare const stmt: (parts: TemplateStringsArray) => Statement\n" +
 		"declare const held: Statement\n" +
@@ -20,14 +16,14 @@ func TestReturnedEffectSubtypeReported(t *testing.T) {
 		name, source string
 		reported     bool
 	}{
-		{"tag", "export const f = effect { return try Effect.suspend(effect () => stmt`a`) }\n", true},
-		{"value", "export const f = effect { return try Effect.suspend(effect () => held) }\n", true},
-		{"call", "export const f = effect { return try Effect.suspend(effect () => make()) }\n", true},
-		{"returned", "export const f = effect { return try Effect.suspend(effect () => { return make() }) }\n", true},
-		{"arms", "export const f = effect (c: boolean) => try Effect.suspend(effect () => c ? held : make())\n", true},
-		{"exit", "export const f = effect { return try Effect.suspend(effect () => Exit.succeed(1)) }\n", true},
-		{"unknown context", "export const f: () => unknown!! = effect () => held\n", true},
-		{"written unknown", "export const f = effect (): unknown!! => make()\n", true},
+		{"tag", "export const f = effect { return try Effect.suspend(effect () => stmt`a`) }\n", false},
+		{"value", "export const f = effect { return try Effect.suspend(effect () => held) }\n", false},
+		{"call", "export const f = effect { return try Effect.suspend(effect () => make()) }\n", false},
+		{"returned", "export const f = effect { return try Effect.suspend(effect () => { return make() }) }\n", false},
+		{"arms", "export const f = effect (c: boolean) => try Effect.suspend(effect () => c ? held : make())\n", false},
+		{"exit", "export const f = effect { return try Effect.suspend(effect () => Exit.succeed(1)) }\n", false},
+		{"unknown context", "export const f: () => unknown!! = effect () => held\n", false},
+		{"written unknown", "export const f = effect (): unknown!! => make()\n", false},
 		{"tried", "export const f = effect { return try Effect.suspend(effect () => try make()) }\n", false},
 		{"success names it", "export const f = effect { return try Effect.suspend(effect (): Statement!! => held) }\n", false},
 		{"plain thunk", "export const f = Effect.suspend(() => make())\n", false},

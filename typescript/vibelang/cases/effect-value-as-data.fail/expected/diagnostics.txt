@@ -1,10 +1,1 @@
-main.vibe(10,10): error EK4802
-main.vibe(14,10): error EK4802
-main.vibe(20,54): error EK4802
-main.vibe(26,12): error EK4802
-main.vibe(32,78): error EK4802
-main.vibe(39,12): error EK4802
-main.vibe(58,53): error EK4802
-main.vibe(62,10): error EK4802
-main.vibe(66,85): error EK4802
 tsconfig.json(17,7): warning EK3009

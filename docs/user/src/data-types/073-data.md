@@ -230,12 +230,13 @@ const idle = LoadState.Idle()
 | Code | Cause | Fix |
 | --- | --- | --- |
 | `TS2300` | A variant or field declared twice | Rename one, or remove the duplicate |
-| EK2124 | A variant named `$is` or `$match`, a field named `_tag` | Rename it: the constructors object has its own `$is` and `$match`, and the constructor sets `_tag` |
-| `EK1606` | A parenthesized variant payload, or a payload member that is not a field: a method, a signature, or a field without a type | Write `A { name: Type }` or `A { name?: Type }` |
+| `EK1606` | A malformed variant, such as `A(x: number)`, or a variant member that is not a field: a method, a signature, a field without a type, or a `mutable` field | Write the payload as a field list in braces, `A { x: number }`, each field `name: Type` or `name?: Type` |
+| `EK1601` | A field, including a computed string-literal key, named `_tag` | Rename the field: the constructor sets `_tag` to the variant's name |
+| `EK1602` | A variant named `$is` or `$match` | Rename the variant and its references: the constructors object has its own `$is` and `$match` |
 | `EK2801` | More than four type parameters | Use at most four type parameters |
 | `EK2126` | A constrained type parameter | Remove the constraint |
 | `EK2803` | A default on a generic `data` parameter | Put the default on a type alias, or run `vibelang --fix` |
-| EK2127 | `Delivery.Snet`, a name that is not one of the data type's variants | Use one of the variants the message lists |
+| `EK2127` | `Delivery.Snet`, a name that is not one of the data type's variants | Use one of the variants the message lists |
 
 ## Defining ordinary and tagged errors
 
@@ -302,3 +303,6 @@ Raise a data error with `throw new DocumentMissing({ id })`; ordinary error prop
 An exported `data` declaration may use the contextual name `as`. Its declaration file writes `export declare type as = …` so TypeScript consumers can import both its constructor and its type.
 
 A variant’s fields are readonly, as in `Data.TaggedEnum`; a nested object or array keeps its written TypeScript mutability. Nested index signatures are writable unless written `readonly`. Migration-only fixes leave data fields unchanged and explicitly mark nested members that the pre-pin compiler made readonly, preserving published declarations. Ordinary fixes retain their written modifiers.
+Computed keys with the string literal type `"_tag"` report `EK1601` too, including a `const` key and a property of an `as const` object. Broad `string` keys keep the native `Data.TaggedEnum` constraint error.
+
+Only computed key forms admitted by TypeScript receive `EK1601`. Parenthesized keys, element accesses and calls retain native `TS1170` even when their result type is the literal `"_tag"`.

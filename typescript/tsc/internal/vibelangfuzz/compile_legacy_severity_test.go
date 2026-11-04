@@ -70,7 +70,7 @@ func TestCompileLegacyDiagnosticOverrides(t *testing.T) {
 				t.Fatal(err)
 			}
 			files := map[string]string{
-				"main.vibe":     "export effect function nested(program: Effect.Effect<number>) { try Effect.succeed(1); return program }",
+				"main.vibe":     "function take<T>(x: T): number { return 1 }; export effect function nested(program: Effect.Effect<number>) { return take(program) }",
 				"tsconfig.json": string(config),
 			}
 			project := ProjectFromArchive(Archive(files))

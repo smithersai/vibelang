@@ -222,7 +222,7 @@ type Decision struct {
 
 // CodeFormChoice is the diagnostic code, under the source EK, for a lambda
 // or block whose form the user must write.
-const CodeFormChoice = 9100
+const CodeFormChoice = 9005
 
 // Choice describes a lambda or block whose form the rules cannot decide:
 // its body pauses (a call outside tail position, a throw, a using, or an

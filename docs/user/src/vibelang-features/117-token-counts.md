@@ -21,7 +21,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,511 |
 | The skill and the user guide (142 pages) | 490,000 |
 | The user guide alone | 490,000 |
-| The specification (11 chapters) | 240,000 |
+| The specification (11 chapters) | 250,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
 ## Effect TypeScript beside VibeLang
@@ -214,7 +214,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |
-| [Data](../data-types/073-data.md) | 3,800 |
+| [Data](../data-types/073-data.md) | 4,000 |
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |
@@ -230,7 +230,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Order](../behaviour/084-order.md) | 1,400 |
 | **Schema** | **36,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
-| [Getting Started](../schema/086-getting-started.md) | 3,500 |
+| [Getting Started](../schema/086-getting-started.md) | 3,600 |
 | [Basic Usage](../schema/087-basic-usage.md) | 5,100 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,000 |
@@ -268,10 +268,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 260 |
 | [Producers](112-producers.md) | 3,500 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
-| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 9,500 |
+| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 9,600 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 11,000 |
-| [Diagnostic code map](diagnostic-code-map.md) | 3,200 |
+| [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 9,500 |
 | **All 8 pages** | **50,000** |
 
@@ -289,9 +289,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [6. Data](../../../design/src/006-data.md) | 9,200 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
-| **Appendices** | **110,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 85,000 |
+| **Appendices** | **120,000** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 94,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
-| **All 11 pages** | **240,000** |
+| **All 11 pages** | **250,000** |
 
 <!-- token-counts: end -->

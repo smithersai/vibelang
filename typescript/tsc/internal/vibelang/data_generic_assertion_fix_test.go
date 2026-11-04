@@ -20,8 +20,9 @@ func TestDataGenericAssertionFix(t *testing.T) {
 					file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source, core.ScriptKindTS)
 					var edits []sourceEdit
 					for _, d := range file.Diagnostics() {
-						if d.Code() == 1005 {
-							edits = dataGenericAssertionEdits(file, core.NewTextRange(d.Pos(), d.End()))
+						if d.Source() == "EK" && d.Code() == EK1604.Code {
+							span := core.NewTextRange(d.Pos(), d.End())
+							edits = dataHeaderExpressionEdits(file, &span)
 							if len(edits) != 0 {
 								break
 							}
@@ -100,10 +101,11 @@ func TestDataGenericAssertionJSX(t *testing.T) {
 	source := "const element = <span />;\nconst data = <T,>(value:T)=>value;\n" + expression + ";\nexport {}"
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.vibex", PathKey: "/main.vibex"}, source, core.ScriptKindTSX)
 	for _, d := range file.Diagnostics() {
-		if d.Code() != 1005 {
+		if d.Source() != "EK" || d.Code() != EK1604.Code {
 			continue
 		}
-		edits := dataGenericAssertionEdits(file, core.NewTextRange(d.Pos(), d.End()))
+		span := core.NewTextRange(d.Pos(), d.End())
+		edits := dataHeaderExpressionEdits(file, &span)
 		if len(edits) == 0 {
 			continue
 		}

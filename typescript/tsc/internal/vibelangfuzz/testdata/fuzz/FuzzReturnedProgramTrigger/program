@@ -1,0 +1,4 @@
+go test fuzz v1
+string("program")
+byte(3)
+bool(false)

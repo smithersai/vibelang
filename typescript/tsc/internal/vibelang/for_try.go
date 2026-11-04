@@ -23,11 +23,7 @@ func init() {
 	for _, m := range []*Message{EK2001, EK2002, EK2003, EK2004} {
 		registry[m.Code] = m
 	}
-	// EK2005 still names the legacy resumeWith rule until its owning VIP
-	// retires it; register the for try head rule once the code is free.
-	if registry[forTryHead.Code] == nil {
-		registry[forTryHead.Code] = forTryHead
-	}
+	registry[forTryHead.Code] = forTryHead
 	fileChecks = append(fileChecks, checkForTry)
 }
 

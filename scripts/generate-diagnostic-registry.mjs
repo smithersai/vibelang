@@ -13,7 +13,7 @@ const heading = "## Appendix B. Diagnostics\n"
 const start = text.indexOf(heading)
 if (start < 0) throw new Error("missing Appendix B. Diagnostics")
 const appendix = text.slice(start + heading.length).split(/\n## /, 1)[0]
-const rows = [...appendix.matchAll(/^\| `?(EK[0-9]{4,})`? \| (.*)/gm)]
+const rows = [...appendix.matchAll(/^\| `?(EK[0-9]{4,})`? \| (.*)/gm)].filter(([, , rule]) => !rule.startsWith("`effecttsgo/"))
 if (!rows.length) throw new Error("Appendix B assigns no diagnostic codes")
 const codes = new Set()
 const entries = rows.map(([, code, rule]) => {

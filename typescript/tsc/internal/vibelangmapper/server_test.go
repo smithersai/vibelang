@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK9004` | mapper dependency version error: the resolved Effect or platform package differs from the version pinned by the mapper's forms table; align the package and table versions.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: mapper project resolves `effect@4.0.3` while its forms table pins `effect@4.1.1` | 32, 34 | [Tooling](007-tooling.md#the-effect-version) |
 package vibelangmapper
 
 import (
@@ -45,7 +47,7 @@ func TestHostTransform(t *testing.T) {
 	assert.Equal(t, file.VirtualFileName(), fileName.AppendSuffix(".ts"))
 	assert.Equal(t, file.OriginalText(), content)
 	assert.Equal(t, file.Text(), Project(content, FileContextOf(fileName.AsString())).Text)
-	// The mapper's EK4611 on the invalid join operand arrives in original coordinates. Filter
+	// The mapper's EK1704 on the invalid join operand arrives in original coordinates. Filter
 	// by source: ParseResult parses the virtual text under the original
 	// name, greet.vibe, so in the fork the parser reads it with VibeLang
 	// syntax and reports none of the TS1434 errors stock tsc reports there.
@@ -56,11 +58,11 @@ func TestHostTransform(t *testing.T) {
 		}
 	}
 	assert.Equal(t, len(mapperDiagnostics), 1)
-	assert.Equal(t, mapperDiagnostics[0].Code(), int32(4611))
+	assert.Equal(t, mapperDiagnostics[0].Code(), int32(1704))
 	assert.Equal(t, content[mapperDiagnostics[0].Pos():mapperDiagnostics[0].End()], "name")
 }
 
-// TestVersionMismatchDiagnostic checks that openProject reports EK9002 for
+// TestVersionMismatchDiagnostic checks that openProject reports EK9004 for
 // a project that installs another effect than the forms table pins, as a
 // diagnostic on the mapper's tsconfig entry.
 func TestVersionMismatchDiagnostic(t *testing.T) {

@@ -1,0 +1,16 @@
+// expect: EK1606 EK1606 EK1606 EK1606 EK1606 EK1606
+// Chapter 006, decided detail 247: a variant written with a parenthesized
+// list, as a constructor's parameters, is a malformed variant, and EK1606
+// names the repair, a field list in braces. Nested parentheses are read as
+// one list, and the variants after a malformed one are still declared.
+data Paren { A(x: number) }
+data Nested { A(f: (n: number) => void); B }
+export data Generic<T> { Some(value: T); None }
+data Mixed { Method { m(): void }; Plain { n: number } }
+data Two {
+  A(x: number)
+  B(y: string)
+}
+const b = Nested.B()
+const none = Generic.None()
+const plain = Mixed.Plain({ n: 1 })

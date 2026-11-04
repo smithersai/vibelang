@@ -1,4 +1,4 @@
-// expect: TS2300 TS2717 EK2124 EK1606 EK2126 EK2801
+// expect: TS2300 TS2717 EK1601 EK1602 EK1606 EK2126 EK2801
 // What a data declaration (D307) cannot hold.
 
 // Zero variants are permitted (VIP-16/detail 25).
@@ -10,7 +10,7 @@ data Twice {
   Same { x: string }
 }
 
-// EK2124: names Data.taggedEnum reserves: its $is and $match, and a variant's _tag.
+// EK1602: Data.taggedEnum reserves $is and $match; EK1601 reserves a variant's _tag.
 data Reserved {
   $is
   $match

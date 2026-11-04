@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK9100` | warning: the native editor offers a written annotation for the lowering the fork infers.
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | 34 | Apply “Annotate as the fork infers”; the fatal projection identity is EK9005.
 package ls_test
 
 import (
@@ -75,7 +77,7 @@ func inferredActions(t *testing.T, files map[string]string) ([]*lsproto.CodeActi
 	}
 	projectorChoices := 0
 	for _, d := range vibelangmapper.Project(file.Text(), vibelangmapper.FileContext{}).Diagnostics {
-		if d.Code == 9100 {
+		if d.Code == vibelangmapper.CodeFormChoice {
 			projectorChoices++
 		}
 	}
@@ -183,7 +185,7 @@ func TestInferredFormFix(t *testing.T) {
 			count := func(text string) int {
 				n := 0
 				for _, d := range vibelangmapper.Project(text, vibelangmapper.FileContext{}).Diagnostics {
-					if d.Code == 9100 {
+					if d.Code == vibelangmapper.CodeFormChoice {
 						n++
 					}
 				}
@@ -296,7 +298,7 @@ func TestInferredFormFixDeclinesPausingPlainCallback(t *testing.T) {
 	}
 	choices := 0
 	for _, d := range vibelangmapper.Project(files["/src/main.vibe"], vibelangmapper.FileContext{}).Diagnostics {
-		if d.Code == 9100 {
+		if d.Code == vibelangmapper.CodeFormChoice {
 			choices++
 		}
 	}
@@ -322,7 +324,7 @@ func TestInferredFormRejectsRetiredTrailingBlocks(t *testing.T) {
 						t.Fatal("retired trailing block parsed without a native rejection")
 					}
 					for _, d := range vibelangmapper.Project(source, vibelangmapper.FileContext{}).Diagnostics {
-						if d.Code == 9100 {
+						if d.Code == vibelangmapper.CodeFormChoice {
 							t.Fatalf("retired trailing block received a form-inference choice: %+v", d)
 						}
 					}

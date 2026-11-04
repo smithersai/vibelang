@@ -27,7 +27,7 @@ func (p *projector) syntaxToken(node *ast.Node, code int32, message string) {
 // checkSyntaxDiagnostics mirrors EK1003 (for await and await using outside an
 // async function), EK1010, D15's finally exits
 // (EK2006), D1's bodiless service contracts (EK9205), D129's setup order
-// (EK2104). VIP-6 permits lexical wrapper captures. Alias/type identity
+// (EK9209). VIP-6 permits lexical wrapper captures. Alias/type identity
 // and unresolved types remain native. A type argument left out of an Effect
 // type means what it means in TypeScript (D308, D309), so Effect<A> is complete.
 func (p *projector) checkSyntaxDiagnostics() {
@@ -105,17 +105,16 @@ func syntaxInLowerableBody(n *ast.Node) bool {
 	return false
 }
 
-// checkServiceContracts requires a written service return type. The legacy
-// control checks retain their existing Effect-only contract rule.
+// checkServiceContracts retains a projection refusal for incomplete legacy
+// controls. Ordinary service signatures use native TypeScript checking.
 func (p *projector) checkServiceContracts(class *ast.Node) {
 	for _, member := range class.Members() {
 		if member.Kind != ast.KindMethodDeclaration || ast.IsStatic(member) || member.Name() == nil || !ast.IsIdentifier(member.Name()) {
 			continue
 		}
 		if !isControlClass(class) {
-			if member.Type() == nil {
-				p.syntaxDiagnostic(member.Name(), 2101, class.Name().Text()+"."+member.Name().Text()+" has no body to infer from. Write its return type.")
-			}
+			// VIP-9 uses native noImplicitAny, including when it is disabled.
+			// The TypeScript host checks the projected method signature.
 			continue
 		}
 		annotation := member.Type()
@@ -131,12 +130,12 @@ func (p *projector) checkServiceContracts(class *ast.Node) {
 			if at == nil {
 				at = member.Name()
 			}
-			p.syntaxDiagnostic(at, 2101, class.Name().Text()+"."+member.Name().Text()+" has no body to infer from, so its contract must be written as an Effect type.")
+			p.syntaxDiagnostic(at, CodeUnprojectedForm, class.Name().Text()+"."+member.Name().Text()+" has no body to infer from, so its contract must be written as an Effect type.")
 		}
 	}
 }
 
-// checkLayerSetup uses the parser's retained source order to report EK2104.
+// checkLayerSetup uses the parser's retained source order to report EK9209.
 func (p *projector) checkLayerSetup(n *ast.Node) {
 	call := n.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Initializer()
 	args := call.Arguments()
@@ -157,7 +156,7 @@ func (p *projector) checkLayerSetup(n *ast.Node) {
 	}
 	for _, setup := range statements[:len(statements)-1] {
 		if setup.Pos() > members[0].Pos() {
-			p.syntaxDiagnostic(setup, 2104, "This statement follows the layer's members, but a layer's setup statements come first.")
+			p.syntaxDiagnostic(setup, 9209, "This statement follows the layer's members, but a layer's setup statements come first.")
 		}
 	}
 }

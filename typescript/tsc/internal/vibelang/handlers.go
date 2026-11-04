@@ -167,22 +167,22 @@ func (tx *lowering) tailResumeCall(call *ast.Node) *ast.Node {
 // resumeWith runs its program at the perform site, inside the handled
 // program: the providers around the clause are not in scope there, and the
 // perform site's callers expect only the operation's declared errors (D17).
-// A program that needs a service, or can fail with anything else, is EK2005:
+// A program that needs a service, or can fail with anything else, is EK9210:
 //
-//	error EK2005: resumeWith runs this code at the perform site, inside the handled program,
+//	error EK9210: resumeWith runs this code at the perform site, inside the handled program,
 //	  where the clause's providers are not in scope. It needs Secret.
 //	  Read it in the clause first, and resume with the value: resumeWith(k, () => value).
 //
-// The runtime's signature rejects the same program as TS2345, which EK2005
+// The runtime's signature rejects the same program as TS2345, which EK9210
 // covers.
 
 func init() {
 	fileChecks = append(fileChecks, checkResumeWith)
 }
 
-// undeclaredFailure is EK2005's text for a program that can fail with an
+// undeclaredFailure is EK9210's text for a program that can fail with an
 // error the operation does not declare.
-var undeclaredFailure = EK2005.With("resumeWith runs this code at the perform site, where callers of {1} expect only its declared errors. It can fail with {0}.")
+var undeclaredFailure = EK9210.With("resumeWith runs this code at the perform site, where callers of {1} expect only its declared errors. It can fail with {0}.")
 
 func checkResumeWith(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
@@ -203,7 +203,7 @@ func checkResumeWithProgram(c *checker.Checker, file *ast.SourceFile, call *ast.
 	}
 	reported := false
 	if r := channelType(c, effect, "_R"); r != nil && r.Flags()&checker.TypeFlagsNever == 0 {
-		d := report(c, program, EK2005, c.TypeToString(r))
+		d := report(c, program, EK9210, c.TypeToString(r))
 		if isClauseContinuation(call.Arguments()[0]) {
 			note(d, "Read it in the clause first, and resume with the value: resumeWith(() => value).")
 		} else {

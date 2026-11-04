@@ -1533,7 +1533,7 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 509: // CatchHandler must be a function literal.
 		return true
-	case 4408: // Legacy module recovery rejects a missing name; this admits no module form.
+	case 9212: // Preserve the legacy module error classification under its distinct identity.
 		return true
 	case 4001, 4002, 4003: // VIP-40: a module declaration below the top level, exported, or with no name.
 		return true
@@ -1553,7 +1553,7 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1202: // Provider-list line breaks: a recovered head, rejected.
 		return true
-	case 701, 707, 4704, 4705, 4706: // The pinned draft's match grammar and early errors; a regular expression pattern is not lexed by the lab.
+	case 701, 707, 4704: // The pinned draft's match grammar and early errors; a regular expression pattern is not lexed by the lab.
 		return true
 	case 2005: // ForTry requires a ForDeclaration head.
 		return true
@@ -1561,10 +1561,10 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1304: // RejectedElement: an error body element that parses, then a static rule rejects.
 		return true
-	case 3008, 9207: // RejectedMember: a service element that parses, then a static rule rejects.
+	case 9207: // RejectedMember: a service element that parses, then a static rule rejects.
 		return true
 	// Appendix B's current numbers for the same VIP-9 rules: EK0902 rejects a
-	// RejectedMember, EK0901 a malformed static key (printed as EK3008 before).
+	// RejectedMember, EK0901 a malformed static key (printed as EK0901 before).
 	case 901, 902:
 		return true
 	case 908, 1306: // A service member or error Field with no Separator after it.
@@ -1698,11 +1698,11 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"fork-operand-type-error", "EK", diagnostics.CategoryError, 1703, false},
 		{"join-operand-type-error", "EK", diagnostics.CategoryError, 1704, false},
 		{"recovery-error", "EK", diagnostics.CategoryError, 103, true},
-		{"legacy-module-error", "EK", diagnostics.CategoryError, 4408, true},
+		{"legacy-module-error", "EK", diagnostics.CategoryError, 9212, true},
 		{"legacy-top-level-error", "EK", diagnostics.CategoryError, 1001, true},
 		{"legacy-top-level-warning", "EK", diagnostics.CategoryWarning, 1001, false},
 		{"native-top-level-code-collision", "", diagnostics.CategoryError, 1001, false},
-		{"legacy-module-warning", "EK", diagnostics.CategoryWarning, 4408, false},
+		{"legacy-module-warning", "EK", diagnostics.CategoryWarning, 9213, false},
 		{"recovery-warning", "EK", diagnostics.CategoryWarning, 103, false},
 		{"recovery-suggestion", "EK", diagnostics.CategorySuggestion, 103, false},
 		{"native-code-collision", "", diagnostics.CategoryError, 501, false},
@@ -1778,11 +1778,11 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"service-member-separator", "EK", diagnostics.CategoryError, 908, true},
 		{"error-field-separator", "EK", diagnostics.CategoryError, 1306, true},
 		{"service-member-separator-warning", "EK", diagnostics.CategoryWarning, 908, false},
-		{"service-member-rule", "EK", diagnostics.CategoryError, 3008, true},
+		{"service-member-rule", "EK", diagnostics.CategoryError, 901, true},
 		{"service-rejected-member", "EK", diagnostics.CategoryError, 902, true},
 		{"service-static-key", "EK", diagnostics.CategoryError, 901, true},
 		{"service-rejected-member-warning", "EK", diagnostics.CategoryWarning, 902, false},
-		{"match-combined-early-error", "EK", diagnostics.CategoryError, 4705, true},
+		{"match-combined-early-error", "EK", diagnostics.CategoryError, 707, true},
 		{"native-assignment-target-warning", "", diagnostics.CategoryWarning, 2364, false},
 		{"service-implementation", "EK", diagnostics.CategoryError, 9207, true},
 		{"service-class-warning", "EK", diagnostics.CategoryWarning, 2120, false},
@@ -1792,7 +1792,7 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-jsdoc-type", "", diagnostics.CategoryError, 8020, true},
 		{"external-jsdoc-type-code-collision", "other", diagnostics.CategoryError, 8020, false},
 		{"native-readonly-operator-warning", "", diagnostics.CategoryWarning, 1354, false},
-		{"match-field-list", "EK", diagnostics.CategoryError, 4706, true},
+		{"match-field-list", "EK", diagnostics.CategoryError, 707, true},
 		{"native-leading-bang", "", diagnostics.CategoryError, 17020, true},
 		{"native-leading-bang-warning", "", diagnostics.CategoryWarning, 17020, false},
 		{"ek-leading-bang-code-collision", "EK", diagnostics.CategoryError, 17020, false},

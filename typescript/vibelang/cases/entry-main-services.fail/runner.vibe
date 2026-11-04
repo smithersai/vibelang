@@ -1,6 +1,6 @@
-// expect: EK3201
+// expect: EK9211
 // A module that runs main itself gets no entry statement, so its runner
-// reports the error EK3201, and EK3205 is not reported.
+// reports the error EK9211, and EK3205 is not reported.
 import { Users } from "./services.vibe"
 
 export effect function main() {

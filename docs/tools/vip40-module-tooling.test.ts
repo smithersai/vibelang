@@ -14,15 +14,18 @@ test("VIP-40 owns the EK40xx block: EK4001 through EK4009 are registered errors"
 })
 
 // VIP-40: old EK4407 and EK4408 are retired — spec-rule: docs/design/vips/0040-module-declarations.md#cd916c5d93ca1d81
-// Pending: typescript/tsc/internal/vibelang/diagnostics.go still defines and reports EK4408 (cases
-// vip40-case-sensitive-names, vip40-name-redeclares.fail and vip40-collision-unused.fail).
-test.todo("VIP-40: old EK4407 and EK4408 are retired: no diagnostic table registers or reports them (spec-rule: docs/design/vips/0040-module-declarations.md#cd916c5d93ca1d81)")
+test("VIP-40: old EK4407 and EK4408 are retired: no diagnostic table registers or reports them (spec-rule: docs/design/vips/0040-module-declarations.md#cd916c5d93ca1d81)", () => {
+  const native = read("typescript/tsc/internal/vibelang/diagnostics.go")
+  const registry = read("typescript/tsc/internal/core/vibe_diagnostic_registry.go")
+  expect(native).not.toMatch(/message\(440[78],/)
+  expect(registry).not.toMatch(/"EK440[78]"/)
+})
 
 // VIP-40: Oxlint's JS-plugin rules apply to a body where they apply to .ts — spec-rule: docs/design/vips/0040-module-declarations.md#9b3e85fb97fd15b0
 test.todo("VIP-40: Oxlint's JS-plugin rules report inside a module body exactly where they report in the sibling .ts file (spec-rule: docs/design/vips/0040-module-declarations.md#9b3e85fb97fd15b0)")
 
 // VIP-40: TypeScript mapper projects each body as its own virtual .ts file — spec-rule: docs/design/vips/0040-module-declarations.md#df7751c514dcf8d7
-// Pending: packages/ts-mapper/test/property-regressions/inline-refusal.json still requires the EK9100 refusal.
+// Pending: packages/ts-mapper/test/property-regressions/inline-refusal.json still requires the EK9005 refusal.
 test.todo("VIP-40: TypeScript mapper projects each module body as its own virtual .ts file instead of refusing with EK9100 (spec-rule: docs/design/vips/0040-module-declarations.md#df7751c514dcf8d7)")
 
 // VIP-40: Move module to a TypeScript file is offered in the editor, never run by --fix — spec-rule: docs/design/vips/0040-module-declarations.md#ae6a91e8e2b38253

@@ -112,7 +112,13 @@ func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 		}
 	}
 	if node.Kind == ast.KindPropertyAccessExpression && node.Flags&ast.NodeFlagsVibeLang != 0 {
-		p.schemaDiagnostic(node, "This field type has no schema form (EK2109); use an explicit Schema value.")
+		if node.Name().Text() == "Never" {
+			// The parser marks a non-field in a schema body separately from
+			// an unsupported codec type in an alias (VIP-15).
+			p.syntaxDiagnostic(node, 1505, "A schema body contains only typed fields; move this member outside the schema.")
+		} else {
+			p.schemaDiagnostic(node, "This field type has no schema form (EK2109); use an explicit Schema value.")
+		}
 	}
 	switch node.Kind {
 	case ast.KindCallExpression:

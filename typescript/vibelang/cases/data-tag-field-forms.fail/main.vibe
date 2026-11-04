@@ -1,0 +1,8 @@
+// expect: EK1601 EK1602
+// Chapter 006: a variant field named _tag is EK1601, however its name is spelled, and
+// a variant named $is or $match is EK1602, generic data included.
+export data Plain { A { readonly _tag: string } }
+export data Quoted { A { readonly "_tag": string } }
+export data Escaped { A { readonly \u005ftag: string } }
+export data Reserved { $is; $match; Normal }
+export data Generic<A> { $match { readonly value: A } }

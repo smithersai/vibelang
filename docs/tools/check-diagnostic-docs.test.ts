@@ -19,7 +19,7 @@ test("extracts message declarations across files without counting references or 
 })
 
 test("coverage requires a whole code and exempts the deferred name-resolution code and codes the VIPs retire", () => {
-  expect(undocumentedCodes(["EK1006", "EK4407", "EK4610", "EK9100"], ["EK10060; EK4610: wait with d.await()"])).toEqual(["EK1006", "EK9100"])
+  expect(undocumentedCodes(["EK2301", "EK4407", "EK4610", "EK9100"], ["EK10060; EK4610: wait with d.await()"])).toEqual(["EK2301", "EK9100"])
   expect(undocumentedCodes(["EK2005"], [])).toEqual([])
   for (const reason of Object.values(retiredByVips)) expect(reason).toMatch(/VIP-\d+|no VIP/)
 })

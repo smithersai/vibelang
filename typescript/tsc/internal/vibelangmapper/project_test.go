@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK9001` | compiler projection error: a source form cannot be represented safely by the stock-TypeScript mapper; use the diagnosed explicit annotation or helper, or the native compiler.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: mapper: `Effect.all(...groups)` with an overload the mapper cannot select | 34 | [Tooling](007-tooling.md#compiler-and-tooling-requirements) |
 package vibelangmapper
 
 import (
@@ -765,7 +767,7 @@ func TestDataDeclarationIsUnprojected(t *testing.T) {
 }
 
 // TestFormChoice checks that a lambda whose form the rules cannot decide
-// draws EK9100 at the lambda, with the resolver's message, and still lowers
+// draws EK9005 at the lambda, with the resolver's message, and still lowers
 // the default's guess.
 func TestFormChoice(t *testing.T) {
 	t.Parallel()
@@ -960,6 +962,8 @@ func TestSchemaDiagnostics(t *testing.T) {
 	unsupported := Project("schema Event { run(): void; parts: Partial<{ a: string }> }\n", testContext)
 	assert.Equal(t, virtualBody(t, unsupported), "interface Event extends Schema.Schema.Type<typeof Event> {}\nconst Event = Schema.Struct({ run: Schema.Never, parts: Schema.mutableKey(Schema.Unknown) });\n")
 	assert.Equal(t, len(unsupported.Diagnostics), 2)
+	assert.Equal(t, unsupported.Diagnostics[0].Code, int32(1505))
+	assert.Equal(t, unsupported.Diagnostics[1].Code, int32(2109))
 
 	for _, source := range []string{
 		"schema Event { when: Date; run(): void; parts: Partial<{ a: string }> }",
@@ -971,7 +975,11 @@ func TestSchemaDiagnostics(t *testing.T) {
 		projection := Project(source, testContext)
 		assert.Assert(t, len(projection.Diagnostics) > 0, source)
 		for _, diagnostic := range projection.Diagnostics {
-			assert.Equal(t, diagnostic.Code, int32(2109))
+			want := int32(2109)
+			if strings.Contains(source, "run(): void") && strings.Contains(diagnostic.Message, "only typed fields") {
+				want = 1505
+			}
+			assert.Equal(t, diagnostic.Code, want)
 		}
 		assertParses(t, projection.Text)
 	}
@@ -1011,13 +1019,13 @@ func TestFiberDiagnostics(t *testing.T) {
 		{"unknown join", "function f(x: unknown) { return join x }", CodeFormChoice},
 		{"unannotated parameter", "function f(x) { return join x }", CodeFormChoice},
 		{"unknown call result", "function f() { return join external() }", CodeFormChoice},
-		{"nonfiber", "function f() { const x = 1; return join x }", 4611},
-		{"empty object", "function f() { return join {} }", 4611},
-		{"nested join", "function f(a: Fiber.Fiber<number>) { return join [[a]] }", 4611},
-		{"nested annotated join", "function f(a: Fiber.Fiber<number>[][]) { return join a }", 4611},
-		{"Deferred", "function f(a: Deferred.Deferred<number>) { return join a }", 4611},
-		{"break", "function f() { for concurrent (const x of [1]) { break } }", 4605},
-		{"return", "function f() { for concurrent (const x of [1]) { return x } }", 4606},
+		{"nonfiber", "function f() { const x = 1; return join x }", 1704},
+		{"empty object", "function f() { return join {} }", 1704},
+		{"nested join", "function f(a: Fiber.Fiber<number>) { return join [[a]] }", 1704},
+		{"nested annotated join", "function f(a: Fiber.Fiber<number>[][]) { return join a }", 1704},
+		{"Deferred", "function f(a: Deferred.Deferred<number>) { return join a }", 1704},
+		{"break", "function f() { for concurrent (const x of [1]) { break } }", 1903},
+		{"return", "function f() { for concurrent (const x of [1]) { return x } }", 1904},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			projection := Project(c.source, testContext)

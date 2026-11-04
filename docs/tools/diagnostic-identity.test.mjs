@@ -1,8 +1,19 @@
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Other VibeLang rows are errors; the imported table gives each lint rule’s explicit default.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | A row whose rule starts "warning" or "lint warning" is a warning; a row starting "suggestion" is an editor suggestion; an interim row starting "off by default" is a disabled warning.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK3008` is retired and will never be reassigned: its static service-key rule uses `EK0901`.
+// rule-evidence: docs/design/src/900-appendices.md#imported-lint-codes | The old lint warning `EK4843` is retired; its entry-point warning is retired and will never be reassigned.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old module-declaration codes are retired by [VIP-40](../vips/0040-module-declarations.md#diagnostics); its current rules use `EK4001`–`EK4009`.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK0511` is retired and will never be reassigned: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4407` is retired and will never be reassigned: module-name resolution now follows VIP-40.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4408` is retired and will never be reassigned: VIP-40 owns `EK4001`–`EK4009`; and a duplicate module or a module/value collision is the error `EK4005`.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4843` is retired and will never be reassigned: it was the entry-point warning.
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
 import fc from "fast-check"
-import { appendixCodes, auditIdentity, compilerCodes, repository } from "./diagnostic-identity.mjs"
+import {identityHash} from "./diagnostic-identity-renames.mjs"
+import {executableDigest,digest} from "./diagnostic-identity-authorization.mjs"
+import { appendixCodes, auditIdentity, compilerCodes, compilerCategories, appendixCategory, auditCategories, repository } from "./diagnostic-identity.mjs"
 
 const source = text => [{ path: "typescript/tsc/internal/vibelang/diagnostics.go", text }]
 const appendix = rows => "## Appendix B. Diagnostics\n\n| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n" + rows + "\n## Appendix C. Decisions\n| `EK9999` | outside B |\n"
@@ -46,7 +57,7 @@ test("compiler registries include reserved VIP codes and whole imported lint ord
   const registered = compilerCodes([{ path: "core/registry.go", text:
     'var VibeDiagnosticCategories = map[string]string{"EK1501": "error"}; var VibeImportedLintCodes = map[string]string{"EK3810":"a","EK38100":"b"}' }])
   assert.deepEqual([...registered.keys()].sort(), ["EK1501", "EK3810", "EK38100"])
-  const findings = auditIdentity(registered, appendixCodes(appendix(row("EK1501") + "\n" + row("EK3810"))), [])
+  const findings = auditIdentity(registered, appendixCodes(appendix(row("EK1501") + "\n| `EK3810` | `effecttsgo/a` | 38 | Tooling | `error` |")), [])
   assert.deepEqual(findings.map(f => f.code), ["EK38100"])
 })
 
@@ -105,13 +116,16 @@ test("the current guide no longer cites the retired unused-main code", () => {
   assert.match(guide, /retired unused-`main` warning/)
 })
 
-test("the lint target stays exclusive until fold-details folds and regenerates the inventory", () => {
-  const pkg = readFileSync(new URL("../../PACKAGE.ts", import.meta.url), "utf8")
-  assert.match(pkg, /"spec-diagnostic-identity": specDiagnosticIdentity/)
-  assert.match(pkg, /const specDiagnosticIdentity[\s\S]*?exclusive: true/)
-  const aggregate = pkg.slice(pkg.indexOf("const specLint ="), pkg.indexOf("const targets ="))
-  assert.doesNotMatch(aggregate, /specDiagnosticIdentity[,\]]/)
-  assert.ok(repository.endsWith("/"))
+test("the complete inventory and executable examples participate in the queue's ordinary spec graph", () => {
+ const pkg=readFileSync(new URL("../../PACKAGE.ts",import.meta.url),"utf8")
+ assert.match(pkg, /"spec-diagnostic-identity": specDiagnosticIdentity/)
+ const target=pkg.slice(pkg.indexOf("const specDiagnosticIdentity"),pkg.indexOf("const specAppendixExamples"))
+ assert.doesNotMatch(target,/exclusive: true/)
+ const aggregate=pkg.slice(pkg.indexOf("const specLint ="),pkg.indexOf("const foreignCallExamples"))
+ assert.match(aggregate,/data: \[[^\]]*specDiagnosticIdentity/)
+ assert.match(aggregate,/data: \[[^\]]*specAppendixHostExamples/)
+ assert.match(aggregate,/data: \[[^\]]*specAppendixExamples/)
+ assert.ok(repository.endsWith("/"))
 })
 
 test("a mapper reporter remains registered without a native message declaration", () => {
@@ -171,4 +185,151 @@ test("mapper constants are package-local and work for option errors without a na
     { path: "unrelated/codes.go", text: "const optionError = 1030" }
   ])
   assert.deepEqual([...registered.keys()].sort(), ["EK4804", "EK9003"])
+})
+
+
+test("a parser-only diagnostic cannot disappear with its native message declaration", () => {
+  const codes = compilerCodes([{path: "typescript/tsc/internal/parser/vibelang_probe.go",
+    text: "const ProbeDiagnosticCode int32 = 9876"}])
+  assert.deepEqual([...codes.keys()], ["EK9876"])
+  assert.deepEqual(auditIdentity(codes, new Map([["EK9875", "error"]]), []).map(f => [f.kind,f.code]),
+    [["appendix-unregistered","EK9875"],["registered-missing","EK9876"]])
+})
+
+test("reservation categories cannot conceal a contrary native emitter or alias", () => {
+  const sources = source('const transitional = warningCategory; var x = message(3201, transitional, "a different rule")')
+  sources.push({path: "core/registry.go",text: 'var VibeDiagnosticCategories = map[string]string{"EK3201":"error"}'})
+  const categories = compilerCategories(sources)
+  const findings = auditCategories(categories, new Map([["EK3201", "an incompatible Effect version | 32 | Tooling |"]]))
+  assert.deepEqual(findings.map(f=>[f.kind,f.code,f.expected,f.actual]), [["severity-mismatch","EK3201","error","warning"]])
+})
+
+test("categories distinguish disabled, editor suggestion, imported and ordinary warnings", () => {
+  assert.equal(appendixCategory(" lint warning: advice | 34 | Tooling |"),"warning")
+  assert.equal(appendixCategory(" suggestion: advice | 34 | Tooling |"),"suggestion")
+  assert.equal(appendixCategory(' `effecttsgo/probe` | 38 | Tooling | `off` |'),"off")
+  const sources = source('var x = messageOff(4811, "off"); var y = message(9101, diagnostics.CategorySuggestion, "editor")')
+  const categories = compilerCategories(sources)
+  assert.equal(categories.get("EK4811")[0].category,"off")
+  assert.equal(categories.get("EK9101")[0].category,"suggestion")
+  assert.deepEqual(auditCategories(categories,new Map([["EK4811","off: disabled"],["EK9101","suggestion: editor"]])),[])
+})
+
+test("an imported code with a different pinned rule meaning fails even when both code sets agree", () => {
+  const registered = compilerCodes([{path:"core/lint.go",text:'var VibeImportedLintCodes = map[string]string{"EK3801":"floatingEffect"}'}])
+  const wrong = new Map([["EK3801"," `effecttsgo/unnecessaryPipe` | 38 | Tooling | `error` |"]])
+  assert.deepEqual(auditIdentity(registered,wrong,[]).map(f=>[f.kind,f.code]),[["meaning-mismatch","EK3801"]])
+  assert.deepEqual(auditIdentity(registered,new Map([["EK3801"," `effecttsgo/floatingEffect` | 38 | Tooling | `error` |"]]),[]),[])
+})
+
+test("a historical citation needs a declared retirement and never hides a current use on the same line",()=>{
+ const registered=compilerCodes(source('var x=message(4804,warningCategory,"failure")'))
+ const documents=[
+  {path:"docs/design/src/900-appendices.md",text:"The old `EK0511` is retired and will never be reassigned: a warning."},
+  {path:"guide.md",text:"The old lint warning `EK0511` retires; use `EK0511`."}
+ ]
+ const findings=auditIdentity(registered,new Map([["EK4804","warning"]]),documents)
+ assert.deepEqual(findings.map(f=>[f.kind,f.code,f.path]),[["cited-unknown","EK0511","guide.md"]])
+})
+
+test("the native editor category cannot hide a fatal diagnostic from the content mapper host",()=>{
+ const sources=[
+  ...source('var x = message(9100, warningCategory, "annotation choice")'),
+  {path:"typescript/tsc/internal/vibelangmapper/choice.go",text:'var x=Diagnostic{Code:9100,Message:"annotation choice"}'}
+ ]
+ const findings=auditCategories(compilerCategories(sources),new Map([["EK9100","warning: annotation choice"]]))
+ assert.deepEqual(findings.map(f=>[f.code,f.expected,f.actual,f.host]),[["EK9100","warning","error","content-mapper"]])
+ const split=[sources[0],{...sources[1],text:sources[1].text.replace("Code:9100","Code:9005")}]
+ assert.deepEqual(auditCategories(compilerCategories(split),new Map([["EK9100","warning: editor choice"],["EK9005","error: fatal projection"]])),[])
+})
+
+test("typed mapper helpers register actual call-site codes without registering their generic parameter",()=>{
+ const registered=compilerCodes([
+  ...source('var d=message(4804,warningCategory,"retained")'),
+  {path:"typescript/tsc/internal/vibelangmapper/flow.go",text:`
+    const JumpCode = 4605
+    func (p *projector) flowDiagnostic(node *Node, code int32, text string) { append(ds, Diagnostic{Start:node.Start(), Code:code,Message:text}) }
+    func flow() { p.flowDiagnostic(node, JumpCode, "break"); p.flowDiagnostic(node, 4606, "return") }
+  `}
+ ])
+ assert.deepEqual([...registered.keys()].sort(),["EK4605","EK4606","EK4804"])
+ assert.deepEqual(auditIdentity(registered,new Map([["EK4804","warning"]]),[]).map(f=>f.code),["EK4605","EK4606"])
+})
+test("a helper with nested call arguments retains the whole code and ignores strings/comments",()=>{
+ const registered=compilerCodes([
+  ...source('var d=message(4804,warningCategory,"retained")'),
+  {path:"typescript/tsc/internal/vibelangmapper/flow.go",text:`
+    func emit(node *Node, code int32, text string) { append(ds, Diagnostic{Code:code,Message:text}) }
+    func flow() { emit(find(a,b), 12345, "emit(node,9999,text)"); /* emit(node,9998,text) */ }
+  `}
+ ])
+ assert.deepEqual([...registered.keys()].sort(),["EK12345","EK4804"])
+})
+test("an explicit retirement forbids both a surviving registration and a newly invented row",()=>{
+ const registered=compilerCodes(source('var d=message(2101,errorCategory,"legacy bodyless contract")'))
+ const findings=auditIdentity(registered,new Map([["EK2101","legacy"]]),[{path:"docs/design/src/900-appendices.md",
+ text:"The old `EK2101` is retired and will never be reassigned: bodyless contracts."}])
+ assert.deepEqual(findings.map(f=>f.kind),["retired-registered","retired-row"])
+})
+
+test("pinned imported severities are independent of generated reservations and published defaults",()=>{
+ const sources=[
+ {path:"core/registry.go",text:'var VibeImportedLintCodes=map[string]string{"EK3801":"probe"}; var VibeDiagnosticCategories=map[string]string{"EK3801":"error"}'},
+ {path:"typescript/tsc/internal/effecttsgo/internal/rules/probe.go",text:'var Probe=rule.Rule{Name:"probe",DefaultSeverity:etscore.SeverityWarning}'}
+ ]
+ const findings=auditCategories(compilerCategories(sources),new Map([["EK3801"," `effecttsgo/probe` | 38 | Tooling | `error` |"]]))
+ assert.deepEqual(findings.filter(f=>f.kind==="severity-mismatch").map(f=>[f.code,f.expected,f.actual]),[["EK3801","error","warning"]])
+ assert.deepEqual(findings.filter(f=>f.kind==="classification-mismatch").map(f=>f.code),["EK3801"])
+ const clean=[{path:"core/registry.go",text:'var VibeImportedLintCodes=map[string]string{"EK3801":"probe"}'},sources[1]]
+ assert.deepEqual(auditCategories(compilerCategories(clean),new Map([["EK3801"," `effecttsgo/probe` | 38 | Tooling | `warning` |"]])),[])
+})
+
+
+test("the task's identity-only authorization cannot license source or configuration changes",()=>{
+ const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
+ for(const a of entries.filter(e=>e.identityOnly)) {
+  const base=new URL("../../"+a.case+"/",import.meta.url)
+  const source=readFileSync(new URL(a.identityOnly.source,base),"utf8")
+  assert.equal(executableDigest(source),a.identityOnly.tokensSha256,a.code+" executable source changed")
+  for(const entry of a.identityOnly.sources??[]) {
+   assert.equal(executableDigest(readFileSync(new URL(entry.source,base),"utf8")),entry.tokensSha256,a.code+" helper source changed: "+entry.source)
+  }
+  assert.equal(digest(readFileSync(new URL("tsconfig.json",base),"utf8")),a.identityOnly.configSha256,a.code+" config changed")
+  assert.equal(executableDigest("// expectation comment\n"+source),a.identityOnly.tokensSha256)
+  assert.notEqual(executableDigest(source+"\nthrow 1"),a.identityOnly.tokensSha256)
+ }
+})
+
+
+test("a report-site category override cannot hide behind its primary declaration",()=>{
+ const sources=source('var EK4408 = message(4408,errorCategory,"module"); func reportCollision() { collision := EK4408.With("binding"); collision.Category = warningCategory }')
+ const categories=compilerCategories(sources)
+ assert.deepEqual(categories.get("EK4408").map(s=>s.category),["error","warning"])
+ assert.equal(auditCategories(categories,new Map([["EK4408","error: module"]]))[0].actual,"warning")
+ const scoped=source('var EK4408 = message(4408,errorCategory,"module"); func first(){d := EK4408.With("x")};func second(){d.Category = warningCategory}')
+ assert.deepEqual(compilerCategories(scoped).get("EK4408").map(s=>s.category),["error"])
+})
+
+
+test("identity-only allocations preserve the independently captured prior checker bodies",()=>{
+ const proof=JSON.parse(readFileSync(new URL("../design/diagnostic-identity-renames.json",import.meta.url),"utf8"))
+ for(const record of proof.files) {
+  const current=readFileSync(new URL("../../"+record.path,import.meta.url),"utf8")
+  assert.equal(identityHash(current,record.path),record.normalizedSha256,record.path+": allocation changed its checker")
+ }
+ const manifest=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
+ for(const code of ["EK9209","EK9210","EK9211","EK9214","EK9005","EK9006"]) {
+  const authorization=manifest.find(r=>r.code===code&&r.severity==="error")
+  assert.equal(authorization?.identityRenumbering,"docs/design/diagnostic-identity-renames.json",code)
+ }
+})
+
+test("declared context categories never weaken the registry default or unrelated rows",()=>{
+ const registered=compilerCodes([{path:"core/registry.go",text:'var VibeDiagnosticCategories = map[string]string{"EK1010":"error"}'},...source('var EK1010 = message(1010,errorCategory,"throw");func comma(){m:=*EK1010;m.Category=warningCategory}')])
+ const categories=compilerCategories([{path:"core/registry.go",text:'var VibeDiagnosticCategories = map[string]string{"EK1010":"error"}'},...source('var EK1010 = message(1010,errorCategory,"throw");func comma(){m:=*EK1010;m.Category=warningCategory}')],registered)
+ assert.deepEqual(new Set(categories.get("EK1010").map(s=>s.category)),new Set(["error","warning"]))
+ assert.equal(auditCategories(categories,new Map([["EK1010","error: throw"]])).length,1)
+ assert.deepEqual(auditCategories(categories,new Map([["EK1010","error: throw. Category variants: `error`, `warning`."]])),[])
+ const wrong=compilerCategories([{path:"core/registry.go",text:'var VibeDiagnosticCategories = map[string]string{"EK1010":"warning"}'}])
+ assert.equal(auditCategories(wrong,new Map([["EK1010","error: throw. Category variants: `error`, `warning`."]])).length,1)
 })

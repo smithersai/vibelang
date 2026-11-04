@@ -231,13 +231,13 @@ async function renderings(root, input, p) {
     if (checked.status !== 0) {
       const errors = checked.stdout.split("\n").filter(line => line.includes("error "))
       // Historical D366/D416 refusal-code mismatch. The strict saved inline-refusal
-      // regression now requires EK9100; broader generated projects continue after
+      // regression now requires EK9005; broader generated projects continue after
       // this specific legacy diagnostic.
       const knownInline = !input.strictKnownFailures && input.project.modules.some((node, i) =>
         node.inline && (!i || !node.typescript)) && errors.length > 0 &&
         errors.every(line => /error EK9001: The TypeScript 7 mapper does not lower this VibeLang form yet;/.test(line))
       if (knownInline) trace("known inline-refusal diagnostic-code regression")
-      else assert.match(checked.stdout + checked.stderr, /(?:EK|TS)9100\b/, "fork-accepted input requires stock acceptance or an explicit EK9100 refusal")
+      else assert.match(checked.stdout + checked.stderr, /(?:EK|TS)9005\b/, "fork-accepted input requires stock acceptance or an explicit EK9005 refusal")
       coverage[`${input.form}:refused`] = (coverage[`${input.form}:refused`] || 0) + 1
       return
     }

@@ -21,9 +21,10 @@ import (
 // hashing are Effect's. What VibeLang adds is checked here:
 //
 //   - the declaration's rules: no name
-//     Data.taggedEnum reserves (EK2124), only fields in
-//     a variant (EK1606), at most four type parameters (EK2801), no constraints (EK2126),
-//     commas, semicolons and line breaks separate variants and fields (Appendix A Separator);
+//     Data.taggedEnum reserves (EK1602), no _tag field (EK1601), only fields in
+//     a variant, or a variant written with a parenthesized list (EK1606), at most four type parameters (EK2801)
+//     and no constraints (EK2126). A comma separates variants and fields,
+//     as ; and a line break do (Appendix A, Separator);
 //   - Name.Variant naming no variant, in a call, a pattern or anywhere else
 //     (EK2127, in place of TypeScript's TS2339);
 //   - patterns. A variant pattern, when Delivery.Sent or when Delivery.Sent
@@ -32,7 +33,7 @@ import (
 //     when { _tag: "Sent" } narrows (narrowDataVariant), and the lowering
 //     writes it as the data type's own guard, Delivery.$is("Sent")(d)
 //     (data_lower.go). A field list after anything but a variant, and an
-//     extractor's argument list after a variant, are EK4706; a variant that
+//     extractor's argument list after a variant, are EK0707 (or EK0702 for a data extractor); a variant that
 //     the subject's type has no case of is EK4707.
 //
 // What makes Name a data type is its value's type, not its declaration:
@@ -41,9 +42,11 @@ import (
 // with Data.taggedEnum matches the same way.
 
 var (
-	// EK2124: a name that Data.taggedEnum reserves: a variant named $is or $match. {0} is the name.
-	EK2124 = message(2124, errorCategory, "{0} cannot name a variant: Data.taggedEnum gives every data type its own {0}.")
-	// EK1606: a malformed variant or a payload member that is not a Field (VIP-16/detail 247).
+	// EK1601: a variant field named _tag.
+	EK1601 = message(1601, errorCategory, "_tag cannot name a field: a variant's constructor sets _tag to the variant's name. Rename the field.")
+	// EK1602: a name that Data.taggedEnum reserves: a variant named $is or $match. {0} is the name.
+	EK1602 = message(1602, errorCategory, "{0} cannot name a variant: Data.taggedEnum gives every data type its own {0}. Rename the variant and its references.")
+	// EK1606: a member of a variant that is not a field. {0} is the member.
 	EK1606 = message(1606, errorCategory, "{0} is not a field: a variant holds only fields, each written name: Type or name?: Type.")
 	// EK2801: a data declaration with more than four type parameters. {0} is its name, {1} the count.
 	EK2801 = message(2801, errorCategory, "data {0} has {1} type parameters, and Data.TaggedEnum.WithGenerics passes at most four.")
@@ -51,20 +54,19 @@ var (
 	EK2126 = message(2126, errorCategory, "{0} cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's type parameters unconstrained.")
 	// EK2127: Name.Variant names no variant of the data type Name. {0} is the data type, {1} the name, {2} its variants.
 	EK2127 = message(2127, errorCategory, "{0} has no variant {1}. Its variants are {2}.")
-	// EK4706: a field list after a matcher that is not a data variant. {0} is the matcher.
-	EK4706 = message(4706, errorCategory, "{0} is not a variant of a data type, so no field list can follow it; write {0} and { … }.")
+	// EK0707 (or EK0702 for a data extractor): a field list after a matcher that is not a data variant. {0} is the matcher.
+	classFieldListDiagnostic = message(707, errorCategory, "A brace field list cannot follow {0}; write {0} and { … } to match a class and its properties.")
 	// EK4707: a variant pattern whose subject's type has no case of that variant. {0} is the type, {1} the variant.
 	EK4707 = message(4707, errorCategory, "{0} has no case {1}, so this pattern never matches.")
 
-	ek2124Tag        = EK2124.With("_tag cannot name a field: a variant's constructor sets _tag to the variant's name.")
-	ek1606Parameters = EK1606.With("A variant lists its fields in braces, not parentheses: write `A { x: Type }`.")
-	ek1606Mutable    = EK1606.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
-	ek1606Untyped    = EK1606.With("{0} has no type: write {0}: Type.")
-	ek4706Extractor  = EK4706.With("{0} is a data variant, and a variant's pattern lists its fields in braces: {0} { let field }.")
+	ek1606Mutable           = EK1606.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
+	ek1606Untyped           = EK1606.With("{0} has no type: write {0}: Type.")
+	ek1606Parenthesized     = EK1606.With("{0} lists its payload in parentheses: a variant's payload is a field list in braces, {0} { x: number }.")
+	dataExtractorDiagnostic = EK0702.With("{0} is a data variant, not a class extractor; use an object pattern matching its _tag and fields.")
 )
 
 func init() {
-	for _, m := range []*Message{EK2124, EK1606, EK2126, EK2801, EK2127, EK4706, EK4707} {
+	for _, m := range []*Message{EK1601, EK1602, EK1606, EK2126, EK2801, EK2127, EK4707} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkData)
@@ -297,7 +299,7 @@ func checkData(c *checker.Checker, file *ast.SourceFile) {
 			}
 			if _, _, ok := dataVariantOf(c, node.Arguments()[0]); ok {
 				matcher := node.Arguments()[0]
-				report(c, matcher, ek4706Extractor, scanner.GetTextOfNode(matcher))
+				report(c, matcher, dataExtractorDiagnostic, scanner.GetTextOfNode(matcher))
 				cover(c, matcher)
 				break
 			}
@@ -316,14 +318,16 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 	for _, variant := range variants {
 		variantName := variant.Name().Text()
 		if slices.Contains(dataReserved, variantName) {
-			report(c, variant.Name(), EK2124, variantName)
+			report(c, variant.Name(), EK1602, variantName)
 		}
 		fields := variant.Type()
 		if fields == nil || fields.Kind != ast.KindTypeLiteral {
 			continue
 		}
 		if fields.Flags&ast.NodeFlagsVibeLang != 0 {
-			report(c, fields, ek1606Parameters)
+			// data D { A(x: number) }: the parser flagged the empty field list
+			// it wrote over the parenthesized list (vibelang_data.go).
+			report(c, fields, ek1606Parenthesized, variantName)
 			cover(c, fields)
 			continue
 		}
@@ -338,14 +342,14 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 			case !hasModifier(field, ast.KindReadonlyKeyword):
 				report(c, field.Name(), ek1606Mutable, scanner.GetTextOfNode(field.Name()))
 				continue
-			case ast.IsIdentifier(field.Name()) && field.Name().Text() == "_tag":
-				report(c, field.Name(), ek2124Tag)
+			case dataFieldHasTagName(c, field.Name()):
+				report(c, field.Name(), EK1601)
 			default:
 				continue
 			}
 			// Data.TaggedEnum refuses a variant that may have a _tag field
 			// (TS2344 at its type argument): one named so, an index signature,
-			// or one of no type. EK2124 or EK1606 explains it.
+			// or one of no type. EK1601 or EK1606 explains it.
 			coverArgument(c, alias.Type().TypeArguments()[0])
 		}
 	}
@@ -509,7 +513,7 @@ func isContextReference(c *checker.Checker, matcher *ast.Node) bool {
 }
 
 // checkVariantPattern checks call, a pattern's $is call: a field list after
-// a matcher that is not a data variant is EK4706, and a variant that the
+// a matcher that is not a data variant is EK0707 (or EK0702 for a data extractor), and a variant that the
 // subject's declared type has no case of is EK4707.
 func checkVariantPattern(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	matcher, subject := call.Arguments()[0], call.Arguments()[1]
@@ -519,7 +523,7 @@ func checkVariantPattern(c *checker.Checker, file *ast.SourceFile, call *ast.Nod
 		// a variant pattern, Name.Variant { … }, since anything else there is
 		// a syntax error.
 		if after := scanner.SkipTrivia(file.Text(), matcher.End()); after < len(file.Text()) && file.Text()[after] == '{' && !isMissingVariant(c, matcher) {
-			report(c, matcher, EK4706, scanner.GetTextOfNode(matcher))
+			report(c, matcher, classFieldListDiagnostic, scanner.GetTextOfNode(matcher))
 		}
 		return
 	}
@@ -698,4 +702,30 @@ func (n dataNames) hasVariants(c *checker.Checker, t *checker.Type) bool {
 		variant, _ := n.variantName(c, member)
 		return variant != ""
 	})
+}
+
+// dataFieldHasTagName recognizes a literal string key through the native
+// type checker. A broad string key remains an index signature and keeps
+// Data.TaggedEnum's native constraint error. Enum keys retain the native
+// enum-key behavior rather than treating their spelling as a string literal.
+func dataFieldHasTagName(c *checker.Checker, name *ast.Node) bool {
+	if name == nil {
+		return false
+	}
+	if ast.IsIdentifier(name) || ast.IsStringLiteral(name) {
+		return name.Text() == "_tag"
+	}
+	if name == nil || name.Kind != ast.KindComputedPropertyName {
+		return false
+	}
+	expression := name.AsComputedPropertyName().Expression
+	if ast.IsDynamicName(name) && !ast.IsEntityNameExpression(expression) {
+		return false // Native TypeScript rejects this key shape with TS1170.
+	}
+	t := c.GetTypeAtLocation(expression)
+	if t == nil || t.Flags()&checker.TypeFlagsStringLiteral == 0 || t.Flags()&checker.TypeFlagsEnumLiteral != 0 {
+		return false
+	}
+	value, ok := t.AsLiteralType().Value().(string)
+	return ok && value == "_tag"
 }

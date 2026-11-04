@@ -1,4 +1,4 @@
-// expect: EK2127 EK4706 EK4707 EK4701
+// expect: EK2127 EK0702 EK0707 EK4707 EK4701
 // What a data type's patterns and constructors check (D307).
 data Delivery {
   Waiting
@@ -27,7 +27,7 @@ function typos(delivery: Delivery) {
   }
 }
 
-// EK4706: a variant lists its fields in braces, and only a variant takes them.
+// EK0702 EK0707: a variant lists its fields in braces, and only a variant takes them.
 function shapes(delivery: Delivery, failure: NotFound) {
   return [
     match (delivery) {

@@ -10,7 +10,7 @@ import (
 )
 
 // CodeDataMethod asks for syntax or an annotation when D253 cannot dispatch safely.
-const CodeDataMethod = 9101
+const CodeDataMethod = 9006
 
 // dataReceiver names a D152 receiver only when its annotation, initializer,
 // lexical pipe topic, or a pinned declaration determines the module. Following

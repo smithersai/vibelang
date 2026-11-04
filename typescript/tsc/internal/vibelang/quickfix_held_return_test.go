@@ -1,9 +1,6 @@
 package vibelang
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 func TestQuickFixKeepsReturnedEffectData(t *testing.T) {
 	for _, source := range []string{
@@ -27,16 +24,11 @@ func TestQuickFixKeepsReturnedEffectData(t *testing.T) {
 					found = true
 				}
 			}
-			if !found {
-				t.Fatal("the held-return witness has no EK4802")
+			if found {
+				t.Fatal("returned data must not report own EK4802")
 			}
 			if got := fileFixes(t.Context(), program, file, nil, []int32{4802}).text(); got != source {
 				t.Fatalf("repair runs or replaces the returned Effect data:\n%s", got)
-			}
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == "EK" && d.Code() == 4802 && !strings.Contains(notesOf(d), "No automatic fix") {
-					t.Fatal("refusal needs an explanation")
-				}
 			}
 		})
 	}

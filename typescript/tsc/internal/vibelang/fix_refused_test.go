@@ -121,17 +121,17 @@ func TestSetVibeSeverity(t *testing.T) {
 }
 
 // The setting a refusal writes turns EK4802 into an error, which Appendix B
-// lists as a configurable warning: a refused site that returns its program
-// unrun no longer compiles.
+// lists as a configurable warning: an inferred Effect argument
+// no longer compiles.
 func TestEK4802SeverityError(t *testing.T) {
-	source := legacyRunsPrelude + "effect function f() {\n  return load(1)\n}\n"
+	source := legacyRunsPrelude + "function take<T>(x: T): number { return 1 }\neffect function f() {\n  return take(load(1))\n}\n"
 	_, file, _, _ := editorProgram(t, source)
 	dir := filepath.Dir(file.FileName().AsString())
 	config := `{"vibe": {"severities": {"EK4802": "error"}}, "compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`
 	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	line := strings.Count(source[:strings.Index(source, "return load(1)")], "\n") + 1
+	line := strings.Count(source[:strings.Index(source, "return take(load(1))")], "\n") + 1
 	found := refusedLineErrors(t, dir, line)
 	if len(found) != 1 || !strings.HasPrefix(found[0], "4802: ") {
 		t.Fatalf("errors on line %d: %v; want EK4802 as an error", line, found)

@@ -152,7 +152,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 				continue
 			}
 			if _, written := writtenKey(class); written == nil {
-				report(c, member, EK3008)
+				report(c, member, EK0901)
 			}
 		}
 	}

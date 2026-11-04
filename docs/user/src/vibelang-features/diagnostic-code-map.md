@@ -18,6 +18,18 @@ The language server keeps the numeric code (`103`) with source `EK`; the termina
 
 Contextual identifiers such as `module`, `type` and `of` also work as module names and identifier specifiers. Module names are case-sensitive: `module Text` and `module text` are distinct. Generated filenames preserve lowercase ASCII letters, digits and `_`; each other code point becomes `-` followed by its hexadecimal value and `-`. Thus `Text` emits `main.vibe.-54-ext.js`, while `text` emits `main.vibe.text.js`. Unicode normalization twins also keep distinct filenames.
 
+Current compatibility splits keep the old check's behavior while freeing the canonical VIP identity:
+
+| Former use | Compatibility identity |
+| --- | --- |
+| EK2003 in the stock mapper for a plain return contract | EK9203 |
+| EK2005 for resumeWith requirements/errors | EK9210 |
+| EK2104 for layer setup order | EK9209 |
+| EK3007 for a service-key call with arguments | EK9214 |
+| EK3201 for a missing legacy provider | EK9211 |
+| EK9100 / EK9101 for a fatal mapper refusal | EK9005 / EK9006; native editor advice keeps EK9100 / EK9101 |
+
+
 ## Remaining renumberings
 
 | Previous code | Current code | Rule |

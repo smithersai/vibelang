@@ -10,7 +10,7 @@ func TestInlineModuleRefusalIsFormChoice(t *testing.T) {
 	}
 	for _, d := range p.Diagnostics {
 		if d.Code != CodeFormChoice {
-			t.Fatalf("wanted EK9100, got %v", p.Diagnostics)
+			t.Fatalf("wanted EK9005, got %v", p.Diagnostics)
 		}
 	}
 	assertValidMap(t, p, source)

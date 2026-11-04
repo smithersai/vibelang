@@ -43,8 +43,8 @@ var (
 	EK4609 = message(4609, warningCategory, "await does not wait for this Fiber; use await runPromise(Fiber.join({0})).")
 	// EK4610: await on a Deferred (D226). {0} is the operand.
 	EK4610 = message(4610, warningCategory, "await does not wait for this Deferred; use await runPromise(Deferred.await({0})).")
-	// EK4611: join on something that is not a Fiber or an array or object of them. {0} is the operand's type.
-	EK4611 = message(4611, errorCategory, "join takes a Fiber or an array or object of fibers, but this is {0}.")
+	// EK1704: join on something that is not a Fiber or an array or object of them. {0} is the operand's type.
+	EK1704 = message(1704, errorCategory, "join takes a Fiber or an array or object of fibers, but this is {0}.")
 	// EK4612: join inside a hatch body, which is plain TypeScript.
 	EK4612 = message(4612, errorCategory, "join is VibeLang syntax, but a hatch body is plain TypeScript.")
 )
@@ -60,7 +60,7 @@ func isConcurrentBody(fn *ast.Node) bool {
 
 func init() {
 	checker.RegisterTransparentYieldFunctionHook(isConcurrentBody)
-	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK1903, EK1904, EK1906, EK4607, EK4609, EK4610, EK4611, EK4612} {
+	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK1903, EK1904, EK1906, EK4607, EK4609, EK4610, EK1704, EK4612} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkFiberForms)
@@ -265,7 +265,7 @@ func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	if t == nil || isJoinable(c, t, 0) || analyzerFor(c).joinsRejectedFork(operand) {
 		return
 	}
-	d := reportAt(c, file, keyword, EK4611, c.TypeToString(t))
+	d := reportAt(c, file, keyword, EK1704, c.TypeToString(t))
 	switch {
 	case isDeferred(c, t):
 		note(d, "Wait for a Deferred with {0}.await().", nodeText(file, operand))

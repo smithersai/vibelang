@@ -12,7 +12,7 @@ import (
 //
 // into Layer.effect(Users, () => { setup; return { find(id) { ... } } }), so
 // the setup statements must come before the members: a statement between or
-// after them would run before members that appear above it (EK2104).
+// after them would run before members that appear above it (EK9209).
 
 func init() { fileChecks = append(fileChecks, checkLayerDeclarations) }
 
@@ -22,7 +22,7 @@ func checkLayerDeclarations(c *checker.Checker, file *ast.SourceFile) {
 	}
 }
 
-// checkLayerDeclaration reports EK2104 for each setup statement of statement,
+// checkLayerDeclaration reports EK9209 for each setup statement of statement,
 // if it is a layer declaration, that follows one of its members.
 func checkLayerDeclaration(c *checker.Checker, statement *ast.Node) {
 	if !ast.IsVariableStatement(statement) {
@@ -53,7 +53,7 @@ func checkLayerDeclaration(c *checker.Checker, statement *ast.Node) {
 	first := members[0]
 	for _, setup := range statements[:len(statements)-1] {
 		if setup.Pos() > first.Pos() {
-			d := report(c, setup, EK2104)
+			d := report(c, setup, EK9209)
 			note(d, "Move it above {0}: setup runs once, before the members exist.", scanner.GetTextOfNode(first.Name()))
 		}
 	}

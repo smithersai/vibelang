@@ -1,2 +1,0 @@
-Run it with try to return its result: try Effect.interrupt.
-Run it with try: try (Effect.never).

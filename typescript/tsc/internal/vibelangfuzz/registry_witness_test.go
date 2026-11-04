@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,8 +13,8 @@ import (
 // TestRegistryDebtWitnessIdentity checks pending-witness receipts, not the
 // expected diagnostics of valid programs. Appendix B says: "A transitional
 // compiler may still print compatibility diagnostics from the old language."
-// These unassigned codes remain rejected by Facts. A differently named known
-// violation must not conceal a stale witness when another compiler rule changes.
+// These codes now have interim inventory rows. A differently named violation
+// must not conceal a stale witness when another compiler rule changes.
 func TestRegistryDebtWitnessIdentity(t *testing.T) {
 	const quote = "A transitional compiler may still print compatibility diagnostics from the old language."
 	chapter, err := os.ReadFile(SpecPath("900-appendices.md"))
@@ -27,8 +28,8 @@ func TestRegistryDebtWitnessIdentity(t *testing.T) {
 	for _, code := range []int32{1001, 4602, 4603} {
 		for _, target := range []string{"FuzzCompile", "FuzzSplice"} {
 			t.Run(fmt.Sprintf("%s/%s", target, specCodeName(code)), func(t *testing.T) {
-				if Facts().IsRegistered(code) {
-					t.Fatalf("%s now has an assignment; reconcile its pending witness", specCodeName(code))
+				if !Facts().IsRegistered(code) || !slices.Contains(Facts().Interim, code) {
+					t.Fatalf("%s must retain its interim identity row", specCodeName(code))
 				}
 				name := fmt.Sprintf("registry-EK%04d", code)
 				data, err := os.ReadFile(filepath.Join(repoTestdata(), "fuzz", target, name))

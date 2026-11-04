@@ -1,8 +1,8 @@
-// expect: EK4802
+// VIP-1/5: returned programs are data, without own EK4802.
 // Where a function's success type names no value (void, unknown, any, or a
 // type parameter its call infers), any value is a success value, so a
 // returned Effect value or program literal is data (D24, D269), where Effect
-// code would run it. EK4802 is an error here (tsconfig.json).
+// code would run it. Own EK4802 does not apply to these returns.
 
 // A written unknown success.
 export const literal = effect (n: number): unknown!! => {

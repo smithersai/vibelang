@@ -19,7 +19,7 @@ export layer CounterLive: Counter {
 // Otherwise preserve the actual legacy check's current severity, trigger, source range, message and repair note, changing only its identity to interim `EK9209` in the same recovery.
 
 // docs/design/vips/0021-producers.md#966f723e33dbf499 | VIP-21 transitional-layer-code
-// **Keep `EK2104` for accepted yield placement; if the old layer-order checker must remain temporarily, inventory its unchanged error as interim `EK9209`.** (impl-hunt-run core request2026-11-02T09:11Z; accepted VIP-21 and AppendixB; details60/189/212; Will15:57: code numbering is the agent's job; principle4.) This settles a diagnostic-identity collision, not a new language/API design or approval of the old layer-declaration grammar.
+// **Keep `EK9209` for accepted yield placement; if the old layer-order checker must remain temporarily, inventory its unchanged error as interim `EK9209`.** (impl-hunt-run core request2026-11-02T09:11Z; accepted VIP-21 and AppendixB; details60/189/212; Will15:57: code numbering is the agent's job; principle4.) This settles a diagnostic-identity collision, not a new language/API design or approval of the old layer-declaration grammar.
 
 // docs/design/vips/0021-producers.md#360d66c26125a2e5 | VIP-21 transitional-layer-code
-// Version both directions: older artifacts print layer-order `EK2104`; the coordinated transitional artifact may print layer-order `EK9209` and yield-placement `EK2104`; a final artifact with no legacy checker prints no layer-order code.
+// Version both directions: older artifacts print layer-order `EK9209`; the coordinated transitional artifact may print layer-order `EK9209` and yield-placement `EK9209`; a final artifact with no legacy checker prints no layer-order code.

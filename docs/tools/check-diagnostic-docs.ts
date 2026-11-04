@@ -63,7 +63,7 @@ export const retiredByVips: Record<string, string> = {
   EK4604: "VIP-6: no hatches",
   EK4607: "VIP-18: no select",
   EK4612: "VIP-6: no hatches",
-  EK4706: "VIP-16: variants are matched with object patterns",
+  EK0702 EK0707: "VIP-16: variants are matched with object patterns",
   EK4707: "VIP-16: variants are matched with object patterns",
   EK4807: "VIP-24: the quick fix writes wire"
 }

@@ -1745,6 +1745,21 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 			}
 		}
 	}
+	if slices.Contains(codes, EK1503.Code) || slices.Contains(codes, EK1604.Code) {
+		if edits := declarationBodyEditsFor(file, codes, nil); len(edits) > 0 {
+			key := declarationBodyKey + file.Text()
+			if !refused[key] {
+				code := EK1503.Code
+				for _, d := range file.Diagnostics() {
+					if d.Source() == diagnosticSource && (d.Code() == EK1503.Code || d.Code() == EK1604.Code) && d.Pos() >= edits[0].start && d.End() <= edits[len(edits)-1].end {
+						code = d.Code()
+						break
+					}
+				}
+				return proposal{file: file, fixes: []fileFix{{code: code, edits: edits, key: key}}}
+			}
+		}
+	}
 	var fixable []*ast.Diagnostic
 	// Some VibeLang syntax errors have a recovered tree and an insertion-only
 	// fix. Keep those fixes available when type checking is disabled, too.

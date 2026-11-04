@@ -1,0 +1,8 @@
+const data=1; const schema=1; type T=number;
+export const checks=[(data as T),(schema satisfies T)];
+schema Scope
+{role:
+ | "a"
+ | "b"}
+export schema Code
+ = "a" | "b";

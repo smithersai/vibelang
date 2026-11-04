@@ -136,7 +136,7 @@ func (p *projector) concurrentJumps(body *ast.Node) (continues []*ast.Node) {
 		case ast.IsFunctionLike(node) || ast.IsClassLike(node):
 			return false
 		case node.Kind == ast.KindBreakStatement && node.Flags&ast.NodeFlagsVibeLang != 0:
-			p.fiberDiagnostic(node, 4605, "break cannot leave a for concurrent loop: each item runs in its own fiber. Use continue to end this item, or throw to stop every item.")
+			p.fiberDiagnostic(node, 1903, "break cannot leave a for concurrent loop: each item runs in its own fiber. Use continue to end this item, or throw to stop every item.")
 		case node.Kind == ast.KindReturnStatement:
 			if node.Flags&ast.NodeFlagsReparsed != 0 {
 				continues = append(continues, node)
@@ -144,7 +144,7 @@ func (p *projector) concurrentJumps(body *ast.Node) (continues []*ast.Node) {
 				// region completion handling can walk this parser-generated node.
 				node.Flags &^= ast.NodeFlagsReparsed
 			} else {
-				p.fiberDiagnostic(node, 4606, "return cannot leave a for concurrent loop: each item runs in its own fiber. Use continue to end this item.")
+				p.fiberDiagnostic(node, 1904, "return cannot leave a for concurrent loop: each item runs in its own fiber. Use continue to end this item.")
 			}
 		}
 		return node.ForEachChild(visit)

@@ -35,8 +35,11 @@ func TestRegistryUsesCurrentAppendix(t *testing.T) {
 	if !slices.Contains(SpecCodes(), 4853) || facts.Default(4853) != DefaultWarning || !facts.IsAdjustable(4853) || slices.Contains(vipCodes, 4853) {
 		t.Errorf("EK4853: default=%s adjustable=%v", facts.Default(4853), facts.IsAdjustable(4853))
 	}
-	if SpecHasCode(4409) || SpecHasCode(3008) {
-		t.Error("history-only EK4409/EK3008 leaked into the current registry")
+	if !SpecHasCode(4409) || !slices.Contains(facts.Interim, 4409) || facts.Default(4409) != DefaultWarning || facts.IsAdjustable(4409) {
+		t.Error("EK4409 must be inventoried as a warning compatibility identity")
+	}
+	if SpecHasCode(3008) {
+		t.Error("history-only EK3008 leaked into the current registry")
 	}
 	// The imported table states each default, and every imported code is
 	// configurable; ordinals past 99 extend the code.
@@ -64,7 +67,7 @@ func TestRegistryUsesCurrentAppendix(t *testing.T) {
 	if !slices.Equal(facts.Retired, []int32{2101}) || SpecHasCode(2101) {
 		t.Errorf("old EK2101 retirement: %v", facts.Retired)
 	}
-	if p := deadKey(PendingEntry{Key: "ek:EK4409"}); p == "" {
+	if p := deadKey(PendingEntry{Key: "ek:EK3008"}); p == "" {
 		t.Error("a pending history-only code must be dead")
 	}
 	if p := deadKey(PendingEntry{Key: "ek:EK0901"}); p != "" {
@@ -73,7 +76,7 @@ func TestRegistryUsesCurrentAppendix(t *testing.T) {
 	if deadKey(PendingEntry{Key: "registry:EK4701"}) == "" {
 		t.Error("registered-code registry pending key must be dead")
 	}
-	if problem := deadKey(PendingEntry{Key: "registry:EK4409"}); problem != "" {
+	if problem := deadKey(PendingEntry{Key: "registry:EK9998"}); problem != "" {
 		t.Errorf("unassigned registry key must remain live: %s", problem)
 	}
 

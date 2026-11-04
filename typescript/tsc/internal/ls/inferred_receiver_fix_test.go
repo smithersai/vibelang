@@ -1,3 +1,6 @@
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK9101` | suggestion: the native editor offers the checker’s receiver type for a data-method access.
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Example: an inferred receiver at `todos.map()`; [editor receiver example](../../../typescript/tsc/internal/ls/inferred_receiver_fix_test.go).
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | 34 | Apply the receiver annotation; the fatal projection identity is EK9006.
 package ls_test
 
 import (
@@ -72,7 +75,7 @@ func receiverActions(t *testing.T, files map[string]string) ([]*lsproto.CodeActi
 	}
 	projectorChoices := 0
 	for _, d := range vibelangmapper.Project(file.Text(), vibelangmapper.FileContext{}).Diagnostics {
-		if d.Code == 9101 {
+		if d.Code == vibelangmapper.CodeDataMethod {
 			projectorChoices++
 		}
 	}
@@ -135,7 +138,7 @@ func TestInferredReceiverFix(t *testing.T) {
 			}
 			remaining := 0
 			for _, d := range vibelangmapper.Project(files["/Users/x/src/main.vibe"], vibelangmapper.FileContext{}).Diagnostics {
-				if d.Code == 9101 {
+				if d.Code == vibelangmapper.CodeDataMethod {
 					remaining++
 				}
 			}

@@ -1,6 +1,5 @@
 error EK4801: program is an Effect value, and this statement discards it without running it.
 A hatch body is TypeScript, where an Effect runs only through a runner. Run it outside the hatch.
-error EK4802: program is an Effect value, but nested already runs Effects, so its caller gets this program instead of its result.
 error EK4807: UsersLive needs Directory, which DirectoryLive provides, but Layer.mergeAll builds its layers side by side.
 error EK4809: Every member of Reports needs Directory, so each caller must provide it.
 error EK4810: This assertion drops NotFound from the Effect's E channel, so no contract checks it.

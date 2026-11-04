@@ -1,0 +1,3 @@
+// expect: EK1604
+export {};
+const data=1; data satisfies 1;

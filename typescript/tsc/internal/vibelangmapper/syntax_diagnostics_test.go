@@ -76,9 +76,9 @@ func TestSyntaxModuleUsing(t *testing.T) {
 	}
 }
 
-// TestSyntaxEK2003 accepts Effect types with type arguments left out, which
+// TestSyntaxPlainContractIdentity accepts Effect types with type arguments left out, which
 // mean never as in TypeScript (D308, D309).
-func TestSyntaxEK2003(t *testing.T) {
+func TestSyntaxPlainContractIdentity(t *testing.T) {
 	for _, valid := range []string{
 		`function f(): Effect<string> { return "" }`,
 		`function f(): Effect<string, Missing> { return "" }`,
@@ -88,7 +88,7 @@ func TestSyntaxEK2003(t *testing.T) {
 		`function f<Effect>(): Effect<string> { return "" }`,
 	} {
 		for _, d := range Project(valid, testContext).Diagnostics {
-			if d.Code == 2003 {
+			if d.Code == CodePlainContractEffect {
 				t.Fatalf("plain or complete annotation: %+v", d)
 			}
 		}
@@ -103,17 +103,23 @@ func TestSyntaxEK2006(t *testing.T) {
 	}
 }
 
-// TestSyntaxEK2101 requires written return types and accepts plain service contracts.
-func TestSyntaxEK2101(t *testing.T) {
+// EK2101 is retired by VIP-9; native noImplicitAny owns missing method types.
+func TestSyntaxRetiredBodylessContractIdentity(t *testing.T) {
 	checkSyntaxFixture(t, "ch12-rates-bare-return", 2101, 0)
 	checkSyntaxFixture(t, "decl-service-contract", 2101, 0)
-	checkSyntaxDiagnostic(t, 2101, `service Rates { lookup() }`, "lookup", "Rates.lookup has no body to infer from. Write its return type.", `service Rates { lookup(): number }`)
+	for _, source := range []string{`service Rates { lookup() }`, `service Rates { lookup(): number }`} {
+		for _, d := range Project(source, testContext).Diagnostics {
+			if d.Code == 2101 || d.Code == CodeUnprojectedForm {
+				t.Fatalf("%s: unexpected projection diagnostic: %+v", source, d)
+			}
+		}
+	}
 }
 
-// TestSyntaxEK2104 pins the late setup statement, including its semicolon (D129).
-func TestSyntaxEK2104(t *testing.T) {
-	checkSyntaxFixture(t, "decl-layer-order", 2104, 1)
-	checkSyntaxDiagnostic(t, 2104, `layer CounterLive: Counter { next() { return 1 } const start = 0; }`, "const start = 0;", "This statement follows the layer's members, but a layer's setup statements come first.", `layer CounterLive: Counter { const start = 0; next() { return start } }`)
+// TestSyntaxEK9209 pins the late setup statement, including its semicolon (D129).
+func TestSyntaxEK9209(t *testing.T) {
+	checkSyntaxFixture(t, "decl-layer-order", 9209, 1)
+	checkSyntaxDiagnostic(t, 9209, `layer CounterLive: Counter { next() { return 1 } const start = 0; }`, "const start = 0;", "This statement follows the layer's members, but a layer's setup statements come first.", `layer CounterLive: Counter { const start = 0; next() { return start } }`)
 }
 
 // TestSyntaxEK4405 keeps the old witnesses: VIP-6 now permits every capture.

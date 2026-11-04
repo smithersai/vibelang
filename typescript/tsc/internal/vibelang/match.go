@@ -25,8 +25,8 @@ var (
 	EK4703 = message(4703, errorCategory, "Bindings in an is pattern have no home here yet: they work in a statement of a block, in an if or while condition, in a for (init; test; update) head unless init is var or using, in a match arm, in a concise arrow body and in a class field initializer.")
 	// EK4704: a pattern form VibeLang does not support yet. {0} names it.
 	EK4704 = message(4704, errorCategory, "{0} patterns are not supported yet.")
-	// EK4705: and, or, and not combined at one level without parentheses.
-	EK4705 = message(4705, errorCategory, "Patterns joined by and, or, or not cannot share a level; add parentheses.")
+	// EK0707: and, or, and not combined at one level without parentheses.
+	mixedPatternDiagnostic = message(707, errorCategory, "Patterns joined by and, or, or not cannot share a level; add parentheses.")
 	// EK0702: a class pattern whose expression names a VibeLang value that is not a class (D67b). {0} is the expression.
 	EK0702 = message(702, errorCategory, "{0} is not a class, so it cannot be a class pattern: under the draft it would be called with the subject and match almost anything.")
 
@@ -36,7 +36,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK4701, EK4703, EK4704, EK4705, EK0702} {
+	for _, m := range []*Message{EK4701, EK4703, EK4704, EK0702} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkPatterns)
@@ -359,7 +359,7 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 		}
 		note(reportAt(c, file, at, EK4704, detail), "Bind the value and test it in a guard: when let v and if (…): …")
 	case 4705:
-		note(reportAt(c, file, at, EK4705), "Write (a and b) or c, or a and (b or c).")
+		note(reportAt(c, file, at, mixedPatternDiagnostic), "Write (a and b) or c, or a and (b or c).")
 	}
 	cover(c, call)
 }

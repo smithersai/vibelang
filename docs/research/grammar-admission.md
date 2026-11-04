@@ -54,7 +54,7 @@ too, as are its module-element context errors (an `import`, `export` or
 initializer (`const { p = 1 };`, `TS1182`, which ECMAScript's grammar does
 not derive) and an initializer in an object literal (`const x = { p = 1 };`,
 `TS1312`, ECMAScript's `CoverInitializedName` early error); native type, name and module
-resolution errors remain non-syntax errors. `EK1007`, a topic `%` outside
+resolution errors remain non-syntax errors. `EK2301`, a topic `%` outside
 every pipe body, is the early error of VIP-23's TC39 topic grammar and counts
 as syntax rejection. Warnings
 and suggestions do not.

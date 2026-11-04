@@ -1584,7 +1584,7 @@ async function main() {
   }
   if (selfTest) {
     const docs = await runDocs(root, outDir, mapperPackage, forkTsc, stockTsc, mapperBin, jobs, true)
-    const planted = docs.summary.codes.EK9100 === 1 && docs.summary.newDiagnostics === 1
+    const planted = docs.summary.codes.EK9005 === 1 && docs.summary.newDiagnostics === 1
     console.log(`self-test docs: ${planted ? "ok" : "FAIL"} (${docs.line})`)
     process.exit((await runSelfTest()) && planted ? 0 : 1)
   }

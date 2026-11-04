@@ -1,9 +1,9 @@
-// expect: EK4802
+// VIP-1/5: returned programs are data, without own EK4802.
 // Smithers' journal migrations: Effect's sql template returns a Statement, an
 // Effect subtype. An effect function passed where a call infers its success
 // returns it as data, so `Effect.suspend(effect () => stmt`...`)` succeeded with
-// the statement and never ran it, with no diagnostic. EK4802 is an error here
-// (tsconfig.json).
+// the statement and never ran it, with no diagnostic. Own EK4802 does not apply to these returns
+// (including when its configured severity is error).
 interface Statement<A> extends Effect.Effect<ReadonlyArray<A>> { readonly sql: string }
 declare const stmt: (parts: TemplateStringsArray) => Statement<never>
 

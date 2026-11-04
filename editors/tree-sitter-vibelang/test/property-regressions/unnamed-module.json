@@ -24,7 +24,7 @@
       "text": "("
     }
   },
-  "reason": "The compiler parser intentionally accepts an unnamed module for the checker to report EK4408, whereas tree-sitter reports ERROR. Appendix Grammar, Declarations requires a BindingIdentifier. The specification does not settle whether this rejection must occur during parsing or checking; retain the exact parser/editor disagreement without assigning blame.",
+  "reason": "The compiler parser intentionally accepts an unnamed module for the checker to report EK4003, whereas tree-sitter reports ERROR. Appendix Grammar, Declarations requires a BindingIdentifier. The specification does not settle whether this rejection must occur during parsing or checking; retain the exact parser/editor disagreement without assigning blame.",
   "files": {
     "minimal.vibe": "module{export{}}\n"
   },

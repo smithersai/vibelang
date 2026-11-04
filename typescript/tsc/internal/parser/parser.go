@@ -6686,6 +6686,7 @@ func (p *Parser) isStartOfDeclaration() bool {
 }
 
 func (p *Parser) scanStartOfDeclaration() bool {
+	sawDeclare := false
 	for {
 		if p.isStartOfVibeLangAsyncMatch() {
 			return false // a primary expression, not the retired async name(...) shorthand
@@ -6735,6 +6736,9 @@ func (p *Parser) scanStartOfDeclaration() bool {
 		case ast.KindAbstractKeyword, ast.KindAccessorKeyword, ast.KindAsyncKeyword, ast.KindDeclareKeyword, ast.KindPrivateKeyword,
 			ast.KindProtectedKeyword, ast.KindPublicKeyword, ast.KindReadonlyKeyword:
 			previousToken := p.token
+			if previousToken == ast.KindDeclareKeyword {
+				sawDeclare = true
+			}
 			p.nextToken()
 			// ASI takes effect for this modifier.
 			if p.hasPrecedingLineBreak() {
@@ -6767,7 +6771,7 @@ func (p *Parser) scanStartOfDeclaration() bool {
 			p.nextToken()
 			continue
 		case ast.KindIdentifier:
-			return p.isVibeLangFile() && p.scanStartOfVibeLangDeclaration()
+			return p.isVibeLangFile() && p.scanStartOfVibeLangDeclarationInContext(sawDeclare)
 		}
 		return false
 	}

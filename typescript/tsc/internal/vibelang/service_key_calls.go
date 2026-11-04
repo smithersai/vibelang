@@ -9,17 +9,17 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// A service key called with arguments is EK3007 (Chapter 4, D415): get the
+// A service key called with arguments is EK9214 (Chapter 4, D415): get the
 // service, then call it (VIP-10), so Fn(3) for
 // service Fn: (n: number) => number means (try Fn)(3). It replaces
 // TypeScript's TS2348, whose suggestion of new would be EK3003, and its quick
 // fix writes (try Fn)(3) in effect code.
 
-// EK3007: a service key called with arguments. {0} is the service.
-var EK3007 = message(3007, errorCategory, "{0} is a service key, which takes no arguments: try {0} gets its implementation.")
+// EK9214: a service key called with arguments. {0} is the service.
+var EK9214 = message(9214, errorCategory, "{0} is a service key, which takes no arguments: try {0} gets its implementation.")
 
 func init() {
-	registry[EK3007.Code] = EK3007
+	registry[EK9214.Code] = EK9214
 	fileChecks = append(fileChecks, checkServiceKeyCalls)
 	ls.RegisterCodeFixProvider(serviceKeyCallFix)
 }
@@ -33,7 +33,7 @@ func checkServiceKeyCalls(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsCallExpression(node) && len(node.Arguments()) > 0 {
 			if service := serviceNamedBy(c, node.Expression()); service != nil && classKindOf(service) == serviceClass {
 				name := scanner.GetTextOfNode(node.Expression())
-				d := report(c, node, EK3007, name)
+				d := report(c, node, EK9214, name)
 				if serviceCallable(c, service) {
 					note(d, "Get the service, then call it: (try {0})(…).", name)
 				} else {
@@ -49,11 +49,11 @@ func checkServiceKeyCalls(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// serviceKeyCallFix is EK3007's quick fix for a service whose implementation
+// serviceKeyCallFix is EK9214's quick fix for a service whose implementation
 // is a function: in effect code Fn(3) becomes (try Fn)(3) (VIP-10).
 var serviceKeyCallFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK3007.Code},
+	ErrorCodes: []int32{EK9214.Code},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		if fix.Diagnostic == nil || fix.LS == nil || fix.Program == nil {
 			return nil, nil

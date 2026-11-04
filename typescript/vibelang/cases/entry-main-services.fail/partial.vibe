@@ -1,4 +1,4 @@
-// A provide block inside main supplies its services; EK3201 names the rest.
+// A provide block inside main supplies its services; EK9211 names the rest.
 import { Stamp, Users, UsersLive } from "./services.vibe"
 
 export effect function main() {

@@ -125,7 +125,7 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 		}
 		if pauses, _ := p.runningExpressionCalls(left); ok && pauses {
 			text := p.text[p.tokenStart(left):left.End()]
-			p.fiberDiagnostic(valueTopic, 1008, "% stands for "+text+", which this pipe passes by name to a program elsewhere, so it cannot also be a value here.")
+			p.fiberDiagnostic(valueTopic, CodeUnprojectedForm, "% stands for "+text+", which this pipe passes by name to a program elsewhere, so it cannot also be a value here.")
 		} else {
 			p.formChoice(pipe, "A pipe cannot use its topic as both a program and a value; bind an explicitly annotated value or split the pipe.")
 		}

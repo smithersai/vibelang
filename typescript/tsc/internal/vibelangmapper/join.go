@@ -34,7 +34,7 @@ func (p *projector) join(call *ast.Node, e env) {
 	if !known {
 		p.formChoice(operand, "The mapper cannot determine whether this join operand holds fibers. Add an explicit Fiber annotation, or an array or object annotation with Fiber elements.")
 	} else if !valid {
-		p.fiberDiagnostic(operand, 4611, "join takes a Fiber or a one-level array or object of fibers. Annotate the operand with Fiber elements; nest joins for deeper collections.")
+		p.fiberDiagnostic(operand, 1704, "join cannot read a Fiber result from this operand. Annotate the operand with its Fiber type.")
 	}
 	start := p.tokenStart(call)
 	if p.statementStarts[start] {

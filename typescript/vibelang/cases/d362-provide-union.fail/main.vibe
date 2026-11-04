@@ -1,4 +1,4 @@
-// expect: EK3201
+// expect: EK9211
 service Common { shared: number }
 service Left { left: number }
 service Right { right: number }

@@ -11,10 +11,8 @@ import (
 
 var EK4854 = message(4854, warningCategory, "Abstract classes no longer declare services; write a service declaration to preserve this service.")
 var EK4855 = message(4855, warningCategory, "A service default is static readonly defaultValue: () => Shape; rename default and wrap its value in a thunk.")
-var EK3008 = message(3008, errorCategory, "A service key must be static readonly key initialized with a string literal; write the key explicitly or remove it to derive the key.")
 
 func init() {
-	registry[EK3008.Code] = EK3008
 	for _, m := range []*Message{EK4854, EK4855} {
 		registry[m.Code] = m
 		tsFormMessages = append(tsFormMessages, m)

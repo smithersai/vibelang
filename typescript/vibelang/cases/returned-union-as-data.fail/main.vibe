@@ -1,8 +1,8 @@
-// expect: EK4802
+// VIP-1/5: returned programs are data, without own EK4802.
 // A returned value whose type is a union with an Effect value or a program
 // among its members is data when that member is chosen, where the success
 // type names no value (D24, D269), as an Effect value returned there is.
-// EK4802 is an error here (tsconfig.json).
+// Own EK4802 does not apply to these returns.
 service Status { set(code: number): void!! }
 
 const listFlows = effect () => {

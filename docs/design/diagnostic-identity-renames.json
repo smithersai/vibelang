@@ -1,0 +1,49 @@
+{
+  "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+  "authority": "Will’s diag-identity task, items 1–2: compare meanings/severities; the spec decides each code; update every test and doc for a rename. This records that existing identity-only authorization, not approval for new restrictions.",
+  "files": [
+    {
+      "path": "typescript/tsc/internal/vibelang/handlers.go",
+      "normalizedSha256": "e968af29284a5cca9ce5887a1aa647fd20af3425a30b040ecd0c885df437df6c"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/layers_check.go",
+      "normalizedSha256": "cf638212e297ca2c3e8a54235176e6c934e30addaf23c41c1d02773af2cf8c1f"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/wire.go",
+      "normalizedSha256": "1487563d1a674b315a940737c2e942d52557b72533dc215ddcdac13cfb64fdb4"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/service_key_calls.go",
+      "normalizedSha256": "d81715b92abb06cf2be5bada54fac8f51972d63bd898daac78df28fc09fedf99"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/for_try.go",
+      "normalizedSha256": "29793d95d26abc6f3157179a9ab5d7a5474fbd4e0bccf288bb96c47fb88b0be9"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/effect_pin.go",
+      "normalizedSha256": "f7ce3040e2ba99f7c8694f12d4f70ef40ad055d156ec7f5171a9a52c9b5a9107",
+      "base": "a4ded3fe8ac31cc46d82d64686b6fe29286ae650"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/project.go",
+      "normalizedSha256": "4f85248a184d02d782de932826db2314261c331b75c63346169a2330b9317ecb"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/forms_resolve.go",
+      "normalizedSha256": "6ff0c379dff17798ea4eaf93aca7da1668099211360364bf6bb5c241ddb98382",
+      "base": "12d130c5435a34319bdb6702839336671b827acd"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/data_methods.go",
+      "normalizedSha256": "58df427a33af380354f9f9e68f4ee7b50756d65fa653681254562510d5914a06"
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/syntax_diagnostics.go",
+      "normalizedSha256": "bd28165a5e274aa3e53c89de7984f019a4cf2fbd8b888b051830449c32b6b920",
+      "base": "12d130c5435a34319bdb6702839336671b827acd"
+    }
+  ]
+}

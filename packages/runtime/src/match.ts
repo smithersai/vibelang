@@ -313,7 +313,7 @@ export function $assertMatch(matched: unknown, subject: unknown): void {
   if (!matched) $noMatch(subject)
 }
 
-/** A pattern VibeLang does not support; the compiler reports it (EK4702-EK4705). */
+/** A pattern VibeLang does not support; the compiler reports it (EK4702-EK4704 and EK0707). */
 export function $patternError(_code: number, _detail?: string): boolean {
   throw new TypeError("This pattern is not supported")
 }

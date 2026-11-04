@@ -14,7 +14,7 @@ import (
 // the rest of a migration (fix_effect_value_call.go). This quick fix, which
 // vibelang --fix also applies, is for code already on the new compiler. It
 // handles only a call that try runs: an untried p() in effect code may be a
-// mistake of another kind, and a call with arguments is EK3007's.
+// mistake of another kind, and a call with arguments is EK9214's.
 
 func init() {
 	for _, code := range tagCallCodes {

@@ -14,6 +14,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
 func TestCategory(t *testing.T) {
@@ -72,16 +73,12 @@ const renumbering = "lane diag-renumber registers each VIP's hundred-block (deci
 // deletes its entry.
 var specAhead = map[int32]string{
 	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
-	302:  renumbering,
-	1601: renumbering, 1704: renumbering,
+	302: renumbering,
 	// Assigned by the round-20 spec for decided detail 100 (an extractor on a class without its own matcher).
 
-	// Incomplete custom declaration forms have assigned diagnostics before compiler registration.
-	1503: renumbering,
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.
 	1504: renumbering,
 	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.
-	1602: renumbering,
 	// The round-24 trigger catalog gives unsupported fork owners, fork.in scopes, dotted try names and concurrency limits their codes.
 	1705: renumbering, 1706: renumbering,
 	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).
@@ -129,10 +126,13 @@ func TestRegistryMatchesSpec(t *testing.T) {
 	if len(assigned) == 0 {
 		t.Fatal("Appendix B assigns no code")
 	}
+	mapperCodes := []int32{vibelangmapper.CodeUnprojectedForm, vibelangmapper.CodeExecSyntax,
+		vibelangmapper.CodeInvalidOption, vibelangmapper.CodeVersionMismatch,
+		vibelangmapper.CodeFormChoice, vibelangmapper.CodeDataMethod}
 	for _, code := range assigned {
 		lane, ahead := specAhead[code]
 		switch {
-		case registry[code] == nil && core.VibeImportedLintCodes[fmt.Sprintf("EK%04d", code)] == "" && !ahead:
+		case registry[code] == nil && !slices.Contains(mapperCodes, code) && core.VibeDiagnosticCategories[fmt.Sprintf("EK%04d", code)] == "" && core.VibeImportedLintCodes[fmt.Sprintf("EK%04d", code)] == "" && !ahead:
 			t.Errorf("Appendix B assigns EK%04d, which the registry does not have", code)
 		case registry[code] != nil && ahead:
 			t.Errorf("the registry has EK%04d now; delete it from specAhead (%s)", code, lane)

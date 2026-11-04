@@ -12,8 +12,8 @@ import (
 
 // Inference is not an explicit request to receive a cold program (VIP-1/5).
 // Keep EK4802's configurable severity, but diagnose the otherwise silent
-// argument boundary as well as the return boundary.
-var inferredEffectArgument = EK4802.With("{0} infers an Effect in a plain function's generic parameter, so the function receives the unrun program instead of its result.")
+// inferred-argument boundary. Returned programs remain success data.
+var inferredEffectArgument = EK4802
 
 // inferredEffectArguments returns the arguments that acquire an Effect through
 // this call's own inferred type parameters. Written type arguments opt out.

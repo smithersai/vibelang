@@ -1,9 +1,9 @@
-// expect: EK4802
+// VIP-1/5: returned programs are data, without own EK4802.
 // A program named by reference, a function with no parameters that returns
 // an Effect, is data where the success type names no value (void, unknown,
 // any, or a type parameter its call infers), as a program literal is (D24,
-// D269), where Effect code would run it. EK4802 is an error here
-// (tsconfig.json).
+// D269), where Effect code would run it. Own EK4802 does not apply to these returns
+// (including when its configured severity is error).
 service Status { set(code: number): void!! }
 
 const listFlows = effect () => {

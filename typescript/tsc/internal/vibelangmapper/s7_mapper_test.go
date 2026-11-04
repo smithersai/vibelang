@@ -59,11 +59,11 @@ func TestS7AssertedProgramMixedTopic(t *testing.T) {
 	for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
 		found := false
 		for _, d := range projection.Diagnostics {
-			if d.Code == 1008 {
+			if d.Code == CodeUnprojectedForm {
 				found = true
 				want := "% stands for (load() as Effect.Effect<number>), which this pipe passes by name to a program elsewhere, so it cannot also be a value here."
 				if d.Message != want || d.Start != strings.LastIndex(source, "%") || d.Length != 1 {
-					t.Fatalf("unexpected EK1008: %v", d)
+					t.Fatalf("unexpected EK9001: %v", d)
 				}
 			}
 		}

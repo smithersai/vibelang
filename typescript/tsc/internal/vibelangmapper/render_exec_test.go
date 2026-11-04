@@ -1,3 +1,4 @@
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK9002` | compiler projection error: the mapper's executable rendering does not parse as TypeScript; report the source and use the native compiler.
 package vibelangmapper
 
 import (

@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK9003` | mapper configuration error: its options must be an empty object; remove unsupported mapper options.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: mapper options: `{ "unsupported": true }` | 30, 34 | [Tooling](007-tooling.md#compiler-and-tooling-requirements) |
 package vibelangmapper
 
 import (

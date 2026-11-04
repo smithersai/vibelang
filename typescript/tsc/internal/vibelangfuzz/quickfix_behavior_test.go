@@ -87,9 +87,9 @@ func quickfixBehaviorSeeds() map[int32][]Seed {
 	seeds[509] = []Seed{{Name: "EK0509-handler-reference", Files: map[string]string{"main.vibe": "const handler = (_: unknown) => 7\nexport effect function main() { return Effect.fail(1) catch handler }\n"}}}
 	quickfixInstallGoldenPrograms(seeds)
 	seeds[4802] = []Seed{
-		{Name: "EK4802-runtime", Files: map[string]string{"main.vibe": "export effect function main() { return Effect.succeed(7) }\n"}},
+		{Name: "EK4802-runtime", Files: map[string]string{"main.vibe": "function take<T>(x: T[]): number { return 1 }\nexport effect function main() { return take([Effect.succeed(7)]) }\n"}},
 		{Name: "EK4802-trace", Files: map[string]string{
-			"main.vibe": "import { held } from \"./host.js\"\nexport {traceOf} from \"./host.js\"\nexport effect function main() { return held() }\n",
+			"main.vibe": "import { held } from \"./host.js\"\nexport {traceOf} from \"./host.js\"\nfunction take<T>(x: T[]): number { return 1 }\nexport effect function main() { return take([held()]) }\n",
 			"host.ts":   "import { Effect } from \"effect\"\nconst trace: string[]=[]; export function traceOf() { return trace }\nexport function held() { return Effect.sync(() => { trace.push(\"inner\"); return 7 }) }\n",
 		}},
 	}

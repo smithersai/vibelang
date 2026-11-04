@@ -17,7 +17,7 @@ import (
 // The dual is a parameterless lambda that is both a program and a function
 // that returns it; the prelude types it Effect<A, E, R> & (() => Effect<A, E, R>).
 // Where the rules cannot decide (Decision.Choice), the projector reports
-// EK9100 with the resolver's message and lowers the default's guess.
+// EK9005 with the resolver's message and lowers the default's guess.
 
 // isLambda reports whether node is a lambda the forms decide: an arrow
 // function or a function expression written in the source, or a method of
@@ -125,7 +125,7 @@ func (p *projector) providedMember(fn *ast.Node) bool {
 	return object != nil && object.Kind == ast.KindObjectLiteralExpression && object.Parent != nil && isProvideService(object.Parent) && object.Parent.Arguments()[2] == object
 }
 
-// choice reports EK9100 at d's node when the rules leave the form to the
+// choice reports EK9005 at d's node when the rules leave the form to the
 // user (Decision.Choice), with the resolver's message.
 func (p *projector) choice(d Decision, at *ast.Node) {
 	if d.Choice == nil {

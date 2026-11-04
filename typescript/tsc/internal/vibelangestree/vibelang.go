@@ -194,7 +194,7 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 // moduleBodies returns the source file of each module declaration's body
 // (D283), by declaration and in the order of the text. The parser gives a
 // top-level declaration, the first of its name, a file of its own
-// (EmbeddedModules); the checker reports any other (EK4408), whose body is
+// (EmbeddedModules); the checker reports misplaced or duplicate declarations (EK4001/EK4002/EK4005), whose body is
 // parsed here as the parser parses one, so ESLint still lints it.
 func moduleBodies(file *ast.SourceFile) (map[*ast.Node]*ast.SourceFile, []*ast.SourceFile) {
 	embedded := map[*ast.Node]*ast.SourceFile{}
@@ -243,7 +243,7 @@ func (c *converter) moduleDeclaration(n *ast.Node) *obj {
 	block := c.node(n.Body(), "TSModuleBlock").set("body", module.convertBodyExpressions(listNodes(body.Statements), body.AsNode(), nil))
 	result := c.node(n, "VibeModuleDeclaration").set("body", block)
 	if n.Name().Text() == "" {
-		result.set("id", nil) // module { }, which the checker refuses (EK4408)
+		result.set("id", nil) // module { }, which the checker refuses (EK4003)
 	} else {
 		result.set("id", c.convertChild(n.Name(), n))
 	}

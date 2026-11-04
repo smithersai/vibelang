@@ -1,4 +1,4 @@
-// expect: EK2104
+// expect: EK9209
 // The old layer declaration (D129) still compiles with the warning EK2121,
 // and its setup statements must come before its members.
 service Counter {

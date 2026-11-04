@@ -374,6 +374,8 @@ See [Control operations and handlers](111-control-operations-and-handlers.md) fo
 
 Inferred parameter types of retained SDK error constructors keep their Effect namespace spelling in declarations. For example, exporting `AsyncFiberError` writes its inferred fiber parameter as `Fiber.Fiber<unknown, unknown>` with an import from `effect`, independently of nearby matching code. Explicit import types and local or generic `Fiber` bindings retain their written scope.
 
+Returning an Effect, an Effect subtype, a union or a program function keeps it as data and does not itself report `EK4802`. To execute a returned Effect, write `return try program`. Native `Effect.gen` return advice belongs to the imported `effecttsgo/returnEffectInGen` rule (`EK38103`).
+
 A generic assertion such as `expect(awaited(p))` in effect code reports `EK4802` when `awaited(p)` returns an Effect: the assertion would receive the unrun program. Write `expect(try awaited(p))` to inspect its result; `--fix` applies this direct-argument repair when its failure and requirement contract fits. To inspect the program object intentionally, write `expect<Effect.Effect<number>>(e)`. Generic arrays, Promises and callback contracts also report the warning; run their Effects where those values are constructed.
 
 The pre-VIP-1 migration repairs a legacy `fork(program, options)` even when an

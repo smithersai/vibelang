@@ -1,0 +1,3 @@
+go test fuzz v1
+string("declaration-diagnostic-data-default-unit")
+byte(0)

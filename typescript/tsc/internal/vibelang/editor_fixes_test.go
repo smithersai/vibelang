@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
@@ -95,21 +96,20 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 	}
 }
 
-// TestEditorQuickFixSkipsUncallableUnion checks that EK4802's call-it fix is
-// not offered for a returned union with a member that is no program: calling
-// `chosen` where it may be undefined would not check.
+// A returned union has no own EK4802. A stale editor diagnostic must not
+// offer execution either: `chosen` may be undefined.
 func TestEditorQuickFixSkipsUncallableUnion(t *testing.T) {
 	source := "export effect function main(job: Effect.Effect<number> | undefined): unknown!! { const chosen = job; return chosen }"
 	program, file, service, converters := editorProgram(t, source)
 	var diagnostic *ast.Diagnostic
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Code() == 4802 {
-			diagnostic = d
-			break
+			t.Fatalf("returned union reports own EK4802: %s", d.String())
 		}
 	}
 	if diagnostic == nil {
-		t.Fatalf("missing EK4802 in %s", source)
+		start := strings.LastIndex(source, "chosen")
+		diagnostic = ast.NewExternalDiagnostic(file, core.NewTextRange(start, start+len("chosen")), diagnosticSource, diagnostics.CategoryWarning, 4802, "stale returned-program diagnostic")
 	}
 	d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
 	only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}

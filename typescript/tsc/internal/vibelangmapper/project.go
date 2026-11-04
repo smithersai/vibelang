@@ -58,7 +58,7 @@ const inlineModuleProjectionMessage = "The TypeScript mapper cannot project inli
 // Diagnostic codes the projector reports, under the source EK.
 const (
 	// CodePlainContractEffect marks an Effect call, or a throw that can escape, under a plain contract (D282).
-	CodePlainContractEffect = 2003
+	CodePlainContractEffect = 9203
 	// CodeUnprojectedForm marks VibeLang syntax the projector does not lower yet.
 	CodeUnprojectedForm = 9001
 	// CodeVersionMismatch marks a project whose effect or @effect packages

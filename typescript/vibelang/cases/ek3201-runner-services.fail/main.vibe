@@ -1,5 +1,5 @@
-// expect: EK3201 TS2322
-// A runner's program may need only what the runner provides (D38). EK3201
+// expect: EK9211 TS2322
+// A runner's program may need only what the runner provides (D38). EK9211
 // names each service that nothing provides, at a program runner and at a
 // test, in place of TypeScript's error about the argument's type. A test
 // that layer(…) registers may need that layer's services.

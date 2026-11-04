@@ -1,5 +1,5 @@
-$is cannot name a variant: Data.taggedEnum gives every data type its own $is.
-$match cannot name a variant: Data.taggedEnum gives every data type its own $match.
+$is cannot name a variant: Data.taggedEnum gives every data type its own $is. Rename the variant and its references.
+$match cannot name a variant: Data.taggedEnum gives every data type its own $match. Rename the variant and its references.
 A cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's type parameters unconstrained.
 count cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.
 data Five has 5 type parameters, and Data.TaggedEnum.WithGenerics passes at most four.
@@ -7,5 +7,5 @@ Duplicate identifier 'Same'.
 Subsequent property declarations must have the same type.
 [key: string]: unknown is not a field: a variant holds only fields, each written name: Type or name?: Type.
 run(): void is not a field: a variant holds only fields, each written name: Type or name?: Type.
-_tag cannot name a field: a variant's constructor sets _tag to the variant's name.
+_tag cannot name a field: a variant's constructor sets _tag to the variant's name. Rename the field.
 untyped has no type: write untyped: Type.

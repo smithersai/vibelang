@@ -620,7 +620,7 @@ func isPrimitiveType(t *checker.Type) bool {
 }
 
 // joinPatterns joins patterns with a combinator, parenthesizing each that
-// combines others, since and, or and not cannot share a level (EK4705).
+// combines others, since and, or and not cannot share a level (EK0707).
 func joinPatterns(patterns []string, by string) string {
 	var parts []string
 	for _, p := range patterns {

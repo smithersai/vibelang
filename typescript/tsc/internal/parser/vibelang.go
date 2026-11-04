@@ -40,6 +40,10 @@ func isVibeLangDeclarationWord(text string) bool {
 // An identifier followed by class on the same line is a TypeScript syntax error
 // too. It moves the scanner; call it through lookAhead.
 func (p *Parser) scanStartOfVibeLangDeclaration() bool {
+	return p.scanStartOfVibeLangDeclarationInContext(false)
+}
+
+func (p *Parser) scanStartOfVibeLangDeclarationInContext(ambient bool) bool {
 	if p.token != ast.KindIdentifier {
 		return false
 	}
@@ -1221,7 +1225,15 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	keyword := p.scanner.TokenRange()
 	p.nextToken() // schema
 	name := p.parseBindingIdentifier()
+	hadTypeParameters := p.token == ast.KindLessThanToken
 	p.parseVibeLangSchemaTypeParameters()
+	aliased := false
+	if hadTypeParameters && p.token == ast.KindEqualsToken {
+		p.nextToken()
+		p.parseType()
+		p.parseSemicolon()
+		aliased = true
+	}
 	var members []*ast.Node
 	body := name.Loc
 	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: "schema", Head: core.NewTextRange(keyword.Pos(), name.End()), Ambient: p.isVibeLangAmbientService(modifiers)}
@@ -1233,6 +1245,9 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 		members = literal.AsTypeLiteralNode().Members.Nodes
 		body = literal.Loc
 		form.Open, form.Close = p.blockBraces(literal)
+	} else if !form.Ambient && !aliased {
+		// An ambient schema reports EK1506 instead (chapter 006: it comes ahead of EK1503).
+		p.reportVibeLangMissingBody(name, VibeLangSchemaMissingBodyCode, VibeLangSchemaMissingBodyMessage)
 	}
 	form.Range = core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos())
 	p.recordVibeSyntax(form)
