@@ -185,6 +185,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A list pattern with an elision or an optional element, such as `when [,,3]:` or `when [1?, 2?]:`, was a syntax error; it now matches as chapter 4 says. A binding in an optional element reports `EK4704`.
 
 - Importing the runtime could fail with a duplicate-binding `SyntaxError`; matcher registration is now exported once so the entry module loads normally.
+- The specification coverage census now retains generated grammar admission rows and cites their source sync check as coverage; handwritten rules still require independent evidence.
+
 - A `match` over an ordinary tagged-error class could appear exhaustive although a structurally compatible instance fell through with `TypeError`. Ordinary constructor patterns now cover no finite case; cover the tag explicitly or add a `default`.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
