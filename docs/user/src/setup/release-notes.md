@@ -235,6 +235,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Generated synchronous defect bridges now use a nonthrowing inline catch mapper, so `--fix` no longer refuses EK0403, generator conversion or EK0407 retirement because an imported `identity` adds EK0402. Existing imports and the original defect value are preserved.
 
+- EK0403 now offers the synchronous defect bridge first to preserve Effect.gen defects without widening E; its optional @throws {never} declaration fix comes second only when every reachable body, overload and callee is proven non-throwing, with unknown builtins and implicit getter, Proxy, JSON and iteration throws rejected (proxy ruling, 2026-11-04).
+
 - Match migration advice named an unregistered diagnostic for its prerequisite generator rewrite. It now names `vibelang --fix` and preserves the same repair order.
 - The throw-expression and API-identity pages exposed private review attribution. They now state the same public rules, retaining the migration prerequisite, diagnostic severities and generated-contract exception.
 

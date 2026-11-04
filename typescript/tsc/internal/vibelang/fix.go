@@ -636,6 +636,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// fixes options select whose edits do not overlap.
 	propose := func(program *compiler.Program) []proposal {
 		hatchTypes := legacyHatchTypeMigrationFixes(ctx, program, g.refused)
+		if !options.VIPOnly && !options.MigrationOnly {
+			if p := cliThrowsNeverFixes(ctx, program, scope, g.refused); len(p) > 0 {
+				return p
+			}
+		}
 		var proposals []proposal
 		for _, file := range scope.fixable(program) {
 			// Detail 296's preserving import migration also runs in VIP-only

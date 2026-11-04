@@ -1,0 +1,8 @@
+// expect-result: "news"
+import { isResolved } from "./helpers.ts"
+export effect function read(news: string | undefined) {
+  if (!isResolved(news)) return "absent"
+  const narrowed: string = news
+  return narrowed
+}
+export effect function main() { return try read("news") }

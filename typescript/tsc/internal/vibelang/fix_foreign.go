@@ -64,15 +64,21 @@ var foreignCallFix = &ls.CodeFixProvider{
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
+		var actions []*ls.CodeAction
+		if fix.ErrorCode == EK0403.Code {
+			if action := throwsNeverAction(c, fix, callee.Parent); action != nil {
+				actions = append(actions, action)
+			}
+		}
 		rewrite := planForeignCall(c, fix.SourceFile, callee.Parent)
 		if !rewrite.fixable() {
-			return nil, nil
+			return actions, nil
 		}
 		var changes []*lsproto.TextEdit
 		for _, edit := range rewrite.edits {
 			changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
 		}
-		return []*ls.CodeAction{{Description: "Write " + rewrite.description, Changes: changes}}, nil
+		return append(actions, &ls.CodeAction{Description: "Write " + rewrite.description, Changes: changes}), nil
 	},
 }
 

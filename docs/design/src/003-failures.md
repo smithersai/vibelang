@@ -58,6 +58,8 @@ function orNull(s: string) { try { return JSON.parse(s) } catch { return null } 
 
 Quick fixes, in order: make the function `effect`, so `throw` is `Effect.fail` and a call known to throw runs with `try Effect.try(() => …)`; make it `effect` and write `return try die(e)`; or move the code to a `.ts` file. Code that can't be `effect` (constructors, accessors, plain generators, initializers, `static` blocks, parameter lists, the top level) gets only the `.ts` fix. A plain handler gets `x catch effect (e) => { throw e }` and `x catch effect (e) => { return try die(e) }`. An exported function of a published package offers the `.ts` fix first, because `effect` changes its declaration.
 
+For `EK0403`, also offer `add /** @throws {never} */ to <declaration>` when the callee is a same-project `.ts` source declaration (neither `.d.ts` nor `node_modules`) with an available body containing no `throw` and only calls provably throwing `never`, recursively through same-project callees with a cycle guard and with every overload proven; preserve existing JSDoc and the call site, accepting only the added `@throws` tag as a declaration-output difference, and otherwise offer only the existing wrapper fix.
+
 ## Throw expressions
 
 [VIP-41](../vips/0041-throw-expressions.md) adopts the [pinned TC39 proposal](../vips/tc39-throw-expressions/README.md) exactly for grammar, precedence and parentheses. See [Appendix A](900-appendices.md#throwexpression) for the productions. A throw expression takes a unary operand: `value ?? throw new Missing()`, `condition ? throw error : fallback`, and unary nesting such as `!throw error` parse. A statement starting with `throw` is still a throw statement.
