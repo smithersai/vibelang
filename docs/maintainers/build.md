@@ -239,6 +239,7 @@ queue:
 | --- | --- |
 | `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
 | `//packages:runtime-package` | `packages/runtime/`, `packages/PACKAGE.ts` or `docs/tools/bugbash4-docs.test.mjs` |
+| `//:docs-contracts` | `docs/design/src/`, `docs/design/vips/`, `docs/user/src/`, the six declared contract tests and their helpers, `docs/tools/package.json`, `docs/tools/bun.lock` or the root `PACKAGE.ts` |
 | `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
 | `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
 | `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
@@ -1397,3 +1398,5 @@ optional-`do` witness and checks generated scope, provenance and write controls.
 
 The Go target catalog declares every literal target name once. `scripts/fast-gate-targets.test.mjs` rejects duplicate declarations before a later object property can silently replace one, and exercises nonadjacent duplicates across generated layouts.
 
+
+The `//:docs-contracts` target runs the published colon/example, catch-pipe, sidecar-root, schema-documentation, direct-try-advisory and sidecar-input contracts, their mutation properties and native TypeScript/Effect counterparts. It needs no VibeLang compiler build. Its inputs match those read by the six tests, so unrelated compiler edits reuse the cached result. The merge gate selects it from its first declared train; the complete `//:docs-tools` suite remains in post-merge validation.

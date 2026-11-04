@@ -208,6 +208,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Built-in contract checks looked for superseded amendment wording; they now verify the active full-domain, implicit-defect and padding rules without granting npm functions an unwritten contract.
 
 - The legacy Effect-alias documentation check rejected the current wording; it now checks the same grouping, namespace and emitted-declaration safeguards in the published rule.
+
+- The error guide did not name the operation that preserves an Effect's typed failures; it now names `try`. Fast executable documentation checks now run on affected merge-gate changes, catching this wording before landing.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.

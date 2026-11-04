@@ -485,6 +485,21 @@ const targets = {
     [Typescript["forms-generator"], specLint, grammarAdmissionCheck],
     [bun, node]
   ),
+  "docs-contracts": S.Shell.Test({
+    summary: "Published documentation contracts and their native counterparts remain consistent.",
+    shell: "node --test --test-concurrency=2 docs/tools/spec-colon-leads.test.mjs docs/tools/spec-catch-pipe-input.test.mjs docs/tools/spec-sidecar-roots.test.mjs docs/tools/spec-schema-jsdoc.test.mjs docs/tools/spec-direct-try-advisories.test.mjs docs/tools/spec-sidecar-input-protection.test.mjs",
+    data: S.glob([
+      "docs/design/src/**", "docs/design/vips/**", "docs/user/src/**",
+      "docs/tools/package.json", "docs/tools/bun.lock", "docs/tools/spec-witness.mjs",
+      "docs/tools/spec-sidecar-roots.mjs", "docs/tools/spec-colon-leads.test.mjs",
+      "docs/tools/spec-catch-pipe-input.test.mjs", "docs/tools/spec-sidecar-roots.test.mjs",
+      "docs/tools/spec-schema-jsdoc.test.mjs", "docs/tools/spec-direct-try-advisories.test.mjs",
+      "docs/tools/spec-sidecar-input-protection.test.mjs"
+    ]),
+    tools: [bun, node],
+    sandbox: "none",
+    timeout: "5m"
+  }),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
