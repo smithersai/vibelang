@@ -45,7 +45,7 @@ For example, TypeScript’s [`${configDir}` substitution](https://www.typescript
 { "include": ["src"] }
 ```
 
-This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.ts`. With `vibe.sidecarDir`, a sidecar under that directory whose source exists at the mirrored path is left out the same way.
+This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.ts`. With `vibe.sidecarDir`, a sidecar under that directory whose source exists at the mirrored path is left out the same way. So is a [module body](/spec/001-functions#module-declarations)'s declaration written beside a sidecar, such as `src/main.vibe.parse.d.ts`, while its source declares that body ([VIP-40](/vips/0040-module-declarations#emit-declarations-source-maps)).
 
 Declaration sidecars are emit outputs like `.d.ts`. Under [VIP-27’s native overwrite amendment](/vips/0027-declaration-output#amendment-native-overwrite-protection-2026-11-02), a sidecar found through `include` yields to its source and emit may overwrite it. Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched. The same rule applies in the `vibe.sidecarDir` directory.
 
@@ -68,62 +68,62 @@ Sidecar placement follows TypeScript 5.9's declaration layout, with `vibe.sideca
 
 `extends` inherits `vibe` key by key: child keys win and missing keys come from the base. `severities` merges entry by diagnostic code ([VIP-30](/vips/0030-config-files#decision)). An `extends` array merges bases left to right, later entries winning, before applying the child, as in TypeScript.
 
-The decided keys (VIP-30, amended) are:
+Write VibeLang settings in the root `vibe` object ([VIP-30](/vips/0030-config-files#decision)):
 
 | Key | Meaning |
 | --- | --- |
-| `vibe.effectGlobals` | Boolean switch, default `true`, for Effect's function globals ([VIP-6](/vips/0006-effect-globals)); `false` turns them off. |
-| `vibe.effectModules` | Boolean switch, default `true`, for Effect's modules in scope ([VIP-14](/vips/0014-effect-modules-in-scope)); `false` turns them off. |
-| `vibe.sidecarDir` | Directory, default unset, that holds every declaration sidecar at its source's path relative to TypeScript's declaration source root (explicit `rootDir`, the config directory for a composite project, or the common source directory otherwise), instead of `x.d.vibe.ts` beside `x.vibe` ([VIP-27](/vips/0027-declaration-output#decision), amended). Conventionally `.vibe/declarations`; pair it with virtual roots for the source root and output directory, such as `"rootDirs": [".", ".vibe/declarations"]` with `rootDir: "."` so stock TypeScript resolves `./x.vibe`. A relative path resolves from the config that declares it; a leading `${configDir}` from the selected config. An empty string names the declaring directory and overrides an inherited path; only an absent entry inherits. Wrong types report `EK3007`. |
-| `vibe.severities` | Maps VibeLang's own warning codes and all imported `EK38xx` lint codes to `"error"`, `"warning"`, `"suggestion"` or `"off"` ([VIP-30](/vips/0030-config-files#decision), [VIP-34](/vips/0034-compiler-and-tooling#decision), [VIP-38](/vips/0038-effect-lint-built-in#decision)). |
+| `vibe.effectGlobals` | Boolean; default `true`. Put Effect's functions in scope ([VIP-6](/vips/0006-effect-globals)); `false` turns the function globals off. Qualified calls such as `Effect.sleep` remain available when `vibe.effectModules` is `true`. |
+| `vibe.effectModules` | Boolean; default `true`. Put Effect's modules in scope ([VIP-14](/vips/0014-effect-modules-in-scope)); `false` requires imports. |
+| `vibe.sidecarDir` | String; absent by default. Move compatibility declarations from beside their sources to the mirrored directory described above ([VIP-27](/vips/0027-declaration-output#decision)). Relative paths use the declaring config; a leading `${configDir}` uses the selected config. An empty string names the declaring directory and overrides inheritance; only absence inherits. |
+| `vibe.severities` | Object; default `{}`. Maps VibeLang's own warning codes and assigned imported `EK38xx` codes to `"error"`, `"warning"`, `"suggestion"` or `"off"` ([VIP-30](/vips/0030-config-files#decision), [VIP-34](/vips/0034-compiler-and-tooling#decision), [VIP-38](/vips/0038-effect-lint-built-in#decision)). |
 
-An unknown `vibe` key or a value of the wrong type is a config error (`EK3007`), as for TypeScript’s `compilerOptions`; remove the key or supply its declared type. Exception: a `severities` entry whose value is not one of the four strings, whatever its JSON type, is `EK3006`; replace it with one of them. `EK3007` covers every other wrong-typed `vibe` value, including a `severities` value that is not an object.
-
-After `extends` merges entries by code, validate each effective entry independently. An invalid entry still reports `EK3006` and is ignored as a severity override; other valid entries and independent options still apply. An invalid child entry has already displaced the same code's inherited setting and does not restore that base entry: the code uses its lower-precedence Effect language-service configuration, where applicable, then its default. Unaffected inherited codes remain. A non-object `severities` container remains `EK3007`, and configuration errors retain their ordinary exit and emit consequences.
-
-```jsonc
-// Effective-entry recovery: base.json
-{ "vibe": { "effectGlobals": false, "severities": { "EK0801": "error", "EK4609": "off" } } }
-// child config: EK3006 on "bad"; EK0801 follows its default, while EK4609 and EK0508 stay off.
-{ "extends": "./base.json", "vibe": { "effectModules": false, "severities": { "EK0801": "bad", "EK0508": "off" } } }
-```
-
-```jsonc
-{ "vibe": { "effectGlobal": false } } // EK3007: use effectGlobals
-{ "vibe": { "effectModules": "no" } } // EK3007: use a boolean
-{ "vibe": { "severities": { "EK0801": "info" } } } // EK3006: use warning
-{ "vibe": { "severities": { "EK0801": 1 } } } // EK3006: use warning
-{ "vibe": { "severities": [] } } // EK3007: use an object
-```
-
-These settings have no Effect TypeScript runtime translation. With both switches disabled, use explicit imports, just as in TypeScript:
+For example, `"sidecarDir": ".vibe/declarations"` with `"rootDir": "."` uses `"rootDirs": [".", ".vibe/declarations"]` for stock TypeScript resolution. These settings have no runtime translation. With both prelude switches `false`, write explicit imports as in TypeScript:
 
 ```ts
 import { Effect } from "effect"
-
 Effect.runSync(Effect.succeed(42)) // 42
 ```
+
+### Diagnostic settings
 
 ```json
 { "vibe": { "severities": { "EK0801": "error", "EK4609": "off", "EK38100": "warning" } } }
 ```
 
-`vibe.severities` is a map keyed by the full `EK` code printed by the CLI and language server. Imported lint ordinals can add digits after `EK38`; `EK3801` and `EK38100` are distinct keys, compared as whole strings. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only VibeLang's own warning codes and imported `EK38xx` codes may appear; a VibeLang error code, an interim `EK92xx` code, even one printed as a warning, or an unknown code is a config error (`EK3006`: remove the entry; [VIP-30](/vips/0030-config-files#decision), [VIP-38](/vips/0038-effect-lint-built-in#decision)). `EK0801` is the configurable `using` warning; `EK4701` is the non-exhaustive `match` error and cannot be configured. This is a compiler setting, with no Effect TypeScript runtime translation.
+Keys are whole printed codes: `EK3801` and `EK38100` identify different rules. Only VibeLang's own warnings and assigned imported lint codes are configurable. A VibeLang error code, an interim `EK92xx` code, even one printed as a warning, or an unknown code is a config error (`EK3006`), including when set to `"error"` ([VIP-30](/vips/0030-config-files#decision), [VIP-38](/vips/0038-effect-lint-built-in#decision)). Thus `EK0801` is configurable; `EK4701` is not.
+
+| Code | Default | Trigger | Repair |
+| --- | --- | --- | --- |
+| `EK3006` | Error | A disallowed code or a severity entry whose value is not one of the four strings, whatever its JSON type | Remove the code or use a permitted value. |
+| `EK3007` | Error | An unknown `vibe` key or a wrong-typed value other than a severity entry, including a non-object `severities` | Remove the key or supply its declared type. |
+
+Merge `extends` before validating each effective severity entry. An invalid entry reports `EK3006` and contributes no override; valid entries and independent options still apply. An invalid child entry displaces its inherited entry without restoring it: fall back to the Effect language-service setting where applicable, then the default. Other inherited codes remain. Configuration errors keep their ordinary exit and emit consequences ([VIP-30](/vips/0030-config-files#decision)).
 
 ```jsonc
-// Invalid even when retaining the severity: VibeLang's own error codes cannot be configured.
+// Effective-entry recovery: base.json
+{ "vibe": { "effectGlobals": false, "severities": { "EK0801": "error", "EK4609": "off" } } }
+// child: EK3006 on "bad"; EK0801 uses its default; EK4609 and EK0508 stay off.
+{ "extends": "./base.json", "vibe": { "effectModules": false, "severities": { "EK0801": "bad", "EK0508": "off" } } }
+```
+
+```jsonc
+// Other invalid configurations:
+{ "vibe": { "effectGlobal": false } } // EK3007: use effectGlobals
+{ "vibe": { "effectModules": "no" } } // EK3007: use a boolean
+{ "vibe": { "severities": { "EK0801": 1 } } } // EK3006: use a severity string
+{ "vibe": { "severities": [] } } // EK3007: use an object
 { "vibe": { "severities": { "EK4701": "error" } } } // EK3006: remove the entry
 ```
 
-The configured category controls reporting. For VibeLang's own diagnostics, an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status ([VIP-34](/vips/0034-compiler-and-tooling#decision)). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on an own configurable warning, set it to `"error"`.
+For VibeLang's own diagnostics, `"error"` fails both `vibelang` and `vibelang lint` and participates in `noEmitOnError`; `"warning"` prints without changing exit status; `"suggestion"` is shown only by the language server ([VIP-34](/vips/0034-compiler-and-tooling#decision)). For every code, `"off"` reports nothing. To fail CI on an own warning, set it to `"error"`. Imported diagnostics instead use the [Effect lint host rules](/spec/007-tooling#effects-type-aware-lint) below.
 
-Imported Effect diagnostics in compiler builds follow their Effect language-service configuration, matching the pinned upstream TypeScript compiler. Warnings affect exit status and `noEmitOnError` unless `ignoreEffectWarningsInTscExitCode` is `true`; errors use `ignoreEffectErrorsInTscExitCode`. Suggestions print when `includeSuggestionsInTsc` is `true` and affect exit status and emission only when `ignoreEffectSuggestionsInTscExitCode` is `false`. These options do not suppress the printed diagnostics. The separate `vibelang lint` command retains its warning-only zero exit status.
+The retired `trustedPackages` key is ignored in `vibe` and supported legacy sections, with warning `EK3010`: remove it. Npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` without `@throws`; use a signature contract or an explicit `Effect.try` bridge ([VIP-4](/vips/0004-throw#decision), amended).
 
-The retired `trustedPackages` key is ignored in `vibe` and every supported legacy section (VIP-4, amended 2026-11-02), with warning `EK3010`. Remove it: npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` when no `@throws` is written; use a signature contract or an explicit `Effect.try` bridge. Module resolution follows TypeScript's tsconfig-driven rules, with `.vibe` and `.vibex` as source extensions beside `.ts` and `.tsx`: under NodeNext `./user.js` resolves to `user.vibe`, and a written `./x.ts` keeps TypeScript's native source and declaration substitutions, including `x.tsx` and `x.d.ts`, but does not fall back to `x.vibe` or `x.vibex`. If no native candidate resolves, it is `TS2307`. Migration never writes `moduleSuffixes`.
+Module resolution is as in TypeScript, with `.vibe` and `.vibex` beside `.ts` and `.tsx`: NodeNext `./user.js` can resolve to `user.vibe`. A written `./x.ts` keeps native substitutions, including `x.tsx` and `x.d.ts`, but never falls back to VibeLang source; no native candidate means `TS2307`. Migration never writes `moduleSuffixes`.
 
-Written relative `./x.vibe` and `./x.vibex` specifiers follow the `.ts`/`.tsx` twin's source-extension checks under the same tsconfig, including `TS5097` for a value import when neither `allowImportingTsExtensions` nor `rewriteRelativeImportExtensions` is enabled. Native restrictions on those options still apply. `rewriteRelativeImportExtensions` rewrites JavaScript specifiers, not declaration specifiers ([VIP-27](/vips/0027-declaration-output#decision)).
+Written `./x.vibe` and `./x.vibex` imports follow the `.ts`/`.tsx` twin's source-extension checks, including `TS5097` for a value import without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`. Native option restrictions apply. `rewriteRelativeImportExtensions` rewrites JavaScript specifiers, not declaration specifiers ([VIP-27](/vips/0027-declaration-output#decision)).
 
-A stale relative `.ts` name for a module migrated to `.vibe` or `.vibex` is `TS2307` under the rule above. `vibelang --fix` rewrites it in the selected project's own VibeLang sources to the name the project's import policy uses: `.vibe` or `.vibex` with `rewriteRelativeImportExtensions`, otherwise the runtime output `.js` (`.jsx` for a JSX-preserving target). A rewrite that can't preserve types, behavior and declaration output refuses at that site, and an unresolved name without a migrated sibling stays unresolved.
+For `TS2307` on a stale relative `.ts` name with a migrated sibling, `vibelang --fix` repairs owned VibeLang sources to `.vibe`/`.vibex` with `rewriteRelativeImportExtensions`, otherwise the runtime `.js` (`.jsx` for JSX-preserving output). It refuses changes that cannot preserve types, behavior and declarations; without a migrated sibling the import stays unresolved.
 
 ### Declaration import spelling
 
@@ -245,62 +245,112 @@ VibeLang declares an exact `effect` peer dependency. The compiler reads the reso
 
 ## Compiler and tooling requirements
 
-1. **Diagnostics.** Every VibeLang diagnostic has a code (`EKxxxx`) and a message in the user's words that says what is wrong and how to fix it, with a quick fix wherever the fix is mechanical. Quick fixes and codemods use the formatter to preserve the parse under Appendix A. [Appendix B](/spec/900-appendices#appendix-b-diagnostics) lists the codes. TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types. A rejection that depends on a VibeLang production, placement rule, proposal-specific early error or explicitly adopted reconciliation uses its owning VIP's `EK` code, even when a TypeScript parser helper implements it. Use an already assigned specific diagnostic for the same rejection; preserve independent native errors. A compilation whose emitted JavaScript imports `vibelang-runtime` and cannot resolve that package fails with one error naming it, TypeScript's `TS2307` for a missing module, as a missing dependency fails in TypeScript; it never reports the compiler-generated helpers the package provides as unresolved names.
-2. **Codemods.** Every breaking change ships a `vibelang --fix` codemod, so code that compiled under the previous release migrates mechanically. One `vibelang --fix` run applies fixes until none applies; running it again changes nothing. A run that has not converged within its pass limit reports the remaining fixes as an error. A `--fix` run writes only the selected project's own files: its `.vibe` and `.vibex` sources in the TypeScript program, including an owned source an import reaches even when `exclude` omits it from root discovery, and its own configuration files for the named legacy-severity and retired-`declarationSidecars` codemods. Config `extends` traversal stays inside the repository and outside `node_modules`. It never rewrites dependencies, sources resolved from `typeRoots` or bundled libraries, foreign `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs` or `.cjs` sources, declaration files (`.d.ts`, `.d.vibe.ts`, `.d.vibex.ts`), emitted output, `tsBuildInfoFile`, lock files or another referenced project's files; with `-b`, each project fixes its own files in build order. The platform repair alone may create a fresh sibling `.ts` module after proving preservation of run phase, captures, receiver and public types; it never overwrites an existing file. A repair requiring any other write gives the not-fixed explanation and changes nothing ([VIP-34](/vips/0034-compiler-and-tooling#decision), amended). For example, a trailing block ([VIP-11](/vips/0011-trailing-blocks-denied)) is `EK1101`, and its codemod writes the block as the call's last argument in the spelling of what it ran as: `Layer.effect(Users) { … }` becomes `Layer.effect(Users, effect { … })`, `it.effect("loads") { … }` becomes `it.effect("loads", effect () => { … })`, and a block passed as a plain callback becomes `() => { … }`. The rewrite preserves runtime behavior. A rewrite that can't preserve types, behavior and declaration output refuses at that site (VIP-34). Its kind and argument position come from the pinned legacy source, compiler and options, never from the callee's parameter type alone. Comments stay in the source, though their printed placement and equivalent arrow layout can differ; a comment between the call and its block makes the fix refuse the site. A versioned Effect-dual migration runs first: it retains its native call error (`TS2345`, `TS2554` or `TS2769`), or transitional `EK1023` when the appended call type-checks with changed meaning, without a duplicate `EK1101`, and preserves the original data-first or curried argument position ([VIP-11](/vips/0011-trailing-blocks-denied#amendments)). Ordinary parsing uses TypeScript's statement boundaries and recovery; private compatibility decoding supplies diagnosis and migration only, never a callback to execute. `EK1101` suppresses only a redundant missing-separator `TS1005` for the identical rejection; independent native errors remain. A line break before the block, an optional chain, a heritage clause, and the providers of a `provide` block are outside this form.
-3. **One formatter.** VibeLang's formatter is the only formatter. Prettier, dprint and Oxfmt reach it through plugins, so a repository's existing formatter command covers `.vibe` files. It takes the repository's quote style and print width from that formatter's configuration, so `.vibe` and `.ts` files share them. It preserves the `provide` line restrictions ([VIP-12](/vips/0012-provide)): never break after `provide`, before or after a provider-separating comma, or before the block’s `{`. A long provider list stays on one line. The formatter neither introduces nor removes `Layer.mergeAll(…)`; an author who writes it may break lines between its arguments ([example](/spec/005-services#syntax)). It preserves every line-sensitive and parenthesis-sensitive rule in [Appendix A](/spec/900-appendices#appendix-a-grammar): never insert or remove a line break or parentheses that change the parse. Its tests cover each such rule, including contextual keywords, Effect type slots, bodyless errors, field and variant separators, statement boundaries, `catch` arrows and `for concurrent` heads and bodies. Under the same compiler/options, formatting preserves parsed program meaning: bindings and scopes, operator and control-flow targets, evaluation order, receivers and call syntax, ordinary runtime values and effects, coldness, failures, interruption and finalizers. It preserves inferred and declared public types, declarations and throws contracts, and diagnostic codes, categories and occurrences; diagnostic locations and quoted source follow the formatted file. Comments and their code associations survive, including JSDoc, compiler/linter/tool directives and directive-prologue meaning. An unparsable file is reported and left unchanged; formatting is idempotent. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
+Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible. [Appendix B](/spec/900-appendices#appendix-b-diagnostics) assigns each VibeLang rule its `EK` code. Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types. A VibeLang production, placement rule, proposal early error or adopted reconciliation uses its owning VIP's code even when a TypeScript parser helper implements it; reuse an assigned code for the same rejection ([VIP-34](/vips/0034-compiler-and-tooling#decision)).
 
-   Ordinary layout and lexical-spelling normalization may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, source offsets, line/column and stack presentation may reflect the formatted text. This source-text boundary never permits changes to ordinary strings/data, tagged-template raw or cooked values, regex meaning, function names or lengths, property names or directive semantics. For example, changing an escaped string into an actual `use strict` directive changes meaning. Regenerate compiler-generated source-map and declaration-map provenance, including `sourcesContent`, for the formatted file; never retain stale maps. Preservation tests compare parsed source/emit structure, runtime behavior, types/declarations, diagnostics, comments/directives and maps; arbitrary regex stripping is unsound, and a finite structural oracle is not a proof of all program equivalence. Exact-byte tests remain useful where equality is expected, without restricting advertised native formatter style settings.
-4. **Existing tools work.** Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`. A repository's Oxlint JS-plugin rules run on `.vibe` files wherever the rule applies to the source or emitted forms. Every tool is tested against the dogfood repositories. The language server also resolves `./x.vibe` to the source whenever it is in the program, ignoring its stale `x.d.vibe.ts` beside it or under `vibe.sidecarDir`.
-5. **Emit names.** `x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; JavaScript output rewrites relative `./x.vibe` specifiers to `./x.js`. Ordinary package declarations use the native twin’s relative specifiers: `./user.vibe` is declared as `./user.ts` and `./App.vibex` as `./App.tsx`; written `./user.js`, `./App.jsx`, `./user` and native `./plain.ts` keep their spelling. Synthesized import types use TypeScript’s spelling for the twin under the same imports and tsconfig. Compatibility sidecars instead keep VibeLang source references such as `./user.vibe` and `./App.vibex`, relocated to the selected compatibility declaration when necessary, to preserve source identity. Neither `allowImportingTsExtensions` nor `rewriteRelativeImportExtensions` rewrites declaration specifiers; JavaScript output rewriting is separate. See [Declaration output](/spec/001-functions#declaration-output) (VIP-27, amended). `x.vibex` emits `x.jsx` under `"jsx": "preserve"` and `x.js` otherwise, as `x.tsx` does, and a relative `./x.vibex` specifier becomes the target file's actual output name (VIP-39). Bundler plugins use the same names ([VIP-34](/vips/0034-compiler-and-tooling#decision)). The `.d.vibe.ts` compatibility route above remains for tools reading `.vibe` specifiers.
-6. **Severities.** Only VibeLang's own warning codes and all imported `EK38xx` lint codes can be configured in `vibe.severities`. Entries for VibeLang's own error codes, interim `EK92xx` codes or unknown codes are config errors (`EK3006`), even if the requested severity is `"error"`.
+When emitted JavaScript needs `vibelang-runtime` and the package cannot resolve, report one `TS2307` naming that package, never unresolved names for its generated helpers.
 
-The transitional compiler also emits four migration warnings: `EK4853` writes previously inferred requirements explicitly under VIP-3; `EK4854` changes the retired abstract-class service spelling to `service`; `EK4855` changes a service's `default` value to a `defaultValue` factory under VIP-9; and `EK4856` replaces a use of the retired global `Effect<A, E, R>` alias with `A!E!R` where that needs no new parentheses, and with qualified `Effect.Effect<A, E, R>` otherwise, heritage elements included, under VIP-3. Migration error `EK4857` retires written `infer` slots in Effect return annotations: write the inferred types, or omit the annotation when every slot is `infer`, preserving declaration types under the safe-fix checks (VIP-3, amended). Their [compatibility inventory](/spec/900-appendices#transitional-compiler-diagnostics) records the emitted codes. `vibelang --fix` keeps the existing safe-fix checks and refusal rules. These repairs do not run Effects or change the normative omitted-slot and service semantics.
+### Fix ownership and preservation
 
-The `EK4856` transition selects the resolved legacy symbol, never the identifier spelling: a local or imported type named `Effect` retains its TypeScript meaning. Existing parentheses and written default slots stay, and the fix is refused where it cannot keep the `Effect` namespace binding ([VIP-3](/vips/0003-effect-type-shorthand#decision), amended). A rewrite that can't preserve types, behavior and declaration output refuses at that site; emitted declarations already print `Effect.Effect<…>` and do not change. The alias is removed only in a coordinated release of compiler, codemod and docs. Afterwards, module-only `Effect<number>` is native `TS2709`; an unbound name follows ordinary TypeScript resolution ([VIP-3](/vips/0003-effect-type-shorthand#decision), amended).
+```sh
+vibelang --fix -p tsconfig.json
+```
 
-**Formatting** preserves program meaning and contracts, not emitted bytes: bindings, evaluation order, receivers, runtime effects, failures and finalizers. Source maps are regenerated to describe the formatted source.
+Every breaking change ships a codemod. One `vibelang --fix` run applies fixes until none applies; running it again changes nothing. A run that has not converged within its pass limit reports the remaining fixes as an error. Quick fixes and codemods use the formatter to preserve the parse under Appendix A.
 
-**Migration.** `vibelang --fix` rewrites each retired form to its VIP form or to the native Effect TypeScript it means; the sections below name each form's diagnostic and rewrite. The legacy `fork(program, options)` call becomes `try Effect.forkChild(program, options)`. A rewrite that can't preserve types, behavior and declaration output refuses at that site ([VIP-34](/vips/0034-compiler-and-tooling#decision)). The user guide's *Migrating retired forms* page describes how the rewrites work; it is not normative.
+A run repairs only the selected project's own files ([VIP-34](/vips/0034-compiler-and-tooling#decision)):
+
+| File | Permitted repair writes |
+| --- | --- |
+| Owned `.vibe`/`.vibex` program sources | Includes an owned source an import reaches even when `exclude` omits it from root discovery. |
+| Owned configs | Legacy severity maps, retired `declarationSidecars`, the `EK3012` plugin-entry migration and the `--fix-vip-only` `EK4802` severity override ([below](/spec/007-tooling#fix-scopes)). Traverse `extends` only inside the repository and outside `node_modules`; report external configs without editing them. |
+| Fresh sibling `.ts` | Only the platform repair, after proving preservation of run phase, captures, receiver and public types; it never overwrites an existing file. |
+| Dependencies, `typeRoots`, bundled libraries, foreign `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, declarations (`.d.ts`, `.d.vibe.ts`, `.d.vibex.ts`), emitted output, `tsBuildInfoFile`, lock files and other referenced projects | No repair writes. With `-b`, each project fixes its own files in build order. |
+
+A forbidden write is refused with a not-fixed explanation and no change. A rewrite that can't preserve types, behavior and declaration output refuses at that site. [Scope flags](/spec/007-tooling#fix-scopes) select passes; [`--only`](/spec/007-tooling#selecting-ordinary-fix-files) further limits ordinary repairs.
+
+### Trailing-block migration
+
+| Code | Trigger | Repair |
+| --- | --- | --- |
+| `EK1101` | A rejected trailing block | Pass the block as the last argument: `Layer.effect(Users) { … }` becomes `Layer.effect(Users, effect { … })`; `it.effect("loads") { … }` becomes `it.effect("loads", effect () => { … })`; a plain callback becomes `() => { … }`. |
+| `TS2345`, `TS2554`, `TS2769`, or transitional `EK1023` | A legacy Effect-dual trailing block; `EK1023` applies when appending the block type-checks with changed meaning | The versioned dual migration runs first, preserves the original data-first or curried argument position and emits no duplicate `EK1101`. |
+
+Use the pinned legacy source, compiler and options to determine the block's kind and argument position, never the callee's parameter type alone. Preserve runtime behavior and comments; printed comment placement and equivalent arrow layout may differ. A comment between the call and its rejected trailing block refuses the fix ([VIP-11](/vips/0011-trailing-blocks-denied#amendments)).
+
+Parsing uses TypeScript's statement boundaries and recovery. Compatibility decoding supplies diagnosis and migration only, never an executable callback. `EK1101` suppresses only the redundant missing-separator `TS1005` for the same rejection; independent native errors remain. A newline before the block, an optional chain, a heritage clause and `provide` providers are outside this form.
+
+### Formatting and existing tools
+
+VibeLang's formatter is the only formatter. Prettier, dprint and Oxfmt reach it through plugins, so a repository's existing formatter command covers `.vibe` files. It takes the repository's quote style and print width from that formatter's configuration, so `.vibe` and `.ts` files share them. It preserves the `provide` line restrictions ([VIP-12](/vips/0012-provide)): never break after `provide`, before or after a provider-separating comma, or before the block’s `{`. A long provider list stays on one line. The formatter neither introduces nor removes `Layer.mergeAll(…)`; an author who writes it may break lines between its arguments ([example](/spec/005-services#syntax)). It preserves every line-sensitive and parenthesis-sensitive rule in [Appendix A](/spec/900-appendices#appendix-a-grammar): never insert or remove a line break or parentheses that change the parse. Its tests cover each such rule, including contextual keywords, Effect type slots, bodyless errors, field and variant separators, statement boundaries, `catch` arrows and `for concurrent` heads and bodies. Under the same compiler/options, formatting preserves parsed program meaning: bindings and scopes, operator and control-flow targets, evaluation order, receivers and call syntax, ordinary runtime values and effects, coldness, failures, interruption and finalizers. It preserves inferred and declared public types, declarations and throws contracts, and diagnostic codes, categories and occurrences; diagnostic locations and quoted source follow the formatted file. Comments and their code associations survive, including JSDoc, compiler/linter/tool directives and directive-prologue meaning. An unparsable file is reported and left unchanged; formatting is idempotent. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
+
+Ordinary layout and lexical-spelling normalization may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, source offsets, line/column and stack presentation may reflect the formatted text. This source-text boundary never permits changes to ordinary strings/data, tagged-template raw or cooked values, regex meaning, function names or lengths, property names or directive semantics. For example, changing an escaped string into an actual `use strict` directive changes meaning. Regenerate compiler-generated source-map and declaration-map provenance, including `sourcesContent`, for the formatted file; never retain stale maps. Preservation tests compare parsed source/emit structure, runtime behavior, types/declarations, diagnostics, comments/directives and maps; arbitrary regex stripping is unsound, and a finite structural oracle is not a proof of all program equivalence. Exact-byte tests remain useful where equality is expected, without restricting advertised native formatter style settings.
+
+Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`. A repository's Oxlint JS-plugin rules run on `.vibe` files wherever applicable to the source or emitted forms. Every tool is tested against the dogfood repositories. The language server prefers an in-program `./x.vibe` source to its stale adjacent or relocated `x.d.vibe.ts`.
+
+Output names follow the native twin: `x.vibe` emits `x.js` and `x.d.ts` in `outDir`; `x.vibex` emits `x.jsx` under `"jsx": "preserve"`, otherwise `x.js`. JavaScript source-extension rewriting requires `rewriteRelativeImportExtensions`. Bundler plugins use the same names ([VIP-34](/vips/0034-compiler-and-tooling#decision)). Ordinary declarations use the native twin's relative specifiers; compatibility sidecars preserve the selected VibeLang source identity, relocated when needed. Neither extension flag rewrites declaration specifiers; see [Declaration output](/spec/001-functions#declaration-output) ([VIP-27](/vips/0027-declaration-output#decision)).
+
+### Transitional diagnostics
+
+These [Appendix B compatibility codes](/spec/900-appendices#transitional-compiler-diagnostics) select preserving repairs; they do not run Effects or change omitted-slot or service semantics. `vibelang --fix` retains its safety checks and refusal rules.
+
+| Code | Default | Trigger | Repair |
+| --- | --- | --- | --- |
+| `EK4853` | Warning | An omitted requirement slot formerly inferred requirements | Write those requirements, or omit the whole return annotation to infer the contract (VIP-3). |
+| `EK4854` | Warning | The retired abstract-class service spelling | Write `service`, retaining its contract and key (VIP-9). |
+| `EK4855` | Warning | A service's cached `static readonly default` | Use an equivalent native `Context.Service` class, retaining its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure; otherwise refuse (VIP-9). |
+| `EK4856` | Warning | A type resolves to the retired global `Effect<A, E, R>` alias | Write `A!E!R` where it needs no new parentheses, otherwise `Effect.Effect<A, E, R>`, including heritage elements (VIP-3). |
+| `EK4857` | Error | An Effect return annotation has a written `infer` slot | Write inferred slot types, or omit the annotation when every slot is `infer`, preserving declaration types (VIP-3). |
+
+`EK4856` selects the resolved legacy symbol: local and imported types named `Effect` retain their TypeScript meaning. Keep existing parentheses, written default slots and the `Effect` namespace binding; otherwise refuse. Emitted declarations already use `Effect.Effect<…>` and stay unchanged. Remove the alias only with a coordinated compiler, codemod and docs release. Afterwards, a module-only `Effect<number>` is native `TS2709`; an unbound name follows TypeScript resolution ([VIP-3](/vips/0003-effect-type-shorthand#decision)).
+
+The remaining migrations below rewrite retired forms to their VIP form or equivalent Effect TypeScript under the same preservation rule. The legacy `fork(program, options)` call becomes `try Effect.forkChild(program, options)`. The user guide's *Migrating retired forms* page is explanatory, not normative.
 
 ### Ordinary mutable-marker migration
 
-`EK3410` reports a retired `mutable` marker on an ordinary interface or object-type property or index signature, or on a plain `error` payload. `vibelang --fix`, including `--fix-migration-only`, removes the redundant member marker and rewrites a marked plain `error` payload to an explicit compatibility class using the existing runtime error factory, which keeps tagged matching. A rewrite that can't preserve types, behavior and declaration output refuses at that site. Schema fields, schema errors, schema tuples and `data` bodies use their separate rules. A method or identifier named `mutable` keeps its TypeScript meaning.
-
-The rejection applies once the preserving codemods ship and all migration repositories have zero remaining accepted uses. This specifies the retirement target; it does not claim the held rejection implementation or consumer migration is complete.
+`EK3410` rejects a retired `mutable` marker on an ordinary interface or object-type property or index signature, or a plain `error` payload. `vibelang --fix`, including `--fix-migration-only`, removes redundant member markers; a marked plain-error payload becomes an explicit compatibility class using the existing runtime error factory, preserving tagged matching. Schema fields, schema errors, schema tuples and `data` bodies have separate rules. A method or identifier named `mutable` keeps its TypeScript meaning.
 
 ### Legacy data receiver methods
 
-At the retirement target, `EK1402` is an error for a legacy Effect data receiver method, such as `Option.some(1).map(f)`. `vibelang --fix`, including `--fix-migration-only`, rewrites it to the resolved module's data-first function: `Option.map(Option.some(1), f)`. A rewrite that can't preserve types, behavior and declaration output refuses at that site. Native/own methods, namespace calls, computed access and optional chains are not this form. This specifies the retirement target; enforcement waits for the preserving codemod to ship and migration repositories to have zero remaining uses. It does not specify an interim diagnostic or claim that the held rejection implementation or consumer migration is complete.
+`EK1402` rejects a legacy Effect data receiver method such as `Option.some(1).map(f)`. `vibelang --fix`, including `--fix-migration-only`, writes the resolved module's data-first call, `Option.map(Option.some(1), f)`. Native/own methods, namespace calls, computed access and optional chains are outside this form. No interim diagnostic is specified.
 
 ### Legacy prelude shorthand
 
-The transitional compiler accepts the two legacy shorthands below with no migration diagnostic; the migration is selected by its resolved legacy binding. This is temporary compatibility, not a VIP-14 namespace rule. Remove that compatibility only in a coordinated compiler/codemod/docs release after the preserving migrations ship and migration repositories have zero remaining uses. Afterwards, using a module namespace as a type, such as bare `Scope` or `Option<A>`, reports native `TS2709`; looking up a member absent from that namespace, such as `FileSystem.of`, reports native `TS2339`. These are TypeScript's errors on the equivalent explicit namespace imports, not newly allocated `EK` codes. The [transitional inventory](/spec/900-appendices#transitional-compiler-diagnostics) records the diagnostic-free compatibility.
+The transitional compiler accepts these shorthands without a migration diagnostic. All three `--fix` scopes select their resolved legacy bindings:
 
-For a legacy bare prelude `Scope` type, `vibelang --fix` writes `Scope.Scope`; `--fix-migration-only` and `--fix-vip-only` apply this migration too. A written import, local or ambient type, or type parameter named `Scope` keeps its TypeScript meaning. Prelude cleanup retains the qualified namespace type.
+| Written shorthand | Repair | After retirement |
+| --- | --- | --- |
+| Bare prelude `Scope` type | `Scope.Scope` | Native `TS2709` for using a module namespace as a type |
+| Same-named module export, such as `Option<A>` or `FileSystem.of(impl)` | `Option.Option<A>` or `FileSystem.FileSystem.of(impl)` | Native `TS2709` for a namespace type or `TS2339` for an absent namespace member |
 
-`--fix`, including `--fix-vip-only` and `--fix-migration-only`, expands the retired same-named module-export shorthand using the resolved binding: `Option<A>` becomes `Option.Option<A>`, and `FileSystem.of(impl)` becomes `FileSystem.FileSystem.of(impl)`. VIP-14 supplies module namespaces; a local type, an ambient type, an already qualified export and a namespace's own member keep their meaning. Prelude import cleanup retains these explicit export names. For both shorthands, a rewrite that can't preserve types, behavior and declaration output refuses at that site.
+Written imports, local or ambient types, type parameters, already qualified exports and a namespace's own members keep their TypeScript meaning. Prelude import cleanup retains the explicit export names. These are TypeScript's errors on equivalent explicit namespace imports, not new `EK` codes. Remove compatibility only in a coordinated compiler, codemod and docs release; the [transitional inventory](/spec/900-appendices#transitional-compiler-diagnostics) records it.
 
 ### Legacy fork, try-statement and wire migration
 
-A bare `fork { … }` block is `EK1707`. `vibelang --fix` rewrites it to `fork effect { … }` (VIP-2 and VIP-17); explicit Effect operands are unchanged.
+| Code | Rejected form | `vibelang --fix` repair |
+| --- | --- | --- |
+| `EK1707` | Bare `fork { … }` | `fork effect { … }`; explicit Effect operands stay unchanged (VIP-2, VIP-17). |
+| `EK0503` | A `try` statement in effect code | Explicit Effects, `catch effect` and native cleanup combinators (VIP-5). |
+| `EK2401` | The resolved retired `wire` intrinsic | Explicit `Layer.provideMerge` composition replaces the rejected form; an unrelated local `wire` keeps its TypeScript meaning (VIP-24). |
 
-A `try` statement in effect code is `EK0503`. `vibelang --fix` rewrites its catches and finalizers to explicit Effects, `catch effect` and native cleanup combinators under VIP-5.
-
-The resolved retired `wire` intrinsic is `EK2401`. `vibelang --fix` rewrites it to explicit `Layer.provideMerge` composition under VIP-24. An unrelated local function named `wire` keeps its TypeScript meaning.
-
-For each of the three, a rewrite that can't preserve types, behavior and declaration output refuses at that site. The held enforcement changes still require landed codemods and zero remaining uses in every migration repository. The spec does not wait for those code receipts.
+For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until preserving codemods ship and every migration repository has zero remaining uses. This states the target, not completion of implementation or consumer migration. Every repair obeys the [preservation and refusal rules](/spec/007-tooling#fix-ownership-and-preservation).
 
 ### Empty legacy trust wrappers
 
-The resolved `trusted(f, [])` runtime wrapper is retired with `EK0407`. `vibelang --fix` rewrites each private direct synchronous call in an explicit Effect body to an identity-mapped `Effect.try` and `Effect.orDie` bridge over `f`, captured at the original declaration. A rewrite that can't preserve types, behavior and declaration output refuses at that site. A reviewed `.ts` helper with `@throws {never}` is another replacement. Listed-failure wrappers are outside this migration.
+`EK0407` retires the resolved `trusted(f, [])` wrapper. For each private direct synchronous call in an explicit Effect body, `vibelang --fix` writes an identity-mapped `Effect.try` and `Effect.orDie` bridge over `f`, captured at the original declaration, or refuses if preservation cannot be proved. A reviewed `.ts` helper with `@throws {never}` is another replacement. Listed-failure wrappers are outside this migration.
 
 ### Legacy entry-dispatch migration
 
-The side-effect imports `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser` are retired compiler-only entry markers, including in a module without `main`: `EK2601`, `legacy platform entry marker: run vibelang --fix and write an explicit runner`. The migration input is a marked module, not an ordinary exported `main` without a marker. An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body, without a checker-resolved top-level runner call under the pinned legacy compiler and options. A marked module without an eligible startup has no startup to expand: `vibelang --fix` removes its inert marker and keeps any existing explicit runner unchanged.
+`EK2601` rejects the retired side-effect markers `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser`, even without `main`: `legacy platform entry marker: run vibelang --fix and write an explicit runner`.
 
-For an eligible startup, `vibelang --fix` writes an explicit Effect platform runner call and removes the marker. The `node` marker selects `NodeRuntime.runMain` from `@effect/platform-node/NodeRuntime`; `bun` selects that same runner, with `BunServices.layer` from `@effect/platform-bun/BunServices` when the legacy compiler selected it; `browser` selects `BrowserRuntime.runMain` from `@effect/platform-browser/BrowserRuntime`. Preserve the layers the pinned legacy compiler actually selected: `NodeServices.layer`, `BunServices.layer` or `BrowserServices.layer`, the selected experimental layers and their nesting order. A marker does not by itself add a layer. The runner receives `main()` for a legacy Effect function and `Effect.sync(main)` otherwise, keeping the declaration's callable kind and public types.
+Only a marked module is migration input. An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body and no checker-resolved top-level runner call under the pinned legacy compiler and options. `vibelang --fix` removes the marker and expands eligible startup as follows:
 
-A rewrite that can't preserve types, behavior and declaration output refuses at that site. In particular, preserve entry-only execution and import-only behavior; refuse an unavailable selected runner or layer, or an entry test that cannot be expressed in admitted source. CommonJS does not authorize retaining the retired runtime entry dispatcher, and an ESM rewrite cannot introduce the forbidden `import.meta.main` read. If either needs such a form to preserve startup, leave the marker unchanged and report its file, line and reason as not fixed, with a nonzero exit. No retired runtime dispatcher or fallback runner is a migration target. A remaining marker still reports `EK2601`. A function named `main` alone remains ordinary source and gets no entry diagnostic, and current compilation emits no implicit startup ([VIP-26](/vips/0026-top-level-and-main#decision), [VIP-34](/vips/0034-compiler-and-tooling#decision)).
+| Marker | Explicit runner | Legacy service layer |
+| --- | --- | --- |
+| `node` | `NodeRuntime.runMain` from `@effect/platform-node/NodeRuntime` | `NodeServices.layer` |
+| `bun` | The same Node runner | `BunServices.layer` from `@effect/platform-bun/BunServices` |
+| `browser` | `BrowserRuntime.runMain` from `@effect/platform-browser/BrowserRuntime` | `BrowserServices.layer` |
+
+Use a listed service layer only when the pinned legacy compiler selected it; preserve selected experimental layers and nesting order. A marker does not by itself add a layer. Pass `main()` for an Effect function, otherwise `Effect.sync(main)`, retaining the declaration's callable kind and public types. Without eligible startup, remove only the inert marker and keep any explicit runner. CommonJS does not justify retaining the retired dispatcher; ESM cannot introduce `import.meta.main`. Preserve entry-only execution and import-only behavior. Refuse an unavailable runner or layer, an entry test not expressible in admitted source, or any other loss of types, behavior or declarations: keep the marker and report its file, line and reason as not fixed, with a nonzero exit. No retired dispatcher or fallback runner is a migration target. A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](/vips/0026-top-level-and-main#decision), [VIP-34](/vips/0034-compiler-and-tooling#decision)).
 
 ### Selecting ordinary fix files
 
@@ -318,23 +368,41 @@ vibelang --only src/a.vibe # TS5023: add --fix
 vibelang lint -p tsconfig.json
 ```
 
-The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on selected `.ts` and `.vibe` inputs, keeping the pinned upstream rule/file eligibility and declaration/library exclusions. VibeLang-specific language checks remain confined to `.vibe`. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI (VIP-38, amended). A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command emits no files and uses the same configuration and diagnostic categories as the compiler and language server; it has no Effect TypeScript runtime translation.
-
-Each imported `effecttsgo/*` rule gets one stable `EK38xx` code, in a normative table generated from the pinned effect-tsgo version ([Imported lint codes](/spec/900-appendices#imported-lint-codes)); a VIP-32 bump regenerates the table, and a rule's code never changes once assigned ([VIP-38](/vips/0038-effect-lint-built-in#decision)). The CLI and language server print that code with the rule name in the message: `EK3801 floatingEffect: …`. A rule's severity resolves in this order, the more specific winning, as a tsconfig child overrides its base: an entry for its code in `vibe.severities`; else the repository's Effect language-service configuration; else the rule's default. Every `EK38xx` code is a lint code and may be set to any value, `"off"` included: VIP-34's "errors can't be off" covers VibeLang's own rules.
-
 ```json
-{ "vibe": { "severities": { "EK3801": "warning" } } }
+{ "compilerOptions": { "plugins": [{ "name": "@effect/language-service" }] }, "vibe": { "severities": { "EK3801": "warning" } } }
 ```
 
-An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](/spec/002-running#effect-blocks)). The imported `floatingEffect` rule reports it under its `EK38xx` code, just as it reports a discarded Effect in TypeScript.
+The existing Effect language-service configuration in `compilerOptions.plugins` selects the imported `effecttsgo/*` rules. They run on selected `.ts` and `.vibe` inputs, keeping the pinned upstream rule/file eligibility and declaration/library exclusions. VibeLang-specific language checks remain confined to `.vibe` ([VIP-38](/vips/0038-effect-lint-built-in#decision)).
 
-These are VibeLang’s own configurable warnings, distinct from the imported `EK38xx` rules; they already have decided codes and preserve the underlying TypeScript behavior ([Running Effects](/spec/002-running)):
+Compiler builds, the language server and `vibelang lint` use the same activation and selection: a resolved plugin entry named `@effect/language-service` enables the rules; `diagnostics: false` or `diagnosticSeverity: null` disables its diagnostics. Inheritance and native options follow the pinned upstream. A `vibe.severities` entry alone neither activates the plugin nor re-enables disabled diagnostics. Once enabled, severity resolves from `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default ([VIP-38](/vips/0038-effect-lint-built-in#decision)). An override can enable a default-off rule; every assigned imported code accepts all four severity values, even `"off"` for a default-error rule.
+
+### Reporting and exit status
+
+| Host | Imported diagnostic behavior |
+| --- | --- |
+| Compiler | Warnings affect exit status and `noEmitOnError` unless `ignoreEffectWarningsInTscExitCode` is `true`; errors use `ignoreEffectErrorsInTscExitCode`. Suggestions print when `includeSuggestionsInTsc` is `true` and affect exit/emission only when `ignoreEffectSuggestionsInTscExitCode` is `false`. Ignore options do not hide printed diagnostics. |
+| Language server | Uses the same rule selection and categories, with the upstream options for that host. |
+| `vibelang lint` | Emits no files, fails on errors, and exits `0` for warnings or suggestions alone. Compiler `*InTscExitCode` options do not apply. It accepts compiler options and files only, never an Oxlint config or lint-specific flags. |
+
+Pinned defaults are `diagnostics: true`, `includeSuggestionsInTsc: true`, `ignoreEffectErrorsInTscExitCode: false`, `ignoreEffectWarningsInTscExitCode: false` and `ignoreEffectSuggestionsInTscExitCode: true`. Severity overrides change categories, not these options. The separate Oxlint integration keeps its own configuration ([VIP-38](/vips/0038-effect-lint-built-in#decision)).
+
+### Severity-key activation migration
+
+`EK3012` is a migration warning when a resolved config has an assigned `EK38xx` severity key, `"off"` included, without a resolved Effect plugin entry: `an imported lint severity needs an explicit Effect plugin entry; run vibelang --fix`. An existing resolved plugin entry named `@effect/language-service`, including a native disable setting, prevents this migration. An unrelated plugin does not prevent it.
+
+Ordinary `--fix`, `--fix-migration-only` and `--fix-vip-only` append `{ "name": "@effect/language-service" }` to the selected project's own `compilerOptions.plugins`. Copy inherited plugin entries before appending; never edit an external base. Retain explicit disables, severities, JSONC comments and unrelated settings under the [ownership and preservation rules](/spec/007-tooling#fix-ownership-and-preservation). Selected-file `--fix --only` writes no configs and cannot apply this repair.
+
+The legacy shortcut activated the whole default plugin even for an `"off"` key. Add no per-rule suppression or ignore flags: the plain entry must preserve diagnostic inclusion, categories, exit status and emission, except for `EK3012` itself. Refuse an unprovable replacement. With the entry present, migration is idempotent and reports no `EK3012`. Retire implicit severity-key activation only when this migration is available and verified against the legacy release ([VIP-38](/vips/0038-effect-lint-built-in#decision)).
+
+### VibeLang warnings
+
+The following own warnings default to `"warning"`; they are separate from imported rules and the [TypeScript-form advisories](/spec/007-tooling#typescript-spellings-with-vibelang-forms). They preserve the underlying behavior. An `effect { … }` expression statement builds and discards an unrun Effect; imported `floatingEffect` reports it as `EK3801`, as in TypeScript.
 
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
 | A plain `catch` handler returns an unrun Effect ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK0508` | `catch effect (e) => try …` |
 | A plain call in effect code infers an Effect type argument outside a declared Effect position ([Inferred Effect arguments](/spec/002-running#inferred-effect-arguments); [VIP-1, amended](/vips/0001-effect-and-async-functions#amendment-inferred-effect-arguments-2026-11-03)) | `EK4802` | The editor offers `try` for a direct Effect-valued argument when its written failure and requirement contract accepts it, or explicit type arguments to keep the program. Batch `--fix` chooses only `try` and refuses an edit that adds an error. |
-| An `effect` function returns an Effect value unrun, so its caller gets the program instead of its result ([VIP-1](/vips/0001-effect-and-async-functions), [VIP-5](/vips/0005-try-runs-effects#decision)) | `EK4802` | `return try e`; no automatic fix in ordinary `--fix` |
+| Imported lint severities have no resolved Effect plugin entry | `EK3012` | Run `vibelang --fix` to preserve legacy plugin activation explicitly. |
 | A legacy severity map remains in the config | `EK3009` | Run `vibelang --fix` after resolving obsolete entries. |
 | The retired `trustedPackages` key is ignored ([VIP-4](/vips/0004-throw), amended 2026-11-02) | `EK3010` | Remove the key; npm functions follow the ordinary foreign-callable contract. |
 | A retired `declarationImportStyle` setting is ignored, for every value ([VIP-30](/vips/0030-config-files)) | `EK3011` | Remove the setting; declaration spelling follows the native TypeScript twin. |
@@ -343,11 +411,13 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 | `await` on a `Fiber` ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK4609` | `await runPromise(Fiber.join(fiber))` in `async` code; `join fiber` in effect code |
 | `await` on a `Deferred` ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK4610` | `await runPromise(Deferred.await(deferred))` in `async` code; `try Deferred.await(deferred)` in effect code |
 
-The imported rules are pinned by `UPSTREAM` to `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` ([VIP-38](/vips/0038-effect-lint-built-in#decision)). The normative [`lint-codes.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/lint-codes.json) and the table below are generated with `node docs/tools/lint-codes.mjs --write`. An upstream bump runs `sh tsc/internal/effecttsgo/sync.sh <tag>` from `typescript/` and regenerates the inventory.
+### Imported code inventory
 
-Each rule has one stable code: the `EK38` prefix followed by a decimal ordinal of at least two digits. The initial allocation retains `EK3801` for `floatingEffect` and sorts all remaining rule names from ordinal 2 ([VIP-38](/vips/0038-effect-lint-built-in#decision)); future additions sort only the new names and append after the largest reserved ordinal. After `EK3899` comes `EK38100`, so the prefix also accommodates this pin's 130 rules ([VIP-38](/vips/0038-effect-lint-built-in#decision)). Keep assignments in `docs/tools/lint-code-assignments.json`; removed rules retain their reservation and codes are never renumbered or reused.
+The imported rules are pinned by `UPSTREAM` to `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` ([VIP-38](/vips/0038-effect-lint-built-in#decision)). The generated table below and [`lint-codes.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/lint-codes.json) assign one stable code per rule, even for a rule with several upstream messages. CLI and editor print the code and rule name, for example `EK3801 floatingEffect: …`.
 
-Severity resolves from an entry for the printed code in `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default ([VIP-38](/vips/0038-effect-lint-built-in#decision)). Every imported code accepts `"off"`, including rules whose default is `"error"`. A code identifies one rule even when that rule emits several upstream messages.
+Keep `EK3801` for `floatingEffect`; the initial allocation sorts all remaining rule names from ordinal 2. Future additions append in sorted order after the highest reserved ordinal; removed rules keep their slots and a rule's code never changes once assigned ([VIP-38](/vips/0038-effect-lint-built-in#decision)). Codes have the prefix `EK38` and a decimal ordinal of at least two digits: `EK3899` is followed by `EK38100`. This pin has 130 rules. Assignments live in `docs/tools/lint-code-assignments.json`.
+
+A VIP-32 upstream bump runs `sh tsc/internal/effecttsgo/sync.sh <tag>` from `typescript/`, then `node docs/tools/lint-codes.mjs --write` regenerates the inventory and tables. Defaults are in the generated table; severity resolution is defined above.
 
 
 
@@ -490,6 +560,8 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
+## Fix scopes
+
 `vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project ([VIP-38](/vips/0038-effect-lint-built-in#decision)). `vibelang --fix` remains the codemod entry point. Two flags scope that invocation ([VIP-34, amended](/vips/0034-compiler-and-tooling#decision)):
 
 | Flag | Scope when used with `--fix` |
@@ -511,6 +583,6 @@ Only `--fix-vip-only` runs the VIP-1/VIP-2 function-kind and `try` passes, readi
 
 A value that fails that operand test, such as `Option.some(1)` or `Result.succeed(2)`, keeps `EK0502`: the migration inserts no conversion and unwraps nothing, whatever methods the value has ([VIP-5](/vips/0005-try-runs-effects#decision), amended).
 
-When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK4802": "error" } }` in the project's config with a comment that says why, so all `EK4802` sites in the project, both unrun returns and inferred Effect arguments, fail to compile; the owner removes the setting once a run refuses none.
+When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK4802": "error" } }` in the project's config with a comment that says why, so all `EK4802` inferred Effect argument sites in the project fail to compile; the owner removes the setting once a run refuses none.
 
 These commands have no Effect TypeScript runtime translation.

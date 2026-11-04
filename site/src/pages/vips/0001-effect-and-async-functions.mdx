@@ -51,7 +51,7 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
 
 Grounds: accepted VIP-1 says "Calling an `effect` function returns its Effect unrun"; VIP-5 says "`try e` runs the Effect `e`"; VIP-34 says "Warning severities can be adjusted in the config's `"vibe"` section". These establish cold calls, explicit execution and configurable warnings. This amendment records the agents' advisory `EK4802` trigger, not a direct answer from Will requiring rejection.
 
-`EK4802` keeps its configurable severity (warning by default, VIP-34); it changes neither TypeScript inference nor runtime execution. A warning can be ignored or configured to `"off"`, leaving the Effect argument unrun; it does not enforce an error or an inserted `try`. The VIP-1 migration's project-wide severity override still covers both unrun returns and inferred Effect arguments.
+`EK4802` keeps its configurable severity (warning by default, VIP-34); it changes neither TypeScript inference nor runtime execution. A warning can be ignored or configured to `"off"`, leaving the Effect argument unrun; it does not enforce an error or an inserted `try`. The VIP-1 migration's project-wide severity override covers inferred Effect arguments.
 
 The stronger requirement relayed by effectscript-11 on 2026-11-03 08:20Z, "must be an error or get its try, never silently pass the Effect", is not fulfilled by that advisory warning. Its authority and the inferred-argument policy remain the separate R19 OPUS-5 question, which remains open with Will; this wording does not settle it.
 

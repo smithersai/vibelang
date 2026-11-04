@@ -3955,6 +3955,12 @@ typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:3:21 
 typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:3:79 lambda program table
 typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:7:22 lambda plain fallback
 typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:7:80 lambda program table
+typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:12:24 lambda plain fallback
+typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:17:21 lambda plain fallback
+typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:17:92 lambda program table
+typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:22:21 lambda plain fallback
+typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:7:21 lambda plain fallback
+typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:7:80 lambda program table
 typescript/vibelang/cases/migrate-t3code-effect-fn-stage-arguments-fixed/lib.vibe:11:43 byname program table
 typescript/vibelang/cases/migrate-t3code-effect-fn-stage-arguments-fixed/lib.vibe:11:7 lambda effectFn fallback
 typescript/vibelang/cases/migrate-t3code-effect-fn-stage-arguments-fixed/lib.vibe:14:25 lambda choice fallback

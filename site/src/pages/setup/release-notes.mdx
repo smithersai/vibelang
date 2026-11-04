@@ -12,6 +12,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.11 (unreleased)
 - Effect's `deterministicKeys` rule asked a service moved into a `module` body for a key built from the body's own file, `@x/pkg/a.vibe.platform/Port`, where its `.ts` file had `@x/pkg/a/Port`, so every keyed service the migrate flow moved into `module platform { }` failed with `EK3822` (15 t3code desktop modules). A body's keys now come from the `.vibe` file that holds it, so a moved service keeps its key and its run-time identity.
+- A build of many `.vibe` files that write `Effect.Array` or another `Effect.M` module could stop at random with `fatal error: concurrent map read and map write` in `(*lowering).visit`. Each file's lowering now reads its own copy of what the checker recorded.
+- A type such as `Missing.Shape`, where no scope declares `Missing`, stopped the compiler with `fatal error: stack overflow`. It now reports the error TypeScript reports for the same text.
+- The published-declaration checker (`scripts/api-identity.mjs`) made one export's verdict depend on the rest of the batch: a `TS7016` inside `electron-updater` flagged t3code's byte-identical `vite.config.d.ts` default, and every desktop module's proof with it, while a real `// @ts-ignore`d error in an export's own closure passed when nothing else in the program reported one. Every compared export is now inspected for error types, and an error in a declaration outside both snapshots no longer counts while both sides reach the same declarations.
+- `vibelang --fix` changed the declaration of an `Effect.fn` with a defaulted parameter: `Effect.fn(function* (o: T = {}) { … })` declares `(o?: T | undefined)`, and the effect function it wrote declared `(o?: T)`. It now writes `o: T | undefined = {}`, which declares what the original did; the parameter still reads `T` in the body. A rest parameter `...r: ReadonlyArray<T>` now becomes `...r: T[]`, as `tsc` declares it, not `readonly T[]`.
 - `vibelang --fix` refused every fix a round had not told apart when it reached its bound of 256 checks, all under the round's first error, and a rerun did the same: on t3code's server a round refused 237 fixes under one error of an unrelated file, and a rerun applied none. The round now keeps the fixes a fresh check of the whole project verifies once the fixes its errors can come from are set aside, and names each refused fix by an error of its own file or of a file that imports it.
 - The migrate flow's setup stopped with `TS2307: Cannot find module './calendarDate.vibe'` in a package whose committed declaration sidecars import a migrated neighbour as `./x.vibe`, such as `packages/foldkit` in Foldkit: the check of earlier runs' declarations copied the sidecars into a tree that holds only `x.d.ts`. It now spells those imports as the emitted declarations do, `./x.js`, and compares the APIs.
 - The migrate flow's codemod still rewrote an extensionless import in a test fixture, such as `../target` in `src/fixtures/a.ts`, to `../target.vibe`, and its own test check then refused the batch. A fixture now keeps an extensionless import as written, as a test does.
@@ -189,10 +193,22 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The direct-consumer migration regression expected its specification comments to disappear and failed the compiler gate. Its fixed example now preserves those comments and checks diagnostics at the corresponding source lines.
 - Upgrade regression checks could stop at an invalid fixture lockfile, missing package version or text placeholder used as a toolchain archive. Valid package fixtures now reach the upgrade gates and verify public release dependencies alongside exact staged development pins.
 
+- Source-map fuzz checks could confuse a loop's shadowed binding with an outer declaration of the same name. They now distinguish written binding sites while retaining strict checks for misplaced mappings of real declarations.
+
+- Computed assignment keys around `do` now have native-JavaScript differential coverage, including compound and logical assignments, coercion side effects and abrupt completion.
+
+- Inferred `FileSystem` service identity lacked regression coverage beside ambient host types. New native-twin tests cover function, arrow and layer annotations, including sidecar resolution.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 
 - A native checker reported `TS2307` when it reached a package whose VibeLang declarations were hidden under `vibe.sidecarDir` through another package’s TypeScript sources. Setup now supplies private type routes to the physical declarations, preserving loader identity and the normal built JavaScript and declaration paths. Bun’s native `bun check --no-script` keeps its existing command.
+- The service-read migration check rejected the simplified tooling specification because it quoted retired wording. It now checks the current requirement to preserve types, behavior and declaration output.
+
+- Fuzz validation still treated eight module and diagnostic registry examples and a recovered malformed layer input as compiler gaps after their fixes landed. Those retained regression inputs now run as strict checks.
+
+- Regression coverage now checks ambient `error` and `schema error` quick fixes across explicit and inherited declaration contexts, so a repair that introduces executable class code is detected. Known compiler gaps remain tracked separately.
+
 - The new catch-handler projection fuzz target omitted its CPU-budget registration. It now participates in the same short-seed budget check as every other target.
 - The editor stopped offering "Run it with try" on a direct Effect argument that `EK4802` reports at a plain generic call. It offers it again when the enclosing contract accepts the Effect; a returned program stays data and gets no action.
 - The TS7 mapper stopped parsing every `for try` loop after its head began lifting the Stream into a separate scope. The mapper now keeps the loop as written.
@@ -214,6 +230,28 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An error accessor with a forbidden `effect` modifier and a reserved `_tag` name reported an extra tag error; it now reports the modifier error without the extra reserved-tag error, preserving independent TypeScript errors.
 
 - The compiler regression suite rejected accepted service defaults, readonly schema migrations, declaration sidecar imports and legacy trailing-block repairs after the language rules changed; those checks now use the current syntax and preserve their original migration and rename assertions.
+- `vibelang --fix` resolved every import of a large project again for each checking program. It now reuses module resolutions while the set of created files stays the same, reducing the time spent finding unchanged modules.
+
+- Vite, Vitest, source loaders and typed ESLint rejected `.vibe` modules included only by a sibling `tsconfig.json`, sometimes preventing tests from starting. They now find a containing project within the package and use its compiler options. Overlapping projects follow nearest-config and project-reference selection; modules no project contains still fail clearly.
+
+- A build that the migrate flow's setup moved from plain `tsc` to `vibelang` failed when its only diagnostics were Effect warnings, though `tsc` ignores the tsconfig's `@effect/language-service` entry and passed: opencode's `@opencode/http-recorder` build exited 2 on `unstableApiUsage` warnings, so its `script/pack.ts` published nothing. In a repository whose package scripts never run `effect-tsgo` or `effect-language-service`, setup now adds `"ignoreEffectWarningsInTscExitCode": true` and `"ignoreEffectErrorsInTscExitCode": true` to each `@effect/language-service` entry in its tsconfigs, keeping any value the entry already sets. `vibelang` honors them, so those diagnostics still print and no longer fail the build. A repository that patches its compiler keeps the Effect exit policy.
+- Migration verification tests failed after the pack gate began requiring an upstream receipt. Their fixtures now record real pack baselines; missing receipts and unauthorized edits still fail.
+
+- A plain generic call such as `expect(awaited())` could report `EK4802` without its direct-argument repair. The editor and `--fix` now offer `try` when the written contract accepts it; returned Effects retain their existing repair policy.
+
+- The VIP migration could refuse a generic call with an Effect supplied by another argument, reporting `EK0502` after running a program the old call held. It now preserves that sibling-established program context.
+
+- The compiler's keyword coverage check treated a quoted `"constructor"` member name as a VibeLang keyword and failed the parser suite. It now distinguishes guarded string-literal data from keyword comparisons and ignores examples in comments or test fixtures.
+- The grammar admission check no longer reports the compiler helper for `super` method and tag receivers as undocumented; it now cites the existing Effect callable bindings rule.
+- Grammar admission checks still expected the old interruption-placement bug after the compiler fixed it. Their saved witnesses now verify rejection and no longer report an obsolete pending gap.
+- Newly published Effect-type lookahead and call-time parameter helpers could fail the grammar admission inventory gate. The inventory now records their existing language authority.
+- The grammar admission fuzzer could mistake an invalid `for await` placement for accepted undefined syntax. It now recognizes TypeScript's `TS1103` rejection and keeps a minimized replay.
+- Reordering the grammar admission inventory could incorrectly report a duplicate hook when a legacy branch row preceded its base row. The census now accepts either order while still rejecting repeated rows.
+- The grammar admission inventory stopped accounting for every compiler helper after a hatch operand helper was extracted; that helper now has an explicit pending row under the existing hatch audit.
+- The fuzz suite refused an editor regression’s pending record because it lacked a specification reference; it now cites `VIP-34` and retains the same reproducer.
+- The grammar admission audit could mistake TypeScript’s `for await…of` loops for undefined VibeLang syntax; its grammar now derives those loops and checks malformed heads separately.
+
+- `fork` and `join` in plain functions, nested callbacks, initializers and parameter defaults could compile or report an operand error. They now report `EK1701`; `vibelang --fix` preserves the old cold program construction with an explicit API call.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.
 - A function whose only statement is `return try value` showed V8 coverage, and tools that read it, a second function for the generator the compiler makes. That generator now maps to no source position, so coverage counts one function, as before tail `try` kept native delegation.
 

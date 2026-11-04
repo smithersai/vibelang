@@ -115,9 +115,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 2,500 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,100 |
-| **Build and test** | **15,000** |
+| **Build and test** | **16,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 12,000 |
-| [Vite and Vitest](../setup/vite.md) | 3,300 |
+| [Vite and Vitest](../setup/vite.md) | 3,400 |
 | **Format and lint** | **9,500** |
 | [Format with dprint](../setup/formatting.md) | 2,600 |
 | [Developer tools](../setup/developer-tools.md) | 6,900 |
@@ -183,7 +183,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Caching Effects](../caching/045-caching-effects.md) | 950 |
 | [Cache](../caching/046-cache.md) | 1,100 |
 | **Concurrency** | **9,100** |
-| [Fibers](../concurrency/047-fibers.md) | 3,800 |
+| [Fibers](../concurrency/047-fibers.md) | 3,900 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,400 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,300 |

@@ -93,7 +93,7 @@ An import a declaration file adds, such as `import { Effect } from 'effect'` for
 
 ## 2. Replace tsc in the scripts
 
-In `package.json`, replace `tsc` with `vibelang` in every script. If the project has no build script, add these:
+In `package.json`, replace `tsc` with `vibelang` in every script. `vibelang` runs the rules of the tsconfig's `@effect/language-service` entry, which plain `tsc` ignores. If nothing in the project runs `effect-tsgo patch` or `effect-language-service patch`, set `ignoreEffectWarningsInTscExitCode` and `ignoreEffectErrorsInTscExitCode` to `true` in that entry so Effect diagnostics print without failing a build `tsc` passed ([Lint Effect code](#lint-effect-code)). If the project has no build script, add these:
 
 ```json
 {

@@ -69,9 +69,22 @@ export function label(raw: string): string { return `port ${port(raw)}` }  // co
 
 The rule that decides every detail below:
 
-> **A body is a TypeScript file stored inside a `.vibe` file.** Moving the body to a sibling `.ts` file and replacing `from name` with that file's string specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. A body may contain nothing that would stop that move from being a copy: no VibeLang syntax, no identifier specifier, no `import.meta`.
+> **A body is a TypeScript file stored inside a `.vibe` file.** Moving the body to a sibling `.ts` file (`.tsx` for a body in `.vibex`), preserving its external-module classification as specified below, and replacing `from name` with that file's string specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. Apart from the empty module marker needed to preserve that classification, the move is a copy: no VibeLang syntax, no identifier specifier, no `import.meta`.
 
-The rule is falsifiable by a differential test: compile every TypeScript module of the corpus once as a body and once as a sibling `.ts`, and compare. 
+The rule is falsifiable by a differential test: compile every TypeScript module of the corpus once as a body and once as a sibling `.ts` or `.tsx` of the same source kind, preserving external-module classification in both, and compare.
+
+**Module classification.** A body is always an external module before binding and checking, even without a written import or export and regardless of `moduleDetection`. This follows its TC39 `ModuleBody` grammar and the no-shared-lexical-scope rule below. Its virtual TypeScript source, JavaScript output and declaration output preserve that classification, with an effective empty module marker when needed. The extracted `.ts`/`.tsx` twin and the move refactor add `export {}` when the unchanged body would otherwise be a script under the project's options. The marker exports no names; ordinary TypeScript module-option diagnostics still apply. A side-effect import in the containing file does not classify the body as a module.
+
+For example, `module privateState { const privateBodyValue = 7 }` imported by `import privateState;` keeps `privateBodyValue` private even with `moduleDetection: "legacy"`. Its extracted twin is:
+
+```ts
+// module-extraction-twin
+const privateBodyValue = 7
+export {}
+```
+
+A consumer containing `import "./privateState.js"; export const leaked = privateBodyValue` reports `TS2304` in both forms. Without the empty export, stock TypeScript treats the extracted file as a script and admits that leaked name, so the unchanged copy is not the twin.
+
 
 ## Syntax
 
@@ -166,7 +179,7 @@ Will, 2026-10-31: `@throws` and thrown-type tracking exist only for functions im
 - **One JavaScript module per body,** beside the file's output, as D403 and main do. `main.vibe` with `module parse` emits `main.js` and `main.vibe.parse.js`, and `main.js` imports `"./main.vibe.parse.js"` where the source wrote `parse`. A separate module is the one lowering whose order, liveness, TDZ, cycles and top-level `await` are ECMAScript's by construction; old VibeLang's two inline lowerings each broke one (D303's snapshot exports, fixed by D364; hoisted body imports running out of order, fixed by D403). A body in `main.vibex` uses the source basename `main.vibex`, so `module parse` emits `main.vibex.parse.jsx` under `"jsx": "preserve"`, or `main.vibex.parse.js` with transformed JSX, as TypeScript does for `.tsx`.
 - **File names keep the exact name.** The name part encodes the decoded identifier's Unicode code points without case folding or Unicode normalization. It keeps `a`–`z`, `0`–`9` and `_`, and writes every other code point as `-`, its code point in lowercase hexadecimal without leading zeros, and `-` (`Text` → `-54-ext`, `Über` → `-dc-ber`, `$x` → `-24-x`). Identifier escapes and their literal characters have the same decoded name. The output stem is the source file's full basename, including `.vibe` or `.vibex`, followed by `.` and the encoded name: `main.vibe.-dc-ber` or `main.vibex.-dc-ber`. JavaScript, declaration and map outputs, and generated references to them, share that stem. The encoding is injective within one parent: case-only and Unicode-normalization twins get different ASCII filenames on every file system, and names containing only the retained characters are unchanged. Main lower-cases the name today, so `module Text` and `module text` collide and `from text` resolves to `Text`'s body (probe `case2`, rerun: `EK4408` plus `TS2305`).
 - **CommonJS.** Under CommonJS emit the body is a CommonJS module that `main.js` requires, as a sibling `.ts` would be (case `module-declaration-cjs`). `export =` and `import x = require()` in a body are `EK4008` under any emit: a TC39 module body has no such forms.
-- **Declarations.** A body's declarations are TypeScript's own declaration emit of it, `main.vibe.parse.d.ts` beside `main.d.ts`, with JSDoc (`@throws` included) as TypeScript writes it. The canonical stem also gives `main.vibex.parse.d.ts` and `main.vibe.-dc-ber.d.ts` for the examples above. When the file's VIP-27 sidecar `main.d.vibe.ts` refers to the body, `main.vibe.parse.d.ts` is also written beside `main.vibe`, so stock `tsc` resolves it. A declaration file cannot hold the body inline (`declare module "./x"` with a relative name is `TS2436`).
+- **Declarations.** A body's declarations are TypeScript's own declaration emit of it, `main.vibe.parse.d.ts` beside `main.d.ts`, with JSDoc (`@throws` included) as TypeScript writes it. The canonical stem also gives `main.vibex.parse.d.ts` and `main.vibe.-dc-ber.d.ts` for the examples above. When the file's VIP-27 sidecar `main.d.vibe.ts` refers to the body, `main.vibe.parse.d.ts` is also written beside that sidecar, so stock `tsc` resolves the sidecar's relative import from the sidecar's actual location: beside `main.vibe` by default, or at the mirrored path under `vibe.sidecarDir` ([VIP-27](/vips/0027-declaration-output#amendment-an-opt-in-sidecar-directory-2026-11-01)). That copy is a compatibility declaration, an emit output as the sidecar is ([VIP-27](/vips/0027-declaration-output#amendment-native-overwrite-protection-2026-11-02)): `include` and default-glob discovery leave it out while `main.vibe` declares the body, as a sibling `main.vibe.parse.ts` would, and a rebuild regenerates it; listed explicitly in `files`, it stays an input, and the write reports `TS5055`. A declaration file cannot hold the body inline (`declare module "./x"` with a relative name is `TS2436`).
 - **Source maps.** The body's virtual source is the `.vibe` text with everything outside the body blanked, so offsets, lines and columns are the `.vibe` file's. `main.vibe.parse.js.map` and `.d.ts.map` name `main.vibe` with its full `sourcesContent`.
 - **`import.meta` is `EK4009` anywhere in a body.** TC39 says a body's `import.meta.url` is the containing module's; the separate file's is its own (probe `p1`, rerun: `main.vibe.meta.js`, `import.meta.main` false). No body in main's 50 files uses it. A body that needs metadata receives it as an argument or lives in a `.ts` file.
 - **Loaders and bundlers.** `vibelang/register`, the Bun plugin, Vite and unplugin serve each body's canonical filename from the compiled parent, using the same source basename, encoded name and output suffix as the compiler, cached by the parent's version. An edit to a body invalidates its output and its importers.
@@ -179,7 +192,17 @@ Each tool reads a body as the `.ts` file it is, mapped into the `.vibe` file thr
 - **Formatter.** VibeLang's one formatter (VIP-34) formats the body as `.ts`/`.tsx` with the repository's settings, indented one level, without sorting its imports (D372). It never moves code into or out of a body.
 - **Linters.** The ESLint parser gives the declaration a `VibeModuleDeclaration { id, body }` node whose statements are typescript-estree's, with its own scope (main: `packages/compiler/eslint.mjs`), so typescript-eslint rules read it as TypeScript and VibeLang "prefer VibeLang syntax" rules skip it. Oxlint's JS-plugin rules apply where they apply to `.ts`. Knip counts the body's imports and unused exports.
 - **TypeScript mapper.** The one-file projector for stock TypeScript tools refuses bodies today (`EK9100`). It projects each body as its own virtual `.ts` file.
-- **Refactor *Move module to a `.ts` file*.** Writes the body to `parse.ts` beside the `.vibe` file (another name if taken, compared case-insensitively) and rewrites `from parse` to the string specifier. Always valid because of the copy rule. Offered in the editor, never run by `--fix`.
+- **Refactor *Move module to a TypeScript file*.** Writes a body from `.vibe` to `parse.ts`, or a body from `.vibex` to `parse.tsx`, beside the containing file (another name if taken, compared case-insensitively), adds `export {}` if needed to preserve external-module classification, and rewrites identifier specifiers, including side-effect imports, to the string specifier. Valid under the classification-preserving copy rule. Offered in the editor, never run by `--fix`.
+
+For example, extracting `module view { export const element = <div /> }` from `main.vibex` writes `view.tsx`, retaining TypeScript's JSX language variant even if a particular body has no JSX. The body is copied as:
+
+```tsx
+// fragment: JSX types come from the project's framework
+// module-extraction-twin
+export const element = <div />
+```
+
+Writing these same tokens to `view.ts` instead reports TypeScript's `TS1005`; a `jsx` compiler option does not turn a `.ts` file into a `.tsx` file.
 
 ## Diagnostics
 
