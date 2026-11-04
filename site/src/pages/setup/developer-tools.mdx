@@ -429,6 +429,8 @@ The `EK1101` trailing-block repair accepts JavaScript whitespace between the cal
 
 The `Option.match` repair preserves qualified callback payload types and complete record annotations, including types inferred from Effect modules. A callback that ignores the `Some` payload retains its contextual result type, including literal and local symbol types, and still receives the original argument, including when it observes `arguments.length`.
 
+While a retired `select` block reports `EK4607`, references, hover, rename and call hierarchy still follow its written identifiers, including bindings in empty arms and defaults before later cases.
+
 ## Published packages
 
 Migration setup excludes `*.d.vibe.ts` and `*.d.vibex.ts` declaration sidecars

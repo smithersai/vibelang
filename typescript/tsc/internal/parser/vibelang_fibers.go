@@ -359,11 +359,21 @@ func (p *Parser) parseVibeLangSelect() *ast.Node {
 		args = append(args, p.vibelangProgramArrow(nil, c.program, c.anchor))
 	}
 	args[0] = p.vibelangSynthesized(p.factory.NewKeywordExpression(core.IfElse(hasDefault, ast.KindTrueKeyword, ast.KindFalseKeyword)), anchor)
+	// These wrappers contain written case expressions. Cover them all and
+	// keep the wrappers visible to token lookup; only the generated names
+	// and literals are synthesized. Otherwise references/hover/rename skip
+	// the written callees during recovery of this retired form.
+	programsSpan := anchor
+	for _, c := range cases {
+		if c.program != nil {
+			programsSpan = core.NewTextRange(anchor.Pos(), c.program.End())
+		}
+	}
 	callee := p.vibelangIntrinsic("$select", anchor)
-	call := p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(anchor, args), ast.NodeFlagsNone), anchor)
-	declaration := p.vibelangSynthesized(p.factory.NewVariableDeclaration(selected(anchor), nil, nil, call), anchor)
-	list := p.vibelangSynthesized(p.factory.NewVariableDeclarationList(p.newNodeList(anchor, []*ast.Node{declaration}), ast.NodeFlagsConst), anchor)
-	statements := []*ast.Node{p.vibelangSynthesized(p.factory.NewVariableStatement(nil, list), anchor)}
+	call := p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(programsSpan, args), ast.NodeFlagsNone), programsSpan)
+	declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(selected(anchor), nil, nil, call), programsSpan)
+	list := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(programsSpan, []*ast.Node{declaration}), ast.NodeFlagsConst), programsSpan)
+	statements := []*ast.Node{p.vibelangSpanning(p.factory.NewVariableStatement(nil, list), programsSpan)}
 
 	// if ($selected.index === i) { ... } else if ...
 	var chain *ast.Node
@@ -391,10 +401,18 @@ func (p *Parser) parseVibeLangSelect() *ast.Node {
 			boundList := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(c.binding.Loc, []*ast.Node{bound}), ast.NodeFlagsConst), c.binding.Loc)
 			body = append([]*ast.Node{p.vibelangSpanning(p.factory.NewVariableStatement(nil, boundList), c.binding.Loc)}, body...)
 		}
-		span := c.anchor
-		if len(c.statements) != 0 {
-			span = core.NewTextRange(c.anchor.Pos(), c.statements[len(c.statements)-1].End())
+		// An empty arm still contains its written head and binding.
+		end := c.anchor.End()
+		if c.program != nil {
+			end = max(end, c.program.End())
 		}
+		if c.binding != nil {
+			end = max(end, c.binding.End())
+		}
+		if len(c.statements) != 0 {
+			end = max(end, c.statements[len(c.statements)-1].End())
+		}
+		span := core.NewTextRange(c.anchor.Pos(), end)
 		branches[i] = p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(span, body), true /*multiLine*/), span)
 	}
 	// The last clause, or the default clause wherever it is written, is the
@@ -416,7 +434,9 @@ func (p *Parser) parseVibeLangSelect() *ast.Node {
 		chain = branches[last]
 		for j := len(order) - 1; j >= 0; j-- {
 			i := order[j]
-			span := core.NewTextRange(cases[i].anchor.Pos(), chain.End())
+			// The default arm can precede a later case in source even though
+			// it is the final else. Cover both branches for source navigation.
+			span := core.NewTextRange(min(cases[i].anchor.Pos(), chain.Pos()), max(branches[i].End(), chain.End()))
 			chain = p.vibelangSpanning(p.factory.NewIfStatement(tests[i], branches[i], chain), span)
 		}
 	}

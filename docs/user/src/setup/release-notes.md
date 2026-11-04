@@ -283,6 +283,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Crypto platform errors suggested methods on a module namespace; they now show how to obtain the secure-random service and run its result.
 
 - Standard-I/O platform errors suggested namespace methods and called the arguments property; they now use the injected service and its Effect, stream, or sink members.
+
+- Find References and rename could miss identifiers inside retired `select` arms; the editor now follows their written callees and bindings during recovery.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 - Native `|>` pipelines could incorrectly report a nested pipe chain. Lint now checks written `.pipe` calls and ignores the calls generated to type native pipeline stages.
 
