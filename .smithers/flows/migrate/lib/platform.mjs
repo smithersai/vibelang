@@ -141,9 +141,25 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   const moved = new Set(declarations.filter((d) => [...d.reads].some((n) => platform.has(n) && !byName.has(n))))
   if (!moved.size) return null
   // The moved code takes the module's own declarations it reads, values and types.
-  // Types stay in the module, whose declarations name them: the sibling
-  // imports an exported type, and has its own copy of a private type alias or
-  // interface, which is the same type structurally.
+  // Types stay in the module, whose declarations name them. The sibling has
+  // its own private copy of a type alias or interface it needs, the same type
+  // structurally, so it never imports the module that imports it: the
+  // original was one module, with no cycle (t3code mobile's dependency-graph
+  // test). An exported type is imported instead when the copy would read a
+  // value of the module, merge with another declaration, or is a default export.
+  const declarationCount = new Map()
+  for (const d of declarations) for (const name of d.names) declarationCount.set(name, (declarationCount.get(name) ?? 0) + 1)
+  const copiesExported = (d, seen = new Set()) => {
+    if (seen.has(d)) return true
+    seen.add(d)
+    if (isDefaultExport(d.statement, ts) || [...d.names].some((n) => declarationCount.get(n) > 1)) return false
+    for (const name of new Set([...d.reads, ...d.valueReads])) {
+      const needed = declarationRead(d, name)
+      if (!needed) continue
+      if (!typeOnly(needed) || !copiesExported(needed, seen)) return false
+    }
+    return true
+  }
   const typesFromModule = new Set()
   const copied = new Set()
   for (let grew = true; grew; ) {
@@ -154,7 +170,7 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
         const needed = declarationRead(d, name)
         if (!needed || moved.has(needed) || copied.has(needed)) continue
         if (typeOnly(needed)) {
-          if (needed.exported) typesFromModule.add(name)
+          if (needed.exported && !copiesExported(needed)) typesFromModule.add(name)
           else { copied.add(needed); grew = true }
           continue
         }
@@ -226,7 +242,7 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   const movedReads = new Set(movedList.flatMap((d) => [...d.reads]))
   const platformImports = imports.map((i) => importText(i, source, ts, (b) => movedReads.has(b.name))).filter(Boolean)
   if (typesFromModule.size) platformImports.push(`import type { ${[...typesFromModule].sort().join(", ")} } from "./${posix.basename(file)}"`)
-  const platformBody = movedList.map((d) => (!d.exported && fromSibling.some((n) => d.names.has(n)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
+  const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : !d.exported && fromSibling.some((n) => d.names.has(n)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
   const note = `// The platform code of ${posix.basename(file).replace(/\.m?ts$/, ".vibe")}, which a .vibe file does not import as a value (EK4402).`
   // A file-wide directive governed the moved code too, so the sibling keeps it
   // (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
@@ -479,6 +495,16 @@ function exportedText(source, statement) {
   const start = statement.getStart(source)
   return leadingComments(source, statement) + "export " + source.text.slice(start, statement.end)
 }
+
+// A copied exported type is private in the sibling: its text without `export`.
+function unexportedText(source, statement, ts) {
+  const keyword = statement.modifiers.find((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+  const start = statement === source.statements[0] ? headerEnd(source) : statement.pos
+  const text = source.text.slice(start, keyword.getStart(source)) + source.text.slice(keyword.end, statement.end).replace(/^\s+/, "")
+  return text.replace(/^\s*\n/, "").replace(/^\n+/, "")
+}
+
+const isDefaultExport = (statement, ts) => (statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
 
 function statementText(source, statement) {
   const start = statement === source.statements[0] ? headerEnd(source) : statement.pos

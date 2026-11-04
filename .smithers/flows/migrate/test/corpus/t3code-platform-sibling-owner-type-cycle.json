@@ -1,0 +1,22 @@
+{
+  "finding": "codemod-gap:platform-helper-owner-type-cycle",
+  "note": "Minimized from t3code apps/mobile/src/state/use-vcs-action-state.ts and queued-run-edit.ts (230fd2f9). The sibling split moved the timer and console code to <name>.platform.ts, which then imported the module's exported interface back with `import type`, while the module imported the sibling as a value. The original was one module; t3code's unchanged mobile dependency-graph test rejects the new cycle under Android and iOS (drive-t3code-apps 05:52:45Z, toolchain 8341e3fa217c). Atoms, haptics and draft stores are replaced by plain state.",
+  "cases": [
+    {
+      "file": "src/state/use-vcs-action-state.ts",
+      "globals": [
+        "setTimeout",
+        "clearTimeout"
+      ],
+      "text": "export interface GitActionResultNotification {\n  readonly type: \"success\" | \"error\";\n  readonly title: string;\n  readonly description?: string;\n  readonly prUrl?: string;\n}\n\nconst RESULT_DISMISS_MS = 5_000;\n\nconst gitActionResultCell: { value: GitActionResultNotification | null } = { value: null };\nlet dismissTimer: ReturnType<typeof setTimeout> | null = null;\n\nfunction broadcast(result: GitActionResultNotification | null): void {\n  gitActionResultCell.value = result;\n}\n\nexport function showGitActionResult(result: GitActionResultNotification): void {\n  if (dismissTimer) clearTimeout(dismissTimer);\n  broadcast(result);\n  dismissTimer = setTimeout(() => {\n    dismissTimer = null;\n    broadcast(null);\n  }, RESULT_DISMISS_MS);\n}\n\nexport function dismissGitActionResult(): void {\n  if (dismissTimer) clearTimeout(dismissTimer);\n  dismissTimer = null;\n  broadcast(null);\n}\n\nexport function useGitActionResultNotification(): {\n  readonly result: GitActionResultNotification | null;\n  readonly dismiss: () => void;\n} {\n  return { result: gitActionResultCell.value, dismiss: dismissGitActionResult };\n}\n"
+    },
+    {
+      "file": "src/state/queued-run-edit.ts",
+      "globals": [
+        "console"
+      ],
+      "text": "import type { MessageId, RunId } from \"@t3tools/contracts\";\n\nexport interface QueuedRunEdit {\n  readonly runId: RunId;\n  readonly messageId: MessageId;\n  readonly originalText: string;\n  /** Removing a server attachment changes the message even when the draft looks untouched. */\n  readonly removedExistingAttachment?: true;\n}\n\nconst queuedRunEdits = new Map<string, QueuedRunEdit>();\n\nexport const getQueuedRunEdit = (threadKey: string): QueuedRunEdit | null => queuedRunEdits.get(threadKey) ?? null;\n\nfunction exitQueuedRunEdit(threadKey: string, edit: QueuedRunEdit): void {\n  Promise.resolve(edit.originalText).catch((error: unknown) => {\n    console.warn(\"[queued-run-edit] could not persist the recovered edit\", error);\n  });\n  queuedRunEdits.delete(threadKey);\n}\n\nexport function beginQueuedRunEdit(threadKey: string, edit: QueuedRunEdit): void {\n  const previous = getQueuedRunEdit(threadKey);\n  if (previous !== null && previous.runId !== edit.runId) exitQueuedRunEdit(threadKey, previous);\n  queuedRunEdits.set(threadKey, edit);\n}\n"
+    }
+  ],
+  "ambient": "declare function setTimeout(f: () => void, ms: number): number\ndeclare function clearTimeout(id: number): void\ndeclare var console: { warn(...data: unknown[]): void }\ndeclare module \"@t3tools/contracts\" {\n  export type RunId = string & { readonly RunId: unique symbol }\n  export type MessageId = string & { readonly MessageId: unique symbol }\n}\n"
+}

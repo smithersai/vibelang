@@ -519,6 +519,8 @@ The write-ahead codemod journal also includes platform siblings: it keeps the un
 
 The split tells a value from a type of the same name, Effect's schema pattern `const Shape = Schema.String` with `type Shape = typeof Shape.Type`: moved code that reads `Shape` as a value takes the value, and a type read takes the type. The module keeps its platform code with a named cause when the moved value's type of the same name, or a type that reads the value, stays in the module, since the module's declaration would then import the value from the sibling.
 
+The split adds no import edge back to the module. The original was one module, and a graph check such as t3code mobile's `dependency-graph.test.ts` counts `import type` as an edge. So the sibling takes a private copy of each type alias or interface its code needs, exported or not, which is the same type structurally; the module keeps the exported one. An exported type is imported from the module, as before, only when its copy would read a value of the module (`typeof x`), merge with another declaration of its name, or is a default export.
+
 The same durable rename journal covers whole-scope mode: an interrupted rename resumes before compiler work, and bulk reverts restore the original source bytes.
 
 ### Paths to converted files
