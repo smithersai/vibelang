@@ -1383,8 +1383,11 @@ function prepareComparison(ts, before, after, options, progress) {
         for (const property of checker.getPropertiesOfType(type).sort((a, b) => a.name.localeCompare(b.name))) {
           if (!own(property)) continue
           const key = path + "." + property.name
-          found.symbols.set(key, property)
-          const text = docs(ts, checker, property)
+          // A namespace property may be a re-export alias. Its public name
+          // stays on the path; authored prose and blocks belong to its target.
+          const target = property.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(property) : property
+          found.symbols.set(key, target)
+          const text = docs(ts, checker, property) || docs(ts, checker, target)
           if (text) found.set(key, text)
           const declaration = property.valueDeclaration ?? property.declarations?.[0]
           if (declaration) children.push([checker.getTypeOfSymbolAtLocation(property, declaration), key])
@@ -1529,11 +1532,17 @@ function prepareComparison(ts, before, after, options, progress) {
     const members = (symbol) => {
       const out = new Map()
       out.symbols = new Map()
-      for (const table of [symbol.members, symbol.exports]) {
+      // The raw exports table contains only an export-star marker for a
+      // forwarded module. Resolve its public members before comparing docs.
+      const exports = symbol.flags & ts.SymbolFlags.Namespace
+        ? new Map(checker.getExportsOfModule(symbol).map(member => [member.name, member]))
+        : symbol.exports
+      for (const table of [symbol.members, exports]) {
         for (const [key, member] of table ?? []) {
           if (key === "prototype" || key.startsWith("__")) continue
-          out.symbols.set(key, member)
-          const doc = docs(ts, checker, member)
+          const target = member.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(member) : member
+          out.symbols.set(key, target)
+          const doc = docs(ts, checker, member) || docs(ts, checker, target)
           if (doc) out.set(key, doc)
         }
       }

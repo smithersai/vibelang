@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Re-exporting a documented type or value through a root namespace could report missing prose even when the authored comments remained. Migration verification now reads the target declaration and still rejects changed comments, tags and types.
+
 - Migration could drop refused-site span reports and overlook a changed-site violation beside other diagnostics; it now retains those spans, accepts independent safe fixes, and fails on a preservation violation.
 
 - Declaration module-identity regression tests repeatedly loaded unrelated browser declarations; their fixtures now request ES5 while retaining generated module-resolution, API-mutation and invalid-target checks.

@@ -74,7 +74,10 @@ Several peer variants of one package can coexist in a self-comparison without
 being merged or reported as one ambiguous ambient origin. Dependency pair candidates
 are seeded independently of entry syntax, so reordering entry imports preserves
 unchanged external `unique symbol` types without hiding dependency changes. JSDoc is read through the TypeScript API, normalizing whitespace and retaining
-tags. VIP-27 permits one difference in twin-to-emitted order: adding the generated
+tags. Namespace re-export aliases follow the target declaration for prose,
+tags and authored block counts, retaining documentation when a declaration
+moves behind a private re-export. Changed or missing authored comments still
+fail. VIP-27 permits one difference in twin-to-emitted order: adding the generated
 `@throws {never}` on a callable without an authored throw contract. Each
 overload may gain its own tag. Authored throw tags, prose and every other
 JSDoc tag remain observable; a changed or removed authored tag, duplicate

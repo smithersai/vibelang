@@ -1,0 +1,11 @@
+{
+  "before": {
+    "index.d.ts": "export * as Domain from \"./domain.js\";\n",
+    "domain.d.ts": "/** Aggregate definition.\n * @since 1.0\n */\nexport interface Definition {\n  /** Commands handled by the aggregate. */\n  readonly commands: ReadonlyArray<string>;\n  /** Choose events from a command. */\n  readonly decide: (command: string) => string;\n}\n"
+  },
+  "after": {
+    "index.d.ts": "export * as Domain from \"./domain.js\";\n",
+    "domain.d.ts": "export { type Definition } from \"./internal.js\";\n",
+    "internal.d.ts": "/** Aggregate definition.\n * @since 1.0\n */\nexport interface Definition {\n  /** Commands handled by the aggregate. */\n  readonly commands: ReadonlyArray<string>;\n  /** Choose events from a command. */\n  readonly decide: (command: string) => string;\n}\n"
+  }
+}
