@@ -1,0 +1,7 @@
+{
+  "outputs": [
+    "lib/main.js",
+    "types/main.d.ts",
+    "cache/build.tsbuildinfo"
+  ]
+}

@@ -68,7 +68,9 @@ A test's `Bun.spawn` or `Bun.spawnSync` child that runs `bun test` in a fixture 
 
 Test result titles that enumerate a renamed source path retain that source's base-name identity (Decision B). Comparison uses recorded renames, including unambiguous package-relative paths, and keeps the raw test receipts. Failed, missing, extra duplicate and skipped cases retain their statuses; an unrecorded path or a declaration sidecar is never mapped to a source.
 
-### Test and fixture identity
+#Migration compile and revert steps refresh project references after source changes. They follow the reverse reference closure, clear each affected project's effective `outDir`, `declarationDir` and build-info artifacts, then rebuild the reference roots before checking dependents. A progress receipt beside `reference-refresh-compile.log` or `reference-refresh-revert.log` records planned projects, cleared outputs and rebuild success or failure. Output paths that overlap sources or leave the repository are refused before deletion.
+
+## Test and fixture identity
 
 Decided detail 272 keeps tests and fixtures as the migration's oracle. Each batch's `verify` compares pinned jj trees from before setup through the current batch, using the flow's test-file detection and fixture directories. Adding, deleting or renaming a test or fixture fails. Changed TypeScript files are parsed with the TypeScript AST; every byte outside the permitted literal or selector must stay unchanged, including embedded configs and setup. Source-text assertions remain protected.
 

@@ -24,6 +24,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Vite rejected typed `.vibex` inputs with a JavaScript parse error. The adapter now compiles native JSX before parsing, passes preserved JSX to framework transforms, and retains source locations through development updates.
 
+- Renaming or reverting a source could leave dependent projects reading stale build outputs; migration now rebuilds affected projects and their dependents before checking them.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

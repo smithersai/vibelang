@@ -1,3 +1,4 @@
+import { refreshProjectReferences } from "./reference-outputs.mjs"
 import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
 import { conversionIdentity } from "./conversion-context.mjs"
 import { restorePrivateResolverExports } from "./import-meta-platform.mjs"
@@ -417,6 +418,18 @@ async function checkPackage({ compiler, ts, t, pkg, log }) {
     diagnostics.push(...checked.diagnostics)
   }
   return { code, diagnostics }
+}
+
+/** Rebuild affected project references before consuming their declarations. */
+async function refreshReferences(config, changed, log) {
+  const ts = typeScriptOf(config), root = config.target
+  const tracked = await Jj.trackedFiles(root)
+  const configs = [...new Set([
+    ...tracked.filter(file => /(?:^|\/)(?:tsconfig[^/]*|vibe\.config|jsconfig)\.json$/.test(file)),
+    ...config.packages.flatMap(pkg => Wire.projectsOf(ts, join(root, pkg.dir), pkg.tsconfig)
+      .map(project => posix.join(pkg.dir, project)))
+  ])]
+  return refreshProjectReferences({ root, ts, configs, changed, tracked, compiler: compilerOf(config), log })
 }
 
 /**
@@ -1698,6 +1711,7 @@ export async function compile(options) {
   const { p, config, plan: thePlan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   const files = batchFiles(config, thePlan, b).map((f) => f.path)
+  const referenceRefresh = await refreshReferences(config, files, join(p.batch(b), "logs", "reference-refresh-compile.log"))
   const compiler = compilerOf(config)
   const diagnostics = []
   const added = []
@@ -1716,6 +1730,7 @@ export async function compile(options) {
     batch: b,
     at: new Date().toISOString(),
     files,
+    referenceRefresh,
     summary: summarize(diagnostics, files),
     style: styleProblems(diagnostics, files),
     warningExceptions: warningExceptions(diagnostics, files.filter(f => f.endsWith(".vibe")),
@@ -1924,6 +1939,8 @@ export async function revertMany(options) {
   // The lint configuration names the modules by their TypeScript paths again (foldkit-107).
   const lintPaths = followLintRenames(config.target, await Jj.trackedFiles(config.target))
   for (const result of results) result.lintPaths = lintPaths
+  const referenceRefresh = await refreshReferences(config, results.map(result => result.file), join(p.batch(b), "logs", "reference-refresh-revert.log"))
+  for (const result of results) result.referenceRefresh = referenceRefresh
   writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
   return results
 }
