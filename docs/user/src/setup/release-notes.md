@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - The platform guide mapped `os.tmpdir` to creating a new directory. Its replacement now reads the system temporary-directory path without creating anything.
+- Primitive patterns such as `String(let value)` rejected boxed values. They now accept the corresponding native wrapper and bind its primitive value.
 - Reading a function constructor through a `Function` intersection, inherited interface or generic constraint could miss `EK0107`. Those reads now report the same restriction as a direct `Function` receiver.
 
 - A label inside a `for concurrent` body could repeat an enclosing label without an error. It now reports `TS1114`, matching TypeScript.

@@ -4593,6 +4593,7 @@ typescript/vibelang/cases/match-predicate-receiver/main.vibe:8:28 lambda dual fa
 typescript/vibelang/cases/match-predicate-source-narrowing/main.vibe:9:63 lambda plain fallback
 typescript/vibelang/cases/match-predicate-source-narrowing/main.vibe:9:75 lambda plain fallback
 typescript/vibelang/cases/match-primitive-coverage-controls/main.vibe:8:25 lambda plain table
+typescript/vibelang/cases/match-primitive-wrappers/main.vibe:49:22 lambda plain table
 typescript/vibelang/cases/match-proto-key-controls/main.vibe:6:38 lambda plain fallback
 typescript/vibelang/cases/match-proto-key-controls/main.vibe:8:25 lambda plain table
 typescript/vibelang/cases/match-proto-literal-key.fail/main.vibe:4:32 lambda effectFn fallback

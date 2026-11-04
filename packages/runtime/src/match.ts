@@ -115,7 +115,7 @@ function regExpExtract(regexp: RegExp, subject: unknown): ReadonlyArray<RegExpMa
 function builtinTest(matcher: unknown, subject: unknown): boolean | undefined {
   if (matcher instanceof RegExp) return !!matcher.test(subject as string)
   const primitive = primitiveTypes.get(matcher)
-  if (primitive !== undefined) return typeof subject === primitive
+  if (primitive !== undefined) return typeof subject === primitive || subject instanceof (matcher as any)
   const test = builtinTests.get(matcher)
   if (test !== undefined) return test(subject)
   return undefined
@@ -139,7 +139,7 @@ function sameValue(pattern: unknown, subject: unknown): boolean {
 
 /**
  * Tests a variable pattern: a custom matcher decides when the value has one;
- * a primitive's class tests typeof; another class tests instanceof; another
+ * a primitive's class tests typeof or its boxed constructor; another class tests instanceof; another
  * function is called as a predicate; any other value matches by SameValue.
  *
  * A predicate's and an extractor's subject parameter is the inferred S, not
@@ -249,7 +249,11 @@ export function $extract(matcher: unknown, subject: unknown, receiver: unknown =
     if (matcher === Array) return Array.isArray(subject) ? subject : false
     if (Object.getPrototypeOf(matcher) === typedArray) return subject instanceof (matcher as any) ? subject : false
     const builtin = builtinTest(matcher, subject)
-    if (builtin !== undefined) return builtin ? [subject] : false
+    if (builtin !== undefined) {
+      if (!builtin) return false
+      const primitive = primitiveTypes.get(matcher)
+      return [primitive !== undefined && typeof subject !== primitive ? (subject as { valueOf(): unknown }).valueOf() : subject]
+    }
     if (isClass(matcher)) {
       if (!(subject instanceof (matcher as any))) return false
       if (instanceExtractors.has(matcher)) return [subject]

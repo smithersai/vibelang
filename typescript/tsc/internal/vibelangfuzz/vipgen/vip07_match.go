@@ -1164,3 +1164,39 @@ log.push("caller");return [await pending,log];
 		})
 	}
 }
+
+func init() {
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.primitive-wrapper-plain",
+		Chapter: "004-match.md",
+		Quote:   "test the primitive or its boxed object",
+		Vibe:    `function witness(){const xs:unknown[]=["x",new String("x"),2,new Number(2),true,new Boolean(false),3n,Object(3n),Symbol.for("x"),Object(Symbol.for("x")),null,{}];return xs.map(s=>match(s){when String(let x):["string",x];when Number(let x):["number",x];when Boolean(let x):["boolean",x];when BigInt(let x):["bigint",x];when Symbol(let x):["symbol",String(x)];default:"other";})}`,
+		Effect:  `function witness(){const xs=["x",new String("x"),2,new Number(2),true,new Boolean(false),3n,Object(3n),Symbol.for("x"),Object(Symbol.for("x")),null,{}];function extracted(s){if(typeof s==="string"||s instanceof String)return ["string",typeof s==="string"?s:s.valueOf()];if(typeof s==="number"||s instanceof Number)return ["number",typeof s==="number"?s:s.valueOf()];if(typeof s==="boolean"||s instanceof Boolean)return ["boolean",typeof s==="boolean"?s:s.valueOf()];if(typeof s==="bigint"||s instanceof BigInt)return ["bigint",typeof s==="bigint"?s:s.valueOf()];if(typeof s==="symbol"||s instanceof Symbol)return ["symbol",String(typeof s==="symbol"?s:s.valueOf())];return "other"}return xs.map(extracted)}`,
+		Modules: []string{},
+		Cite:    vip7Cite("return"),
+	})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.primitive-extraction-order-plain",
+		Chapter: "004-match.md",
+		Quote:   "extract `[s]` for a primitive and `[s.valueOf()]` for a boxed object",
+		Vibe:    `function witness(){const trace:string[]=[];const box=new String("x");box.valueOf=()=>{trace.push("value");return "x"};function choose(s:unknown){return match(s){when String("bad") or String("x"):true;default:false;}}return [match(box){when String(,):true;default:false;},match(box){when String():true;default:false;},choose(box),trace]}`,
+		Effect:  `function witness(){const trace=[];const box=new String("x");box.valueOf=()=>{trace.push("value");return "x"};const a=box.valueOf();const b=box.valueOf();const c=box.valueOf()==="bad"||box.valueOf()==="x";return [true,false,c,trace]}`,
+		Modules: []string{},
+		Cite:    vip7Cite("return"),
+	})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.primitive-alias-wrapper-plain",
+		Chapter: "004-match.md",
+		Quote:   "test the primitive or its boxed object",
+		Vibe:    `function witness(){const Text=String,Numeric=Number,Logical=Boolean,Integer=BigInt,Token=Symbol;const xs:unknown[]=["x",new String("x"),2,new Number(2),true,new Boolean(false),3n,Object(3n),Symbol.for("x"),Object(Symbol.for("x")),null,{}];return xs.map(s=>match(s){when Text(let x):["string",x];when Numeric(let x):["number",x];when Logical(let x):["boolean",x];when Integer(let x):["bigint",x];when Token(let x):["symbol",String(x)];default:"other";})}`,
+		Effect:  `function witness(){const xs=["x",new String("x"),2,new Number(2),true,new Boolean(false),3n,Object(3n),Symbol.for("x"),Object(Symbol.for("x")),null,{}];function extracted(s){if(typeof s==="string"||s instanceof String)return ["string",typeof s==="string"?s:s.valueOf()];if(typeof s==="number"||s instanceof Number)return ["number",typeof s==="number"?s:s.valueOf()];if(typeof s==="boolean"||s instanceof Boolean)return ["boolean",typeof s==="boolean"?s:s.valueOf()];if(typeof s==="bigint"||s instanceof BigInt)return ["bigint",typeof s==="bigint"?s:s.valueOf()];if(typeof s==="symbol"||s instanceof Symbol)return ["symbol",String(typeof s==="symbol"?s:s.valueOf())];return "other"}return xs.map(extracted)}`,
+		Modules: []string{},
+		Cite:    vip7Cite("return"),
+	})
+}

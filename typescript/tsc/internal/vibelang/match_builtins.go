@@ -103,6 +103,22 @@ var fixedErrorGuards = map[string]map[string]string{
 // variant of effect's Option, Exit or Result when matcher is Module.Variant
 // and Module resolves to that module.
 func builtinMatcherOf(c *checker.Checker, matcher *ast.Node) (parser.BuiltinMatcher, bool) {
+	// Immutable aliases retain the intrinsic value, including call-only
+	// BigInt and Symbol, which ordinary predicate dispatch would reject.
+	seen := map[*ast.Symbol]bool{}
+	for ast.IsIdentifier(matcher) {
+		symbol := c.GetSymbolAtLocation(matcher)
+		if symbol == nil || seen[symbol] {
+			break
+		}
+		seen[symbol] = true
+		declaration := symbol.ValueDeclaration()
+		if declaration == nil || !ast.IsVariableDeclaration(declaration) ||
+			ast.GetCombinedNodeFlags(declaration)&ast.NodeFlagsConst == 0 || declaration.Initializer() == nil {
+			break
+		}
+		matcher = ast.SkipParentheses(declaration.Initializer())
+	}
 	if ast.IsPropertyAccessExpression(matcher) {
 		module := effectModuleNamed(c, matcher.Expression())
 		if guard := fixedErrorGuards[module][matcher.Name().Text()]; guard != "" {
@@ -237,13 +253,16 @@ type builtinTest struct {
 }
 
 // visitBuiltinTest writes node, $is(matcher, subject) for a built-in
-// matcher, as typeof subject === "string" or Option.isNone(subject).
+// matcher, as a primitive or boxed primitive test, or Option.isNone(subject).
 func (tx *lowering) visitBuiltinTest(node *ast.Node, test builtinTest) *ast.Node {
 	f := tx.Factory()
 	subject := tx.Visitor().VisitNode(node.Arguments()[1])
 	var lowered *ast.Node
 	if test.typeOf != "" {
-		lowered = f.NewBinaryExpression(nil /*modifiers*/, f.NewTypeOfExpression(subject), nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsEqualsToken), f.NewStringLiteral(test.typeOf, ast.TokenFlagsNone))
+		primitive := f.NewBinaryExpression(nil /*modifiers*/, f.NewTypeOfExpression(subject), nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsEqualsToken), f.NewStringLiteral(test.typeOf, ast.TokenFlagsNone))
+		constructor := tx.Visitor().VisitNode(node.Arguments()[0])
+		boxed := f.NewBinaryExpression(nil /*modifiers*/, subject, nil /*typeNode*/, f.NewToken(ast.KindInstanceOfKeyword), constructor)
+		lowered = f.NewBinaryExpression(nil /*modifiers*/, primitive, nil /*typeNode*/, f.NewToken(ast.KindBarBarToken), boxed)
 	} else {
 		argument := subject
 		subject = f.NewUniqueName("subject")

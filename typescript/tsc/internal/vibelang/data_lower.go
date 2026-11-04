@@ -39,6 +39,12 @@ func (p *dataPlan) planVariantTest(c *checker.Checker, node *ast.Node) {
 	if tag := dataVariantTest(c, node); tag != "" {
 		p.variantTests[node] = tag
 	} else if builtin, ok := builtinMatcherOf(c, node.Arguments()[0]); ok {
+		if builtin.TypeOf != "" && isPatternCall(node, "$extract") {
+			// A primitive extractor returns the runtime adapter's singleton
+			// list, including unboxing. A Boolean typeof test is not that list.
+			p.keepsIs = true
+			return
+		}
 		test := builtinTest{typeOf: builtin.TypeOf, guard: builtin.Guard, module: builtin.Module, extract: isPatternCall(node, "$extract")}
 		if fixedErrorGuards[builtin.Module] == nil && builtin.Module != "" {
 			test.brand = "is" + builtin.Module

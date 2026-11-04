@@ -1737,20 +1737,37 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			// The test is the variable pattern's; the values are the
 			// built-in extractor's, the subject or the variant's property.
 			test(p.matcherTest(pat, path))
-			values := known.Values
-			if known.TypeOf != "" {
-				values = []string{""}
+			// Extract once before checking the list, even for an elision or
+			// an arity mismatch: a wrapper's valueOf() is observable.
+			typeOf := p.vibelangSpanning(p.factory.NewTypeOfExpression(path()), at)
+			primitive := p.mBinary(typeOf, ast.KindEqualsEqualsEqualsToken, p.mString(known.TypeOf, at), at)
+			keyword := map[string]ast.Kind{
+				"string": ast.KindStringKeyword, "number": ast.KindNumberKeyword,
+				"boolean": ast.KindBooleanKeyword, "bigint": ast.KindBigIntKeyword,
+				"symbol": ast.KindSymbolKeyword,
+			}[known.TypeOf]
+			// The erased bridge keeps the extraction's primitive type even
+			// when a statically primitive subject makes this branch unreachable.
+			unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), at)
+			boxed := p.vibelangSpanning(p.factory.NewAsExpression(path(), unknown), at)
+			boxed = p.vibelangSpanning(p.factory.NewAsExpression(boxed, p.vibelangSynthesized(p.factory.NewKeywordTypeNode(keyword), at)), at)
+			unboxed := p.mCall(p.mProperty(p.mParens(boxed, at), "valueOf", at), nil, at)
+			value := p.vibelangSpanning(p.factory.NewConditionalExpression(primitive, p.mToken(ast.KindQuestionToken, at), path(), p.mToken(ast.KindColonToken, at), unboxed), at)
+			p.vibelangMatchTemps++
+			name := "$primitive" + strconv.Itoa(p.vibelangMatchTemps)
+			declaration := p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, value, at)
+			if ctx.inline {
+				test(p.hoistDeclaration(declaration, at))
+			} else {
+				*steps = append(*steps, matchStep{decl: declaration})
 			}
+			values := []string{""}
 			if len(pat.items) > len(values) || (!pat.hasRest && len(pat.items) != len(values)) {
 				test(p.mKeyword(ast.KindFalseKeyword, at))
 				return
 			}
 			element := func(i int) matchPath {
-				if values[i] == "" {
-					return path
-				}
-				name := values[i]
-				return func() *ast.Node { return p.mProperty(path(), name, at) }
+				return func() *ast.Node { return p.mTemp(name, at) }
 			}
 			for i, item := range pat.items {
 				p.compilePattern(item, p.enterSubject(element(i), item, steps, ctx), steps, ctx)
@@ -2298,7 +2315,15 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 		if arm.pattern != nil {
 			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault, coverage: true, cache: cache})
 		}
-		patternHoists := p.takeHoists(patternMark)
+		var patternHoists, patternTemps []*ast.Node
+		for _, hoist := range p.takeHoists(patternMark) {
+			declaration := hoistedDeclarator(hoist)
+			if declaration != nil && declaration.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 {
+				patternTemps = append(patternTemps, hoist)
+			} else {
+				patternHoists = append(patternHoists, hoist)
+			}
+		}
 		if !arm.hoisted {
 			// An arm is its own lexical scope (chapter 004): the bindings of
 			// an is in its value or in its guard are lets of the arm's block,
@@ -2324,7 +2349,11 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 			defaulted = true
 			continue
 		}
-		block := p.mBlock(append(slices.Clone(arm.hoists), p.emitSteps(steps, success(arm.value, span), arm.anchor)...), span)
+		// A statement may claim and lower the match again. Private pattern
+		// temporaries get fresh names on each lowering; their declarations
+		// must follow the current tests rather than the cached source hoists.
+		hoists := append(slices.Clone(arm.hoists), patternTemps...)
+		block := p.mBlock(append(hoists, p.emitSteps(steps, success(arm.value, span), arm.anchor)...), span)
 		if coveragePattern(arm.pattern).kind != patternOr && patternHasCoverageCombinator(arm.pattern) {
 			block.Flags |= ast.NodeFlagsVibeLangUncountedPattern
 		}

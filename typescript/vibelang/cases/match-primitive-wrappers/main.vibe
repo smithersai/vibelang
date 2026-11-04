@@ -1,0 +1,50 @@
+// expect-result: "ok"
+import { Effect } from "effect"
+import { probe } from "./native.js"
+
+function direct(s: unknown): unknown {
+  return match (s) {
+    when String(let value): value;
+    when Number(let value): value;
+    when Boolean(let value): value;
+    when BigInt(let value): value;
+    when Symbol(let value): value;
+    default: "miss";
+  }
+}
+const Text = String
+const Numeric = Number
+const Logical = Boolean
+const Integer = BigInt
+const Token = Symbol
+function aliased(s: unknown): unknown {
+  return match (s) {
+    when Text(let value): value;
+    when Numeric(let value): value;
+    when Logical(let value): value;
+    when Integer(let value): value;
+    when Token(let value): value;
+    default: "miss";
+  }
+}
+function rest(s: unknown): unknown {
+  return match (s) { when String(...let values): values[0]; default: "miss"; }
+}
+function boolean(s: unknown): boolean {
+  return s is String
+}
+function unused(s: unknown): unknown {
+  return match (s) { when String(,): true; default: false; }
+}
+function empty(s: unknown): unknown {
+  return match (s) { when String(): true; default: false; }
+}
+function oversized(s: unknown): unknown {
+  return match (s) { when String(,,): true; default: false; }
+}
+function alternative(s: unknown): unknown {
+  return match (s) { when String("never") or String("x"): true; default: false; }
+}
+export function main() {
+  return Effect.sync(() => probe(direct, aliased, rest, boolean, unused, empty, oversized, alternative))
+}
