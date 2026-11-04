@@ -67,19 +67,25 @@ const compilerTest = S.Shell.Test({
 // toolchain. They ran inside //packages:compiler-test from 2026-11-02 00:58Z,
 // which took that target from a 134 s to a 389 s median on cf pre-gate boxes,
 // with six 15-minute timeouts; as their own target they run on another box.
+// Isolated API workers made an exact Node 26 run take 37m, before restoring
+// roughly 10m of previously failing property work. Bound the aggregate at 90m;
+// leave all file selections, property samples and per-worker limits intact.
 // //:migration-sources keys both flows; scripts/test-runners.test.mjs fails
 // when a test file runs in no target.
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
-    "cd ../../.smithers/flows && node --test migrate/test/*.test.mjs convert/*.test.mjs",
+    "cd ../../.smithers/flows && node --test " +
+    "--test-reporter=spec --test-reporter-destination=stdout " +
+    "--test-reporter=../../scripts/testing/migrate-progress.mjs --test-reporter-destination=stderr " +
+    "migrate/test/*.test.mjs convert/*.test.mjs",
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
-    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//scripts/testing/migrate-progress.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
     S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
-  timeout: "15m"
+  timeout: "90m"
 })
 
 // The bundler plugins compile through vibelang/project and pass its source

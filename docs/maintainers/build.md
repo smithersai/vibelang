@@ -57,6 +57,12 @@ The formatted-declaration certification file must parse and execute its complete
 
 Upgrade fixtures use real named and versioned toolchain archives. Public workspaces assert the release dependency and the managed local install pin separately, and compare the staged archive bytes with the producing artifact.
 
+The `//packages:migrate-test` target retains both complete migrate and convert test globs and a bounded 90-minute aggregate budget. Property sample counts, worker deadlines and Node's concurrency remain unchanged. Only this aggregate target's budget changed.
+
+On a four-vCPU Cloudflare box, an exact Node 26 run selected 261 files and completed in 37m03.7s with 37 failures, 1646 passes, 42 skips and 1 TODO. Its 1580 API worker calls all returned without signals (median 2.872s, maximum 10.931s). Fixing previously failing properties restores about 10 more minutes of measured work. Focused successful properties also varied by 2.5–2.7x across boxes. The 90-minute bound allows more of this work to finish and remains a sizing choice, not a guarantee on the slowest host or a claim that the suite is green.
+
+The migration progress reporter prints the complete selected-file list, each file summary and a heartbeat every 30 seconds. Counts cover completed file summaries; pending files remain named. Unabridged assertion errors accompany Node's standard spec output. A file that cannot load or a terminated run remains incomplete, and the reporter preserves Node's exit behavior. `scripts/migrate-progress.test.mjs` checks real child processes, full assertion witnesses, missing file summaries and termination against an unmodified Node runner.
+
 The `//:release` target runs Node's test files with `--test-concurrency=8`.
 This bounds the number of simultaneous file workers independently of the host's
 CPU count and the graph's `--jobs` setting. Every selected file still runs,
