@@ -100,6 +100,13 @@ func quickfixBehaviorSeeds() map[int32][]Seed {
 		"host.vibe": "export function get() { return {request: {code: \"ok\"}} }\n",
 	}}}
 	quickfixAdmittedWarnings(seeds)
+	// EK4856 repairs the retired global alias in grammar positions that choose
+	// shorthand or a qualified Effect type; runtime exports remain observable.
+	seeds[4856] = []Seed{
+		{Name: "EK4856-alias", Files: map[string]string{"main.vibe": "export type Result = Effect<number>\nexport function main() { return 7 }\n"}},
+		{Name: "EK4856-channels", Files: map[string]string{"main.vibe": "export type Result = Effect<number, string, {readonly need: true}>\nexport function main() { return 7 }\n"}},
+		{Name: "EK4856-heritage", Files: map[string]string{"main.vibe": "export interface Result extends Effect<number, string> {readonly marker: true}\nexport function main() { return 7 }\n"}},
+	}
 	return seeds
 }
 
