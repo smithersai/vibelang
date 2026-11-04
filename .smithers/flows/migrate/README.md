@@ -15,7 +15,7 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 | codemod | none | First moves a batch module's platform code, each top-level declaration that uses a Node or Bun builtin imported as a value, with the module's own declarations it reads, verbatim into `<Name>.platform.ts` beside it (EK4402's fix: "move the code into a sibling `.ts` module"); an export that moved stays in the module as a function with the same written signature that calls the moved one, so the module's declarations are unchanged, and the sibling starts with the file-wide directives of the module's leading comments, such as `// @effect-diagnostics nodeBuiltinImport:off`, which governed the moved code; a module whose moved exports are not such functions keeps its platform code (`platform` in `codemod.json` lists both, and `revert` removes the sibling). Renames the batch to `.vibe`, points each package's `exports`, `imports`, `main`, `module` and `types` at the renamed modules (a `types` field or condition at the declaration sidecar `x.d.vibe.ts`, `main` and `module` at `x.vibe`; an `exports` or `imports` target names the source under the `vibelang-source` condition and the emitted JavaScript under `.vibelang/js/` by `default`, and a bare entry the sidecar too, `{ "types": "./x.d.vibe.ts", "vibelang-source": "./x.vibe", "default": "./.vibelang/js/x.js" }`, since stock TypeScript names a consumer's inferred type only through a target that is the sidecar, and the `bun build` CLI loads no plugin and plain `node` no loader, unless the repository already uses bare `.vibe` exports, whose form stays unchanged; a pattern such as `"./*": "./src/*.ts"` gains an exact entry for each, and revert takes it back), rewrites imports by VibeLang's rules and literal native Vite build inputs (`build.lib.entry`, `build.rollupOptions.input`, `build.rolldownOptions.input`, `pack.entry`, including pack arrays and input arrays/maps), preserving the config's quotes and recording `buildEntries` for `revert` and for a resumed codemod; computed roots or entries stay as written with file/line warnings, and tests and fixtures stay untouched, runs `vibelang --fix` until it fixes nothing (which also rewrites each `// @effect-diagnostics-next-line` comment the rename left with no effect, `TS377000`: a rule whose VibeLang code reports on the next line keeps its setting as `// @vibelang-diagnostics-next-line EK4814:off`, other rules go, the comment's explanation stays, t3code's 13 such comments), keeping the rewrites of the batch's files only (an earlier batch's committed files stay as committed) and listing the modules it put back in `fix.restored`, and records each rewrite it applied or refused | `batches/NN/codemod.json` |
 | compile | none | `vibelang --noEmit`: the batch's diagnostics and any error new against the baseline | `batches/NN/compile.json` |
 | repair | agent | Fixes what is left and finishes the idiomatic rewrite, with `context.md` as its system prompt; records codemod gaps, VibeLang issues and idiom lessons; returns a file it cannot migrate to `.ts` | `batches/NN/repair.prompt.md`, `repair.json`, `issues.jsonl` |
-| verify | none | The tests pass with no new failure and no missing test against the baseline, each test matched by its name with any date it prints (`Date#toString`, `toUTCString`, an ISO timestamp) set aside; published declarations preserve exported names, strict type identity and normalized JSDoc through the shared checker, private unreachable layout changes are recorded without rejecting an identical API, and legacy snapshot metadata is reconstructed from the saved setup commit or reported unavailable, and their emit reports no error in a migrated file, since a baseline that fails the same way (`TS7056`) makes equal declarations prove nothing; the working copy changes only the batch modules, platform siblings, sidecars and codemod-recorded manifest, import, path-reference and Vite-script edits; the migrated modules must also be proven against the repository compiler in `declarationOracle`; no migrated function lost an Effect wrapper in the emitted JavaScript, unless the run's allow-list names it with a reason; the batch has no error, no EK48xx but EK4832 and an EK4809 warning, no EK4402 and no EK9204 | `batches/NN/verify.json` |
+| verify | none | The tests pass with no new failure and no missing test against the baseline, each test matched by its name with any date it prints (`Date#toString`, `toUTCString`, an ISO timestamp) set aside; published declarations preserve exported names, strict type identity and normalized JSDoc through the shared checker, private unreachable layout changes are recorded without rejecting an identical API, and legacy snapshot metadata is reconstructed from the saved setup commit or reported unavailable, and their emit reports no error in a migrated file, since a baseline that fails the same way (`TS7056`) makes equal declarations prove nothing; the working copy changes only the batch modules, platform siblings, sidecars and codemod-recorded manifest, import, path-reference and Vite-script edits; the migrated modules must also be proven against the repository compiler in `declarationOracle`; no migrated function lost an Effect wrapper in the emitted JavaScript, unless the run's allow-list names it with a reason; the batch has no error; warning-severity diagnostics never return a module and are recorded as named exceptions in module provenance | `batches/NN/verify.json` |
 | record | none | Rejects foreign changes before formatting and before committing, including when forced; commits the batch with `jj`, naming its files, with o200k token counts before and after | `batches/NN/record.json` |
 | report | none | Batches, tests, declaration identity, tokens, codemod gaps, issues and idiom lessons | `report.md`, `report.json` |
 
@@ -909,3 +909,47 @@ Tests must keep a missing-receipt negative control rather than bypassing
 Inline module declarations keep every emitted companion beside the parent JavaScript, including `ViewCsp.vibe.$call$ts.js`. Each file is attributed to the parent source and included in `generatedFiles`; only the parent entry occupies `outputs`. Plain Node can therefore follow the parent’s companion imports. Test-source filtering applies to the entire source, including its companions; exported test-support modules retain their emitted dependency graph.
 
 Bun build wiring resolves the runtime receiver before changing a script. Local `Bun` bindings, type-only imports and direct replacement of the Bun build API keep their authored options. Genuine globals and runtime imports from `bun` remain eligible, including beside an unrelated local receiver.
+
+## Warning exceptions
+
+A warning never sends an error-free module back to TypeScript. Severity comes
+from the diagnostic's `category`, including imported Effect rules and configured
+severity; there is no code allow-list. Safe fixes still run to a fixed point.
+An error still fails settle/verify, even with a refusal note or a warning of
+the same code elsewhere.
+
+Module provenance is written in `batches/NN/verify.json` and
+`batches/NN/record.json`, under each `files[]` row's `warningExceptions` array.
+Compile also writes `warningExceptions` for the current batch. One-pass settle
+writes the current live modules' exceptions in `settle.json.warningExceptions`
+and each package's `done.json` entry. Record copies the final verification
+records after formatting, includes their reasons in the commit description,
+and report includes them in JSON and Markdown.
+
+Each exception has this stable shape (paths are relative to the target root,
+positions are one-based):
+
+```json
+{
+  "name": "warning-fix-refused",
+  "category": "warning",
+  "code": "EK4833",
+  "file": "src/client.vibe",
+  "line": 12,
+  "column": 9,
+  "message": "This Effect type is TypeScript's spelling of an Effect type.",
+  "reason": "No quick fix: keep the qualified Effect type here to preserve grouping and declaration output."
+}
+```
+
+`warning-fix-refused` means a `No quick fix` note or a matching
+`--fix: file:line: CODE not fixed` receipt supplied the reason. The latter
+records `The fixed program would report …` with the compiler's error.
+Other remaining warnings use `warning-retained` and the explicit reason
+`Warning remains after the safe-fix pass; no refusal reason was reported.`
+No refusal is invented. Reasons are deduplicated and sorted, joined with a
+newline. Records are deduplicated and sorted by file, line, column, code,
+name, reason and message without depending on host locale. Only current
+warnings in the migrated scope are included; errors and reverted modules
+never become exceptions. Rechecking replaces this snapshot rather than
+accumulating old sites.

@@ -19,9 +19,9 @@ test("Alchemy: a refused published TaggedError tag stays out of the style gate",
  const control=parseDiagnostics(corpus.output.replaceAll("EK4830","EK4831"))
  assert.deepEqual(styleProblems(control,["main.vibe"]),[])
 })
-test("a refusal exempts only its diagnostic, code and selected file",()=>{
+test("warnings are retained while an error remains scoped",()=>{
  const ds=parseDiagnostics(corpus.output+"main.vibe(4,1): warning EK4830: repairable class.\n  Its quick fix writes an error.\nmain.vibe(5,1): warning EK4835: unrelated style.\n  No quick fix: keep this.\nmain.vibe(6,1): error EK4402: forbidden global.\n  No quick fix: keep this.\n")
- assert.deepEqual(styleProblems(ds,["main.vibe"]).map(d=>d.code),["EK4830","EK4835","EK4402"])
+ assert.deepEqual(styleProblems(ds,["main.vibe"]).map(d=>d.code),["EK4402"])
  assert.deepEqual(styleProblems(ds,["other.vibe"]),[])
 })
 test("the current compiler keeps the minimized Alchemy class and its published tag",()=>{
@@ -59,7 +59,7 @@ test("property: retained tags match refused service handling without hiding othe
   const output=file+"("+input.line+","+input.column+"): warning "+input.code+": "+input.className+" extends a native class."+input.newline+"  "+note+input.newline
   const ds=parseDiagnostics(output)
   const actual=styleProblems(ds,input.selected?[file]:["unselected.vibe"])
-  const expected=input.selected&&!(input.refused&&eligible.includes(input.code))
+  const expected=false // every generated diagnostic here has warning severity
   assert.equal(actual.length,expected?1:0)
  }),{numRuns:400,seed:4830121})
 })

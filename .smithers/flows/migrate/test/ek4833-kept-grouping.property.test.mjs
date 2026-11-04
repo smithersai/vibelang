@@ -20,7 +20,7 @@ const others = [
   { head: "error EK4402: process.pid is platform code.", note: "  Use the experimental Process service." }
 ]
 
-test("EK4833: only the keep-grouping refusal leaves the style gate, wherever it stands in the output", () =>
+test("EK4833: warnings never enter the style gate, wherever it stands in the output", () =>
   fc.assert(fc.property(
     fc.array(fc.record({ kind: fc.integer({ min: 0, max: others.length + 1 }), file: fc.constantFrom("a", "b", "c"), line: fc.integer({ min: 1, max: 400 }) }), { maxLength: 24 }),
     fc.subarray(["a", "b", "c"]),
@@ -30,7 +30,7 @@ test("EK4833: only the keep-grouping refusal leaves the style gate, wherever it 
       const files = scope.map((f) => `src/${f}.vibe`)
       const got = styleProblems(parseDiagnostics(text), files).map((d) => `${d.file}:${d.line}:${d.code}`)
       const want = entries
-        .filter(({ kind, file }) => kind !== 0 && files.includes(`src/${file}.vibe`))
+        .filter(({ kind, file }) => shapes[kind].head.startsWith("error ") && files.includes(`src/${file}.vibe`))
         .map(({ kind, file, line }) => `src/${file}.vibe:${line}:${/(EK\d{4})/.exec(shapes[kind].head)[1]}`)
       assert.deepEqual(got, want)
     }

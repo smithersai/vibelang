@@ -101,11 +101,12 @@ test("unwritten, shadowed, unrelated and nested error contracts stay rejected", 
   ]) assert.equal((await decide(before, after)).accepted.size, 0, after)
 })
 
-test("preserving Error never exempts TypeScript-style forms or a configured error", native, async () => {
+test("a retained warning does not exempt a configured error", native, async () => {
   const d = advisory(corpus.after)
   const other = { ...d, code: "EK4834", message: "Effect.fail(…) runs here, so it fails the function as a throw does." }
   const result = await decide(corpus.before, corpus.after, [d, other])
-  assert.deepEqual(styleProblems([d, other], ["main.vibe"], result.accepted), [other])
+  assert.deepEqual(styleProblems([d, other], ["main.vibe"]), [])
+  assert.ok(result.accepted.has(d))
   assert.equal((await decide(corpus.before, corpus.after, [{ ...d, category: "error" }])).accepted.size, 0)
 })
 

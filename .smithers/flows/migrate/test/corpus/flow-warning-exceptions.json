@@ -1,0 +1,59 @@
+{
+  "key": "flow-warning-exceptions",
+  "source": "Minimized from read-only nyc-02 ~/migrate/t3code/repo, 2026-11-04. Source shapes are real; diagnostics below are deterministic flow stubs, not a captured native compile.",
+  "witnesses": [
+    {
+      "file": "apps/web/src/cloud/linkEnvironment.ts",
+      "line": 187,
+      "site": "A typed Effect.fn with a nullable success slot and a second Effect.provide argument (lines 187-197).",
+      "source": "import * as Effect from \"effect/Effect\"\nexport const readPrimaryCloudLinkState: (input: { readonly target: string }) => Effect.Effect<string | null, Error> = Effect.fn(\"readPrimaryCloudLinkState\")(function* (input: { readonly target: string }) { return input.target || null }, Effect.provide({} as never))\n"
+    },
+    {
+      "file": "apps/desktop/src/app/DesktopAssets.ts",
+      "line": 123,
+      "site": "The service factory returns DesktopAssets.of with an Effect.succeed member and an Effect.fn member; Effect.all receives an as-const tuple (lines 123-140).",
+      "source": "import * as Effect from \"effect/Effect\"\nexport const make = Effect.gen(function* () {\n  const [ico, icns, png] = yield* Effect.all([Effect.succeed(\"ico\"), Effect.succeed(\"icns\"), Effect.succeed(\"png\")] as const)\n  return { iconPaths: Effect.succeed({ ico, icns, png }), resolveResourcePath: Effect.fn(\"resolveResourcePath\")(function* (fileName: string) { return fileName }) }\n})\n"
+    }
+  ],
+  "diagnostics": [
+    {
+      "line": 2,
+      "column": 99,
+      "category": "warning",
+      "code": "EK4833",
+      "message": "This Effect type is TypeScript's spelling of an Effect type.",
+      "notes": [
+        "No quick fix: keep the qualified Effect type here to preserve grouping and declaration output."
+      ]
+    },
+    {
+      "line": 2,
+      "column": 132,
+      "category": "warning",
+      "code": "EK4839",
+      "message": "This match combinator has a native match spelling.",
+      "notes": [
+        "No quick fix: the handler is not an arrow function."
+      ]
+    },
+    {
+      "line": 4,
+      "column": 23,
+      "category": "warning",
+      "code": "EK4802",
+      "message": "This is an Effect value, but the function already runs Effects.",
+      "notes": []
+    },
+    {
+      "line": 4,
+      "column": 72,
+      "category": "warning",
+      "code": "FUTURE65001",
+      "message": "Generated future warning; its prefix and number are not policy.",
+      "notes": [
+        "No quick fix: the generated repair changes the published signature."
+      ]
+    }
+  ],
+  "refusalError": "TS2322: the repaired member changes the published return type."
+}

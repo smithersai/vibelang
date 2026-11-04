@@ -62,11 +62,9 @@ function check(input) {
   const diagnostics = parseDiagnostics(blocks.join(input.newline) + input.newline);
   const files = input.selected ? [...new Set([classFile, ctorFile])] : ["src/not-selected.vibe"];
   const actual = styleProblems(diagnostics, files);
-  // The retained source class, not another class/file or an error, owns the exemption.
-  const preservedConstructor = input.refused && input.sameClass && input.sameFile && input.category !== "error";
-  assert.equal(actual.some(d => d.code === "EK4814"), input.selected && !preservedConstructor);
-  assert.equal(actual.some(d => d.code === "EK4815"), input.selected, "unrelated style findings must remain");
-  assert.equal(actual.some(d => d.code === "EK4837"), input.selected && !input.refused);
+  assert.equal(actual.some(d => d.code === "EK4814"), input.selected && input.category === "error");
+  assert.equal(actual.some(d => d.code === "EK4815"), false, "a warning never returns a module");
+  assert.equal(actual.some(d => d.code === "EK4837"), false);
 }
 
 test("property: retained schema constructors keep class, file, category and batch scope", async () => {

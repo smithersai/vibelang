@@ -8,6 +8,7 @@ import { tmpdir } from "node:os"
 import { test } from "node:test"
 import { packRepository } from "../lib/pack-policy.mjs"
 import { rewriteReferences, restoreReferences } from "../lib/references.mjs"
+import { warningExceptions } from "../lib/diagnostics.mjs"
 import { renameBatch } from "../lib/codemod.mjs"
 import { planScope, blameCandidates, dependencyRoots, shardModules, fixShards, onePassStep } from "../lib/onepass.mjs"
 import { revertMany, paths, flowStep, nextStep, verify, record } from "../lib/steps.mjs"
@@ -730,4 +731,133 @@ test("t3code settle: cycles include diagnostic owners, never a healthy SCC membe
   const live = new Set(graph.keys())
   assert.deepEqual(dependencyRoots(graph, new Set(blameCandidates(graph, { file: "a.vibe", code: "TS2883" }, live))), ["a.vibe"])
   assert.deepEqual(new Set(dependencyRoots(graph, new Set(["a.vibe", "b.vibe", "observer.vibe"]))), new Set(["a.vibe", "b.vibe"]))
+})
+
+
+// These use the real plan/rename/fix/settle path. The compiler is deliberately
+// stubbed: the ruling is about flow policy after a safe fix refuses, regardless
+// of which compiler version emits the warning.
+for (const withError of [false, true]) test("warning refusal provenance survives settle" + (withError ? " alongside an own error" : ""), async () => {
+  const f = await fixture()
+  const corpus = readJson(fileURLToPath(new URL("./corpus/flow-warning-exceptions.json", import.meta.url)))
+  try {
+    put(f.target, "core/src/index.ts", corpus.witnesses[0].source)
+    put(f.target, "app/src/index.ts", corpus.witnesses[1].source)
+    const compiler = `#!/usr/bin/env node
+const fs = require("node:fs"), path = require("node:path")
+const args = process.argv.slice(2), pkg = path.basename(process.cwd())
+if (args.includes("--showConfig")) {
+  console.log(JSON.stringify({ files: fs.readdirSync("src").filter(f => /\\.(ts|vibe)$/.test(f) && !f.includes(".d.")).map(f => "./src/" + f) }))
+  process.exit(0)
+}
+if (!fs.existsSync("src/index.vibe") || pkg === "consumer") {
+  if (args.includes("--fix")) console.log("vibelang --fix: 0 fixes in 0 files.")
+  process.exit(0)
+}
+if (args.includes("--fix")) {
+  console.log("vibelang --fix: src/index.vibe:4: EK4802 not fixed: the fixed program would report " + ${JSON.stringify(corpus.refusalError)})
+  console.log("vibelang --fix: 0 fixes in 0 files.")
+}
+const ds = ${JSON.stringify(corpus.diagnostics)}
+for (const d of ds) {
+  console.log("src/index.vibe(" + d.line + "," + d.column + "): " + d.category + " " + d.code + ": " + d.message)
+  for (const note of d.notes) console.log("  " + note)
+}
+if (${withError} && pkg === "app") {
+  console.log("src/index.vibe(1,1): error EK4833: configured as an error, with the same code as a retained warning.")
+  console.log("  No quick fix: keep the qualified Effect type here.")
+  process.exitCode = 1
+}
+`
+    writeProbeAwareCompiler(f.compiler, compiler, { mode: 0o755 })
+    await Jj.commit(f.target, "t3code warning witnesses")
+    await onePassStep("plan", { run: f.run, scope: f.scope })
+    await onePassStep("rename", { run: f.run })
+    await onePassStep("fix", { run: f.run, jobs: 2 })
+    const out = await onePassStep("settle", { run: f.run, jobs: 2 })
+    assert.equal(out.settled, true)
+    assert.ok(existsSync(join(f.target, "core/src/index.vibe")))
+    assert.equal(existsSync(join(f.target, "app/src/index.vibe")), !withError)
+    assert.equal(existsSync(join(f.target, "app/src/index.ts")), withError)
+    assert.deepEqual(Object.keys(out.causes), withError ? ["app/src/index.vibe"] : [])
+    const kept = withError ? ["core/src/index.vibe"] : ["app/src/index.vibe", "core/src/index.vibe"]
+    const refused = readJson(paths(f.run).codemod("01")).fix.refused
+    for (const file of kept) {
+      const expected = warningExceptions(corpus.diagnostics.map(d => ({ ...d, file })), [file], refused)
+      const actual = out.warningExceptions.filter(e => e.file === file)
+      assert.equal(actual.length, 4)
+      assert.ok(actual.every(e => e.name === "warning-fix-refused"))
+      assert.deepEqual(actual, expected)
+      assert.equal(actual.find(e => e.code === "EK4802").reason, "The fixed program would report " + corpus.refusalError)
+      assert.equal(text(f.target, file), corpus.witnesses[file.startsWith("core") ? 0 : 1].source)
+    }
+    assert.ok(out.warningExceptions.every(e => kept.includes(e.file)))
+    assert.deepEqual(readJson(join(paths(f.run).batch("01"), "settle.json")).warningExceptions, out.warningExceptions)
+    const done = readJson(join(f.run, "done.json"))
+    assert.deepEqual(done.core.warningExceptions, out.warningExceptions.filter(e => e.file.startsWith("core/")))
+    if (withError) assert.equal(done.app.warningExceptions.length, 0)
+    // Replaying does not accumulate stale or duplicate exception sites.
+    assert.deepEqual((await onePassStep("settle", { run: f.run })).warningExceptions, out.warningExceptions)
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("property: generated warning/error mixes retain exactly the error-free modules and their provenance", async () => {
+  const entry = fc.record({
+    pkg: fc.constantFrom("core", "app"),
+    category: fc.constantFrom("warning", "error"),
+    code: fc.oneof(fc.constantFrom("EK4833", "EK4839", "EK4802", "TS2322"),
+      fc.integer({ min: 1, max: 999999 }).map(n => "GENERATED" + n)),
+    line: fc.integer({ min: 1, max: 20 }),
+    receipt: fc.boolean()
+  })
+  await fc.assert(fc.asyncProperty(fc.array(entry, { maxLength: 12 }), async entries => {
+    const f = await fixture()
+    try {
+      // Independent modules let the property distinguish a module's own error
+      // from warnings in its neighbour, without dependency fallout.
+      for (const pkg of ["core", "app"]) put(f.target, pkg + "/src/index.ts", "export const value = 1\n")
+      writeJson(paths(f.run).inventory, { files: ["core/src/index.ts", "app/src/index.ts"].map(path => ({ path, imports: [] })) })
+      writeProbeAwareCompiler(f.compiler, `#!/usr/bin/env node
+const fs = require("node:fs"), path = require("node:path")
+const args = process.argv.slice(2), pkg = path.basename(process.cwd())
+if (args.includes("--showConfig")) {
+  console.log(JSON.stringify({ files: ["./src/index." + (fs.existsSync("src/index.vibe") ? "vibe" : "ts")] }))
+  process.exit(0)
+}
+if (!fs.existsSync("src/index.vibe")) process.exit(0)
+for (const d of ${JSON.stringify(entries)}) {
+  if (d.pkg !== pkg) continue
+  console.log("src/index.vibe(" + d.line + ",1): " + d.category + " " + d.code + ": generated finding")
+  if (d.receipt) {
+    if (args.includes("--fix")) console.log("vibelang --fix: src/index.vibe:" + d.line + ": " + d.code + " not fixed: the fixed program would report TS2322: changed API.")
+  } else console.log("  No quick fix: preserve this signature.")
+  if (d.category === "error") process.exitCode = 1
+}
+if (args.includes("--fix")) console.log("vibelang --fix: 0 fixes in 0 files.")
+`, { mode: 0o755 })
+      await Jj.commit(f.target, "generated diagnostic mix")
+      await onePassStep("plan", { run: f.run, scope: f.scope })
+      await onePassStep("rename", { run: f.run })
+      await onePassStep("fix", { run: f.run })
+      const settled = await onePassStep("settle", { run: f.run })
+      assert.equal(settled.settled, true)
+      const done = readJson(join(f.run, "done.json"))
+      for (const pkg of ["core", "app"]) {
+        const file = pkg + "/src/index.vibe"
+        const rejected = entries.some(d => d.pkg === pkg && d.category === "error")
+        assert.equal(existsSync(join(f.target, file)), !rejected)
+        assert.equal(existsSync(join(f.target, pkg + "/src/index.ts")), rejected)
+        const expected = entries.filter(d => d.pkg === pkg && d.category === "warning" && !rejected)
+        const records = settled.warningExceptions.filter(e => e.file === file)
+        assert.deepEqual(new Set(records.map(e => e.code + ":" + e.line)),
+          new Set(expected.map(d => d.code + ":" + d.line)))
+        assert.ok(records.every(e => e.name === "warning-fix-refused" && /signature|TS2322/.test(e.reason)))
+        assert.deepEqual(done[pkg].warningExceptions, records)
+      }
+    } finally { rmSync(f.root, { recursive: true, force: true }) }
+  }), { seed: 48394803, numRuns: 16, examples: [
+    [[]],
+    [[{ pkg: "core", category: "warning", code: "GENERATED65001", line: 1, receipt: true },
+      { pkg: "app", category: "error", code: "GENERATED65001", line: 1, receipt: false }]]
+  ] })
 })

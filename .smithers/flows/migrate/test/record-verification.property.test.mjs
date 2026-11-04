@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { recordDeclarationSurface } from "../lib/declarations.mjs"
-import { makeConfig, paths, record, verify } from "../lib/steps.mjs"
+import { makeConfig, paths, record, report, verify } from "../lib/steps.mjs"
 import { countTokens } from "../lib/tokens.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, readJson, slug, writeJson } from "../lib/util.mjs"
@@ -106,4 +106,33 @@ test("foldkit-13-record: formatter assertion mutations fail before certification
       assert.equal(await Jj.commitId(target,"@-"),base)
     },{...corpus,guardTest})
   }),{seed:131014,numRuns:12,examples:corpus.formatterAssertions.replacements.flatMap(n=>[[n,false],[n,true]])})
+})
+
+
+test("warning exceptions reach final module provenance, commit and report", async () => {
+  await fixture(false, "retained", async ({ run, p, target }) => {
+    const diagnostic = "main.vibe(1,9): warning EK4839: A match chain remains.\n  No quick fix: the handler is not an arrow function.\n"
+    const compiler = join(target, "node_modules/.bin/vibelang")
+    writeFileSync(compiler, readFileSync(compiler, "utf8") +
+      '\nif (!process.argv.includes("--outDir")) console.log(' + JSON.stringify(diagnostic) + ');\n')
+    writeJson(p.codemod("01"), { renames: [{ from: "main.ts", to: "main.vibe" }], fix: { refused: [], totals: {} } })
+    const checked = await verify({ run, batch: "01" })
+    assert.equal(checked.ok, true, JSON.stringify(checked))
+    const exceptions = checked.files[0].warningExceptions
+    assert.deepEqual(exceptions, [{
+      name: "warning-fix-refused", category: "warning", code: "EK4839",
+      file: "main.vibe", line: 1, column: 9, message: "A match chain remains.",
+      reason: "No quick fix: the handler is not an arrow function."
+    }])
+    const recorded = await record({ run, batch: "01" })
+    assert.deepEqual(recorded.files[0].warningExceptions, exceptions)
+    assert.deepEqual(readJson(p.record("01")).files[0].warningExceptions, exceptions)
+    const committed = await must('jj log --no-graph -r @- -T description', { cwd: target })
+    // Jj.commit wraps long body lines; compare the description with its wrapping undone.
+    const description = committed.stdout.replace(/\s+/g, " ")
+    assert.ok(description.includes("Exception warning-fix-refused: EK4839 main.vibe:1:9: " + exceptions[0].reason), committed.stdout)
+    const reported = await report({ run })
+    assert.deepEqual(reported.warningExceptions, exceptions.map(e => ({ batch: "01", ...e })))
+    assert.ok(readFileSync(p.report, "utf8").includes(exceptions[0].reason))
+  })
 })

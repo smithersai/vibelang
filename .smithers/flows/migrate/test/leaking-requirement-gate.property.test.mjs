@@ -53,13 +53,13 @@ function check(input) {
   const file = "src/group" + input.directory + "/service.vibe";
   const leak = file + "(" + input.line + ",16): " + input.category + " EK4809: Every member of S" + input.name + " needs " + input.requirement + ", so each caller must provide it.";
   const notes = input.withNotes ? input.newline + "  Read " + input.requirement + " where the layer is built, and drop it from the members' contracts." : "";
-  // Other EK48xx lint rules and TypeScript-style forms stay problems.
+  // Neighbouring warning codes follow the same severity contract.
   const neighbour = file + "(9,3): warning " + input.neighbour + ": unrelated finding.";
   const blocks = input.reverse ? [neighbour, leak + notes] : [leak + notes, neighbour];
   const diagnostics = parseDiagnostics(blocks.join(input.newline) + input.newline);
   const actual = styleProblems(diagnostics, input.selected ? [file] : ["src/not-selected.vibe"]);
   assert.equal(actual.some(d => d.code === "EK4809"), input.selected && input.category === "error");
-  assert.equal(actual.some(d => d.code === input.neighbour), input.selected, "neighbouring style findings must remain");
+  assert.equal(actual.some(d => d.code === input.neighbour), false, "neighbouring warnings must remain advisory");
 }
 
 test("property: EK4809 warnings pass, an EK4809 error and every other style finding stay", async () => {

@@ -29,7 +29,7 @@ import { followLintRenames } from "./lint-paths.mjs"
 import { platformCausesOf, splitBatchPlatform } from "./platform.mjs"
 import { restoreBuildEntrypoints } from "./build-entrypoints.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
-import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
+import { check, newErrors, styleProblems, summarize, warningExceptions } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { runPhaseCheck } from "./run-phase.mjs"
 import { emittedPathOf, lostWrapperCheck, readAllowList } from "./lost-wrapper.mjs"
@@ -1720,7 +1720,9 @@ export async function compile(options) {
     at: new Date().toISOString(),
     files,
     summary: summarize(diagnostics, files),
-    style: styleProblems(diagnostics, files, preserved.accepted),
+    style: styleProblems(diagnostics, files),
+    warningExceptions: warningExceptions(diagnostics, files.filter(f => f.endsWith(".vibe")),
+      readJsonIf(p.codemod(b))?.fix?.refused),
     styleExemptions: preserved.decisions,
     newErrors: added,
     diagnostics: diagnostics.filter((d) => files.includes(d.file) || added.includes(d))
@@ -2090,7 +2092,7 @@ export async function verify(options) {
   const result = {
     batch: b,
     at: new Date().toISOString(),
-    files,
+    files: files.map(f => ({ ...f, warningExceptions: checked.warningExceptions.filter(e => e.file === f.path) })),
     formatted,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped,
       status: testsPassed(tests) ? "passed" : "failing", failedNames: tests.failed, baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
@@ -2187,7 +2189,7 @@ export async function record(options) {
   const reverted = readJsonIf(p.reverted(b), [])
   const byPath = new Map(inventory.files.map((f) => [f.path, f]))
   const after = await countTokens(files.map((f) => join(t, f.path)))
-  const rows = files.map((f) => ({ ...f, before: byPath.get(f.planned)?.tokens ?? null, after: after[join(t, f.path)] }))
+  const rows = files.map((f) => ({ ...f, warningExceptions: verified?.files?.find(row => row.path === f.path)?.warningExceptions ?? [], before: byPath.get(f.planned)?.tokens ?? null, after: after[join(t, f.path)] }))
   const migrated = rows.filter((r) => r.migrated)
   const before = migrated.reduce((sum, r) => sum + (r.before ?? 0), 0)
   const now = migrated.reduce((sum, r) => sum + r.after, 0)
@@ -2197,6 +2199,7 @@ export async function record(options) {
     "",
     ...rows.map((r) => (r.migrated ? `- ${r.planned} -> ${r.path} (${r.before} -> ${r.after} tokens)` : `- ${r.planned} stays .ts: ${reverted.find((x) => x.file === r.planned)?.reason ?? "not migrated"}`)),
     "",
+    ...migrated.flatMap(r => r.warningExceptions.map(e => `Exception ${e.name}: ${e.code} ${e.file}:${e.line}:${e.column}: ${e.reason}`)),
     `Tokens (o200k) of the migrated files: ${before} -> ${now} (${tokens.percent ?? 0}%).`,
     `Verify: ${verified?.ok ? verificationDescription(verified) : `forced: ${options.force}`}.`
   ]
@@ -2279,6 +2282,8 @@ export async function report(options) {
     idioms: issues.filter((i) => i.kind === "idiom"),
     testDiffs: batches.map(b => ({ batch: b.batch, result: b.record?.testDiff ?? b.verify?.testDiff })).filter(b => b.result),
     fixRefusals: batches.flatMap((b) => b.codemod?.fix.refused ?? []),
+    warningExceptions: batches.flatMap(b => (b.record?.files ?? b.verify?.files ?? [])
+      .flatMap(f => (f.warningExceptions ?? []).map(e => ({ batch: b.batch, ...e })))),
     // Paths the check could not prove either way; a refusal fails its batch and never reaches a record.
     pathReports: batches.flatMap((b) => b.verify?.pathReferences?.reports ?? []),
     // A dist-list diff that did not run says so for each batch, so no report reads as a pass it never made.
@@ -2323,6 +2328,10 @@ export async function report(options) {
         "- Batch " + command.batch + ": test command exit " + (command.code ?? "not recorded") + "; individual failure names were not recorded"),
       ""
     ] : []),
+    "## Warning exceptions",
+    "",
+    ...(data.warningExceptions.length ? data.warningExceptions.map(e => `- Batch ${e.batch}: ${e.name}, ${e.code}, ${e.file}:${e.line}:${e.column}: ${e.reason.replaceAll("\n", " ")}`) : ["- none"]),
+    "",
     "## Rewrites vibelang --fix applied",
     "",
     ...(Object.keys(rewrites).length ? Object.entries(rewrites).map(([k, n]) => `- ${k}: ${n}`) : ["- none"]),

@@ -577,7 +577,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Setup left literal `Bun.build` entrypoints such as `src/index.ts` pointing at files it had migrated, so the build stopped with `ModuleNotFound`. It now follows the existing converted source and keeps native entries as written.
 
-- Migration returned a module to TypeScript when `EK4833` said `No quick fix: keep the qualified Effect type here`, as for an Effect type with a union slot. The style gate now keeps such a module; other `EK4833` warnings still return it.
+- Migration returned error-free modules to TypeScript for warning diagnostics whose safe fix refused, including `EK4833`, `EK4839` and `EK4802`. Every warning category now keeps the module as `.vibe`, including imported Effect and future codes, with located, named exceptions and refusal reasons in module provenance and the migration report. Errors still return modules. This extends the earlier `EK4833` grouping exception.
 - Upgrading an older `service` body could turn its readonly API fields writable. `vibelang --fix --fix-migration-only` now spells the old `readonly` fields and nested type members explicitly, preserving their declarations across the compiler upgrade.
 
 - The clean ESLint regression fixture produced an unexpected multiline-call warning because its final `match` arm lacked `;`. The fixture now uses a terminated arm, and generated layout checks keep real multiline-call warnings covered.

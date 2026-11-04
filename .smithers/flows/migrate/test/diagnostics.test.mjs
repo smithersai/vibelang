@@ -32,9 +32,9 @@ test("summarize splits the batch's diagnostics from the rest", () => {
   assert.equal(s.other.errors, 2)
 })
 
-test("styleProblems are EK48xx and EK4402 in the given files only", () => {
+test("styleProblems reports only error-severity style diagnostics in the selected files", () => {
   const ds = parseDiagnostics(output)
-  assert.deepEqual(styleProblems(ds, ["src/users.vibe"]).map((d) => d.code), ["EK4402", "EK4831"])
+  assert.deepEqual(styleProblems(ds, ["src/users.vibe"]).map((d) => d.code), ["EK4402"])
   assert.deepEqual(styleProblems(ds, ["src/other.ts"]), [])
 })
 
@@ -75,12 +75,12 @@ test("a compiler that dies is no clean run: check, the fix loop and the declarat
   }
 })
 
-test("styleProblems holds a catch that can never run", () => {
+test("styleProblems retains warning-severity catches that can never run", () => {
   const diagnostics = parseDiagnostics("src/a.vibe(2,3): warning EK9204: This catch can never run.\nsrc/b.vibe(2,3): warning EK9204: This catch can never run.\nsrc/a.vibe(3,3): warning EK9999: Other.\n")
-  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK9204"])
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), [])
 })
 
-test("styleProblems leaves a Context.Service class no service declaration can write, and rejects one it can", () => {
+test("styleProblems leaves a Context.Service class no service declaration can write, and retains repairable warnings too", () => {
   const diagnostics = parseDiagnostics([
     "src/a.vibe(1,14): warning EK4831: Svc extends Context.Service; in VibeLang a service is a service declaration: service Svc { … }.",
     "  No quick fix: its members come from Shape; write them in the declaration.",
@@ -95,10 +95,10 @@ test("styleProblems leaves a Context.Service class no service declaration can wr
     ""
   ].join("\n"))
   const files = ["src/a.vibe", "src/b.vibe", "src/c.vibe", "src/d.vibe", "src/e.vibe"]
-  assert.deepEqual(styleProblems(diagnostics, files).map((d) => d.file), ["src/c.vibe", "src/e.vibe"])
+  assert.deepEqual(styleProblems(diagnostics, files).map((d) => d.file), [])
 })
 
-test("styleProblems leaves a Schema.TaggedError class no schema error can write, and rejects one it can", () => {
+test("styleProblems leaves a Schema.TaggedError class no schema error can write, and retains repairable warnings too", () => {
   const diagnostics = parseDiagnostics([
     "src/a.vibe(2,14): warning EK4837: Failure extends Schema.TaggedError; in VibeLang it is a schema error declaration: schema error Failure { … }.",
     "  No quick fix: a schema error has no annotations argument.",
@@ -106,13 +106,13 @@ test("styleProblems leaves a Schema.TaggedError class no schema error can write,
     "  Its quick fix writes schema error Missing { … }; vibelang --fix applies every such fix in the project.",
     ""
   ].join("\n"))
-  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/b.vibe"])
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), [])
 })
 
 // drive-t3code: provider-acp exports AcpMcpOverAcpError extends Error and
 // calls new AcpMcpOverAcpError(message, { cause }); an error declaration's
 // constructor takes one object, so the class keeps its declaration.
-test("styleProblems leaves an exported Error class no error declaration can write, and rejects a local one", () => {
+test("styleProblems leaves an exported Error class no error declaration can write, and retains a local warning too", () => {
   const diagnostics = parseDiagnostics([
     "src/a.vibe(1,14): warning EK4805: LegacyError extends Error, but a VibeLang failure is an error declaration.",
     "  No quick fix: an error declaration's constructor takes one object of its fields, so declaring LegacyError with error would change the constructor it exports, new LegacyError(message, options).",
@@ -120,7 +120,7 @@ test("styleProblems leaves an exported Error class no error declaration can writ
     "  Declare it with error instead, as in error Local { message: string }, so that catch, match, and is can tell it apart by its _tag.",
     ""
   ].join("\n"))
-  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/b.vibe"])
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), [])
 })
 
 // drive-t3code 18:31Z: packages/contracts/src/filesystem.ts keeps
@@ -131,7 +131,7 @@ test("t3code: the style gate accepts a kept Schema.TaggedError class with its co
   assert.deepEqual(styleProblems(parseDiagnostics(corpus.output), ["main.vibe"]), corpus.styleProblems, corpus.key)
 })
 
-test("styleProblems leaves EK4814 on a Schema.TaggedError class it keeps, and rejects it on any other class", () => {
+test("styleProblems leaves EK4814 on a Schema.TaggedError class it keeps, and retains warnings on other classes", () => {
   const diagnostics = parseDiagnostics([
     "src/a.vibe(2,14): warning EK4837: E extends Schema.TaggedError; a schema error declaration, schema error E { … }, writes the same failure with its Schema.",
     "  No quick fix: a schema error's body keeps accessors and annotated methods.",
@@ -144,12 +144,12 @@ test("styleProblems leaves EK4814 on a Schema.TaggedError class it keeps, and re
     ""
   ].join("\n"))
   const kept = styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe", "src/c.vibe"]).map((d) => `${d.file}:${d.line}:${d.code}`)
-  assert.deepEqual(kept, ["src/a.vibe:9:EK4814", "src/b.vibe:3:EK4814", "src/c.vibe:2:EK4837", "src/c.vibe:3:EK4814"])
+  assert.deepEqual(kept, [])
 })
 
 test("styleProblems leaves the Struct constant --fix must keep: a schema declaration would add a public type", () => {
   const diagnostics = parseDiagnostics("src/a.vibe(1,14): warning EK4832: Input holds a Schema.Struct.\nsrc/a.vibe(3,3): warning EK4831: Users extends Context.Service.\n")
-  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK4831"])
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), [])
 })
 
 test("CRLF diagnostic streams preserve errors, locations and repair notes", () => {
@@ -173,15 +173,15 @@ test("CRLF diagnostic streams preserve errors, locations and repair notes", () =
 // shorthand would add grouping the source did not write (decided detail
 // 260). EK4833 says so with "No quick fix: keep", and that code is what the
 // migration means to keep, so it must not return the module. A fixable
-// EK4833 still does.
-test("styleProblems keeps an EK4833 the compiler says to keep, and rejects a fixable one", () => {
+// EK4833 also stays a warning.
+test("styleProblems keeps an EK4833 the compiler says to keep, and retains a fixable warning too", () => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-ek4833-kept-grouping.json", import.meta.url), "utf8"))
   const diagnostics = parseDiagnostics(corpus.output)
   assert.equal(diagnostics.filter((d) => d.code === "EK4833").length, 3)
-  assert.deepEqual(styleProblems(diagnostics, ["main.vibe"]).map((d) => d.line), [7])
+  assert.deepEqual(styleProblems(diagnostics, ["main.vibe"]).map((d) => d.line), [])
 })
 
-test("styleProblems still returns other EK48 refusals, so a refusal bug stays visible", () => {
+test("styleProblems retains all warning refusals", () => {
   const diagnostics = parseDiagnostics([
     "src/a.vibe(3,9): warning EK4834: try Effect.succeed(v) is TypeScript's spelling; write v.",
     "  No quick fix: the fixed program would report TS1109.",
@@ -189,5 +189,5 @@ test("styleProblems still returns other EK48 refusals, so a refusal bug stays vi
     "  No quick fix: some other reason this repair is refused.",
     ""
   ].join("\n"))
-  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/a.vibe", "src/b.vibe"])
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), [])
 })

@@ -67,36 +67,49 @@ export function summarize(diagnostics, files = []) {
 }
 
 /**
- * What a batch may not keep in the given files: TypeScript-style Effect forms
- * (EK48xx), platform globals (EK4402), and a catch that can never run (EK9204).
- * EK4832 stays out: the Struct constant --fix leaves is one a schema
- * declaration would add a public type to. So does an EK4830, EK4831, EK4837 or EK4805
- * that says it has no quick fix: a TaggedError class keeps its published tag;
- * a service declaration lists its members
- * inline, so a named shape, static members or a dynamic key cannot keep the
- * class's declaration; a schema error has no annotations argument, type
- * parameters or constructor, so a Schema.TaggedError class with one stays a
- * class; and an error declaration's constructor takes one object, so an
- * exported class that extends Error keeps its new X(message, options). Such
- * a kept Schema.TaggedError class keeps its constructor too, which EK4814
- * warns about: an EK4814 on a class whose EK4837 has no quick fix stays out.
- * So does an EK4809 warning: it says every member of a service needs one
- * requirement, and those member contracts are the service's published
- * declaration, which verify already holds to the TypeScript's. Dropping the
- * requirement, as its advice says, would change the API (alchemy-42).
- * So does an EK4833 whose note says to keep the qualified Effect type: the
- * shorthand would need parentheses the source did not write, and decided
- * detail 260 keeps Effect.Effect there. Any other EK4833 refusal still counts.
+ * The style gate follows severity, including user-configured Effect severity.
+ * Warnings never return a module to TypeScript. Errors still block, even when
+ * their note says no safe fix exists; settle/verify also check all own errors.
  */
-export function styleProblems(diagnostics, files, preservedErrors = new Set()) {
+export function styleProblems(diagnostics, files) {
   const inFiles = new Set(files)
-  const refused = (d) => (["EK4805", "EK4830", "EK4831", "EK4837"].includes(d.code) && d.notes.some((note) => note.startsWith("No quick fix"))) ||
-    (d.code === "EK4833" && d.notes.some((note) => note.startsWith("No quick fix: keep the qualified Effect type here")))
-  // The class a diagnostic names first: `E extends …`, `E overrides …`.
-  const className = (d) => /^(\S+) (?:extends|overrides) /.exec(d.message)?.[1]
-  const keptClasses = new Set(diagnostics.filter((d) => d.code === "EK4837" && refused(d)).map((d) => `${d.file}\0${className(d)}`))
-  const kept = (d) => d.code === "EK4832" || refused(d) || (d.code === "EK4809" && d.category === "warning") || (d.code === "EK4804" && preservedErrors.has(d)) || (d.code === "EK4814" && d.category !== "error" && keptClasses.has(`${d.file}\0${className(d)}`))
-  return diagnostics.filter((d) => inFiles.has(d.file) && ((/^EK48\d\d$/.test(d.code) && !kept(d)) || d.code === "EK4402" || d.code === "EK9204"))
+  return diagnostics.filter((d) => inFiles.has(d.file) && d.category === "error" &&
+    (/^EK48\d\d$/.test(d.code) || d.code === "EK4402" || d.code === "EK9204"))
+}
+
+/**
+ * Module provenance for warnings left after safe fixes. No diagnostic code
+ * allow-list: imported Effect and future warning codes have the same contract.
+ * See README.md, "Warning exceptions", for the persisted record shape.
+ */
+export function warningExceptions(diagnostics, files, refusals = []) {
+  const inFiles = new Set(files), records = new Map(), refusedSites = new Map()
+  const site = d => JSON.stringify([d.file, d.line, d.code])
+  for (const r of refusals) {
+    const key = site(r)
+    if (!refusedSites.has(key)) refusedSites.set(key, new Set())
+    refusedSites.get(key).add("The fixed program would report " + r.error)
+  }
+  for (const d of diagnostics) {
+    if (d.category !== "warning" || !inFiles.has(d.file)) continue
+    const reasons = [
+      ...(d.notes ?? []).filter(note => /no quick fix/i.test(note)),
+      ...(refusedSites.get(site(d)) ?? [])
+    ]
+    const reason = [...new Set(reasons)].sort().join("\n")
+    const record = {
+      name: reason ? "warning-fix-refused" : "warning-retained",
+      category: "warning", code: d.code, file: d.file, line: d.line, column: d.column,
+      message: d.message,
+      reason: reason || "Warning remains after the safe-fix pass; no refusal reason was reported."
+    }
+    records.set(JSON.stringify(record), record)
+  }
+  // Plain string comparison is independent of the host's locale.
+  const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0
+  return [...records.values()].sort((a, b) => compare(a.file, b.file) ||
+    a.line - b.line || a.column - b.column || compare(a.code, b.code) ||
+    compare(a.name, b.name) || compare(a.reason, b.reason) || compare(a.message, b.message))
 }
 
 /** Errors that the baseline did not have, compared by file, code and message. */

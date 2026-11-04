@@ -7,7 +7,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
-import { assertFinished, newErrors, parseDiagnostics, styleProblems } from "./diagnostics.mjs"
+import { assertFinished, newErrors, parseDiagnostics, styleProblems, warningExceptions } from "./diagnostics.mjs"
 import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { isToolConfig } from "./plan.mjs"
@@ -296,11 +296,13 @@ async function settle(config, p, cm, options) {
     history.push(receipt)
     appendJsonl(join(p.batch("01"), "progress.jsonl"), { at: new Date().toISOString(), stage: "settle", ...receipt })
     if (!added.length || !roots.length || round === maxRounds) {
-      const result = { settled: !added.length, rounds: history, causes, remaining: added }
+      const exceptions = warningExceptions(checks.flatMap(c => c.diagnostics), [...live], cm.fix?.refused)
+      const result = { settled: !added.length, rounds: history, causes, remaining: added, warningExceptions: exceptions }
       writeJson(join(p.batch("01"), "settle.json"), result)
       if (result.settled) writeJson(join(p.run,"done.json"), Object.fromEntries(config.packages.map(pkg => [pkg.dir,{
         digest: packageDigest(config,pkg.dir,cm.renames.map(r=>r.to)), at: new Date().toISOString(), kept: [...live].filter(f => owner(config,f) === pkg.dir),
-        reverted: Object.entries(causes).filter(([f]) => owner(config,f) === pkg.dir), checked: checks.map(c => c.file)
+        reverted: Object.entries(causes).filter(([f]) => owner(config,f) === pkg.dir), checked: checks.map(c => c.file),
+        warningExceptions: exceptions.filter(e => owner(config, e.file) === pkg.dir)
       }])))
       return result
     }

@@ -632,7 +632,7 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
 }
 
 const fixLine = /^vibelang --fix: (.+?): (\d+) (?:fix|fixes) \((.*)\)$/
-const refusalLine = /^vibelang --fix: (.+?):(\d+): (EK\d+) not fixed: the fixed program would report (.*)$/
+const refusalLine = /^vibelang --fix: (.+?):(\d+): ([A-Z]+\d+) not fixed: the fixed program would report (.*)$/
 
 /** Reads one `vibelang --fix` run: the rewrites applied per file, by kind, and the refusals. */
 export function parseFixOutput(output, { cwd, root } = {}) {
