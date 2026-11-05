@@ -9,14 +9,15 @@ import {makeConfig,wireTarget} from "../../../.smithers/flows/migrate/lib/steps.
 
 export async function setupContract(group) {
   const issues=[]
-  for(const flag of [undefined,false,true]) for(const inherited of [false,true]){
+  const policies=group==="lint" ? [undefined,false,true].flatMap(authored=>[false,true].map(patched=>({authored,patched}))) : [{}]
+  for(const flag of [undefined,false,true]) for(const inherited of [false,true]) for(const policy of policies){
     const dir=mkdtempSync(join(tmpdir(),"vip27-setup-options-"))
     try{
       mkdirSync(join(dir,"src"));mkdirSync(join(dir,"node_modules"))
       symlinkSync(fileURLToPath(new URL("../../../packages/runtime/node_modules/typescript",import.meta.url)),join(dir,"node_modules/typescript"))
-      writeFileSync(join(dir,"package.json"),'{"name":"fixture","private":true,"type":"module"}')
+      writeFileSync(join(dir,"package.json"),JSON.stringify({name:"fixture",private:true,type:"module",...(policy.patched?{scripts:{postinstall:"effect-language-service patch"}}:{})}))
       const options={module:"Preserve",moduleResolution:"Bundler",noEmit:true,jsx:"preserve",types:[],...(flag===undefined?{}:{rewriteRelativeImportExtensions:flag})}
-      if(group==="lint")options.plugins=[{name:"@effect/language-service",diagnosticSeverity:{floatingEffect:"error"}}]
+      if(group==="lint")options.plugins=[{name:"@effect/language-service",diagnosticSeverity:{floatingEffect:"error"},...(policy.authored===undefined?{}:{ignoreEffectWarningsInTscExitCode:policy.authored,ignoreEffectErrorsInTscExitCode:policy.authored})}]
       const cfg=inherited?{extends:"./base.json",include:["src"]}:{compilerOptions:options,include:["src"]}
       if(inherited)writeFileSync(join(dir,"base.json"),JSON.stringify({compilerOptions:options}))
       if(group==="lint"){cfg.vibe={severities:{EK3801:"error",EK38100:"off"}};cfg.exclude=["authored-exclusion"]}
@@ -39,7 +40,8 @@ export async function setupContract(group) {
       if(group==="lint"){
         const written=JSON.parse(readFileSync(join(dir,"tsconfig.json"),"utf8"))
         check("modern severity policy",()=>assert.deepEqual(written.vibe.severities,cfg.vibe.severities))
-        check("native plugin severity policy",()=>assert.deepEqual(after.options.plugins,before.options.plugins))
+        const expected=before.options.plugins.map(plugin=>({...plugin,...(!policy.patched&&policy.authored===undefined?{ignoreEffectWarningsInTscExitCode:true,ignoreEffectErrorsInTscExitCode:true}:{})}))
+        check("native plugin severity and authored exit policy",()=>assert.deepEqual(after.options.plugins,expected))
         check("authored exclusions",()=>assert.deepEqual(written.exclude,cfg.exclude))
       }
       if(group==="rewrite")check("effective authored rewrite option",()=>assert.equal(after.options.rewriteRelativeImportExtensions,before.options.rewriteRelativeImportExtensions))

@@ -1,0 +1,1 @@
+{"compilerOptions":{"plugins":[{"name":"@effect/language-service","diagnosticSeverity":{"floatingEffect":"error"}}]},"vibe":{"severities":{"EK3801":"error","EK38100":"off"}}}

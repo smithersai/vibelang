@@ -1896,3 +1896,7 @@ The `//:stream-loop-head-identities` check retains assignment, property, `var`, 
 The `//:host-clock-identities` check covers direct, computed and optional host clock reads in named functions, retired settings, local shadows and native ECMAScript controls.
 
 The `//:native-written-declaration-routes` check covers ordinary TypeScript consumers of VibeLang sources, quote styles, nested paths, rewrite settings and both source extensions.
+
+The `//:setup-lint-exit-policy` check retains modern severities and authored plugin flags across unpatched and Effect-patched setup, with inherited configurations and JSONC mutations.
+
+Setup follows TypeScript’s resolved `extends` chain when preserving an unpatched compiler’s Effect exit policy. It updates owned shared bases even without a `tsconfig` filename; protected and foreign bases remain unchanged and receive a diagnostic when their missing exit options require attention.

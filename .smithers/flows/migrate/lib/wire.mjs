@@ -15,7 +15,7 @@ import { addBunBuildGlobs } from "./bun-globs.mjs"
 // Effect upgrade before setup is upgrade.mjs. initAgents sets the target's
 // coding agents up with the vibelang it installed.
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { isAbsolute, join, posix, relative, resolve } from "node:path"
 import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { addVitestProjectPlugins } from "./vitest-projects.mjs"
@@ -1046,6 +1046,42 @@ export function ownedTsconfigs(root) {
   walk("")
   const own = ownedPaths(root)
   return files.filter(own)
+}
+
+/**
+ * Follow TypeScript's resolved extends chain for an owned project's plugin
+ * policy. Shared bases need not use a tsconfig filename. Foreign, fixture and
+ * submodule configurations remain read-only.
+ */
+export function ownedExtendedTsconfigs(root, ts, files = ownedTsconfigs(root), { onSkipped = () => {} } = {}) {
+  const canonical = realpathSync(root)
+  const own = ownedPaths(canonical)
+  const found = new Set()
+  const consider = (file, project) => {
+    const path = relative(canonical, realpathSync(file)).replaceAll("\\", "/")
+    const parts = path.split("/")
+    const protectedPath = path === ".." || path.startsWith("../") || isAbsolute(path) ||
+      parts.some(part => part === "node_modules" || part === ".git" || part === ".jj" ||
+        /fixture/i.test(part) || part === "templates" || testDirectory(part))
+    if (protectedPath || !own(path)) {
+      onSkipped({ project, path, reason: protectedPath ? "protected" : "not-owned" })
+      return
+    }
+    found.add(path)
+  }
+  for (const file of files) {
+    const absolute = resolve(canonical, file)
+    consider(absolute, file)
+    const parsed = ts.getParsedCommandLineOfConfigFile(absolute, {}, {
+      ...ts.sys,
+      onUnRecoverableConfigFileDiagnostic(diagnostic) {
+        throw new Error("Cannot resolve setup configuration " + file + ": TS" + diagnostic.code)
+      }
+    })
+    if (!parsed) throw new Error("Cannot resolve setup configuration " + file)
+    for (const inherited of parsed.options.configFile?.extendedSourceFiles ?? []) consider(inherited, file)
+  }
+  return [...found].sort()
 }
 
 /**

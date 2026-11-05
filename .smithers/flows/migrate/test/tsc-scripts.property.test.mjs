@@ -8,7 +8,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
-import { addEffectExitOptions, effectExitOptions, effectPatchesCompiler, replaceTscInScript, wireBunBuilds } from "../lib/wire.mjs"
+import { addEffectExitOptions, effectExitOptions, effectPatchesCompiler, replaceTscInScript, wireBunBuilds, ownedExtendedTsconfigs } from "../lib/wire.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
@@ -204,7 +204,7 @@ const authorValue = fc.constantFrom(undefined, true, false)
 const effectEntry = fc.record({ warnings: authorValue, errors: authorValue, extra: fc.boolean(), multiline: fc.boolean() }).map((e) => ({ effect: true, ...e }))
 const otherEntry = fc.constantFrom({ name: "next" }, { name: "typescript-plugin-css-modules", options: {} })
 test("effect-exit-options: each Effect entry gains the options it lacks, nothing else moves", () => {
-  fc.assert(fc.property(fc.array(fc.oneof(effectEntry, otherEntry), { maxLength: 4 }), fc.boolean(), fc.boolean(), (entries, comments, trailing) => {
+  fc.assert(fc.property(fc.array(fc.oneof(effectEntry, otherEntry), { maxLength: 4 }), fc.boolean(), fc.boolean(), fc.dictionary(fc.constantFrom("EK3801", "EK38100"), fc.constantFrom("error", "warning", "suggestion", "off")), (entries, comments, trailing, severities) => {
     const render = (e) => {
       if (!e.effect) return JSON.stringify(e)
       const props = [["name", "@effect/language-service"]]
@@ -214,7 +214,7 @@ test("effect-exit-options: each Effect entry gains the options it lacks, nothing
       const parts = props.map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`)
       return e.multiline ? `{\n        ${parts.join(",\n        ")}${comments ? " // the author's" : ""}\n      }` : `{ ${parts.join(", ")} }`
     }
-    const text = `{\n  ${comments ? "// a comment\n  " : ""}"compilerOptions": {\n    "strict": true,\n    "plugins": [\n      ${entries.map(render).join(",\n      ")}${trailing && entries.length ? "," : ""}\n    ]\n  }\n}\n`
+    const text = `{\n  ${comments ? "// a comment\n  " : ""}"compilerOptions": {\n    "strict": true,\n    "plugins": [\n      ${entries.map(render).join(",\n      ")}${trailing && entries.length ? "," : ""}\n    ]\n  },\n  "vibe": {"severities": ${JSON.stringify(severities)}}\n}\n`
     const next = addEffectExitOptions(text, ts)
     const parsed = ts.parseConfigFileTextToJson("tsconfig.json", next)
     assert.equal(parsed.error, undefined, next)
@@ -226,10 +226,71 @@ test("effect-exit-options: each Effect entry gains the options it lacks, nothing
       assert.equal(plugins[i].ignoreEffectErrorsInTscExitCode, e.errors ?? true, next)
       assert.equal(plugins[i].namespaceImportPackages?.[0], e.extra ? "effect" : undefined, next)
     })
+    assert.deepEqual(parsed.config.vibe.severities, { ...severities }, "authored diagnostic severities")
     assert.equal(parsed.config.compilerOptions.strict, true)
     if (comments) assert.ok(next.includes("// a comment"), next)
     assert.equal(next.split("// the author's").length, text.split("// the author's").length, next)
     if (entries.every((e) => !e.effect || (e.warnings !== undefined && e.errors !== undefined))) assert.equal(next, text)
     assert.equal(addEffectExitOptions(next, ts), next, "idempotent")
   }), { seed: 38131, numRuns: 300 })
+})
+
+
+test("effect-exit-options: native plugin corpus retains modern severities", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/native-plugin-exit-policy.json", import.meta.url), "utf8"))
+  const source = JSON.stringify(corpus)
+  const result = JSON.parse(addEffectExitOptions(source, ts))
+  assert.deepEqual(result.vibe, corpus.vibe)
+  assert.deepEqual(result.compilerOptions.plugins[0].diagnosticSeverity, corpus.compilerOptions.plugins[0].diagnosticSeverity)
+  assert.equal(result.compilerOptions.plugins[0].ignoreEffectErrorsInTscExitCode, true)
+  assert.equal(result.compilerOptions.plugins[0].ignoreEffectWarningsInTscExitCode, true)
+})
+
+test("effect-exit-extends: TypeScript resolves owned shared bases without tsconfig names", () => {
+  fc.assert(fc.property(fc.integer({min:1,max:3}), fc.boolean(), authorValue, (depth, comments, authored) => {
+    const root = mkdtempSync(join(tmpdir(), "effect-exit-extends-"))
+    try {
+      writeFileSync(join(root,"package.json"),'{"private":true}')
+      writeFileSync(join(root,"main.ts"),"export {}")
+      writeFileSync(join(root,"tsconfig.json"),JSON.stringify({extends:"./base0.json",files:["main.ts"]}))
+      for(let n=0;n<depth;n++) {
+        const value=n+1<depth?{extends:"./base"+(n+1)+".json"}:{compilerOptions:{plugins:[{name:"@effect/language-service",...(authored===undefined?{}:{ignoreEffectWarningsInTscExitCode:authored,ignoreEffectErrorsInTscExitCode:authored})}]}}
+        writeFileSync(join(root,"base"+n+".json"),(comments?"// retained shared config\n":"")+JSON.stringify(value))
+      }
+      const paths=ownedExtendedTsconfigs(root,ts,["tsconfig.json"])
+      assert.deepEqual(paths,["tsconfig.json",...Array.from({length:depth},(_,n)=>"base"+n+".json")].sort())
+      for(const file of paths) {
+        const original=readFileSync(join(root,file),"utf8")
+        const fixed=addEffectExitOptions(original,ts)
+        writeFileSync(join(root,file),fixed)
+        assert.equal(addEffectExitOptions(fixed,ts),fixed)
+        if(comments&&file.startsWith("base")) assert.ok(fixed.startsWith("// retained shared config"))
+      }
+      const resolved=ts.getParsedCommandLineOfConfigFile(join(root,"tsconfig.json"),{}, {...ts.sys,onUnRecoverableConfigFileDiagnostic(d){throw Error(String(d.code))}})
+      assert.equal(resolved.options.plugins[0].ignoreEffectErrorsInTscExitCode,authored??true)
+      assert.equal(resolved.options.plugins[0].ignoreEffectWarningsInTscExitCode,authored??true)
+    }finally{rmSync(root,{recursive:true,force:true})}
+  }),{seed:38132,numRuns:80})
+})
+
+test("effect-exit-extends: external, fixture and vendored bases remain untouched", () => {
+  const parent=mkdtempSync(join(tmpdir(),"effect-exit-boundary-"))
+  const root=join(parent,"project")
+  try {
+    mkdirSync(root);mkdirSync(join(root,"tests"));mkdirSync(join(root,"vendor"))
+    writeFileSync(join(root,"package.json"),'{"private":true}')
+    writeFileSync(join(root,"main.ts"),"export {}")
+    writeFileSync(join(root,"vendor/package.json"),'{"name":"foreign"}')
+    const original='{"compilerOptions":{"plugins":[{"name":"@effect/language-service"}]}}'
+    for(const base of ["../shared.json","./tests/base.json","./vendor/base.json"]) {
+      const target=join(root,base)
+      writeFileSync(target,original)
+      writeFileSync(join(root,"tsconfig.json"),JSON.stringify({extends:base,files:["main.ts"]}))
+      const skipped=[]
+      const paths=ownedExtendedTsconfigs(root,ts,["tsconfig.json"],{onSkipped:value=>skipped.push(value)})
+      assert.deepEqual(paths,["tsconfig.json"])
+      assert.equal(skipped.length,1)
+      assert.equal(readFileSync(target,"utf8"),original)
+    }
+  }finally{rmSync(parent,{recursive:true,force:true})}
 })

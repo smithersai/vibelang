@@ -1068,6 +1068,19 @@ export async function wireTarget(config, log) {
     const next = Wire.removeWrittenModuleSuffixes(text, ts)
     writeIfChanged(file, text, inertEffectPlugin ? Wire.addEffectExitOptions(next, ts) : next)
   }
+  if (inertEffectPlugin) {
+    const direct = Wire.ownedTsconfigs(t).filter(file => !isProtectedFile(file))
+    const inherited = Wire.ownedExtendedTsconfigs(t, ts, direct, { onSkipped({ project, path }) {
+      const file = resolve(t, path)
+      if (existsSync(file) && Wire.addEffectExitOptions(readFileSync(file, "utf8"), ts) !== readFileSync(file, "utf8"))
+        warnings.push(project + ": inherited Effect plugin policy in " + path + " is outside setup ownership; configure its build exit policy in an owned config")
+    } })
+    for (const inheritedConfig of inherited.filter(file => !direct.includes(file) && !isProtectedFile(file))) {
+      const file = join(t, inheritedConfig)
+      const text = readFileSync(file, "utf8")
+      writeIfChanged(file, text, Wire.addEffectExitOptions(text, ts))
+    }
+  }
   // Every project resolves an import of ./x.vibe to its sidecar, as stock TypeScript does under this option.
   for (const tsconfig of Wire.rootTsconfigs(t, ts)) {
     const file = join(t, tsconfig)

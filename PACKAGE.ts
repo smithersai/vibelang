@@ -800,6 +800,13 @@ const targets = {
     [go, node, bun],
     "10m"
   ),
+  "setup-lint-exit-policy": check(
+    "Setup preserves authored lint settings and native compiler exit policy.",
+    "node --test --test-name-pattern='^(effect-exit-options:|effect-exit-extends:)' .smithers/flows/migrate/test/tsc-scripts.property.test.mjs && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose effect-lint-built-in-setup-policy",
+    [Packages["compiler-native"], Packages["runtime-dist"], Vibelang.tree],
+    [node, bun, S.Host.bin("jj")],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
