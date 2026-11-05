@@ -2138,3 +2138,5 @@ typescript/vibelang/cases/schema-readonly-field-reference-upgrade/main.vibe:14:2
 typescript/vibelang/cases/schema-required-field-reference-upgrade/main.vibe:14:25 lambda: plain annotation -> dual fallback # VIP-3: the generated codec factory uses native return inference after removal of the retired return marker; its Schema result and getter invocation are unchanged.
 
 typescript/vibelang/cases/schema-writable-key-upgrade/main.vibe:17:25 lambda: plain annotation -> dual fallback # VIP-3: the generated codec factory uses native return inference after removal of the retired return marker; its Schema result and getter invocation are unchanged.
+
+typescript/vibelang/cases/tsforms-service-default-type-reads-fixed/main.vibe:4:52 lambda: plain fallback -> removed # VIP-9: the fixed twin preserves the cached static default instead of introducing a Reference fallback factory.

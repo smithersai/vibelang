@@ -6,7 +6,7 @@ A service is a named capability a program uses without passing an implementation
 
 [Upstream page](https://effect.website/docs/v4/requirements-management/services)
 
-The transitional `static readonly default = implementation` form keeps its `EK4855` migration warning. For a local service, `vibelang --fix` can write the equivalent native `Context.Service` class and retain the cached static field, its key and its value/type reads. This preserves eager initialization and does not introduce a missing-provider fallback. Exported keys, commented bodies and keys that also declare `defaultValue` need an explicit native class migration. The legacy field needs an initializer; `static readonly default: Shape` without a value is `EK0902`.
+The transitional `static readonly default = implementation` form keeps its `EK4855` migration warning. For a local service, `vibelang --fix` can write the equivalent native `Context.Service` class and retain the cached static field, its key and its value/type reads. This preserves eager initialization and does not introduce a missing-provider fallback. Direct `typeof Service.default`, indexed `(typeof Service)["default"]` and nested property type reads keep their original types. Exported keys, commented bodies and keys that also declare `defaultValue` need an explicit native class migration. The legacy field needs an initializer; `static readonly default: Shape` without a value is `EK0902`.
 
 ## Declaring typed service keys
 

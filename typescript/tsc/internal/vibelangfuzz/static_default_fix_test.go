@@ -59,14 +59,14 @@ func TestStaticDefaultFixDeclarationIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(node.Close)
-	for _, key := range []string{"typed-object", "untyped-object", "mutable-shape", "reference-stays"} {
+	for _, key := range []string{"typed-object", "untyped-object", "mutable-shape", "reference-stays", "type-reads", "type-reads-inferred"} {
 		t.Run(key, func(t *testing.T) {
 			checkStaticDefaultFix(t, w, node, []byte(key), true)
 		})
 	}
 }
 
-var staticDefaultFixKeys = []string{"typed-object", "untyped-object", "literal-data", "readonly", "recursive", "nested", "shadow", "exported-stays", "comment-stays", "reference-stays", "native-stays", "plain-join-init", "mutable-shape"}
+var staticDefaultFixKeys = []string{"typed-object", "untyped-object", "literal-data", "readonly", "recursive", "nested", "shadow", "exported-stays", "comment-stays", "reference-stays", "native-stays", "plain-join-init", "mutable-shape", "type-reads", "type-reads-inferred"}
 
 func checkStaticDefaultFix(t *testing.T, w *Workspace, node *Node, data []byte, compareAPI bool) {
 	t.Helper()
@@ -95,6 +95,15 @@ func checkStaticDefaultFix(t *testing.T, w *Workspace, node *Node, data []byte, 
 	prefix := ""
 	extra := ""
 	switch key {
+	case "type-reads", "type-reads-inferred":
+		members = "enabled:boolean;count:number"
+		init = fmt.Sprintf("({enabled:true,count:%d})", n)
+		if key == "type-reads-inferred" {
+			annotation = ""
+		}
+		// Tuple display strings retain private helper names. The TypeScript
+		// API-identity checker compares their exported structural contract.
+		compareAPI = true
 	case "mutable-shape":
 		init = "({n:7,nested:{count:1}})"
 		members = "n:number;readonly fixed?:true;nested:{count:number}"
@@ -139,6 +148,10 @@ func checkStaticDefaultFix(t *testing.T, w *Workspace, node *Node, data []byte, 
 	}
 	if key == "mutable-shape" {
 		source = strings.Replace(source, "const first=Flags.default;", "const first=Flags.default;first.n++;first.nested.count++;", 1)
+	}
+
+	if key == "type-reads" || key == "type-reads-inferred" {
+		source += "export type Indexed = (typeof Flags)[\"default\"]\nexport type Enabled = (typeof Flags.default)[\"enabled\"]\nexport type Count = typeof Flags.default.count\nexport type Combined = [Value, Indexed, Enabled, Count]\n"
 	}
 	files := map[string]string{"main.vibe": source, "trace.ts": trace}
 	before, err := w.Compile(t.Context(), Project{Files: files})
