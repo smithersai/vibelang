@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
+import { appendixCodes, auditIdentity, compilerCodes } from "./diagnostic-identity.mjs"
 import { readFileSync, readdirSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { join, relative, resolve } from "node:path"
 import { diagnosticCodes, importedLintRules, pendingRegistryCodes, retiredByVips, undocumentedCodes } from "./check-diagnostic-docs"
 
 const repo = resolve(import.meta.dir, "../..")
@@ -58,10 +59,13 @@ test("Appendix B codes, including leading zeros, have matching registry declarat
     expect(declared.has(code)).toBe(false)
     declared.add(code)
   }
-  // Use the native registry test's owned pending entries so their owner
-  // removes each exception once, in the same commit as its registration.
-  const registryTest = readFileSync(join(repo, "typescript/tsc/internal/vibelang/diagnostics_test.go"), "utf8")
-  expect(assigned.filter(code => !declared.has(code)).sort()).toEqual(pendingRegistryCodes(registryTest))
+  // VIP-34 identities include parser, mapper and core reservations. A
+  // native-message-only scan cannot establish whether an assigned code exists.
+  const allSources = walk(join(repo, "typescript/tsc/internal"))
+    .filter(path => path.endsWith(".go") && !path.endsWith("_test.go"))
+    .map(path => ({ path: relative(repo, path), text: readFileSync(path, "utf8") }))
+  const registered = compilerCodes(allSources)
+  expect(assigned.filter(code => !registered.has(code)).sort()).toEqual([])
   for (const source of sources) {
     for (const match of source.matchAll(/^\s*(?:var\s+)?(EK\d+)\s*=\s*message\((\d+),/gm)) {
       expect(Number(match[1].slice(2))).toBe(Number(match[2]))
@@ -92,4 +96,29 @@ test("a reassigned diagnostic requires its own complete printed identity", () =>
       documented ? "`EK2005`: use a const or let declaration in for try" : ""]
     expect(undocumentedCodes(["EK2005"], pages)).toEqual(documented ? [] : ["EK2005"])
   }), { seed: 200520, numRuns: 100 })
+})
+
+
+// VIP-34: a printed identity is registered by its actual compiler host.
+// Formatting and unrelated Go text cannot create or conceal a registration.
+test("Appendix inventory keeps parser, mapper and reserved identities distinct", () => {
+  fc.assert(fc.property(fc.constantFrom(" ", "  ", "\t", "\n"), fc.integer({ min: 0, max: 2 }), (space, removed) => {
+    const sources = [
+      { path: "typescript/tsc/internal/parser/vibelang_fixture.go",
+        text: "const FixtureDiagnosticCode" + space + "=" + space + "1702" },
+      { path: "typescript/tsc/internal/vibelangmapper/fixture.go",
+        text: "var fixture = Diagnostic{" + space + "Code:" + space + "9001}" },
+      { path: "typescript/tsc/internal/core/vibe_diagnostic_registry.go",
+        text: 'var VibeDiagnosticCategories = map[string]string{' + space + '"EK3007":' + space + '"error",}' }
+    ]
+    const codes = ["EK1702", "EK9001", "EK3007"]
+    const appendix = appendixCodes("## Appendix B. Diagnostics\n" +
+      codes.map(code => "| `" + code + "` | error: fixture |").join("\n"))
+    expect(auditIdentity(compilerCodes(sources), appendix, [])).toEqual([])
+    const changed = sources.map((source, i) => i === removed
+      ? { ...source, text: "// " + source.text.replaceAll("\n", " ") } : source)
+    expect(auditIdentity(compilerCodes(changed), appendix, [])).toEqual([{
+      kind: "appendix-unregistered", code: codes[removed], path: "docs/design/src/900-appendices.md"
+    }])
+  }), { seed: 349001, numRuns: 120 })
 })
