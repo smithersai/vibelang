@@ -7,7 +7,11 @@ import {createRequire} from "node:module"
 import {publishedEntrypoints,compareApiIdentity} from "./api-identity.mjs"
 import {checkProperty} from "./testing/property.mjs"
 const require=createRequire(new URL("../docs/tools/package.json",import.meta.url))
-const ts=require("typescript"),fc=require("fast-check")
+import {createEs5FixtureGuard} from "./testing/fixture-libraries.mjs"
+const {ts,assertLibraries}=createEs5FixtureGuard(require("typescript"),"Wildcard-condition fixtures")
+const fc=require("fast-check")
+const compilerOptions={lib:["lib.es5.d.ts"]}
+const nativeOptions={...compilerOptions,strict:true,noEmit:true,types:[],module:ts.ModuleKind.Preserve,moduleResolution:ts.ModuleResolutionKind.Bundler}
 function fixture({extension="ts",sourceExtension="ts",prefix="./*",hidden=false,sourceFirst=false,names=["one","two"]}={},fn) {
  const root=mkdtempSync(join(tmpdir(),"api-identity-wildcard-conditions-"))
  const pkg=join(root,"node_modules/fixture")
@@ -38,7 +42,7 @@ test("Alchemy conditional wildcard ignores an unreachable source pattern",()=>{
 })
 test("conditional wildcard package compared with itself is API-identical",()=>{
  fixture({},pkg=>{
-  const result=compareApiIdentity(ts,pkg,pkg)
+  const result=guardedCompare(pkg,pkg)
   assert.equal(result.comparisonComplete,true,JSON.stringify(result))
   assert.equal(result.identical,true,JSON.stringify(result))
  })
@@ -46,8 +50,10 @@ test("conditional wildcard package compared with itself is API-identical",()=>{
 test("a selected wildcard type change has an export diagnostic",()=>{
  fixture({},(pkg,root)=>{
   const after=join(root,"node_modules/after");cpSync(pkg,after,{recursive:true})
+  nativeIdentity(root,false)
   writeFileSync(join(after,"lib/one/index.d.ts"),"export type X=number;")
-  const result=compareApiIdentity(ts,pkg,after)
+  nativeIdentity(root,true)
+  const result=guardedCompare(pkg,after)
   assert.equal(result.comparisonComplete,true,JSON.stringify(result))
   assert.ok(result.typeDifferences.some(x=>x.entrypoint==="./one"&&x.export==="X"&&/TS2344/.test(x.diagnostic)),JSON.stringify(result))
  })
@@ -59,7 +65,7 @@ test("an unrepresented reachable source export cannot be proved identical",()=>{
  fixture({sourceFirst:true},(pkg,root)=>{
   const after=join(root,"node_modules/after");cpSync(pkg,after,{recursive:true})
   writeFileSync(join(after,"src/one/index.ts"),"export type X=number;")
-  assert.equal(compareApiIdentity(ts,pkg,after).identical,false)
+  assert.equal(guardedCompare(pkg,after).identical,false)
  })
 })
 test("source-only names under a fallback wildcard cannot disappear",()=>{
@@ -68,7 +74,7 @@ test("source-only names under a fallback wildcard cannot disappear",()=>{
   writeFileSync(join(pkg,"src/extra/index.ts"),"export type X=boolean;")
   const after=join(root,"node_modules/after");cpSync(pkg,after,{recursive:true})
   writeFileSync(join(after,"src/extra/index.ts"),"export type X=number;")
-  assert.equal(compareApiIdentity(ts,pkg,after).identical,false)
+  assert.equal(guardedCompare(pkg,after).identical,false)
  })
 })
 test("property: shadowed wildcard branches match stock tsc",async()=>{
@@ -94,8 +100,39 @@ test("a star in a literal export target does not turn its root into a wildcard",
  fixture({prefix:"."},pkg=>{
   const entries=publishedEntrypoints(pkg,ts)
   assert.ok(Object.values(entries).every(path=>path.includes("*")),JSON.stringify(entries))
-  const result=compareApiIdentity(ts,pkg,pkg)
+  const result=guardedCompare(pkg,pkg)
   assert.equal(result.comparisonComplete,false,JSON.stringify(result))
   assert.equal(result.typeDifferences.length,0,JSON.stringify(result))
+ })
+})
+
+function guardedCompare(before,after) {
+ const result=compareApiIdentity(ts,before,after,{compilerOptions})
+ assertLibraries()
+ return result
+}
+
+function nativeIdentity(root,changed) {
+ const consumer=join(root,"consumer.ts")
+ writeFileSync(consumer,
+  'import type {X as Before} from "fixture/one"; import type {X as After} from "after/one";\n'+
+  'declare let before:Before; declare let after:After; before=after; after=before;\n')
+ const program=ts.createProgram([consumer],nativeOptions)
+ assertLibraries()
+ assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>d.code),changed?[2322,2322]:[],
+  "native consumers retain the selected wildcard declarations and reject their changed types")
+}
+
+test("wildcard fixture libraries retain native missing BigInt errors",()=>{
+ fixture({},(pkg,root)=>{
+  writeFileSync(join(pkg,"lib/one/index.d.ts"),"export type X=BigInt;")
+  const program=ts.createProgram([join(pkg,"lib/one/index.d.ts")],nativeOptions)
+  assertLibraries()
+  assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>d.code),[2583])
+  const result=guardedCompare(pkg,pkg)
+  assert.equal(result.comparisonComplete,false,JSON.stringify(result))
+  assert.equal(result.identical,false,JSON.stringify(result))
+  assert.ok(result.environmentDiagnostics.some(d=>/TS2583/.test(d.diagnostic)),JSON.stringify(result))
+  assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&d.export==="X"&&/unresolved or erroneous/.test(d.diagnostic)),JSON.stringify(result))
  })
 })

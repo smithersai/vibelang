@@ -26,6 +26,12 @@ the first resolvable target for each import, require and custom-condition path;
 unreachable fallbacks are not extra entry points. Conditional objects also follow TypeScript's property order: an earlier matching `default`, `import` or `require` target can shadow a later `types` target. Discovery uses the same configuration and sidecar projection as the probes, so a published `.vibe` target can resolve through inherited `vibe.sidecarDir`. Unselected wildcard alternatives do not create a literal `./*` entry when TypeScript has selected the concrete declaration subpaths. Discovery retains an unavailable result if an alternative exposes additional source-only names or another selected surface it cannot represent. A `*` in a literal root target is not a subpath pattern. Source and runtime wildcard targets
 map to their emitted declarations; CSS and WebAssembly exports have no declaration
 surface. JSON exports retain their `resolveJsonModule` types.
+Wildcard-condition fixtures select `lib.es5.d.ts` in native validation
+and API comparison, and reject unrelated browser libraries. Native consumers
+retain selected declaration types and missing-library errors. All twenty-four
+generated resolution cases, module modes, source-only branches, exclusions
+and selected-type mutations remain required.
+
 Separate import and require type conditions are checked separately. Explicit `resolution-mode` attributes on type imports are retained in both the probe resolver and the dependency-equivalence proof; two uses of one specifier may select different package conditions. Private
 files do not become entry points. A bare directory without publishing metadata
 compares each declaration module, suitable for sidecars and their TypeScript
