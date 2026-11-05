@@ -223,7 +223,7 @@ async function checkProjects(config, p, options, projects = projectList(config))
     try { assertFinished(result, log) } catch (error) { crash = error.message }
     if (crash) diagnostics.push({ file: null, code: "CRASH", category: "error", message: crash, line: 0, column: 0, notes: [] })
     for (const d of diagnostics) if (d.file?.endsWith(".d.vibe.ts")) d.file = d.file.replace(/\.d\.vibe\.ts$/, ".vibe")
-    return { ...task, compilerArtifact: config.compilerArtifact ? bindCompilerArtifact(config) : undefined, code: result.code, ms: result.ms, crash, diagnostics }
+    return { ...task, compilerArtifact: config.compilerArtifact ? bindCompilerArtifact(config) : null, code: result.code, ms: result.ms, crash, diagnostics }
   })
 }
 
@@ -538,7 +538,7 @@ export async function onePassStep(step, options) {
       if (baseline.some(p => p.crash)) throw new Error("baseline compiler did not finish: " + baseline.filter(p => p.crash).map(p => p.file + ": " + p.crash).join("; "))
       writeJson(join(p.run, "onepass-baseline.json"), baseline)
       state = prepareState(config.target, files, await importers(config.target), { ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
-      state.compilerArtifact = config.compilerArtifact
+      state.compilerArtifact = config.compilerArtifact ?? null
       saveState(p.codemodState("01"), state)
     }
     if (state.target !== config.target || JSON.stringify(state.files) !== JSON.stringify(files)) throw new Error("rename journal does not match target and scope")
@@ -549,7 +549,7 @@ export async function onePassStep(step, options) {
     }
     await Jj.trackFiles(config.target, state.renames.map(r => r.to).filter(file => existsSync(join(config.target, file))))
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { compilerArtifact: config.compilerArtifact, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { compilerArtifact: config.compilerArtifact ?? null, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }

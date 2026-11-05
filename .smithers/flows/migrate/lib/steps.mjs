@@ -1585,7 +1585,7 @@ export async function codemod(options) {
     const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
     const flipped = await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(t, config.packages[0].dir, "node_modules"), dir: join(p.batch(b), "probe") })
     state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), references: references(), pathSources: pathSources(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
-    state.compilerArtifact = config.compilerArtifact
+    state.compilerArtifact = config.compilerArtifact ?? null
     state.toolConfigReferences = 1
     state.pathSourceReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
@@ -1664,7 +1664,7 @@ export async function codemod(options) {
   const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
-  state.attempts.push({ attempt, compilerArtifact: config.compilerArtifact, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
+  state.attempts.push({ attempt, compilerArtifact: config.compilerArtifact ?? null, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
   saveState(p.codemodState(b), state)
   const compiler = compilerOf(config)
   const byFile = {}
@@ -1709,7 +1709,7 @@ export async function codemod(options) {
     batch: b,
     at: new Date().toISOString(),
     files,
-    compilerArtifact: config.compilerArtifact,
+    compilerArtifact: config.compilerArtifact ?? null,
     platform: platformResult,
     sourceChildModules: state.sourceChildModules ?? { converted: [], refused: [] },
     formatted,
@@ -1771,7 +1771,7 @@ export async function compile(options) {
     at: new Date().toISOString(),
     files,
     referenceRefresh,
-    compilerArtifact: config.compilerArtifact,
+    compilerArtifact: config.compilerArtifact ?? null,
     summary: summarize(diagnostics, files),
     style: styleProblems(diagnostics, files),
     warningExceptions: warningExceptions(diagnostics, files.filter(f => f.endsWith(".vibe")),
@@ -2185,7 +2185,7 @@ export async function verify(options) {
     batch: b,
     at: new Date().toISOString(),
     files: files.map(f => ({ ...f, warningExceptions: checked.warningExceptions.filter(e => e.file === f.path) })),
-    compilerArtifact: config.compilerArtifact,
+    compilerArtifact: config.compilerArtifact ?? null,
     formatted,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped,
       status: testsPassed(tests) ? "passed" : "failing", failedNames: tests.failed, baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
@@ -2313,7 +2313,7 @@ export async function record(options) {
     at: new Date().toISOString(),
     commit,
     bookmark: config.bookmark,
-    compilerArtifact: config.compilerArtifact,
+    compilerArtifact: config.compilerArtifact ?? null,
     files: rows,
     tokens,
     formatted,
