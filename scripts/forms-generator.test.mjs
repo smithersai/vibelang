@@ -52,6 +52,23 @@ test("the forms check declares the executable dependency and runs fresh generati
   assert.ok(!target.tools.includes("go"), "a cache hit must not enter Go build admission")
 })
 
+for (const name of ["compiler", "forms-generator", "mapper"]) test("the build diagram uses native inputs for " + name, () => {
+  const target = targets("typescript/PACKAGE.ts")[name]
+  assert.ok(target.data.includes(nativeSources))
+  assert.ok(!target.data.includes(goSources))
+  const guide = read("docs/maintainers/build.md")
+  const diagram = [...guide.matchAll(/```text\n([\s\S]*?)\n```/g)].map(match => match[1]).find(body => /^:[^ ]+ ─► /m.test(body))
+  assert.ok(diagram, "the build guide must retain its dependency diagram")
+  const edges = diagram.split("\n").filter(line => {
+    if (!/^:[^ ]+ ─► /.test(line)) return false
+    const destinations = [...line.split("─►")[1].matchAll(/:([\w-]+)/g)].map(match => match[1])
+    return destinations.includes(name)
+  })
+  assert.ok(edges.length, "the diagram must include " + name)
+  for (const edge of edges) assert.match(edge, /^:native-srcs ─► /, "native executables use their declared compiler inputs")
+  assert.match(guide, /^  :native-srcs\s+Filegroup:/m, "the inventory must name the native input group")
+})
+
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "forms generator "))
   t.after(() => rmSync(root, { recursive: true, force: true }))

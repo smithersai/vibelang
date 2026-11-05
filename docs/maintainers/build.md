@@ -559,7 +559,8 @@ sh scripts/ci.sh //:spec-tests --jobs 8
 ```text
 .smithers/WORKSPACE.ts          toolchain (node, go, bun), cache in .flows/
 //typescript/tsc                the Go module
-  :srcs                         Filegroup: what go build reads (no *_test.go, no testdata/)
+  :srcs                         Filegroup: Go test build inputs (no *_test.go, no testdata/)
+  :native-srcs                  Filegroup: native build inputs, excluding fuzz helpers and decision snapshots
   :go-checker :go-parser :go-ls go test, one target per Go package tree (merge gate,
   :go-format :go-core           when the change edits that tree)
   :go-vibelangfmt               VibeLang formatter Go tests; required by :compiler-test-1
@@ -606,13 +607,13 @@ Migration and convert suites run only in `//packages:migrate-test`. The compiler
 
 
 ```text
-:srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test-N, :migrate-test
-                    ├─► :compiler-native ─► :compiler-test-N, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
-                    ├─► :lsp-smoke ◄─ :runtime-dist
-                    └─► :snippets, :docs-tools
+:native-srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test-N, :migrate-test
+                           ├─► :compiler-native ─► :compiler-test-N, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
+                           ├─► :lsp-smoke ◄─ :runtime-dist
+                           └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
-:srcs ─► :forms-generator ─► :forms
-:srcs ─► :compiler, :mapper ─► :go-vibelangmapper
+:native-srcs ─► :forms-generator ─► :forms
+:native-srcs ─► :compiler, :mapper ─► :go-vibelangmapper
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
 ```
 
