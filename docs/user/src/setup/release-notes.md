@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Compiler commands could bury late failure details behind successful test output; their summaries now retain the failure details and execution totals.
 
 - Formatting an Effect type assertion before `<` could fail with a missing `>` error; comparisons now retain their operator and type boundary.
+- The debugging recipe’s failure example used a forbidden throw in a plain callback; it now creates an explicit Effect defect and checks the original source location across varied line offsets.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.
