@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - ESLint could treat a generated concurrency-limit cache as a source variable; the tree now marks that temporary while retaining user-written names and the original limit expression.
+- Editor form suggestions could panic on a property access inside a `for` statement; they now read the loop as the compiler does.
 - Migration regressions for compiler provenance and preserved error channels stopped at missing repository setup. Their fixtures now initialize repositories and reach the intended checks.
 
 - Pipeline repairs could reject canonical HTTP setters or change custom stage construction order; safe request setters now keep their data-first form while custom stages retain their receiver, argument order and coldness.

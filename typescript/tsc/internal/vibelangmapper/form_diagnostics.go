@@ -6,7 +6,7 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 // It builds no lowering plan, renders no virtual file, and reads no package
 // metadata, so an open-file suggestion need not pay for a full projection.
 func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
-	p := &projector{file: file, text: file.Text(), forms: newFormResolver(file), names: newNames(file, file.Text()), services: map[string]*ast.Node{}}
+	p := &projector{file: file, text: file.Text(), forms: newFormResolver(file), names: newNames(file, file.Text()), sources: map[*ast.Node]bool{}, services: map[string]*ast.Node{}}
 	for _, statement := range file.Statements.Nodes {
 		if isServiceClass(statement) {
 			p.services[statement.Name().Text()] = statement
