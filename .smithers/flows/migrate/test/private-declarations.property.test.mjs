@@ -9,6 +9,7 @@ import { recordDeclarationSurface } from "../lib/declarations.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
@@ -16,7 +17,7 @@ const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-private-declara
 const t3code = JSON.parse(readFileSync(new URL("./corpus/t3code-private-workspace-declarations.json", import.meta.url), "utf8"))
 
 // foldkit agent's accepted 18:45Z ruling: "Declaration identity applies to published packages only."
-async function fixture(manifest, { before = corpus.before, after = corpus.after, diagnostic = "", command = "true", includePrivate = false, emitDiagnostic = "" } = {}) {
+async function fixture(manifest, { before = corpus.before, after = corpus.after, diagnostic = "", command = "true", includePrivate = false, emitDiagnostic = "", extraDeclaration = true } = {}) {
   manifest = { version: "1.0.0", ...manifest }
   const root = mkdtempSync(join(tmpdir(), "migrate-private-dts-"))
   const target = join(root, "repo")
@@ -39,7 +40,7 @@ async function fixture(manifest, { before = corpus.before, after = corpus.after,
       '  const out = process.argv[outIndex + 1];',
       '  fs.mkdirSync(out, { recursive: true });',
       '  fs.writeFileSync(path.join(out, "main.d.ts"), ' + JSON.stringify(after) + ');',
-      '  fs.writeFileSync(path.join(out, "keyboardTarget.d.ts"), ' + JSON.stringify(corpus.added) + ');',
+      '  if (' + JSON.stringify(extraDeclaration) + ') fs.writeFileSync(path.join(out, "keyboardTarget.d.ts"), ' + JSON.stringify(corpus.added) + ');',
       '  if (' + JSON.stringify(emitDiagnostic) + ') { console.log(' + JSON.stringify(emitDiagnostic) + '); process.exitCode = 2; }',
       '}',
       'if (' + JSON.stringify(diagnostic) + ') { console.log(' + JSON.stringify(diagnostic) + '); process.exitCode = 2; }'
@@ -100,6 +101,7 @@ test("only the boolean private true exempts declaration identity across declarat
     async (privateValue, name) => {
       const manifest = { name, types: "./main.d.ts", ...(privateValue === undefined ? {} : { private: privateValue }) }
       const result = await fixture(manifest, {
+        extraDeclaration: false,
         before: 'export declare const ' + name + ': string;\n',
         after: 'export declare const ' + name + ': number;\n'
       })
@@ -115,23 +117,25 @@ test("only the boolean private true exempts declaration identity across declarat
 // --include-private-declarations, and then a private package's declarations are
 // held to the identity a published package's are.
 test("a run that includes private declarations holds a private package's API to identity", async () => {
-  const changed = await fixture(t3code.manifest, { includePrivate: true, before: t3code.before, after: t3code.changed })
+  const changed = await fixture(t3code.manifest, { includePrivate: true, extraDeclaration: false, before: t3code.before, after: t3code.changed })
   assert.equal(changed.declarations["examples/snake"].identical, false)
   assert.equal(changed.checks.declarations, false)
+  assert.ok(changed.declarations["examples/snake"].typeDifferences.length, JSON.stringify(changed.declarations["examples/snake"]))
   assert.equal(changed.ok, false)
-  const unchanged = await fixture(t3code.manifest, { includePrivate: true, before: t3code.before, after: t3code.before })
-  assert.equal(unchanged.declarations["examples/snake"].identical, true)
+  const unchanged = await fixture(t3code.manifest, { includePrivate: true, extraDeclaration: false, before: t3code.before, after: t3code.before })
+  assert.equal(unchanged.declarations["examples/snake"].identical, true, JSON.stringify(unchanged.declarations["examples/snake"]))
   assert.equal(unchanged.ok, true)
 })
 
 test("a run that includes private declarations fails a private package's emit error in a migrated file", async () => {
   const result = await fixture(corpus.manifest, {
     includePrivate: true,
+    extraDeclaration: false,
     before: t3code.before,
     after: t3code.before,
     emitDiagnostic: t3code.emitDiagnostic
   })
-  assert.equal(result.declarations["examples/snake"].identical, true)
+  assert.equal(result.declarations["examples/snake"].identical, true, JSON.stringify(result.declarations["examples/snake"]))
   assert.equal(result.checks.declarationEmit, false)
   assert.equal(result.ok, false)
 })
@@ -143,10 +147,44 @@ test("property: with private declarations included, any exported type change in 
     async (name, [from, to]) => {
       const result = await fixture({ name, private: true, types: "./main.d.ts" }, {
         includePrivate: true,
+        extraDeclaration: false,
         before: "export declare const " + name + ": " + from + ";\n",
         after: "export declare const " + name + ": " + to + ";\n"
       })
       assert.equal(result.checks.declarations, false)
       assert.equal(result.ok, false)
     }), { seed: 103123, numRuns: 12 })
+})
+
+
+const inventoryQuote = "Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names"
+test("private declaration inventory quotes the API identity contract", () => {
+  assert.ok(readFileSync(SpecPath("001-functions.md"), "utf8").includes(inventoryQuote))
+})
+
+test("private API opt-in rejects an added shipped declaration", async () => {
+  const result = await fixture(t3code.manifest, { includePrivate: true, before: t3code.before, after: t3code.before, extraDeclaration: true })
+  const api = result.declarations["examples/snake"]
+  assert.equal(api.comparisonComplete, true, JSON.stringify(api))
+  assert.equal(api.identical, false, JSON.stringify(api))
+  assert.ok(api.nameDifferences.some(d => d.entrypoint === "./keyboardTarget.js" && d.side === "after"), JSON.stringify(api))
+  assert.equal(result.ok, false)
+})
+
+test("private API opt-in keeps an unexported declaration private", async () => {
+  const result = await fixture({ ...t3code.manifest, exports: { ".": "./main.d.ts" } }, { includePrivate: true, before: t3code.before, after: t3code.before, extraDeclaration: true })
+  assert.equal(result.declarations["examples/snake"].identical, true, JSON.stringify(result.declarations))
+  assert.equal(result.ok, true)
+})
+
+test("t3code-private-declaration-inventory: only selected added exports change an opted-in API", async () => {
+  let models = 0
+  await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), fc.boolean(), async (includePrivate, extraDeclaration, closed) => {
+    models++
+    const result = await fixture({ ...t3code.manifest, ...(closed ? { exports: { ".": "./main.d.ts" } } : {}) }, {
+      includePrivate, extraDeclaration, before: t3code.before, after: t3code.before
+    })
+    assert.equal(result.ok, !includePrivate || !extraDeclaration || closed, JSON.stringify(result.declarations))
+  }), { seed: 170176, numRuns: 16, examples: [[true, false, false]] })
+  console.log("private declaration inventory models=" + models)
 })
