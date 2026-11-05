@@ -1,7 +1,7 @@
 // expect-result: "Missing"
 error Missing
 effect function comma() {
-  const xs = [throw new Missing(), 1]
+  const xs = [(throw new Missing()), 1]
   return xs
 }
 export effect function main() {

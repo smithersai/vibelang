@@ -1,1 +1,1 @@
-main.vibe(4,15): warning EK1010
+main.vibe(4,16): warning EK1012

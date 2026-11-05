@@ -7619,7 +7619,7 @@ typescript/vibelang/cases/throw-operator-precedence.fail/main.vibe:6:37 lambda d
 typescript/vibelang/cases/throw-operator-precedence.fail/main.vibe:9:10 lambda effectFn table
 typescript/vibelang/cases/throw-operator-precedence.fail/main.vibe:9:23 lambda effectFn keyword
 typescript/vibelang/cases/throw-operator-precedence.fail/main.vibe:9:37 lambda dual fallback
-typescript/vibelang/cases/throw-tc39-comma/main.vibe:4:15 lambda dual fallback
+typescript/vibelang/cases/throw-tc39-comma/main.vibe:4:16 lambda dual fallback
 typescript/vibelang/cases/throw-tc39-comma/main.vibe:8:10 lambda effectFn table
 typescript/vibelang/cases/throw-tc39-comma/main.vibe:8:24 lambda effectFn table
 typescript/vibelang/cases/throw-tc39-plain.fail/main.vibe:4:19 lambda dual fallback
