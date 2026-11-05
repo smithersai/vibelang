@@ -1,0 +1,11 @@
+// expect: EK1704
+import * as Fiber from "effect/Fiber"
+declare const marked: { readonly "~effect/Fiber": unknown }
+declare const variance: Pick<Fiber.Fiber<number>, "~effect/Fiber">
+declare const incomplete: Omit<Fiber.Fiber<number>, "id">
+export effect function run() {
+  const a = join marked
+  const b = join variance
+  const c = join incomplete
+  return [a, b, c]
+}

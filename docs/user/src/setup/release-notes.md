@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Objects with an incomplete fiber shape could pass `join` checking. They now report `EK1704`, while complete fiber types remain accepted.
+
 
 - A rejected error inheritance clause could expose an argument error from a generated superclass call; only the inheritance error is reported there, while errors in authored methods remain visible.
 

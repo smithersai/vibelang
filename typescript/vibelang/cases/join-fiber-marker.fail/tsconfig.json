@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [],
+    "outDir": "out"
+  },
+  "include": [
+    "*.vibe"
+  ]
+}
