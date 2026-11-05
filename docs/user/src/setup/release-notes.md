@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Bun rename checks incorrectly expected an explicit `.ts` import to load a renamed `.vibe` module; cache coverage now uses a stable `.js` import and separately verifies the required `TS2307` rejection.
 
+- Fork migration examples compared VIP-only repairs with broader ordinary cleanup; they now repeat each selection separately while preserving the fork options.
+
 - The foreign-predicate repair regression expected a boolean bridge that lost narrowing; it now checks the captured narrowed value, unchanged helper declarations, repeatable fixes and equivalent defect results.
 
 - The empty-effect regression still expected the retired single-operation lowering; it now compares scheduling with native `Effect.gen` and checks cold construction and repeated execution.
