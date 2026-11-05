@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - The fibers guide omitted labeled `continue` targeting the `for concurrent` loop itself. It now explains that this ends the current item.
+- `vibelang --fix` left ordinary incomplete finite matches unchanged. It now adds a `default` that preserves the implicit empty-message `TypeError`, including an Effect defect or Promise rejection, without widening the function's result or channels.
 
 ## 0.0.11
 
@@ -203,9 +204,19 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar admission audit could misreport valid type-only exports and trailing commas in named export clauses as undefined syntax. It now derives these ordinary TypeScript forms.
 - The grammar admission audit could misreport an invalid export declaration as accepted syntax. It now recognizes the compiler's existing modifier error while preserving valid exports and name errors as controls.
 
+- The relocated declaration example now matches its owning source root and retains native identity boundaries for symlinks and unproven mappings.
+
+
 - Invalid `@throws` and `@rethrows` tags require a manual edit that preserves descriptive documentation.
+- Migrating `trusted(f, [])` keeps public declarations, capture timing, and the identity of thrown defects.
+- Promise-producing call examples now show the boundary error alongside independent host-access and root-runner errors.
+- Error-family examples use native class tests and object destructuring, retaining subclass tags, catch routing, public declarations, and runtime results.
+- Pattern predicate checks use an explicit source callable for an unannotated foreign predicate, retaining every matching result and the guarantee that global objects stay untouched.
+- Plain catch handlers returning tagged errors as data keep the Effect-result advisory; the returned error objects and migration behavior remain covered.
+- Unknown foreign calls in plain code no longer require a retired platform diagnostic; effect code still requires an explicit throwing-call boundary.
 
 - Declaration-check failures repeated full library paths until their logs became unreadable. They now report a total and bounded examples of distinct library names.
+- Contributor diagnostic identity checks could reject later compiler fixes. They now verify the recorded allocation transition while retaining checks against changed checker predicates in that transition.
 
 - Concurrent operators could hide a literal's `satisfies` error or add an unrelated array error. They now preserve the literal's own TypeScript errors beside `EK1801`.
 - Error-class custom matchers could lose their tag when saved or called with a subclass receiver. Plain errors now own their matcher, and both error forms return the original subject in either matching mode regardless of the caller's receiver.
