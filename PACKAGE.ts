@@ -874,7 +874,7 @@ const targets = {
     [bun, node]
   ),
   "docs-table-rows": check(
-    "User tables retain headers and widths; platform replacements distinguish location reads and argument prefixes.",
+    "User tables retain headers and widths; platform replacements preserve location reads, user arguments and file bytes.",
     "node docs/tools/table-rows.mjs && bun test --timeout 30000 docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
     [],
     [bun, node]

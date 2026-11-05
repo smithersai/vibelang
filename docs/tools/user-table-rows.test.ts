@@ -78,6 +78,53 @@ test("user table widths reject missing and extra cells", () => {
 })
 
 
+
+test("the default native file read maps to bytes rather than decoded text", () => {
+  const text = readFileSync(new URL("../user/src/platform/105-introduction.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Call|Effect|Layer")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const row = table.rows.find(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "fs.readFile")
+  expect(row?.[1].text).toContain(".readFile(path)")
+  expect(row?.[1].text).not.toContain("readFileString")
+})
+
+test("generated native file mappings retain bytes unless an encoding is explicit", () => {
+  const tick = String.fromCharCode(96)
+  const table = (source: string, replacement: string, global: boolean) => [
+    global ? "| Global | Use instead |" : "| Call | Effect | Layer |",
+    global ? "| --- | --- |" : "| --- | --- | --- |",
+    "| " + tick + source + tick + " | " + tick + replacement + tick + " |" + (global ? "" : " NodeServices.layer |")
+  ].join("\n")
+  fc.assert(fc.property(
+    fc.constantFrom("fs.readFile", "fs.promises.readFile", "fs.readFileSync", 'fs["readFile"]', 'fs.promises["readFile"]'),
+    fc.constantFrom("", "(path)", '("utf8")', '(join("dir", "utf8"))', "(path, null)", "(path, undefined)", "(path, void 0)", '(path, { flag: "r" })', "(path, { encoding: null })", "(path, { encoding: undefined })"),
+    fc.constantFrom("", " ", "  "),
+    fc.array(fc.integer({ min: 0, max: 255 }), { maxLength: 32 }),
+    fc.boolean(), fc.boolean(),
+    (reader, args, space, values, global, explicitDecoderEncoding) => {
+      const bytes = Uint8Array.from(values)
+      expect(ArrayBuffer.isView(bytes)).toBe(true)
+      expect(typeof new TextDecoder().decode(bytes)).toBe("string")
+      const source = (reader + args).replaceAll(".", space + "." + space)
+      const decoded = "try (try FileSystem.FileSystem)." + space + "readFileString" + space + "(path" + (explicitDecoderEncoding ? ', "utf8"' : "") + ")"
+      const options = { checkPlatformReplacements: true }
+      const broken = table(source, decoded, global)
+      expect(tableRowProblems(broken, "generated", options)).toHaveLength(1)
+      expect(tableRowProblems(table(source, "try (try FileSystem.FileSystem).readFile(path)", global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(reader + '(path, "utf8")', decoded, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(reader + '(path, { encoding: "utf8" })', decoded, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(reader + "(path, encoding)", decoded, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(reader + "(path, { ...options })", decoded, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table("custom.readFile(path)", decoded, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(source, "custom.readFileString(path)", global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(reader + "(path, { __proto__: options })", decoded, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(broken, "spec")).toEqual([])
+      expect(tableRowProblems(tick.repeat(3) + "md\n" + broken + "\n" + tick.repeat(3), "generated", options)).toEqual([])
+    }
+  ), { numRuns: 200, seed: 33033 })
+})
+
 test("temporary-directory query stays a read in the replacement table", () => {
   const text = readFileSync(new URL("../user/src/platform/105-introduction.md", import.meta.url), "utf8")
   const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Call|Effect|Layer")

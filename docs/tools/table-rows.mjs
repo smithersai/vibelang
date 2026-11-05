@@ -3,9 +3,61 @@
 import { readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { createRequire } from "node:module"
 
 const cells = line => line.replace(/\\./g, "").split("|").length
 const delimiter = line => /^\|(\s*:?-{3,}:?\s*\|)+\s*$/.test(line)
+
+
+let typeScript
+const nativeFileReaders = new Set(["fs.readFile", "fs.promises.readFile", "fs.readFileSync"])
+
+// Parse options rather than mistaking a filename or nested argument for an encoding.
+// Explicit text encodings and options with an unknown encoding remain outside this check.
+function nativeFileReadUsesBytes(source) {
+  const ts = typeScript ??= createRequire(import.meta.url)("typescript")
+  const unwrap = node => {
+    while (node && ts.isParenthesizedExpression(node)) node = node.expression
+    return node
+  }
+  const staticName = node => {
+    if (!node) return undefined
+    if (ts.isIdentifier(node) || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node)) return node.text
+    if (ts.isComputedPropertyName(node) && ts.isStringLiteralLike(unwrap(node.expression))) return unwrap(node.expression).text
+    return undefined
+  }
+  const dottedName = node => {
+    node = unwrap(node)
+    if (!node) return undefined
+    if (ts.isIdentifier(node)) return node.text
+    if (ts.isPropertyAccessExpression(node)) {
+      const parent = dottedName(node.expression)
+      return parent && parent + "." + node.name.text
+    }
+    if (ts.isElementAccessExpression(node)) {
+      const key = unwrap(node.argumentExpression), parent = dottedName(node.expression)
+      return parent && key && ts.isStringLiteralLike(key) ? parent + "." + key.text : undefined
+    }
+    return undefined
+  }
+  const file = ts.createSourceFile("platform-table.ts", "(" + source + ")", ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  if (file.parseDiagnostics.length) return false
+  const expression = unwrap(file.statements[0]?.expression)
+  if (!expression) return false
+  const call = ts.isCallExpression(expression) ? expression : undefined
+  if (!nativeFileReaders.has(dottedName(call?.expression ?? expression))) return false
+  if (!call || !call.arguments[1]) return true
+  const absent = node => {
+    node = unwrap(node)
+    return node && (node.kind === ts.SyntaxKind.NullKeyword || ts.isIdentifier(node) && node.text === "undefined" || ts.isVoidExpression(node))
+  }
+  const options = unwrap(call.arguments[1])
+  if (absent(options)) return true
+  if (!ts.isObjectLiteralExpression(options)) return false
+  if (options.properties.some(property => ts.isSpreadAssignment(property) || staticName(property.name) === undefined || staticName(property.name) === "__proto__")) return false
+  const encoding = options.properties.filter(property => staticName(property.name) === "encoding").at(-1)
+  return !encoding || ts.isPropertyAssignment(encoding) && absent(encoding.initializer)
+}
 
 export function tableRowProblems(text, file, { checkWidths = true, checkPlatformReplacements = false } = {}) {
   const lines = text.split("\n"), problems = []
@@ -30,7 +82,12 @@ export function tableRowProblems(text, file, { checkWidths = true, checkPlatform
     if (checkWidths && cells(line) !== width) problems.push(file + ":" + (i + 1) + ": " + (cells(line) - 2) + " cells, the header has " + (width - 2))
     if (platformReplacements) {
       const row = line.split("|").slice(1, -1).map(cell => cell.trim())
-      const call = row[0]?.replaceAll(String.fromCharCode(96), "").replace(/\s/g, "")
+      const sourceCall = row[0]?.replaceAll(String.fromCharCode(96), "")
+      const call = sourceCall?.replace(/\s/g, "")
+      if (/\bFileSystem\b/.test(row[1] ?? "") && /\.\s*readFileString\s*\(/.test(row[1] ?? "") &&
+          nativeFileReadUsesBytes(sourceCall ?? "")) {
+        problems.push(file + ":" + (i + 1) + ": the native file read supplies bytes; its replacement must not decode them as text")
+      }
       // The native query reads a location. Effect's temporary directory/file
       // factories allocate resources, including their scoped variants.
       if ((call === "os.tmpdir" || call === "os.tmpdir()") &&

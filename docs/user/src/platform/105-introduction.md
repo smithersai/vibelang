@@ -52,7 +52,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 
 | Call | Effect | Layer |
 | --- | --- | --- |
-| `fs.readFile` | `try (try FileSystem.FileSystem).readFileString(path)` | `NodeServices.layer` |
+| `fs.readFile` | `try (try FileSystem.FileSystem).readFile(path)` | `NodeServices.layer` |
 | `os.tmpdir` | `try (try Experimental.Process.Process).temporaryDirectory` | `ExperimentalNodeServices.layer` |
 | `net.isIPv6` | `Experimental.NetAddress.isIPv6(address)` | none (pure) |
 | `child_process.spawn` with inherited stdio | `try (try Experimental.ChildProcess.ChildProcess).runInherited(command, args, options)` | `ExperimentalNodeChildProcess.layer` |
@@ -80,6 +80,8 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `Date.now` | `try Clock.currentTimeMillis` | none |
 | `performance.now` | `Number(try Clock.monotonicTimeNanos) / 1e6` | none |
 | `Math.random` | `try Random.next` | none |
+
+`try (try FileSystem.FileSystem).readFile(path)` returns bytes, as Node’s default `fs.readFile` does. For UTF-8 text, use `try (try FileSystem.FileSystem).readFileString(path)`, corresponding to `fs.readFile(path, "utf8")`.
 
 The old `EK4403` is retired: host `performance` and `crypto` reads report `EK4402`, even when a legacy config tries to lower that code. Run native clock Effect values with `try`, and look up `SecureRandom.SecureRandom` before calling its methods.
 
