@@ -1,0 +1,5 @@
+// expect: EK4818 EK0403
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:10; warning; also EK0401](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4818).
+export effect function parsed(text: string) {
+  return JSON.parse(text) as number
+}

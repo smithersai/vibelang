@@ -1140,6 +1140,13 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "15m"
   ),
+  "diagnostic-example-source-locations": check(
+    "Published JSON and provider examples identify their complete source diagnostics",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/diagnostic-example-locations.mjs EK4818 EK3101 && node --test docs/tools/diagnostic-archive-examples.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [node],
+    "3m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

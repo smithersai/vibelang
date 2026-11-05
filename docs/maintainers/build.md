@@ -2080,3 +2080,5 @@ The `//:resolved-fuzz-gap-regressions` target replays native source resolution, 
 The `//:inherited-error-constructor-arity` target checks zero, single, multiple, optional, rest and object constructor shapes, retaining arity errors in authored methods.
 
 The `//:generic-handler-requirement-migration` check covers inferred requirement types in legacy error handlers and their public contract preservation.
+
+The `//:diagnostic-example-source-locations` target replays located JSON and provider examples and the archive decoder guards. The complete Appendix runner continues to replay every example.

@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- tsconfig.json --\n{\"vibelang\":{\"diagnostics\":{\"EK4818\":\"warning\"}}}\n-- main.vibe --\n  return JSON.parse(text) as number\n")
+string("-- tsconfig.json --\n{\"vibelang\":{\"diagnostics\":{\"EK4818\":\"warning\"}}}\n-- main.vibe --\n  return JSON.parse(text) as number\n// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:10; warning; also EK0401](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4818).\n")

@@ -93,7 +93,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4816` | off by default (warning when enabled): legacy compiler compatibility — a layer is provided at a site checked by the legacy strict-provision rule.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:38; error](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4816).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4818` | off by default (warning when enabled): legacy compiler compatibility — `JSON.parse` or `JSON.stringify` is used without a schema.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:2:10; warning; also EK0401](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4818).
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:10; warning; also EK0401](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4818).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4821` | off by default (warning when enabled): legacy compiler compatibility — a `Schema.Struct` has a literal `_tag` field.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Optional legacy repair to `Schema.TaggedStruct`; default off.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:23; error](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4821).
