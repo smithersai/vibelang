@@ -100,7 +100,6 @@ This example checks success, typed failure, defect, and interruption requested
 while acquisition is waiting. Each path closes the handle exactly once:
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-17
 // run: { const jsonValue = { succeeds: try run("succeed"), fails: try run("fail"), dies: try run("die"), pending: try pending() }; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function open(events: string[]) {
   let closed = false
