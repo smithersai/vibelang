@@ -55,6 +55,8 @@ await Bun.build({ entrypoints: ["src/main.ts"], outdir: "out", plugins: [vibelan
 
 ### Bun builds inside tools and tests
 
+Use Bun `1.4.2` or newer for complete runtime loader support. Bun `1.3.13` can return an asset path instead of a module for computed imports that a plugin resolves, and Bun `1.4.0` can corrupt Unicode import paths.
+
 A runtime preload alone does not configure `Bun.build`. To load source
 modules in `bun run`, `bun test`, and builds inside those processes,
 use `vibelang-unplugin/bun/register` in `bunfig.toml`:

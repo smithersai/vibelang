@@ -197,6 +197,8 @@ processes that inherit the environment. The preload must run before the entry.
 
 ## Run .vibe modules in Bun
 
+Use Bun `1.4.2` or newer for complete runtime loader support. Bun `1.3.13` can return an asset path instead of a module for computed imports that a plugin resolves, and Bun `1.4.0` can corrupt Unicode import paths.
+
 ```sh
 bun --preload vibelang/bun src/main.ts
 ```
