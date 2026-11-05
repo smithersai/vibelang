@@ -1991,6 +1991,8 @@ This implementation census records each parser or lowering hook and its specific
 
 The old `EK4707` is retired and will never be reassigned: data-variant class patterns use `EK0702` under VIP-7.
 
+The old `EK2118` is retired and will never be reassigned: VIP-13 rejects an error declaration's inheritance clause with `EK2117` before any generated subclass constructor is checked.
+
 The old `EK4503` is retired and will never be reassigned: native TypeScript property diagnostics replace the denied service shorthand (VIP-10).
 
 The old `EK4843` is retired and will never be reassigned: it was the entry-point warning. Under VIP-26 an exported lexical `main` keeps its ordinary binding, with no entry warning or declaration-changing quick fix.
@@ -2202,7 +2204,6 @@ A transitional compiler may still print compatibility diagnostics from the old l
 | interim `EK1015` | error: legacy compiler compatibility — the legacy checker rejects `yield*` in code it classified as an implicit program. Use `try` in effect code; ordinary JavaScript generators retain `yield*`. Replay example: main.vibe:1:17. | 1, 21 | [Rule chapter](/spec/002-running) |
 | interim `EK1017` | error: legacy compiler compatibility — `provide` is used as an expression. Use a `provide` statement and return from its block. Replay example: main.vibe:1:37. | 12 | [Rule chapter](/spec/005-services) |
 | interim `EK2114` | error: legacy compiler compatibility — a catch expression appears inside a legacy hatch body. Hatches are retired; native `.ts` code uses JavaScript try statements. Replay example: main.vibe:1:42. | 5, 6 | [Rule chapter](/spec/003-failures) |
-| interim `EK2118` | error: legacy compiler compatibility — a subclass declares fields without a constructor and its base does not take one fields object. Custom errors no longer extend a base error; native classes keep TypeScript constructor rules. Replay example: main.vibe:5:14; also EK2117. | 13 | [Rule chapter](/spec/003-failures) |
 | interim `EK2127` | error: legacy compiler compatibility — a data type's value is accessed through a nonexistent variant name. Use a declared variant; keep native errors for independent TypeScript member failures. Replay example: main.vibe:3:23. | 16 | [Rule chapter](/spec/006-data) |
 | interim `EK3206` | error: legacy compiler compatibility — legacy platform imports name two different platforms in one file. Use the selected platform services explicitly; namespace imports alone do not start a host. Replay example: main.vibe:2:8. | 14, 33 | [Rule chapter](/spec/005-services) |
 | interim `EK4201` | error: legacy compiler compatibility — a legacy control operation runs under a combinator on another fiber. Handlers remain an open proposal.  Emission witness pending for `EK4201`: its archived control input is rejected earlier by `EK3501`. The registry meaning and default remain checked by the registration host test. | 35 | [Rule chapter](/spec/003-failures) |

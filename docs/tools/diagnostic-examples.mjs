@@ -55,8 +55,6 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2114` | error: legacy compiler compatibility — a catch expression appears inside a legacy hatch body.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Hatches are retired; native `.ts` code uses JavaScript try statements.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:42](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK2114).
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2118` | error: legacy compiler compatibility — a subclass declares fields without a constructor and its base does not take one fields object.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:5:14; also EK2117](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK2118).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2127` | error: legacy compiler compatibility — a data type's value is accessed through a nonexistent variant name.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:3:23](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK2127).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK3206` | error: legacy compiler compatibility — legacy platform imports name two different platforms in one file.

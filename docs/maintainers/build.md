@@ -2082,3 +2082,5 @@ The `//:inherited-error-constructor-arity` target checks zero, single, multiple,
 The `//:generic-handler-requirement-migration` check covers inferred requirement types in legacy error handlers and their public contract preservation.
 
 The `//:diagnostic-example-source-locations` target replays located JSON and provider examples and the archive decoder guards. The complete Appendix runner continues to replay every example.
+
+The `//:error-constructor-diagnostic-retirement` target checks the retired subclass-constructor identity and the current inheritance rejection across native constructor signatures.

@@ -443,3 +443,12 @@ test("retired continuation contracts have no active registration or Appendix row
  assert.equal(audit.registered.has("EK9210"),false)
  assert.equal(audit.appendix.has("EK9210"),false)
 })
+
+test("retired subclass constructor identity has no active registration, row or replay", async () => {
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const inventory=loadIdentity()
+ assert.equal(inventory.registered.has("EK2118"),false)
+ assert.equal(inventory.appendix.has("EK2118"),false)
+ const fixtures=JSON.parse(readFileSync(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
+ assert.equal(fixtures.find(x=>x.code==="EK2118")?.retired,true)
+})

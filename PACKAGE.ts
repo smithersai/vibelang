@@ -1147,6 +1147,12 @@ const targets = {
     [node],
     "3m"
   ),
+  "error-constructor-diagnostic-retirement": goVibelang(
+    "Inherited error declarations retain the canonical rejection across native constructor shapes",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestErrorConstructorDiagnosticRetired|TestErrorConstructorRetirementQuoted|FuzzErrorConstructorDiagnosticRetirement)$\" ./internal/vibelang ./internal/vibelangfuzz",
+    [],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

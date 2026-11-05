@@ -21,8 +21,6 @@ import (
 //     an error that extends a class that is not an error, a schema error that
 //     extends an error that is not a schema error, and an error that extends
 //     a schema error.
-//   - EK2118: a subclass that declares fields and no constructor, whose base's
-//     constructor does not take one object of fields.
 
 func init() {
 	fileChecks = append(fileChecks, checkErrorDeclarations)
@@ -234,9 +232,6 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 		d := report(c, field, EK2117.With("{0}'s tag is \"{0}\", but its _tag field's type is {1}."), name.Text(), c.TypeToString(tag))
 		note(d, "A concrete error is tagged with its own name; give _tag a type that includes it, such as string.")
 	}
-	if form == errorFormSubclass {
-		checkErrorConstructor(c, class, baseName)
-	}
 }
 
 // A forbidden effect accessor can determine the recovered _tag type, but
@@ -337,54 +332,6 @@ func errorTagField(class *ast.Node, form errorForm) *ast.Node {
 	return class.Name()
 }
 
-// checkErrorConstructor reports EK2118 when the constructor that the parser
-// writes for a subclass with fields shows that its base's constructor does
-// not take one object of fields (takesNoFieldObject).
-func checkErrorConstructor(c *checker.Checker, class *ast.Node, baseName string) {
-	if _, base := errorFormOf(class); fieldlessGeneratedErrorBase(c, base) {
-		// The lowering calls super() and assigns the subclass fields. Only the
-		// parser-written super(args) has this argument diagnostic.
-		cover(c, class.Name())
-		return
-	}
-	for _, member := range class.Members() {
-		if !ast.IsConstructorDeclaration(member) || member.Flags&ast.NodeFlagsReparsed == 0 {
-			continue
-		}
-		parameters := member.Parameters()
-		if len(parameters) != 1 || parameters[0].Type() == nil {
-			return
-		}
-		if t := c.GetTypeFromTypeNode(parameters[0].Type()); t != nil && takesNoFieldObject(c, t) {
-			d := report(c, class.Name(), EK2118, class.Name().Text(), baseName)
-			note(d, "Write a constructor for {0} that calls super with what {1} takes and sets the fields.", class.Name().Text(), baseName)
-			cover(c, class.Name())
-		}
-		return
-	}
-}
-
-// takesNoFieldObject reports whether t, the parameter type that the parser
-// writes for a subclass's constructor, $ErrorArgs<typeof Base, Pick<Sub, ...>>,
-// shows that the base's constructor takes no object of fields: never when it
-// takes other arguments, and an intersection with a primitive or an array
-// when it takes one of those, as string & Pick<Sub, "path"> does for
-// constructor(raw: string). A base that takes one of several types gives a
-// union, which shows it when every member does.
-func takesNoFieldObject(c *checker.Checker, t *checker.Type) bool {
-	switch {
-	case t.Flags()&checker.TypeFlagsNever != 0:
-		return true
-	case t.Flags()&checker.TypeFlagsUnion != 0:
-		return !slices.ContainsFunc(t.Types(), func(member *checker.Type) bool { return !takesNoFieldObject(c, member) })
-	case t.Flags()&checker.TypeFlagsIntersection != 0:
-		return slices.ContainsFunc(t.Types(), func(part *checker.Type) bool {
-			return part.Flags()&checker.TypeFlagsPrimitive != 0 || c.IsArrayLikeType(part)
-		})
-	}
-	return false
-}
-
 // isSchemaErrorFields reports whether node is the object of field schemas
 // that the parser writes for a schema error (D279), flagged NodeFlagsVibeLang.
 func isSchemaErrorFields(node *ast.Node) bool {
@@ -415,7 +362,7 @@ func checkSchemaErrorFields(c *checker.Checker, file *ast.SourceFile, fields *as
 
 // fieldlessGeneratedErrorBase recognizes only a root error with no field
 // object and no written constructor, including bases imported from .vibe.
-// A written constructor remains the owner's decision (EK2118).
+// A written constructor remains part of the explicit TypeScript class contract.
 func fieldlessGeneratedErrorBase(c *checker.Checker, base *ast.Node) bool {
 	if base == nil {
 		return false
