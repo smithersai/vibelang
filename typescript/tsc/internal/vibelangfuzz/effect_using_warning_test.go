@@ -57,6 +57,7 @@ func FuzzEffectUsingWarning(f *testing.F) {
 	for _, context := range contexts {
 		for _, severity := range severities {
 			f.Add(context.key+":"+severity, uint8(0))
+			f.Add(context.key+":"+severity, uint8(4))
 		}
 	}
 	w := NewWorkspace(f)
@@ -80,7 +81,8 @@ func FuzzEffectUsingWarning(f *testing.F) {
 			"using /* resource 😀 */ r = (resource)",
 			"using r = resource, second = resource",
 			"using r = null",
-		}[int(mutation)%4]
+			"using r = 1",
+		}[int(mutation)%5]
 		source := "declare const resource: Disposable;\n" + strings.Replace(context.template, "%s", declaration, 1)
 		config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"lib":["ESNext","DOM"],"types":[]},"files":["main.vibe"]`
 		if severity != "default" {
@@ -102,6 +104,8 @@ func FuzzEffectUsingWarning(f *testing.F) {
 		case "suggestion":
 			category = diagnostics.CategorySuggestion
 		}
+		invalid := mutation%5 == 4 && context.key != "for-of"
+		disposalErrors := 0
 		got := 0
 		allDiagnostics := result.Diagnostics
 		// Suggestions are editor diagnostics, collected separately from CLI
@@ -119,9 +123,18 @@ func FuzzEffectUsingWarning(f *testing.F) {
 				if start < 0 || start+5 > len(source) || source[start:start+5] != "using" {
 					t.Fatalf("%s: warning must point at using: %s", key, d.String())
 				}
+			} else if d.Category() == diagnostics.CategoryError && d.Code() == 2850 && invalid {
+				disposalErrors++
 			} else if d.Category() == diagnostics.CategoryError {
 				t.Fatalf("%s: unexpected error: %s\n%s", key, d.String(), source)
 			}
+		}
+		wantDisposalErrors := 0
+		if invalid {
+			wantDisposalErrors = 1
+		}
+		if disposalErrors != wantDisposalErrors {
+			t.Fatalf("%s: native disposal errors = %d, want %d; severity must not alter TS2850", key, disposalErrors, wantDisposalErrors)
 		}
 		if got != want {
 			Gap(t, "FuzzEffectUsingWarning", key, "VIP-34/chapter 7: %s; got %d warnings, want %d\n%s", effectUsingWarningQuote, got, want, source)

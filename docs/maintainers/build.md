@@ -1814,3 +1814,5 @@ The `//:api-inputs-cache` target replays actual SDK caching with transitive loca
 Configuration validation selects the retired declaration-import option regression as well as VibeLang-prefixed tests. Deprecated spellings must retain warning severity and diagnostic code while being omitted from parsed configuration and serialization.
 
 The `//:promise-data-bridge` check keeps Promise construction inside an explicit synchronous Effect boundary when testing data retention. It compares catch-result identity and thenable laziness with the ordinary TypeScript counterpart, and compiles keyed Promise, constructor and thenable neighborhoods without awaiting the retained value.
+
+The `//:native-using-advisories` check covers native resource bindings in each callable context and every configurable severity. TypeScript disposal errors remain present even when the Effect advice is disabled. The native regression snapshots retain both disposal and jump errors alongside the advice.

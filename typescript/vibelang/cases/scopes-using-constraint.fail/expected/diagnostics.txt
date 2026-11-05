@@ -1,4 +1,10 @@
+main.vibe(11,3): warning EK0801
+main.vibe(16,3): warning EK0801
+main.vibe(21,3): warning EK0801
 main.vibe(21,13): error TS2850
+main.vibe(26,3): warning EK0801
 main.vibe(26,13): error TS2850
+main.vibe(31,3): warning EK0801
 main.vibe(31,13): error TS2850
+main.vibe(36,3): warning EK0801
 main.vibe(36,13): error TS2850
