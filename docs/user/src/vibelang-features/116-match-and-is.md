@@ -67,6 +67,8 @@ Nested object and array patterns keep each captured subject through an `is` bind
 
 `[]` matches an empty iterable, including an empty string. A regex literal accepts the same extractor suffix as a named regex, such as `/re/(let match)` or `/re/()`. When `not(...)` or `not[...]` also parses as prefix negation, that parse wins regardless of a local function named `not`; qualify an extractor as `helpers.not(...)`. A binding inside prefix `not` initializes when its binding pattern runs; `not(let x)` always fails after binding the subject, without calling a local function named `not`.
 
+A single `match` keeps an iterable's pulled values for later arms. If `when [1, 9]:` fails on values `[1, 2]`, a later `when [let first, let second]:` still receives `1` and `2`. A new `match` starts a new iterator cache and observes the iterable's current state.
+
 | Pattern | Matches | Example |
 | --- | --- | --- |
 | Literal | An equal string, number, boolean, `null`, or `undefined`. `0` matches both zeros; `-0` and `+0` match only that zero | `when 404:` |
