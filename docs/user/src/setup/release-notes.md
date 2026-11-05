@@ -23,6 +23,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Grouped schema field repair examples treated unsupported inheritance as valid; they now retain the inheritance error until it is migrated.
 - Native compiler builds discarded inherited Go package limits. They now cap package compilation at eight, matching the mapper and forms generator.
 - A service key alias with an intersection type could bypass misuse checks. Constructing, extending or matching it now reports the same service diagnostic as the original key.
+- Some compiler tooling rebuilt Go packages with different path flags. These commands now share path-independent package cache entries.
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
 - Tagged match migration examples included an unnecessary fallback after covering every tag; their output now reflects the current coverage rule.

@@ -1083,7 +1083,7 @@ const targets = {
   ),
   "migration-source-twins": goVibelang(
     "Preserving migrations retain source comments and native declaration contracts",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=15m -run \"^(TestFixVIPLegacyRunsCase|TestMigrationCasesFix)$/(migrate-opencode-effect-fn-parameters|migrate-smithers-written-generator-return)\" ./internal/vibelang",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=15m -run \"^(TestFixVIPLegacyRunsCase|TestMigrationCasesFix)$/(migrate-opencode-effect-fn-parameters|migrate-smithers-written-generator-return)\" ./internal/vibelang",
     [],
     "20m"
   ),
@@ -1107,19 +1107,19 @@ const targets = {
   ),
   "schema-codec-native-return-inference": goVibelang(
     "Schema codec factories retain writable references with native return inference",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestFixProjectGroupedSchemaMigration|TestFixProjectSchemaRequiredFieldReference|TestFixProjectSchemaReadonlyFieldReference|TestSchemaReadonlyMigrationCodecReferences|FuzzSchemaCodecFactoryNativeReturns|TestSchemaFactoryMigrationReturnsQuoted|FuzzSchemaFactoryMigrationReturns)$\" ./internal/vibelang ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestFixProjectGroupedSchemaMigration|TestFixProjectSchemaRequiredFieldReference|TestFixProjectSchemaReadonlyFieldReference|TestSchemaReadonlyMigrationCodecReferences|FuzzSchemaCodecFactoryNativeReturns|TestSchemaFactoryMigrationReturnsQuoted|FuzzSchemaFactoryMigrationReturns)$\" ./internal/vibelang ./internal/vibelangfuzz",
     [],
     "15m"
   ),
   "scoped-wrapper-refusal-progress": goVibelang(
     "Scoped repairs retain independent fixes and explain excluded companion modules",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestFixOnlyRefusesPlatformWrapperFile|TestFixPlatformWrapperAlchemyCorpusWithoutOnly|TestFixOnlyRulesQuoted|FuzzFixOnly)$\" ./internal/vibelang ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestFixOnlyRefusesPlatformWrapperFile|TestFixPlatformWrapperAlchemyCorpusWithoutOnly|TestFixOnlyRulesQuoted|FuzzFixOnly)$\" ./internal/vibelang ./internal/vibelangfuzz",
     [],
     "15m"
   ),
   "explicit-diagnostic-category-variants": goVibelang(
     "Throw syntax errors retain their fixed category and host compatibility retains contextual warnings",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=3m -run \"^(TestPlatformContextualSeverityQuoted|TestPlatformContextualRegistryCategories|FuzzExplicitDiagnosticCategoryVariants)$\" ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=3m -run \"^(TestPlatformContextualSeverityQuoted|TestPlatformContextualRegistryCategories|FuzzExplicitDiagnosticCategoryVariants)$\" ./internal/vibelangfuzz",
     [],
     "15m"
   ),
@@ -1132,7 +1132,7 @@ const targets = {
   ),
   "syntax-error-matcher-registration": goVibelang(
     "Error matcher registrations survive parser and printer round trips",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=3m -run \"^(TestSyntaxRoundTripGoldens|FuzzVibeLangParsePrint)$\" ./internal/vibelang",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=3m -run \"^(TestSyntaxRoundTripGoldens|FuzzVibeLangParsePrint)$\" ./internal/vibelang",
     [],
     "5m"
   ),
@@ -1145,19 +1145,19 @@ const targets = {
   ),
   "generator-binding-refusal-contracts": goVibelang(
     "Generator migrations retain parameter binding timing and their documented refusal",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^TestEffectGenRefusals$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^FuzzFix$/effect-fn-destructure\" ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^TestEffectGenRefusals$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^FuzzFix$/effect-fn-destructure\" ./internal/vibelangfuzz",
     [],
     "20m"
   ),
   "resolved-fuzz-gap-regressions": goVibelang(
     "Enforce native module and execution cases that now meet their specification",
-    "VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=15m -run \"^(TestVibexDeclarationSpellingQuoted|TestVibexDeclarationSpecifierGuard|TestVibexGeneratedContractIdentity|FuzzNativeCrossVariantResolution|FuzzReviewExecutionDiagnostics|FuzzTryGroupedEffects|FuzzVibexDeclarationSpelling|FuzzVibexNativeParity)$\" ./internal/vibelangfuzz",
+    "VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=15m -run \"^(TestVibexDeclarationSpellingQuoted|TestVibexDeclarationSpecifierGuard|TestVibexGeneratedContractIdentity|FuzzNativeCrossVariantResolution|FuzzReviewExecutionDiagnostics|FuzzTryGroupedEffects|FuzzVibexDeclarationSpelling|FuzzVibexNativeParity)$\" ./internal/vibelangfuzz",
     [],
     "20m"
   ),
   "inherited-error-constructor-arity": goVibelang(
     "Rejected inheritance hides generated arity failures while preserving authored argument errors",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestInheritedErrorArityQuoted|TestInheritedErrorGeneratedArity|FuzzInheritedErrorConstructorArity)$\" ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestInheritedErrorArityQuoted|TestInheritedErrorGeneratedArity|FuzzInheritedErrorConstructorArity)$\" ./internal/vibelangfuzz",
     [],
     "15m"
   ),
@@ -1176,7 +1176,7 @@ const targets = {
   ),
   "error-constructor-diagnostic-retirement": goVibelang(
     "Inherited error declarations retain the canonical rejection across native constructor shapes",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestErrorConstructorDiagnosticRetired|TestErrorConstructorRetirementQuoted|FuzzErrorConstructorDiagnosticRetirement)$\" ./internal/vibelang ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestErrorConstructorDiagnosticRetired|TestErrorConstructorRetirementQuoted|FuzzErrorConstructorDiagnosticRetirement)$\" ./internal/vibelang ./internal/vibelangfuzz",
     [],
     "15m"
   ),
@@ -1208,19 +1208,19 @@ const targets = {
   ),
   "native-and-legacy-catch-bindings": goVibelang(
     "Plain catch bindings retain native behavior while existing legacy diagnostic witnesses keep their exact locations.",
-    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -short -p 8 -count=1 -timeout=10m -run '^(TestCatchBindingAnnotationKindsQuoted|TestNativeAnyCatchBindingTwin|FuzzCatchBindingAnnotationKinds)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/diagnostic-example-locations.mjs EK2105 EK2112`,
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestCatchBindingAnnotationKindsQuoted|TestNativeAnyCatchBindingTwin|FuzzCatchBindingAnnotationKinds)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/diagnostic-example-locations.mjs EK2105 EK2112`,
     [Tsc["vibelangfuzz-files"], Packages["compiler-native"]],
     "15m"
   ),
   "trusted-class-visibility-witness": goVibelang(
     "Compatibility diagnostics replay real private and exported failure classes",
-    "VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=8m -run \"^(TestTrustedClassVisibilityWitnessQuoted|FuzzTrustedClassVisibilityWitness)$\" ./internal/vibelangfuzz && cd ../.. && node docs/tools/diagnostic-example-locations.mjs EK4401",
+    "VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=8m -run \"^(TestTrustedClassVisibilityWitnessQuoted|FuzzTrustedClassVisibilityWitness)$\" ./internal/vibelangfuzz && cd ../.. && node docs/tools/diagnostic-example-locations.mjs EK4401",
     [Packages["compiler-native"]],
     "15m"
   ),
   "tagged-match-repair-goldens": goVibelang(
     "Tagged Match migrations retain credited coverage, results and declarations",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestMatchChainQuickFixes$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestTypeScriptFormCasesFix$/tsforms-match$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestMatchHandlerDestructureQuoted|FuzzMatchTagDestructure|TestMatchCombinatorCoverageQuoted|FuzzMatchCombinatorCoverage)$\" ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run \"^TestMatchChainQuickFixes$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run \"^TestTypeScriptFormCasesFix$/tsforms-match$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestMatchHandlerDestructureQuoted|FuzzMatchTagDestructure|TestMatchCombinatorCoverageQuoted|FuzzMatchCombinatorCoverage)$\" ./internal/vibelangfuzz",
     [],
     "25m"
   ),

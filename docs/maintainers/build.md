@@ -200,6 +200,10 @@ limit package compilation inside one target. `scripts/go-cache.test.mjs` fails w
 compiles a package the script misses, or when the two workflows' cache paths
 differ.
 
+Each Go test invocation passes `-trimpath` explicitly, including every
+invocation in an `&&` chain. This keeps portable workers on the same
+package-cache key convention as local builds.
+
 A `node_modules` symlink in any of these directories, including `.smithers`,
 is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never
 runs `bun install` through it. The link owner must keep that install current.
