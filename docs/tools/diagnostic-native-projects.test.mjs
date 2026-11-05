@@ -39,6 +39,18 @@ test("native examples preserve sibling imports and local stubs without modifying
  assert.match(readFileSync(join(source,"main.vibe"),"utf8"),/import/)
 }))
 
+test("a native host copies only the projects it prepares",()=>fixture(({root,base})=>{
+ const host=nativeProjectHost(root,base),cases=join(root,"typescript/vibelang/cases")
+ const project=host.prepare(join(cases,"a"))
+ assert.equal(lstatSync(project).isSymbolicLink(),false)
+ assert.equal(lstatSync(join(project,"../b")).isSymbolicLink(),true)
+ const sibling=host.prepare(join(cases,"b"))
+ assert.equal(lstatSync(sibling).isSymbolicLink(),false)
+ writeFileSync(join(sibling,"value.ts"),"changed isolated input")
+ assert.equal(readFileSync(join(cases,"b/value.ts"),"utf8"),"export const value=1")
+ assert.equal(existsSync(join(project,"node_modules/effect")),true)
+}))
+
 test("an absent declared peer is an invalid host, never evidence that a diagnostic is unreachable",()=>fixture(({root,base,write})=>{
  write("typescript/vibelang/cases/a/package.json",'{"dependencies":{"missing-peer":"1"}}')
  const host=nativeProjectHost(root,base)

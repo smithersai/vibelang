@@ -225,8 +225,9 @@ export async function probeExamples(examples, appendix, compiler, root=repositor
   link(join(modules,"effect"),join(root,"packages/runtime/node_modules/effect"))
   readFileSync(join(modules,"effect/package.json"))
   readFileSync(join(root,"packages/runtime/node_modules/effect/package.json"))
-  // Clone the complete native case layout; stubs and optional peers match
-  // the normal harness, and compiler sidecars cannot mutate its source cases.
+  // Keep the complete native case layout, with each replayed project copied:
+  // stubs and optional peers match the normal harness, and compiler sidecars
+  // cannot mutate its source cases.
   const native=examples.some(e=>e.project)?nativeProjectHost(root,join(base,"native")):undefined
   try {
     const runExample=async ([i,example])=> {
