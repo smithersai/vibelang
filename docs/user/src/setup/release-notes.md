@@ -47,6 +47,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The TypeScript mapper could report `EK9001` on an `error` declaration with an `extends` clause that it had already lowered; it no longer reports the generated class member.
 - Bun setup did not identify older runtime defects that could return asset paths for modules or corrupt Unicode filenames; the runtime instructions now specify Bun `1.4.2` or newer.
+- An invalid `join` operand could suggest retired Promise hatches or leave an Effect unrun. Its notes now show native, runnable Effect expressions and withhold handle advice for incomplete markers.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.

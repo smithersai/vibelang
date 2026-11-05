@@ -3,5 +3,5 @@ await in a hatch body is JavaScript's await, which needs an async function.
 Join the fiber with join f.
 Wait for the Deferred with try Deferred.await(d).
 join takes a Fiber or an array or object of fibers, but this is Deferred<number, never>.
-Wait for a Deferred with d.await().
+Wait for the Deferred with try Deferred.await(d).
 Fork or join outside effect code. Move fork or join into an effect function or effect block.

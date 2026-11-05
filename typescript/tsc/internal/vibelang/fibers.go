@@ -272,12 +272,12 @@ func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	}
 	d := reportAt(c, file, keyword, EK1704, c.TypeToString(t))
 	switch {
-	case isDeferred(c, t):
-		note(d, "Wait for a Deferred with {0}.await().", nodeText(file, operand))
+	case nativeAwaitTarget(c, t, "Deferred"):
+		note(d, "Wait for the Deferred with try Deferred.await({0}).", nodeText(file, operand))
 	case c.GetPromisedTypeOfPromise(t) != nil:
-		note(d, "Wrap a promise in a hatch: try(async () => …) or sync(async () => …).")
-	case isEffectType(c, t) || ast.IsCallExpression(ast.SkipParentheses(operand)) && callReturnsEffect(c, ast.SkipParentheses(operand)):
-		note(d, "A program runs when you call it; to run it concurrently, fork it and join the fiber.")
+		note(d, "Wrap the Promise with try Effect.tryPromise(() => {0}).", nodeText(file, operand))
+	case isEffectOperandType(c, t):
+		note(d, "Run the Effect with try {0}.", nodeText(file, operand))
 	}
 }
 

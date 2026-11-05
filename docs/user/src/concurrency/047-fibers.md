@@ -31,6 +31,8 @@ Returning a handle from an Effect helper, passing it to another function, storin
 
 An operand that is not assignable to `Fiber.Fiber<any, any>` reports `EK1704`. An object with only a `~effect/Fiber` marker or an incomplete fiber shape is rejected; complete structural fiber types remain valid. TypeScript still reports independent errors inside the operand, including wrong call arguments, assignments and `satisfies` checks.
 
+When `join` receives a `Deferred`, `Promise` or `Effect`, its diagnostic shows an executable alternative: `try Deferred.await(value)`, `try Effect.tryPromise(() => value)` or `try value`. Calling an Effect factory constructs its program; `try` runs it. An incomplete marker does not establish a valid `Effect` or `Deferred` operation.
+
 With `strictNullChecks` disabled, `null` and `undefined` pass the operand's TypeScript assignability check; `void` remains invalid.
 
 A misplaced `fork` or `join` operator reports `EK1701`. Independent TypeScript errors in their operands, including wrong arguments and generic constraints, retain their own diagnostics.
