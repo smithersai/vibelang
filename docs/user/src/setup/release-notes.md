@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The plain runner example now creates its Promise through an explicit synchronous boundary and awaits it at the original later step.
+
+
 - The service member example now retains the teaching advisory on its valid native service class alongside every invalid-member error.
 
 

@@ -4,7 +4,7 @@
 import { render, renderPage } from "./lib.vibe"
 
 export effect function main() {
-  const pending = render()
+  const pending = try Effect.orDie(Effect.try({ try: () => render(), catch: (error) => error }))
   const isPromise = pending instanceof Promise
   const v = try Effect.promise(() => pending)
   const page = try Effect.promise(() => renderPage({ path: "/a" }))

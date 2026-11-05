@@ -1856,3 +1856,5 @@ The `//:join-message-regressions` check retains all awaited-value diagnostics an
 The `//:lint-activation-regressions` check covers configured and unconfigured projects, inherited plugin settings, explicit disablement and idempotent legacy plugin migration.
 
 The `//:service-member-controls` check preserves all eight invalid service-member errors and the native service-class advisory, including record shapes with import aliases and retained bodies.
+
+The `//:plain-runner-promise-data` check preserves eager Promise creation, the original result and page observations, and retained, discarded and parenthesized boundary mutations.

@@ -7588,6 +7588,9 @@ typescript/vibelang/cases/vip1-accept-plain-runpromise/lib.vibe:6:57 lambda prog
 typescript/vibelang/cases/vip1-accept-plain-runpromise/lib.vibe:8:27 lambda plain annotation
 typescript/vibelang/cases/vip1-accept-plain-runpromise/lib.vibe:9:14 lambda program table
 typescript/vibelang/cases/vip1-accept-plain-runpromise/main.vibe:10:35 lambda plain table
+typescript/vibelang/cases/vip1-accept-plain-runpromise/main.vibe:7:36 byname program table
+typescript/vibelang/cases/vip1-accept-plain-runpromise/main.vibe:7:54 lambda plain table
+typescript/vibelang/cases/vip1-accept-plain-runpromise/main.vibe:7:77 lambda plain table
 typescript/vibelang/cases/vip1-accept-plain-runpromise/main.vibe:9:32 lambda plain table
 typescript/vibelang/cases/vip1-accept-plain-runsync/lib.vibe:5:22 lambda plain annotation
 typescript/vibelang/cases/vip1-accept-plain-runsync/lib.vibe:5:51 lambda program table
