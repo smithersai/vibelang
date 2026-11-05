@@ -1,31 +1,51 @@
 import * as Data from "effect/Data";
+import { $matchCache } from "vibelang-runtime";
 import * as Effect from "effect/Effect";
 import * as runtime from "vibelang-runtime";
 const Delivery = Data.taggedEnum();
 function describe(delivery) {
     {
-        const $match2 = delivery;
-        {
-            if ((typeof $match2 === "function" || typeof $match2 === "object") && $match2
-                !== null && "_tag" in
-                $match2 && $match2._tag === "Waiting") {
-                return "waiting";
+        const $matchCache4 = $matchCache();
+        try {
+            const $match3 = delivery;
+            {
+                if ((typeof $match3 === "function" || typeof $match3 === "object") && $match3
+                    !== null && $matchCache4.propertyHas($match3, "_tag") && $matchCache4.get($match3, "_tag") === "Waiting") {
+                    return "waiting";
+                }
+            }
+            {
+                {
+                    runtime.$assertMatch((typeof $match3 === "function" || typeof $match3 === "object") && $match3
+                        !== null && $matchCache4.propertyHas($match3, "_tag") && $matchCache4.get($match3, "_tag") === "Sent" && $matchCache4.propertyHas($match3, "tracking"), $match3);
+                    let tracking = $matchCache4.get($match3, "tracking");
+                    return tracking;
+                }
             }
         }
-        {
-            {
-                runtime.$assertMatch((typeof $match2 === "function" || typeof $match2 === "object") && $match2
-                    !== null && "_tag" in
-                    $match2 && $match2._tag === "Sent" && "tracking" in
-                    $match2, $match2);
-                let tracking = $match2.tracking;
-                return tracking;
-            }
+        catch (matchError_1) {
+            $matchCache4.threw(matchError_1);
+            throw matchError_1;
+        }
+        finally {
+            $matchCache4.finish();
         }
     }
 }
 function isSent(value) {
-    return ($is3 => (typeof $is3 === "function" || typeof $is3 === "object") && $is3 !== null && "_tag" in $is3 && $is3._tag === "Sent")(value);
+    return ($is6 => {
+        const $matchCache5 = $matchCache();
+        try {
+            return (typeof $is6 === "function" || typeof $is6 === "object") && $is6 !== null && $matchCache5.propertyHas($is6, "_tag") && $matchCache5.get($is6, "_tag") === "Sent";
+        }
+        catch (matchError_2) {
+            $matchCache5.threw(matchError_2);
+            throw matchError_2;
+        }
+        finally {
+            $matchCache5.finish();
+        }
+    })(value);
 }
 export function main() {
     return Effect.sync({ main: () => { return [describe(Delivery.Waiting()), describe(Delivery.Sent({ tracking: "parcel-8" })), isSent(Delivery.Sent({ tracking: "x" })), isSent({ tracking: "x" })]; } }.main);
