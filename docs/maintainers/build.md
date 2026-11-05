@@ -61,7 +61,7 @@ Failures retain elapsed time, exit status, signal, spawn error, started
 installer directories and both output streams, so a timeout can be separated
 from an installer refusal.
 
-The `//:api-identity-test` target checks [published declaration identity](api-identity.md), including harmless rewrites and semantic mutations.
+The `//:api-identity-test` target checks [published declaration identity](api-identity.md), including harmless rewrites and semantic mutations. Its bounded-heap scale probes retain the child exit status, signal, process error, elapsed time and unchanged heap and timeout budgets on failure, together with comparator stage and memory records. `scripts/api-identity-scale-failures.test.mjs` injects process outcomes into those same probes and verifies both failure diagnostics and complete successful receipts.
 
 Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
 

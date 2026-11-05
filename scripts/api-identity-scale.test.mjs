@@ -11,6 +11,16 @@ import { checkProperty } from "./testing/property.mjs"
 const ts = loadTypeScript()
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const options = { compilerOptions: { lib: ["lib.es5.d.ts"] } }
+
+function childFailure(child, started, timeoutMs, heapLimitMiB) {
+  const error = child.error && {
+    name: child.error.name, code: child.error.code, message: child.error.message,
+  }
+  return JSON.stringify({
+    status: child.status, signal: child.signal, error,
+    elapsedMs: Math.round(performance.now() - started), timeoutMs, heapLimitMiB,
+  }) + "\n" + (child.stdout ?? "") + (child.stderr ?? "")
+}
 function fixture(before, after, run) {
   const root = mkdtempSync(join(tmpdir(), "api-identity-scale-"))
   try {
@@ -143,13 +153,14 @@ export type X = { value: Tuple<${corpus.tupleDepth}>; tag: ${i} };`
     const source = `import { readFileSync } from "node:fs";
 import { compareApiIdentity, loadTypeScript } from ${JSON.stringify(new URL("./api-identity.mjs", import.meta.url).href)};
 const [a, b] = JSON.parse(readFileSync(0, "utf8"));
-const result = compareApiIdentity(loadTypeScript(), a, b, { compilerOptions: { lib: ["lib.es5.d.ts"] } });
+const result = compareApiIdentity(loadTypeScript(), a, b, { profile: true, compilerOptions: { lib: ["lib.es5.d.ts"] } });
 console.log(JSON.stringify(result));
 process.exitCode = result.identical ? 0 : result.comparisonComplete ? 1 : 2;`
+    const started = performance.now()
     const child = spawnSync(process.execPath, [`--max-old-space-size=${corpus.heapLimitMiB}`, "--input-type=module", "--eval", source], {
       input: JSON.stringify([a, b]), encoding: "utf8", timeout: 120000, maxBuffer: 1024 * 1024,
     })
-    assert.equal(child.status, 0, child.stdout + child.stderr)
+    assert.equal(child.status, 0, childFailure(child, started, 120000, corpus.heapLimitMiB))
     assert.equal(child.signal, null)
     const result = JSON.parse(child.stdout)
     assert.equal(result.comparisonComplete, true)
@@ -168,13 +179,14 @@ type Assert<T extends true> = T;
     const source = `import { readFileSync } from "node:fs";
 import { compareApiIdentity, loadTypeScript } from ${JSON.stringify(new URL("./api-identity.mjs", import.meta.url).href)};
 const [a, b] = JSON.parse(readFileSync(0, "utf8"));
-const result = compareApiIdentity(loadTypeScript(), a, b, { compilerOptions: { lib: ["lib.es5.d.ts"] } });
+const result = compareApiIdentity(loadTypeScript(), a, b, { profile: true, compilerOptions: { lib: ["lib.es5.d.ts"] } });
 console.log(JSON.stringify(result));
 process.exitCode = result.identical ? 0 : result.comparisonComplete ? 1 : 2;`
+    const started = performance.now()
     const child = spawnSync(process.execPath, [`--max-old-space-size=${corpus.heapLimitMiB}`, "--input-type=module", "--eval", source], {
       input: JSON.stringify([a, b]), encoding: "utf8", timeout: 120000, maxBuffer: 1024 * 1024,
     })
-    assert.equal(child.status, 0, child.stdout + child.stderr)
+    assert.equal(child.status, 0, childFailure(child, started, 120000, corpus.heapLimitMiB))
     assert.equal(child.signal, null)
     const result = JSON.parse(child.stdout)
     assert.equal(result.comparisonComplete, true)
@@ -197,11 +209,12 @@ export type X = ${i};
     const source = `import {readFileSync} from "node:fs";
 import {compareApiIdentity,loadTypeScript} from ${JSON.stringify(new URL("./api-identity.mjs",import.meta.url).href)};
 const [a,b] = JSON.parse(readFileSync(0,"utf8"));
-const result=compareApiIdentity(loadTypeScript(),a,b,{compilerOptions:{lib:["lib.es5.d.ts"]}});
+const result=compareApiIdentity(loadTypeScript(),a,b,{profile: true,compilerOptions:{lib:["lib.es5.d.ts"]}});
 console.log(JSON.stringify(result));process.exitCode=result.identical?0:2;`
+    const started = performance.now()
     const child=spawnSync(process.execPath,[`--max-old-space-size=${corpus.heapLimitMiB}`,"--input-type=module","--eval",source],{
       input:JSON.stringify([a,b]),encoding:"utf8",timeout:180000,maxBuffer:1024*1024})
-    assert.equal(child.status,0,child.stdout+child.stderr)
+    assert.equal(child.status,0,childFailure(child, started, 180000, corpus.heapLimitMiB))
     assert.equal(child.signal,null)
     const result=JSON.parse(child.stdout)
     assert.equal(result.comparisonComplete,true)

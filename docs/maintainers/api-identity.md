@@ -231,7 +231,7 @@ Resolution and unchanged source parsing are reused. The synchronous API accepts
 Export documentation and erroneous-type walks use explicit worklists, so deeply
 nested exported objects do not consume the JavaScript call stack. Proven equal
 module closures reuse documentation only when their attached comments also agree.
-Use `--profile` to record stages, elapsed time, batch offsets and memory use.
+Use `--profile` to record stages, elapsed time, batch offsets and memory use. The bounded-heap scale tests enable these records in their child processes and retain them when a probe fails, alongside its process error, signal, exit status, elapsed time and configured budgets. Successful probes still require a complete, identical receipt.
 
 Published entry points are processed in groups of at most `8`, so earlier input
 programs can be collected before the next group starts. `entryBatchSize` accepts
