@@ -1,0 +1,4 @@
+go test fuzz v1
+uint16(116)
+byte('\x02')
+byte('\x03')

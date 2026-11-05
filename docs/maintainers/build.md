@@ -1750,3 +1750,5 @@ The `//:go-registry-witnesses` target checks reachable compatibility diagnostics
 The `//:go-foreign-validation` target compiles the factory validation examples and checks foreign callback admission. Its negative controls retain `EK0402`; explicit defect bridges preserve a `never` failure channel.
 
 The `//:http-api-example` target compiles the HTTP example with the local compiler and packed runtime, then runs its request test. The `//:go-module-foreign-factories` target checks the corresponding foreign callback rule, module adapter variants and lazy acquisition fixture.
+
+The Effect-parameter oracle inventories the pinned Effect exports. Nested Promise-returning root runners must report both `EK1005` and `EK0404` at the same call. Its scope controls reject unrelated Promise diagnostics and native `TS1005`; the declared-parameter and plain-generic warning controls remain separate.

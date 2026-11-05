@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - The HTTP example now adapts Node's server callback in a TypeScript module, so it compiles with foreign callback checks while opening the server only when its layer is acquired.
+- The Effect-parameter inventory check rejected the valid pair of diagnostics for nested Promise-returning root runners. It now requires both rules at the same call while continuing to reject unrelated Promise errors and accidental Effect-as-data warnings.
 
 - Optional schema fields and tuple elements with an explicit `undefined` union could expose a different codec type from `Schema.optional(S)`. They now retain the underlying codec type while accepting omission and present `undefined`; repairs keep an explicit union codec when rewriting it would change its type.
 - The platform guide mapped `os.tmpdir` to creating a new directory. Its replacement now reads the system temporary-directory path without creating anything.

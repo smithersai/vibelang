@@ -8,7 +8,9 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // Discover direct Effect parameters from every exported call signature in the
@@ -99,12 +101,75 @@ func effectParameterCalls(t testing.TB, w *Workspace) []string {
 	return calls
 }
 
+const declaredRootPromiseQuote = "`Promise.reject(e)`, like every Promise-producing call, must be inside a wrapper thunk in effect code."
+
+func TestDeclaredRootPromiseRulesQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("003-failures.md"), declaredRootPromiseQuote) {
+		t.Fatalf("Chapter 3 no longer says %q", declaredRootPromiseQuote)
+	}
+	const root = "a root runner is called inside code already running on a fiber"
+	if !strings.Contains(SpecText("900-appendices.md"), root) {
+		t.Fatalf("Appendix B no longer says %q", root)
+	}
+}
+
+func isDeclaredRootPromise(d *ast.Diagnostic) bool {
+	if !IsEK(d) || d.Code() != 1005 || d.Category() != diagnostics.CategoryError || d.File() == nil {
+		return false
+	}
+	text := d.File().Text()
+	if d.Pos() < 0 || d.End() > len(text) {
+		return false
+	}
+	callee := text[d.Pos():d.End()]
+	return callee == `Effect["runPromise"]` || callee == `Effect["runPromiseExit"]`
+}
+
+func isDeclaredRootPromiseCompanion(d *ast.Diagnostic, ds []*ast.Diagnostic) bool {
+	if !IsEK(d) || d.Code() != 404 || d.Category() != diagnostics.CategoryError {
+		return false
+	}
+	for _, root := range ds {
+		if isDeclaredRootPromise(root) && root.File() == d.File() && root.Pos() == d.Pos() && root.End() <= d.End() {
+			return true
+		}
+	}
+	return false
+}
+
+func TestDeclaredRootPromiseCompanionScope(t *testing.T) {
+	TestDeclaredRootPromiseRulesQuoted(t)
+	for _, name := range []string{"runPromise", "runPromiseExit", "runCallback"} {
+		source := `Effect["` + name + `"](e); Promise.resolve(e)`
+		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "fixture/main.vibe", PathKey: "fixture/main.vibe"}, source, core.ScriptKindTS)
+		end := strings.Index(source, "(")
+		root := ast.NewExternalDiagnostic(file, core.NewTextRange(0, end), "EK", diagnostics.CategoryError, 1005, "nested root")
+		diag := ast.NewExternalDiagnostic(file, core.NewTextRange(0, end+3), "EK", diagnostics.CategoryError, 404, "Promise-producing call")
+		want := name != "runCallback"
+		if got := isDeclaredRootPromiseCompanion(diag, []*ast.Diagnostic{root}); got != want {
+			t.Fatalf("%s: got %t want %t", name, got, want)
+		}
+		unrelated := ast.NewExternalDiagnostic(file, core.NewTextRange(end+5, len(source)), "EK", diagnostics.CategoryError, 404, "another Promise")
+		if isDeclaredRootPromiseCompanion(unrelated, []*ast.Diagnostic{root}) {
+			t.Fatal("accepted unrelated Promise diagnostic")
+		}
+		if isDeclaredRootPromiseCompanion(diag, nil) {
+			t.Fatal("accepted Promise diagnostic without a nested-root diagnostic")
+		}
+		native := ast.NewExternalDiagnostic(file, core.NewTextRange(0, end), "TS", diagnostics.CategoryError, 1005, "native parse error")
+		if isDeclaredRootPromiseCompanion(diag, []*ast.Diagnostic{native}) {
+			t.Fatal("native TS1005 acted as an EK1005 companion")
+		}
+	}
+}
+
 // The API inventory includes root runners and provider overloads. Native TS
-// acceptance proves the synthesized arguments fit each API. Inside effect code,
-// EK1005 (a nested root) and EK3207 (an opaque provider) are independent of this
-// oracle: they must not turn an intentional Effect parameter into EK4802.
+// acceptance proves the synthesized arguments fit each API. EK1005 and EK3207
+// are independent of Effect-as-data admission. Promise root calls additionally
+// require a correlated EK0404; unrelated Promise errors remain unexpected.
 func checkDeclaredParameterOracle(t *testing.T, w *Workspace, source string, want int) {
 	t.Helper()
+	TestDeclaredRootPromiseRulesQuoted(t)
 	native := "import { Effect, Stream, Option } from \"effect\"\n" + strings.Replace(source, "export effect function", "export function", 1)
 	control, err := w.Compile(t.Context(), Project{Files: map[string]string{"control.ts": native}})
 	if err != nil {
@@ -119,12 +184,28 @@ func checkDeclaredParameterOracle(t *testing.T, w *Workspace, source string, wan
 		t.Fatal(err)
 	}
 	defer result.Remove()
+	// These calls are root runners and Promise producers simultaneously.
+	// Require both independent rules, with the same call position.
+	for _, root := range result.Diagnostics {
+		if !isDeclaredRootPromise(root) {
+			continue
+		}
+		paired := false
+		for _, d := range result.Diagnostics {
+			if d.Pos() == root.Pos() && isDeclaredRootPromiseCompanion(d, []*ast.Diagnostic{root}) {
+				paired = true
+			}
+		}
+		if !paired {
+			t.Fatalf("root Promise runner lost EK0404: %v", SortedKeys(Keys(result.Dir, result.Diagnostics)))
+		}
+	}
 	count := 0
 	for _, d := range result.Diagnostics {
 		if d.Code() == 4802 {
 			count++
 		}
-		if d.Category() == diagnostics.CategoryError && d.Code() != 1005 && d.Code() != 3207 {
+		if d.Category() == diagnostics.CategoryError && d.Code() != 1005 && d.Code() != 3207 && !isDeclaredRootPromiseCompanion(d, result.Diagnostics) {
 			t.Fatalf("unexpected error: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 		}
 	}
