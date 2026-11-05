@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Migration API verification could reject unchanged module augmentations when an adjacent callable gained generated `@throws {never}` metadata. Ambient closure checks now allow that addition while preserving authored contracts, comments and types.
+
 - Legacy editor contract actions keep cross-file edits attached to the right documents and reuse existing aliases without duplicate wrappers.
 
 - Schema alias repair checks now use explicit `readonly` properties and ordinary writable properties, preserving the original `Schema.Struct` type.

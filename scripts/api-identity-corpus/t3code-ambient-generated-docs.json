@@ -1,0 +1,7 @@
+{
+  "repository": "t3code",
+  "pattern": "a module augmentation shares a declaration file with a callable receiving a generated never contract",
+  "original": "import \"effect/Schema\";\ndeclare module \"effect/Schema\" { namespace Annotations { interface Annotations { readonly comparisonProbe?: string } } }\nexport function helper(value: number): number { return value }\n",
+  "before": "import \"effect/Schema\";\ndeclare module \"effect/Schema\" { namespace Annotations { interface Annotations { readonly comparisonProbe?: string } } }\nexport declare function helper(value: number): number;\n",
+  "after": "import \"effect/Schema\";\ndeclare module \"effect/Schema\" { namespace Annotations { interface Annotations { readonly comparisonProbe?: string } } }\n/** @throws {never} */\nexport declare function helper(value: number): number;\n"
+}

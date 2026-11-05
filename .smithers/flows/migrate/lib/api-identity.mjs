@@ -496,7 +496,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
       }
     }
     const transformed = ts.transform(source, [transform])
-    let text = printer.printFile(transformed.transformed[0]) + (documentation?.get(file) ?? "")
+    let text = printer.printFile(transformed.transformed[0])
     transformed.dispose()
     const resolved = host.resolveModuleNameLiterals(imports, file, undefined, program.getCompilerOptions(), source)
     const ambientImports = []
@@ -532,7 +532,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     if (a === b) return node
     if (externalOrigin(a) !== externalOrigin(b)) { node.good = false; return node }
     const x = syntax(a), y = syntax(b)
-    if (!x || !y || x.text !== y.text || x.deps.length !== y.deps.length) { node.good = false; return node }
+    if (!x || !y || x.text !== y.text || x.deps.length !== y.deps.length || documentation && !documentation(a, b)) { node.good = false; return node }
     for (let i = 0; i < x.deps.length; i++) {
       if (!x.deps[i] || !y.deps[i]) { node.good = false; continue }
       pair(x.deps[i], y.deps[i]).parents.push(node)
@@ -1086,33 +1086,38 @@ function prepareComparison(ts, before, after, options, progress) {
   if (program.getSourceFiles().some(contributesAmbient)) {
     const ambientDocumentation = new Map(), documentationInputs = new Map()
     const describeAmbientDocumentation = (source, docChecker) => {
-      const comments = []
+      const comments = new Map()
       const inspect = (node, path) => {
         const name = node.name && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) || ts.isNumericLiteral(node.name)) ? node.name.text : ""
         const key = path + "/" + ts.SyntaxKind[node.kind] + ":" + name
         const symbol = node.name && docChecker.getSymbolAtLocation(node.name)
         if (symbol) {
-          const value = docs(ts, docChecker, symbol)
-          if (value) comments.push([key, value])
+          const text = docs(ts, docChecker, symbol)
+          if (text) comments.set(key, { symbol, checker: docChecker, text })
         }
         ts.forEachChild(node, child => inspect(child, key))
       }
       inspect(source, "")
-
-      return JSON.stringify(comments.sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
+      return comments
     }
-    // Materialize exactly the same documentation only when the closure proof
-    // asks for it. Shared physical modules need no syntax/documentation proof.
-    const documentation = options.lazyAmbientDocumentation ? {
-      get(file) {
-        if (ambientDocumentation.has(file)) return ambientDocumentation.get(file)
-        const input = documentationInputs.get(file)
-        if (!input) return undefined
-        const value = describeAmbientDocumentation(input.source, input.program.getTypeChecker())
-        ambientDocumentation.set(file, value)
-        return value
-      },
-    } : ambientDocumentation
+    // Use the export documentation rule for closure members too. Its one-way
+    // generated contract allowance must not erase an authored throw contract.
+    const documentationFor = file => {
+      if (ambientDocumentation.has(file)) return ambientDocumentation.get(file)
+      const input = documentationInputs.get(file)
+      if (!input) return undefined
+      const value = describeAmbientDocumentation(input.source, input.program.getTypeChecker())
+      ambientDocumentation.set(file, value)
+      return value
+    }
+    const documentation = (beforeFile, afterFile) => {
+      const before = documentationFor(beforeFile), after = documentationFor(afterFile)
+      if (!before || !after) return false
+      return [...new Set([...before.keys(), ...after.keys()])].every(key => {
+        const a = before.get(key), b = after.get(key)
+        return b && sameExportDocs(ts, b.checker, b.symbol, a?.text ?? "", b.text, a?.symbol)
+      })
+    }
     const ambient = (roots, base) => {
       const isolated = ts.createProgram(Object.values(roots), compilerOptions, host)
       const sources = new Map()
