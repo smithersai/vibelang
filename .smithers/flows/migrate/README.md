@@ -1059,3 +1059,5 @@ and exported aliases still retain the types they reference. This text utility
 does not replace the exported-name, type and documentation identity proof.
 
 Revert removes each selected sidecar using the compiling project’s TypeScript declaration layout: explicit `rootDir`, composite config root, or inferred common source root. Other files in the sidecar directory remain unchanged.
+
+Self-contained declaration reference fixtures set `types: []` and choose their libraries explicitly, so unrelated installed ambient packages do not enter their TypeScript program. Diagnostics retain the source file, code and message; errors in the fixture itself still fail. Package API verification continues to use the package’s recorded compiler context.
