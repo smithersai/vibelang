@@ -51,7 +51,7 @@ A service method may declare a plain return type, such as `lookup(): number`, or
 
 At module or namespace scope, `Users.Shape` names a service's implementation type. A function or block cannot declare that companion namespace: write `Context.Service.Shape<typeof Users>` for a local service instead. The editor offers this replacement, and `vibelang --fix` migrates a local `Users.Shape` annotation. Within the service's own instance member type, `Users.Shape` remains a type-only self-reference. A member-local type parameter named `Users` shadows that service name, as in TypeScript.
 
-Copying a service value into a `const` or an object property keeps the same service identity. The restrictions on `new`, `extends` and `instanceof` apply through those aliases and through parentheses too.
+Copying a service value into a `const` or an object property keeps the same service identity. The restrictions on `new`, `extends` and `instanceof` apply through those aliases and through parentheses too. An intersection type such as `typeof Users & { readonly extra?: number }` retains that identity: construction is `EK3003`, inheritance is `EK3002`, and `instanceof` or a class pattern is `EK3004`. Obtain the implementation with `try Users` and inspect its members instead. The identifier type `Users` in `R` is distinct from `typeof Users`; combining that identifier with an ordinary callable or constructor does not make the value an alias of the key.
 
 A `service` body cannot contain constructors or index signatures, such as `[name: string]: Value`; each reports `EK0902`. Declare named properties and methods instead. For a dictionary implementation, declare its type separately and use an explicit `Context.Service` class, as below.
 

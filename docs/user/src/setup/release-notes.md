@@ -22,6 +22,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The Appendix diagnostic replay could time out before checking every example. It now checks independent projects concurrently while preserving every code, category and source-location assertion.
 - Grouped schema field repair examples treated unsupported inheritance as valid; they now retain the inheritance error until it is migrated.
 - Native compiler builds discarded inherited Go package limits. They now cap package compilation at eight, matching the mapper and forms generator.
+- A service key alias with an intersection type could bypass misuse checks. Constructing, extending or matching it now reports the same service diagnostic as the original key.
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
 - Tagged match migration examples included an unnecessary fallback after covering every tag; their output now reflects the current coverage rule.
@@ -189,6 +190,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` left ordinary incomplete finite matches unchanged. It now adds a `default` that preserves the implicit empty-message `TypeError`, including an Effect defect or Promise rejection, without widening the function's result or channels.
 
 - The build guide's dependency diagram showed broader inputs than native executables use. It now shows their `native-srcs` input group.
+
+### Upgrade from 0.0.11
+
+| Before | After and repair |
+| --- | --- |
+| Constructing, extending or matching a service key through an intersection-typed alias | `EK3003`, `EK3002` or `EK3004` applies as for the original service. Obtain the implementation with `try ServiceName`; implement its shape or inspect its members. Choosing the implementation or test requires a manual repair. |
 
 ## 0.0.11
 

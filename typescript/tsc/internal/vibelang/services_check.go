@@ -317,17 +317,36 @@ func serviceNamedBy(c *checker.Checker, expr *ast.Node) *ast.Node {
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		symbol = c.GetAliasedSymbol(symbol)
 	}
-	// A typed value alias keeps the service constructor's class symbol.
-	// Checking only the variable's declaration misses the same service key.
-	if symbol == nil || classKindOf(symbol.ValueDeclaration()) == ordinaryClass {
-		if t := c.GetTypeAtLocation(expr); t != nil {
-			symbol = t.Symbol()
-		}
+	if symbol != nil && classKindOf(symbol.ValueDeclaration()) != ordinaryClass {
+		return symbol.ValueDeclaration()
 	}
-	if symbol == nil || classKindOf(symbol.ValueDeclaration()) == ordinaryClass {
+	return serviceNamedByType(c, c.GetTypeAtLocation(expr))
+}
+
+// An intersection adds constraints to the same constructor value. Retain a
+// service's declaration identity through each constituent, as for a typed alias.
+func serviceNamedByType(c *checker.Checker, t *checker.Type) *ast.Node {
+	if t == nil {
 		return nil
 	}
-	return symbol.ValueDeclaration()
+	if symbol := t.Symbol(); symbol != nil && classKindOf(symbol.ValueDeclaration()) != ordinaryClass {
+		return symbol.ValueDeclaration()
+	}
+	if t.Flags()&checker.TypeFlagsIntersection != 0 {
+		for _, part := range t.Types() {
+			if symbol := part.Symbol(); symbol != nil && classKindOf(symbol.ValueDeclaration()) != ordinaryClass &&
+				part != c.GetTypeOfSymbol(symbol) {
+				// A service identifier in R is not the key's value type.
+				// Intersecting it with a callable or constructor does not
+				// make that value an alias of the service key.
+				continue
+			}
+			if service := serviceNamedByType(c, part); service != nil {
+				return service
+			}
+		}
+	}
+	return nil
 }
 
 // sharingKey returns the other service and control classes in the program

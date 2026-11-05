@@ -1,0 +1,8 @@
+export service Valid { static readonly key = "intersection/Valid"; value: number }
+export const Key: typeof Valid & { readonly extra?: number } = Valid
+
+declare const Callable: Valid & ((value: number) => number)
+declare const Constructor: Valid & { new(): object }
+export const first = Callable(1)
+export const second = new Constructor()
+export const third = {} instanceof Constructor

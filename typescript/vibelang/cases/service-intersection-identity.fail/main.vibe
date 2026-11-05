@@ -1,0 +1,4 @@
+// expect: EK3004
+service Users { static readonly key = "intersection/Users"; value: number }
+const Key: typeof Users & { readonly extra?: number } = Users
+export const matches = {} instanceof Key
