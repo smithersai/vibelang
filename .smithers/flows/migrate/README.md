@@ -1057,3 +1057,5 @@ a class extends a value with the same name. Class base expressions read the
 value namespace; their type arguments, interface bases, `implements` clauses
 and exported aliases still retain the types they reference. This text utility
 does not replace the exported-name, type and documentation identity proof.
+
+Revert removes each selected sidecar using the compiling project’s TypeScript declaration layout: explicit `rootDir`, composite config root, or inferred common source root. Other files in the sidecar directory remain unchanged.

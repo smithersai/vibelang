@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { createRequire } from "node:module"
-import { join } from "node:path"
+import { dirname, join, relative } from "node:path"
 import { test } from "node:test"
 import { renameBatch, rewriteExports, rewriteImports } from "../lib/codemod.mjs"
 import { importers, makeConfig, paths, returnToUpgrade, revert } from "../lib/steps.mjs"
@@ -222,29 +222,66 @@ test("revert removes the platform sibling the codemod split a module into", asyn
   }
 })
 
-test("revert removes the selected inherited sidecar without changing another output", async () => {
+async function inheritedSidecarRevert({ sourceDir = "src", directory = "types", layout = "inferred" } = {}) {
   const root = mkdtempSync(join(tmpdir(), "migrate-revert-relocated-"))
   const target = join(root, "repo"), run = join(root, "run")
   try {
-    mkdirSync(join(target, "node_modules"), { recursive: true })
     const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
+    const ts = require("typescript")
+    mkdirSync(join(root, "toolchain"))
+    writeFileSync(join(root, "toolchain/compiler"), "#!/bin/sh\nexit 99\n", { mode: 0o755 })
+    writeJson(join(root, "toolchain/toolchain.json"), { compiler: "compiler", packages: {} })
+    mkdirSync(join(target, "node_modules"), { recursive: true })
     symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
-    mkdirSync(join(target, "src"), { recursive: true })
+    mkdirSync(join(target, sourceDir), { recursive: true })
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, ".gitignore"), "node_modules/\n")
     writeFileSync(join(target, "package.json"), "{}\n")
-    writeFileSync(join(target, "base.json"), JSON.stringify({ vibe: { sidecarDir: "types" } }))
-    writeFileSync(join(target, "tsconfig.json"), JSON.stringify({ extends: "./base.json", include: ["src"] }))
-    writeFileSync(join(target, "src/b.ts"), "export const b = 1\n")
+    writeJson(join(target, "base.json"), { vibe: { sidecarDir: directory } })
+    const compilerOptions = layout === "explicit" ? { rootDir: "." } : layout === "composite" ? { composite: true } : {}
+    const config = { extends: "./base.json", compilerOptions, include: [sourceDir + "/**/*"] }
+    writeJson(join(target, "tsconfig.json"), config)
+    const source = sourceDir + "/b.ts", original = "export const b = 1\n"
+    writeFileSync(join(target, source), original)
+    // Configuration: sidecar placement follows TypeScript declaration layout.
+    // Ask the stock compiler where the original .ts declaration belongs.
+    const stock = join(root, "stock")
+    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, target, undefined, join(target, "tsconfig.json"))
+    assert.deepEqual(parsed.errors.map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
+    const program = ts.createProgram(parsed.fileNames, { ...parsed.options, declaration: true, emitDeclarationOnly: true, declarationDir: stock, types: [] })
+    assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
+    const emitted = []
+    const result = program.emit(undefined, file => { if (file.endsWith(".d.ts")) emitted.push(relative(stock, file)) })
+    assert.equal(result.emitSkipped, false)
+    assert.equal(emitted.length, 1)
+    assert.equal(emitted[0], layout === "inferred" ? "b.d.ts" : sourceDir + "/b.d.ts")
+    const selected = join(target, directory, emitted[0].replace(/\.d\.ts$/, ".d.vibe.ts"))
+    const other = join(target, directory, "unrelated/orphan.d.vibe.ts")
     await Jj.commit(target, "base")
-    writeJson(paths(run).config, makeConfig({ target, test: "true", toolchain: join(root, "toolchain") }))
-    writeJson(paths(run).plan, { batches: [{ files: ["src/b.ts"] }] })
-    renameBatch(target, ["src/b.ts"])
-    mkdirSync(join(target, "types/src"), { recursive: true })
-    writeFileSync(join(target, "types/src/b.d.vibe.ts"), "export declare const b = 1;\n")
-    writeFileSync(join(target, "types/src/orphan.d.vibe.ts"), "// standalone\n")
-    await revert({ run, batch: "01", file: "src/b.vibe", reason: "fixture cause" })
-    assert.equal(existsSync(join(target, "types/src/b.d.vibe.ts")), false)
-    assert.equal(readFileSync(join(target, "types/src/orphan.d.vibe.ts"), "utf8"), "// standalone\n")
-    assert.equal(readFileSync(join(target, "src/b.ts"), "utf8"), "export const b = 1\n")
+    writeJson(paths(run).config, makeConfig({ target, test: "true", toolchain: join(root, "toolchain"), sources: [sourceDir] }))
+    writeJson(paths(run).plan, { batches: [{ files: [source] }] })
+    renameBatch(target, [source])
+    mkdirSync(dirname(selected), { recursive: true })
+    mkdirSync(dirname(other), { recursive: true })
+    writeFileSync(selected, "export declare const b = 1;\n")
+    writeFileSync(other, "// standalone\n")
+    await revert({ run, batch: "01", file: source.replace(/\.ts$/, ".vibe"), reason: "fixture cause" })
+    assert.equal(existsSync(selected), false, "remove the declaration selected by the stock layout")
+    assert.equal(readFileSync(other, "utf8"), "// standalone\n")
+    assert.equal(readFileSync(join(target, source), "utf8"), original)
   } finally { rmSync(root, { recursive: true, force: true }) }
+}
+
+test("revert removes the selected inherited sidecar without changing another output", async () => {
+  for (const layout of ["inferred", "explicit", "composite"]) await inheritedSidecarRevert({ layout })
+})
+
+test("generated inherited sidecar reverts follow stock TypeScript roots and preserve unrelated outputs", async () => {
+  const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom("src", "deep/source", "source.with.dot"),
+    fc.constantFrom("types", ".hidden/declarations", "generated/types"),
+    fc.constantFrom("inferred", "explicit", "composite"),
+    async (sourceDir, directory, layout) => inheritedSidecarRevert({ sourceDir, directory, layout })
+  ), { seed: 551107, numRuns: 18 })
 })

@@ -27,6 +27,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Diagnostic references for legacy catches, declarations and mapper errors led to sections that did not name their codes; those sections now include the matching warning and repair guidance.
 - Migration receipts from installed compilers changed shape after saving or resuming. They now retain an explicit `null` compiler artifact and compare consistently across recovery.
+- Rollback coverage assumed every relocated declaration mirrored the config directory. It now follows TypeScript’s inferred, explicit and composite source roots while protecting unrelated sidecars.
 
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
