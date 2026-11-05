@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:pattern-member-logical-line-break\nis is is and join\n[ ]")

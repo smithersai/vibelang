@@ -440,3 +440,5 @@ statements, reporting only semantic errors. The exact
 `admission:pattern-member-line-break` family stays pending; explicit
 semicolons, nonempty computed members and non-member patterns stay separate.
 `EK0702` is a class-pattern type error and does not reject syntax.
+
+Combined patterns retain the same computed-member continuation: `and`, `or` and `not` can end with a member followed by a new-line access. The pending classifier follows top-level pattern operators while retaining parenthesized, extractor, binding, array and object tails as separate controls. These witnesses share `admission:pattern-member-line-break`; no new language form is admitted.
