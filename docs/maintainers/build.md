@@ -1816,3 +1816,5 @@ Configuration validation selects the retired declaration-import option regressio
 The `//:promise-data-bridge` check keeps Promise construction inside an explicit synchronous Effect boundary when testing data retention. It compares catch-result identity and thenable laziness with the ordinary TypeScript counterpart, and compiles keyed Promise, constructor and thenable neighborhoods without awaiting the retained value.
 
 The `//:native-using-advisories` check covers native resource bindings in each callable context and every configurable severity. TypeScript disposal errors remain present even when the Effect advice is disabled. The native regression snapshots retain both disposal and jump errors alongside the advice.
+
+The `//:optional-foreign-contracts` target gives reviewed pure TypeScript fixture helpers explicit never-throw contracts. It retains all optional receiver, argument and execution observations and separately checks that unannotated scalar, Config and Exit callbacks are rejected by fresh no-throw callback types.

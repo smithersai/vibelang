@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Contributor optional-call examples passed foreign helpers without the required no-throw contract. Those pure helpers now declare their contracts; unannotated callback rejection remains checked.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.
