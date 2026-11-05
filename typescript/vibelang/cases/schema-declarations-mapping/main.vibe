@@ -35,6 +35,11 @@ export effect function main() {
   return [a.count, a.numbers, a.pair, a.record, Schema.is(Code)("a"), Schema.is(Code)("c"), "nick" in a, "nick" in b]
 }
 
+// rule-evidence: docs/design/src/006-data.md#cd4d1721bf2c3c15 — schema equality and decoding check an optional field with an explicit undefined arm.
+// rule-evidence: docs/design/src/006-data.md#83e06dd5f2700a1a — schema equality and decoding check an optional field with an explicit undefined arm.
+// rule-evidence: docs/design/src/006-data.md#f624d5bb6fce5b1a — schema equality and decoding check an optional field with an explicit undefined arm.
+// rule-evidence: docs/design/vips/0015-schema-declarations.md#976eeeccb0ec3cdd — schema equality and decoding check an optional field with an explicit undefined arm.
+// rule-evidence: docs/design/vips/0015-schema-declarations.md#d0b6ec9403b3fdcc — schema equality retains a required field whose only value is undefined.
 // VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#981187fded7057e1
 // VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#b6b4a875d351de9a
 // VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#bac3ae3343b48624
