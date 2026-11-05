@@ -142,6 +142,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Sync constructor repair tests could reject a correct generated call bridge; they now check its native receiver, deferred arguments, declaration types and repeated success or defect outcomes.
 
+- Help examples still expected the old single-project repair wording; they now check build-order repairs and the watch restriction across help aliases and option order.
+
 - Migrating an error with a legacy `mutable` payload field could stop matching foreign values with the same tag. The class rewrite now preserves its own matcher and extractor behavior.
 
 - The inherited-configuration migration example omitted its repository boundary; it now identifies the owned parent configuration and explains why external presets remain unchanged.
