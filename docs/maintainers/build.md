@@ -2084,3 +2084,5 @@ The `//:generic-handler-requirement-migration` check covers inferred requirement
 The `//:diagnostic-example-source-locations` target replays located JSON and provider examples and the archive decoder guards. The complete Appendix runner continues to replay every example.
 
 The `//:error-constructor-diagnostic-retirement` target checks the retired subclass-constructor identity and the current inheritance rejection across native constructor signatures.
+
+The `//:filtered-bundler-entry-cleanup` check runs the entry module with an empty name selection, verifying that teardown does not require setup to have run.

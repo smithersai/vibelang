@@ -1153,6 +1153,13 @@ const targets = {
     [],
     "15m"
   ),
+  "filtered-bundler-entry-cleanup": check(
+    "A filtered entry run cleans up only projects its setup created.",
+    "node --test --test-name-pattern='^no selected entry fixture$' packages/unplugin/test/entry.test.mjs",
+    [],
+    [node],
+    "1m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

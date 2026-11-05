@@ -23,7 +23,7 @@ before(async () => {
   const compiled = spawnSync(process.env.VIBELANG_BINARY, ["-p", "tsconfig.json"], { cwd: root, encoding: "utf8" })
   assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr)
 })
-after(() => rm(root, { recursive: true, force: true }))
+after(() => root === undefined ? undefined : rm(root, { recursive: true, force: true }))
 
 // Rollup resolves no packages without @rollup/plugin-node-resolve; Node
 // resolves these from the fixtures' node_modules when the bundle runs.
