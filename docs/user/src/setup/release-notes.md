@@ -29,6 +29,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration receipts from installed compilers changed shape after saving or resuming. They now retain an explicit `null` compiler artifact and compare consistently across recovery.
 - Rollback coverage assumed every relocated declaration mirrored the config directory. It now follows TypeScript’s inferred, explicit and composite source roots while protecting unrelated sidecars.
 
+- Diagnostic verification could mistake an enabled legacy diagnostic for an unexpected warning; it now honors overrides in source comments and still rejects incorrect categories.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.
