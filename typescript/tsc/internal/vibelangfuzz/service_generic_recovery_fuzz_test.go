@@ -33,7 +33,7 @@ func FuzzServiceGenericWithRejectedMembers(f *testing.F) {
 	} {
 		for _, member := range []struct{ key, text string }{
 			{"index", "[x: string]: unknown"}, {"constructor", "constructor() {}"},
-			{"call", "(): number"}, {"getter", "get n() { return 1 }"}, {"method", "read() { return 1 }"},
+			{"call", "(): number"}, {"construct", "new(): number"}, {"getter", "get n() { return 1 }"}, {"method", "read() { return 1 }"},
 		} {
 			for _, mutable := range []bool{false, true} {
 				key, label, wantKey := "static readonly key = \"generic/S\"", "literal", 0

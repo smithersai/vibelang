@@ -14,6 +14,10 @@ func TestWholeServiceNamelessMembers(t *testing.T) {
 			"readonly [key: symbol]: unknown",
 			"[key: number]: unknown",
 			"constructor() { super() }",
+			"(): number",
+			"<T>(value: T): T",
+			"new(): number",
+			"new<T>(value: T): T",
 		} {
 			t.Run(shape+"/"+member, func(t *testing.T) {
 				source := "type Shape = number; export service S" + shape + " { static readonly key = \"whole/S\"; " + member + " }"

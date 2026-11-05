@@ -37,7 +37,7 @@ func FuzzServiceKeyWithRejectedMembers(f *testing.F) {
 	members := []struct{ key, text string }{
 		{"index", "[x: string]: unknown"},
 		{"constructor", "constructor() {}"},
-		{"call", "(): number"},
+		{"call", "(): number"}, {"construct", "new(): number"},
 		{"getter", "get n() { return 1 }"},
 		{"method", "read() { return 1 }"},
 	}

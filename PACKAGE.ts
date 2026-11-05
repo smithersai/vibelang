@@ -1277,6 +1277,12 @@ const targets = {
     [],
     "20m"
   ),
+  "service-member-diagnostic-ownership": goVibelang(
+    "Each rejected service member reports once while generic, key and independent native errors remain",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^(TestServiceGeneric.*|TestServiceKey.*|TestWholeServiceNameless.*|TestServiceCallSignatures.*|TestServiceConstructSignatures.*)$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^(TestService(Generic|Key)RecoveryQuoted|FuzzService(Generic|Key)WithRejectedMembers)$' ./internal/vibelangfuzz",
+    [],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
