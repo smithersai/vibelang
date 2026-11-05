@@ -15,6 +15,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Nested callbacks use their own rethrow admission; functions escaping those callbacks still retain the plain-code throw check.
+- Unchanged native importers retain their declaration spelling during a one-file migration; explicit source imports use the corresponding TypeScript import preference.
+- Legacy computed schema keys retain throwing-call errors alongside their migration diagnostic; preserving repairs still compile without errors.
+- Native `Option.gen(function* …)` remains valid JavaScript generator code; explicit producer arguments retain the diagnostic and iterator-preserving repair refusal.
 
 - The fibers guide omitted labeled `continue` targeting the `for concurrent` loop itself. It now explains that this ends the current item.
 - `vibelang --fix` left ordinary incomplete finite matches unchanged. It now adds a `default` that preserves the implicit empty-message `TypeError`, including an Effect defect or Promise rejection, without widening the function's result or channels.
@@ -230,6 +233,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Following the platform clock mapping could change a timestamp's origin on Node. The guides now use differences for elapsed time and explain how to retain native performance timestamps.
 
 - Throw-repair examples retain declaration types, initialization order, iterator cleanup, and exact failure channels across a wider range of input values.
+- The error inheritance example now records every forbidden declaration and retains the independent native property-type error.
+- A rejected producer `yield*` could hide native iterator errors inside its operand. Those errors now remain visible beside `EK2103`.
 
 - Concurrent operators could hide a literal's `satisfies` error or add an unrelated array error. They now preserve the literal's own TypeScript errors beside `EK1801`.
 - Error-class custom matchers could lose their tag when saved or called with a subclass receiver. Plain errors now own their matcher, and both error forms return the original subject in either matching mode regardless of the caller's receiver.
