@@ -10,19 +10,21 @@ try {
   writeFileSync(join(dir, "package.json"), '{"type":"module"}')
   writeFileSync(join(dir, "main.ts"), 'import * as Effect from "effect/Effect"; Effect.succeed(1); export {}')
   const plugin = options => [{ name: "@effect/language-service", ...options }]
-  for (const [name, plugins, present] of [
-    ["absent", undefined, false],
-    ["empty", [], false],
-    ["unrelated", [{ name: "unrelated" }], false],
-    ["null", plugin({ diagnosticSeverity: null }), false],
-    ["disabled", plugin({ diagnostics: false }), false],
-    ["enabled", plugin({ diagnosticSeverity: { floatingEffect: "off" } }), true]
+  for (const [name, plugins, active, legacy] of [
+    ["absent", undefined, true, true],
+    ["empty", [], true, true],
+    ["unrelated", [{ name: "unrelated" }], true, true],
+    ["null", plugin({ diagnosticSeverity: null }), false, false],
+    ["disabled", plugin({ diagnostics: false }), false, false],
+    ["enabled", plugin({ diagnosticSeverity: { floatingEffect: "off" } }), true, false]
   ]) {
-    for (const inherited of [false, true]) {
+    for (const inherited of [false, true]) for (const configured of [false, true]) {
+      const present = active && configured
+      const migration = legacy && configured
       const config = { compilerOptions: {
         strict: true, skipLibCheck: true, types: [], target: "ES2022",
         module: "NodeNext", noEmit: true, plugins
-      }, vibe: { severities: { EK3801: "error" } } }
+      }, vibe: configured ? { severities: { EK3801: "error" } } : undefined }
       writeFileSync(join(dir, "base.json"), JSON.stringify(config))
       writeFileSync(join(dir, "tsconfig.json"), JSON.stringify(inherited
         ? { extends: "./base.json", files: ["main.ts"] }
@@ -34,7 +36,8 @@ try {
       assert.equal(r.signal, null)
       const output = r.stdout + r.stderr
       assert.equal(/EK3801: floatingEffect:/.test(output), present, name + "/" + inherited + "\n" + output)
-      assert.doesNotMatch(output, /TS\d+|EK(?!3801\b)\d+/)
+      assert.equal(/warning EK3012:/.test(output), migration, name + "/migration/" + configured + "\n" + output)
+      assert.doesNotMatch(output, /TS\d+|EK(?!(?:3801|3012)\b)\d+/)
       assert.equal(r.status === 0, !present, name + "\n" + output)
     }
   }

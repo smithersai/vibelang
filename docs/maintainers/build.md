@@ -1852,3 +1852,5 @@ The `//:native-setup-exit-behavior` check executes stock TypeScript and VibeLang
 The `//:interim-severity-probes` check retains the eight original compatibility keys, covers the complete current inventory and runs every supported severity through the actual compiler.
 
 The `//:join-message-regressions` check retains all awaited-value diagnostics and Deferred guidance, with direct and nested Deferred operands, parentheses and independent native type errors.
+
+The `//:lint-activation-regressions` check covers configured and unconfigured projects, inherited plugin settings, explicit disablement and idempotent legacy plugin migration.

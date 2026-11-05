@@ -1,0 +1,4 @@
+go test fuzz v1
+string("absent:default")
+bool(true)
+bool(true)

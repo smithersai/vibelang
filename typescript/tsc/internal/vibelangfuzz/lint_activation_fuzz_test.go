@@ -30,7 +30,7 @@ func checkLintActivation(t *testing.T, w *Workspace, input string, inherited boo
 		return values[0]
 	}
 	mode := pick(0, []string{"absent", "null", "disabled", "empty", "unrelated", "enabled"})
-	severity := pick(1, []string{"error", "warning", "suggestion", "off"})
+	severity := pick(1, []string{"error", "warning", "suggestion", "off", "default"})
 	key := mode + ":" + severity
 	options := map[string]any{"strict": true, "types": []string{}, "skipLibCheck": true, "noEmit": true, "target": "ES2022", "module": "NodeNext"}
 	plugin := map[string]any{"name": "@effect/language-service"}
@@ -50,6 +50,9 @@ func checkLintActivation(t *testing.T, w *Workspace, input string, inherited boo
 		options["plugins"] = []any{plugin}
 	}
 	config := map[string]any{"compilerOptions": options, "vibe": map[string]any{"severities": map[string]string{"EK3801": severity}}, "files": []string{"main.ts"}}
+	if severity == "default" {
+		delete(config, "vibe")
+	}
 	source := "import { Effect } from \"effect\"; Effect.succeed(1); export {}"
 	if namespace {
 		source = "import * as Effect from \"effect/Effect\"; Effect.succeed(1); export {}"
@@ -93,7 +96,7 @@ func checkLintActivation(t *testing.T, w *Workspace, input string, inherited boo
 		}
 	}
 	want := 0
-	if (mode == "enabled" || mode == "absent" || mode == "empty" || mode == "unrelated") && severity != "off" {
+	if (mode == "enabled" || mode == "absent" || mode == "empty" || mode == "unrelated") && severity != "off" && severity != "default" {
 		want = 1
 	}
 	if count != want {
@@ -104,6 +107,8 @@ func checkLintActivation(t *testing.T, w *Workspace, input string, inherited boo
 func FuzzLintActivation(f *testing.F) {
 	startShortBudget(f)
 	for _, mode := range []string{"absent", "null", "disabled", "empty", "unrelated", "enabled"} {
+		f.Add(mode+":default", false, false)
+		f.Add(mode+":default", true, true)
 		f.Add(mode+":error", false, false)
 		f.Add(mode+":warning", true, true)
 	}
