@@ -8,9 +8,17 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
+const generatedErrorExtractorQuote = "It returns `[subject]` on a match and `false` otherwise"
+const guardedCoverageQuote = "Only an unguarded arm covers anything."
+
 const combinatorCoverageQuote = "An irrefutable capture on either side of `and` preserves the other pattern's coverage, including nested conjunctions and captures within a property or extractor argument."
 
 func TestMatchCombinatorCoverageQuoted(t *testing.T) {
+	for _, quote := range []string{generatedErrorExtractorQuote, guardedCoverageQuote} {
+		if !strings.Contains(SpecText("004-match.md"), quote) {
+			t.Fatalf("extractor coverage quote changed: %s", quote)
+		}
+	}
 	if !strings.Contains(SpecText("004-match.md"), combinatorCoverageQuote) {
 		t.Fatal("VIP-7 coverage quote changed")
 	}
@@ -29,6 +37,11 @@ func FuzzMatchCombinatorCoverage(f *testing.F) {
 	for _, key := range combinatorCoverageKeys {
 		for domain := uint8(0); domain < 4; domain++ {
 			f.Add(key, domain, domain)
+		}
+	}
+	for shape := uint8(0); shape < 80; shape++ {
+		if shape < 16 || shape >= 64 || shape == 16 || shape == 32 {
+			f.Add("extractor-bindings", uint8(0), shape)
 		}
 	}
 	w := NewWorkspace(f)
@@ -65,7 +78,22 @@ func FuzzMatchCombinatorCoverage(f *testing.F) {
 		case "field-bindings":
 			typ, no, pattern = `{_tag:"A";n:number}|{_tag:"B"}`, `{_tag:"B"}`, `{_tag:"A",n:(let a and let b)}`
 		case "extractor-bindings":
-			prefix, typ, no, pattern = "error A;error B;", "A|B", "B", "A(let a and let b)"
+			kind, body := "error", ""
+			if shape&4 != 0 {
+				kind = "schema error"
+			}
+			if shape&8 != 0 {
+				body = "{ value: number }"
+			}
+			prefix = fmt.Sprintf(`import { Schema } from "effect"; %s A %s; %s B;`, kind, body, kind)
+			captures := "let a and const b"
+			for depth := uint8(0); depth < (shape>>4)%3; depth++ {
+				captures = fmt.Sprintf("(let extra%d and (%s))", depth, captures)
+			}
+			if shape&64 != 0 {
+				captures = "(" + captures + ") and if(flag)"
+			}
+			typ, no, pattern = "A|B", "B", "A("+captures+")"
 		}
 		arms := fmt.Sprintf("when (%s): 1;", pattern)
 		// These alternatives already accept both values at runtime. Repeating
@@ -81,14 +109,14 @@ func FuzzMatchCombinatorCoverage(f *testing.F) {
 			arms += " when let remaining: 3;"
 		}
 		expr := "match(x){" + arms + "}"
-		source := fmt.Sprintf("export function f(x:%s){return %s}", typ, expr)
+		source := fmt.Sprintf("export function f(x:%s,flag:boolean){return %s}", typ, expr)
 		switch shape % 4 {
 		case 1:
-			source = fmt.Sprintf("export const f=(x:%s)=>%s", typ, expr)
+			source = fmt.Sprintf("export const f=(x:%s,flag:boolean)=>%s", typ, expr)
 		case 2:
-			source = fmt.Sprintf("export effect function f(x:%s){return %s}", typ, expr)
+			source = fmt.Sprintf("export effect function f(x:%s,flag:boolean){return %s}", typ, expr)
 		case 3:
-			source = fmt.Sprintf("export function f(x:%s){const value=do{%s};return value}", typ, expr)
+			source = fmt.Sprintf("export function f(x:%s,flag:boolean){const value=do{%s};return value}", typ, expr)
 		}
 		source = strings.Repeat("/* coverage */\n", int(shape)%3) + prefix + source
 		result, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})
@@ -110,6 +138,9 @@ func FuzzMatchCombinatorCoverage(f *testing.F) {
 		want := 1
 		if key == "default" || key == "independent-cover" || key == "plain-or" || key == "open" || key == "binding-right" || key == "binding-left" || key == "field-bindings" || key == "extractor-bindings" {
 			want = 0
+		}
+		if key == "extractor-bindings" && shape&64 != 0 {
+			want = 1
 		}
 		if count != want {
 			Gap(t, "FuzzMatchCombinatorCoverage", "coverage:"+key, "VIP-7 %s: want %d EK4701, got %d\n%s", combinatorCoverageQuote, want, count, source)

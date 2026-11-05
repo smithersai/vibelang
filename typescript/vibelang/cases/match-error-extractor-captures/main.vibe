@@ -1,0 +1,18 @@
+export error PlainA { value: number }
+export error PlainB
+export schema error SchemaA { value: number }
+export schema error SchemaB
+
+export function plain(value: PlainA | PlainB) {
+  return match (value) {
+    when PlainA(let first and const second): [first, second] as const;
+    when PlainB(let first and (const second and let third)): [first, second] as const;
+  }
+}
+
+export effect function schema(value: SchemaA | SchemaB) {
+  return match (value) {
+    when SchemaA(let first and const second): [first, second] as const;
+    when SchemaB(let first and (const second and let third)): [first, second] as const;
+  }
+}

@@ -185,3 +185,32 @@ func TestMatchCaptureKeepsRefutableAlternative(t *testing.T) {
 		}
 	}
 }
+
+// Generated matcher registration preserves the error extractor's [subject]
+// contract and irrefutable captures; a guard still covers no finite case.
+func TestGeneratedErrorExtractorCoverage(t *testing.T) {
+	for _, kind := range []string{"error", "schema error"} {
+		for _, payload := range []bool{false, true} {
+			body := ""
+			if payload {
+				body = "{ value: number }"
+			}
+			prefix := fmt.Sprintf(`import { Schema } from "effect"; %s A %s; %s B;`, kind, body, kind)
+			for _, modifier := range []string{"", "effect "} {
+				for _, pattern := range []string{"let a", "let a and const b", "(let a and const b) and let c", "const a and (let b and let c)"} {
+					t.Run(fmt.Sprintf("%s/payload=%v/%s%s", kind, payload, modifier, pattern), func(t *testing.T) {
+						source := prefix + fmt.Sprintf("export %sfunction f(x:A|B,flag:boolean){return match(x){when A(%s):1;when B:0;}}", modifier, pattern)
+						if ds := errorsOf(t, source); len(ds) != 0 {
+							t.Fatalf("generated matcher lost capture coverage: %v\n%s", ds, source)
+						}
+						guarded := prefix + fmt.Sprintf("export %sfunction f(x:A|B,flag:boolean){return match(x){when A((%s) and if(flag)):1;when B:0;}}", modifier, pattern)
+						ds := errorsOf(t, guarded)
+						if len(ds) != 1 || ds[0].Code() != EK4701.Code {
+							t.Fatalf("guard must retain missing coverage: %v\n%s", ds, guarded)
+						}
+					})
+				}
+			}
+		}
+	}
+}

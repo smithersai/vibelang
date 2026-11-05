@@ -144,11 +144,35 @@ func extractionCall(c *checker.Checker, node *ast.Node) *ast.Node {
 // Only error declarations have D215's guaranteed extraction. A class may
 // override customMatcher, so extending TaggedError alone is not sufficient.
 func isExtractedErrorClass(decl *ast.Node) bool {
-	if decl == nil || !isTaggedErrorClass(decl) || len(decl.Members()) != 0 {
+	if decl == nil || !ast.IsClassDeclaration(decl) && !ast.IsClassExpression(decl) {
 		return false
 	}
-	base := ast.GetClassExtendsHeritageElement(decl)
-	return base.Expression().Expression().Flags&ast.NodeFlagsReparsed != 0
+	if len(decl.Members()) == 0 {
+		if !isTaggedErrorClass(decl) {
+			return false
+		}
+		base := ast.GetClassExtendsHeritageElement(decl)
+		return base.Expression().Expression().Flags&ast.NodeFlagsReparsed != 0
+	}
+	registered := false
+	for _, member := range decl.Members() {
+		// Plain and schema errors install an own [subject] tag matcher.
+		// Only the parser's registration can establish this guarantee;
+		// written members retain the conservative extraction relationship.
+		if member.Kind != ast.KindClassStaticBlockDeclaration || member.Flags&ast.NodeFlagsReparsed == 0 {
+			return false
+		}
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) && isSynthesizedName(node.Expression(), "$schemaErrorMatcher") &&
+				node.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 {
+				registered = true
+			}
+			return node.ForEachChild(visit)
+		}
+		member.ForEachChild(visit)
+	}
+	return registered
 }
 
 // isRetainedErrorMatcher reports whether matcher names a retained Effect
