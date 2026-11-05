@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The relocated declaration example now matches its owning source root and retains native identity boundaries for symlinks and unproven mappings.
+
+
 - Invalid `@throws` and `@rethrows` tags require a manual edit that preserves descriptive documentation.
 - Migrating `trusted(f, [])` keeps public declarations, capture timing, and the identity of thrown defects.
 - Promise-producing call examples now show the boundary error alongside independent host-access and root-runner errors.

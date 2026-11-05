@@ -1921,3 +1921,5 @@ The `//:negative-promise-boundaries` check requires exact independent diagnostic
 The `//:error-family-native-patterns` gate checks native family patterns, unsupported-extractor controls, exact public declarations, and all runtime error-family observations.
 
 The `//:pattern-predicate-contracts` gate checks foreign and source predicate contracts and runs all fixed-pattern, ordinary-class, and global-object identity controls.
+
+The `//:relocated-sidecar-layout` check covers explicit and inferred source roots, package/paths/import routes, symlink identity and negative forward-mapping controls. Mismatches include the route and root configuration in their diagnostic context.
