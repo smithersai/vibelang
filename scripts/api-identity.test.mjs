@@ -928,8 +928,16 @@ test("property: JSON asset packages compared with themselves are identical", asy
 test("JSON wildcard exports, scalar roots and invalid inputs stay visible", () => {
   fixture({ "assets/one.json": "true", "assets/two.json": "[1, 2]" }, { "assets/one.json": "true", "assets/two.json": "[1, 2]" }, (a, b) => {
     assert.deepEqual(Object.keys(publishedEntrypoints(a)).sort(), ["./one.json", "./two.json"])
-    const result = compareApiIdentity(ts, a, b)
+    const result = comparePure(a, b)
     assert.equal(result.identical, true, JSON.stringify(result))
+    writeFileSync(join(b, "assets/two.json"), '["changed"]')
+    const changed = comparePure(a, b)
+    assert.equal(changed.identical, false)
+    assert.ok(changed.typeDifferences.some(d => d.entrypoint === "./two.json"), JSON.stringify(changed))
+    rmSync(join(b, "assets/two.json"))
+    const removed = comparePure(a, b)
+    assert.equal(removed.identical, false)
+    assert.ok(removed.nameDifferences.some(d => d.entrypoint === "./two.json"), JSON.stringify(removed))
   }, { exports: { "./*.json": "./assets/*.json" } })
   for (const input of [true, null, 1, "word", [1, 2]]) assert.equal(jsonCompare(input, input).identical, true)
   assert.equal(jsonCompare(true, "true").identical, false)
@@ -938,10 +946,11 @@ test("JSON wildcard exports, scalar roots and invalid inputs stay visible", () =
   assert.equal(disabled.comparisonComplete, false)
   assert.deepEqual(disabled.typeDifferences, [])
   fixture({ "all.json": "{broken}" }, { "all.json": "{broken}" }, (a, b) => {
-    const result = compareApiIdentity(ts, a, b)
+    const result = comparePure(a, b)
     assert.equal(result.identical, false)
     assert.equal(result.comparisonComplete, false)
     assert.deepEqual(result.typeDifferences, [])
+    assert.ok(result.environmentDiagnostics.some(d => d.blocking && /TS\d+/.test(d.diagnostic)), JSON.stringify(result))
   }, jsonManifest)
 })
 
@@ -950,12 +959,71 @@ test("JSON comparison honors the inherited project setting", () => {
   const files = { "all.json": "{}", "base.json": '{"compilerOptions":{"resolveJsonModule":false}}', "tsconfig.json": '{"extends":"./base.json"}' }
   fixture(files, files, (a, b) => {
     writeFileSync(join(a, "..", "vibe.config.json"), '{"compilerOptions":{"resolveJsonModule":true}}')
-    assert.equal(compareApiIdentity(ts, a, b).identical, false)
-    assert.equal(compareApiIdentity(ts, a, b, { compilerOptions: { resolveJsonModule: true } }).identical, true)
+    const disabled = comparePure(a, b)
+    assert.equal(disabled.identical, false)
+    assert.equal(disabled.comparisonComplete, false)
+    assert.deepEqual(disabled.typeDifferences, [])
+    assert.equal(comparePure(a, b, { resolveJsonModule: true }).identical, true)
     for (const dir of [a, b]) writeFileSync(join(dir, "base.json"), '{"compilerOptions":{"resolveJsonModule":true}}')
-    const result = compareApiIdentity(ts, a, b)
+    const result = comparePure(a, b)
     assert.equal(result.identical, true, JSON.stringify(result))
+    const overridden = comparePure(a, b, { resolveJsonModule: false })
+    assert.equal(overridden.identical, false)
+    assert.equal(overridden.comparisonComplete, false)
+    assert.deepEqual(overridden.typeDifferences, [])
   }, jsonManifest)
+})
+
+test("property: inherited JSON settings and explicit overrides retain their verdicts", async () => {
+  await checkProperty(fc, {
+    name: "api-identity-json-config",
+    rule: "JSON assets use the inherited resolveJsonModule setting unless explicitly overridden.",
+    command: "node --test scripts/api-identity.test.mjs",
+    arbitrary: fc.record({ inherited: fc.boolean(), override: fc.option(fc.boolean(), { nil: undefined }), value: fc.jsonValue() }),
+    numRuns: 12,
+    check: ({ inherited, override, value }) => {
+      const files = {
+        "all.json": JSON.stringify({ value, enabled: true }),
+        "base.json": JSON.stringify({ compilerOptions: { resolveJsonModule: inherited } }),
+        "tsconfig.json": '{"extends":"./base.json"}',
+      }
+      fixture(files, files, (a, b) => {
+        const options = override === undefined ? {} : { resolveJsonModule: override }
+        const enabled = override ?? inherited
+        const result = comparePure(a, b, options)
+        assert.equal(result.identical, enabled, JSON.stringify(result))
+        assert.equal(result.comparisonComplete, enabled, JSON.stringify(result))
+        if (enabled) {
+          writeFileSync(join(b, "all.json"), JSON.stringify({ value, enabled: "yes" }))
+          const changed = comparePure(a, b, options)
+          assert.equal(changed.identical, false)
+          assert.equal(changed.comparisonComplete, true, JSON.stringify(changed))
+          assert.ok(changed.typeDifferences.length > 0, JSON.stringify(changed))
+        } else {
+          assert.deepEqual(result.typeDifferences, [])
+          assert.ok(result.environmentDiagnostics.some(d => d.blocking), JSON.stringify(result))
+        }
+      }, jsonManifest)
+    },
+  })
+})
+
+test("JSON discovery fixtures retain unavailable declaration libraries", () => {
+  for (const inherited of [false, true]) {
+    const files = {
+      "all.json": "{}",
+      "index.d.ts": "export declare const value: BigInt;",
+      "base.json": JSON.stringify({ compilerOptions: { resolveJsonModule: inherited } }),
+      "tsconfig.json": '{"extends":"./base.json"}',
+    }
+    fixture(files, files, (a, b) => {
+      const result = comparePure(a, b, { resolveJsonModule: true })
+      assert.equal(result.identical, false)
+      assert.equal(result.comparisonComplete, false)
+      assert.deepEqual(result.typeDifferences, [])
+      assert.ok(result.environmentDiagnostics.some(d => d.blocking && /TS2583/.test(d.diagnostic)), JSON.stringify(result))
+    }, { exports: { ".": "./index.d.ts", "./all.json": "./all.json" } })
+  }
 })
 
 test("comparison exceptions are explicit invalid results, including self-comparison", () => {

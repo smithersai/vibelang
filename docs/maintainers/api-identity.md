@@ -175,6 +175,11 @@ declaration-only snapshots without configuration, and accepts an explicit
 `compilerOptions.resolveJsonModule` override. Invalid JSON is an unavailable
 comparison, reported through `environmentDiagnostics`, without type differences.
 
+JSON discovery fixtures select `lib.es5.d.ts` and guard against loading unrelated
+browser libraries. They retain real wildcard entry points, scalar roots,
+invalid JSON and inherited settings, with explicit overrides, export mutations
+and controls for missing declaration libraries.
+
 Comparison exceptions, including a stack overflow, return an invalid result:
 `comparisonComplete: false` and `identical: false`, with a blocking environment
 diagnostic. The `failure` record identifies the stage, elapsed milliseconds and
