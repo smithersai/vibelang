@@ -43,19 +43,7 @@ async function check(input) {
   writeFileSync(added,"export const marker = 44;\n");
   await sleep(250);
   const lookup=cache.lookup();
-  const pending = input.selection !== "glob" ? undefined
-   : input.extension === ".vibex"
-    ? {key:input.hiddenFile ? "cache.mjs:hidden-vibex-input-invalidation" : "cache.mjs:vibex-input-invalidation",
-       owner:input.hiddenFile ? "migfix-foldkit + vibex-bundlers" : "vibex-bundlers"}
-    : undefined;
-  const requireMiss=()=>assert.ok(lookup.miss,key+": an explicitly included native source changed; a stale warm result is invalid");
-  if(pending && process.env.HIDDEN_CACHE_RAW!=="1") {
-   // These remaining .vibex gaps have actual cache-level raw proofs. They must fail
-   // only the desired invalidation assertion; fixed implementations XPASS.
-   assert.ok(lookup.result,"the known gap is a stale warm result, not an unrelated cache failure");
-   assert.throws(requireMiss,error=>error.code==="ERR_ASSERTION" && error.message.startsWith(key),
-    "XPASS "+pending.key+": remove this exact native-addition allowance (owner "+pending.owner+")");
-  } else requireMiss();
+  assert.ok(lookup.miss,key+": an explicitly included native source changed; a stale warm result is invalid");
  } finally {rmSync(root,{recursive:true,force:true});}
 }
 
