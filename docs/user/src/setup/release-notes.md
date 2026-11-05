@@ -35,6 +35,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Catch-binding examples used a retired statement catch inside effect functions; they now use plain functions and show how an explicit `do` block scopes a default binding.
 
 - The migration table recommended calling the `interrupt` and `yieldNow` Effect values as functions; it now shows `try interrupt` and `try yieldNow`.
+- Producer cleanup examples still used retired `try` statements; they now register scope finalizers and check disposal order against native Effect streams.
 - The exported-service migration example expected cached defaults to become `Reference` fallbacks; it now checks the documented refusal and preserves every source and shadowed utility type.
 - Service member examples still called methods on a service key; they now look up the implementation explicitly and retain native Effect results, failures and call counts.
 - Language-service examples omitted the no-throw diagnostic for direct `JSON.parse` calls; their exact diagnostics now include `EK0403` alongside independently configured lint warnings.

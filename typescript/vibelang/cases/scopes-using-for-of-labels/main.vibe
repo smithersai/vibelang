@@ -12,11 +12,9 @@ module iterators {
   }
 }
 import { elements } from iterators
-effect function* produce(events: string[]) {
-  try {
-    yield disposable(events)
-    yield disposable(events)
-  } finally { events.push("closed") }
+effect function* produce(events: string[], count: number = 2) {
+  try addFinalizer(() => Effect.sync(() => { events.push("closed") }))
+  for (let i = 0; i < count; i++) yield disposable(events)
 }
 
 effect function array(reverse: boolean) {
@@ -49,9 +47,9 @@ effect function iterator(reverse: boolean) {
   return events
 }
 
-effect function producer(reverse: boolean) {
+export effect function producer(reverse: boolean, count: number = 2) {
   const events: string[] = []
-  outer: inner: for try (const item of produce(events)) {
+  outer: inner: for try (const item of produce(events, count)) {
     using x = item
     events.push("body")
     try yieldNow
@@ -106,7 +104,7 @@ effect function nested() {
   return events
 }
 
-// expect-result: {"array":["body","dispose","body","dispose"],"arrayReverse":["body","dispose","body","dispose"],"iterator":["body","dispose","body","dispose","closed"],"iteratorReverse":["body","dispose","body","dispose","closed"],"producer":["closed","body","dispose"],"producerReverse":["closed","body","dispose"],"stream":["body","dispose","body","dispose","closed"],"streamReverse":["body","dispose","body","dispose","closed"],"cStyle":["body","body","dispose"],"nested":["body","dispose","closed","dispose","body","dispose","closed","dispose","closed"]}
+// expect-result: {"array":["body","dispose","body","dispose"],"arrayReverse":["body","dispose","body","dispose"],"iterator":["body","dispose","body","dispose","closed"],"iteratorReverse":["body","dispose","body","dispose","closed"],"producer":["body","dispose","body","dispose","closed"],"producerReverse":["body","dispose","body","dispose","closed"],"stream":["body","dispose","body","dispose","closed"],"streamReverse":["body","dispose","body","dispose","closed"],"cStyle":["body","body","dispose"],"nested":["body","dispose","closed","dispose","body","dispose","closed","dispose","closed"]}
 export effect function main() {
   return {
     array: try array(false), arrayReverse: try array(true),
