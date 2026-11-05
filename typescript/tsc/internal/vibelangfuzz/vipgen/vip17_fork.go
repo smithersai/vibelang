@@ -154,6 +154,19 @@ func init() {
 		},
 	})
 	Register(&Construct{
+		Key:      "vip17.join-native-observations",
+		VIP:      17,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip17.fork", "vip17.join"},
+		Citations: []Citation{{
+			VIP:      17,
+			Template: "yield* Fiber.join(‹f›)",
+			Quote:    "`fork` starts a fiber and gives its `Fiber`. The form names the owner, which is what interrupts the fiber. Each form is exact sugar for Effect's function, used inside an `effect` function or block.",
+			Reading:  "Exact Fiber.join sugar preserves Proxy observations, operand evaluation and failure propagation without legacy collection discrimination.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt { return g.joinNativeObservations(s) },
+		Stmt:  func(g *Gen, s *Scope) Stmt { return &Seq{Stmts: g.joinNativeObservations(s)} },
+	})
+	Register(&Construct{
 		Key:      "vip17.join",
 		VIP:      17,
 		Requires: []string{"vip17.fork"},
@@ -384,3 +397,53 @@ type EvTag struct{ Name string }
 func (e *EvTag) Vibe(w *Writer)   { w.Write("ev(" + e.Name + "._tag)") }
 func (e *EvTag) Effect(w *Writer) { e.Vibe(w) }
 func (e *EvTag) Ends() bool       { return false }
+
+const joinObservationModule = `import type { Fiber } from "effect"
+import { ev } from "vip-events"
+/** Constructing the observer does not invoke its traps. @throws {never} */
+export function observeJoinFiber<A,E>(fiber: Fiber.Fiber<A,E>, mode: number, label: string): Fiber.Fiber<A,E> {
+  return new Proxy(fiber, {
+    has(target, key) {
+      ev(label + ":has:" + String(key))
+      if (mode === 1) throw new Error(label)
+      if (mode === 2) throw { label, marker: "unexpected-join-probe" }
+      return Reflect.has(target, key)
+    }
+  })
+}
+/** @throws {never} */
+export function observeJoinOperand<A,E>(fiber: Fiber.Fiber<A,E>, label: string): Fiber.Fiber<A,E> {
+  ev(label + ":operand")
+  return fiber
+}
+`
+
+// Each witness includes a logging trap and two throwing traps. Mutation
+// varies completed versus pending fibers, values, wrappers and operand calls.
+func (g *Gen) joinNativeObservations(s *Scope) []Stmt {
+	g.UseEffect()
+	g.Use("vip17.fork")
+	g.Use("vip17.join")
+	g.UseModule("Fiber", true)
+	g.AddFile("join-observer.ts", joinObservationModule, "observeJoinFiber", "observeJoinOperand")
+	var out []Stmt
+	for mode := 0; mode < 3; mode++ {
+		f, wrapped, value := g.Name("fiber"), g.Name("wrapped"), g.Name("joined")
+		out = append(out, &Const{Name: f, Value: &Fork{Form: forkForms[0], X: &EffectCall{Fn: "succeed", Arg: &Num{Value: g.Intn(100)}}}})
+		if g.Chance(2) {
+			out = append(out, &ExprStmt{X: &Try{X: &ModCall{Mod: "Fiber", Fn: "await", Args: []Expr{&Ref{Name: f}}}}})
+		}
+		label := g.Label()
+		out = append(out, &Const{Name: wrapped, Value: &Call{Name: "observeJoinFiber", Args: []Expr{&Ref{Name: f}, &Num{Value: mode}, &Lit{Text: fmt.Sprintf("%q", label)}}}})
+		operand := wrapped
+		switch g.Intn(3) {
+		case 1:
+			operand = "(" + wrapped + ")"
+		case 2:
+			operand = "observeJoinOperand(" + wrapped + "," + fmt.Sprintf("%q", label) + ")"
+		}
+		out = append(out, &Const{Name: value, Value: &Join{Fiber: operand}})
+		s.Locals = append(s.Locals, value)
+	}
+	return out
+}

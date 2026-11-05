@@ -1,0 +1,14 @@
+// expect-result: {"error":"bad","events":[]}
+import { Effect } from "effect"
+export effect function main() {
+  const events: string[] = []
+  const child = try Effect.forkChild(Effect.fail("bad"))
+  const wrapped = new Proxy(child, {
+    has(target, key) {
+      events.push("has:" + String(key))
+      return Reflect.has(target, key)
+    }
+  })
+  const error = try Effect.catch(effect { return join wrapped }, e => Effect.succeed(e))
+  return { error, events }
+}

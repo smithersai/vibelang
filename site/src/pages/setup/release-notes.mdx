@@ -224,6 +224,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Optional object-property bindings reported `EK4704`. Missing properties now leave the binding uninitialized, while present properties initialize it after the cached value read.
 
+- `join` could inspect a fiber marker before joining and trigger a Proxy trap. It now calls `Fiber.join` directly, preserving native observations and failures.
+
 - `join` accepted collections even though it denotes `Fiber.join`. Collections now report `EK1704`; `--fix` preserves their previous values, evaluation order and failure cleanup with an explicit helper.
 
 - Forked children could stop when an Effect helper or loop iteration returned, and storing their handles could report an obsolete escape error. They now stay with the current parent fiber, matching `Effect.forkChild`.

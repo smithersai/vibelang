@@ -1,0 +1,25 @@
+// expect-result: {"values":[7,8,9],"events":["operand"]}
+import { Effect, Fiber as NativeFiber } from "effect"
+import { guardFiber } from "./observer.js"
+export effect function main() {
+  const events: string[] = []
+  const Fiber = "local module name"
+  const first = try Effect.forkChild(Effect.succeed(7))
+  const second = try Effect.forkChild(Effect.succeed(8))
+  const third = try Effect.forkChild(Effect.succeed(9))
+  try NativeFiber.await(first)
+  const observed = new Proxy(first, {
+    has(target, key) {
+      events.push("has:" + String(key))
+      return Reflect.has(target, key)
+    }
+  })
+  const guarded = guardFiber(second)
+  function operand() {
+    events.push("operand")
+    return guardFiber(third)
+  }
+  const values = [join observed, join(guarded), join (operand())]
+  if (Fiber !== "local module name") throw "captured local"
+  return { values, events }
+}
