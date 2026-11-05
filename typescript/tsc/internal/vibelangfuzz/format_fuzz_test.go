@@ -360,8 +360,19 @@ func formatSyntaxError(source string) string {
 	// to inspect. Its body still follows TypeScript grammar, so check that
 	// grammar independently rather than calling its syntax errors refusals.
 	file := toolsParse("main.vibe", source)
+	seen := map[string]bool{}
 	for _, statement := range file.Statements.Nodes {
-		if !parser.IsVibeLangModuleDeclaration(statement) || statement.Name().Text() != "" {
+		if !parser.IsVibeLangModuleDeclaration(statement) {
+			continue
+		}
+		if name := statement.Name().Text(); name != "" {
+			// Two bodies share one supplemental file, so the formatter refuses
+			// before it calls the host. FuzzFormatterModuleRefusals requires it.
+			suffix := parser.ModuleDeclarationFileSuffix(name)
+			if seen[suffix] {
+				return "EK4005, module " + name + " is declared twice"
+			}
+			seen[suffix] = true
 			continue
 		}
 		r := parser.ModuleDeclarationBody(file, statement)
