@@ -7,7 +7,14 @@ import { createRequire } from "node:module"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 
-const ts = loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Generic global alias fixtures must not load unrelated browser libraries")
+  return program
+} }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 
 function verify({ name, global, changed = false }) {
@@ -18,10 +25,10 @@ function verify({ name, global, changed = false }) {
       mkdirSync(dir)
       writeFileSync(join(dir, "index.d.ts"), "export import " + name + " = globalThis." +
         (changed && side === "after" ? "Partial" : global) + ";\n")
-      const program = ts.createProgram([join(dir, "index.d.ts")], { noEmit: true, strict: true, types: [] })
+      const program = ts.createProgram([join(dir, "index.d.ts")], { ...compilerOptions, noEmit: true, strict: true, types: [] })
       assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [], "stock tsc accepts the alias")
     }
-    const result = compareApiIdentity(ts, join(root, "before"), join(root, "after"))
+    const result = compareApiIdentity(ts, join(root, "before"), join(root, "after"), { compilerOptions })
     assert.equal(result.comparisonComplete, true, JSON.stringify(result))
     assert.equal(result.identical, !changed, JSON.stringify(result))
     if (changed) assert.ok(result.typeDifferences.length, JSON.stringify(result))

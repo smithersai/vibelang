@@ -203,6 +203,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Contributor build checks could miss tool declarations, cache prerequisites and omitted regressions. A bounded check now verifies these contracts before compiler jobs run.
 - Contributor declaration checks rejected generated no-throw metadata or added it to the TypeScript reference. They now compare unmodified references while preserving exported types and authored comments.
 - Match coverage checks could reject correct boxed-string matching or a harmless temporary-name change. They now exercise both string forms and retain the branch check independently of generated names.
+- Contributor API checks loaded browser declarations while comparing aliases of built-in generic types. Those fixtures now load only their ECMAScript declarations.
 - Contributor cache warmup omitted the Effect lint package and recompiled it during validation. The warmup now includes it.
 - Contributor validation omitted stale-manifest preservation checks. It now runs both disk and editor regression cases.
 - Contributor API checks failed after a comparison helper moved into another file. Their fixtures now include local helper dependencies transitively.

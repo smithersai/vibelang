@@ -185,6 +185,11 @@ declaration-only snapshots without configuration, and accepts an explicit
 `compilerOptions.resolveJsonModule` override. Invalid JSON is an unavailable
 comparison, reported through `environmentDiagnostics`, without type differences.
 
+Generic global alias fixtures select `lib.es5.d.ts` for native validation
+and API comparison, and reject unrelated browser libraries. They retain
+strict input diagnostics, unchanged alias identity, changed-alias differences
+and all four generated layouts across the supported ES5 generic aliases.
+
 The ambient overload-order fixtures select `lib.es5.d.ts` in native validation
 and API comparison, and reject unrelated browser libraries. The isolated
 overload results, changed-export comparison and four generated samples remain
