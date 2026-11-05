@@ -85,6 +85,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The interruption example called a removed global and failed to compile; it now calls `Effect.uninterruptible` and checks its result against the native Effect function.
 
+- Opening a new release section could invalidate the published notice that plain VibeLang code cannot throw; the notice now remains checked in the version that introduced it.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
