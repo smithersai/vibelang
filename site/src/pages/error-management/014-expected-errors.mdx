@@ -169,7 +169,7 @@ effect function port(env: Map<string, string>) {
 MissingPort
 ```
 
-An `effect { … }` expression builds an Effect from statements. Here it validates the optional value and fails with `MissingPort` when the key is absent. `try` runs the block and returns its successful string. The right side of `??`, `||`, `&&`, and `?:` runs only when chosen. The statement `throw cond ? a : b;` still throws the selected value.
+An `effect { … }` expression builds an Effect from statements. Here it validates the optional value and fails with `MissingPort` when the key is absent. `try` runs the block and returns its successful string. The right side of `??`, `||`, `&&`, and `?:` runs only when chosen. In a `.vibex` file, a JSX value may be the operand of `throw`; its factory runs only when that operand is chosen. Recover the Effect with a catch expression and a function-literal handler. The statement `throw cond ? a : b;` still throws the selected value.
 
 ## Tracking several error cases
 
