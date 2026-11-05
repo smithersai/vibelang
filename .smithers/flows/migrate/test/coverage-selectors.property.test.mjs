@@ -27,7 +27,7 @@ test("setup wires the selectors into the config the tests load", () => {
     wireVite({ root, packages: [{ dir: "packages/a" }], test: { cwd: ".", command: "pnpm -r test" }, ts, specsFor: () => ({ vibelang: "0", "vibelang-vite": "0" }) })
     const wired = readFileSync(join(root, "packages/a/vitest.config.ts"), "utf8")
     assert.match(wired, /include: \['src\/\*\*\/\*\.\{ts,vibe\}'\]/)
-    assert.match(wired, /'\*\*\/\*\.d\.vibe\.ts'\]/)
+    assert.match(wired, /'\*\*\/\*\.d\.vibe\.ts'/)
     assert.match(wired, /vibelang/)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
@@ -52,8 +52,8 @@ const config = (coverage) => `import { defineConfig } from "vitest/config"\nexpo
 
 test("every config shape: exclude added, appended, or left; other options untouched", () => {
   const out = (coverage) => addCoverageSelectors(config(coverage), ts)
-  assert.equal(out('coverage: { include: ["src/**/*.ts"] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts"] }'))
-  assert.equal(out('coverage: { include: ["src/**/*.ts"], exclude: [] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts"] }'))
+  assert.equal(out('coverage: { include: ["src/**/*.ts"] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts"] }'))
+  assert.equal(out('coverage: { include: ["src/**/*.ts"], exclude: [] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts"] }'))
   for (const same of ["", "coverage: { provider: 'v8' }", 'coverage: { include: ["src/**/*.js"] }', "include: ['src/**/*.test.ts']", "coverage: shared"]) assert.equal(out(same), config(same), same)
   assert.equal(addCoverageSelectors("export default {}\n", ts), "export default {}\n")
   assert.throws(() => out("coverage: { include: globs }"), /coverage\.include is not an array literal/)

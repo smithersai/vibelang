@@ -706,7 +706,7 @@ function wireViteConfig({ root, file, packages, ts, specsFor, changed, warnings,
   }
 }
 
-const sidecarGlob = "**/*.d.vibe.ts"
+const sidecarGlobs = ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts"]
 
 /** A coverage include glob with .vibe beside .ts: `src/**\/*.ts` or `*.{ts,tsx}`. A literal path, or a glob that already names .vibe or only declarations, stays. */
 export function widenCoverageGlob(glob) {
@@ -734,7 +734,7 @@ export function addCoverageSelectors(text, ts) {
   if (!include) return text
   const arrayOf = (property, name) => {
     const list = ts.isPropertyAssignment(property) ? unwrapped(property.initializer, ts) : undefined
-    if (!list || !ts.isArrayLiteralExpression(list)) throw new Error(`coverage.${name} is not an array literal; add .vibe to its globs and ${sidecarGlob} to coverage.exclude yourself, or .vibe modules leave the coverage report`)
+    if (!list || !ts.isArrayLiteralExpression(list)) throw new Error(`coverage.${name} is not an array literal; add .vibe to its globs and ${sidecarGlobs.join(" and ")} to coverage.exclude yourself, or .vibe modules leave the coverage report`)
     return list
   }
   const globs = arrayOf(include, "include")
@@ -748,14 +748,15 @@ export function addCoverageSelectors(text, ts) {
   const selects = literals.some((element) => widenCoverageGlob(element.text) !== element.text || /\bvibe\b/.test(element.text))
   if (!selects) return text
   const quote = text[literals[0].getStart(source)]
-  const glob = quote + sidecarGlob + quote
   const exclude = propertyOf(object, "exclude", ts)
-  if (!exclude) edits.push({ start: include.getEnd(), end: include.getEnd(), text: `, exclude: [${glob}]` })
-  else {
-    const list = arrayOf(exclude, "exclude")
-    if (!list.elements.some((element) => ts.isStringLiteralLike(element) && element.text === sidecarGlob)) {
+  const list = exclude ? arrayOf(exclude, "exclude") : undefined
+  const missing = sidecarGlobs.filter(glob => !list?.elements.some(element => ts.isStringLiteralLike(element) && element.text === glob))
+  if (missing.length) {
+    const globs = missing.map(glob => quote + glob + quote).join(", ")
+    if (!list) edits.push({ start: include.getEnd(), end: include.getEnd(), text: `, exclude: [${globs}]` })
+    else {
       const last = list.elements.at(-1)
-      edits.push(last ? { start: last.getEnd(), end: last.getEnd(), text: `, ${glob}` } : { start: list.getStart(source) + 1, end: list.getStart(source) + 1, text: glob })
+      edits.push(last ? { start: last.getEnd(), end: last.getEnd(), text: `, ${globs}` } : { start: list.getStart(source) + 1, end: list.getStart(source) + 1, text: globs })
     }
   }
   let out = text
