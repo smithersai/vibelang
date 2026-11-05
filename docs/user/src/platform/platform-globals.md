@@ -214,7 +214,6 @@ export function resolveModule(specifier: string): string {
 Each call above, in an effect function. A function that calls a service needs its layer at the application boundary, such as `NodeServices.layer` from `@effect/platform-node`:
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-14, VIP-17, VIP-33
 import { resolveModule } from "./resolve-module.ts"
 
 effect function replacements(

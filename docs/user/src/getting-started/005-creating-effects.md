@@ -207,7 +207,6 @@ export function isSymbolicLink(path: string): boolean {
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try linked("."))
 import { isSymbolicLink } from "./links.js"
 

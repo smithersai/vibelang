@@ -27,7 +27,6 @@ effect function encodeAudit(input: unknown) {
 `toCodecJson` recursively chooses JSON-compatible encodings for domain values, nested declarations with built-in representations included. It keeps explicit encodings: a date explicitly encoded as epoch milliseconds stays numeric. Its output is a JSON value, not serialized JSON text; for text, use `fromJsonString`.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: { const jsonValue = try encodeSearch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Search = Schema.Struct({
   offset: Schema.Int,
@@ -72,7 +71,6 @@ true 2 3
 ## Supplying canonical conversions for custom declarations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: { const jsonValue = try encodeDepot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 class DepotRef {
   constructor(readonly region: string, readonly number: number) {}
@@ -106,7 +104,6 @@ Without a hook, JSON uses an unconstrained JSON fallback and parsing can still f
 ## Relating canonical representations to JSON Schema output
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try Effect.try(() => JSON.stringify(describeDepotJson())))
 function describeDepotJson() {
   return Schema.toJsonSchemaDocument(DepotRefSchema)
