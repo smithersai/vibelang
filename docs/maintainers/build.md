@@ -195,7 +195,8 @@ a Go build in it only grew, and hosted runs ran out of disk restoring it. The
 run first deletes toolchains no target uses, about 10 GB.
 Every Go build and test target, including `//typescript:forms-generator`, uses `GOCACHE=$HOME/.cache/go-build-smthrs`,
 so one cache serves them all. All three native executable targets pass Go's
-`-p 8` limit. The graph's `--jobs` controls simultaneous targets; it does not
+`-p 8` limit. The compiler appends `-trimpath` to inherited `GOFLAGS`,
+preserving module, build tag and linker settings. The graph's `--jobs` controls simultaneous targets; it does not
 limit package compilation inside one target. `scripts/go-cache.test.mjs` fails when a target
 compiles a package the script misses, or when the two workflows' cache paths
 differ.

@@ -150,10 +150,12 @@ test("a failed native build keeps the previous executable and removes its tempor
 })
 
 // The graph's --jobs bounds targets, while Go's -p bounds packages inside
-// each native build. Inherited GOFLAGS can be replaced by a target command;
-// inspect what its actual shell passes to Go, after native-output dispatch.
+// each native build. Inherited settings survive environment preparation;
+// inspect what the actual shell passes to Go, after native-output dispatch.
 for (const name of ["compiler", "forms-generator", "mapper"]) {
-  for (const inherited of [null, "", "-p=1", "-p=8", "-p=32", "-p=64", "-p=32 -trimpath", "-trimpath -p=64"]) {
+  for (const inherited of [null, "", "-p=1", "-p=8", "-p=32", "-p=64", "-p=32 -trimpath", "-trimpath -p=64",
+    "-tags=build_flags_probe", "-mod=readonly", "-tags=build_flags_probe -mod=readonly",
+    "-p=64 -tags=build_flags_probe -mod=readonly", "-ldflags=-s"]) {
     test("graph " + name + " bounds package compilation with inherited GOFLAGS " + JSON.stringify(inherited), t => {
       const f = fixture(t)
       const record = join(f.root, "go-arguments.json")
@@ -172,6 +174,12 @@ fs.writeFileSync(output, "#!/bin/sh\\nexit 0\\n", { mode: 0o755 })
       const { args, flags, cgo } = JSON.parse(readFileSync(record, "utf8"))
       assert.equal(args[0], "build")
       assert.equal(cgo, "0")
+      for (const flag of (inherited ?? "").split(/\s+/).filter(Boolean)) {
+        // Package parallelism is capped explicitly in argv; other settings
+        // must survive the target's environment preparation.
+        if (!flag.startsWith("-p=")) assert.ok(flags.split(/\s+/).includes(flag),
+          "native builds retain inherited settings: " + JSON.stringify({ flag, flags }))
+      }
       assert.ok(args.includes("-trimpath") || flags.split(/\s+/).includes("-trimpath"), "native builds retain the shared cache flags")
       const effective = [...flags.split(/\s+/), ...args]
       let packages

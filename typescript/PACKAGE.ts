@@ -8,7 +8,7 @@ import { Package as Tsc } from "./tsc/PACKAGE.ts"
 // so it is not an input.
 const compiler = S.Shell.Build({
   summary: "Build the VibeLang compiler, typescript/built/local/tsc.",
-  shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 GOFLAGS=-trimpath " +
+  shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 GOFLAGS=${GOFLAGS:+$GOFLAGS }-trimpath " +
     "sh ../../scripts/native-output.sh build ../built/local/tsc -p 8 ./cmd/tsc",
   data: [Tsc["native-srcs"], S.file("go.work"), S.file("//scripts/native-output.sh")],
   tools: [S.Host.bin("go")],
