@@ -19,6 +19,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A rejected `join` operand could hide errors inside its arguments. Those TypeScript errors now remain visible beside `EK1704`.
 
 - Rejected `try.all`, `try.race`, `try.any` and `try.allSettled` operands could hide errors inside calls, assertions and literals. Those TypeScript errors now remain visible beside `EK1801`.
+- A misplaced `fork` statement, including in a class static block, could report a discarded-Effect error alongside `EK1701`. It now reports the owning placement error alone; ordinary discarded Effect calls keep their diagnostic.
 - The Effect type guide now shows the grouping used when repairing nested Effects and array boundaries.
 - The error guide now explains why a reserved tag payload and an inheritance clause each report an error, and how a native class retains their contract.
 - The error guide now explains how bodyless, empty and payload-bearing ambient schema errors convert to erased native classes.

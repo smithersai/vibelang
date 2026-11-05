@@ -71,6 +71,9 @@ func messageOff(code int32, text string) *Message {
 }
 
 func init() {
+	lint.RegisterVibeFloatingExclusion(func(expression *ast.Node) bool {
+		return isFiberOperator(ast.SkipParentheses(expression)) && !inEffectCode(expression)
+	})
 	// Ordinary generic repairs are excluded from the historical VIP migration.
 	tsFormFixCodes = append(tsFormFixCodes, EK4802.Code)
 	for _, m := range []*Message{EK4801, EK4802, EK4803, EK4804, EK4805, EK4806, EK4807, EK4808, EK4809, EK4810,
@@ -148,6 +151,11 @@ func (r *ruleCheck) checkFloating(statement *ast.Node) {
 		return
 	}
 	body := inEffectCode(statement) // plain code runs no Effect (VIP-1)
+	// A misplaced fiber operator already has EK1701. Its lowered cold
+	// helper is not an ordinary discarded Effect (VIP-17).
+	if !body && isFiberOperator(ast.SkipParentheses(expression)) {
+		return
+	}
 	if invocation := ast.SkipParentheses(expression); !body && ast.IsCallExpression(invocation) {
 		fn := ast.FindAncestor(statement.Parent, func(n *ast.Node) bool {
 			return ast.IsFunctionLike(n) || n.Kind == ast.KindClassStaticBlockDeclaration
