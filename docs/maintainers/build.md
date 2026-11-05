@@ -1968,3 +1968,5 @@ The `//:automatic-catch-data-preservation` target checks returned data, native c
 The `//:native-repair-argument-thunks` target checks method-argument repairs across calls, defaults, receivers, native narrowing and declaration identity.
 
 The `//:lexical-capture-diagnostic-retirement` gate validates the retired fixture inventory and its resurrection guard, then checks captured values with independent native-error controls.
+
+The `//:qualified-interruption-call-controls` gate retains all running-rule controls and rejects, enforces the qualified-call pairs without pending allowances, and replays their keyed corpus.
