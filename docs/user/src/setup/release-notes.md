@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - Migration could stall after emitting JavaScript while a loader cache compilation kept running; each optional record now has a deadline, reports the affected project and elapsed time, and lets later projects continue.
+
+- Quoted, numeric and template `data` variant names reported a generic identifier error. They now report `EK1606` while retaining the following variants and declarations.
 - The contributor release target could time out on a four-CPU machine because it ran eight test files at once. It now runs four.
 - Tests using lazy Rolldown or esbuild imports on Bun `1.4.1` and `1.4.2` could not load native bundle graphs; their bundler preloads now route those imports through temporary modules.
 - Build checks could miss an unflagged Go command when a neighbouring command set its flags; each invocation is now checked independently.

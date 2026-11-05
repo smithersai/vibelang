@@ -156,7 +156,8 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	if !tokenIsIdentifierOrKeyword(p.token) {
-		p.parseErrorAtCurrentToken(diagnostics.Identifier_expected)
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.scanner.TokenRange(), "EK", diagnostics.CategoryError, 1606, "A data variant needs an identifier name, such as `Ready`."))
+		p.hasParseError = true
 		p.nextToken()
 		return nil
 	}

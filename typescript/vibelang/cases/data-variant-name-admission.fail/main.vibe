@@ -1,0 +1,8 @@
+// expect: EK1606 EK1606 EK1606 EK1606 EK1606
+data Invalid0 { "Bad"; Good }
+data Invalid1 { 'Bad'; Good }
+data Invalid2 { 1; Good }
+data Invalid3 { 1n; Good }
+data Invalid4 { `Bad`; Good }
+data After { Ready }
+const after:After=After.Ready()
