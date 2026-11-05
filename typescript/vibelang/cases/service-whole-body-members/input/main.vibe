@@ -1,0 +1,3 @@
+service Indexed: number { static readonly key = "whole/indexed"; [key: string]: unknown }
+service ReadonlyIndexed: number { static readonly key = "whole/readonly"; readonly [key: symbol]: unknown }
+service Constructed: number { static readonly key = "whole/constructed"; constructor() { super() } }

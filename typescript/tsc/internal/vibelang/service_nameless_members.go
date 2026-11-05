@@ -18,7 +18,7 @@ func init() {
 func checkServiceNamelessMembers(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsClassDeclaration(node) && declarationWord(node) == "service" && serviceShape(node) == nil {
+		if ast.IsClassDeclaration(node) && declarationWord(node) == "service" {
 			for _, member := range node.Members() {
 				var what string
 				switch member.Kind {
@@ -29,7 +29,11 @@ func checkServiceNamelessMembers(c *checker.Checker, file *ast.SourceFile) {
 				default:
 					continue
 				}
-				report(c, member, serviceNamelessMemberDiagnostic, what)
+				diagnostic := serviceNamelessMemberDiagnostic
+				if serviceShape(node) != nil {
+					diagnostic = diagnostic.With("A service with a whole shape cannot declare {0}. Put signatures in the shape type and implementation code in a layer.")
+				}
+				report(c, member, diagnostic, what)
 				cover(c, member)
 			}
 		}

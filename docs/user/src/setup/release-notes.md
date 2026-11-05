@@ -18,6 +18,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Sidecar self-comparison regression fixtures repeatedly loaded unrelated browser declarations. Their entry declarations now select ES5 while retaining actual project discovery, generated nominal and structural shapes, type mutations and missing-library checks.
 - The fuzzing research guide incorrectly said an unchanged callable reexport must fail migration verification. It now describes the accepted API identity and the retained type, documentation and missing-dependency controls.
 - Contributor helper re-export checks now require a missing `BigInt` library to produce `TS2583` and make comparison unavailable, matching stock TypeScript validation.
+- Services with a written whole shape could silently accept index signatures and constructors in their body. They now report `EK0902` and explain where to put the signature or initialization.
 
 - Optional schema fields and tuple elements with an explicit `undefined` union could expose a different codec type from `Schema.optional(S)`. They now retain the underlying codec type while accepting omission and present `undefined`; repairs keep an explicit union codec when rewriting it would change its type.
 - The platform guide mapped `os.tmpdir` to creating a new directory. Its replacement now reads the system temporary-directory path without creating anything.
@@ -166,6 +167,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | Before | After and repair |
 | --- | --- |
 | Extra modifiers or `?`/`!` on a whole-shape service’s `key` or `defaultValue`, or a default factory without `readonly` | `EK0902`: run `vibelang --fix` to remove extra header syntax while retaining an existing `readonly` initializer. Supply a missing factory explicitly; adding `readonly` to a mutable default chooses `Context.Reference` fallback behavior and needs a manual migration. |
+| An index signature or constructor in `service Name: Type { … }` | `EK0902`: put the signature in `Type` and create the implementation in a layer. Move constructor behavior explicitly; the compiler does not discard or relocate it. |
 
 ## 0.0.11
 
