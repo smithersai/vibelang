@@ -49,19 +49,15 @@ effect function iteratorInterrupted() {
   return events
 }
 
-effect function* produce(events: string[]) {
-  try {
-    yield disposable(events, "p1")
-    yield disposable(events, "p2")
-  } finally {
-    events.push("producer done")
-  }
+effect function* produce(events: string[], count: number = 2) {
+  try addFinalizer(() => Effect.sync(() => { events.push("producer done") }))
+  for (let i = 1; i <= count; i++) yield disposable(events, `p${i}`)
 }
 
-effect function producer(fail: boolean) {
+export effect function producer(fail: boolean, count: number = 2) {
   const events: string[] = []
   const outcome = try exit(effect {
-    for try (const item of produce(events)) {
+    for try (const item of produce(events, count)) {
       using x = item
       events.push("body")
       try sleep("1 millis")
@@ -98,7 +94,7 @@ effect function labeled() {
   return events
 }
 
-// expect-result: {"iterator":[false,["body","dispose g1","body","dispose g2","iterator closed"]],"iteratorFails":[true,["body","dispose g1","iterator closed"]],"iteratorInterrupted":["body","dispose g1","iterator closed"],"producer":[false,["producer done","body","dispose p1","body","dispose p2"]],"producerFails":[true,["producer done","body","dispose p1"]],"stream":[false,["body","dispose s1","body","dispose s2"]],"streamFails":[true,["body","dispose s1"]],"labeled":["body 1","dispose g1","iterator closed","body 2","dispose g1","iterator closed"]}
+// expect-result: {"iterator":[false,["body","dispose g1","body","dispose g2","iterator closed"]],"iteratorFails":[true,["body","dispose g1","iterator closed"]],"iteratorInterrupted":["body","dispose g1","iterator closed"],"producer":[false,["body","dispose p1","body","dispose p2","producer done"]],"producerFails":[true,["body","dispose p1","producer done"]],"stream":[false,["body","dispose s1","body","dispose s2"]],"streamFails":[true,["body","dispose s1"]],"labeled":["body 1","dispose g1","iterator closed","body 2","dispose g1","iterator closed"]}
 export effect function main() {
   return {
     iterator: try iterator(false),
