@@ -26,7 +26,7 @@ func TestAbstractErrorInheritanceRepairsQuoted(t *testing.T) {
 
 func FuzzAbstractErrorInheritanceRepairs(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"required", "optional", "getter", "unicode", "collision", "imported", "namespace"}
+	keys := []string{"required", "optional", "getter", "unicode", "collision", "imported", "namespace", "explicit-imports"}
 	for _, key := range keys {
 		for mode := uint8(0); mode < 3; mode++ {
 			f.Add(key, mode)
@@ -61,6 +61,9 @@ func FuzzAbstractErrorInheritanceRepairs(f *testing.F) {
 		}
 		if key == "namespace" {
 			files["main.vibe"] = "export namespace Family {\n" + parent + child + "}\n"
+		}
+		if key == "explicit-imports" {
+			files = map[string]string{"main.vibe": "import { Data, Schema } from \"effect\"\nabstract error Base\nexport error Child extends Base { id: string; value?: number; get label(): string { return this.id + \":\" + this._tag } }\n"}
 		}
 		if mode&1 != 0 {
 			for name, text := range files {

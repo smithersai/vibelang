@@ -56,6 +56,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration test-edit checks stopped at missing compiler provenance in simulated conversions. Their integration fixtures now record provenance before conversion and exercise the protected-edit checks.
 
 - Mapper callback tests could erase effect block syntax while removing function markers; their negative controls now retain valid blocks and still require every unresolved host callback.
+
+- Abstract error repair tests lacked the import collision that blocked child constructors; keyed controls now include existing Effect imports in every repair mode.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 
