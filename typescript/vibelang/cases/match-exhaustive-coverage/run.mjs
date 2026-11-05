@@ -20,7 +20,8 @@ const results = [
   arms.parity(new arms.Odd({ n: 3 })),
   arms.count(Option.none()),
   arms.count(Option.some(4)),
-  arms.text("hi")
+  arms.text("hi"),
+  arms.text(new String("boxed"))
 ]
 const { result } = await session.post("Profiler.takePreciseCoverage")
 await session.post("Profiler.stopPreciseCoverage")
@@ -29,6 +30,6 @@ const script = result.find((s) => s.url.endsWith("/out/arms.js"))
 const source = fs.readFileSync(fileURLToPath(script.url), "utf8")
 for (const fn of script.functions) {
   for (const range of fn.ranges) {
-    if (range.count === 0) console.log(`missed: ${source.slice(range.startOffset, range.endOffset).replace(/\s+/g, " ").trim()}`)
+    if (range.count === 0) console.log(`missed: ${source.slice(range.startOffset, range.endOffset).replace(/\s+/g, " ").replace(/\$match\d+/g, "$match").trim()}`)
   }
 }
