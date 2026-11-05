@@ -55,3 +55,45 @@ test("unrelated missing extends never changes a reference-free leaf plan", () =>
       } finally { f.close() }
     }), { seed: 561107, numRuns: 64 })
 })
+
+function missingChildFixture(options = {}) {
+  const f = fixture(options)
+  f.put(f.vendor, { references: [{ path: "./missing" }] })
+  return f
+}
+test("an unrelated vendor missing child does not block an independent leaf", () => {
+  const f = missingChildFixture()
+  try {
+    const expected = referenceRefreshPlan({ ...f, ts, configs: [f.configs[0]], changed: [f.changed] })
+    assert.deepEqual(referenceRefreshPlan({ ...f, ts, changed: [f.changed] }), expected)
+  } finally { f.close() }
+})
+test("an owned vendor missing child fails before deletion or execution", async () => {
+  const f = missingChildFixture({ referenced: true })
+  try {
+    await assert.rejects(refreshProjectReferences({ ...f, ts, changed: [f.changed],
+      compiler: "unused", log: join(f.root, "refresh.log"), execute: async () => assert.fail("missing child executed") }),
+      error => error.message.includes(dirname(f.vendor) + "/missing/tsconfig.json") && /TS5083/.test(error.message))
+    assert.equal(readFileSync(join(f.root, "owned/out/main.js"), "utf8"), "keep-owned")
+    assert.equal(readFileSync(join(f.root, dirname(f.vendor), "out/main.js"), "utf8"), "keep-vendor")
+  } finally { f.close() }
+})
+test("missing child neighborhoods are validated only when affected or referenced", () => {
+  fc.assert(fc.property(fc.constantFrom(".repos/vendor", "fixtures/framework", "submodules/sdk"), fc.nat(999),
+    fc.constantFrom("ts", "vibe"), fc.constantFrom("unrelated", "forward", "reverse", "changed"),
+    (directory, suffix, extension, relation) => {
+      const f = missingChildFixture({ vendor: directory + suffix + "/tsconfig.json", extension,
+        referenced: relation === "forward" })
+      try {
+        if (relation === "reverse") f.put(f.vendor, { references: [
+          { path: "./missing" }, { path: join(f.root, "owned") }] })
+        const changed = relation === "changed" ? dirname(f.vendor) + "/missing/src/main." + extension : f.changed
+        if (relation === "changed") f.put(changed, corpus.source)
+        if (relation === "unrelated") assert.deepEqual(referenceRefreshPlan({ ...f, ts, changed: [changed] }),
+          { projects: [], roots: [], outputs: [] })
+        else assert.throws(() => referenceRefreshPlan({ ...f, ts, changed: [changed] }),
+          error => error.message.includes(dirname(f.vendor) + "/missing/tsconfig.json") && /TS5083/.test(error.message))
+        assert.equal(readFileSync(join(f.root, "owned/out/main.js"), "utf8"), "keep-owned")
+      } finally { f.close() }
+    }), { seed: 561108, numRuns: 80 })
+})

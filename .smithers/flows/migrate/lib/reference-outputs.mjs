@@ -25,8 +25,10 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
     path = configPath(path)
     if (projects.has(path)) return
     const input = ts.readConfigFile(path, ts.sys.readFile)
-    if (input.error) throw configError(path, [input.error])
-    const parsed = ts.parseJsonConfigFileContent(input.config, ts.sys, dirname(path), {}, path, undefined, extra(ts))
+    if (input.error && input.error.code !== 5083) throw configError(path, [input.error])
+    // Missing configs have no readable edges; retain their diagnostic for closure validation.
+    const parsed = input.error ? { options: {}, fileNames: [], errors: [input.error] } :
+      ts.parseJsonConfigFileContent(input.config, ts.sys, dirname(path), {}, path, undefined, extra(ts))
     const errors = parsed.errors.filter(error => ![18002, 18003].includes(error.code))
     const item = { path, parsed, errors, references: (parsed.projectReferences ?? []).map(ref => configPath(ref.path)) }
     projects.set(path, item)
