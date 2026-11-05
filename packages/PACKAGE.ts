@@ -99,7 +99,9 @@ const compilerTest = (shard: number) => S.Shell.Test({
     S.file("//scripts/testing/node-failures.mjs"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/004-match.md"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/007-tooling.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"),
     S.file("//typescript/vibelang/lsp-format-shape.mjs"), S.file("//typescript/vibelang/lsp-connection.mjs"),
-    S.file("//typescript/vibelang/lsp-framing.mjs"), ...install],
+    S.file("//typescript/vibelang/lsp-framing.mjs"),
+    S.file("//typescript/vibelang/cases/tsforms-schemas/main.vibe"),
+    S.file("//typescript/vibelang/cases/tsforms-schemas-fixed/main.vibe"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
   timeout: "15m"

@@ -422,6 +422,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The legacy `any` call example omitted the native throw-contract error emitted at the same position. The guide and regression case now require both diagnostics.
 
+- Compiler package checks could reuse cached results after schema rewrite fixtures changed. Both fixtures now invalidate every compiler test shard.
+
+
 ### Upgrade from 0.0.11
 
 | Before | After and repair |
