@@ -450,6 +450,8 @@ and reject objects carrying only `_tag`. In extractor mode they yield the
 subject as one value: `when Cause.TimeoutError(let error): …;`.
 An extractor with the wrong number of arguments does not match. A rest pattern captures the remaining extracted values.
 
+`JoseError.JoseError` from `effect/jose/JoseError` also uses its module guard, `isJoseError`. Namespace imports, direct constructor imports, the `effect/jose` barrel and immutable constructor aliases preserve that identity. A branded copy matches and a plain `{ _tag: "JoseError" }` does not.
+
 
 A binding in a plain catch-parameter default or computed binding key also reports `EK0705`: the catch parameter environment is separate from its block. A nested callable, explicit `do` block or match arm keeps its own lexical home (VIP-7, decided detail 249).
 

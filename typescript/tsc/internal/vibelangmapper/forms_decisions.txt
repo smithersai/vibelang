@@ -4643,6 +4643,12 @@ typescript/vibelang/cases/match-relational-regex/main.vibe:91:43 lambda plain fa
 typescript/vibelang/cases/match-relational-regex/main.vibe:92:12 lambda effectFn fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:92:33 lambda plain fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:92:48 lambda plain fallback
+typescript/vibelang/cases/match-retained-jose-error/main.vibe:11:8 lambda dual fallback
+typescript/vibelang/cases/match-retained-jose-error/main.vibe:12:8 lambda dual fallback
+typescript/vibelang/cases/match-retained-jose-error/main.vibe:13:8 lambda dual fallback
+typescript/vibelang/cases/match-retained-jose-error/main.vibe:14:8 lambda dual fallback
+typescript/vibelang/cases/match-retained-jose-error/main.vibe:15:8 lambda dual fallback
+typescript/vibelang/cases/match-retained-jose-error/main.vibe:16:8 lambda dual fallback
 typescript/vibelang/cases/match-retained-nested-errors/guard0.vibe:5:128 lambda dual fallback
 typescript/vibelang/cases/match-retained-nested-errors/guard0.vibe:5:175 lambda dual fallback
 typescript/vibelang/cases/match-retained-nested-errors/guard0.vibe:5:21 lambda plain table

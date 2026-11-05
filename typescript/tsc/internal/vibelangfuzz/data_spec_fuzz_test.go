@@ -367,6 +367,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataPayloadMutabilityRules()...)
 	rules = append(rules, dataSchemaTypeMemberModifierRules()...)
 	rules = append(rules, dataOrdinaryExtractorRules()...)
+	rules = append(rules, dataJoseRetainedRules()...)
 	rules = append(rules, dataVariantMemberAdmissionRules()...)
 	rules = append(rules, dataReadonlyRecordAliasRules()...)
 	rules = append(rules, dataExtractorReturnRules()...)

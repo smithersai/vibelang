@@ -85,6 +85,7 @@ var fixedErrorGuards = map[string]map[string]string{
 	"encoding/Xml":               {"XmlError": "isXmlError"},
 	"encoding/Zip":               {"ZipError": "isZipError"},
 	"graphql/GraphQLClientError": {"GraphQLClientError": "isGraphQLClientError"},
+	"jose/JoseError":             {"JoseError": "isJoseError"},
 	"http/Cookies":               {"CookiesError": "isCookiesError"},
 	"http/Headers":               {"HeaderParseError": "isHeaderParseError"},
 	"http/HttpBody":              {"HttpBodyError": "isHttpBodyError"},
@@ -166,7 +167,12 @@ func effectModuleNamed(c *checker.Checker, expression *ast.Node) string {
 		return ""
 	}
 	for _, declaration := range symbol.Declarations() {
-		for _, module := range []string{"Option", "Exit", "Result", "Cause", "Schema", "Cron", "PlatformError", "SemVer", "Terminal", "TextDiff", "ai/AiError", "ai/McpClientError", "crypto/CryptoError", "encoding/Csv", "encoding/EncodingError", "encoding/JsonArray", "encoding/Ndjson", "encoding/Tar", "encoding/Xml", "encoding/Zip", "graphql/GraphQLClientError", "http/Cookies", "http/Headers", "http/HttpBody", "http/HttpClientError", "http/HttpServerError", "http/Multipart", "socket/DatagramSocket", "socket/Socket", "sql/SqlError", "workers/WorkerError"} {
+		for _, module := range []string{"Option", "Exit", "Result"} {
+			if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), module) {
+				return module
+			}
+		}
+		for module := range fixedErrorGuards {
 			if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), module) {
 				return module
 			}

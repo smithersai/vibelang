@@ -1,0 +1,22 @@
+// expect-result: [[true,"JoseError",true,true,false,false,1],[false,"miss",false,false,false,false,0],[false,"miss",false,false,false,false,0]]
+import { Effect } from "effect"
+import * as Errors from "effect/jose/JoseError"
+import { JoseError as ErrorClass } from "effect/jose/JoseError"
+import { JoseError as Barrel } from "effect/jose"
+
+const Alias = Errors.JoseError
+function inspect(value: unknown) {
+ return [
+  value is Errors.JoseError,
+  match(value){when Errors.JoseError(let error):error._tag;default:"miss";},
+  match(value){when ErrorClass(const error):error===value;default:false;},
+  match(value){when Alias(let error):error===value && value is Barrel.JoseError;default:false;},
+  match(value){when Errors.JoseError():true;default:false;},
+  match(value){when Errors.JoseError(let first,let second):true;default:false;},
+  match(value){when Errors.JoseError(...let errors):errors.length;default:0;},
+ ]
+}
+export function main() {
+ const copy={_tag:"JoseError","~effect/jose/JoseError":"~effect/jose/JoseError"}
+ return Effect.succeed([inspect(copy),inspect({_tag:"JoseError"}),inspect(null)])
+}
