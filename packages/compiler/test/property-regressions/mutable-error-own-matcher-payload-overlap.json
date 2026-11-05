@@ -1,0 +1,12 @@
+{
+  "property": "mutable-error-own-matcher",
+  "rule": "Generated error matchers deliberately trust `_tag`",
+  "input": {
+    "name": "Failure",
+    "value": 8,
+    "foreign": 0,
+    "collision": false,
+    "migration": false,
+    "crlf": false
+  }
+}
