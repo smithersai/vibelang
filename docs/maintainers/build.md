@@ -1805,3 +1805,5 @@ Appendix Go checks use `-trimpath` to share compiled packages with the compiler 
 The Go warmup includes `./internal/effecttsgo/lint`, which the lint configuration checks execute alongside the compiler packages. The warmup inventory checks that every declared package is covered without broadening exact package patterns to siblings.
 
 The bounded project-service target runs both manifest invalidation and stale-manifest preservation tests, including disk and editor content paths. Its selector excludes unrelated upstream fixtures.
+
+The `//:api-inputs-cache` target replays actual SDK caching with transitive local comparator helpers. It checks successful reuse, unrelated Go edits, changed comparator source, changed declaration types and restored bytes. Dependency fixtures include static and dynamic imports, file URLs and cycles; command stage records identify a stalled SDK invocation without printing workspace paths or environment values. The larger whole-repository key mutation check remains in the release suite.

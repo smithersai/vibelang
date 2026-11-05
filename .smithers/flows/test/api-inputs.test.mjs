@@ -5,14 +5,25 @@ import { tmpdir } from "node:os"
 import { dirname, join, matchesGlob, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
+import { createRequire } from "node:module"
+const requireFromDocs = createRequire(new URL("../../../docs/tools/package.json", import.meta.url))
+const ts = requireFromDocs("typescript")
+const fc = requireFromDocs("fast-check")
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const cli = join(repo, ".smithers/node_modules/.bin/smthrs")
 const output = result => result.stdout + result.stderr + String(result.error ?? "")
+let commandSequence = 0
 function invoke(root, ...args) {
-  return spawnSync(process.execPath, [cli, ...args, "--workspace", root, "--ui", "plain"], {
+  const sequence = ++commandSequence
+  const started = performance.now()
+  console.error("API_INPUT_COMMAND_BEGIN", sequence, args[0], args[1] ?? "")
+  const result = spawnSync(process.execPath, [cli, ...args, "--workspace", root, "--ui", "plain"], {
     encoding: "utf8", timeout: 120_000, maxBuffer: 8 * 1024 * 1024,
   })
+  console.error("API_INPUT_COMMAND_END", sequence, Math.round(performance.now() - started),
+    result.status, result.signal ?? "none", result.error?.code ?? "none")
+  return result
 }
 function temp(t, prefix) {
   const dir = mkdtempSync(join(tmpdir(), prefix))
@@ -29,6 +40,8 @@ function key(root, label = "//:api-identity-test") {
   return JSON.parse(result.stdout).cache.key
 }
 function copyTree(t) {
+  const started = performance.now()
+  console.error("API_INPUT_COPY_BEGIN")
   const root = temp(t, "vibelang-api-inputs-root-")
   // A private source copy never carries repository stores or installed modules.
   for (const name of readdirSync(repo)) {
@@ -44,8 +57,58 @@ function copyTree(t) {
     mkdirSync(join(root, dir), { recursive: true })
     symlinkSync(join(repo, dir, "node_modules"), join(root, dir, "node_modules"), "dir")
   }
+  console.error("API_INPUT_COPY_END", Math.round(performance.now() - started))
   return root
 }
+
+function relativeApiFiles(entries, base = repo) {
+  const files = new Set()
+  function visit(file) {
+    if (files.has(file)) return
+    files.add(file)
+    if (!file.endsWith(".mjs")) return
+    const ast = ts.createSourceFile(file, readFileSync(join(base, file), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+    const walk = node => {
+      let specifier
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) specifier = node.moduleSpecifier
+      else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) specifier = node.arguments[0]
+      else if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "URL") specifier = node.arguments?.[0]
+      if (specifier && ts.isStringLiteralLike(specifier) && specifier.text.startsWith(".")) {
+        const resolved = relative(base, join(base, dirname(file), specifier.text))
+        assert.ok(!resolved.startsWith(".."), "fixture input must stay inside its source tree")
+        if (existsSync(join(base, resolved)) && statSync(join(base, resolved)).isFile()) visit(resolved)
+      }
+      ts.forEachChild(node, walk)
+    }
+    walk(ast)
+  }
+  for (const file of entries) visit(file)
+  return [...files].sort()
+}
+
+test("relative API fixture inputs retain transitive helpers and URL assets", t => {
+  fc.assert(fc.property(fc.integer({ min: 1, max: 6 }), fc.constantFrom("static", "dynamic", "bare", "url"), fc.boolean(), (depth, form, cycle) => {
+    const root = temp(t, "api-input-closure-")
+    const statement = spec => {
+      const name = JSON.stringify(spec)
+      if (form === "static") return "import { value as nextValue } from " + name + ";"
+      if (form === "dynamic") return "void import(" + name + ");"
+      if (form === "bare") return "import " + name + ";"
+      return "new URL(" + name + ", import.meta.url);"
+    }
+    const expected = ["scripts/api-identity.mjs", "scripts/nested/rules.json"]
+    put(root, expected[0], statement("./nested/helper-1.mjs") + "\nexport const value = 1;")
+    for (let i = 1; i <= depth; i++) {
+      const file = "scripts/nested/helper-" + i + ".mjs"
+      const next = i < depth ? statement("./helper-" + (i+1) + ".mjs") : cycle ? statement("../api-identity.mjs") : ""
+      put(root, file, '// import "./comment-only.mjs";\n' + next + '\nnew URL("./rules.json", import.meta.url);\nexport const value = 1;')
+      expected.push(file)
+    }
+    put(root, "scripts/nested/rules.json", "{}")
+    put(root, "scripts/nested/comment-only.mjs", "export const ignored = 1")
+    assert.deepEqual(relativeApiFiles([expected[0]], root), expected.sort())
+  }), { seed: 186016, numRuns: 120 })
+})
 
 test("the actual root API key ignores unrelated files and retains every input family", t => {
   const root = copyTree(t)
@@ -99,8 +162,8 @@ test("real SDK caching reuses API results across Go edits and rejects a changed 
   }
   symlinkSync(join(repo, ".smithers/node_modules"), join(root, ".smithers/node_modules"), "dir")
   put(root, "package.json", '{"name":"api-inputs-real-checker-fixture","private":true,"type":"module"}\n')
-  for (const name of ["api-identity.mjs", "api-identity-ambient.mjs", "api-identity-nominal.mjs"])
-    put(root, "scripts/" + name, readFileSync(join(repo, "scripts", name)))
+  for (const file of relativeApiFiles(["scripts/api-identity.mjs"]))
+    put(root, file, readFileSync(join(repo, file)))
   put(root, "docs/tools/package.json", readFileSync(join(repo, "docs/tools/package.json")))
   symlinkSync(join(repo, "docs/tools/node_modules"), join(root, "docs/tools/node_modules"), "dir")
   put(root, "scripts/api-inputs-corpus.json", '{"before":"string","after":"string"}\n')
