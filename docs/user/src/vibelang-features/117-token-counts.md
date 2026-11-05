@@ -271,7 +271,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 11,000 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 12,000 |
-| [Diagnostic code map](diagnostic-code-map.md) | 3,400 |
+| [Diagnostic code map](diagnostic-code-map.md) | 3,500 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
 | **All 8 pages** | **54,000** |
 
