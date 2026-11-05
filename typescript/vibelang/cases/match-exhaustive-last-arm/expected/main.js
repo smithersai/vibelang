@@ -13,14 +13,17 @@ import * as runtime from "vibelang-runtime";
 import { announce, Denied, describe, greeting, NotFound, phaseLabel, record, Timeout, width } from "./arms.js";
 function text(value) {
     {
-        const $match2 = value;
+        const $match3 = value;
         {
-            if (typeof $match2 === "string") {
-                let s = $match2;
+            if (typeof $match3 === "string" || $match3 instanceof String) {
+                const $primitive4 = typeof $match3 === "string" ?
+                    $match3
+                    : $match3.valueOf();
+                let s = $primitive4;
                 return `text: ${s}`;
             }
         }
-        return $noMatch($match2);
+        return $noMatch($match3);
     }
 }
 export function main() {

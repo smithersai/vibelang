@@ -472,3 +472,10 @@ A binding from an `unknown` subject through a computed key, such as `{ [key]: le
 
 Computed presence keys need no colon: `{ ["field"] }`, `{ [key] }` and `{ [symbol] }` test property presence, including an inherited property or a property holding `undefined`. They do not read the property value or introduce a binding. Add `: let value` to bind it.
 
+
+
+### Boxed primitive values
+
+The built-in `String` matcher accepts a primitive string or an instance of
+`String`. Boxed values are extracted through `valueOf()`: for example,
+matching `new String("text")` extracts `"text"`.
