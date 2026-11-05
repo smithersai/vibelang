@@ -1638,6 +1638,15 @@ not the complete API target or a reserved-host guarantee. Separate browser
 and explicit library-reference witnesses retain their own environments.
 
 
+Self-namespace-export API fixtures select `lib.es5.d.ts` for independent
+native TypeScript validation and every comparison program. The loaded-library
+guard requires ES5 and allows only its decorator declarations; it checks after
+comparison returns so an unavailable result cannot absorb a resource violation.
+All 13 tests and 24 generated samples retain bidirectional native assignments,
+resolved-normalization profile records, nominal distinctions and type, name,
+documentation and dependency mutation checks. Other API fixtures retain the
+libraries their declarations require.
+
 Nested ambient-ownership API fixtures select `lib.es5.d.ts` for both their
 native TypeScript validation and every comparator program. A native source-file
 guard rejects accidental browser-library loading. The fixture still checks

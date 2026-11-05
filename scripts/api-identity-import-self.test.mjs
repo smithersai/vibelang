@@ -8,15 +8,35 @@ import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-import-self-export.json", import.meta.url)))
-const ts = loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const unexpectedLibraries = []
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  const libraries = program.getSourceFiles().map(source => source.fileName)
+    .filter(file => /[/\\]lib\.[^/\\]+\.d\.ts$/.test(file))
+  if (!libraries.some(file => /[/\\]lib\.es5\.d\.ts$/.test(file))) unexpectedLibraries.push("missing ES5")
+  unexpectedLibraries.push(...libraries.filter(file => !/[/\\]lib\.(?:es5|decorators(?:\.legacy)?)\.d\.ts$/.test(file)))
+  return program
+} }
+function assertLibraries() {
+  assert.deepEqual(unexpectedLibraries, [], "Self-export fixtures must load only ES5 and decorator libraries")
+}
+function compare(a, b, comparisonOptions = {}) {
+  const result = compareApiIdentity(ts, a, b, { ...comparisonOptions, compilerOptions })
+  assertLibraries()
+  return result
+}
 assert.ok(readFileSync(new URL("../" + corpus.spec.split("#")[0], import.meta.url), "utf8").includes(corpus.rule), "property quotes the current API-identity rule")
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const options = {
-  strict: true, noEmit: true, types: [],
+  ...compilerOptions, strict: true, noEmit: true, types: [],
   module: ts.ModuleKind.Preserve, moduleResolution: ts.ModuleResolutionKind.Bundler,
 }
 function diagnostics(files) {
-  return ts.getPreEmitDiagnostics(ts.createProgram(files, options)).map(d => ({
+  const program = ts.createProgram(files, options)
+  assertLibraries()
+  return ts.getPreEmitDiagnostics(program).map(d => ({
     code: d.code, message: ts.flattenDiagnosticMessageText(d.messageText, "\n"),
   }))
 }
@@ -61,7 +81,7 @@ function verify({ namespace = "Self", value = "string", changed, reverse = false
         'const forward: typeof B.get = a; const reverse: typeof A.get = b;\n')
       assert.deepEqual(diagnostics([consumer]), [], "stock TypeScript accepts both assignment directions")
     }
-    const result = compareApiIdentity(ts, a, b)
+    const result = compare(a, b)
     assert.equal(result.comparisonComplete, true, JSON.stringify(result))
     assert.equal(result.identical, !changed, JSON.stringify(result))
     const kind = changed === "doc" ? "docDifferences" : changed === "name" ? "nameDifferences" : "typeDifferences"
@@ -80,7 +100,7 @@ test("opencode corpus: a bound import crossing a self-namespace export preserves
     let result
     try {
       console.error = value => { stages.push(JSON.parse(value)) }
-      result = compareApiIdentity(ts, a, b, { profile: true })
+      result = compare(a, b, { profile: true })
     } finally { console.error = error }
     assert.equal(result.comparisonComplete, true, JSON.stringify(result))
     assert.equal(result.identical, true, JSON.stringify(result))
@@ -101,7 +121,7 @@ test("self-export normalization cannot merge distinct same-text nominal dependen
   }
   const before = { ...shared, "index.d.ts": 'export * as Self from "./index.js"; import { Item as A } from "./a.js"; import { Item as B } from "./b.js"; export type Pair = [A, B];' }
   const after = { ...shared, "index.d.ts": 'import { Item as A } from "./a.js"; export * as Self from "./index.js"; import { Item as B } from "./a.js"; export type Pair = [A, B];' }
-  fixture(before, after, (a, b) => assert.equal(compareApiIdentity(ts, a, b).identical, false))
+  fixture(before, after, (a, b) => assert.equal(compare(a, b).identical, false))
 })
 
 test("property: import/self-export positions preserve identity while API mutations remain visible", async () => {

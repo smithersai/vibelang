@@ -184,6 +184,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Self-namespace-export declaration tests repeatedly loaded unrelated browser libraries. Their native validation and API comparison now select ES5 while retaining assignment, nominal-type and changed-export checks.
+
 - The cross-source declaration example now checks the TypeScript import route while retaining its original JavaScript runtime results.
 
 
