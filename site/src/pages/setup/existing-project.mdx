@@ -30,6 +30,8 @@ Use Effect services for platform, clock and randomness APIs, such as `Console`, 
 
 The migration inventory keeps `.vibex` modules alongside `.vibe`, `.ts` and `.tsx` sources, including their local import and test dependencies. Generated declaration sidecars do not count as source files.
 
+The migration planner follows the source graph of an unchanged bundling test. With a plain inline `Bun.build({ packages: "external", … })` call, package imports stay outside that graph. Relative imports and TypeScript path aliases still belong to it. Literal resolver plugins whose hooks only throw preserve this boundary. Unclear resolver behavior keeps the files in TypeScript for review.
+
 ## 1. Check package.json
 
 `package.json` must have `"type": "module"`. Before adding it, check how this changes Node's loading of your project's `.js` files.

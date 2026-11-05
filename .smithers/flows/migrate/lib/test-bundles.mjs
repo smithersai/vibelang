@@ -123,6 +123,82 @@ function entriesOf(text, file, ts, native) {
     }
     return node && ts.isObjectLiteralExpression(node) ? node : null
   }
+  const propertyKey = property => {
+    const name = property.name
+    if (name && (ts.isIdentifier(name) || ts.isStringLiteralLike(name))) return name.text
+    if (name && ts.isComputedPropertyName(name)) {
+      const value = unwrap(name.expression)
+      if (ts.isStringLiteralLike(value)) return value.text
+    }
+    return null
+  }
+  // A resolver that always throws can reject an import, but cannot add an
+  // owned module to a successful bundle. Unknown factories, returning hooks
+  // and configuration mutations retain the conservative source graph.
+  const rejectingPlugins = node => {
+    if (node === undefined) return true
+    node = unwrap(node)
+    if (!node || !ts.isArrayLiteralExpression(node)) return false
+    return node.elements.every(element => {
+      const plugin = unwrap(element)
+      if (!plugin || !ts.isObjectLiteralExpression(plugin)) return false
+      let setup, seenSetup = false
+      for (const property of plugin.properties) {
+        const key = propertyKey(property)
+        if (key === "name" && ts.isPropertyAssignment(property) && ts.isStringLiteralLike(unwrap(property.initializer))) continue
+        if (key !== "setup" || seenSetup) return false
+        seenSetup = true
+        setup = ts.isMethodDeclaration(property) ? property
+          : ts.isPropertyAssignment(property) ? unwrap(property.initializer) : null
+      }
+      if (!setup || !(ts.isMethodDeclaration(setup) || ts.isFunctionExpression(setup) || ts.isArrowFunction(setup)) ||
+          setup.asteriskToken || ts.getCombinedModifierFlags(setup) & ts.ModifierFlags.Async ||
+          setup.parameters.length !== 1 || !ts.isIdentifier(setup.parameters[0].name) ||
+          setup.parameters[0].initializer || setup.parameters[0].dotDotDotToken ||
+          !ts.isBlock(setup.body)) return false
+      const builder = sym(setup.parameters[0].name)
+      return setup.body.statements.every(statement => {
+        if (ts.isEmptyStatement(statement)) return true
+        if (!ts.isExpressionStatement(statement)) return false
+        const call = unwrap(statement.expression)
+        if (!ts.isCallExpression(call) || call.arguments.length !== 2) return false
+        const callee = unwrap(call.expression)
+        if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== "onResolve" ||
+            !ts.isIdentifier(callee.expression) || !builder || sym(callee.expression) !== builder) return false
+        const options = unwrap(call.arguments[0]), handler = unwrap(call.arguments[1])
+        if (!options || !ts.isObjectLiteralExpression(options) ||
+            !options.properties.some(property => propertyKey(property) === "filter") ||
+            !options.properties.every(property => {
+              if (!ts.isPropertyAssignment(property)) return false
+              const key = propertyKey(property), value = unwrap(property.initializer)
+              return key === "filter" ? value?.kind === ts.SyntaxKind.RegularExpressionLiteral
+                : key === "namespace" && ts.isStringLiteralLike(value)
+            }) ||
+            !handler || !(ts.isArrowFunction(handler) || ts.isFunctionExpression(handler)) ||
+            handler.asteriskToken || !ts.isBlock(handler.body) ||
+            handler.body.statements.length !== 1 || !ts.isThrowStatement(handler.body.statements[0])) return false
+        return true
+      })
+    })
+  }
+  const externalBunPackages = (node, bundler) => {
+    node = unwrap(node)
+    // Named options can be mutated before the call; getters and spreads can
+    // change the effective package policy. Only a plain inline object proves it.
+    if (bundler !== "Bun.build" || !node || !ts.isObjectLiteralExpression(node)) return false
+    let external = false, plugins
+    for (const property of node.properties) {
+      if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) return false
+      const key = propertyKey(property)
+      if (key === null || key === "__proto__") return false
+      if (key === "packages") {
+        const value = ts.isPropertyAssignment(property) && unwrap(property.initializer)
+        external = !!value && ts.isStringLiteralLike(value) && value.text === "external"
+      }
+      if (key === "plugins") plugins = ts.isPropertyAssignment(property) ? property.initializer : property.name
+    }
+    return external && rejectingPlugins(plugins)
+  }
   const bundles = []
   // Bun.spawn([process.execPath, "build", entry, ...]) and Bun.spawnSync: a bundle no plugin can reach.
   const isBun = node => ts.isStringLiteralLike(node) ? /(?:^|\/)bun(?:\.exe)?$/.test(node.text)
@@ -167,7 +243,7 @@ function entriesOf(text, file, ts, native) {
             }
           }
           scan(object)
-          if (!plugins || !native?.(plugins, checker, file, name)) bundles.push({ line, bundler: name, values: inputs })
+          if (!plugins || !native?.(plugins, checker, file, name)) bundles.push({ line, bundler: name, values: inputs, externalPackages: externalBunPackages(node.arguments[0], name) })
         }
       }
     }
@@ -232,13 +308,16 @@ export function sourceGraph(root, { paths = {}, ts, repo = repository(root) } = 
     }
     return targets.filter(t => t.startsWith(".")).map(t => runtimeFile(posix.join(dir,t))).filter(Boolean)
   }
-  const dependency = (from, specifier) => specifier.startsWith(".")
+  const dependency = (from, specifier, { externalPackages = false } = {}) => specifier.startsWith(".")
     ? [runtimeFile(posix.join(posix.dirname(from),specifier))].filter(Boolean)
-    : [resolveAlias(specifier,paths[owner(from)],known),...bare(from,specifier)].filter(Boolean)
-  const graph = new Map()
-  const deps = file => {
-    if (!graph.has(file)) graph.set(file, parseImports(text(file)).filter(i => !i.typeOnly).flatMap(i => dependency(file,i.specifier)))
-    return graph.get(file)
+    // Bun resolves TypeScript paths before its package boundary. Private
+    // package imports, like other bare imports, remain external.
+    : [resolveAlias(specifier,paths[owner(from)],known),...(externalPackages ? [] : bare(from,specifier))].filter(Boolean)
+  const graph = new Map(), externalGraph = new Map()
+  const deps = (file, { externalPackages = false } = {}) => {
+    const cache = externalPackages ? externalGraph : graph
+    if (!cache.has(file)) cache.set(file, parseImports(text(file)).filter(i => !i.typeOnly).flatMap(i => dependency(file,i.specifier,{externalPackages})))
+    return cache.get(file)
   }
   return { files, manifests, owner, known, text, ts, bare, dependency, runtimeFile, deps }
 }
@@ -290,7 +369,7 @@ export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning 
       while (todo.length) {
         const file = todo.pop()
         if (seen.has(file)) continue
-        seen.add(file); todo.push(...deps(file))
+        seen.add(file); todo.push(...deps(file,{externalPackages:bundle.externalPackages}))
         if (!wanted.has(file)) continue
         const receipt = { test, line: bundle.line, bundler: bundle.bundler, entry }
         const list = found.get(file) ?? []

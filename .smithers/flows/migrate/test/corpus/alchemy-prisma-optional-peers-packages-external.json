@@ -1,0 +1,16 @@
+{
+  "entry": "packages/prisma/src/index.ts",
+  "local": "packages/prisma/src/Local.ts",
+  "dependency": "packages/engine/src/Command/Exec.ts",
+  "test": "packages/integration-tests/test/optional-peers.test.ts",
+  "files": {
+    "package.json": "{\"private\":true,\"workspaces\":[\"packages/*\"]}",
+    "packages/prisma/package.json": "{\"name\":\"@example/prisma\",\"exports\":{\".\":\"./src/index.ts\"}}",
+    "packages/engine/package.json": "{\"name\":\"example-engine\",\"exports\":{\"./*\":\"./src/*.ts\"}}",
+    "packages/integration-tests/package.json": "{\"name\":\"@example/integration-tests\",\"scripts\":{\"test\":\"bun test\"}}",
+    "packages/prisma/src/index.ts": "import { execute } from \"example-engine/Command/Exec\";\nimport { local } from \"./Local.ts\";\nexport const run = () => execute() + local;\n",
+    "packages/prisma/src/Local.ts": "export const local = 1;\n",
+    "packages/engine/src/Command/Exec.ts": "export const execute = () => 1;\n"
+  },
+  "source": "Bun.build({entrypoints:[\"packages/prisma/src/index.ts\"],target:\"bun\",packages:\"external\",plugins:[{name:\"reject-optional-runtime\",setup(build){build.onResolve({filter:/^(@prisma\\/orm-|arktype(?:\\/|$))/},args=>{throw new Error(`Unexpected optional runtime import: ${args.path}`);});}}]});\n"
+}
