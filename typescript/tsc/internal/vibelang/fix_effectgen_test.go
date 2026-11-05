@@ -349,11 +349,16 @@ func FuzzEffectFnStageArguments(f *testing.F) {
 	parameters := []struct {
 		text  string
 		holds bool // the parameter holds the argument the caller wrote
+		// binds marks a pattern the rewrite binds at each run, under the call's
+		// public parameter labels. A stage leaves the call (...args: any[]),
+		// which has none, and Chapter 7 keeps public signatures: the native
+		// generator stays (301eaa3b110e).
+		binds bool
 	}{
-		{"n: number, m?: number", true},
-		{"n?: number, m?: number", true},
-		{"n: number = 1, m?: number", false},
-		{"{ n }: { n: number }, m?: number", false},
+		{"n: number, m?: number", true, false},
+		{"n?: number, m?: number", true, false},
+		{"n: number = 1, m?: number", false, false},
+		{"{ n }: { n: number }, m?: number", false, true},
 	}
 	for p := range len(parameters) {
 		for arity := range uint8(3) {
@@ -386,10 +391,15 @@ func FuzzEffectFnStageArguments(f *testing.F) {
 		stage := "(" + strings.Join(names, ", ") + ") => Effect.map(e, (x) => x + " + read + ")"
 		source := "const " + outer + " = 1\nexport const f = Effect.fn(\"f\")(function* (" + parameter.text + ") {\n  return yield* Effect.succeed(1)\n}, " + stage + ")\n"
 		hidden := read == "n"
-		want := !hidden && (reads == 1 || parameter.holds && reads == 3 && !renamed)
+		want := !hidden && !parameter.binds && (reads == 1 || parameter.holds && reads == 3 && !renamed)
 		got, ok := effectGenQuickFix(t, source)
 		if ok != want {
 			t.Fatalf("quick fix %v, want %v, for:\n%s\ngot:\n%s\nnotes: %s", ok, want, source, got, effectGenNotes(t, source))
+		}
+		if parameter.binds && !hidden && reads == 1 {
+			if notes := effectGenNotes(t, source); !strings.Contains(notes, "public parameter labels") {
+				t.Fatalf("no label refusal for:\n%s\nnotes: %s", source, notes)
+			}
 		}
 		if !ok {
 			if notes := effectGenNotes(t, source); !strings.Contains(notes, "No quick fix") {
