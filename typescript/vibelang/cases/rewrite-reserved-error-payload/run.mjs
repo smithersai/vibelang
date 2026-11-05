@@ -1,4 +1,6 @@
+// run-seconds: 180
 import assert from "node:assert/strict"
+import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
@@ -9,9 +11,9 @@ const compiler = process.env.VIBELANG_REWRITE_BINARY || fileURLToPath(new URL(".
 const evidence = path.join(dir, "out/migration-evidence")
 fs.rmSync(evidence, { recursive: true, force: true })
 
-for (const form of ["error", "schema error"]) {
-  for (const variant of ["literal", "family", "abstract-family", "trivia"]) {
-    const work = path.join(evidence, form.replace(" ", "-") + "-" + variant)
+let sample = 0
+function probe(form, variant, id = "x", n = 7) {
+    const work = path.join(evidence, form.replace(" ", "-") + "-" + variant + "-" + sample++)
     fs.mkdirSync(work, { recursive: true })
     for (const name of ["package.json", "tsconfig.json"]) fs.copyFileSync(path.join(dir, name), path.join(work, name))
     fs.symlinkSync(path.join(dir, "node_modules"), path.join(work, "node_modules"))
@@ -23,7 +25,7 @@ for (const form of ["error", "schema error"]) {
     fs.writeFileSync(source, `export ${abstract}${form} E { ${field}; id: string }
 ${family ? `export ${form} Child extends E { n: number }` : ""}
 export effect function main() {
-  const e = new ${family ? 'Child({ id: "x", n: 7 })' : 'E({ id: "x" })'}
+  const e = new ${family ? "Child({ id: " + JSON.stringify(id) + ", n: " + n + " })" : "E({ id: " + JSON.stringify(id) + " })"}
   return [e._tag, e.id, match (e) { when E: "family"; default: "miss"; }, e instanceof E]
 }
 `)
@@ -47,11 +49,10 @@ process.stdout.write(JSON.stringify(await Effect.runPromiseExit(main())));
 `]
     const originalExit = JSON.parse(command("run-before", process.execPath, runArgs))
     assert.equal(originalExit._tag, "Success")
-    // VIP-7/29 (dfc50f853e2e): schema errors test their own tag,
-    // including legacy family inputs. Plain error compatibility keeps its
-    // instance-based family matcher. Both must survive the rewrite unchanged.
-    const matched = form === "schema error" && family ? "miss" : "family"
-    assert.deepEqual(originalExit.value, [family ? "Child" : "E", "x", matched, true])
+    // VIP-7/13/29 give concrete errors an own tag matcher. Only legacy
+    // abstract plain roots retain native instance-based family recognition.
+    const matched = !family || form === "error" && variant === "abstract-family" ? "family" : "miss"
+    assert.deepEqual(originalExit.value, [family ? "Child" : "E", id, matched, true])
     command("fix", compiler, [...compileArgs, "--fix"])
     const fixed = fs.readFileSync(source, "utf8")
     assert.ok(fixed.includes("class E extends"), "the reserved field was not migrated to its class")
@@ -59,6 +60,14 @@ process.stdout.write(JSON.stringify(await Effect.runPromiseExit(main())));
     assert.deepEqual(JSON.parse(command("run-after", process.execPath, runArgs)), originalExit, "migration changed the runtime Exit")
     command("fix-again", compiler, [...compileArgs, "--fix"])
     assert.equal(fs.readFileSync(source, "utf8"), fixed, "the second fix changed the source")
-  }
 }
+for (const form of ["error", "schema error"]) {
+  for (const variant of ["literal", "family", "abstract-family", "trivia"]) probe(form, variant)
+}
+const require = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))
+const fc = require("fast-check")
+fc.assert(fc.property(fc.constantFrom("error", "schema error"),
+  fc.constantFrom("literal", "family", "abstract-family", "trivia"),
+  fc.string({ maxLength: 8 }), fc.integer({ min: 0, max: 100 }), probe),
+  { seed: 71329, numRuns: 16 })
 process.stdout.write("reserved error payload migration preserves the program\n")
