@@ -1289,3 +1289,15 @@ func init() {
 		Modules: []string{}, Requires: []string{}, Cite: vip7Cite("Object.hasOwn"),
 	})
 }
+
+// Calling an own protocol value preserves native callability failures.
+func init() {
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.noncallable-own-matcher-plain",
+		Chapter: "004-match.md",
+		Quote:   "reads and calls that matcher when the pattern runs, as the draft says.",
+		Vibe:    "function witness(){\nfunction capture(f:()=>unknown):string {\n try { return JSON.stringify([\"value\",f()]) }\n catch(error) { const e=error as Error; return JSON.stringify([\"throw\",e.name,e.message]) }\n}\n\n try{\n const key=(Symbol as any).customMatcher ?? Symbol.for(\"Symbol.customMatcher\")\n class C { static [key](subject:unknown,_hint?:unknown):false|unknown[]{return [subject]} }\n const holder={C}\n const subject=new C()\n const results:unknown[][]=[]\n for(const value of [null,false,0,1,\"bad\",{},[],undefined]){\n  let reads=0\n  Object.defineProperty(C,key,{configurable:true,get(){reads++;return value}})\n  const operations=[()=>match(subject){when C:true;default:false;},()=>subject is C,()=>match(subject){when holder.C:true;default:false;},()=>match(subject){when holder[\"C\"]:true;default:false;}]\n  const row:unknown[]=[]\n  for(const run of operations){\n   reads=0\n   const actual=capture(run)\n   row.push([actual,reads])\n  }\n  results.push(row)\n }\n return results\n }catch(e){return [[\"unexpected\",(e as Error).name]]}\n}\n",
+		Effect:  "function witness(){\nfunction capture(f) {\n try { return JSON.stringify([\"value\",f()]) }\n catch(error) { const e=error; return JSON.stringify([\"throw\",e.name,e.message]) }\n}\n\n try{\n const key=Symbol.customMatcher ?? Symbol.for(\"Symbol.customMatcher\")\n class C { static [key](subject,_hint){return [subject]} }\n function invoke(){\n  const method=Reflect.get(C,key)\n  return method===undefined?subject===C:!!Reflect.apply(method,C,[subject,{matchType:\"boolean\"},null])\n }\n const holder={C}\n const subject=new C()\n const results=[]\n for(const value of [null,false,0,1,\"bad\",{},[],undefined]){\n  let reads=0\n  Object.defineProperty(C,key,{configurable:true,get(){reads++;return value}})\n  const operations=[()=>invoke(),()=>invoke(),()=>invoke(),()=>invoke()]\n  const row=[]\n  for(const run of operations){\n   reads=0\n   const actual=capture(run)\n   row.push([actual,reads])\n  }\n  results.push(row)\n }\n return results\n }catch(e){return [[\"unexpected\",e.name]]}\n}\n",
+		Cite:    Citation{VIP: 7, Template: "Reflect.apply", Quote: "Class arms use the class's `Symbol.customMatcher`.", Reading: "InvokeCustomMatcher calls every non-undefined protocol value; undefined uses identity matching; Reflect.apply preserves other values' native callable check, TypeError and single property read."},
+	})
+}

@@ -5052,6 +5052,14 @@ typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:97 lambda plain tab
 typescript/vibelang/cases/match-list-elision-optional/main.vibe:45:20 lambda plain fallback
 typescript/vibelang/cases/match-list-optional-absent/main.vibe:6:37 lambda plain fallback
 typescript/vibelang/cases/match-negated-ordinary-class/main.vibe:5:69 lambda plain table
+typescript/vibelang/cases/match-noncallable-own/main.vibe:13:50 lambda plain fallback
+typescript/vibelang/cases/match-noncallable-own/main.vibe:14:139 lambda choice fallback
+typescript/vibelang/cases/match-noncallable-own/main.vibe:14:148 lambda dual fallback
+typescript/vibelang/cases/match-noncallable-own/main.vibe:14:21 lambda choice fallback
+typescript/vibelang/cases/match-noncallable-own/main.vibe:14:30 lambda dual fallback
+typescript/vibelang/cases/match-noncallable-own/main.vibe:14:68 lambda choice fallback
+typescript/vibelang/cases/match-noncallable-own/main.vibe:14:85 lambda choice fallback
+typescript/vibelang/cases/match-noncallable-own/main.vibe:14:94 lambda dual fallback
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:12:8 lambda dual fallback
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:14:8 lambda plain fallback
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:15:8 lambda plain fallback

@@ -54,15 +54,24 @@ function matcherOf(value: unknown, ownClassOnly = false): Function | undefined {
   if (value === null || value === undefined) return undefined
   // Generated class patterns follow the own-matcher rule before reading the
   // property. The legacy ABI path retains registered error-family lookup.
-  if (ownClassOnly && typeof value === "function") {
-    if (!Object.hasOwn(value, customMatcher)) return undefined
+  if (ownClassOnly) {
+    if (typeof value === "function" && !Object.hasOwn(value, customMatcher)) return undefined
+    // An own undefined value uses the draft's identity default, rather than
+    // the ordinary-class instanceof fallback selected for an absent property.
     const custom = (value as any)[customMatcher]
-    return typeof custom === "function" ? custom : undefined
+    if (typeof value === "function" && custom === undefined) return undefinedOwnClassMatcher
+    // Reflect.apply below performs the native callable check for other values.
+    return custom
   }
   const custom = (value as any)[customMatcher]
   if (typeof custom !== "function") return undefined
   if (typeof value === "function" && !Object.hasOwn(value, customMatcher) && !errorMatchers.has(custom)) return undefined
   return custom
+}
+
+function undefinedOwnClassMatcher(this: unknown, subject: unknown, hint: MatchHint): boolean {
+  if (hint.matchType === "extractor") throw new TypeError()
+  return subject === this
 }
 
 /** The hint a custom matcher receives as its second argument. */
@@ -268,6 +277,7 @@ export function $extract(matcher: unknown, subject: unknown, receiver: unknown =
     }
     return extractedList(Reflect.apply(matcher, receiver, [subject, { matchType: "extractor" }]))
   }
+  if (ownClassOnly) throw new TypeError()
   throw new TypeError("An extractor pattern needs a class, a regular expression, or a value with a Symbol.customMatcher method")
 }
 

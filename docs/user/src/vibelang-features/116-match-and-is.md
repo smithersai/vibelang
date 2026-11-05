@@ -494,3 +494,5 @@ Computed presence keys need no colon: `{ ["field"] }`, `{ [key] }` and `{ [symbo
 The built-in `String` matcher accepts a primitive string or an instance of
 `String`. Boxed values are extracted through `valueOf()`: for example,
 matching `new String("text")` extracts `"text"`.
+
+A class's own `Symbol.customMatcher` value is read once. A non-callable value other than `undefined` raises the native `TypeError`. An own `undefined` value selects identity matching for a bare pattern and raises `TypeError` for an extractor. A class with no own matcher uses `instanceof`.

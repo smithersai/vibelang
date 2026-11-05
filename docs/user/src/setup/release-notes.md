@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Diagnostic identity updates preserve authored source and project configuration without depending on generated declarations.
 - The legacy `infer` migration examples now retain trailing comments after the last declaration, matching the output of `vibelang --fix --fix-vip-only`.
 
+- A class whose own custom matcher was replaced could silently use `instanceof`. Patterns now preserve the native `TypeError` for non-callable values and identity matching for an own `undefined` value.
+
 - A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
 
 - API provenance checks loaded unrelated browser declarations. They now use fewer libraries while retaining selected dependencies and native type errors.
