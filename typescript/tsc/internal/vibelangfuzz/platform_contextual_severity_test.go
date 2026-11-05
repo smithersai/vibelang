@@ -16,6 +16,9 @@ const platformContextualQuote = "The restriction and preserving repair still app
 
 func TestPlatformContextualSeverityQuoted(t *testing.T) {
 	appendix := SpecText(grammarAppendix)
+	if !strings.Contains(appendix, "a forbidden punctuator follows a throw expression") {
+		t.Fatal("missing VIP-41 punctuation rule")
+	}
 	if !strings.Contains(appendix, defaultCategoryQuote) {
 		t.Fatalf("Appendix B no longer says %q", defaultCategoryQuote)
 	}
@@ -152,8 +155,13 @@ func FuzzExplicitDiagnosticCategoryVariants(f *testing.F) {
 		if raw == 4402 {
 			code = 4402
 		}
-		if !strings.Contains(Facts().Rows[code].Reports, "Category variants: `error`, `warning`.") {
-			t.Fatal("Appendix B no longer lists both error and warning categories")
+		row := Facts().Rows[code].Reports
+		variants := strings.Contains(row, "Category variants: `error`, `warning`.")
+		if code == 4402 && !variants {
+			t.Fatal("Appendix B no longer lists both host context categories")
+		}
+		if code == 1010 && (variants || !strings.Contains(row, "a forbidden punctuator follows a throw expression")) {
+			t.Fatal("VIP-41 throw punctuation must retain its fixed error category")
 		}
 		categories := []diagnostics.Category{diagnostics.CategoryError, diagnostics.CategoryWarning, diagnostics.CategorySuggestion, diagnostics.CategoryMessage}
 		category := categories[variant%uint8(len(categories))]
@@ -161,7 +169,7 @@ func FuzzExplicitDiagnosticCategoryVariants(f *testing.F) {
 		d := ast.NewExternalDiagnostic(file, core.NewTextRange(0, 1), "EK", category, code, "explicit category-variant witness")
 		gaps := &Gaps{}
 		CheckDiagnostics(gaps, "/project", []*ast.Diagnostic{d}, true)
-		valid := category == diagnostics.CategoryError || category == diagnostics.CategoryWarning
+		valid := category == diagnostics.CategoryError || variants && category == diagnostics.CategoryWarning
 		if gaps.Any() == valid {
 			t.Fatalf("EK%d category %s: valid=%t gaps=%v", code, category.Name(), valid, gaps.found)
 		}

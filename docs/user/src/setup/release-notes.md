@@ -36,6 +36,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Scoped fixes retain independent repairs when a platform adapter needs an unlisted companion module, and identify the refused site.
 
+- Invalid throw-expression punctuation remains an error; host compatibility warnings retain their documented context.
+
 - A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
 
 - API provenance checks loaded unrelated browser declarations. They now use fewer libraries while retaining selected dependencies and native type errors.

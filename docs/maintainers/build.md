@@ -2058,3 +2058,5 @@ must retain native `TS2583` and make comparison unavailable.
 The `//:schema-codec-native-return-inference` target checks generated schema factory return inference, writable codec references, lexical scopes and migration idempotence.
 
 The `//:scoped-wrapper-refusal-progress` target checks scoped platform refusals, independent listed-file repairs, omitted companions and unchanged unlisted modules, including interrupted verification.
+
+The `//:explicit-diagnostic-category-variants` target checks fixed throw-syntax error severity and contextual host warning categories against Appendix B.
