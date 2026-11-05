@@ -66,7 +66,11 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 		}
 		if failures := a.knownThrows(node); failures != nil {
 			if home := a.plainHomeOf(node); home != nil && !a.throwsBelongToCall(home) {
-				report(c, node, throwingCallOutsideEffect, nodeText(file, ast.GetInvokedExpression(node)), typeListText(c, failures))
+				if ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(node, home) {
+					report(c, node, foreignCallInEffectParameters, nodeText(file, ast.GetInvokedExpression(node)))
+				} else {
+					report(c, node, throwingCallOutsideEffect, nodeText(file, ast.GetInvokedExpression(node)), typeListText(c, failures))
+				}
 			}
 		}
 		return node.ForEachChild(visit)

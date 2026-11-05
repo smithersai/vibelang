@@ -2132,3 +2132,5 @@ The `//:build-repair-cli-contracts` target checks build aliases, repair flag ord
 The `//:abstract-error-constructor-migrations` target checks abstract root and inherited constructor repairs across ordinary, migration-only and VIP-only runs, including imported bases, namespaces, Unicode and declaration preservation. Runtime controls retain field filtering, tags, getters, constructor identity and repeated repair behavior.
 
 The binding-free pattern check compiles checking projections with actual runtime cache types, independently of prelude export inventory, and verifies empty, literal, nested, negated and alternative patterns plus iterator closing and getter reads.
+
+The Effect parameter diagnostic check varies callable form, throwing contract, and default binding shape. It retains strict initialization checks and records each diagnostic span when the expected count differs.

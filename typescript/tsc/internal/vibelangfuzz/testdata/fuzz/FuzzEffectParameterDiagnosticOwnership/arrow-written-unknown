@@ -1,0 +1,4 @@
+go test fuzz v1
+string("arrow")
+string("written-unknown")
+byte(2)

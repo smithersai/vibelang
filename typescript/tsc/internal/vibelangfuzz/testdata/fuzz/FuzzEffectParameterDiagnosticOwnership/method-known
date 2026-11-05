@@ -1,0 +1,4 @@
+go test fuzz v1
+string("method")
+string("known")
+byte(2)

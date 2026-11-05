@@ -666,7 +666,9 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 		home.Kind == ast.KindClassStaticBlockDeclaration:
 		return // a computed name or decorator keeps its enclosing context
 	case ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(call, home):
-		if t.kind == trustForeign && !t.promise {
+		// Known throws are already owned by the plain-code pass. The
+		// stricter parameter check adds only previously unknown throwing.
+		if t.kind == trustForeign && !t.promise && a.knownThrows(call) == nil {
 			d := report(c, callee, foreignCallInEffectParameters, name)
 			note(d, "Compute the value in the body with {0}.", boundaryCall(c, file, "try", call, ""))
 		}

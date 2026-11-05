@@ -19,7 +19,7 @@ import (
 // exactly one `EK0401` when the payload is a throw or a known call in plain
 // code, except a known call in the `try` block of a `try` with a `catch` in the
 // same function; none in effect code, in an `async` function, and none for
-// the unknown call. Effect code's own checks of an unwrapped call (`EK0403`,
+// the unknown call, except in an Effect callable's stricter parameter list. Effect code's own checks of an unwrapped call (`EK0403`,
 // `EK4401`) are outside this rule.
 var nothrowPlacementQuotes = []string{
 	"A `throw` statement or throw expression is `EK0401`, even when a `try` statement in the same function catches it:",
@@ -247,12 +247,14 @@ func FuzzNothrowPlacement(f *testing.F) {
 		others := call && (kind.effect || kind.async || kind.key == "plain-handler") && !position.nested
 		reported := 0
 		var errs []string
+		var reportedDetails []string
 		for _, d := range r.Diagnostics {
 			if d.Category() != diagnostics.CategoryError {
 				continue
 			}
 			if IsEK(d) && d.Code() == 401 {
 				reported++
+				reportedDetails = append(reportedDetails, fmt.Sprintf("EK0401[%d,%d): %s", d.Pos(), d.End(), d.String()))
 				continue
 			}
 			errs = append(errs, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
@@ -268,13 +270,21 @@ func FuzzNothrowPlacement(f *testing.F) {
 			if plain {
 				want = 1 // quote 0, and quote 4 for async
 			}
+		case "unknown-call":
+			if kind.effect && kind.def != nil {
+				want = 1
+			}
 		case "known-call", "unknown-contract-call":
 			if plain && !position.caught && !(kind.admitted && !position.nested) {
 				want = 1 // quotes 1 and 2; an admitted callback's own body, quotes 7 and 8
 			}
 		}
 		if reported != want {
-			Gap(t, "FuzzNothrowPlacement", fmt.Sprintf("EK0401:%d:%s", want, shape), "chapter 3: %q; want %d EK0401, got %d for %s:\n%s", nothrowPlacementQuotes[nothrowPayloads[payload].quote], want, reported, shape, source)
+			quote := nothrowPlacementQuotes[nothrowPayloads[payload].quote]
+			if kind.effect && kind.def != nil {
+				quote = effectParameterNoThrowQuote
+			}
+			Gap(t, "FuzzNothrowPlacement", fmt.Sprintf("EK0401:%d:%s", want, shape), "chapter 3: %q; want %d EK0401, got %d for %s:\n%s\n%s", quote, want, reported, shape, source, strings.Join(reportedDetails, "\n"))
 			return
 		}
 		ExpectPending(t, "FuzzNothrowPlacement", fmt.Sprintf("EK0401:%d:%s", want, shape))
