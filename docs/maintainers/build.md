@@ -2031,3 +2031,5 @@ The `//:implicit-generator-defect-bridges` target compares implicit generator re
 The `//:trusted-legacy-client-actions` target checks the legacy client diagnostics at current synchronous-call boundaries through public language-service document edits.
 
 The `//:recursive-legacy-slot-diagnostics` check retains recursive legacy call-cycle and native recursion errors while testing fully written positive contracts for argument, logical and generic call positions.
+
+The `//:fork-object-operands` check proves the seven object operands are legal TypeScript expressions but not assignable to Effect, requires all seven `EK1703` errors and retains embedded native return errors in wrapped and unwrapped controls.

@@ -1,4 +1,4 @@
-// expect: EK1703 TS2353
+// expect: EK1703
 export effect function main() {
  const value = 1
  const name = "item"
