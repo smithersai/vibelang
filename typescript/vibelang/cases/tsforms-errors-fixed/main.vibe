@@ -37,4 +37,5 @@ export effect function main() {
     described: [try describe("7"), try describe("slow")]
   }
 }
-// Chapter 900: EK4830 diagnostic - spec-rule: docs/design/src/900-appendices.md#1a43c27da4aad4eb
+
+// Appendix B: tsforms-errors — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

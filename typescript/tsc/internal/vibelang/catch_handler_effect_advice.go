@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	tsFormFixCodes = append(tsFormFixCodes, EK0508.Code)
+	// Running returned data changes meaning; offer this only as an explicit editor action.
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK0508.Code}, GetCodeActions: catchHandlerEffectActions})
 }
 

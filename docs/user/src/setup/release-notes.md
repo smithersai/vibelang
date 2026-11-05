@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Automatic repairs could run a catch handler's returned error or Effect as a computation; they now preserve that value as data, with an explicit editor action available to run it.
+
 - Nested callbacks use their own rethrow admission; functions escaping those callbacks still retain the plain-code throw check.
 - Unchanged native importers retain their declaration spelling during a one-file migration; explicit source imports use the corresponding TypeScript import preference.
 - Legacy computed schema keys retain throwing-call errors alongside their migration diagnostic; preserving repairs still compile without errors.

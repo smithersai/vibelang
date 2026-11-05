@@ -948,6 +948,12 @@ const targets = {
     [go, node, bun],
     "10m"
   ),
+  "automatic-catch-data-preservation": goVibelang(
+    "Automatic repairs preserve plain catch data, warnings and contracts while explicit editor actions remain available.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelang ./internal/vibelangfuzz -run '^(TestPlainHandlerEffectAdviceQuickfix|TestPlainHandlerEffectAdviceMixedResultNeedsBranch|TestAutomaticCatchDataPreservationQuoted|FuzzAutomaticCatchDataPreservation|TestTypeScriptFormCasesFix)$/^(tsforms-errors|tsforms-errors-preserves-data|seed#.*|catch-data-.*)$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzFix$/^tsforms-errors-preserves-data$'`,
+    [Tsc["vibelangfuzz-files"]],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

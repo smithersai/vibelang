@@ -1962,3 +1962,5 @@ The `//:throw-repair-native-twins` gate retains every repair and idempotence inv
 The `//:option-generator-iterator-refusals` gate distinguishes native generators from explicit producers and retains every active-iterator refusal across binding, discard, return, nested-loop, alias, and option-state variations.
 
 The `//:error-tag-inheritance-identities` check retains all inheritance rejections and the native property error, with literal and union reserved-tag mutations in both error forms.
+
+The `//:automatic-catch-data-preservation` target checks returned data, native contracts, advisories and editor actions across catch handler variations.
