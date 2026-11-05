@@ -91,3 +91,41 @@ test("fast-check: duplicate heading fragments preserve their occurrence and sect
     },
   ), { seed: 3601, numRuns: 240 })
 })
+
+// Appendix B defines each printed identity and links its rule chapter. Keep the
+// repair reference on the executable witness so native and mapper hosts agree.
+const repairExamples = JSON.parse(readFileSync(new URL(
+  "../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json", import.meta.url), "utf8"))
+  .filter(example => example.repairReference)
+
+function repairReferenceFindings(examples, readChapter = chapter) {
+  return examples.flatMap(example => {
+    const match = /^([0-9]{3}-[a-z-]+)#([a-z0-9-]+)$/.exec(example.repairReference)
+    assert.ok(match, example.code + ": invalid repair reference")
+    const body = section(readChapter(match[1]), match[2])
+    return body !== undefined && new RegExp("\\b" + example.code + "\\b").test(body)
+      ? [] : [example.code + " -> " + example.repairReference]
+  })
+}
+
+test("retained native and mapper witnesses link their diagnostic repair definitions", () => {
+  assert.deepEqual(repairExamples.map(example => example.code).sort(),
+    ["EK1011", "EK2112", "EK2113", "EK2120", "EK2121", "EK9001", "EK9002", "EK9003", "EK9004"])
+  for (const example of repairExamples) {
+    assert.ok(example.source || example.archive || example.host, example.code + ": executable host")
+    assert.ok(!example.control && !example.retired, example.code + ": active reporting witness")
+  }
+  assert.deepEqual(repairReferenceFindings(repairExamples), [])
+})
+
+test("repair references require a whole identity inside the named section", () => {
+  fc.assert(fc.property(fc.constantFrom(...repairExamples), fc.nat({max: 99999}),
+    fc.boolean(), fc.boolean(), (example, suffix, present, correctSection) => {
+      const fixture = {...example, repairReference: "007-tooling#repair"}
+      const code = example.code + (present ? "" : suffix)
+      const source = "## " + (correctSection ? "Repair" : "Other") + "\n\n" + code +
+        "\n\n## Neighbor\n\n" + example.code + "\n"
+      assert.deepEqual(repairReferenceFindings([fixture], () => source),
+        present && correctSection ? [] : [example.code + " -> 007-tooling#repair"])
+    }), {seed: 349004, numRuns: 120})
+})

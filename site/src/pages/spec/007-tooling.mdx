@@ -247,11 +247,17 @@ A migration upgrades the target repository to the pinned Effect first, on its ow
 
 VibeLang declares an exact `effect` peer dependency. The compiler reads the resolved `effect/package.json`; any version other than `4.1.1`, including `4.1.0`, is `EK3201` in the CLI and editor ([VIP-32](/vips/0032-effect-version#decision)). For example, resolving `effect@4.0.3` reports: `the resolved effect is 4.0.3; VibeLang Y pins 4.1.1: upgrade both together`, where `Y` is the VibeLang release. This is one project-level diagnostic on the configuration file or package manifest, independent of the number of files and use sites. Each resolved off-pin `@effect/platform-*` peer likewise reports once, naming its resolved and pinned versions.
 
+
+An Effect construct whose installed Effect type cannot resolve reports `EK1011`; install the pinned peer before compiling. The stock-TypeScript mapper reports `EK9004` when the resolved Effect or platform package differs from its forms-table pin; align the package and table versions ([Appendix B](/spec/900-appendices#appendix-b-diagnostics)).
+
 ## Compiler and tooling requirements
 
 Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible. [Appendix B](/spec/900-appendices#appendix-b-diagnostics) assigns each VibeLang rule its `EK` code. Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types. A VibeLang production, placement rule, proposal early error or adopted reconciliation uses its owning VIP's code even when a TypeScript parser helper implements it; reuse an assigned code for the same rejection ([VIP-34](/vips/0034-compiler-and-tooling#decision)).
 
 When emitted JavaScript needs `vibelang-runtime` and the package cannot resolve, report one `TS2307` naming that package, never unresolved names for its generated helpers.
+
+
+The stock-TypeScript mapper reports `EK9001` when it cannot represent a source form safely; use the diagnosed explicit annotation or helper, or the native compiler. A rendered executable that does not parse as TypeScript is `EK9002`; report the source and use the native compiler. Its options must be an empty object: unsupported mapper options are `EK9003` ([Appendix B](/spec/900-appendices#appendix-b-diagnostics)).
 
 ### Fix ownership and preservation
 
@@ -414,6 +420,10 @@ The following own warnings default to `"warning"`; they are separate from import
 
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
+| A legacy catch clause tests its failure's type ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK2112` | Remove the annotation and test the value with `match` or `is`. |
+| A legacy `Cause`-typed catch clause ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK2113` | Match `exit(program)` with `Exit.Success` and `Exit.Failure`. |
+| A legacy `service class` or `control class` spelling | `EK2120` | Remove `class` from a service declaration; migrate retired control syntax to ordinary Effects ([VIP-9](/vips/0009-service-declarations#decision), [VIP-35](/vips/0035-handlers-open)). |
+| A legacy layer declaration | `EK2121` | Use an equivalent `Layer.effect` or `Layer.succeed` call, retaining construction timing and requirements. |
 | A plain `catch` handler returns an unrun Effect ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK0508` | `catch effect (e) => try …` |
 | A plain call in effect code infers an Effect type argument outside a declared Effect position ([Inferred Effect arguments](/spec/002-running#inferred-effect-arguments); [VIP-1, amended](/vips/0001-effect-and-async-functions#amendment-inferred-effect-arguments-2026-11-03)) | `EK4802` | The editor offers `try` for a direct Effect-valued argument when its written failure and requirement contract accepts it, or explicit type arguments to keep the program. Batch `--fix` chooses only `try` and refuses an edit that adds an error. |
 | Imported lint severities have no resolved Effect plugin entry | `EK3012` | Run `vibelang --fix` to preserve legacy plugin activation explicitly. |

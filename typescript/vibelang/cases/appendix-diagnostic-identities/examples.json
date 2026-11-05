@@ -97,7 +97,8 @@
       "column": 24
     },
     "also": [],
-    "effectPeer": false
+    "effectPeer": false,
+    "repairReference": "007-tooling#the-effect-version"
   },
   {
     "name": "appendix-EK2112",
@@ -110,7 +111,8 @@
     },
     "also": [
       "EK2105"
-    ]
+    ],
+    "repairReference": "002-running#catch"
   },
   {
     "name": "appendix-EK2113",
@@ -121,7 +123,8 @@
       "line": 2,
       "column": 78
     },
-    "also": []
+    "also": [],
+    "repairReference": "002-running#catch"
   },
   {
     "name": "typescript-control-EK4819",
@@ -191,7 +194,8 @@
     "code": "EK9001",
     "host": true,
     "testPath": "typescript/tsc/internal/vibelangmapper/project_test.go",
-    "testName": "TestUnprojectedForm"
+    "testName": "TestUnprojectedForm",
+    "repairReference": "007-tooling#compiler-and-tooling-requirements"
   },
   {
     "code": "EK2005",
@@ -227,19 +231,22 @@
     "code": "EK9002",
     "host": true,
     "testPath": "typescript/tsc/internal/vibelangmapper/render_exec_test.go",
-    "testName": "TestRenderExec"
+    "testName": "TestRenderExec",
+    "repairReference": "007-tooling#compiler-and-tooling-requirements"
   },
   {
     "code": "EK9003",
     "host": true,
     "testPath": "typescript/tsc/internal/vibelangmapper/tracing_removed_test.go",
-    "testName": "TestAutomaticTracingOptionRejected"
+    "testName": "TestAutomaticTracingOptionRejected",
+    "repairReference": "007-tooling#compiler-and-tooling-requirements"
   },
   {
     "code": "EK9004",
     "host": true,
     "testPath": "typescript/tsc/internal/vibelangmapper/server_test.go",
-    "testName": "TestVersionMismatchDiagnostic"
+    "testName": "TestVersionMismatchDiagnostic",
+    "repairReference": "007-tooling#the-effect-version"
   },
   {
     "name": "appendix-archive-EK0101",
@@ -384,12 +391,14 @@
   {
     "name": "appendix-archive-EK2120",
     "code": "EK2120",
-    "archive": true
+    "archive": true,
+    "repairReference": "007-tooling#vibelang-warnings"
   },
   {
     "name": "appendix-archive-EK2121",
     "code": "EK2121",
-    "archive": true
+    "archive": true,
+    "repairReference": "007-tooling#vibelang-warnings"
   },
   {
     "name": "appendix-archive-EK9204",
