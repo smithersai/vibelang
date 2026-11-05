@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A migration could report fixing complete while skipping selected scripts outside its projects. It now names the uncovered modules and keeps the fix pass incomplete until their projects are included.
 - A whole-scope migration could skip bundle dependencies even with `--route-bundled-imports` enabled. Planning now honors that option and includes those modules for conversion.
 - Converting an `async` function could produce syntax or type errors when it used `fork` or `join` as ordinary names; the editor now withholds those conversions until the affected bindings are renamed.
+- Returning a migrated file to TypeScript could stop on an unrelated generated framework configuration. Reference refresh now checks affected projects and their build dependencies, with the configuration and diagnostic named on failure.
 - Converting an `async` function could leave an incompatible `Promise` contract on a variable, callback, inherited member or overload; the editor now withholds conversions that would leave those contracts invalid.
 
 - Error declarations with an inheritance clause consistently report the existing inheritance diagnostic; the superseded constructor diagnostic is retired.

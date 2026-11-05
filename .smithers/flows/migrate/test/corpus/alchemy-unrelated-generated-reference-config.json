@@ -1,0 +1,7 @@
+{
+  "repository": "alchemy",
+  "sourceConfig": "packages/frontend-frameworks/fixtures/sveltekit/tsconfig.json",
+  "unrelatedConfig": "unused/tsconfig.json",
+  "unavailableExtends": "$app/tsconfig",
+  "source": "unused/src/main.ts"
+}

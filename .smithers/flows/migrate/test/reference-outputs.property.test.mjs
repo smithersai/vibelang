@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import test from "node:test"
+import { spawnSync } from "node:child_process"
 import { referenceRefreshPlan, refreshProjectReferences } from "../lib/reference-outputs.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
@@ -102,5 +103,128 @@ test("failed rebuilds remain failed in the durable progress receipt", async () =
     await assert.rejects(refreshProjectReferences({ ...f, ts, changed: ["p0/src/main.ts"], compiler: "vibelang", log,
       execute: async () => ({ code: 1, stdout: "error TS6305: referenced output missing\n", stderr: "" }) }), /reference rebuild failed/)
     assert.equal(JSON.parse(readFileSync(log + ".json")).state, "failed")
+  } finally { f.close() }
+})
+
+const generatedConfig = JSON.parse(readFileSync(new URL("./corpus/alchemy-unrelated-generated-reference-config.json", import.meta.url)))
+function addGeneratedConfig(f, references = []) {
+  f.put(generatedConfig.unrelatedConfig, { extends: generatedConfig.unavailableExtends,
+    files: ["src/main.ts"], references })
+  f.put(generatedConfig.source, "export const unused = 1\n")
+  f.put("unused/lib/main.js", "keep")
+  f.configs.push(generatedConfig.unrelatedConfig)
+}
+
+test("unrelated generated configurations do not block reference refresh after a return", async () => {
+  const f = fixture()
+  try {
+    const expected = referenceRefreshPlan({ ...f, ts, changed: ["p0/src/main.ts"] })
+    addGeneratedConfig(f)
+    assert.deepEqual(referenceRefreshPlan({ ...f, ts, changed: ["p0/src/main.ts"] }), expected)
+    let calls = 0
+    const receipt = await refreshProjectReferences({ ...f, ts, changed: ["p0/src/main.ts"],
+      compiler: "vibelang", log: join(f.root, "generated.log"), execute: async () => {
+        calls++
+        assert.equal(readFileSync(join(f.root, "unused/lib/main.js"), "utf8"), "keep")
+        return { code: 0, stdout: "", stderr: "" }
+      } })
+    assert.equal(calls, 1)
+    assert.equal(receipt.state, "complete")
+    assert.deepEqual(receipt.projects, ["p0/tsconfig.json", "p1/tsconfig.json", "p2/tsconfig.json"])
+  } finally { f.close() }
+})
+
+test("changed invalid configurations name their owner and diagnostic before deletion", async () => {
+  const f = fixture()
+  try {
+    addGeneratedConfig(f)
+    await assert.rejects(refreshProjectReferences({ ...f, ts, changed: [generatedConfig.source],
+      compiler: "vibelang", log: join(f.root, "changed-invalid.log"),
+      execute: async () => assert.fail("invalid project must not execute") }), error =>
+      error.message.includes(generatedConfig.unrelatedConfig) && /TS6053/.test(error.message))
+    assert.equal(readFileSync(join(f.root, "unused/lib/main.js"), "utf8"), "keep")
+    assert.equal(readFileSync(join(f.root, "p0/lib/main.js"), "utf8"), "stale")
+  } finally { f.close() }
+})
+
+test("invalid reverse dependents still fail planning and identify their configuration", () => {
+  const f = fixture()
+  try {
+    addGeneratedConfig(f, [{ path: "../p1" }])
+    assert.throws(() => referenceRefreshPlan({ ...f, ts, changed: ["p0/src/main.ts"] }), error =>
+      error.message.includes(generatedConfig.unrelatedConfig) && /TS6053/.test(error.message))
+    assert.equal(readFileSync(join(f.root, "p0/lib/main.js"), "utf8"), "stale")
+  } finally { f.close() }
+})
+
+test("invalid forward dependencies fail before an affected output is cleared", async () => {
+  const f = fixture()
+  try {
+    f.put("p0/tsconfig.json", { extends: generatedConfig.unavailableExtends,
+      compilerOptions: { composite: true }, files: ["src/main.ts"] })
+    await assert.rejects(refreshProjectReferences({ ...f, ts, changed: ["p2/src/main.ts"],
+      compiler: "vibelang", log: join(f.root, "invalid-dependency.log"),
+      execute: async () => assert.fail("invalid dependency must not execute") }), error =>
+      error.message.includes("p0/tsconfig.json") && /TS6053/.test(error.message))
+    assert.equal(readFileSync(join(f.root, "p2/lib/main.js"), "utf8"), "stale")
+  } finally { f.close() }
+})
+
+test("malformed configurations fail closed with a named diagnostic", () => {
+  const f = fixture()
+  try {
+    f.put("broken/tsconfig.json", "{")
+    f.configs.push("broken/tsconfig.json")
+    assert.throws(() => referenceRefreshPlan({ ...f, ts, changed: ["p0/src/main.ts"] }), error =>
+      error.message.includes("broken/tsconfig.json") && /TS\d+/.test(error.message))
+    assert.equal(readFileSync(join(f.root, "p0/lib/main.js"), "utf8"), "stale")
+  } finally { f.close() }
+})
+
+test("generated unrelated config neighborhoods preserve the reverse reference closure", () => {
+  // existing-project.md: "They follow the reverse reference closure".
+  // The generated chain is an independent model of that documented rule.
+  // An unavailable framework config outside that closure must preserve its outputs.
+  fc.assert(fc.property(fc.integer({ min: 2, max: 7 }), fc.nat(),
+    fc.integer({ min: 1, max: 3 }), fc.boolean(), (count, index, unused, native) => {
+      const f = fixture(count)
+      try {
+        index %= count
+        const changed = "p" + index + "/src/main." + (native ? "vibe" : "ts")
+        if (native) {
+          rmSync(join(f.root, "p" + index + "/src/main.ts"))
+          f.put(changed, "export const value = 2\n")
+        }
+        for (let i = 0; i < unused; i++) {
+          const dir = "unused" + i
+          f.put(dir + "/tsconfig.json", { extends: generatedConfig.unavailableExtends, files: ["src/main.ts"] })
+          f.put(dir + "/src/main.ts", "export const ignored = 1\n")
+          f.put(dir + "/lib/main.js", "keep")
+          f.configs.push(dir + "/tsconfig.json")
+        }
+        const plan = referenceRefreshPlan({ ...f, ts, changed: [changed] })
+        assert.deepEqual(plan.projects, Array.from({ length: count - index }, (_, i) => "p" + (index + i) + "/tsconfig.json"))
+        assert.deepEqual(plan.roots, ["p" + (count - 1) + "/tsconfig.json"])
+        const outputs = Array.from({ length: count - index }, (_, i) => "p" + (index + i))
+          .flatMap(dir => [dir + "/lib", dir + "/types", dir + "/cache/build.tsbuildinfo"]).sort()
+        assert.deepEqual([...plan.outputs].sort(), outputs)
+        for (let i = 0; i < unused; i++) assert.equal(readFileSync(join(f.root, "unused" + i + "/lib/main.js"), "utf8"), "keep")
+      } finally { f.close() }
+    }), { numRuns: 40, seed: 514143 })
+})
+
+test("stock TypeScript builds selected references without unrelated generated configs", () => {
+  const f = fixture()
+  try {
+    addGeneratedConfig(f)
+    const cli = require.resolve("typescript/bin/tsc")
+    const selected = spawnSync(process.execPath, [cli, "--build", "p2/tsconfig.json", "--pretty", "false"],
+      { cwd: f.root, encoding: "utf8", timeout: 30000 })
+    assert.equal(selected.status, 0, selected.stdout + selected.stderr)
+    assert.doesNotMatch(selected.stdout + selected.stderr, /\$app\/tsconfig/)
+    const invalid = spawnSync(process.execPath, [cli, "--build", generatedConfig.unrelatedConfig, "--pretty", "false"],
+      { cwd: f.root, encoding: "utf8", timeout: 30000 })
+    assert.notEqual(invalid.status, 0)
+    assert.match(invalid.stdout + invalid.stderr, /TS6053/)
   } finally { f.close() }
 })

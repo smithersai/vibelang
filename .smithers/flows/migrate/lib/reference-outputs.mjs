@@ -18,26 +18,41 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
     path = resolve(root, path)
     return /\.json$/i.test(path) ? path : join(path, "tsconfig.json")
   }
+  const configError = (path, errors) => new Error("Cannot plan project references for " +
+    relative(root, path).split(sep).join("/") + ":\n" + errors.map(error =>
+      "TS" + error.code + ": " + ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
   const visit = path => {
     path = configPath(path)
     if (projects.has(path)) return
     const input = ts.readConfigFile(path, ts.sys.readFile)
-    if (input.error) throw new Error(ts.flattenDiagnosticMessageText(input.error.messageText, "\n"))
+    if (input.error) throw configError(path, [input.error])
     const parsed = ts.parseJsonConfigFileContent(input.config, ts.sys, dirname(path), {}, path, undefined, extra(ts))
     const errors = parsed.errors.filter(error => ![18002, 18003].includes(error.code))
-    if (errors.length) throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
-    const item = { path, parsed, references: (parsed.projectReferences ?? []).map(ref => configPath(ref.path)) }
+    const item = { path, parsed, errors, references: (parsed.projectReferences ?? []).map(ref => configPath(ref.path)) }
     projects.set(path, item)
     for (const ref of item.references) visit(ref)
   }
   for (const path of configs) visit(path)
   const changedPaths = new Set(changed.map(path => resolve(root, path)))
   const affected = new Set([...projects].filter(([, project]) =>
-    project.parsed.fileNames.some(file => changedPaths.has(resolve(file)))).map(([path]) => path))
+    project.parsed.fileNames.some(file => changedPaths.has(resolve(file))) ||
+    project.errors.length && [...changedPaths].some(file => inside(dirname(project.path), file))).map(([path]) => path))
   for (let previous = -1; previous !== affected.size;) {
     previous = affected.size
     for (const [path, project] of projects) if (project.references.some(ref => affected.has(ref))) affected.add(path)
   }
+  // Configurations from unrelated tooling can extend generated framework files.
+  // Validate the reverse closure and its build dependencies before deleting any
+  // output. Malformed JSON still fails above because its edges cannot be read.
+  const validated = new Set()
+  const validate = path => {
+    if (validated.has(path)) return
+    validated.add(path)
+    const project = projects.get(path)
+    if (project.errors.length) throw configError(path, project.errors)
+    for (const ref of project.references) validate(ref)
+  }
+  for (const path of affected) validate(path)
   // Projects without reference edges need no reference-output refresh.
   const related = [...affected].some(path => projects.get(path).references.length ||
     [...projects.values()].some(project => project.references.includes(path)))
