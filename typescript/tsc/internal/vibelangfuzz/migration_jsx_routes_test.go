@@ -14,18 +14,27 @@ import (
 const migrationJSXRouteTarget = "FuzzMigrationJSXRoutes"
 const migrationJSXRouteQuote = "Renaming `x.tsx` to `x.vibex` changes nothing in its JSX"
 
+const migrationJSXCandidateQuote = "JSX and declaration files remain outside the migration candidates."
+
 const migrationJSXRouteKindsQuote = "`.vibex` is to `.vibe` what `.tsx` is to `.ts`:"
 
 func TestMigrationJSXRoutesQuoted(t *testing.T) {
 	r4Quoted(t, "../vips/0039-vibex.md", migrationJSXRouteQuote)
 	r4Quoted(t, "../vips/0039-vibex.md", migrationJSXRouteKindsQuote)
+	readme, err := os.ReadFile(filepath.Join(Root(), ".smithers/flows/migrate/README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), migrationJSXCandidateQuote) {
+		t.Fatal("the documented migration candidate boundary changed; update the oracle")
+	}
 }
 
-// The canonical migration preserves the JSX file kind. A refusal is distinct
-// from a wrong suffix, so fixing admission cannot hide a route mismatch.
+// VIP-39 defines the native JSX file kind. The flow separately documents
+// which foreign modules it accepts: unsupported candidates stay unchanged.
 func FuzzMigrationJSXRoutes(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"jsx-basic", "jsx-nested", "jsx-dotted", "jsx-unicode", "plain-basic", "plain-nested"}
+	keys := []string{"jsx-basic", "jsx-nested", "jsx-dotted", "jsx-unicode", "plain-basic", "plain-nested", "esm-basic", "declaration-ts", "declaration-mts"}
 	for _, key := range keys {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(1))
@@ -58,7 +67,24 @@ func FuzzMigrationJSXRoutes(f *testing.F) {
 		if jsx {
 			extension, native = ".tsx", ".vibex"
 		}
+		declaration := strings.HasPrefix(key, "declaration-")
+		if key == "esm-basic" {
+			extension = ".mts"
+		}
+		if declaration {
+			extension = ".d.ts"
+			if key == "declaration-mts" {
+				extension = ".d.mts"
+			}
+		}
 		file, expected := stem+extension, stem+native
+		source := "export const value = 1\n"
+		if jsx {
+			source = "export const Card = () => <div />\n"
+		}
+		if declaration {
+			source = "export declare const value: number\n"
+		}
 		if key == "jsx-basic" && mode&1 == 0 {
 			raw, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", "opencode-card-tsx-route.json"))
 			if err != nil {
@@ -71,9 +97,9 @@ func FuzzMigrationJSXRoutes(f *testing.F) {
 			if corpus.Quote != migrationJSXRouteQuote || corpus.Source == "" || corpus.Expected != expected {
 				t.Fatal("invalid keyed TSX corpus")
 			}
-			file = corpus.File
+			file, source = corpus.File, corpus.Source
 		}
-		input, err := json.Marshal(map[string]string{"file": file})
+		input, err := json.Marshal(map[string]string{"file": file, "source": source})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,20 +113,23 @@ func FuzzMigrationJSXRoutes(f *testing.F) {
 			t.Fatalf("route oracle process: %v; context=%v\n%s", err, ctx.Err(), output)
 		}
 		var result struct {
-			Rejected     bool
-			Value, Error string
+			Rejected, Admitted, Unchanged bool
+			Value                         string
+			Deferred                      []struct{ File, Reason string }
 		}
 		if err := json.Unmarshal(output, &result); err != nil {
 			t.Fatalf("invalid route oracle: %v\n%s", err, output)
 		}
-		rejectKey := "reject:" + key
-		if result.Rejected {
-			Gap(t, migrationJSXRouteTarget, rejectKey, "VIP-39: %q; %s: %s", migrationJSXRouteQuote, file, result.Error)
+		wantAdmitted := !jsx && !declaration
+		if result.Admitted != wantAdmitted || result.Rejected != !wantAdmitted || !result.Unchanged {
+			Gap(t, migrationJSXRouteTarget, "candidate:"+key, "%q; admitted=%t want=%t unchanged=%t\n%s", migrationJSXCandidateQuote, result.Admitted, wantAdmitted, result.Unchanged, output)
 		}
-		if result.Value != expected {
-			Gap(t, migrationJSXRouteTarget, "wrong-route:"+key, "VIP-39: %q; %s maps to %s, want %s", migrationJSXRouteQuote, file, result.Value, expected)
+		if wantAdmitted {
+			if result.Value != expected || len(result.Deferred) != 0 {
+				Gap(t, migrationJSXRouteTarget, "route:"+key, "supported %s maps to %q, want %q; %s", file, result.Value, expected, output)
+			}
+		} else if len(result.Deferred) != 1 || result.Deferred[0].File != file || result.Deferred[0].Reason == "" || result.Value != "" {
+			Gap(t, migrationJSXRouteTarget, "deferred:"+key, "unsupported source needs a located, explained deferral and no native route: %s", output)
 		}
-		ExpectPending(t, migrationJSXRouteTarget, rejectKey)
-		ExpectPending(t, migrationJSXRouteTarget, specCorpusKey(t))
 	})
 }
