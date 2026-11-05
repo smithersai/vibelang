@@ -41,7 +41,7 @@ func grammarSchemaAsyncField(ts []grammarToken) bool {
 			if depth == 1 && start {
 				hasAsync := false
 			modifiers:
-				for at+1 < len(ts) && !ts[at+1].nl && (ts[at].text == "async" || ts[at].text == "readonly") {
+				for at+1 < len(ts) && !ts[at+1].nl && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static") {
 					// The last keyword may itself be the property name.
 					switch ts[at+1].text {
 					case ":", "?", "(", "<":
@@ -87,6 +87,28 @@ func grammarSchemaAsyncField(ts []grammarToken) bool {
 
 func TestGrammarAdmissionSchemaAsyncKeys(t *testing.T) {
 	for source, want := range map[string]bool{
+		"schema S { static async async id : Missing }":         true,
+		"schema S { static async id: Missing }":                true,
+		"schema S { async static id: Missing }":                true,
+		"schema S { static readonly async id?: Missing }":      true,
+		"schema S { readonly static async id: Missing }":       true,
+		"schema S { async readonly static id: Missing }":       true,
+		"schema S { static static async id: Missing }":         true,
+		"schema S { static async 'id': Missing }":              true,
+		"schema S { static async [key]: Missing }":             true,
+		"schema S { static async readonly: Missing }":          true,
+		"schema S { static async async: Missing }":             true,
+		"schema S { static async: Missing }":                   false,
+		"schema S { static readonly async: Missing }":          false,
+		"schema S { static id: Missing }":                      false,
+		"schema S { static async() {} }":                       false,
+		"schema S { static async m() {} }":                     false,
+		"schema S { static async id() {} }":                    false,
+		"schema S { static async\nid: Missing }":               false,
+		"schema error E { static async id: Missing }":          false,
+		"class S { static async m() {} }":                      false,
+		"interface S { static async id: Missing }":             false,
+		"const o = { schema: { static: 1, async: 2 } };":       false,
 		"schema S { async async id: Missing }":                 true,
 		"schema S { async async id?: Missing }":                true,
 		"schema S { readonly async async id: Missing }":        true,
@@ -129,6 +151,14 @@ func TestGrammarAdmissionSchemaAsyncKeys(t *testing.T) {
 func TestGrammarAdmissionSchemaAsyncRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range []string{
+		"schema S { static async async id : Missing }",
+		"schema S { static async id: Missing }",
+		"schema S { async static id: Missing }",
+		"schema S { static readonly async id?: Missing }",
+		"schema S { readonly static async id: Missing }",
+		"schema S { static async 'id': Missing }",
+		"schema S { static async [key]: Missing }",
+		"schema S { static async readonly: Missing }",
 		"schema S { async id: Missing }",
 		"schema S { async async id: Missing }",
 		"schema S { async async id?: Missing }",
@@ -148,6 +178,14 @@ func TestGrammarAdmissionSchemaAsyncRegression(t *testing.T) {
 		})
 	}
 	for _, source := range []string{
+		"schema S { static async: string }",
+		"schema S { static id: string }",
+		"schema S { static readonly id: string }",
+		"schema S { static async id: string }",
+		"schema S { static async m() {} }",
+		"schema error E { static async id: string }",
+		"interface S { static async id: string }",
+		"class S { static async m() {} }",
 		"schema S { async: string }",
 		"schema S { readonly async?: string }",
 		"schema S { async id: string }",

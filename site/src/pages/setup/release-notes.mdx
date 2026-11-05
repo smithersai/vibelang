@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - The Effect type guide now shows the grouping used when repairing nested Effects and array boundaries.
 
+- The grammar admission audit could stop on an async schema field with a `static` prefix. It now records the existing modifier-diagnostic gap while preserving static properties, methods and keyword-named fields as controls.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

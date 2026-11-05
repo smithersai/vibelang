@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-static-async-field\nschema S { static async async id : Missing }")

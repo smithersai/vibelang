@@ -177,6 +177,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"throw-comma-warning", "effect function f(e) { return [throw e, 1]; }"},
 	{"schema-async-field", "schema S { async id: Missing }"},
 	{"schema-async-duplicate-modifier", "schema S { async async id: Missing }"},
+	{"schema-static-async-field", "schema S { static async async id : Missing }"},
 	{"schema-effect-field", "schema S { effect id : string }"},
 	{"schema-effect-unsupported-field", "schema S { effect id : Missing }"},
 	{"export-assignment", "export = 1 ;"},

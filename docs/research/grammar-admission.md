@@ -354,3 +354,10 @@ covers TypeScript's independent `TS1141` grammar error. The pending key follows
 that AST edge, with exact keyed witnesses and future XPASS detection. Ordinary
 metadata expressions, dynamic imports and `import.meta.url` reads remain
 separate controls; `EK4402` remains a platform error, not syntax rejection.
+
+
+The `schema-async-field` pending family includes a leading or interleaved
+`static` modifier before the written field name and type, including repeated
+`async` modifiers. A field named `async`, a static method and a schema-error
+member remain separate controls. The classifier still requires an actual
+`async` modifier; a static property alone does not enter this family.
