@@ -67,8 +67,8 @@ func FuzzSchemaErrorLegacyKeyFix(f *testing.F) {
 		toolsGuard(t, "FuzzSchemaErrorLegacyKeyFix", func() {
 			r := toolsCompile(t, w, "FuzzSchemaErrorLegacyKeyFix", Single(rule.source).Files)
 			defer r.Remove()
-			if got := r4Errors(r.Diagnostics); !slices.Equal(got, []string{"EK9201"}) {
-				Gap(t, "FuzzSchemaErrorLegacyKeyFix", "diagnostic:"+rule.key, "%s: got %v, want EK9201", rule.key, got)
+			if got := r4Errors(r.Diagnostics); !slices.Equal(got, []string{"EK0403", "EK9201"}) {
+				Gap(t, "FuzzSchemaErrorLegacyKeyFix", "diagnostic:"+rule.key, "%s: got %v, want both EK0403 and EK9201", rule.key, got)
 			}
 			var fixed *vibelang.FixResult
 			toolsRun(t, "FuzzSchemaErrorLegacyKeyFix", "fix", rule.key, nil, func() {

@@ -1954,3 +1954,5 @@ The `//:tagged-pattern-binding-renames` gate exercises reference and rename oper
 The `//:nothrow-rethrow-escape-controls` gate retains every escape shape and adds plain-call and deeper-return controls for each independently admitted array callback.
 
 The `//:native-import-preference-twins` gate retains byte-exact unchanged-importer controls and compares explicit source imports with independent native twins and stock TypeScript 5.9.3.
+
+The `//:legacy-schema-key-defect-repairs` gate checks both input diagnostics, zero-error fixed output, defect identity bridges, and idempotence across class heritage and four nested schema layouts.
