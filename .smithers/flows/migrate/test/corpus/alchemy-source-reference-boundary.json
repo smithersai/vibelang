@@ -1,0 +1,13 @@
+{
+  "module": "src/Entry.ts",
+  "native": "src/Entry.vibe",
+  "documents": {
+    ".agents/skills/provider/SKILL.md": "# Provider\n\n\u0060\u0060\u0060ts\nconst entry = \"src/Entry.ts\";\n\u0060\u0060\u0060\n",
+    "docs/guide.mdx": "# Example\n\nconst entry = \"src/Entry.ts\";\n",
+    "notes.txt": "const entry = \"src/Entry.ts\";\n"
+  },
+  "fixtures": {
+    ".vibelang/corpus/alchemy-entry.json": "{\"entry\":\"src/Entry.ts\",\"source\":\"original TypeScript fixture\"}\n",
+    "test/fixtures/config.json": "{\"entry\":\"src/Entry.ts\"}\n"
+  }
+}

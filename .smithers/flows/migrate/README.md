@@ -800,6 +800,8 @@ configurations require manual wiring. Query and fragment suffixes remain
 verification refusals. Receipts retain the leading slash and original quoting
 so reverting a module restores the exact configuration bytes.
 
+Source-reference wiring parses source and configuration inputs. It preserves prose, generated declaration files and JSON fixture or corpus data without parsing them as source. The same filename spelling in a real source file or configuration still follows a renamed module.
+
 Every changed literal is recorded in `referenceEdits` with its file, line,
 original spelling and kind. Assertions, expected values, test names and
 type literals stay as written. Unknown glob dialects and unguarded extension

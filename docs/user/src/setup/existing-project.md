@@ -28,6 +28,8 @@ The migration inventory keeps `.vibex` modules alongside `.vibe`, `.ts` and `.ts
 
 The migration planner follows the source graph of an unchanged bundling test. With a plain inline `Bun.build({ packages: "external", … })` call, package imports stay outside that graph. Relative imports and TypeScript path aliases still belong to it. Literal resolver plugins whose hooks only throw preserve this boundary. Unclear resolver behavior keeps the files in TypeScript for review.
 
+Migration leaves documentation examples, declaration outputs and JSON test data unchanged when it wires source paths. Source and configuration references still follow the migrated modules.
+
 ## 1. Check package.json
 
 `package.json` must have `"type": "module"`. Before adding it, check how this changes Node's loading of your project's `.js` files.

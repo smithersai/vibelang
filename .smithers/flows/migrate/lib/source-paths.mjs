@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { posix, join } from "node:path"
 import { Minimatch } from "./vendor/minimatch.mjs"
+import { isFixtureFile } from "./inventory.mjs"
+import { isDeclarationFile } from "./util.mjs"
 import { expectationLiteral, joinedLiteralPath, packageContext, processArgument, remoteUrlPart, resolveRenamed, twinListed, viteEntryRoot } from "./converted-paths.mjs"
 import { compileRegex, disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
 
@@ -287,6 +289,13 @@ export function checkSelectorEdits(codemod, inventory, { ts, read } = {}) {
 // Literal-only discovery wiring. Assertion expectations, test names, type
 // literals, comments and code embedded in strings are never rewrite targets.
 export function rewriteSourceLiterals(ts, text, file, renames, { selectors = true, exactContexts, inventory, matcherCache = new Map(), packages = packageContext(inventory) } = {}) {
+  // Whole-scope catalogs also contain prose, generated declarations and
+  // JSON test oracles. They are not source/configuration discovery inputs.
+  const referenceFile = /\.(?:[cm]?[jt]sx?|vibex?|jsonc?|ya?ml|toml|sh|nix)$/i
+  const fixtureData = /\.jsonc?$/i.test(file) && (isFixtureFile(file) || /(?:^|\/)corpus\//.test(file))
+  if (!referenceFile.test(file) || isDeclarationFile(file) || fixtureData) {
+    return { text, edits: [], warnings: [], selectorChecks: [] }
+  }
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.json$/.test(file) ? ts.ScriptKind.JSON : ts.ScriptKind.TS)
   const changes = [], warnings = [], edits = [], selectorChecks = []
   const bases = globBases(file, inventory)
