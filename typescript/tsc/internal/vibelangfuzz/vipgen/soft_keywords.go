@@ -84,22 +84,27 @@ func (s SoftKeywordShape) Sources() (string, string) {
 			decl = "const box = { " + name + ": " + fn + " };"
 			name = "box." + name
 		}
-		use := name + "(3)"
+		reference := name
+		if s.Form == "catch" {
+			// Assert the caught value without rewriting surrounding type syntax.
+			reference = "(" + name + " as (n: number) => number)"
+		}
+		use := reference + "(3)"
 		if s.Form == "class" {
 			use = "new " + name + "().value"
 		}
 		if s.Use == "read" {
-			use = "(typeof " + name + " === \"function\" ? 1 : 0)"
+			use = "(typeof " + reference + " === \"function\" ? 1 : 0)"
 		}
 		if s.Use == "passed" {
-			use = "((value: unknown): number => typeof value === \"function\" ? 2 : 0)(" + name + ")"
+			use = "((value: unknown): number => typeof value === \"function\" ? 2 : 0)(" + reference + ")"
 		}
 		stmt := decl + " return " + use + ";"
 		if s.Form == "label" {
 			stmt = decl + " " + s.Word + ": { return " + use + "; }"
 		}
 		if s.Form == "catch" {
-			stmt = "try { throw (" + fn + ") } catch (" + s.Word + ") { return " + strings.ReplaceAll(use, name, "("+name+" as (n: number) => number)") + "; }"
+			stmt = "try { __softKeywordRaise(" + fn + ") } catch (" + s.Word + ") { return " + use + "; }"
 		}
 		modifier := ""
 		if vibe && s.EffectResult() {
@@ -145,13 +150,12 @@ func (s SoftKeywordShape) Sources() (string, string) {
 			// catch binding, so put it on the enclosing Effect callable.
 			if s.Home == "static-effect" {
 				if s.Form == "catch" {
-					inner = "try { throw (" + fn + ") } catch (" + s.Word + ") { " + strings.ReplaceAll(inner, use, strings.ReplaceAll(use, name, "("+name+" as (n: number) => number)")) + " }"
+					inner = "try { __softKeywordRaise(" + fn + ") } catch (" + s.Word + ") { " + inner + " }"
 				}
 				return softKeywordImport(s) + "export " + modifier + "function probe(" + arg + ") { " + inner + " }\n"
 			}
 			if s.Form == "catch" {
-				inner = strings.ReplaceAll(inner, use, strings.ReplaceAll(use, name, "("+name+" as (n: number) => number)"))
-				return softKeywordImport(s) + "function scope() { try { throw (" + fn + ") } catch (" + s.Word + ") { " + modifier + "function inner() { " + inner + " } return inner(); } } export function probe() { return scope() }\n"
+				return softKeywordImport(s) + "function scope() { try { __softKeywordRaise(" + fn + ") } catch (" + s.Word + ") { " + modifier + "function inner() { " + inner + " } return inner(); } } export function probe() { return scope() }\n"
 			}
 			return softKeywordImport(s) + "function scope(" + arg + ") { " + modifier + "function inner() { " + inner + " } return inner(); } export function probe() { return scope() }\n"
 		}
@@ -160,10 +164,16 @@ func (s SoftKeywordShape) Sources() (string, string) {
 	return build(true), build(false)
 }
 func softKeywordImport(s SoftKeywordShape) string {
+	if s.Form == "catch" {
+		return "import { raiseCaughtValue as __softKeywordRaise } from \"./soft-keyword-helper.js\";\n"
+	}
 	if s.Form == "import" {
 		return fmt.Sprintf("import { helper as %s } from \"./soft-keyword-helper.js\";\n", s.Word)
 	}
 	return ""
 }
 
-const SoftKeywordHelper = "/** @throws {never} */\nexport function helper(n: number = 0): number { return n + 7 }\n"
+const SoftKeywordHelper = `/** @throws {never} */
+export function helper(n: number = 0): number { return n + 7 }
+export function raiseCaughtValue(value: unknown): never { throw value }
+`

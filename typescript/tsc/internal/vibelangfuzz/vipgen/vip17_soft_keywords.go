@@ -50,7 +50,11 @@ func softKeywordObservation(g *Gen, s *Scope) Stmt {
 	v = strings.ReplaceAll(v, "probe", name)
 	ts = strings.ReplaceAll(ts, "probe", name)
 
-	g.AddFile("soft-keyword-helper.ts", SoftKeywordHelper, "helper")
+	names := []string{"helper"}
+	if form == "catch" {
+		names = append(names, "raiseCaughtValue as __softKeywordRaise")
+	}
+	g.AddFile("soft-keyword-helper.ts", SoftKeywordHelper, names...)
 
 	compiler, reference := g.Name("stockKeyword"), g.Name("referenceKeyword")
 	// Import bindings refer to an ordinary pure helper. Everything else is the
@@ -62,6 +66,10 @@ func softKeywordObservation(g *Gen, s *Scope) Stmt {
 	if form == "import" {
 		parameters = fmt.Sprintf("%q,", word)
 		argument = "(n) => n + 7"
+	}
+	if form == "catch" {
+		parameters = fmt.Sprintf("%q,", "__softKeywordRaise")
+		argument = "__softKeywordRaise"
 	}
 	referenceDecl := fmt.Sprintf("const %s = (await import(\"node:module\")).createRequire(import.meta.resolve(\"effect\"))(\"typescript\");\nconst %s = new Function(%s \"return \" + %s.transpileModule(%q, { compilerOptions: { target: %s.ScriptTarget.ES2022, module: %s.ModuleKind.ESNext } }).outputText + \"\\nreturn %s;\")(%s);",
 		compiler, reference, parameters, compiler, ts, compiler, compiler, name, argument)

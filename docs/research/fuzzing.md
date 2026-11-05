@@ -6,6 +6,8 @@ Compiled regression replays in the spec gate use the same `VIBELANG_FUZZ_HANG=12
 
 Spec quote checks from independent fuzz targets need distinct Go names. Keep each target's quote and assertions when combining coverage; package compilation must replay both checks without duplicate declarations.
 
+Contextual-keyword witnesses construct each value reference before embedding it in surrounding TypeScript. A catch variable may need a type assertion, but replacing its spelling across an entire expression can corrupt unrelated parameter or return types. Stock TypeScript checks the generated catch-argument twins across the type-keyword names and callable/initializer homes. A controlled TypeScript helper supplies the caught value inside a native `try` block. This keeps catch-binding fixtures valid when VibeLang rejects synchronous `throw`.
+
 ## Concurrent-operation element checks
 
 `FuzzTryOperationElements` checks the operation call in emitted JavaScript, not the helper import or the enclosing function wrapper. Both runtime helpers and direct `Effect.all` calls must construct their element Effects without an added `Effect.suspend`. Import-only controls, tail-completion records and lazy-element mutants test the oracle itself. Tail transport may separate construction from delegation; execution is checked by `FuzzVIPDifferential`. Keyed seeds retain every original operation shape and cover parenthesized, nested-running and shadowed `try.allSettled` literals.

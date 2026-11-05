@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip17.soft-keyword-identifiers-plain\u0000\u0000\u0000e\b\u0002\u0002")
