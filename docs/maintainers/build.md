@@ -2114,3 +2114,5 @@ The trusted class visibility check replays the located compatibility example and
 The tagged match repair check compares complete migration output and compiles it, with exhaustive-tag handler and refutable-combinator fuzz controls.
 
 The loader sidecar root check varies explicit, inherited, inferred, and composite roots through public and loader compiles, then runs the embedded bundler declaration checks. Failures report the relative declaration paths actually written.
+
+The error registration projection check preserves authored native static blocks while checking error fields, getters, methods, empty declarations, and schema controls in both renderings against native and stock TypeScript.

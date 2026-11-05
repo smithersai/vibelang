@@ -81,8 +81,18 @@ func errorClassFormOf(node *ast.Node) errorClassForm {
 // hasClassFeatures reports whether node, an error without extends, is
 // written with a class's features: abstract, implements, or a member.
 func hasClassFeatures(node *ast.Node) bool {
-	return len(node.Members()) != 0 || ast.HasSyntacticModifier(node, ast.ModifierFlagsAbstract) ||
+	for _, member := range node.Members() {
+		if !generatedErrorStaticBlock(member) {
+			return true
+		}
+	}
+	return ast.HasSyntacticModifier(node, ast.ModifierFlagsAbstract) ||
 		len(ast.GetImplementsHeritageClauseElements(node)) != 0
+}
+
+// Generated matcher registration has no source member or checking type.
+func generatedErrorStaticBlock(member *ast.Node) bool {
+	return member.Kind == ast.KindClassStaticBlockDeclaration && member.Flags&ast.NodeFlagsReparsed != 0
 }
 
 // errorHead returns where an error declaration's keyword starts, schema for
@@ -307,7 +317,7 @@ func (p *projector) errorClassDeclaration(node *ast.Node) {
 			p.plan.insert(base.End(), ".extend<"+self+">("+quoted+")("+fields+")")
 		}
 		for _, member := range class.Members.Nodes {
-			if member.Kind == ast.KindClassStaticBlockDeclaration && member.Flags&ast.NodeFlagsReparsed != 0 {
+			if generatedErrorStaticBlock(member) {
 				continue // the family's static block
 			}
 			if !p.errorPayloadComma(member) {
@@ -317,6 +327,9 @@ func (p *projector) errorClassDeclaration(node *ast.Node) {
 	}
 	if form == errorClassRoot {
 		for _, member := range class.Members.Nodes {
+			if generatedErrorStaticBlock(member) {
+				continue
+			}
 			if !p.errorPayloadComma(member) {
 				p.visit(member, env{})
 			}

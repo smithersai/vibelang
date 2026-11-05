@@ -1087,6 +1087,12 @@ const targets = {
     [],
     "20m"
   ),
+  "mapper-error-registration-members": goVibelang(
+    "Generated error registration retains source members and native projection types",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^(TestPlainErrorRegistrationKeepsNativeStaticBlock|TestErrorPayloadCommaStockProjection|TestErrorExtractorSubjectReads|TestThrowCauseRuntime)$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=10m -run \"^(TestMapperErrorRegistrationMembersQuoted|FuzzMapperErrorRegistrationMembers)$\" ./internal/vibelangfuzz",
+    [],
+    "20m"
+  ),
   "schema-codec-native-return-inference": goVibelang(
     "Schema codec factories retain writable references with native return inference",
     "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestFixProjectGroupedSchemaMigration|TestFixProjectSchemaRequiredFieldReference|TestFixProjectSchemaReadonlyFieldReference|TestSchemaReadonlyMigrationCodecReferences|FuzzSchemaCodecFactoryNativeReturns|TestSchemaFactoryMigrationReturnsQuoted|FuzzSchemaFactoryMigrationReturns)$\" ./internal/vibelang ./internal/vibelangfuzz",
