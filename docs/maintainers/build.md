@@ -1807,3 +1807,5 @@ The Go warmup includes `./internal/effecttsgo/lint`, which the lint configuratio
 The bounded project-service target runs both manifest invalidation and stale-manifest preservation tests, including disk and editor content paths. Its selector excludes unrelated upstream fixtures.
 
 The `//:api-inputs-cache` target replays actual SDK caching with transitive local comparator helpers. It checks successful reuse, unrelated Go edits, changed comparator source, changed declaration types and restored bytes. Dependency fixtures include static and dynamic imports, file URLs and cycles; command stage records identify a stalled SDK invocation without printing workspace paths or environment values. The larger whole-repository key mutation check remains in the release suite.
+
+Configuration validation selects the retired declaration-import option regression as well as VibeLang-prefixed tests. Deprecated spellings must retain warning severity and diagnostic code while being omitted from parsed configuration and serialization.

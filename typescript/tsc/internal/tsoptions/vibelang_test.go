@@ -183,7 +183,7 @@ func TestDeclarationImportStyleDeprecated(t *testing.T) {
 					}
 					config := vibeConfig(t, text, base)
 					ds := config.GetConfigFileParsingDiagnostics()
-					if len(ds) != 1 || ds[0].Category() != diagnostics.CategoryWarning || ds[0].Code() != 5101 || !strings.Contains(ds[0].String(), "Declaration import spelling follows TypeScript") {
+					if len(ds) != 1 || ds[0].Category() != diagnostics.CategoryWarning || ds[0].Code() != 3011 || ds[0].Source() != "EK" || !strings.Contains(ds[0].String(), "Declaration spelling follows the native TypeScript twin.") {
 						t.Fatalf("expected one nonfatal deprecation warning, got %v", ds)
 					}
 					shown, err := json.Marshal(tsoptions.ConvertToTSConfig(config, "/project/tsconfig.json"))
