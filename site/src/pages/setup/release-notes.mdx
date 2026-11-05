@@ -64,6 +64,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Converting an `async` callable field or indexed method could violate an inherited or indexed `Promise` contract; the editor now withholds conversions that would leave those properties incompatible.
 - Optional-schema upgrade checks failed on an invalid inherited native error sample; they now verify the documented unions of errors.
 - Browser-augmentation validation repeatedly parsed the same native declarations. It now reuses parsed library documents while still checking each snapshot independently.
+- A migration could send source modules outside a compiler project to `--fix --only` when an import resolved through declarations. It now uses compiler membership and keeps foreign modules out of temporary fix shards.
 - A migration could report fixing complete while skipping selected scripts outside its projects. It now names the uncovered modules and keeps the fix pass incomplete until their projects are included.
 - A whole-scope migration could skip bundle dependencies even with `--route-bundled-imports` enabled. Planning now honors that option and includes those modules for conversion.
 - Converting an `async` function could produce syntax or type errors when it used `fork` or `join` as ordinary names; the editor now withholds those conversions until the affected bindings are renamed.

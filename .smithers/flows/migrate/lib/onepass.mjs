@@ -1,11 +1,12 @@
 import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
+import { fixProgramFiles } from "./fix-scope.mjs"
 import { conversionIdentity } from "./conversion-context.mjs"
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
 import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { platformCausesOf } from "./platform.mjs"
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
@@ -100,7 +101,8 @@ export function shardModules(files, graph, cap = 240) {
 export function fixShards(files, graph, selected, cap = 240) {
   positive(cap, 240, "shard cap", 240)
   if (files.length <= cap) return { sharded: false, groups: [files] }
-  const work = [...new Set(files.filter(f => selected.has(f)).flatMap(f => [f, ...reachable(graph, f)]))]
+  const members = new Set(files)
+  const work = [...new Set(files.filter(f => selected.has(f)).flatMap(f => [f, ...reachable(graph, f)]))].filter(f => members.has(f))
   const plan = planShards(work, graph, cap)
   // A temporary project omits reverse observers. An oversized closure must
   // use the original tsconfig, not just an oversized selected-root project.
@@ -397,7 +399,16 @@ async function fix(config, p, cm, options) {
         const membership = JSON.parse(shown.stdout).files
         if (!Array.isArray(membership)) throw new Error("showConfig did not return project files")
         const roots = membership.map(f => posix.normalize(posix.join(dir, f))).filter(sourceModule)
+        const scopeLog = join(p.batch("01"), "logs", "membership-" + slug(project.file))
+        const program = new Set((await fixProgramFiles({
+          compiler, tsconfig: project.project, cwd: join(config.target, dir),
+          timeoutMs, log: scopeLog
+        })).map(file => realpathSync(file)))
+        // Export conditions and declarations can make the migration graph
+        // broader than the compiler program. Only that program owns fixes.
         const files = [...new Set(roots.flatMap(f => [f, ...reachable(graph, f)]))]
+          .filter(file => !/\.vibex?$/.test(file) || (existsSync(join(config.target, file)) && program.has(realpathSync(join(config.target, file)))))
+        receipt.membership = { source: "compiler", modules: program.size, log: scopeLog + ".scope.log" }
         for (const file of files) if (only.has(file)) covered.add(file)
         const { sharded, groups, fallback } = fixShards(files, graph, only)
         receipt.mode = sharded ? "sharded" : "whole-project"

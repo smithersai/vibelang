@@ -1090,3 +1090,85 @@ test("uncovered script is not certified by successful checks of other modules", 
     assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, [f.selected])
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
+
+// A package's verification script can resolve an export through declarations,
+// while the migration graph follows the source. The compiler owns membership.
+async function foreignProjectFixture() {
+  const f = await fixture()
+  const corpus = readJson(fileURLToPath(new URL("./corpus/opencode-foreign-project-modules.json", import.meta.url)))
+  put(f.target, "core/" + corpus.script, corpus.source)
+  writeJson(join(f.target, "core/tsconfig.tests.json"), { files: [corpus.script] })
+  put(f.run, "scope.txt", ["core/src/index.ts", "core/" + corpus.script].join("\n") + "\n")
+  await onePassStep("plan", { run: f.run, scope: f.scope })
+  await onePassStep("rename", { run: f.run })
+  writeJson(join(f.target, "core/tsconfig.tests.json"), { files: [corpus.script.replace(/\.ts$/, ".vibe")] })
+  const compiler = readFileSync(f.compiler, "utf8"), firstLine = compiler.indexOf("\n") + 1
+  const guard = String.raw`
+{
+  const fs = require("node:fs"), path = require("node:path")
+  const args = process.argv.slice(2), project = args[args.indexOf("-p") + 1]
+  if (path.basename(process.cwd()) === "core" && project === "tsconfig.tests.json") {
+    const member = path.resolve("script/verify-package.vibe")
+    if (args.includes("--listFilesOnly")) { console.log(member); process.exit(0) }
+    if (args.includes("--fix")) {
+      const selected = fs.readFileSync(args[args.indexOf("--only") + 1].slice(1), "utf8").trim().split("\n")
+      if (selected.some(file => file !== member)) {
+        console.error("vibelang --fix: --only names a foreign project module"); process.exit(3)
+      }
+    }
+  }
+}
+`
+  writeFileSync(f.compiler, compiler.slice(0, firstLine) + guard + compiler.slice(firstLine))
+  return f
+}
+
+test("foreign project source is excluded from another project's fix selection", async () => {
+  const f = await foreignProjectFixture()
+  try {
+    const result = await onePassStep("fix", { run: f.run, jobs: 2 })
+    assert.equal(result.settled, true)
+    const script = result.projects.find(p => p.package === "core" && p.project === "tsconfig.tests.json")
+    assert.deepEqual(script.shards.flatMap(s => s.files).filter(f => f.endsWith(".vibe")), ["core/script/verify-package.vibe"])
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("foreign project selection uses physical membership through a linked workspace", async () => {
+  const f = await foreignProjectFixture()
+  try {
+    const config = readJson(paths(f.run).config)
+    const alias = join(f.root, "linked-repo")
+    symlinkSync(f.target, alias, "dir")
+    config.target = alias
+    writeJson(paths(f.run).config, config)
+    assert.equal((await onePassStep("fix", { run: f.run, jobs: 2 })).settled, true)
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("foreign project source remains uncovered without its owning project", async () => {
+  const f = await foreignProjectFixture()
+  try {
+    const config = readJson(paths(f.run).config)
+    config.packages = config.packages.map(pkg => pkg.dir === "core" ? { ...pkg, tsconfig: "tsconfig.tests.json", sources: ["src", "script"] } : pkg)
+    writeJson(paths(f.run).config, config)
+    const manifest = readJson(join(f.target, "core/package.json"))
+    manifest.scripts = {}
+    writeJson(join(f.target, "core/package.json"), manifest)
+    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
+    assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, ["core/src/index.vibe"])
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("property: foreign project dependencies never enter a temporary fix shard", () => {
+  fc.assert(fc.property(fc.integer({ min: 1, max: 20 }), fc.integer({ min: 1, max: 20 }), fc.boolean(), (count, foreignCount, cycle) => {
+    const selected = "src/entry.vibe"
+    const own = [selected, ...Array.from({ length: count }, (_, i) => "src/own" + i + ".ts")]
+    const foreign = Array.from({ length: foreignCount }, (_, i) => "other/foreign" + i + ".vibe")
+    const graph = new Map([...own, ...foreign].map(file => [file, []]))
+    graph.set(selected, foreign)
+    if (cycle) for (const file of foreign) graph.set(file, [selected])
+    const result = fixShards(own, graph, new Set([selected]), 1)
+    assert.deepEqual(result.groups.flat(), [selected])
+    assert.equal(result.sharded, true)
+  }), { seed: 110506, numRuns: 80 })
+})

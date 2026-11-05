@@ -1,0 +1,7 @@
+{
+  "key": "migrate:fix-only-foreign-project-modules",
+  "contract": "Only compiler project members belong in that project's fix selection, even when the migration import graph reaches another source.",
+  "script": "script/verify-package.ts",
+  "source": "export { value } from '../src/index.js'\n",
+  "variants": ["script", "tools", "scripts"]
+}
