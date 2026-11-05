@@ -1022,6 +1022,12 @@ const targets = {
     [Tsc["vibelangfuzz-files"],Packages["compiler-native"],Vibelang.tree],
     "10m"
   ),
+  "trusted-legacy-client-actions": goVibelang(
+    "Legacy client actions preserve cross-document URIs, aliases, collisions, comments and current contract diagnostics.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/ls -run '^(TestTrustedFixAcrossFiles|TestTrustedLegacyClientActionsQuoted|FuzzTrustedLegacyClientActions)$'`,
+    [],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

@@ -2027,3 +2027,5 @@ generated reflexivity/mutation samples remain active.
 The `//:schema-alias-native-properties` target checks alias repairs against native writable-property errors across optional, nested and imported schema variations.
 
 The `//:implicit-generator-defect-bridges` target compares implicit generator repairs against native declarations and Effect exits across foreign invocation and contract variations.
+
+The `//:trusted-legacy-client-actions` target checks the legacy client diagnostics at current synchronous-call boundaries through public language-service document edits.

@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Legacy editor contract actions keep cross-file edits attached to the right documents and reuse existing aliases without duplicate wrappers.
+
 - Schema alias repair checks now use explicit `readonly` properties and ordinary writable properties, preserving the original `Schema.Struct` type.
 - Migrating an implicit generator API could refuse an unannotated foreign call; the repair now preserves synchronous exceptions as defects.
 

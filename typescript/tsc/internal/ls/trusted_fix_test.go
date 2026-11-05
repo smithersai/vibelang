@@ -1,8 +1,13 @@
 package ls_test
 
 import (
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
@@ -18,6 +23,62 @@ import (
 	_ "github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
+var trustedEffectOnce sync.Once
+var trustedEffectFiles map[string]string
+var trustedEffectError error
+
+func addTrustedEffectDeclarations(t *testing.T, files map[string]string) {
+	t.Helper()
+	trustedEffectOnce.Do(func() {
+		root, err := filepath.Abs("../../../..")
+		if err != nil {
+			trustedEffectError = err
+			return
+		}
+		modules := os.Getenv("EFFECT_NODE_MODULES")
+		if modules == "" {
+			modules = filepath.Join(root, "experiments", "node_modules")
+		}
+		actual, err := filepath.EvalSymlinks(filepath.Join(modules, "effect"))
+		if err != nil {
+			trustedEffectError = err
+			return
+		}
+		trustedEffectFiles = map[string]string{}
+		trustedEffectError = filepath.WalkDir(actual, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() || !(strings.HasSuffix(path, ".d.ts") || filepath.Base(path) == "package.json") {
+				return nil
+			}
+			body, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			relative, err := filepath.Rel(actual, path)
+			if err != nil {
+				return err
+			}
+			trustedEffectFiles[filepath.ToSlash(relative)] = string(body)
+			return nil
+		})
+	})
+	if trustedEffectError != nil {
+		t.Fatal(trustedEffectError)
+	}
+	for config := range files {
+		if strings.HasSuffix(config, "/tsconfig.json") {
+			base := strings.TrimSuffix(config, "tsconfig.json") + "node_modules/effect/"
+			for name, text := range trustedEffectFiles {
+				files[base+name] = text
+			}
+			return
+		}
+	}
+	t.Fatal("missing virtual project configuration")
+}
+
 // trustedFixHost supplies the snapshot conversion used by the real LS action.
 // Other Host methods are deliberately absent: a diagnostic quick fix needs no IO.
 type trustedFixHost struct {
@@ -30,10 +91,12 @@ func (h trustedFixHost) GetPreferences(string) lsutil.UserPreferences {
 	return lsutil.UserPreferences{}
 }
 
-// trustedActions requests EK4406 fixes through the public language service so
-// the test exercises document URIs and WorkspaceEdit conversion, not just plans.
-func trustedActions(t *testing.T, files map[string]string) []*lsproto.CodeAction {
+// A legacy editor client can retain an EK4406 diagnostic after a compiler upgrade.
+// Request its action through the public language service at the current
+// synchronous-call boundary, preserving document URIs and WorkspaceEdit conversion.
+func trustedActions(t *testing.T, files map[string]string, callee string) []*lsproto.CodeAction {
 	t.Helper()
+	addTrustedEffectDeclarations(t, files)
 	fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseInsensitive))
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/home/src/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 	if len(errors) != 0 {
@@ -45,11 +108,18 @@ func trustedActions(t *testing.T, files map[string]string) []*lsproto.CodeAction
 	})
 	service := ls.NewLanguageService(nil, p, trustedFixHost{converters: converters}, "/home/src/src/main.vibe")
 	file := p.GetSourceFile("/home/src/src/main.vibe")
+	var observed []int32
 	for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Code() != 4406 {
+		observed = append(observed, d.Code())
+		if d.Code() == 4406 {
+			t.Fatal("VIP-4 synchronous contracts must report the current boundary diagnostic")
+		}
+		if d.Code() != 403 || !strings.HasPrefix(file.Text()[d.Pos():], callee+"(") {
 			continue
 		}
 		diag := lsconv.DiagnosticToLSPPush(t.Context(), converters, d)
+		// Preserve the exact range while replaying the legacy client diagnostic.
+		*diag.Code.Integer = 4406
 		only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
 		response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
 			TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
@@ -69,7 +139,7 @@ func trustedActions(t *testing.T, files map[string]string) []*lsproto.CodeAction
 		}
 		return actions
 	}
-	t.Fatal("fixture has no EK4406 diagnostic")
+	t.Fatalf("fixture has no current synchronous-call boundary; observed codes: %v", observed)
 	return nil
 }
 
@@ -109,8 +179,9 @@ func applyTrustedAction(t *testing.T, files map[string]string, action *lsproto.C
 
 // TestTrustedFixAcrossFiles checks valid file URIs, direct imports, aliases,
 // idempotence across two call sites, and conservative refusal of barrel imports.
-func TestTrustedFixAcrossFiles(t *testing.T) {
-	t.Parallel()
+func TestTrustedFixAcrossFiles(t *testing.T) { t.Parallel(); runTrustedFixAcrossFiles(t, 0) }
+
+func runTrustedFixAcrossFiles(t *testing.T, variation uint8) {
 	const helper = `export class Bad extends Error {}
 /** @vibelang trusted
  * @throws {Bad}
@@ -128,12 +199,16 @@ export function parse(text: string, ...rest: string[]) { return text.length + re
 		{name: "barrel", barrel: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			reader := "read"
+			if variation != 0 {
+				reader = fmt.Sprintf("%s%d", []string{"read", "_read", "$read", "read$"}[variation%4], variation/4)
+			}
 			module := "./helpers"
 			if test.barrel {
 				module = "./index"
 			}
 			files := map[string]string{
-				"/home/src/src/tsconfig.json":                              `{"compilerOptions":{"strict":true},"include":["*.ts","*.vibe"]}`,
+				"/home/src/src/tsconfig.json":                              `{"compilerOptions":{"strict":true,"lib":["esnext"],"module":"esnext","moduleResolution":"bundler","skipLibCheck":true},"include":["*.ts","*.vibe"]}`,
 				"/home/src/src/helpers.ts":                                 test.extra + helper,
 				"/home/src/src/index.ts":                                   `export { parse, Bad } from "./helpers"`,
 				"/home/src/src/main.vibe":                                  "import { parse as read" + test.caller + " } from " + `"` + module + `"` + "\nexport effect function main() { return [read(\"x\"), read(\"y\")] }\n",
@@ -143,8 +218,16 @@ export function parse(text: string, ...rest: string[]) { return text.length + re
 			if test.name == "existing caller alias" {
 				files["/home/src/src/helpers.ts"] = "import { trusted } from \"vibelang-runtime\"\n" + helper + "export const parseTrusted = trusted(parse, [Bad])\n"
 			}
+			for name, text := range files {
+				if strings.HasSuffix(name, "/main.vibe") {
+					files[name] = strings.ReplaceAll(text, "read", reader)
+					if variation&1 != 0 {
+						files[name] = "// keep legacy range café 😀\n" + files[name]
+					}
+				}
+			}
 			for step := range 2 {
-				actions := trustedActions(t, files)
+				actions := trustedActions(t, files, reader)
 				if test.barrel {
 					if len(actions) != 0 {
 						t.Fatal("barrel received unsafe fix")
@@ -172,9 +255,37 @@ export function parse(text: string, ...rest: string[]) { return text.length + re
 				t.Fatal("original implementation removed")
 			}
 			caller := files["/home/src/src/main.vibe"]
+			caller = strings.ReplaceAll(caller, reader, "read")
+			if variation&1 != 0 && !strings.Contains(caller, "// keep legacy range café 😀") {
+				t.Fatal("client action lost authored comment")
+			}
 			if strings.Contains(caller, "read(\"") || strings.Count(caller, `from "./helpers"`) != 1 {
 				t.Fatalf("caller not migrated once:\n%s", caller)
 			}
 		})
 	}
+}
+
+func TestTrustedLegacyClientActionsQuoted(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, err := os.ReadFile(filepath.Join(root, "docs", "design", "src", "003-failures.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(text), "Effect code calls a function whose thrown type is `never` directly.") {
+		t.Fatal("foreign call boundary authority changed")
+	}
+}
+
+func FuzzTrustedLegacyClientActions(f *testing.F) {
+	for value := uint8(0); value < 16; value++ {
+		f.Add(value)
+	}
+	f.Fuzz(func(t *testing.T, value uint8) {
+		TestTrustedLegacyClientActionsQuoted(t)
+		runTrustedFixAcrossFiles(t, value%16)
+	})
 }
