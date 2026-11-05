@@ -773,10 +773,11 @@ runs after four compiles on loaded hosts (medians of 13 to 20 seconds, maxima of
 A shared helper that is such a pipeline carries the line itself, and a runner
 without its own takes the largest `N` among the helpers it imports, so a new
 case on `cov-ch004-twin.mjs` or `census-vibex.mjs` needs no line.
-`//:harness-deadlines` fails when a runner's deadline is shorter than the
-deadlines written in the runner and its helpers. It reads files only, so a
-runner that would be killed as a whole without naming a stage fails in the gate
-in under a second, before it lands.
+A runner without a line also never gets less than the sum of the stage
+deadlines written in it and its helpers, so a new case cannot fall short.
+`//:harness-deadlines` holds an explicit line to that sum. It reads files only,
+so a line that would get a runner killed as a whole, without naming a stage,
+fails in under a second.
 
 The Chapter 15 failure case uses `TestClock.layer()` and advances virtual time
 with `TestClock.adjust` before joining its scenario. This checks timeout,

@@ -23,7 +23,9 @@
 //     bounded stages sets N to the sum of its stage deadlines, so a slow stage
 //     trips its own deadline, which names the stage, before the runner's. A
 //     shared helper that is such a pipeline carries the line, and a runner
-//     without its own takes the largest N among the helpers it imports.
+//     without its own takes the largest N among the helpers it imports. A
+//     runner without a line never gets less than the sum of the stage
+//     deadlines written in it and its helpers.
 //
 // --jobs must be a positive safe integer. At most one worker per selected
 // case starts; invalid counts exit 2 before reading or modifying cases.
