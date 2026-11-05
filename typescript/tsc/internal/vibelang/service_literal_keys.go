@@ -20,6 +20,8 @@ func checkServiceLiteralKey(c *checker.Checker, class, member *ast.Node) bool {
 		member.Initializer() == nil || !ast.IsStringLiteral(member.Initializer()) {
 		report(c, member, serviceLiteralKeyDiagnostic)
 		cover(c, member)
+		// The rejected key can also invalidate the generated base static side.
+		coverExactCodes(c, class.Name(), 2417)
 	}
 	return true
 }

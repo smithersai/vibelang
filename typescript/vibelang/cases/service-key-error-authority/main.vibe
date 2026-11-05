@@ -1,0 +1,2 @@
+export service S: number { static readonly key: string = "keys/S" }
+export class Native { private static readonly key = 7; static read() { return this.key } }

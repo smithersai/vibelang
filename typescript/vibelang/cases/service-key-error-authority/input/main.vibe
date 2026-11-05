@@ -1,0 +1,5 @@
+service Private: number { private static readonly key = `keys/private` }
+service Protected: number { protected static readonly key = `keys/protected` }
+service Numeric: number { static readonly key = 7 }
+class Base { static readonly key: string = "base" }
+class Native extends Base { private static readonly key = 7 }
