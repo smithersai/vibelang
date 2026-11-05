@@ -1,2 +1,7 @@
 // expect: EK0705
-effect function f() { try { throw {} as any } catch ({ code = (1 is let c) }) { void code } }
+// VIP-7 forbids bindings whose only home would be catch-parameter initialization.
+import { raise } from "./foreign.js"
+function direct() { try { raise({}) } catch ({ code = (1 is let c) }: any) { void code } }
+function nested() { try { raise({}) } catch ({ a: { code = (1 is const c) } }: any) { void code } }
+function computed() { try { raise({}) } catch ({ [(1 is let c) ? "x" : "y"]: value }: any) { void value } }
+function array() { try { raise([]) } catch ([value = (1 is const c)]: any) { void value } }
