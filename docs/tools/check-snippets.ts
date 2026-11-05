@@ -281,11 +281,13 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
     }
     const ast = ts.createSourceFile(filename, block.source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
     const exportStarts: number[] = []
-    const explicitExports = new Set(ast.statements.flatMap(statement =>
+    const exportLists = ast.statements.flatMap(statement =>
       ts.isExportDeclaration(statement) && !statement.moduleSpecifier && statement.exportClause && ts.isNamedExports(statement.exportClause)
-        ? statement.exportClause.elements.map(element => (element.propertyName ?? element.name).text) : []))
+        ? [...statement.exportClause.elements] : [])
+    const explicitExports = new Set(exportLists.map(element => (element.propertyName ?? element.name).text))
     const names = new Set<string>()
-    const exported = new Set<string>()
+    // The closing export list cannot repeat a name the block already exports.
+    const exported = new Set<string>(exportLists.map(element => element.name.text))
     const typeOnly = new Set<string>()
     const localValues = new Set<string>()
     const bindings = (node: any) => {
@@ -331,7 +333,10 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
           bindings(d.name)
           if (ts.isIdentifier(d.name)) localValues.add(d.name.text)
         }
-      } else if ("name" in statement && statement.name && ts.isIdentifier(statement.name)) bindings(statement.name)
+      } else if ("name" in statement && statement.name && ts.isIdentifier(statement.name)) {
+        // A named module is not a value, so no export list can name it (EK4004).
+        if (!(ts.isModuleDeclaration(statement) && /^(?:export\s+)?module\b/.test(statement.getText(ast)))) bindings(statement.name)
+      }
       if (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) typeOnly.add(statement.name.text)
       else for (const name of names) if (!before.has(name)) localValues.add(name)
       if (ts.canHaveModifiers(statement) && ts.getModifiers(statement)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) && !ts.getModifiers(statement)?.some(m => m.kind === ts.SyntaxKind.DefaultKeyword)) {
