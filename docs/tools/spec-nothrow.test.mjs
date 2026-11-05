@@ -176,11 +176,30 @@ test("chapter 7 lists no EK0511 warning", () => {
   assert.doesNotMatch(chapter("007-tooling"), /\| `EK0511` \|/)
 })
 
+const ek0403AdviceClauses = [
+  "| `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code;",
+  "first wrap with `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))` to preserve defects and E",
+  "then offer adding `/** @throws {never} */` to a provably non-throwing same-project `.ts` declaration",
+  "| 4 |"
+]
+function ek0403AdviceProblems(row = "") {
+  return ek0403AdviceClauses.filter(clause => !row.includes(clause))
+}
+test("Appendix B preserving foreign-call advice retains every required clause", () => {
+  const row = chapter("900-appendices").split("\n").find(line => line.startsWith("| `EK0403` |"))
+  assert.deepEqual(ek0403AdviceProblems(row), [])
+  fc.assert(fc.property(fc.constantFrom(...ek0403AdviceClauses), fc.nat(20), (clause, padding) => {
+    const changed = " ".repeat(padding) + row.replace(clause, "changed clause")
+    assert.ok(ek0403AdviceProblems(changed).includes(clause))
+  }), { seed: 403190, numRuns: 100 })
+})
+
 test("Appendix B widens EK0401 and EK0406, narrows EK0403 and retires EK0405 and EK0511", () => {
   const text = chapter("900-appendices")
   const b = text.slice(text.indexOf("## Appendix B. Diagnostics"), text.indexOf("## Appendix C"))
   assert.match(b, /\| `EK0401` \| a `throw`, or a call known to throw outside the `try` block of a `try`\/`catch` statement, in synchronous `\.vibe` code outside effect code; .* \| 4, 5, 7 \|/)
-  assert.match(b, /\| `EK0403` \| an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code \| 4 \|/)
+  const row = b.split("\n").find(line => line.startsWith("| `EK0403` |"))
+  assert.deepEqual(ek0403AdviceProblems(row), [])
   assert.match(b, /\| `EK0406` \| a `@throws` or `@rethrows` tag in `\.vibe` or `\.vibex` source outside a `module` body, including on a service member or function-type signature; quick fix: remove the tag \|/)
   assert.doesNotMatch(b, /^\| `EK0405` \|/m)
   assert.doesNotMatch(b, /^\| `EK0511` \|/m)
