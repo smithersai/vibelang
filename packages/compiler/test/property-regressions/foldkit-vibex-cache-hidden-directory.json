@@ -9,10 +9,5 @@
     "selection": "glob",
     "suffix": 0,
     "extension": ".vibex"
-  },
-  "pending": {
-    "key": "cache.mjs:hidden-vibex-input-invalidation",
-    "owner": "migfix-foldkit + vibex-bundlers",
-    "guard": "strict desired-miss assertion, actual stale warm result, XPASS when fixed"
   }
 }
