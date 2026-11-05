@@ -144,6 +144,9 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			for _, member := range class.Members() {
 				checkServiceLiteralKey(c, class, member)
 			}
+			if class.TypeParameters() != nil {
+				note(report(c, class.Name(), EK3005), "Use an interface for the generic type.")
+			}
 		}
 		return
 	}

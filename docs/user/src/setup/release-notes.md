@@ -275,6 +275,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Adding a platform guide example could make contributor checks report errors against a different example. Checks now follow named example files when their positions change.
 
+- Generic service declarations could lose their error when another member was invalid; both errors are now reported.
 - Invalid service keys could hide errors in their expressions and type annotations; those TypeScript errors now remain visible.
 
 - Object patterns could read a getter or test a property more than once across match arms. They now retain each property observation for one `match` or `is` evaluation.

@@ -1,0 +1,6 @@
+export service S1<T> { static readonly key = "generic/S1"; [x: string]: unknown }
+export service S2<T> { static readonly key = "generic/S2"; constructor() {} }
+export service S3<T> { static readonly key = "generic/S3"; (): number }
+export service S4<T> { static readonly key = "generic/S4"; get n() { return 1 } }
+export service S5<T> { static readonly key = "generic/S5"; read() { return 1 } }
+export const invalid: number = "wrong"
