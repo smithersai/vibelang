@@ -298,7 +298,13 @@ var formsProviderCallees = map[string]int{
 // Lambda decides the form of fn, an arrow function, a function
 // expression, or a method of an object literal.
 func (r *Resolver) Lambda(fn *ast.Node) Decision {
-	d := r.lambdaForm(fn)
+	return r.keepWrittenEffectBlock(r.lambdaForm(fn), fn)
+}
+
+// keepWrittenEffectBlock gives a written effect block its program form. The
+// keyword decides (VIP-2), whichever path reached the block: an effect block in
+// last argument position also reads as a trailing block argument.
+func (r *Resolver) keepWrittenEffectBlock(d Decision, fn *ast.Node) Decision {
 	if ast.IsArrowFunction(fn) && fn.Body() != nil && ast.IsBlock(fn.Body()) && r.effectBlocks[effectBlockMark(r.file, fn)] && (d.Form != FormProgram || d.Choice != nil) {
 		d.Form, d.Class, d.Provenance, d.Note, d.Choice = FormProgram, ClassProgram, FromKeyword, "written effect block (VIP-2)", nil
 	}
@@ -713,6 +719,11 @@ func (r *Resolver) freePosition(fn *ast.Node) string {
 // Block decides the form of call's block param, its last argument, which
 // the call's signature takes there (D376).
 func (r *Resolver) Block(call *ast.Node) Decision {
+	args := call.Arguments()
+	return r.keepWrittenEffectBlock(r.blockForm(call), args[len(args)-1])
+}
+
+func (r *Resolver) blockForm(call *ast.Node) Decision {
 	args := call.Arguments()
 	block := args[len(args)-1]
 	n := len(args) - 1

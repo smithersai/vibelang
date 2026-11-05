@@ -126,14 +126,14 @@ func TestInferredFormFix(t *testing.T) {
 		choices      int
 	}{
 		{"named method contract", `export class C { f(): ReadonlyArray<string>!! { return ["x"] } }`, 0},
-		{"program argument", `import { takesProgram } from "./host"; export function run() { return takesProgram(effect { return try work(1) }) }`, 1},
-		{"program migrated block", `import { takesProgram } from "./host"; export function run() { return takesProgram(effect { return try work(1) }) }`, 1},
+		{"program argument", `import { takesProgram } from "./host"; export function run() { return takesProgram(effect { return try work(1) }) }`, 0},
+		{"program migrated block", `import { takesProgram } from "./host"; export function run() { return takesProgram(effect { return try work(1) }) }`, 0},
 		{"cross-file Effect callback", `import { takesFn } from "./host"; export function run() { return takesFn((x: number) => { const n=work(x); return n }) }`, 1},
 		{"symlinked named function", `export function fn(x: number) { const y=work(x); return y }`, 0},
 		{"symlinked exported arrow", `export const fn = (x: number) => { const y=work(x); return y }`, 1},
 		{"symlinked property", `export const obj = { f: (x: number) => { work(x); return x } }`, 1},
 		{"exported arrow", `export const fn = (x: number) => { const y=work(x); return y }`, 1},
-		{"program host argument", `declare const host: any; host(effect { try work(1); return 1 })`, 1},
+		{"program host argument", `declare const host: any; host(effect { try work(1); return 1 })`, 0},
 		{"failure and requirement", `interface Bad { bad: true }; interface Env { env: true }; declare function fail(): number!Bad!Env; export const obj = { f: () => { const x = fail(); return x } }`, 1},
 		{"object method", `export const obj = { f(x: number) { work(x); return x } }`, 1},
 		{"function expression", `declare const host: any; host(function(x: number) { work(x); return x })`, 1},

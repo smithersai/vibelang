@@ -5,7 +5,45 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
+
+// The editor's FormDiagnostics reads the native parse, where an effect block in
+// last argument position also looks like a trailing block argument. The keyword
+// decides there as it does in the projection (VIP-2).
+func TestInferredFormsKeepWrittenEffectBlock(t *testing.T) {
+	choices := func(source string) int {
+		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, source, core.ScriptKindTS)
+		n := 0
+		for _, d := range FormDiagnostics(file) {
+			if d.Code == CodeFormChoice {
+				n++
+			}
+		}
+		return n
+	}
+	for _, source := range []string{
+		`import { take } from "./host"; export function run() { return take(effect { return 1 }) }`,
+		`declare const host: any; host(effect { return 1 })`,
+		`import { take } from "./host"; take(1, effect { return 1 })`,
+		`import { take } from "./host"; take(effect { return 1 }, effect { return 2 })`,
+		`import { take } from "./host"; take(take(effect { return 1 }))`,
+		`import { take } from "./host"; take(/* block */ effect { return 1 })`,
+	} {
+		if got := choices(source); got != 0 {
+			t.Errorf("written effect block has %d form choices\n%s", got, source)
+		}
+		if got := len(Project(source, FileContext{}).Diagnostics); got != 0 {
+			t.Errorf("projection reports %d diagnostics\n%s", got, source)
+		}
+	}
+	if got := choices(`import { take } from "./host"; export function run() { return take(() => { return 1 }) }`); got != 1 {
+		t.Errorf("an unkeyworded callback keeps its form choice, got %d", got)
+	}
+}
 
 func TestEffectBlockSourceOwnership(t *testing.T) {
 	for _, source := range []string{
