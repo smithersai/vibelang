@@ -159,10 +159,11 @@ const compilerOf = (config) => {
     : join(config.target, config.packages[0].dir, "node_modules/.bin/vibelang")
 }
 
-const typeScriptOf = (config) => loadTypeScript([
+const typeScriptOf = (config, fallback = []) => loadTypeScript([
   ...(config.toolchain.kind === "staged" ? [config.toolchain.dir] : []),
   config.target,
-  ...config.packages.map((pkg) => join(config.target, pkg.dir))
+  ...config.packages.map((pkg) => join(config.target, pkg.dir)),
+  ...fallback
 ])
 
 // Loader records must be written after these source and manifest edits.
@@ -428,14 +429,16 @@ async function checkPackage({ compiler, ts, t, pkg, log }) {
 
 /** Rebuild affected project references before consuming their declarations. */
 async function refreshReferences(config, changed, log) {
-  const ts = typeScriptOf(config), root = config.target
-  const tracked = await Jj.trackedFiles(root)
+  const root = config.target, tracked = await Jj.trackedFiles(root)
   const configs = [...new Set([
     ...tracked.filter(file => /(?:^|\/)(?:tsconfig[^/]*|vibe\.config|jsconfig)\.json$/.test(file)),
-    ...config.packages.flatMap(pkg => Wire.projectsOf(ts, join(root, pkg.dir), pkg.tsconfig)
-      .map(project => posix.join(pkg.dir, project)))
+    ...config.packages.map(pkg => posix.join(pkg.dir, pkg.tsconfig))
+      .filter(file => existsSync(join(root, file)))
   ])]
-  return refreshProjectReferences({ root, ts, configs, changed, tracked, compiler: compilerOf(config), log })
+  // The planner follows each config's references itself, including solution
+  // configs. A source-only revert has no graph and needs neither compiler.
+  const ts = configs.length ? typeScriptOf(config, [fileURLToPath(new URL("../../../", import.meta.url))]) : undefined
+  return refreshProjectReferences({ root, ts, configs, changed, tracked, compiler: () => compilerOf(config), log })
 }
 
 /**

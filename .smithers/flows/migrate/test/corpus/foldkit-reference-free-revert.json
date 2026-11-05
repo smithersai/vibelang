@@ -1,0 +1,8 @@
+{
+  "rule": "A source-only revert with no project configuration needs no TypeScript API. Projects with no affected reference edges need no compiler executable.",
+  "files": {
+    "value.ts": "export const value = 42\n",
+    "main.ts": "import { value } from \"./value.ts\"\nexport const result = value\n"
+  },
+  "preservedOutput": "export const untouched = true\n"
+}
