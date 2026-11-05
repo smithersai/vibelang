@@ -2098,3 +2098,5 @@ The `//:filtered-bundler-entry-cleanup` check runs the entry module with an empt
 The `//:anonymous-cycle-parity` check compares recursive declaration bytes with stock TypeScript `7.0.2` under VIP-27, retaining current native diagnostics, spans, JavaScript and unrelated outputs.
 
 Computed class member probes keep the final method observation inside `Effect.sync` in both the VibeLang program and its native reference. This prevents `EK0403` on an `any`-typed observation from hiding the computed-name evaluation order the probe measures. Keyed minimal and composed inputs retain the original result and ordered events.
+
+The `//:bundler-service-receivers` check builds and runs the esbuild service example with source maps and exercises explicit receiver lookup and native class-static rejections under VIP-10.

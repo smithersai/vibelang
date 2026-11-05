@@ -17,7 +17,7 @@ const InventoryLive = Layer.succeed(Inventory, {
 
 effect function place(order: Order) {
   return try Effect.catch(effect {
-    const available = try Inventory.stock(order.item)
+    const available = try (try Inventory).stock(order.item)
     if (order.quantity > available) return try receipt("only", available, order.item)
     return try receipt("ordered", order.quantity, order.item)
   }, effect (error) => {

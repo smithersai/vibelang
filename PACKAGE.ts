@@ -1171,6 +1171,13 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "15m"
   ),
+  "bundler-service-receivers": check(
+    "Bundled service programs use explicit lookups and retain native member diagnostics and requirements.",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestServiceRunHeadQuoted|FuzzServiceRunHead)$' && cd ../.. && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/unplugin/test/run.sh --test-name-pattern='esbuild: builds the fixture, runs it, and maps it to .vibe sources'",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"]],
+    [go, node, bun],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
