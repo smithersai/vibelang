@@ -31,6 +31,8 @@ function describe(failure: Failure) {
 
 Each arm, `when pattern: expression;`, is tried in order; the first match gives the value. A `default: expression;` arm matches anything and must come last. The value is read once, before the first arm, as `switch` reads its discriminant, so a getter such as `user.role` runs once. `match` is an expression: it can follow `return`, initialize a `const`, or be an argument.
 
+A Boolean example that should type-check both alternatives can take a `boolean` function parameter. A literal `false` subject tested by a `when true:` arm retains TypeScript's `TS2367` impossible-comparison diagnostic.
+
 An arm always keeps its expression when `vibelang --fix` removes a no-op Effect. For example, `when true: try Effect.void;` becomes `when true: (undefined as void);`: the assertion preserves an inferred `void` result. `try Effect.undefined` becomes `undefined`. If a local binding shadows `undefined`, the fix uses `void 0` instead. A held `Effect.void` without `try` stays an Effect.
 
 A synchronous `match` introduces no function or Effect boundary in any expression position. An arm may `yield` in an enclosing generator or use `try` in effect code.

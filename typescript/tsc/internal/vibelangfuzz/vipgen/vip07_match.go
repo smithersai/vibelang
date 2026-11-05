@@ -697,8 +697,8 @@ func init() {
 		},
 		{
 			Key:    "vip07.throw-arm",
-			Vibe:   `effect function witness() { return match (false) { when true: 7; default: throw "selected"; } }`,
-			Effect: `function witness() { return Effect.gen(function* () { const subject = false; if (subject === true) return 7; return yield* Effect.fail("selected") }) }`,
+			Vibe:   `effect function witness(subject:boolean=false) { return match (subject) { when true: 7; default: throw "selected"; } }`,
+			Effect: `function witness(subject=false) { return Effect.gen(function* () { if (subject === true) return 7; return yield* Effect.fail("selected") }) }`,
 		},
 		{
 			Key:    "vip07.effect-guard",
