@@ -51,6 +51,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The readonly upgrade guide lacked an ordinary TypeScript example; it now shows how written modifiers are preserved in interfaces, nested object types and optional properties.
 - A call signature in a service with a written shape could report `EK0902` twice; it now reports the rejected member once while retaining independent key and type errors.
 
+- The `.vibex` declaration example compared against a TypeScript callable without its nonthrowing contract; the twin now includes `@throws {never}` while preserving exact declaration and package-consumer checks.
+
 - The `arguments`-through-regions example omitted the resource-migration warning; it now retains `EK0801` as a warning alongside every `EK0107` error.
 
 - The tagged-data emission example expected repeated property reads; its output now records the shared match cache and cleanup used by both `match` and `is`, with unchanged results.

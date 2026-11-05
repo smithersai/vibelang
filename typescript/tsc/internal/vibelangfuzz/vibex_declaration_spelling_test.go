@@ -38,14 +38,16 @@ type vibexDeclarationCase struct{ key, jsx, form, quote, written string }
 func vibexDeclarationCases() []vibexDeclarationCase {
 	var rows []vibexDeclarationCase
 	for _, jsx := range []string{"preserve", "react"} {
-		for _, form := range []string{"import-type", "reexport", "import-type-node", "inferred", "export-star-as"} {
+		for _, form := range []string{"import-type", "reexport", "import-type-node", "inferred", "inferred-call", "export-star-as"} {
 			for _, quote := range []string{"\"", "'"} {
 				name := "double"
 				if quote == "'" {
 					name = "single"
 				}
 				rows = append(rows, vibexDeclarationCase{jsx + ":" + form + ":" + name, jsx, form, quote, "vibex"})
-				rows = append(rows, vibexDeclarationCase{jsx + ":" + form + ":" + name + ":js", jsx, form, quote, "js"})
+				if form != "inferred-call" {
+					rows = append(rows, vibexDeclarationCase{jsx + ":" + form + ":" + name + ":js", jsx, form, quote, "js"})
+				}
 			}
 		}
 	}
@@ -83,6 +85,7 @@ func FuzzVibexDeclarationSpelling(f *testing.F) {
 			"reexport":         "export { value } from %s;\n",
 			"import-type-node": "export type U=import(%s).T;\n",
 			"inferred":         "import { value } from %s;\nexport const get=()=>value;\n",
+			"inferred-call":    "import { value } from %s;\nexport const get=(increment:number)=>({n:value.n+increment});\n",
 			"export-star-as":   "export * as leaf from %s;\n",
 		}[row.form]
 		leaf := "export type T={readonly n:number};\nexport const value:T={n:1};\n"
