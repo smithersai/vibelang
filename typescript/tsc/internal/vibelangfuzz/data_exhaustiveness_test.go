@@ -45,10 +45,10 @@ func dataExhaustivenessRules() []dataRule {
 		{name: "exhaustive-binding-covers", chapter: "004-match.md", quote: "covers every member.", source: "function f(x:boolean){return match(x){when let v:v;}}", code: "", owner: "vip-match"},
 		// Or covers union of alternatives
 		{name: "exhaustive-or-covers", chapter: "004-match.md", quote: "`or` covers the union of its alternatives.", source: "function f(x:boolean){return match(x){when true or false:1;}}", code: "", owner: "vip-match"},
-		// And covers nothing statically
-		{name: "exhaustive-and-does-not-cover", chapter: "004-match.md", quote: "`and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing", source: "function f(x:boolean){return match(x){when true and true:1;when false:0;}}", code: "EK4701", owner: "vip-match"},
+		// Two refutable conjuncts cover nothing statically
+		{name: "exhaustive-and-does-not-cover", chapter: "004-match.md", quote: "`and` with two refutable conjuncts, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing", source: "function f(x:boolean){return match(x){when true and true:1;when false:0;}}", code: "EK4701", owner: "vip-match"},
 		// Not covers nothing statically
-		{name: "exhaustive-not-does-not-cover", chapter: "004-match.md", quote: "`and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing", source: "function f(x:boolean){return match(x){when not false:1;when false:0;}}", code: "EK4701", owner: "vip-match"},
+		{name: "exhaustive-not-does-not-cover", chapter: "004-match.md", quote: "`and` with two refutable conjuncts, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing", source: "function f(x:boolean){return match(x){when not false:1;when false:0;}}", code: "EK4701", owner: "vip-match"},
 		// Bare required field covers entire variant
 		{name: "exhaustive-required-key-covers", chapter: "004-match.md", quote: "`\"x\" in s` removes a member from its false branch only where `x` is required.", source: "data D{V{n:number}};function f(x:D){return match(x){when {_tag:\"V\",n}:1;}}", code: "", owner: "vip-match"},
 		// Required field binding covers entire variant

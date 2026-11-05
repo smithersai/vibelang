@@ -3,7 +3,7 @@ package vibelangfuzz
 // VIP-7 keeps ordinary subject typing independent from coverage. The arm
 // expression and default assert the native true/false types as well as EK4701.
 func dataCoverageFlowRules() []dataRule {
-	const quote = "`and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing"
+	const quote = "`and` with two refutable conjuncts, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing"
 	var rules []dataRule
 	for _, p := range []struct{ key, pattern string }{
 		{"and", "true and true"},

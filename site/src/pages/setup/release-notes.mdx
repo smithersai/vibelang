@@ -22,6 +22,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The grammar admission audit stopped on a bare `import` used as a comparison operand; it now records that native recovery gap while keeping dynamic imports as valid controls.
 - The expected-errors guide cited obsolete draft labels for throw-expression restrictions. It now describes the rejected operator position directly.
 - Reading a function constructor through a `Function` intersection, inherited interface or generic constraint could miss `EK0107`. Those reads now report the same restriction as a direct `Function` receiver.
+- The coverage examples for `and` and `not` could stop at a stale rule reference. They now use the current rule and keep their existing coverage diagnostics.
 
 - A label inside a `for concurrent` body could repeat an enclosing label without an error. It now reports `TS1114`, matching TypeScript.
 - Compatibility validation could demand an old implicit-execution error from module-level cold calls. It now checks the current module-call rule and retains the saved legacy inputs and their remaining errors.
