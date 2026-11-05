@@ -3,7 +3,6 @@ package vibelang
 import (
 	"context"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -27,9 +26,9 @@ import (
 // A stage that names an effect export with a data-first signature takes the
 // topic as its first argument, and any other stage is applied to it, as
 // .pipe applied it. Each stage still receives what the stage before it
-// returned. Custom stages can do work while a program is being built, so
-// their expressions are captured before any stage is applied, just as .pipe
-// evaluates all its arguments before calling them.
+// returned, and the arguments of a stage are evaluated after the stages
+// before it were applied, which only an effect constructor separates from
+// their order in .pipe: both build programs, and building one runs nothing.
 // It rewrites a .pipe whose receiver is an Effect or that has a stage of
 // Effect's own module. Any other .pipe, such as a Stream's or a Schema's,
 // keeps its meaning and stays.
@@ -161,11 +160,6 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	if slices.ContainsFunc(stages, ast.IsSpreadElement) {
 		return refuse("a stage is a spread")
 	}
-	for _, stage := range stages {
-		if !pipeStageReceiverSafe(c, stage) {
-			return refuse("a custom stage may observe the receiver supplied by .pipe")
-		}
-	}
 	if pipeStageAliasContext(c, call) {
 		return refuse("a stage needs its native .pipe context to preserve inferred type names")
 	}
@@ -178,9 +172,6 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	tail := text[last.End():closing]
 	if hasComment(tail) {
 		return refuse("a comment stands before the .pipe's closing parenthesis")
-	}
-	if pipeStagesNeedCapture(c, stages) {
-		return capturedEffectPipe(file, call)
 	}
 	var edits []sourceEdit
 	open, close := "", ""
@@ -224,139 +215,6 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 		edits = append(edits, sourceEdit{start, start, open})
 	}
 	return &formRewrite{edits: joinEditsAt(edits), description: "the pipeline with |>"}
-}
-
-// pipeStageReceiverSafe checks the receiver supplied by Effect's pipeArguments.
-// Arrow stages retain their lexical this. A non-arrow stage must have a body
-// that does not observe this; an opaque custom callable cannot prove that.
-func pipeStageReceiverSafe(c *checker.Checker, stage *ast.Node) bool {
-	inner := ast.SkipParentheses(stage)
-	callee := inner
-	if ast.IsCallExpression(callee) {
-		callee = callee.Expression()
-	}
-	if module, _ := effectMember(c, callee); module != "" {
-		return true
-	}
-	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(stage), checker.SignatureKindCall)
-	if len(signatures) == 0 {
-		return false
-	}
-	for _, signature := range signatures {
-		declaration := signature.Declaration()
-		if declaration == nil {
-			return false
-		}
-		if ast.IsArrowFunction(declaration) {
-			continue
-		}
-		switch declaration.Kind {
-		case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindMethodDeclaration:
-			if declaration.Body() == nil || usesFunctionThis(declaration) {
-				return false
-			}
-		default:
-			return false
-		}
-	}
-	return true
-}
-
-// pipeOptionsPlain proves that inspecting options cannot invoke an accessor.
-// Opaque objects, spreads and accessors retain their data-last construction.
-func pipeOptionsPlain(c *checker.Checker, node *ast.Node) bool {
-	node = ast.SkipParentheses(node)
-	if ast.IsObjectLiteralExpression(node) {
-		for _, property := range node.AsObjectLiteralExpression().Properties.Nodes {
-			switch property.Kind {
-			case ast.KindPropertyAssignment:
-				if !pipeOptionsPlain(c, property.Initializer()) {
-					return false
-				}
-			case ast.KindShorthandPropertyAssignment:
-				if !pipeOptionsPlain(c, property.Name()) {
-					return false
-				}
-			default:
-				return false
-			}
-		}
-		return true
-	}
-	if ast.IsArrowFunction(node) || ast.IsFunctionExpression(node) {
-		return true
-	}
-	if t := c.GetTypeAtLocation(node); t != nil {
-		return t.Flags()&(checker.TypeFlagsStringLike|checker.TypeFlagsNumberLike|checker.TypeFlagsBooleanLike|checker.TypeFlagsNull|checker.TypeFlagsUndefined) != 0
-	}
-	return false
-}
-
-// pipeStagesNeedCapture reports when applying a stage could change a later
-// stage expression, or when calling a property as a pipe body would give it
-// a receiver. Effect program constructors do not run user code; runners and
-// arbitrary stages have no such guarantee.
-func pipeStagesNeedCapture(c *checker.Checker, stages []*ast.Node) bool {
-	for i, stage := range stages {
-		inner := ast.SkipParentheses(stage)
-		callee := inner
-		if ast.IsCallExpression(callee) {
-			callee = callee.Expression()
-		}
-		if module, name := effectMember(c, callee); module != "" && !strings.HasPrefix(name, "run") {
-			if module == "Effect" && ast.IsCallExpression(inner) {
-				argument := -1
-				switch name {
-				case "retry", "repeat":
-					argument = 0
-				case "withSpan":
-					argument = 1
-				}
-				if argument >= 0 && len(inner.Arguments()) > argument && !pipeOptionsPlain(c, inner.Arguments()[argument]) {
-					return true
-				}
-			}
-			continue
-		}
-		if i < len(stages)-1 || ast.IsPropertyAccessExpression(inner) || ast.IsElementAccessExpression(inner) {
-			return true
-		}
-	}
-	return false
-}
-
-// capturedEffectPipe keeps JavaScript's call-argument evaluation order and
-// its extraction of stage functions. An immediately called plain arrow captures
-// them at the original construction site, without delaying them into an Effect.
-func capturedEffectPipe(file *ast.SourceFile, call *ast.Node) *formRewrite {
-	receiver := call.Expression().Expression()
-	kept := [][2]int{{nodeStart(file, receiver), receiver.End()}}
-	for _, stage := range call.Arguments() {
-		kept = append(kept, [2]int{nodeStart(file, stage), stage.End()})
-	}
-	if hasComment(withoutRanges(file.Text(), nodeStart(file, call), call.End(), kept)) {
-		return &formRewrite{why: "No quick fix: comments between custom stages need their original association."}
-	}
-	names := freshNames{file: file}
-	program := names.freshName("pipe$program")
-	indent := lineIndent(file.Text(), nodeStart(file, call))
-	var text strings.Builder
-	text.WriteString("(() => {\n" + indent + "  const " + program + " = " + nodeText(file, receiver) + ";\n")
-	var stages []string
-	for i, stage := range call.Arguments() {
-		name := names.freshName("pipe$stage" + strconv.Itoa(i))
-		text.WriteString(indent + "  const " + name + " = " + nodeText(file, stage) + ";\n")
-		stages = append(stages, name)
-	}
-	text.WriteString(indent + "  return " + program)
-	for _, stage := range stages {
-		text.WriteString(" |> " + stage + "(%)")
-	}
-	text.WriteString(";\n" + indent + "})()")
-	return &formRewrite{
-		edits:       []sourceEdit{{nodeStart(file, call), call.End(), text.String()}},
-		description: "the pipeline with |> and captured stages",
-	}
 }
 
 // pipeStageAliasContext reports when uncurrying would discard an alias choice

@@ -18,6 +18,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The TypeScript mapper reported `EK2109` for valid computed schema keys. It now preserves native key expressions and reports `EK9001` when a key needs VibeLang operations the mapper cannot lower.
 
 - Migration setup left source-linked documentation examples stale after rewriting their source. It now refreshes matching whole-file code blocks after formatting and reports mismatched excerpts for review.
+- Canonical HTTP request pipelines could be refused by a pipeline migration update; that update has been rolled back while its corrected implementation is validated.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
@@ -617,7 +619,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `FuzzFixGate` could pass without exercising cross-file refusals after explicit effects were introduced; its two saved examples now require a real narrowing refusal.
 
 - A comment after the semicolon of a `schema` body could disappear from declarations, including a comment before its written type alias. Declaration emit now retains it in TypeScript’s position.
-- Converting `.pipe(...)` could interleave stage construction and application, read options early, or change a custom stage’s receiver. The quick fix now preserves construction order and declines custom stages that may observe the receiver supplied by `.pipe`.
 
 - `vibelang --build --fix` rejected project-reference builds. It now applies each project's safe source and config repairs in dependency order before building.
 

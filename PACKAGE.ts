@@ -1271,6 +1271,12 @@ const targets = {
     [go, node, bun],
     "15m"
   ),
+  "http-request-pipe-rollback-controls": goVibelang(
+    "Canonical request pipelines retain safe data-first repairs and declaration contracts",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run '^(TestAlchemyDnsPureRequest|TestAlchemyRequestPipeKeepsObservableArguments)$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestPureRequestPipeReceiverQuoted|FuzzPureRequestPipeReceiver)$' ./internal/vibelangfuzz",
+    [],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
