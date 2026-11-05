@@ -457,6 +457,25 @@ it tracks native sources, dependencies, configs and compiler changes. Await
 `close()` when finished. Module loader hooks do not change `readFile` or
 directory enumeration.
 
+## Run Playwright with native modules
+
+Preload the Node hook before Playwright starts so its configuration and test
+workers can import `.vibe` modules:
+
+```sh
+NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx playwright test
+```
+
+The hook uses Node's module customization API.
+A `.vibe` configuration is selected explicitly with
+`--config playwright.config.vibe`. Playwright's test discovery recognizes
+JavaScript and TypeScript extensions; keep its `.spec.ts` entries and import
+native modules from them. The preload also reaches Node child processes that
+inherit `NODE_OPTIONS`.
+
+The same environment setting lets a bare `node src/main.vibe` command run a
+native entry. Without the preload, Node cannot parse VibeLang syntax.
+
 ## Run sources with Bun
 
 Bun can run and test the project from source, without `dist/`. Preload `vibelang/bun`, in `bunfig.toml`:
