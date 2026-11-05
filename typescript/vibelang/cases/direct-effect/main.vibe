@@ -1,9 +1,9 @@
-// A function whose body is a single result returns its Effect without
-// fnUntraced (D274): Effect.sync for a value, Effect.void for an empty body,
-// and Effect.gen around a lexical thunk for a program, whose yield* keeps
-// native delegation (VIP-5, detail 226; b40d0f27912c), one run-loop operation
-// more than Effect.suspend. The body runs each time the Effect runs and never
-// when the function is called, and a throw in it is a defect.
+// Effect functions build cold programs and rerun their bodies each time.
+// Value results can use Effect.sync; empty bodies retain Effect.gen.
+// Program results preserve native yield delegation and its run-loop cost.
+// The runtime probe compares the empty arrow with a native Effect.gen twin.
+// Construction runs no body work, and repeated execution keeps caller state.
+// A JavaScript exception in the body remains a defect.
 // A program result.
 export effect function step(n: number) {
   return try Effect.succeed(n + 1)

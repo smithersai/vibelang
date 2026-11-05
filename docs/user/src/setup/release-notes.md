@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The foreign-predicate repair regression expected a boolean bridge that lost narrowing; it now checks the captured narrowed value, unchanged helper declarations, repeatable fixes and equivalent defect results.
 
+- The empty-effect regression still expected the retired single-operation lowering; it now compares scheduling with native `Effect.gen` and checks cold construction and repeated execution.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
