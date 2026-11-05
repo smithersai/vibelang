@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.optional-array-cell-let-3-plain\x00")

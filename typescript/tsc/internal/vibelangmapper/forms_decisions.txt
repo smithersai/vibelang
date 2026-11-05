@@ -5069,6 +5069,12 @@ typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:85 byname program a
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:97 lambda plain table
 typescript/vibelang/cases/match-list-elision-optional/main.vibe:45:20 lambda plain fallback
 typescript/vibelang/cases/match-list-optional-absent/main.vibe:6:37 lambda plain fallback
+typescript/vibelang/cases/match-list-optional-cells/main.vibe:11:55 lambda choice fallback
+typescript/vibelang/cases/match-list-optional-cells/main.vibe:15:32 lambda choice fallback
+typescript/vibelang/cases/match-list-optional-cells/main.vibe:18:58 lambda choice fallback
+typescript/vibelang/cases/match-list-optional-cells/main.vibe:21:57 lambda choice fallback
+typescript/vibelang/cases/match-list-optional-cells/main.vibe:5:55 lambda choice fallback
+typescript/vibelang/cases/match-list-optional-cells/main.vibe:8:57 lambda choice fallback
 typescript/vibelang/cases/match-negated-ordinary-class/main.vibe:5:69 lambda plain table
 typescript/vibelang/cases/match-noncallable-own/main.vibe:13:50 lambda plain fallback
 typescript/vibelang/cases/match-noncallable-own/main.vibe:14:139 lambda choice fallback

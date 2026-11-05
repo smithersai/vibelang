@@ -2138,3 +2138,5 @@ The Effect parameter diagnostic check varies callable form, throwing contract, a
 The `//:migration-style-severity-controls` target checks printed diagnostic severities independently of safe-fix refusal notes. Warning provenance remains recorded; promoted style errors still block the affected module. Keyed inputs cover all printed severities with both newline styles.
 
 The `//:vite-service-coverage` target runs the real coverage provider with native TypeScript twins and keyed service lookup controls. It retains authored function counts and uncovered statement and branch comparisons, including failure and fallback paths.
+
+Optional array-pattern bindings use the same conditional lexical-cell initialization as optional extractor bindings. An absent element skips initialization, a present `undefined` initializes the cell, and direct reads retain native definite-assignment errors. `match-list-optional-cells` compares plain, Effect, `is`, nested and elision forms with native TypeScript; keyed VIP-7 witnesses exercise `let` and `const` with absent and present values.

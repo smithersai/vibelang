@@ -1661,10 +1661,6 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			case !item.optional:
 				test(has())
 				p.compilePattern(item, p.enterSubject(value, item, steps, ctx), steps, ctx)
-			case patternHasBindings(item):
-				// An absent element leaves its bindings uninitialized, which
-				// this lowering's const cannot express.
-				test(p.patternErrorCall(4704, "Optional binding", item.anchor))
 			default:
 				// Chapter 004: an optional element the value leaves out
 				// consumes nothing, and a present one must match its pattern.

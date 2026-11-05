@@ -1,6 +1,5 @@
-// expect: EK4704
-// An absent optional element leaves its bindings uninitialized, which match's
-// lowering has no form for yet; the compiler reports it instead of inventing a value.
+// expect: TS2454
+// A direct read must retain the native definite-assignment diagnostic.
 export function f(xs: readonly number[]) {
-  return match (xs) { when [let a?]: 1; default: 0; }
+  return match (xs) { when [let a?]: a; default: 0; }
 }

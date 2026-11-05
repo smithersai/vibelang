@@ -1,0 +1,32 @@
+// expect-result: [[["tdz",true],["value","number","2"],["value","undefined","undefined"],["miss"]],[["tdz",true],["value","string","x"],["value","undefined","undefined"],["miss"]],[["tdz",true],["value","number","2"],["value","undefined","undefined"],["miss"]],[["tdz",true],["value","number","2"],["value","undefined","undefined"],["miss"]],[["tdz",true],["tdz",true],["value","number","2"],["value","undefined","undefined"]],[["miss"],["tdz",true],["value","number","2"],["value","undefined","undefined"]]]
+import { Effect } from "effect"
+import { optionalRead } from "./native.js"
+function letRead(value: readonly unknown[]) {
+ return match(value) { when [let cell?]: optionalRead(()=>cell); default: ["miss"]; }
+}
+function constRead(value: readonly unknown[]) {
+ return match(value) { when [const cell?]: optionalRead(()=>cell); default: ["miss"]; }
+}
+effect function effectRead(value: readonly unknown[]) {
+ return match(value) { when [let cell?]: optionalRead(()=>cell); default: ["miss"]; }
+}
+function isRead(value: readonly unknown[]) {
+ const matched = value is [let cell?]
+ return matched ? optionalRead(()=>cell) : ["miss"]
+}
+function nestedRead(value: readonly unknown[]) {
+ return match(value) { when [[let cell?]?]: optionalRead(()=>cell); default: ["miss"]; }
+}
+function elisionRead(value: readonly unknown[]) {
+ return match(value) { when [,,let cell?]: optionalRead(()=>cell); default: ["miss"]; }
+}
+export effect function main() {
+ return [
+  [letRead([]),letRead([2]),letRead([undefined]),letRead([1,2])],
+  [constRead([]),constRead(["x"]),constRead([undefined]),constRead([1,2])],
+  [try effectRead([]),try effectRead([2]),try effectRead([undefined]),try effectRead([1,2])],
+  [isRead([]),isRead([2]),isRead([undefined]),isRead([1,2])],
+  [nestedRead([]),nestedRead([[]]),nestedRead([[2]]),nestedRead([[undefined]])],
+  [elisionRead([]),elisionRead([7,8]),elisionRead([7,8,2]),elisionRead([7,8,undefined])]
+ ]
+}
