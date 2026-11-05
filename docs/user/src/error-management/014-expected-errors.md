@@ -36,6 +36,8 @@ An `error` or `schema error` declaration constructs a runtime value and cannot o
 
 A reserved `_tag` payload in a base declaration and an `extends` clause in a second declaration are independent violations. That file reports `EK2117` at each site. A preserving class conversion must keep the payload, base, constructor and exported declaration API.
 
+The ambient class conversion also covers a `schema error` with no body, an empty body or payload fields, including one nested inside ambient namespaces. The resulting native class remains erased; it does not run schema construction or register a matcher in the emitted JavaScript.
+
 An effect function or method whose body can only throw has success type `never`: it has no successful return. With no other returned value, a conditional `throw` followed by fallthrough infers `undefined`. An empty body or a body containing only a bare `return` keeps success type `void`.
 
 Use `export error InvalidCode` or `export schema error InvalidCode` for a named export. For a default export, declare the error first and write `export { InvalidCode as default }`. Placing either declaration after `export default` reports `EK1305`, including when the declaration has no body.

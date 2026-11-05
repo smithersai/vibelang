@@ -886,10 +886,10 @@ const targets = {
     "15m"
   ),
   "go-error-inheritance": goVibelang(
-    "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
-    `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,
-    [Tsc["vibelang-files"]],
-    "10m"
+    "Error inheritance and ambient class repairs retain diagnostics, declaration output and erasure.",
+    `printf 'error-contracts: compile and run inheritance and ambient repair controls\n' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -v -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected|TestAmbientErrorFix.*|FuzzAmbientErrorFix)$' ./internal/vibelang/ ./internal/vibelangfuzz/ && printf 'error-contracts: all controls passed\n'`,
+    [Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]],
+    "15m"
   ),
   "go-vibelang-fix-twins": goVibelang(
     "What --fix writes for the TypeScript-form, migration and pipeline-stage cases is their fixed twin, within the --fix cost bounds, and platform wrappers move into their companion.",
