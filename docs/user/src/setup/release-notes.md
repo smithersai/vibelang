@@ -31,6 +31,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Declaration self-comparison tests repeatedly loaded unrelated browser libraries. Their fixtures now select ES5 while retaining nominal types, unrelated diagnostics and changed-export checks.
 
 - Bare `forkIn` used the old scope-first wrapper, and disabling Effect globals left some functions available. It now exposes the native function, and the option disables all implicit Effect functions.
+- Declaration sidecar tests repeatedly loaded unrelated browser libraries. They now select ES5 while retaining project discovery, saved migration examples and changed-export checks.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.

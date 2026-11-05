@@ -1736,3 +1736,11 @@ Four fixed nominal/diagnostic combinations require unchanged declarations to
 pass and a changed exported field to fail. A stock TypeScript control still
 requires `TS2583` for `BigInt` without its library, and comparison must remain
 unavailable for that declaration.
+
+Sidecar discovery fixtures select ES5 through their entry declarations and keep
+the comparison options untouched. The direct mirrored-tree and saved journal
+examples still resolve declarations through the actual discovered configuration,
+and retain their changed-field checks. Configuration and source bytes must remain
+unchanged during comparison; the journal corpus itself is unchanged. Adjacent
+and both mirrored layouts still require `TS2583` and an unavailable comparison
+when a public declaration refers to `BigInt` without its library.

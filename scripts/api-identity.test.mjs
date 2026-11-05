@@ -483,18 +483,20 @@ test("sidecar trees pair tsc twins and source module suffixes select matching de
 test("Smithers: sidecarDir imports compare identical without writing beside sources", () => {
   const files = {
     "tsconfig.json": JSON.stringify({ compilerOptions: { rootDirs: [".", ".cache/types"] }, vibe: { sidecarDir: ".cache/types" } }),
-    "index.d.ts": 'export { value } from "./src/entry.vibe";',
+    "index.d.ts": '/// <reference no-default-lib="true"/>\n/// <reference lib="es5"/>\nexport { value } from "./src/entry.vibe";',
     "src/entry.vibe": "export const value = secretVibeSyntax;",
     ".cache/types/src/entry.d.vibe.ts": '/** Stored value */ export declare const value: { id: string };',
   }
   fixture(files, files, (a, b) => {
     for (const [left, right] of [[a, a], [a, b]]) {
-      const result = compareApiIdentity(ts, left, right)
+      const result = withPureFixtureCompiler(compiler => compareApiIdentity(compiler, left, right))
       assert.equal(result.identical, true, JSON.stringify(result))
       assert.equal(result.comparisonComplete, true, JSON.stringify(result))
     }
     writeFileSync(join(b, ".cache/types/src/entry.d.vibe.ts"), 'export declare const value: { id: number };')
-    assert.equal(compareApiIdentity(ts, a, b).identical, false)
+    assert.equal(withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, b)).identical, false)
+    for (const path of ["tsconfig.json", "src/entry.vibe"])
+      for (const root of [a, b]) assert.equal(readFileSync(join(root, path), "utf8"), files[path])
   }, { types: "./index.d.ts" })
 })
 
@@ -587,15 +589,38 @@ test("self-comparison fixture libraries retain stock missing-library errors", ()
 
 test("Smithers journal resolves sidecarDir and beside .vibe declarations", () => {
   const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/smithers-journal-sidecar-dir.json", import.meta.url)))
-  fixture(corpus, corpus, (a, b) => {
-    for (const result of [compareApiIdentity(ts, a, a), compareApiIdentity(ts, a, b)])
+  const files = { ...corpus, "index.d.ts": '/// <reference no-default-lib="true"/>\n/// <reference lib="es5"/>\n' + corpus["index.d.ts"] }
+  fixture(files, files, (a, b) => {
+    for (const result of [withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, a)), withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, b))])
       assert.equal(result.identical, true, JSON.stringify(result))
     writeFileSync(join(b, ".vibe/declarations/internal/WriteTally.d.vibe.ts"), "export interface WriteTally { readonly count: string }")
-    const changed = compareApiIdentity(ts, a, b)
+    const changed = withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, b))
+    for (const path of ["tsconfig.json", "internal/WriteTally.vibe"])
+      for (const root of [a, b]) assert.equal(readFileSync(join(root, path), "utf8"), corpus[path])
     assert.ok(changed.typeDifferences.some(d => d.export === "WriteTally" && /TS2344/.test(d.diagnostic)), JSON.stringify(changed))
   })
-  const files = { "index.d.ts": 'export type { X } from "./dep.vibe";', "dep.d.vibe.ts": "export type X = string;" }
-  pass(files, files, { types: "./index.d.ts" })
+  const beside = { "index.d.ts": 'export type { X } from "./dep.vibe";', "dep.d.vibe.ts": "export type X = string;" }
+  pass(beside, beside, { types: "./index.d.ts" })
+})
+
+test("sidecar discovery fixtures retain unavailable library diagnostics", () => {
+  for (const directory of ["", ".cache/types/", ".vibe/declarations/"]) {
+    const files = {
+      "index.d.ts": '/// <reference no-default-lib="true"/>\n/// <reference lib="es5"/>\nexport type { X } from "./src/entry.vibe";',
+      "tsconfig.json": JSON.stringify(directory
+        ? { compilerOptions: { rootDirs: [".", directory] }, vibe: { sidecarDir: directory } } : {}),
+      "src/entry.vibe": "export const ignored = secretVibeSyntax;",
+      [directory + "src/entry.d.vibe.ts"]: "export type X = BigInt;",
+    }
+    fixture(files, files, a => {
+      const result = withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, a))
+      assert.equal(result.identical, false, JSON.stringify(result))
+      assert.equal(result.comparisonComplete, false)
+      assert.ok(result.environmentDiagnostics.some(d => /TS2583/.test(d.diagnostic) && d.blocking), JSON.stringify(result))
+      assert.equal(readFileSync(join(a, "tsconfig.json"), "utf8"), files["tsconfig.json"])
+      assert.equal(readFileSync(join(a, "src/entry.vibe"), "utf8"), files["src/entry.vibe"])
+    }, { types: "./index.d.ts" })
+  }
 })
 
 test("unrelated outside diagnostics are environment records, never API differences", () => {
