@@ -864,6 +864,13 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "10m"
   ),
+  "appendix-oracles": check(
+    "Appendix diagnostic, quick-fix and stock-TypeScript oracle controls run in the graph.",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test --test-concurrency=3 typescript/vibelang/cov900-probe.test.mjs typescript/vibelang/cov900-quickfix.test.mjs typescript/vibelang/cov900-twin.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [node, bun],
+    "10m"
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,

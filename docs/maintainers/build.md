@@ -1777,3 +1777,5 @@ The `//packages:runtime-readme-exports` target checks every package export again
 The `//:go-interim-severities` target replays the saved compatibility-warning inputs with their legacy severity maps. Its synthetic controls keep those warnings outside modern configurable keys and require unconfigured default-off warnings and unrelated category violations to remain rejected.
 
 The `//:emission-snapshots` target includes the pinned negation-pattern declaration and Exit comparison. It uses the shared VIP-27 API identity comparator, retains the unmodified TypeScript twin and rejects changed native union types or authored documentation. The release target runs generated union and metadata mutation controls.
+
+The `//:appendix-oracles` target runs the Appendix B probe, quick-fix and stock-TypeScript twin controls. The chapter 4 reference-oracle controls run in `//:release`. Their test-runner catalog entries must match the commands that execute them.

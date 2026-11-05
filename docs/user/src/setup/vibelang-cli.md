@@ -174,6 +174,15 @@ In a `.vibe` file, a rule runs in one of three ways. A rule whose pattern VibeLa
 
 The explicit Oxlint adapter honors the disable comments a migrated file keeps from its TypeScript, as Oxlint does: `// oxlint-disable-next-line effecttsgo/schema-sync -- why` turns the rule off on the next line, `oxlint-disable-line` on its own line, and `/* oxlint-disable effecttsgo/schema-sync */` until the matching `oxlint-enable`; the `eslint-` spellings work the same, and a comment that names no rule turns every rule off. Builds and the language server read `// @effect-diagnostics-next-line schemaSync:off`.
 
+### Bridge imported validation helpers
+
+An imported TypeScript validation helper may throw even when its return type is
+`void`. Inside Effect code, wrap that call with
+`Effect.orDie(Effect.try({ try: () => check(), catch: error => error }))`.
+The `catch` mapping retains the original thrown value, and `Effect.orDie`
+keeps it as a defect. The helper runs when the Effect runs. Do not mark a
+throwing validation helper `@nothrow` to pass a non-throwing callback check.
+
 ## 3. Compile a first module
 
 Create `src/hello.vibe`, in a directory that `include` selects:
