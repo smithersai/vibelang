@@ -1,0 +1,5 @@
+{
+  "key": "alchemy-platform-module-dependency",
+  "main": "import * as Effect from \"effect/Effect\";\nimport { basename } from \"node:path\";\nimport { marker } from \"./leaf.ts\";\nexport function read(input: string): string { return basename(input) + marker; }\nexport const keep = Effect.succeed(1);\n",
+  "leaf": "import * as Effect from \"effect/Effect\";\nexport const marker = \"marker\";\nexport interface Shape { readonly value: string }\nexport const keepLeaf = Effect.succeed(1);\n"
+}

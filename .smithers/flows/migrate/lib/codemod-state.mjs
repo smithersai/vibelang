@@ -56,6 +56,9 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     if (previous) previous.after = after
     else writes.push({ file, before: disk(file), after, mode: existsSync(join(target, fromOf.get(file) ?? file)) ? statSync(join(target, fromOf.get(file) ?? file)).mode & 0o777 : 0o644 })
   }
+  // Resolve renamed peers before extraction copies imports into a TypeScript
+  // module body. Authored module bodies retain their own import policy.
+  const importEdits = rewriteImports(target, scope.map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })
   const platform = ts ? splitBatchPlatform(target, files, ts, { read, write, moduleBodies, globalsOf }) : { splits: [], refused: [] }
   const sourceChildModules = ts ? prepareSourceChildModules(files, ts, { read, write }) : { converted: [], refused: [] }
   // Read the TypeScript after platform splitting and before renaming. Detail
@@ -75,7 +78,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
   // Literal Vite build inputs that name a renamed module (tracked: the repository's files).
   const buildEntries = ts && tracked ? rewriteBuildEntrypoints(target, tracked, renames, ts, { read, write }) : { edits: [], warnings: [] }
-  const importEdits = rewriteImports(target, [...scope, ...platform.splits.flatMap(s => s.platform ?? [])].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })
+  importEdits.push(...rewriteImports(target, [...scope, ...platform.splits.flatMap(s => s.platform ?? [])].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write }))
   const referenceEdits = [], referenceWarnings = [], selectorChecks = [], matcherCache = new Map()
   const started = performance.now()
   const packages = packageContext(catalog, file => readFileSync(join(target, file), "utf8"))

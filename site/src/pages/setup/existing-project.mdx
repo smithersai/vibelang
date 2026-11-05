@@ -126,7 +126,7 @@ Rename a `.ts` file that uses Effect to `.vibe`, then let the compiler rewrite i
 npx vibelang -p tsconfig.json --fix --noEmit
 ```
 
-The migration flow also updates loader queries and fragments when it renames a source. For example, `export { default as counterRaw } from "./counter.ts?raw#snippet"` points at `"./counter.vibe?raw#snippet"` after conversion, keeping the exported name and suffix. Imports, re-exports and dynamic imports follow the same rule, including configured aliases. Reverting a module restores each original specifier.
+The migration flow also updates loader queries and fragments when it renames a source. For example, `export { default as counterRaw } from "./counter.ts?raw#snippet"` points at `"./counter.vibe?raw#snippet"` after conversion, keeping the exported name and suffix. Imports, re-exports and dynamic imports follow the same rule, including configured aliases. Reverting a module restores each original specifier. When platform extraction creates a `module` body, its peer imports follow the renamed dependencies too, including a dependency already migrated in an earlier batch. A dependency retained in TypeScript keeps its original name.
 
 If a previous migration left `./user.ts` pointing at a renamed `user.vibe`, `--fix` also repairs that stale relative name in VibeLang sources before native-extension fallback is retired. The replacement follows the project's `rewriteRelativeImportExtensions`, `allowImportingTsExtensions` and emit settings: a permitted source name, or the runtime `.js`/`.jsx` name. Existing native files keep their imports. See [CLI migration](/setup/vibelang-cli).
 
