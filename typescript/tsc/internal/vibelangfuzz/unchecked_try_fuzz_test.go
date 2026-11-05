@@ -22,7 +22,7 @@ func TestUncheckedTryDeclarationsQuoted(t *testing.T) {
 // requires the public success type of try to match the native yield* twin.
 func FuzzUncheckedTryDeclarations(f *testing.F) {
 	startShortBudget(f)
-	forms := []string{"identifier", "parentheses", "property", "element", "conditional", "call", "effect-any", "effect-number"}
+	forms := []string{"identifier", "parentheses", "property", "element", "conditional", "call", "effect-any", "effect-number", "call-parentheses", "call-property", "call-element", "call-conditional"}
 	for _, form := range forms {
 		f.Add(form, uint8(0))
 	}
@@ -54,6 +54,15 @@ func FuzzUncheckedTryDeclarations(f *testing.F) {
 			parameter += ", flag: boolean"
 		case "call":
 			operand = "value()"
+		case "call-parentheses":
+			operand = "(value())"
+		case "call-property":
+			operand = "value.read()"
+		case "call-element":
+			operand = "value[\"read\"]()"
+		case "call-conditional":
+			operand = "(flag ? value : value)()"
+			parameter += ", flag: boolean"
 		case "effect-any":
 			parameter = "value: Effect.Effect<any>"
 		case "effect-number":
