@@ -6,6 +6,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"slices"
 	"testing"
 )
 
@@ -51,6 +52,65 @@ func TestInterimLegacySeverityOverrides(t *testing.T) {
 	for _, code := range []int32{4816, 4818, 4821, 4822, 4823, 4824, 4825} {
 		for _, severity := range []string{"error", "warning", "off"} {
 			t.Run(fmt.Sprintf("%d/%s", code, severity), func(t *testing.T) { checkInterimLegacySeverity(t, code, severity) })
+		}
+	}
+}
+
+// lsrules.fail raises these to errors through compilerOptions.vibelang.diagnostics.
+var interimLegacyWarnings = []int32{4804, 4805, 4806, 4807, 4808, 4809, 4810, 4812, 4815}
+
+func checkInterimLegacyWarning(t *testing.T, code int32) {
+	TestInterimLegacySeveritiesQuoted(t)
+	name := fmt.Sprintf("EK%04d", code)
+	if !slices.Contains(Facts().Interim, code) || Facts().Default(code) != DefaultWarning || Facts().IsAdjustable(code) {
+		t.Fatalf("fixture %s must be an interim warning outside modern configurable keys", name)
+	}
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "fixture/main.vibe", PathKey: "fixture/main.vibe"}, "x", core.ScriptKindTS)
+	reported := func(category diagnostics.Category) *ast.Diagnostic {
+		return ast.NewExternalDiagnostic(file, core.NewTextRange(0, 1), "EK", category, code, "configured legacy warning")
+	}
+	raised := EffectiveSeverities(&core.VibeLangOptions{Diagnostics: map[string]string{name: "error"}})
+	for _, tc := range []struct {
+		name       string
+		category   diagnostics.Category
+		severities []map[string]string
+		gap        bool
+	}{
+		{"default warning", diagnostics.CategoryWarning, nil, false},
+		{"raised to error", diagnostics.CategoryError, []map[string]string{raised}, false},
+		{"error without configuration", diagnostics.CategoryError, nil, true},
+		{"raised but printed as a warning", diagnostics.CategoryWarning, []map[string]string{raised}, true},
+	} {
+		g := &Gaps{}
+		CheckDiagnostics(g, "fixture", []*ast.Diagnostic{reported(tc.category)}, true, tc.severities...)
+		if g.Any() != tc.gap {
+			Gap(t, "FuzzInterimLegacySeverities", "policy:"+name+":warning-default", "%s: gaps %v", tc.name, g.found)
+		}
+	}
+	ExpectPending(t, "FuzzInterimLegacySeverities", "policy:"+name+":warning-default")
+}
+
+func TestInterimLegacyWarningOverrides(t *testing.T) {
+	for _, code := range interimLegacyWarnings {
+		t.Run(fmt.Sprint(code), func(t *testing.T) { checkInterimLegacyWarning(t, code) })
+	}
+}
+
+// VIP-30 keeps interim EK92xx out of configuration, so a legacy map entry for
+// EK9204 moves nothing and its default category still holds.
+func TestInterimEK92xxIgnoresLegacySeverity(t *testing.T) {
+	TestInterimSeverityRulesQuoted(t)
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "fixture/main.vibe", PathKey: "fixture/main.vibe"}, "x", core.ScriptKindTS)
+	raised := EffectiveSeverities(&core.VibeLangOptions{Diagnostics: map[string]string{"EK9204": "error"}})
+	for _, tc := range []struct {
+		category diagnostics.Category
+		gap      bool
+	}{{diagnostics.CategoryWarning, false}, {diagnostics.CategoryError, true}} {
+		d := ast.NewExternalDiagnostic(file, core.NewTextRange(0, 1), "EK", tc.category, 9204, "interim warning")
+		g := &Gaps{}
+		CheckDiagnostics(g, "fixture", []*ast.Diagnostic{d}, true, raised)
+		if g.Any() != tc.gap {
+			t.Fatalf("%v: gaps %v", tc.category, g.found)
 		}
 	}
 }

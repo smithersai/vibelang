@@ -283,10 +283,12 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		adjustable := facts.IsAdjustable(code)
 		// VIP-30 overrides one diagnostic code, never the whole project's
 		// warning policy. The effective map includes inherited settings.
-		// Interim default-off warnings are not modern configurable keys.
-		// Parsed per-code entries for them come from the supported legacy
-		// map and still control those compatibility diagnostics.
-		legacyInterim := slices.Contains(facts.Interim, code) && facts.Default(code) == DefaultOff
+		// Interim warnings, on or off by default, are not modern configurable
+		// keys. Parsed per-code entries for them come from the supported
+		// legacy map and still control those compatibility diagnostics.
+		// VIP-30: an interim EK92xx code is never configurable, even as a warning.
+		legacyInterim := slices.Contains(facts.Interim, code) && code/100 != 92 &&
+			(facts.Default(code) == DefaultOff || facts.Default(code) == DefaultWarning)
 		if legacyInterim && d.File() != nil {
 			if severity, configured := legacyDirectiveSeverityAt(d.File().Text(), d.Pos(), name); configured {
 				want := map[string]DefaultCategory{"error": DefaultError, "warning": DefaultWarning, "off": DefaultOff}[severity]
