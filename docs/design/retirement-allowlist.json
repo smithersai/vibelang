@@ -1588,5 +1588,35 @@
       "tokensSha256": "7ac72a087dabbb868ee0baa942219107d0efd272d5a63eb774c778384b638626",
       "configSha256": "df9429e5423acea8f681e171e978e2a369c0703163d2b58899ddad8d1f711d45"
     }
+  },
+  {
+    "code": "EK4857",
+    "vip": "VIP-3",
+    "case": "typescript/vibelang/cases/cov2-900b-cite-recursive-partial-contract.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/src/001-functions.md#legacy-written-infer-return-slots: accepted immediate infer-slot migration; docs/design/src/005-services.md: explicit service lookup replaces the denied static call shorthand. VIP-34 retains independent native errors."
+    },
+    "reason": "Retain all three existing legacy recursive-contract errors and the native recursion control. Add the accepted return-slot migration diagnostic and port only the unrelated service lookup; no new language rejection is introduced."
+  },
+  {
+    "code": "EK9206",
+    "vip": "VIP-3",
+    "case": "typescript/vibelang/cases/cov2-900b-cite-recursive-partial-contract.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/src/001-functions.md#legacy-written-infer-return-slots: accepted immediate infer-slot migration; docs/design/src/005-services.md: explicit service lookup replaces the denied static call shorthand. VIP-34 retains independent native errors."
+    },
+    "reason": "Retain all three existing legacy recursive-contract errors and the native recursion control. Add the accepted return-slot migration diagnostic and port only the unrelated service lookup; no new language rejection is introduced."
+  },
+  {
+    "code": "TS7023",
+    "vip": "VIP-3",
+    "case": "typescript/vibelang/cases/cov2-900b-cite-recursive-partial-contract.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/src/001-functions.md#legacy-written-infer-return-slots: accepted immediate infer-slot migration; docs/design/src/005-services.md: explicit service lookup replaces the denied static call shorthand. VIP-34 retains independent native errors."
+    },
+    "reason": "Retain all three existing legacy recursive-contract errors and the native recursion control. Add the accepted return-slot migration diagnostic and port only the unrelated service lookup; no new language rejection is introduced."
   }
 ]

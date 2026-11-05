@@ -2029,3 +2029,5 @@ The `//:schema-alias-native-properties` target checks alias repairs against nati
 The `//:implicit-generator-defect-bridges` target compares implicit generator repairs against native declarations and Effect exits across foreign invocation and contract variations.
 
 The `//:trusted-legacy-client-actions` target checks the legacy client diagnostics at current synchronous-call boundaries through public language-service document edits.
+
+The `//:recursive-legacy-slot-diagnostics` check retains recursive legacy call-cycle and native recursion errors while testing fully written positive contracts for argument, logical and generic call positions.
