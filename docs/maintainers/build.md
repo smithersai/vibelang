@@ -528,7 +528,11 @@ On Linux, a bounded sample of the child process tree reports executable kinds:
 `go` process identifies a shell launcher before Go starts; `go-setup-or-build`
 covers Go preparation when no compiler child is sampled, and `tests` starts
 with the JSON package-start event. On other hosts, JSON events still report
-test progress. Sampling reads no process arguments or environment values.
+test progress. Linux child lists belong to individual threads, so the sampler
+checks the main thread and up to 63 other threads per process, following at most
+64 processes in total. This includes compiler and test subprocesses started by
+Go's runtime threads; a disappearing thread does not hide its surviving peers.
+Sampling reads no process arguments or environment values.
 These samples describe the observed phase; they do not establish why a launcher
 waited or why a test took time.
 

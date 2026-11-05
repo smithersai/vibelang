@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from "node:fs"
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, delimiter } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -361,4 +361,78 @@ func TestCancellation(t *testing.T) {
     assert.match(stderr, new RegExp("event=finish.*cause=signal.*signal=" + signal))
     assert.doesNotMatch(stderr, /go-progress-native-tree-|PROGRESS_NODE|PROGRESS_WORKER/)
   }
+})
+
+
+test("Go progress sees children owned by secondary threads across seeded process layouts", t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-threads-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  for (let seed = 1; seed <= 64; seed++) {
+    const proc = join(dir, String(seed))
+    const entry = (pid, exe, threads) => {
+      mkdirSync(join(proc, String(pid)), { recursive: true })
+      symlinkSync("/private-fixture-path/" + exe, join(proc, String(pid), "exe"))
+      for (const [tid, children] of threads) {
+        const task = join(proc, String(pid), "task", String(tid))
+        mkdirSync(task, { recursive: true })
+        if (children !== null) writeFileSync(join(task, "children"), children)
+      }
+    }
+    const root = seed * 100, child = root + 10, leaf = root + 20
+    entry(root, "go", [[root, seed % 3 ? "" : null], ["not-a-thread", String(leaf)], [root + 1, `${child} ${child} invalid 999999`], [root + 2, null]])
+    entry(child, seed % 2 ? "compile" : "vibelang.test", [[child, ""], [child + 1, `${leaf} ${root}`]])
+    entry(leaf, "link", [[leaf, ""]])
+    assert.deepEqual(processKinds(root, proc), {
+      launcher: 0, go: 1, compile: seed % 2 ? 1 : 0, link: 1, test: seed % 2 ? 0 : 1, other: 0
+    }, "seed " + seed)
+  }
+})
+
+test("Go progress samples a real subprocess launched from a non-main Go thread", { timeout: 600_000, skip: process.platform !== "linux" && "requires Linux per-thread process metadata" }, async t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-native-thread-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const source = join(dir, "thread.go"), binary = join(dir, "thread.test")
+  writeFileSync(source, `package main
+import ("os"; "os/exec"; "runtime")
+func main() {
+  runtime.LockOSThread()
+  done := make(chan error)
+  go func() {
+    runtime.LockOSThread()
+    cmd := exec.Command(os.Args[1], "-e", ${JSON.stringify('process.stdout.write("thread-child-ready\\n"); process.stdin.resume()')})
+    cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+    done <- cmd.Run()
+  }()
+  if <-done != nil { os.Exit(1) }
+}
+`)
+  const built = spawnSync("go", ["build", "-p", "8", "-o", binary, source], {
+    env: { ...process.env, GOMAXPROCS: "2", GOWORK: "off" }, encoding: "utf8", timeout: 280_000
+  })
+  assert.equal(built.status, 0, built.stdout + built.stderr)
+  const child = spawn(binary, [process.execPath], { env: { ...process.env, GOMAXPROCS: "2" }, stdio: ["pipe", "pipe", "pipe"] })
+  const closed = new Promise((resolve, reject) => {
+    child.once("error", reject)
+    child.once("close", (code, signal) => resolve({ code, signal }))
+  })
+  t.after(() => { child.stdin.end(); if (child.exitCode === null) child.kill("SIGTERM") })
+  let stdout = "", stderr = ""
+  child.stderr.on("data", chunk => { stderr += chunk })
+  await new Promise((resolve, reject) => {
+    child.stdout.on("data", chunk => { stdout += chunk; if (stdout.includes("thread-child-ready\n")) resolve() })
+    child.once("error", reject)
+    child.once("close", () => reject(new Error("native fixture exited before its child: " + stderr)))
+  })
+  const tasks = join("/proc", String(child.pid), "task")
+  const mainChildren = readFileSync(join(tasks, String(child.pid), "children"), "utf8").trim()
+  const secondaryChildren = readdirSync(tasks).filter(tid => tid !== String(child.pid)).flatMap(tid => {
+    try { return readFileSync(join(tasks, tid, "children"), "utf8").trim().split(/\s+/).filter(Boolean) }
+    catch { return [] }
+  })
+  const sampled = processKinds(child.pid)
+  child.stdin.end()
+  assert.deepEqual(await closed, { code: 0, signal: null }, stderr)
+  assert.equal(mainChildren, "", "the witness must use a non-main native thread")
+  assert.ok(secondaryChildren.length >= 1, "the native subprocess must exist in a secondary thread")
+  assert.deepEqual(sampled, { launcher: 0, go: 0, compile: 0, link: 0, test: 1, other: 1 })
 })

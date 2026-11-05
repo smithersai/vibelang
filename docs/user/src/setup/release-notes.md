@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The grammar admission audit could stop on an async schema field with a `static` prefix. It now records the existing modifier-diagnostic gap while preserving static properties, methods and keyword-named fields as controls.
 - Extracting a generic foreign method into a local `const` lost its thrown type and could require an unnecessary bridge. Aliases now keep the receiver’s substituted contract.
+- Long Go checks could omit compiler and test subprocesses from their progress records when Go started them on another thread. Progress sampling now includes those thread-owned subprocesses.
 
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 

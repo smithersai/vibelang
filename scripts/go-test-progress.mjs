@@ -1,7 +1,7 @@
 // Keep Go's JSON output intact; add bounded metadata before Go starts and while it is quiet.
 // No command arguments, environment values, source text or process paths enter these records.
 import { spawn } from "node:child_process"
-import { readFileSync, readlinkSync } from "node:fs"
+import { readFileSync, readlinkSync, readdirSync } from "node:fs"
 import { basename, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { StringDecoder } from "node:string_decoder"
@@ -20,8 +20,19 @@ export function processKinds(pid, proc = "/proc") {
       const kind = ["go", "compile", "link"].includes(exe) ? exe :
         exe.endsWith(".test") ? "test" : ["sh", "bash", "dash", "zsh"].includes(exe) ? "launcher" : "other"
       kinds[kind]++
-      const children = readFileSync(base + "/task/" + current + "/children", "utf8").trim()
-      if (children) pending.push(...children.split(/\s+/).filter(x => /^\d+$/.test(x)).map(Number).slice(0, 64))
+      // Linux assigns children to the thread that created them. Go may
+      // start compilers and test binaries from any of its runtime threads.
+      const tasks = [String(current)]
+      try {
+        tasks.push(...readdirSync(base + "/task")
+          .filter(tid => tid !== String(current) && /^\d+$/.test(tid)).slice(0, 63))
+      } catch { /* Keep the main-thread sample if the task directory vanished. */ }
+      for (const tid of tasks) {
+        try {
+          const children = readFileSync(base + "/task/" + tid + "/children", "utf8").trim()
+          if (children) pending.push(...children.split(/\s+/).filter(x => /^\d+$/.test(x)).map(Number).slice(0, 64))
+        } catch { /* One exiting thread must not hide the other threads' children. */ }
+      }
     } catch { /* /proc is optional and processes may exit while sampled. */ }
   }
   return Object.values(kinds).some(Boolean) ? kinds : null
