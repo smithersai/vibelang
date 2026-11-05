@@ -44,6 +44,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Language-service examples omitted the no-throw diagnostic for direct `JSON.parse` calls; their exact diagnostics now include `EK0403` alongside independently configured lint warnings.
 - Throw-expression checks still expected comma violations to be warnings; they now require the documented `EK1010` error and verify that parentheses preserve the thrown value.
 - Migration reference refresh could fail on a missing child configuration in an unrelated vendor project; missing configurations are now validated only when affected or required by the reference graph, before any outputs are deleted.
+- Migration test-edit checks stopped at missing compiler provenance in simulated conversions. Their integration fixtures now record provenance before conversion and exercise the protected-edit checks.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 

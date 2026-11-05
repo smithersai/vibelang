@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
+import { bindCompilerArtifact } from "../lib/toolchain.mjs"
 import { runTests } from "../lib/tests.mjs"
 import { check } from "../lib/diagnostics.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
@@ -16,6 +17,7 @@ import { must, readJson, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
+const fc = require("fast-check")
 // record --force still requires an actual successful pack-policy receipt.
 async function packVerification(p) {
   const config = readJson(p.config)
@@ -28,7 +30,7 @@ const put = (root, file, text) => {
   mkdirSync(dirname(join(root, file)), { recursive: true })
   writeFileSync(join(root, file), text)
 }
-async function fixture(body, { initial = {} } = {}) {
+async function fixture(body, { initial = {}, probeCompiler = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "test-diff-repo-"))
   const target = join(root, "repo"), run = join(root, "run"), p = paths(run)
   try {
@@ -43,19 +45,21 @@ async function fixture(body, { initial = {} } = {}) {
     const base = await Jj.commit(target, "unmodified baseline")
     mkdirSync(join(target, "node_modules"))
     symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
-    renameSync(join(target, "src/X.ts"), join(target, "src/X.vibe"))
-    put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
     const renames = [{ from: "src/X.ts", to: "src/X.vibe" }]
     const toolchain = join(root, "toolchain")
     mkdirSync(join(toolchain, "native"), { recursive: true })
-    symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url)), join(toolchain, "native/vibelang"))
+    if (probeCompiler) writeProbeAwareCompiler(join(toolchain, "native/vibelang"), "#!/bin/sh\nexit 0\n", { mode: 0o755 })
+    else symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url)), join(toolchain, "native/vibelang"))
     writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.1.0", compiler: "native/vibelang", packages: {} })
     const config = { target, toolchain: { kind: "staged", dir: toolchain }, packages: [], test: { command: "true", cwd: "." }, bookmark: "vibe" }
     writeJson(p.config, config)
+    const compilerArtifact = bindCompilerArtifact(config, p)
+    renameSync(join(target, "src/X.ts"), join(target, "src/X.vibe"))
+    put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
     writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(p.baseline, "upstream-packs")))
     writeJson(p.inventory, { files: [{ path: "src/X.ts", tokens: 7 }] })
     writeJson(p.plan, { batches: [{ files: ["src/X.ts"], reason: "regression" }] })
-    writeJson(p.codemod("01"), { renames, fix: { totals: {}, refused: [] } })
+    writeJson(p.codemod("01"), { compilerArtifact, renames, fix: { totals: {}, refused: [] } })
     await packVerification(p)
     await body({ root, target, run, p, base, renames })
   } finally { rmSync(root, { recursive: true, force: true }) }
@@ -100,14 +104,10 @@ test("recorded selector/import proof is included in the PR body artifact", async
 test("verify fails a batch even when all target tests and compiler checks pass", async () => fixture(async ({ target, run, p }) => {
   const config = readJson(p.config)
   config.packages = [{ dir: ".", sources: ["src"], tsconfig: "tsconfig.json" }]
-  // This case uses its package-local probe-aware compiler stub.
-  config.toolchain = { kind: "npm", version: "0.0.11" }
   config.test.command = "true"
   writeJson(p.config, config)
   writeJson(join(target, "package.json"), { ...readJson(join(target, "package.json")), private: true })
   put(target, "tsconfig.json", '{"include":["src/**/*"]}')
-  writeProbeAwareCompiler(join(target, "node_modules/.bin/vibelang"), "#!/bin/sh\nexit 0\n")
-  await must("chmod +x node_modules/.bin/vibelang", { cwd: target })
   writeJson(join(p.baseline, "compile-root.json"), [])
   writeJson(join(p.baseline, "tests.json"), { code: 0, tests: null })
   const good = await verify({ run, batch: "01" })
@@ -117,7 +117,7 @@ test("verify fails a batch even when all target tests and compiler checks pass",
   assert.equal(bad.checks.tests, true)
   assert.equal(bad.ok, false)
   assert.equal(bad.checks.testEdits, false)
-}, { initial: { "package.json": '{"private":true}', "tsconfig.json": '{"include":["src/**/*"]}' } }))
+}, { probeCompiler: true, initial: { "package.json": '{"private":true}', "tsconfig.json": '{"include":["src/**/*"]}' } }))
 test("specifier proof reads declarationImportStyle from the importer's inherited config", async () => fixture(async ({ root, target, base, renames }) => {
   put(target, "tsconfig.base.json", '{"compilerOptions":{"declarationImportStyle":"js"}}')
   put(target, "tsconfig.json", '{"extends":"./tsconfig.base.json"}')
@@ -228,3 +228,16 @@ test("baseline VibeLang formatting survives pinned trees, record and the PR body
   assert.equal(await Jj.commitId(target, "@-"), parent)
   assert.match(readFileSync(join(p.batch("01"), "test-diff.md"), "utf8"), /token stream differs/)
 }))
+
+test("generated protected-test edits retain the conversion artifact and remain forbidden", async () => {
+  await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 1000 }), fc.boolean(), async (expected, privatePackage) => {
+    await fixture(async ({ root, target, p, base, renames }) => {
+      const artifact = readJson(p.codemod("01")).compilerArtifact
+      assert.deepEqual(bindCompilerArtifact(readJson(p.config), p, { resume: true }), artifact)
+      put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(' + expected + ')\n')
+      const result = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "generated-proof") })
+      assert.equal(result.ok, false)
+      assert.deepEqual(readJson(p.config).compilerArtifact, artifact)
+    }, { initial: { "package.json": JSON.stringify({ private: privatePackage }) } })
+  }), { seed: 551105, numRuns: 12 })
+})
