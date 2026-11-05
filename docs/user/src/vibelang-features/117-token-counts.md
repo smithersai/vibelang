@@ -19,7 +19,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,976 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,840 |
-| The skill and the user guide (142 pages) | 500,000 |
+| The skill and the user guide (142 pages) | 510,000 |
 | The user guide alone | 500,000 |
 | The specification (11 chapters) | 250,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -120,7 +120,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vite and Vitest](../setup/vite.md) | 3,800 |
 | **Format and lint** | **11,000** |
 | [Format with dprint](../setup/formatting.md) | 2,700 |
-| [Developer tools](../setup/developer-tools.md) | 8,200 |
+| [Developer tools](../setup/developer-tools.md) | 8,300 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
