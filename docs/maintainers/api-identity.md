@@ -350,6 +350,14 @@ remain read-only resolution inputs; stored declarations and aliases cannot
 write through them. Type and documentation changes through sibling imports
 still fail the comparison.
 The migration adapter uses the shared supervised worker and retains its resource limits.
+
+Provenance fixtures select `lib.es5.d.ts` in native validation and API
+comparison, and reject unrelated browser libraries. Each snapshot independently
+retains its selected dependency's native type and missing-library errors.
+Private and shadowed-file mutations stay excluded, while selected-type
+mutations remain visible across entry-point batches, including four generated
+samples.
+
 The opt-in `includeComparedFiles` receipt records TypeScript’s actual input closure
 for private-addition and unproven-module attribution, including file shadowing.
 Legacy metadata is refreshed from the saved setup commit. Missing evidence or
