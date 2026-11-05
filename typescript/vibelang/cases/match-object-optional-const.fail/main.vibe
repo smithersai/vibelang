@@ -1,0 +1,2 @@
+// expect: TS2588
+export function f(value: {cell:number}) { return match(value) { when {const cell?}: cell=2; default: 0; } }

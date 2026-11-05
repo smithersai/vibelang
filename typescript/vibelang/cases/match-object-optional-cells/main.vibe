@@ -1,0 +1,31 @@
+// expect-result: [[["miss"],["tdz",true],["value","number","2"],["value","undefined","undefined"]],[["miss"],["tdz",true],["value","string","x"],["value","undefined","undefined"]],[["miss"],["tdz",true],["value","number","2"],["value","undefined","undefined"]],[[false,["tdz",true]],[true,["tdz",true]],[true,["value","number","2"]],[true,["value","undefined","undefined"]]],[["miss"],["tdz",true],["value","number","2"],["value","undefined","undefined"]],[["value","undefined","undefined"],["value","number","7"]],2]
+import { Effect } from "effect"
+import { optionalRead, propertySamples } from "./native.js"
+function letRead(value: unknown) {
+ return match(value) { when {let cell?}: optionalRead(()=>cell); default: ["miss"]; }
+}
+function constRead(value: unknown) {
+ return match(value) { when {const cell?}: optionalRead(()=>cell); default: ["miss"]; }
+}
+effect function effectRead(value: unknown) {
+ return match(value) { when {let cell?}: optionalRead(()=>cell); default: ["miss"]; }
+}
+function isRead(value: unknown) {
+ const matched = value is {let cell?}
+ return [matched,optionalRead(()=>cell)]
+}
+function nestedRead(value: unknown) {
+ return match(value) { when {outer: {let cell?}}: optionalRead(()=>cell); default: ["miss"]; }
+}
+export effect function main() {
+ const samples=propertySamples()
+ return [
+  [letRead(null),letRead({}),letRead({cell:2}),letRead({cell:undefined})],
+  [constRead(0),constRead({}),constRead({cell:"x"}),constRead({cell:undefined})],
+  [try effectRead(null),try effectRead({}),try effectRead({cell:2}),try effectRead({cell:undefined})],
+  [isRead(null),isRead({}),isRead({cell:2}),isRead({cell:undefined})],
+  [nestedRead({}),nestedRead({outer:{}}),nestedRead({outer:{cell:2}}),nestedRead({outer:{cell:undefined}})],
+  [letRead(samples.ownGetter),constRead(samples.inherited)],
+  try Effect.sync(() => samples.reads())
+ ]
+}

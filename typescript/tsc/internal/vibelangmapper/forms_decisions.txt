@@ -5089,6 +5089,12 @@ typescript/vibelang/cases/match-noncallable-own/main.vibe:14:94 lambda dual fall
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:12:8 lambda dual fallback
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:14:8 lambda plain fallback
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:15:8 lambda plain fallback
+typescript/vibelang/cases/match-object-optional-cells/main.vibe:11:55 lambda choice fallback
+typescript/vibelang/cases/match-object-optional-cells/main.vibe:15:31 lambda choice fallback
+typescript/vibelang/cases/match-object-optional-cells/main.vibe:18:64 lambda choice fallback
+typescript/vibelang/cases/match-object-optional-cells/main.vibe:29:19 lambda plain table
+typescript/vibelang/cases/match-object-optional-cells/main.vibe:5:55 lambda choice fallback
+typescript/vibelang/cases/match-object-optional-cells/main.vibe:8:57 lambda choice fallback
 typescript/vibelang/cases/match-object-pattern-primitive/main.vibe:16:18 lambda effectFn keyword
 typescript/vibelang/cases/match-object-pattern-primitive/main.vibe:5:51 lambda plain fallback
 typescript/vibelang/cases/match-operand-reads/main.vibe:10:30 lambda plain table

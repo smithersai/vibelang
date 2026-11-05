@@ -1,4 +1,4 @@
-// expect: EK0707 EK4704
+// expect: EK0707
 // Chapter 004: invalid match grammar is EK0707. The pinned draft rejects a literal
 // __proto__ key, and a rest pattern comes last.
 export function bare(s: unknown) { return match (s) { when { __proto__: null }: 1; default: 0; } }

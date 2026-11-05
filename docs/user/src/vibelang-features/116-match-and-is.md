@@ -8,7 +8,7 @@
 
 Every arm ends in `;`, the last one included, and a new line does not separate arms. A missing `;` is `EK0701`, and `vibelang --fix` writes it. A `match` has at least one arm and at most one `default`, which comes last. Other invalid `match` and `is` grammar, such as a second `default`, is `EK0707`.
 
-Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept any iterable, including strings, sets and generators, and reuse one iterator and its pulled values across arms. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. Optional array and extractor bindings initialize only when a value exists. Missing bindings remain in their temporal dead zone. TypeScript reports `TS2454` when its definite-assignment checks find an uninitialized read; other reads throw `ReferenceError` while the binding is uninitialized. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
+Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept any iterable, including strings, sets and generators, and reuse one iterator and its pulled values across arms. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. Optional array, object-property and extractor bindings initialize only when a value exists. Missing bindings remain in their temporal dead zone. TypeScript reports `TS2454` when its definite-assignment checks find an uninitialized read; other reads throw `ReferenceError` while the binding is uninitialized. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
 
 ```vibe
 // run: try Console.log(try Effect.try(() => JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))])))
@@ -434,7 +434,6 @@ A thrown exception, including the no-match `TypeError`, rejects the Promise. A `
 ## Not yet supported
 
 
-- A binding in an optional property, `{ let a? }` (`EK4704`).
 - A computed key other than a name or a literal (`EK4704`).
 
 Support for the new forms arrives with the compiler's VIP implementation. VIP-7 accepts the full TC39 proposal, including regular-expression patterns, relational patterns, and `async match`.

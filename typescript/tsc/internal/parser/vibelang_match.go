@@ -1707,10 +1707,6 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			if clause.optional {
 				switch {
 				case clause.pattern == nil:
-				case patternHasBindings(clause.pattern):
-					// An absent property leaves its bindings uninitialized, which
-					// this lowering's const cannot express.
-					test(p.patternErrorCall(4704, "Optional binding", clause.pattern.anchor))
 				default:
 					absent := p.vibelangSpanning(p.factory.NewPrefixUnaryExpression(ast.KindExclamationToken, p.mParens(p.propertyKeyTest(path, clause, at, ctx), at)), at)
 					matches := p.mParens(p.inlinePattern(clause.pattern, p.propertyPath(path, clause, ctx), ctx), at)
