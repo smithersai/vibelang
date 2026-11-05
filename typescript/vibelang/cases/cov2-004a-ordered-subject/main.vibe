@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 export effect function main(): unknown!! {
 let calls = 0
-const value = match (++calls) { when 0: 0; when 1: do { try yieldNow(); 7 }; default: -1; }
+const value = match (++calls) { when 0: 0; when 1: do { try yieldNow; 7 }; default: -1; }
 return [calls, value]
 }
 // Chapter 004: ordered-subject; rule-evidence: docs/design/src/004-match.md#c3c5e0c622f43287
