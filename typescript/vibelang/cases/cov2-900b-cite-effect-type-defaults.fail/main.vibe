@@ -11,11 +11,11 @@ service Users {
 }
 
 export effect function find(id: string): Effect<string> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 export effect function lookup(id: string): Effect<string, Gone> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 // Chapter 001: written omitted requirements cannot be inferred from a body (effect-type-defaults.fail).
