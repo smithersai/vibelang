@@ -1,0 +1,5 @@
+{
+  "key": "migrate:wire-source-snippet-stale",
+  "source": "import { spawn } from \"node:child_process\"\nexport const start = () => spawn(\"node\", [\"src/child.ts\"])\n",
+  "marker": "<!-- source: src/launcher.ts -->"
+}
