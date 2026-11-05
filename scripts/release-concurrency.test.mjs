@@ -78,7 +78,7 @@ test("fixture-${id}", async () => {
       rmSync(dir, { recursive: true, force: true })
     })
     const started = () => readdirSync(events).filter(name => name.endsWith(".start")).length
-    while (started() < 8 && child.exitCode === null && !expired) await delay(20)
+    while (started() < 4 && child.exitCode === null && !expired) await delay(20)
     // Hold the first batch so an uncapped command can expose its extra workers.
     await delay(300)
     const peakBeforeRelease = started()
@@ -90,7 +90,7 @@ test("fixture-${id}", async () => {
     assert.equal(started(), files.length, "every selected file ran")
     assert.equal(readdirSync(events).filter(name => name.endsWith(".end")).length, files.length,
       "every selected file completed")
-    assert.equal(peakBeforeRelease, 8, "the release command must admit exactly eight file workers")
+    assert.equal(peakBeforeRelease, 4, "the release command must admit exactly four file workers")
     if (failure) assert.match(output, /deliberate fixture failure/)
   })
 }

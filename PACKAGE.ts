@@ -621,7 +621,7 @@ const targets = {
   "spec-catch-diagnostics": specCatchDiagnostics,
   release: check(
     "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
-    "node --test --test-concurrency=8 scripts/release/*.test.mjs 'scripts/!(api-identity*).test.mjs' typescript/vibelang/harness.test.mjs typescript/vibelang/cov-ch004-twin.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
+    "node --test --test-concurrency=4 scripts/release/*.test.mjs 'scripts/!(api-identity*).test.mjs' typescript/vibelang/harness.test.mjs typescript/vibelang/cov-ch004-twin.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
       "site/scripts/sync-spec-docs.test.mjs site/scripts/sync-user-docs.test.mjs " +
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",

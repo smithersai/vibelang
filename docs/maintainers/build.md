@@ -85,12 +85,13 @@ On a four-vCPU Cloudflare box, an exact Node 26 run selected 261 files and compl
 
 The migration progress reporter prints the selected-file list, failure details, aggregate counts and a heartbeat every 30 seconds. Successful tests and file summaries update counts without consuming the graph's live output budget. Pending files remain named, and a failed file includes its captured output and unabridged assertion error. A file that cannot load or a terminated run remains incomplete, and Node retains responsibility for the exit status. `scripts/migrate-progress.test.mjs` checks late failures beyond 200 files, real child processes, full assertion witnesses, missing file summaries and termination against an unmodified Node runner.
 
-The `//:release` target runs Node's test files with `--test-concurrency=8`.
+The `//:release` target runs Node's test files with `--test-concurrency=4`.
 This bounds the number of simultaneous file workers independently of the host's
-CPU count and the graph's `--jobs` setting. Every selected file still runs,
-and a failing file keeps the target's nonzero exit status. Tests within a file
-keep their own concurrency settings; child processes they spawn are additional
-to the eight file workers.
+CPU count and the graph's `--jobs` setting. Four matches a gate box's four
+vCPUs: with eight workers, a child process in `api-inputs.test.mjs` passed its
+120-second limit there. Every selected file still runs, and a failing file keeps
+the target's nonzero exit status. Tests within a file keep their own concurrency
+settings; child processes they spawn are additional to the four file workers.
 
 The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its controls check changes to `Exit` values and public types, plus Effect version mismatches. It also runs `typescript/vibelang/vip7-reference.test.mjs`, which checks concurrent reference installation and lock cleanup after a failed install. These tests use fixture packages and need no reference compiler install. The test inventory keeps both suites registered.
 
