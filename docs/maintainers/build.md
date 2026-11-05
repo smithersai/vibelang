@@ -212,6 +212,10 @@ For every ordinary dependency tree, including an existing one, the script runs
 version does not prove that the other dependencies match the current manifest
 and lockfile. Bun verifies unchanged trees too. Provisioned `node_modules`
 symlinks retain the separate owner responsibility above.
+Compiler test shards reuse that completed installation. They never run
+`bun install` concurrently in `packages/compiler`, where relinking
+package executables can fail with `EEXIST`. Running a shard directly
+requires provisioning its dependencies first, as for other graph targets.
 
 `scripts/ci.sh` then runs `scripts/share-effect.mjs`, which links the Effect
 packages in `packages/runtime/node_modules` to the copies in `experiments`. A

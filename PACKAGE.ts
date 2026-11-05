@@ -678,7 +678,7 @@ const targets = {
   ),
   "build-contracts": check(
     "Build and test commands retain their explicit budgets and prerequisites.",
-    "node --test --test-concurrency=4 scripts/bun-test-budgets.test.mjs scripts/compiler-test-inputs.test.mjs scripts/go-build-flags.test.mjs scripts/go-cache.test.mjs scripts/go-shared-test-inventory.test.mjs scripts/go-test-cache.test.mjs",
+    "node --test --test-concurrency=4 scripts/bun-test-budgets.test.mjs scripts/compiler-test-inputs.test.mjs scripts/compiler-shard-installs.test.mjs scripts/go-build-flags.test.mjs scripts/go-cache.test.mjs scripts/go-shared-test-inventory.test.mjs scripts/go-test-cache.test.mjs",
     [],
     [go, node],
     "5m"

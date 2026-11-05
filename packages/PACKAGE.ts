@@ -84,7 +84,9 @@ const compilerNative = S.Shell.Build({
 const COMPILER_TEST_SHARDS = 4
 const compilerTest = (shard: number) => S.Shell.Test({
   summary: `The compiler package's node tests, shard ${shard} of ${COMPILER_TEST_SHARDS}.`,
-  shell: "cd packages/compiler && bun install --frozen-lockfile && VIBELANG_BINARY=\"$PWD/native/vibelang\" " +
+  // scripts/ci.sh provisions dependencies before parallel targets start.
+  // Reinstalling here races sibling shards while Bun replaces package executables.
+  shell: "cd packages/compiler && VIBELANG_BINARY=\"$PWD/native/vibelang\" " +
     `node --test --test-shard=${shard}/${COMPILER_TEST_SHARDS} test/*.test.mjs`,
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
