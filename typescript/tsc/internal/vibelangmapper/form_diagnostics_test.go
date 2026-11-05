@@ -93,6 +93,22 @@ func TestFormDiagnosticsMatchesProjection(t *testing.T) {
 	}
 }
 
+// A property access inside a for statement asks whether the loop's head is
+// source (isMatchForm), which reads the projector's memo. FormDiagnostics runs
+// in the editor, so a projector without that memo panicked on an ordinary loop.
+func TestFormDiagnosticsReadsForStatements(t *testing.T) {
+	for _, source := range []string{
+		"effect function f() {\n  for (let attempt = 1; attempt <= 3; attempt++) {\n    try Console.log(`attempt ${attempt}`)\n  }\n}\n",
+		"function f(xs: number[]) {\n  for (let i = 0; i < 3; i++) {\n    xs.push(i)\n  }\n}\n",
+		"function f(xs: number[]) {\n  for (let i = xs.length; i > 0; i--) {}\n}\n",
+	} {
+		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, source, core.ScriptKindTS)
+		if got := FormDiagnostics(file); len(got) != 0 {
+			t.Errorf("form choices %#v for %s", got, source)
+		}
+	}
+}
+
 // docsFormCases materializes every documentation module through check-snippets,
 // avoiding a stale copied fixture and a dependency on a prior parity run.
 func docsFormCases(t *testing.T) []struct{ name, source, virtual string } {
