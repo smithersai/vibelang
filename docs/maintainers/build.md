@@ -2005,3 +2005,12 @@ The `//:async-match-throw-contexts` gate enforces the implemented async-match or
 The `//:formatter-written-jump-controls` gate reads original jump tokens after concurrent-loop lowering, covers comments and automatic semicolon insertion, and retains the formatter guard unchanged with explicit program-changing negative controls.
 
 The `//:platform-callback-contracts` gate retains all platform diagnostics and tests unknown and non-throwing callback signatures independently.
+
+Conditional-export API fixtures select `lib.es5.d.ts` for their scalar type
+aliases. Their loaded-library guard covers both the comparator and independent
+stock TypeScript programs. The 24 generated condition-order samples retain
+native module-resolution checks; selected and unreachable type mutations,
+inherited sidecar settings and self-comparisons remain active. Independent
+bidirectional assignments accept unchanged aliases and require two `TS2322`
+diagnostics for changed selected types. A missing `BigInt` still produces
+native `TS2583` and an incomplete API comparison.

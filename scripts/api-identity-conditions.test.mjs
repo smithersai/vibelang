@@ -6,8 +6,22 @@ import {tmpdir} from "node:os"
 import {createRequire} from "node:module"
 import {publishedEntrypoints,compareApiIdentity} from "./api-identity.mjs"
 import {checkProperty} from "./testing/property.mjs"
+import {createEs5FixtureGuard} from "./testing/fixture-libraries.mjs"
 const require=createRequire(new URL("../docs/tools/package.json",import.meta.url))
-const ts=require("typescript"),fc=require("fast-check")
+const stockTs=require("typescript"),fc=require("fast-check")
+const {ts,assertLibraries}=createEs5FixtureGuard(stockTs,"Conditional-export fixtures")
+const compilerOptions={lib:["lib.es5.d.ts"]}
+const nativeOptions={...compilerOptions,strict:true,noEmit:true,types:[],module:ts.ModuleKind.Preserve,moduleResolution:ts.ModuleResolutionKind.Bundler}
+function nativeIdentity(root,changed,before="fixture",after="after") {
+ const consumer=join(root,"consumer.ts")
+ writeFileSync(consumer,'import type {X as Before} from '+JSON.stringify(before)+';\n'+
+  'import type {X as After} from '+JSON.stringify(after)+';\n'+
+  'declare let before:Before; declare let after:After; before=after; after=before;\n')
+ const program=ts.createProgram([consumer],nativeOptions)
+ assertLibraries()
+ assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>d.code),changed?[2322,2322]:[],
+  "native assignments retain selected types and reject changed aliases in both directions")
+}
 function fixture(targets,fn) {
  const root=mkdtempSync(join(tmpdir(),"api-identity-conditions-"))
  const pkg=join(root,"node_modules/fixture")
@@ -37,11 +51,13 @@ test("selected semantic changes fail while unreachable types changes pass",()=>{
  fixture({default:"./first.js",types:"./second.d.ts"},(pkg,root)=>{
   const after=join(root,"node_modules/after");cpSync(pkg,after,{recursive:true})
   writeFileSync(join(after,"second.d.ts"),"export type X=boolean;")
-  assert.equal(compareApiIdentity(ts,pkg,after).identical,true)
+  assert.equal(guardedCompare(pkg,after).identical,true)
+  nativeIdentity(root,false)
   writeFileSync(join(after,"first.d.ts"),"export type X=number;")
-  const result=compareApiIdentity(ts,pkg,after)
+  const result=guardedCompare(pkg,after)
   assert.equal(result.comparisonComplete,true,JSON.stringify(result))
   assert.ok(result.typeDifferences.some(d=>d.export==="X"),JSON.stringify(result))
+  nativeIdentity(root,true)
  })
 })
 test("property: ordered conditional candidates match stock tsc",async()=>{
@@ -73,13 +89,36 @@ test("published source exports resolve mirrored sidecars without hiding real cha
    const after=join(root,"node_modules/after");cpSync(pkg,after,{recursive:true})
    assert.ok(Object.keys(publishedEntrypoints(pkg,ts)).length>0)
    for(const [a,b]of [[pkg,pkg],[pkg,after]]){
-    const result=compareApiIdentity(ts,a,b)
+    const result=guardedCompare(a,b)
     assert.equal(result.identical,true,JSON.stringify(result))
    }
+   nativeIdentity(root,false,"./node_modules/fixture/.cache/types/src/value.d.vibe.ts","./node_modules/after/.cache/types/src/value.d.vibe.ts")
    writeFileSync(join(after,".cache/types/src/value.d.vibe.ts"),"export type X=number;")
-   const changed=compareApiIdentity(ts,pkg,after)
+   const changed=guardedCompare(pkg,after)
    assert.equal(changed.comparisonComplete,true,JSON.stringify(changed))
    assert.ok(changed.typeDifferences.some(d=>d.export==="X"),JSON.stringify(changed))
+   nativeIdentity(root,true,"./node_modules/fixture/.cache/types/src/value.d.vibe.ts","./node_modules/after/.cache/types/src/value.d.vibe.ts")
   })
  }
+})
+
+function guardedCompare(before,after) {
+ const result=compareApiIdentity(ts,before,after,{compilerOptions})
+ assertLibraries()
+ return result
+}
+
+test("conditional-export fixture libraries retain native missing BigInt errors",()=>{
+ fixture({types:"./first.d.ts"},(pkg,root)=>{
+  writeFileSync(join(pkg,"first.d.ts"),"export type X=BigInt;")
+  const after=join(root,"node_modules/after");cpSync(pkg,after,{recursive:true})
+  const program=ts.createProgram([join(pkg,"first.d.ts")],nativeOptions)
+  assertLibraries()
+  assert.ok(ts.getPreEmitDiagnostics(program).some(d=>d.code===2583))
+  const result=guardedCompare(pkg,after)
+  assert.equal(result.comparisonComplete,false)
+  assert.equal(result.identical,false)
+  assert.equal(result.environmentDiagnostics.filter(d=>/TS2583/.test(d.diagnostic)).length,2,JSON.stringify(result))
+  assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&d.export==="X"&&/unresolved or erroneous/.test(d.diagnostic)),JSON.stringify(result))
+ })
 })
