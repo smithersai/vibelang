@@ -375,6 +375,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- A service method written as `effect read(): number!!` could report both `EK0108` and `EK0902`. It now reports `EK0902` once, and the quick fix removes `effect` while keeping the contract.
 - Inferred `const` aliases could replace a foreign callable binding's `@throws` annotation with an intrinsic default. Calls now retain the binding contract, and preserving fixes keep the previous error channel.
 
 - Compiler examples that relied on implicit bridges for throwing builtins failed their checks. They now use explicit bridges while retaining their results, declarations and evaluation order.

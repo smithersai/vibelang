@@ -27,8 +27,15 @@ func forbiddenEffectDeclaration(node *ast.Node) bool {
 	if !isMarkedEffect(node) {
 		return false
 	}
-	if node.Flags&ast.NodeFlagsAmbient != 0 || ast.HasSyntacticModifier(node, ast.ModifierFlagsAbstract) {
+	if node.Flags&ast.NodeFlagsAmbient != 0 {
 		return true
+	}
+	// Service contracts receive an abstract modifier during parsing. Only a
+	// written abstract declaration belongs to the Functions placement rule.
+	for _, modifier := range node.ModifierNodes() {
+		if modifier.Kind == ast.KindAbstractKeyword && modifier.Flags&ast.NodeFlagsReparsed == 0 {
+			return true
+		}
 	}
 	return node.Parent != nil && (node.Parent.Kind == ast.KindInterfaceDeclaration || node.Parent.Kind == ast.KindTypeLiteral)
 }

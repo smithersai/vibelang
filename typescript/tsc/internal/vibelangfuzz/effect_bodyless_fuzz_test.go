@@ -8,7 +8,7 @@ import (
 
 const effectBodylessTarget = "FuzzEffectBodylessAdmission"
 const effectBodylessQuote = "a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member"
-const effectOverloadQuote = "A signature without a return annotation exposes `any`, as the `async` signature does"
+const effectOverloadQuote = "A signature without a return annotation exposes `any`, as a bodyless `async` signature does"
 
 func TestEffectBodylessQuoted(t *testing.T) {
 	for _, quote := range []string{effectBodylessQuote, effectOverloadQuote} {
@@ -16,11 +16,16 @@ func TestEffectBodylessQuoted(t *testing.T) {
 			t.Fatalf("chapter 1 no longer says %q", quote)
 		}
 	}
+	if !strings.Contains(SpecText("005-services.md"), serviceEffectBodylessQuote) {
+		t.Fatalf("chapter 5 no longer says %q", serviceEffectBodylessQuote)
+	}
 }
+
+const serviceEffectBodylessQuote = "A bodyless `effect find(id: string): User!NotFound` or `async find(): Promise<User>` is `EK0902`"
 
 func FuzzEffectBodylessAdmission(f *testing.F) {
 	startShortBudget(f)
-	forms := []string{"ambient-function", "ambient-method", "ambient-namespace", "abstract", "interface-method", "literal-method", "interface-property", "literal-property", "overload", "identifier"}
+	forms := []string{"ambient-function", "ambient-method", "ambient-namespace", "abstract", "interface-method", "literal-method", "interface-property", "literal-property", "overload", "identifier", "service", "shape-service", "service-identifier"}
 	for _, form := range forms {
 		f.Add(form, uint8(0))
 	}
@@ -49,6 +54,7 @@ func FuzzEffectBodylessAdmission(f *testing.F) {
 		}
 		source := ""
 		want := 1
+		code := int32(108)
 		switch form {
 		case "ambient-function":
 			source = "declare effect function read(): number!!;"
@@ -69,6 +75,15 @@ func FuzzEffectBodylessAdmission(f *testing.F) {
 		case "overload":
 			source = "effect function read(): number!!; effect function read() { return 1 }"
 			want = 0
+		case "service":
+			source = "export service C { static readonly key = \"fuzz/service\"; effect " + member + " }"
+			code = 902
+		case "shape-service":
+			source = "export service C: {} { static readonly key = \"fuzz/service-shape\"; effect " + member + " }"
+			code = 902
+		case "service-identifier":
+			source = "export service C { static readonly key = \"fuzz/service-identifier\"; effect(): number!! }"
+			want = 0
 		case "identifier":
 			source = "interface C { effect(): number }; type D = { effect: number }"
 			want = 0
@@ -81,17 +96,17 @@ func FuzzEffectBodylessAdmission(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer result.Remove()
+		key := fmt.Sprintf("%s:%d", form, mutation%3)
 		count := 0
 		for _, d := range result.Diagnostics {
-			if IsEK(d) && d.Code() == 108 {
+			if IsEK(d) && d.Code() == code {
 				count++
 			} else if d.Category().Name() == "error" {
-				t.Fatalf("invalid witness: %s%d: %s\n%s", d.Source(), d.Code(), d.MessageText(), source)
+				Gap(t, effectBodylessTarget, key, "unexpected diagnostic %s%d: %s; Functions: %q; Services: %q\n%s", d.Source(), d.Code(), d.MessageText(), effectBodylessQuote, serviceEffectBodylessQuote, source)
 			}
 		}
-		key := fmt.Sprintf("%s:%d", form, mutation%3)
 		if count != want {
-			Gap(t, effectBodylessTarget, key, "Chapter 1: %q; want %d EK0108, got %d\n%s", effectBodylessQuote, want, count, source)
+			Gap(t, effectBodylessTarget, key, "Functions: %q; Services: %q; want %d EK%04d, got %d\n%s", effectBodylessQuote, serviceEffectBodylessQuote, want, code, count, source)
 		}
 		ExpectPending(t, effectBodylessTarget, key)
 	})

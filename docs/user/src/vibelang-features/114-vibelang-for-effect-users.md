@@ -51,6 +51,8 @@ In a flat array declaration such as `const [x = do { return 9 }] = values`, the 
 
 A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Run `vibelang --fix` to remove only the modifier from the erased signature, retaining its return type and comments, or put the implementation in an ordinary function or method. Nonambient overload signatures may still use `effect`. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.
 
+A service contract such as `service S { effect read(): number!! }` reports `EK0902`. Declare `read(): number!!` and put its `effect` implementation in a layer. The modifier-removal fix keeps the signature’s return type and comments.
+
 Migration setup preserves the authored `rewriteRelativeImportExtensions` option, including its default when absent and values inherited through `extends`. It adds no local override in referenced projects or newly wired packages.
 
 When migrating an exported Effect value, keep it as a value: `export const stocked = effect { return try available("TEA") }`. A function such as `export effect function stocked()` exports a callable API and requires consumers to add a call. Compare the emitted declarations to keep the original export type and lazy behavior.
