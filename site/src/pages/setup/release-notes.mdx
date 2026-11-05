@@ -14,11 +14,21 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- The service cheat sheet could direct readers to an unavailable external `Name.Shape` alias. It now explains the alias's scope and shows how to name the implementation outside the service body.
+
+- Pure ambient API validation loaded unrelated browser declarations. It now uses ES5 while browser augmentations retain native `Request` and `Window` types.
+
+
+- A service could capture an enclosing generic type through a callable's explicit `this` parameter. These receiver contracts now report `EK3005`, while concrete and member-local generic receivers remain valid.
+
 - The grammar admission audit could mistake an identifier after a line break for a `schema` or `error` declaration. It now retains the expression's existing grammar finding.
 
+- Interrupted migrations could repeat completed declaration-layout scans. Drivers can now checkpoint package layouts and reuse them after verifying the original source and configuration inputs.
 - Diagnostic identity migrations retain a single authorization for each source fixture, including its existing source and configuration protections.
 - Retired continuation forms now consistently report `EK3501`; the obsolete provider-contract diagnostic is retired.
 - Generator migrations explain when destructured parameter bindings must stay inside the generator to preserve their evaluation timing.
+- Native module imports, declaration spelling, generator arguments and execution repairs now enforce the resolved cases against their specification.
+- Converting a recursive `async` function could leave `Promise` bridges calling a function that returns an `Effect`; the editor now withholds that conversion when the function refers to itself.
 - Preparing declaration sidecars for large migrations could exhaust memory. Explicit `rootDir` settings and `composite` boundaries now let setup plan paths without loading unrelated source programs.
 
 - Export-fallback API checks loaded unrelated browser declarations. They now use fewer libraries while retaining ordered resolution and native type errors.
@@ -42,6 +52,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - JSDoc-link API checks loaded native libraries their declarations did not use. They now load only the required libraries while preserving comment and type errors.
 
 - A conditional callback passed to a rethrowing function could report an incompatible callback or lose a branch’s written throw contract. The enclosing call now retains every written branch contract, and catching or bridging the call admits the callback.
+
+- An inferred service-call migration example used `PlatformError` as a type. It now uses the valid `PlatformError.PlatformError` qualification.
 
 - The grammar admission audit could omit error-constructor handling after it moved into a separate file. Extracted lowering helpers now retain their specification checks.
 
@@ -140,6 +152,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| A callable service contract whose explicit `this` parameter captures an enclosing generic type | `EK3005`: use a concrete receiver or a member-local generic operation independent of the enclosing type. Choosing that contract needs a manual repair. |
 | A `private` or `protected` constructor in `error` or `schema error` | Run `vibelang --fix` to retain it in an Effect TypeScript class, preserving constructor visibility and tag matching. |
 | Throwing callbacks passed through optional or nullable `@rethrows` parameters, including `sort` | Run `vibelang --fix` to keep the original defect with `Effect.orDie(Effect.try(...))`. |
 | RHS closures in `for concurrent` that formerly captured an outer name with an incompatible type | `--fix` renames the item binding and its uses, keeping the RHS closure on the original outer binding |
