@@ -200,7 +200,19 @@ export function publishedEntrypoints(directory, tsCompiler) {
   if (manifest.exports !== undefined) {
     const ts = tsCompiler ?? loadTypeScript([directory])
     const packageName = "__api_identity_snapshot__"
-    const publishedManifest = JSON.stringify({ ...manifest, name: packageName })
+    // A declaration-only snapshot retains source spelling in its export map.
+    // Resolve an existing emitted twin through tsc, so condition order and
+    // fallbacks match the original package without editing its manifest.
+    const declarationTargets = value => {
+      if (Array.isArray(value)) return value.map(declarationTargets)
+      if (value && typeof value === "object")
+        return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, declarationTargets(child)]))
+      if (typeof value !== "string" || !value.startsWith("./") || declaration.test(value) ||
+          !/\.(?:[cm]?ts|tsx)$/.test(value) || value.includes("*")) return value
+      const emitted = declarationPath(resolve(directory, value))
+      return emitted ? "./" + slash(relative(directory, emitted)) : value
+    }
+    const publishedManifest = JSON.stringify({ ...manifest, name: packageName, exports: declarationTargets(manifest.exports) })
     const host = { ...ts.sys, readFile: path => resolve(path) === manifestFile ? publishedManifest : ts.sys.readFile(path) }
     projectSidecarHost(ts, host)
     const clean = key => key.replace(/#fallback\d+|#default/g, "")

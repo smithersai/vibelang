@@ -388,7 +388,9 @@ For published packages, setup emits declarations before and after this
 wiring and requires identical bytes. An alias that would leak into the
 published declarations causes setup to restore every planned edit and
 report the changed declaration paths. The migration's later declaration
-and test gates still apply.
+and test gates still apply. Declaration comparisons resolve source targets in
+conditional exports through their existing emitted declarations, keeping
+TypeScript's condition order and reporting missing declarations.
 
 ## Metro, Babel and the React Compiler
 

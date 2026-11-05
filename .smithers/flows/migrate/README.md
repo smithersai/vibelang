@@ -133,6 +133,8 @@ Public declarations reachable from `exports` or `types` must remain API-identica
 
 Declaration checks load each snapshot's ambient type packages from its project's `types` and `typeRoots` settings, including inherited configuration and automatic type discovery. An unavailable configured type package makes the comparison incomplete and blocks API qualification.
 
+Declaration-only comparisons resolve a TypeScript source target in conditional exports through its existing adjacent emitted declaration. TypeScript still chooses conditions and fallbacks in their written order; a missing selected declaration remains unavailable. The saved publication manifest and declaration files stay unchanged.
+
 Documentation checks follow namespace re-export aliases to their authored declarations. Type-only and value exports retain their prose, tags and comment-block counts when forwarded from a private module; changed or removed comments still fail.
 
 
