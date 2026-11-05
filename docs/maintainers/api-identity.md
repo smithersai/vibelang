@@ -175,6 +175,11 @@ declaration-only snapshots without configuration, and accepts an explicit
 `compilerOptions.resolveJsonModule` override. Invalid JSON is an unavailable
 comparison, reported through `environmentDiagnostics`, without type differences.
 
+The ambient overload-order fixtures select `lib.es5.d.ts` in native validation
+and API comparison, and reject unrelated browser libraries. The isolated
+overload results, changed-export comparison and four generated samples remain
+required.
+
 JSON discovery fixtures select `lib.es5.d.ts` and guard against loading unrelated
 browser libraries. They retain real wildcard entry points, scalar roots,
 invalid JSON and inherited settings, with explicit overrides, export mutations

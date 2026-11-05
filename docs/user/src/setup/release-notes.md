@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Contributor cache warmup omitted the Effect lint package and recompiled it during validation. The warmup now includes it.
 - Contributor validation omitted stale-manifest preservation checks. It now runs both disk and editor regression cases.
 - Contributor API checks failed after a comparison helper moved into another file. Their fixtures now include local helper dependencies transitively.
+
+- Ambient overload-order declaration tests repeatedly loaded unrelated browser libraries. Their native validation and API comparison now select ES5 while retaining isolated overload results and changed-export checks.
 - Contributor checks mistook the compiler’s sharded tests for a missing target. They now verify the runtime build dependency of every shard.
 - Contributor diagnostics checks could compile a second set of packages with workspace paths. They now use the compiler’s `-trimpath` settings.
 

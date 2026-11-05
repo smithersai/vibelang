@@ -6,7 +6,14 @@ import { join } from "node:path"
 import { createRequire } from "node:module"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
-const ts = loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Overload load-order fixtures must not load unrelated browser libraries")
+  return program
+} }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 function fixture(literal, run) {
   const root = mkdtempSync(join(tmpdir(), "api-identity-load-order-"))
@@ -26,7 +33,7 @@ function fixture(literal, run) {
 function isolatedLiteral(path) {
   const file = join(path, "index.d.ts")
   const program = ts.createProgram([file], {
-    strict: true, noEmit: true, types: [], module: ts.ModuleKind.ESNext,
+    ...compilerOptions, strict: true, noEmit: true, types: [], module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
   })
   assert.deepEqual(ts.getPreEmitDiagnostics(program), [])
@@ -38,8 +45,8 @@ function verify(literal) {
   fixture(literal, (before, after) => {
     assert.equal(isolatedLiteral(before), String(literal))
     assert.equal(isolatedLiteral(after), "0")
-    assert.equal(compareApiIdentity(ts, before, before).identical, true)
-    const result = compareApiIdentity(ts, before, after)
+    assert.equal(compareApiIdentity(ts, before, before, { compilerOptions }).identical, true)
+    const result = compareApiIdentity(ts, before, after, { compilerOptions })
     assert.equal(result.identical, false, JSON.stringify(result))
     assert.equal(result.comparisonComplete, true, JSON.stringify(result))
     assert.ok(result.typeDifferences.some(d => d.export === "result"), JSON.stringify(result))
