@@ -547,7 +547,7 @@ type Reader = {
 
 A tag on `type Reader = () => string` does not attach; passing a throwing callback to that unannotated signature reports `EK0402`.
 
-Legacy abstract plain and schema error roots report the migration warning `EK1308`. Run `vibelang --fix` to keep the existing abstract constructor, widened tag contract, members and runtime matcher in an explicit `abstract class`. The rewrite preserves public declaration output and runtime behaviour; a native abstract class keeps its TypeScript meaning.
+Legacy abstract plain and schema error roots report the migration warning `EK1308`. Run `vibelang --fix` to keep the existing abstract constructor, widened tag contract, members and runtime matcher in an explicit `abstract class`. The rewrite preserves public declaration output and runtime behaviour; a native abstract class keeps its TypeScript meaning. An abstract plain root retains its inherited matcher, including boolean and extractor calls through `customMatcher`.
 
 For `abstract schema error` roots, the native-class migration retains the original family registration before written static members. A schema built from the base therefore keeps encoding and decoding its registered descendants; public declarations are unchanged.
 
