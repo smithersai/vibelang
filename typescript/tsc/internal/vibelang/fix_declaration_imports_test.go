@@ -192,8 +192,14 @@ func declarationText(t *testing.T, config string) string {
 // written where a signature has no authored JSDoc. Authored tags differ.
 var generatedThrowsBlock = regexp.MustCompile(`/\*\* @throws \{never\} \*/\s*`)
 
+// generatedThrowsLineBreak is that contract after a token its function type
+// follows on the same line, where the printer starts it on a line of its own
+// so that it stays attached when the declarations reload (7d8785b65f8b).
+var generatedThrowsLineBreak = regexp.MustCompile(`([(=>?:|,][ \t]*)\n[ \t]*/\*\* @throws \{never\} \*/\s*`)
+
 // withoutGeneratedThrows removes the one declaration difference API identity
 // allows against the TypeScript twin.
 func withoutGeneratedThrows(declaration string) string {
+	declaration = generatedThrowsLineBreak.ReplaceAllString(declaration, "$1")
 	return generatedThrowsBlock.ReplaceAllString(declaration, "")
 }
