@@ -22,13 +22,13 @@ export const SearchLive = Layer.succeed(Search, {
     index: "main"
 })
 
-service Prefix: string
+service Prefix: string {}
 
-service Format: (value: string) => string!!
+service Format: (value: string) => string!! {}
 
 // Two services with the same shape are different requirements (D93).
-service Primary: string
-service Replica: string
+service Primary: string {}
+service Replica: string {}
 
 type Collapsed = [Primary] extends [Replica] ? true : [Replica] extends [Primary] ? true : false
 const collapsed: Collapsed = false

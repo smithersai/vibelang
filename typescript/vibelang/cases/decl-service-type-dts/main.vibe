@@ -12,7 +12,7 @@ export const SearchLive = Layer.succeed(Search, {
     find: effect (query: string) => `hit:${query}`
 })
 
-export service Prefix: string
+export service Prefix: string {}
 
 export service Version: number {
   static readonly defaultValue: () => number = () => 4

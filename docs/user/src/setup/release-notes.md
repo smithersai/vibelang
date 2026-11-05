@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Whole-shape service examples omitted required bodies and failed with `EK0906`; the runtime and declaration examples now include empty bodies for primitive and callable shapes.
+
 - Compiler commands could bury late failure details behind successful test output; their summaries now retain the failure details and execution totals.
 
 - Formatting an Effect type assertion before `<` could fail with a missing `>` error; comparisons now retain their operator and type boundary.
