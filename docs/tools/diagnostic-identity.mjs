@@ -133,14 +133,19 @@ export function compilerCodes(sources) {
     registered.get(code).push({ path, offset, kind, ...details })
   }
   for (const { path, tokens: ts } of tokens) {
+    // Classify the file once: there are millions of tokens.
+    const parserSource = /(?:^|\/)parser\/vibelang[^/]*\.go$/.test(path)
+    const compilerSource = /(?:^|\/)vibelang\//.test(path)
+    const mapperSource = path.split("/").includes("vibelangmapper")
+    const packageDirectory = directory(path)
     for (let i = 0; i < ts.length; i++) {
       const token = ts[i].value
-      if (/(?:^|\/)parser\/vibelang[^/]*\.go$/.test(path) && /Code$/.test(token)) {
+      if (parserSource && /Code$/.test(token)) {
         const j = ts[i + 1]?.value === "int32" ? i + 2 : i + 1
         if (ts[j]?.value === "=" && /^\d+$/.test(ts[j + 1]?.value ?? ""))
           add(codeName(Number(ts[j + 1].value)), path, ts[i].offset, "parser")
       }
-      if (/(?:^|\/)vibelang\//.test(path) && ["message", "messageOff", "registryMessage", "registryVariant"].includes(token) && ts[i + 1]?.value === "(") {
+      if (compilerSource && ["message", "messageOff", "registryMessage", "registryVariant"].includes(token) && ts[i + 1]?.value === "(") {
         let arg = ts[i + 2]?.value
         // A named function declaration is not a message construction.
         if (ts[i - 1]?.value === "func") continue
@@ -150,19 +155,18 @@ export function compilerCodes(sources) {
         else if (/^"EK\d{4,}"$/.test(arg ?? "")) add(JSON.parse(arg), path, ts[i].offset, "message")
         else throw new Error(path + ": unresolved diagnostic constructor argument " + arg)
       }
-      if (path.split("/").includes("vibelangmapper") && ts[i + 1]?.value === "(" &&
-          forwarders.has(directory(path) + "/" + token)) {
+      if (mapperSource && ts[i + 1]?.value === "(" && forwarders.has(packageDirectory + "/" + token)) {
         const call = argumentsAt(ts, i + 1)
-        const arg = call.args[forwarders.get(directory(path) + "/" + token)] ?? []
+        const arg = call.args[forwarders.get(packageDirectory + "/" + token)] ?? []
         const value = arg.length === 1 ? arg[0].value :
           arg.length === 3 && arg[1].value === "." ? arg[2].value : undefined
-        const local = mapperConstants.get(directory(path))
+        const local = mapperConstants.get(packageDirectory)
         const n = /^\d+$/.test(value ?? "") ? Number(value) : local?.get(value) ?? constants.get(value)
         if (n > 0) add(codeName(n), path, ts[i].offset, "mapper", {forwarder: token})
       }
       // The stock TypeScript content mapper reports its own EK diagnostics
       // as Diagnostic records. A native message's removal must not hide one.
-      if (path.split("/").includes("vibelangmapper") && ["Diagnostic", "OptionDiagnosticResult"].includes(token) && ts[i + 1]?.value === "{") {
+      if (mapperSource && ["Diagnostic", "OptionDiagnosticResult"].includes(token) && ts[i + 1]?.value === "{") {
         let depth = 1
         for (let j = i + 2; j < ts.length && depth; j++) {
           if (ts[j].value === "{") depth++
@@ -170,7 +174,7 @@ export function compilerCodes(sources) {
           else if (depth === 1 && ts[j].value === "Code" && ts[j + 1]?.value === ":") {
             const arg = ts[j + 2]?.value
             if (![",", "}"].includes(ts[j + 3]?.value)) continue
-            const local = mapperConstants.get(directory(path))
+            const local = mapperConstants.get(packageDirectory)
             const n = Number.isInteger(Number(arg)) ? Number(arg) : local?.get(arg)
             if (local?.has(arg) && n === undefined)
               throw new Error(path + ": unresolved mapper diagnostic constant " + arg)
@@ -404,7 +408,16 @@ export function auditIdentity(registered, appendix, documents) {
   return findings.sort((a, b) => a.kind.localeCompare(b.kind) || a.code.localeCompare(b.code) || a.path.localeCompare(b.path))
 }
 
+// One process inventories a root once: the sources do not change under a check,
+// and each retired-identity test asks about the same inventory.
+const inventories = new Map()
 export function loadIdentity(root = repository) {
+  const key = resolve(root)
+  if (!inventories.has(key)) inventories.set(key, inventory(root))
+  return inventories.get(key)
+}
+
+function inventory(root) {
   const sources = files(join(root, "typescript/tsc/internal"), ".go")
     .filter(path => !path.endsWith("_test.go"))
     .map(path => ({ path: relative(root, path), text: readFileSync(path, "utf8") }))
