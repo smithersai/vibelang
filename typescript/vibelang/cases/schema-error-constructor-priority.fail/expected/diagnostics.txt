@@ -1,0 +1,8 @@
+main.vibe(2,34): error EK1301
+main.vibe(3,46): error EK1301
+main.vibe(4,36): error EK1301
+main.vibe(5,48): error EK1301
+main.vibe(6,41): error EK1301
+main.vibe(7,53): error EK1301
+main.vibe(8,43): error EK1301
+main.vibe(9,55): error EK1301

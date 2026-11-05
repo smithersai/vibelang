@@ -170,5 +170,14 @@
         "output": "typescript/vibelang/cases/native-try-preserving-fix-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK1301",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/schema-error-constructor-priority.fail",
+        "output": "typescript/vibelang/cases/schema-error-constructor-priority-fixed-output"
+      }
+    ]
   }
 ]

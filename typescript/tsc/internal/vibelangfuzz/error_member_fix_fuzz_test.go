@@ -25,6 +25,9 @@ func TestErrorMemberFixQuoted(t *testing.T) {
 // matcher, constructor, tag and fields. FuzzFix supplies the shared Exit and
 // declaration oracles; this generator only supplies the old source shapes.
 func errorMemberFixArchive(input string) string {
+	if strings.HasPrefix(input, errorMemberFixKey+"schema-constructor:") {
+		return schemaNonPublicConstructorFixArchive(input)
+	}
 	data := []byte(strings.TrimPrefix(input, errorMemberFixKey))
 	pick := func(i int) byte {
 		if len(data) == 0 {
@@ -125,4 +128,55 @@ func errorMigrationDeclaration(text string) string {
 		text = strings.ReplaceAll(text, match[1]+".", `import("effect/Schema").`)
 	}
 	return text
+}
+
+// A non-public constructor remains non-public; registration only stores its class.
+func schemaNonPublicConstructorFixArchive(input string) string {
+	key := strings.TrimPrefix(input, errorMemberFixKey+"schema-constructor:")
+	access := "private"
+	if strings.HasPrefix(key, "protected:") {
+		access = "protected"
+	}
+	field, call, getter := "", "super()", "get code(){return 'empty'}"
+	if strings.Contains(key, ":payload") {
+		field = "code:string;"
+		call = "super({code})"
+		getter = ""
+	}
+	shadow := ""
+	if strings.Contains(key, ":shadow") {
+		shadow = "const Schema=0;const $ErrorMatcher=1;const $ErrorMatcher2=2;\n"
+	}
+	source := fmt.Sprintf(`import {customMatcher} from "vibelang-runtime"
+%sexport schema error Entry {
+ %s
+ %s constructor(code:string){%s}
+ static fromCode(code:string):Entry{return new Entry(code)}
+ %s
+}
+export effect function main(){
+ const error=Entry.fromCode("value")
+ const owner=error.constructor as unknown as {readonly [key:symbol]:unknown}
+ const matcher=owner[customMatcher] as undefined|((subject:unknown,hint?:{matchType:"extractor"})=>unknown)
+ const observed=typeof matcher==="function" ? try Effect.try(()=>{
+  const extracted=matcher.call(Entry,error,{matchType:"extractor"}) as readonly {code:string}[]
+  return {own:matcher.call(Entry,error),cross:matcher.call(Entry,{_tag:"Entry",code:"copy"}),other:matcher.call(Entry,{_tag:"Other"}),code:extracted[0].code}
+ }) : null
+ const extracted:string=match(error){when Entry(let item):item.code;default:"fallback";}
+ return {observed,tag:error._tag,code:error.code,extracted,instance:error instanceof Entry,matcher:typeof owner[customMatcher]}
+}
+`, shadow, field, access, call, getter)
+	return Archive(map[string]string{"main.vibe": source})
+}
+
+func TestErrorMigrationDeclarationNormalizationKeepsTypes(t *testing.T) {
+	before := "export declare const value: import(\"effect/Schema\").Class<string>;\n"
+	alias := "import * as $Schema from \"effect/Schema\";\nexport declare const value: $Schema.Class<string>;\n"
+	changed := "import * as $Schema from \"effect/Schema\";\nexport declare const value: $Schema.Class<number>;\n"
+	if errorMigrationDeclaration(before) != errorMigrationDeclaration(alias) {
+		t.Fatal("namespace import spelling must retain the same declaration")
+	}
+	if errorMigrationDeclaration(before) == errorMigrationDeclaration(changed) {
+		t.Fatal("normalization hid a type change")
+	}
 }

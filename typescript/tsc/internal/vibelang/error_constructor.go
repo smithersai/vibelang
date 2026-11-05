@@ -25,6 +25,9 @@ func init() {
 
 func checkErrorConstructors(c *checker.Checker, file *ast.SourceFile) {
 	for _, member := range errorConstructors(file) {
+		if ast.HasSyntacticModifier(member, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
+			coverRejectedSchemaConstructorRegistration(c, member.Parent)
+		}
 		if restrictedEffectMember(member) {
 			continue
 		}
@@ -49,4 +52,26 @@ func errorConstructors(file *ast.SourceFile) []*ast.Node {
 	}
 	file.AsNode().ForEachChild(visit)
 	return found
+}
+
+// A rejected private constructor cannot satisfy the generated matcher's
+// constructor constraint. Cover only its synthetic this argument.
+func coverRejectedSchemaConstructorRegistration(c *checker.Checker, class *ast.Node) {
+	for _, member := range class.Members() {
+		if member.Kind != ast.KindClassStaticBlockDeclaration || member.Flags&ast.NodeFlagsReparsed == 0 {
+			continue
+		}
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) && node.Flags&ast.NodeFlagsReparsed != 0 &&
+				isSynthesizedName(node.Expression(), "$schemaErrorMatcher") && len(node.Arguments()) > 0 {
+				argument := node.Arguments()[0]
+				if argument.Kind == ast.KindThisKeyword && argument.Flags&ast.NodeFlagsReparsed != 0 {
+					coverExactCodes(c, argument, 2345)
+				}
+			}
+			return node.ForEachChild(visit)
+		}
+		visit(member)
+	}
 }

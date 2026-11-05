@@ -1,0 +1,9 @@
+// expect: EK1301
+export error PlainPrivateEmpty { private constructor(){super()} }
+export error PlainPrivatePayload { id:string;private constructor(){super({id:'value'})} }
+export error PlainProtectedEmpty { protected constructor(){super()} }
+export error PlainProtectedPayload { id:string;protected constructor(){super({id:'value'})} }
+export schema error CodecPrivateEmpty { private constructor(){super()} }
+export schema error CodecPrivatePayload { id:string;private constructor(){super({id:'value'})} }
+export schema error CodecProtectedEmpty { protected constructor(){super()} }
+export schema error CodecProtectedPayload { id:string;protected constructor(){super({id:'value'})} }

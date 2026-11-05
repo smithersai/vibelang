@@ -350,6 +350,39 @@ func failuresCases() []*failCase {
 		decl("optional-field", "[SchemaErrorDeclaration](900-appendices.md#schemaerrordeclaration). Its [ErrorBody](900-appendices.md#errorbody) is shared with `error`. Each field's type is mapped as in a `schema` declaration, optional properties included. Every field is readonly, as in `error`, so no field gets `Schema.mutableKey`. Omitting the body means no fields, as for `error Timeout`, and the body boundary is the same as for `error`.", "export "+form.prefix+" Bad { id?: string }\nexport const b = new Bad({})")
 		decl("fields-object", "An error is constructed with its fields as one object, `new NotFound({ id })`.", "export "+form.prefix+" NotFound { id: string }\nexport const e = new NotFound({ id: \"x\" })\nexport const id: string = e.id\nexport const tag: \"NotFound\" = e._tag")
 	}
+	for _, form := range []struct {
+		prefix string
+		vip    int
+	}{{"error", 13}, {"schema error", 29}} {
+		for _, access := range []struct{ key, text string }{
+			{"private", "private "}, {"protected", "protected "}, {"public", "public "}, {"implicit", ""},
+		} {
+			for _, payload := range []bool{false, true} {
+				for _, badBody := range []bool{false, true} {
+					for _, multiline := range []bool{false, true} {
+						fields, call := "", "super()"
+						if payload {
+							fields, call = "id: string;", "super({id: 'value'})"
+						}
+						if badBody {
+							call += "; Math.imul('bad', 2)"
+						}
+						gap := " "
+						if multiline {
+							gap = "\n"
+						}
+						add(&failCase{
+							Name:    fmt.Sprintf("rejected-constructor-registration-%s-%s-payload-%t-body-%t-lines-%t", strings.ReplaceAll(form.prefix, " ", "-"), access.key, payload, badBody, multiline),
+							Chapter: failuresChapter, VIP: form.vip, Host: "none", Code: 1301, OneDiagnostic: true,
+							Quote: "| a constructor in an `error` or `schema error` body | `EK1301` |",
+							Decls: "⟦export " + form.prefix + " Entry {" + gap + fields + gap + access.text + "constructor() {" + call + "}" + gap + "}⟧",
+						})
+					}
+				}
+			}
+		}
+	}
+
 	add(&failCase{Name: "error-interleaved", VIP: 13, Owner: "fix-vip-decls", Host: "none", Quote: "`error Name { fields }` declares exactly Effect's `Data.TaggedError` class. The tag is always the name, and every field is readonly. Optional `id?: T` maps to `readonly id?: T`, as in a TypeScript type literal. Fields, methods and getters may be interleaved, as in a TypeScript class.",
 		Decls: "export error NotFound {\n  id: string\n  get message() { return `no user ${this.id}` }\n  code: number\n  describe() { return this.id + this.code }\n}\nexport const m: string = new NotFound({ id: \"x\", code: 1 }).describe()"})
 	add(&failCase{Name: "error-contextual", VIP: 13, Owner: "fix-vip-decls", Host: "none", Quote: "`error`, like `service`, `schema` and `data`, follows TypeScript's contextual keyword `type`: a declaration is the keyword, no line break, then the declaration's name (a `BindingIdentifier`), where a declaration can start; anything else is ordinary TypeScript, where `error` is an identifier ([Declaration keywords](900-appendices.md#declaration-keywords), the one rule for all four). So `const error = …`, `catch (error)`, `const e = error as Error` and `error instanceof NotFound` still work, and `error as T;` declares `as`, then fails; write `(error as T);`. The body is optional, as for TypeScript's `declare module \"m\"` ([ErrorDeclaration](900-appendices.md#errordeclaration)). As in ECMAScript's `ExportDeclaration`, `export error E` and `export schema error E` are named declarations; `export default error E` and `export default schema error E` are syntax errors (`EK1305`). Write `export { E as default }` instead, as for a [service](005-services.md).",

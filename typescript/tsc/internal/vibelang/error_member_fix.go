@@ -199,6 +199,14 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			}
 			addedImport += "import { $schemaErrorFamily as " + familyAlias + " } from \"vibelang-runtime\"\n"
 		}
+		matcherClass := "this"
+		for _, member := range class.Members() {
+			if ast.IsConstructorDeclaration(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
+				// Matcher registration stores this class; it never constructs it.
+				matcherClass = "this as unknown as abstract new (...args: any[]) => unknown"
+				break
+			}
+		}
 		var members []string
 		if class.Flags&ast.NodeFlagsAmbient == 0 {
 			// VIP-7/VIP-13/VIP-29: an explicit class keeps the declaration's own tag
@@ -208,7 +216,7 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 				matcher = "$ErrorMatcher" + strconv.Itoa(i)
 			}
 			addedImport += "import { $schemaErrorMatcher as " + matcher + " } from \"vibelang-runtime\"\n"
-			members = append(members, "\nstatic { "+matcher+"(this, "+strconv.Quote(name.Text())+") }")
+			members = append(members, "\nstatic { "+matcher+"("+matcherClass+", "+strconv.Quote(name.Text())+") }")
 		}
 		for _, member := range class.Members() {
 			if member.Flags&ast.NodeFlagsReparsed == 0 {

@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Diagnostic identity updates preserve authored source and project configuration without depending on generated declarations.
 
+- A `private` or `protected` constructor in `error` or `schema error` could add a spurious argument error from generated code. It now reports the constructor restriction once; `--fix` preserves constructor visibility and tag matching, while authored type errors remain visible.
+
 - A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
 
 - API provenance checks loaded unrelated browser declarations. They now use fewer libraries while retaining selected dependencies and native type errors.
@@ -100,6 +102,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| A `private` or `protected` constructor in `error` or `schema error` | Run `vibelang --fix` to retain it in an Effect TypeScript class, preserving constructor visibility and tag matching. |
 | Throwing callbacks passed through optional or nullable `@rethrows` parameters, including `sort` | Run `vibelang --fix` to keep the original defect with `Effect.orDie(Effect.try(...))`. |
 | RHS closures in `for concurrent` that formerly captured an outer name with an incompatible type | `--fix` renames the item binding and its uses, keeping the RHS closure on the original outer binding |
 | Extra modifiers or `?`/`!` on a whole-shape service’s `key` or `defaultValue`, or a default factory without `readonly` | `EK0902`: run `vibelang --fix` to remove extra header syntax while retaining an existing `readonly` initializer. Supply a missing factory explicitly; adding `readonly` to a mutable default chooses `Context.Reference` fallback behavior and needs a manual migration. |
