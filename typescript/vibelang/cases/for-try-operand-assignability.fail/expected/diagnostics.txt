@@ -1,0 +1,7 @@
+main.vibe(5,25): error EK2004
+main.vibe(5,25): error TS18046
+main.vibe(8,25): error EK2004
+main.vibe(11,25): error EK2004
+main.vibe(14,25): error EK2004
+main.vibe(23,25): error EK2004
+main.vibe(28,25): error TS18048

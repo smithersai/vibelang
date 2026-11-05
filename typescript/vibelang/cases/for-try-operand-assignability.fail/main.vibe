@@ -22,3 +22,8 @@ effect function markerRows(rows: {
 }) {
   for try (const row of rows) {}
 }
+
+// A nullable receiver is an independent TypeScript error.
+effect function optionalReceiver(rows: { stream: Stream.Stream<number> } | undefined) {
+  for try (const row of rows.stream) {}
+}
