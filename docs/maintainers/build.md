@@ -1950,3 +1950,5 @@ The `//:stream-loop-body-identities` gate checks every Stream-loop body restrict
 The `//:missing-data-method-diagnostics` gate retains all native lookup errors and checks the corresponding valid receiver controls.
 
 The `//:tagged-pattern-binding-renames` gate exercises reference and rename operations across tagged variants, binding keywords, Unicode names, trivia, and explicit-key controls.
+
+The `//:nothrow-rethrow-escape-controls` gate retains every escape shape and adds plain-call and deeper-return controls for each independently admitted array callback.

@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Nested callbacks use their own rethrow admission; functions escaping those callbacks still retain the plain-code throw check.
+
 - The fibers guide omitted labeled `continue` targeting the `for concurrent` loop itself. It now explains that this ends the current item.
 - `vibelang --fix` left ordinary incomplete finite matches unchanged. It now adds a `default` that preserves the implicit empty-message `TypeError`, including an Effect defect or Promise rejection, without widening the function's result or channels.
 

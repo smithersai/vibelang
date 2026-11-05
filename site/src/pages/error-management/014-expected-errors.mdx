@@ -541,6 +541,8 @@ Legacy abstract plain and schema error roots report the migration warning `EK130
 
 For `abstract schema error` roots, the native-class migration retains the original family registration before written static members. A schema built from the base therefore keeps encoding and decoding its registered descendants; public declarations are unchanged.
 
+Inside an `Effect.try` thunk, a callback supplied to a rethrowing array method may call a function known to throw. A function returned from that callback is a separate plain function and still needs its own boundary.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/error-management/expected-errors](https://effect.website/docs/v4/error-management/expected-errors/)

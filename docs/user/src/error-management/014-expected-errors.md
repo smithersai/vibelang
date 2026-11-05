@@ -550,3 +550,5 @@ A tag on `type Reader = () => string` does not attach; passing a throwing callba
 Legacy abstract plain and schema error roots report the migration warning `EK1308`. Run `vibelang --fix` to keep the existing abstract constructor, widened tag contract, members and runtime matcher in an explicit `abstract class`. The rewrite preserves public declaration output and runtime behaviour; a native abstract class keeps its TypeScript meaning.
 
 For `abstract schema error` roots, the native-class migration retains the original family registration before written static members. A schema built from the base therefore keeps encoding and decoding its registered descendants; public declarations are unchanged.
+
+Inside an `Effect.try` thunk, a callback supplied to a rethrowing array method may call a function known to throw. A function returned from that callback is a separate plain function and still needs its own boundary.

@@ -10,19 +10,15 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// Chapter 3, "Plain code never throws", PREVIEW-5 (rev-preview pass 18): a
-// function literal passed where throws are admitted, Effect.try's thunk or
-// the Promise executor, may hold calls known to throw in its own body; a
-// function nested in it, whether returned, stored, passed on or called in
-// place, is its own plain code and keeps the check, since a returned
-// callback runs after the call has finished. The generator places one
-// JSON.parse call in an admitted literal, directly or under depth functions
-// that escape in one of several ways. The oracle: no EK0401 for the direct
-// call, exactly one for any nested call. The quotes are read from the chapter
-// at test time.
+// Calls nested under an admitted literal retain their own source context.
+// A callback passed to Array.map has its own rethrow admission; a function
+// returned from that callback does not inherit it. Plain-call controls keep
+// the known-throwing check at the rethrowing call itself.
 var nothrowEscapeQuotes = []string{
 	"may contain calls known to throw: they belong to the enclosing call.",
 	"A function nested in that literal is its own plain code.",
+	"or passed to a \x60@rethrows\x60 parameter, may contain calls known to throw",
+	"A call, \x60new\x60 expression, tagged template or class evaluation *known to throw* is \x60EK0401\x60",
 }
 
 func nothrowEscapeChapter(tb testing.TB) {
@@ -52,6 +48,7 @@ var nothrowWrappers = []struct {
 		// the executor's return value is ignored; resolve stays unused
 		return "export function f(): unknown {\n  return new Promise((resolve) => {\n    " + b + "\n  })\n}\n"
 	}},
+	{"plain", func(b string) string { return "export function f():unknown {\n" + b + "\n}\n" }},
 }
 
 // nothrowEscapes write the statements that return expr from the literal,
@@ -151,8 +148,12 @@ func FuzzNothrowAdmittedEscape(f *testing.F) {
 			return
 		}
 		want, quote := 1, nothrowEscapeQuotes[1]
-		if depth == 0 {
+		if nothrowWrappers[wrapper].key == "plain" {
+			quote = nothrowEscapeQuotes[3]
+		} else if depth == 0 {
 			want, quote = 0, nothrowEscapeQuotes[0]
+		} else if nothrowEscapes[escape].key == "passed-on" && depth == 1 {
+			want, quote = 0, nothrowEscapeQuotes[2]
 		}
 		if reported != want {
 			Gap(t, "FuzzNothrowAdmittedEscape", fmt.Sprintf("EK0401:%d:%s", want, shape), "chapter 3: %q; want %d EK0401, got %d for %s:\n%s", quote, want, reported, shape, source)
