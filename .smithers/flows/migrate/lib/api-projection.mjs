@@ -64,7 +64,10 @@ export function apiProjection(ts, directory, surface, files, { published = true 
       const physical = destinations.get(target)
       if (!physical) throw new Error("Declaration snapshot alias has no stored target: " + name)
       if (originals.has(destination)) {
-        if (originals.get(destination) !== target) throw new Error("Conflicting declaration snapshot alias: " + name)
+        // Explicit logical-path provenance can store the same declaration
+        // twice. Their bytes were checked above; a different owner still fails.
+        if (originals.get(destination) !== target && destination !== physical)
+          throw new Error("Conflicting declaration snapshot alias: " + name)
         continue
       }
       const source = ts.createSourceFile(target, readFileSync(path(physical), "utf8"), ts.ScriptTarget.Latest, true)

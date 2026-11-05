@@ -137,6 +137,8 @@ Declaration checks load each snapshot's ambient type packages from its project's
 
 Declaration-only comparisons resolve a TypeScript source target in conditional exports through its existing adjacent emitted declaration. TypeScript still chooses conditions and fallbacks in their written order; a missing selected declaration remains unavailable. The saved publication manifest and declaration files stay unchanged.
 
+A shipped declaration copy can share its explicitly recorded logical path with an identical original declaration. Alias reconstruction accepts that one recorded owner in either file order; conflicting bytes, missing stored targets and aliases to separate declarations remain unavailable.
+
 Documentation checks follow namespace re-export aliases to their authored declarations. Type-only and value exports retain their prose, tags and comment-block counts when forwarded from a private module; changed or removed comments still fail.
 
 

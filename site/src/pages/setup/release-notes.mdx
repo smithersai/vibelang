@@ -248,6 +248,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - ESLint and migration verification could reject a file that had only a parser warning. They now receive its syntax tree, while actual syntax errors still report their own locations.
 - Declaration checks could select a missing JavaScript output when a conditional export named a TypeScript source file. They now use its existing emitted declaration and retain TypeScript's condition order.
 
+- Declaration verification could reject an unchanged package when its snapshot included both an original declaration and its shipped copy. It now recognizes their recorded common file while retaining conflicts for different declarations.
+
 ### Upgrade from 0.0.11
 | Before | After and repair |
 | --- | --- |

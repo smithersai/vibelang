@@ -1,0 +1,15 @@
+{
+  "key": "t3code-shipped-declaration-alias",
+  "quote": "each export's type identical to `tsc`'s in both directions",
+  "declaration": "export declare const value: number;",
+  "files": [
+    "src/index.d.ts",
+    ".migrate-shipped/src/index.d.ts"
+  ],
+  "aliases": {
+    "src/index.d.ts": ".migrate-shipped/src/index.d.ts"
+  },
+  "logicalPaths": {
+    ".migrate-shipped/src/index.d.ts": "src/index.d.ts"
+  }
+}

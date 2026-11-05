@@ -392,6 +392,10 @@ and test gates still apply. Declaration comparisons resolve source targets in
 conditional exports through their existing emitted declarations, keeping
 TypeScript's condition order and reporting missing declarations.
 
+Saved declaration checks also recognize a shipped copy and its identical
+original as the same recorded logical file. Conflicting declarations and
+missing alias targets still fail verification.
+
 ## Metro, Babel and the React Compiler
 
 Tools that read one file at a time, such as Metro, Babel and Oxc, cannot parse
