@@ -1,0 +1,9 @@
+// expect-result: [7,1]
+import {reader,count} from "./lib.js"
+export effect function main() {
+ const first=reader.read
+ const read=(first)
+ const value=read("input")
+ return [value,count()]
+}
+export const parked=main()

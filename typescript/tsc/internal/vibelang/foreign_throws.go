@@ -52,7 +52,7 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 						continue
 					}
 					declared := c.GetTypeFromTypeNode(t)
-					owners := append(defaultForeignValueOwners(c, ast.GetInvokedExpression(call)), c.GetTypeAtLocation(call))
+					owners := foreignInvocationOwners(c, call)
 					resolved := c.InstantiateWrittenSignatureType(c.GetResolvedSignature(call), declared, owners)
 					if resolved.Flags()&checker.TypeFlagsNever == 0 {
 						bound := strings.TrimSpace(nodeText(source, t))
@@ -165,4 +165,41 @@ func needsExplicitThrowsBridge(c *checker.Checker, call *ast.Node) bool {
 	}
 	bound, written := foreignThrowsContract(c, call)
 	return written && bound != ""
+}
+
+// foreignInvocationOwners retains receiver substitutions through inferred
+// const references without inspecting a callable body or crossing a type.
+func foreignInvocationOwners(c *checker.Checker, call *ast.Node) []*checker.Type {
+	var owners []*checker.Type
+	seen := map[*ast.Symbol]bool{}
+	var visit func(*ast.Node)
+	visit = func(expression *ast.Node) {
+		expression = ast.SkipParentheses(expression)
+		if expression == nil {
+			return
+		}
+		owners = append(owners, defaultForeignValueOwners(c, expression)...)
+		if !ast.IsIdentifier(expression) && !ast.IsPropertyAccessExpression(expression) && !ast.IsElementAccessExpression(expression) {
+			return
+		}
+		symbol := c.GetSymbolAtLocation(expression)
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol == nil || seen[symbol] {
+			return
+		}
+		seen[symbol] = true
+		for _, declaration := range symbol.Declarations() {
+			if !ast.IsVariableDeclaration(declaration) || !ast.IsVarConst(declaration) || declaration.Type() != nil || declaration.Initializer() == nil {
+				continue
+			}
+			initializer := ast.SkipParentheses(declaration.Initializer())
+			if ast.IsIdentifier(initializer) || ast.IsPropertyAccessExpression(initializer) || ast.IsElementAccessExpression(initializer) {
+				visit(initializer)
+			}
+		}
+	}
+	visit(ast.GetInvokedExpression(call))
+	return append(owners, c.GetTypeAtLocation(call))
 }

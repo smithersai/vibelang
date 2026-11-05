@@ -767,6 +767,45 @@ func failuresCases() []*failCase {
 		}
 		add(&failCase{Name: "throws-generic-default-omitted-" + context, Quote: q.inferred, Host: host, Lib: "/** @throws {T} */\nexport declare function read<T=never>():number", Body: body})
 	}
+
+	// Extraction preserves a generic receiver's written contract through const references.
+	for _, bound := range []struct {
+		key, text string
+		throwing  bool
+	}{{"never", "never", false}, {"range", "RangeError", true}} {
+		for _, binding := range []struct{ key, prefix, call string }{
+			{"direct", "", "reader.read(s)"},
+			{"alias", "const read=reader.read;", "read(s)"},
+			{"chain", "const first=reader.read;const read=first;", "read(s)"},
+			{"parenthesized", "const read=((reader.read));", "read(s)"},
+			{"element", "const read=reader['read'];", "read(s)"},
+			{"nested-member", "const read=nested.reader.read;", "read(s)"},
+		} {
+			for _, context := range []string{"effect", "plain", "wrapped"} {
+				name := "throws-receiver-alias-" + binding.key + "-" + bound.key + "-" + context
+				host, body, code := "effect", binding.call, 0
+				if context == "plain" {
+					host = "plain"
+				}
+				if context == "wrapped" {
+					body = "try Effect.try(()=>" + body + ")"
+				} else if bound.throwing {
+					body = "⟦" + body + "⟧"
+					code = 403
+					if host == "plain" {
+						code = 401
+					}
+				}
+				quote := q.inferred
+				if code == 403 {
+					quote = q.directCall
+				} else if code == 401 {
+					quote = q.plainPropagates
+				}
+				add(&failCase{Name: name, Quote: quote, Host: host, Lib: "export interface Reader<T>{\n/** @throws {T} */\nread(s:string):unknown\n}\nexport declare const reader:Reader<" + bound.text + ">\nexport declare const nested:{reader:Reader<" + bound.text + ">}", Body: binding.prefix + body, Code: code, OneDiagnostic: code != 0})
+			}
+		}
+	}
 	add(&failCase{Name: "foreign-own-throw-over-type", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦read(s)⟧", Lib: "type Reader = (s: string) => string\n/** @throws {Error} */\nexport declare const read: Reader"})
 	add(&failCase{Name: "foreign-returned-signature", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const read = make()\n⟦read(s)⟧", Lib: "/** @throws {never} */\nexport declare function make(): {\n /** @throws {Error} */\n (s: string): string\n}"})
 	add(&failCase{Name: "foreign-overload-number", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const text = choose(s)\n⟦choose(1)⟧", Lib: "/** @throws {never} */\nexport declare function choose(s: string): string\n/** @throws {RangeError} */\nexport declare function choose(n: number): number"})
