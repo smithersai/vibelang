@@ -102,14 +102,14 @@ func TestEffectStageFixesRefuse(t *testing.T) {
 	}
 }
 
-// Effect.sync is the boundary of a TypeScript call: its exceptions are defects
-// there, and EK4401 reports the call in a block (opencode m7 r1).
+// Effect.sync retains the native call boundary: exceptions remain defects.
+// A generated call bridge keeps the receiver and defers argument reads.
 func TestThunkKeepsTypeScriptCall(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"a call", "export const v = Effect.sync(() => label())\n", "Effect.sync(() => label())"},
 		{"a call in a block", "export const v = Effect.sync(() => {\n  const a = label()\n  return a\n})\n", "const a = label()\n  return a\n})"},
 		{"an argument", "export const v = Effect.sync(() => [label()])\n", "Effect.sync(() => [label()])"},
-		{"a built-in that lists its failures", "export const f = (s: string) => Effect.sync(() => JSON.parse(s))\n", "Effect.sync(() => JSON.parse(s))"},
+		{"a built-in that lists its failures", "export const f = (s: string) => Effect.sync(() => JSON.parse(s))\n", "Effect.sync(() => $invoke(JSON,() => (s)))"},
 		{"a thunk returned", "export const f = () => Effect.sync(() => label())\n", "() => Effect.sync(() => label())"},
 		{"a suspend's operand", "const p = (s: string) => Effect.succeed(s)\nexport const v = Effect.suspend(() => p(label()))\n", "Effect.suspend(() => p(label()))"},
 		{"a plain function in the thunk moves", "export const v = Effect.sync(() => () => label())\n", "effect { return () => label() }"},
@@ -128,6 +128,9 @@ func TestThunkKeepsTypeScriptCall(t *testing.T) {
 			}
 			if !strings.Contains(got, test.want) {
 				t.Fatalf("--fix writes\n%s\nwant it to hold %s\nrefused %+v", got, test.want, result.Refused)
+			}
+			if test.name == "a built-in that lists its failures" && !strings.Contains(got, "return target[\"parse\"](arg0())") {
+				t.Fatalf("generated bridge lost its native receiver or deferred argument: %s", got)
 			}
 			for _, refused := range result.Refused {
 				if refused.Code == 4834 {

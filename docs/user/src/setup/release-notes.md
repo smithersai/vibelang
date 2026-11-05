@@ -140,6 +140,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - TypeScript checking of mapped iterable patterns could fail on a missing cache helper export; the checking prelude now exposes its runtime type.
 
+- Sync constructor repair tests could reject a correct generated call bridge; they now check its native receiver, deferred arguments, declaration types and repeated success or defect outcomes.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
