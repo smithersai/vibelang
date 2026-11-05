@@ -7,13 +7,10 @@ import (
 	"testing"
 )
 
-// Alchemy reconvert c6 on RC6 (2026-11-04): five shards exited 3 with "a fix
-// reached a file --only does not list; wrote nothing" and kept no fix. The
-// platform wrapper repair writes a new X.platform.ts file, which no --only
-// list names, and it also walked unlisted modules. Chapter 7: under --only "a
-// fix that would edit another file is not applied" and "the repairs write no
-// other file". So it is refused at its site, the run's other fixes are kept,
-// and unlisted modules keep their bytes.
+// A platform-wrapper repair needs a new sibling TypeScript module. Under
+// --only it is refused at its site while independent listed-file repairs
+// remain valid. A per-site explanation may name the omitted companion;
+// it does not mean the whole scoped run failed or wrote nothing.
 var onlyPlatformWrappers = []string{
 	"Effect.try(() => window.location.origin)",
 	"Effect.try(() => performance.now())",
@@ -42,8 +39,11 @@ func TestFixOnlyRefusesPlatformWrapperFile(t *testing.T) {
 				before := projectBytes(t, dir)
 				status, sys := runFix(t, dir, "--only", "a.vibe")
 				out := sys.stdout.String() + sys.stderr.String()
-				if status == 3 || strings.Contains(out, "does not list") {
+				if status == 3 || strings.Contains(out, "wrote nothing") {
 					t.Fatalf("--only a.vibe: status %d, wrote nothing:\n%s", status, out)
+				}
+				if place != "unlisted" && (!strings.Contains(out, "not fixed") || !strings.Contains(out, "partial repair")) {
+					t.Fatalf("scoped wrapper refusal lost its per-site or partial-project explanation:\n%s", out)
 				}
 				after := projectBytes(t, dir)
 				expectChanged(t, before, after, "a.vibe")
@@ -75,7 +75,7 @@ func TestFixPlatformWrapperAlchemyCorpusWithoutOnly(t *testing.T) {
 	}
 	only := onlyProject(t, map[string]string{"a.vibe": string(source)})
 	status, sys := runFix(t, only, "--only", "a.vibe")
-	if status == 3 || strings.Contains(sys.stderr.String(), "does not list") {
+	if status == 3 || strings.Contains(sys.stderr.String(), "wrote nothing") {
 		t.Fatalf("--only on the Alchemy corpus: status %d\n%s", status, sys.stderr.String())
 	}
 }

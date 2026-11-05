@@ -37,6 +37,7 @@ func TestFixOnlyRulesQuoted(t *testing.T) {
 func fixOnlyProject(input string) (files map[string]string, listed []string) {
 	bodies := []struct{ key, text string }{
 		{"plain", "export type T%[1]d = number\n"},
+		{"platform", "export type T%[1]d = Effect.Effect<number>\nexport effect function probe%[1]d(){return try Effect.sync(()=>document.title)}\n"},
 		{"good", "export type T%[1]d = Effect.Effect<number>\n"},
 		{"deep", "export type T%[1]d = Effect.Effect<Effect.Effect<string>>\n"},
 		{"narrow", "export type T%[1]d = Effect.Effect<number>\nexport effect function modes%[1]d() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n"},
@@ -78,6 +79,8 @@ func FuzzFixOnly(f *testing.F) {
 	startShortBudget(f)
 	for _, seed := range []string{
 		"+good,good",
+		"+platform,good",
+		"+good,platform",
 		"good,+good",
 		"+narrow,good,broken",
 		"+good,+deep,narrow,broken",
