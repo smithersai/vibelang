@@ -213,7 +213,10 @@ checks follow the same convention; a later target addition must retain it.
 
 The build flag audit checks each target's shell declaration independently.
 An inline `GOFLAGS` assignment cannot supply flags to another target in the
-same file.
+same file. It also checks every invocation in a mixed command chain, so one
+command's explicit flag or inline environment cannot cover a later command.
+Quoted selectors keep their shell boundaries; text inside a selector does not
+supply a compilation flag.
 A shell script can export `GOFLAGS` before running its commands; a later
 assignment or `unset GOFLAGS` ends that allowance. Regression mutations remove
 `-trimpath` from the actual native build declarations and insert independent
