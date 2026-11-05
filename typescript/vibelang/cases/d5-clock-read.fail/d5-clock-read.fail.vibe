@@ -1,4 +1,4 @@
-// expect: EK4403
+// expect: EK4402
 // VIP-33: host clock reads still require an injected service.
 
 export function stamp() {

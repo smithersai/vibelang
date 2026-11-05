@@ -172,5 +172,59 @@
     "source": "export const value = () => Temporal.Now.timeZoneId();",
     "banned": false,
     "severity": "default"
+  },
+  {
+    "key": "named-clock-direct-default",
+    "source": "export function stamp() { return performance.now() }\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "named-clock-direct-legacy-off",
+    "source": "export function stamp() { return performance.now() }\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "named-clock-direct-legacy-warning",
+    "source": "export function stamp() { return performance.now() }\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "named-clock-computed-default",
+    "source": "export function stamp() { return performance[\"now\"]() }\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "named-clock-computed-legacy-off",
+    "source": "export function stamp() { return performance[\"now\"]() }\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "named-clock-computed-legacy-warning",
+    "source": "export function stamp() { return performance[\"now\"]() }\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "named-clock-optional-default",
+    "source": "export function stamp() { return performance?.now?.() }\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "named-clock-optional-legacy-off",
+    "source": "export function stamp() { return performance?.now?.() }\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "named-clock-optional-legacy-warning",
+    "source": "export function stamp() { return performance?.now?.() }\n",
+    "banned": true,
+    "severity": "legacy-warning"
   }
 ]

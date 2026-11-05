@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("named-clock-computed-legacy-off\u0000\u0001")

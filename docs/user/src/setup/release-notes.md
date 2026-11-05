@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The host-clock example now checks the platform diagnostic and verifies that retired clock severity settings cannot hide a host access.
+
+
 - Invalid Stream loop heads now have regression coverage for the single owning diagnostic, without obsolete parser cascades.
 
 
