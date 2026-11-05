@@ -609,6 +609,13 @@ const targets = {
     [Packages["compiler-native"]],
     [bun, node]
   ),
+  "harness-deadlines": check(
+    "Every case runner's deadline covers the stage deadlines written in it and in the helpers it imports.",
+    "node --test typescript/vibelang/harness-deadlines.test.mjs",
+    [],
+    [node],
+    "5m"
+  ),
   "spec-catch-diagnostics": specCatchDiagnostics,
   release: check(
     "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
