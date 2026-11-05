@@ -41,7 +41,7 @@ const functionPairs = [
     [/a quick fix that parenthesizes \(VIP-3, amended; `EK0301`\)/, 3, "`!` beside other type operators"],
     [/needs no parentheses \(VIP-3, amended\)/, 3, "function-type returns"],
     [/the same on every build \(VIP-28, amended\)/, 28, "the helper's name"],
-    [/works at run time \(VIP-27, amended\)/, 27, "the generated matcher"],
+    [/Generated matcher declarations follow \[VIP-27's published matcher boundary\]\(\.\.\/vips\/0027-declaration-output\.md#decision\)/, 27, "published declarations add neither"],
     [/the output states the same on every call signature it emits other than an effectful one/, 4, "contracts sit on call signatures"],
     [/A foreign reader treats a declaration without a tag as throwing `unknown`/, 4, /no `@throws` means it throws `unknown`/],
   ]
