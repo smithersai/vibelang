@@ -225,6 +225,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-regexp-unmatched-paren", "n = / ) 2 /\n2\n;"},
 	{"custom-declaration-export", "type Value = number ; export service type { Value } ;"},
 	{"native-regexp-alternation", "n = / |> 2 /\n2\n;"},
+	{"native-instantiation-block-asi", "schema\nC < T >\n{ a :\nT\nT }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

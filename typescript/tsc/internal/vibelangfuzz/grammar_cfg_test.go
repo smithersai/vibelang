@@ -453,7 +453,11 @@ func grammarSplitLookahead(set string) []string {
 // a binary operator (not < > + -) or a token that starts no expression. TypeScript's parser keeps its binary
 // loop going after "as T" or "satisfies T", so any operator may follow one:
 // `x as number % 2` is `(x as number) % 2`. The subset puts both on
-// UpdateExpression, which derives the same sentences. Script is the start symbol.
+// UpdateExpression, which derives the same sentences. A statement may end before
+// a new-line block even if a competing relational reading could scan an object
+// literal there: TypeScript has already selected the instantiation reading (see
+// the Earley ASI boundary).
+// Script is the start symbol.
 const grammarTsSubset = `
 Script = ScriptItem*
 ScriptItem = Statement
@@ -553,7 +557,7 @@ YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator h
 UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression | UpdateExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | UpdateExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }]
 LeftHandSideExpression = NewExpression | CallExpression | OptionalExpression
 NewExpression = MemberExpression | "new" NewExpression
-MemberExpression = MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
+MemberExpression = MemberExpression TypeArguments LineTerminator [lookahead ∈ { "{" }] | MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
 MetaProperty = "import" "." "meta" | "new" "." "target"
 CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!"
 ImportCall = "import" "(" AssignmentExpression ","? ")" | "import" "(" AssignmentExpression "," AssignmentExpression ","? ")"

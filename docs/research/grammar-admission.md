@@ -504,3 +504,13 @@ nor syntax to the native TypeScript grammar. Service name/key errors such
 as `EK0903` and implicit-any member errors such as `TS7008` remain
 non-syntax errors. An untyped property signature and a contextual name
 therefore do not turn an admitted export into a grammar gap.
+
+A native generic instantiation can end a statement before a new-line block.
+The lab admits `C<T>` followed by a line terminator and `{`, allowing
+TypeScript's semicolon insertion to separate the instantiation from that
+block. An unfinished relational reading that could scan an object literal
+does not suppress the completed statement's boundary. The bounded CFG may
+retain both readings; the admission oracle requires a derivation. The line
+break is required for this bridge; it does not introduce a
+same-line trailing block. Labels and separate expressions in the following
+block retain their ordinary syntax.

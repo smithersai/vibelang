@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-instantiation-block-asi\nschema\nC < T >\n{ a :\nT\nT }")

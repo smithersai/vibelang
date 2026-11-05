@@ -218,7 +218,12 @@ func (p *grammarEarley) process(i int) {
 			return
 		}
 		decided = true
-		p.asiOK[i] = i == n || p.toks[i].text == "}" || p.toks[i].nl && len(p.sets[i+1]) == 0
+		// An opening brace cannot continue a completed statement. Another
+		// prefix may still scan it as an object literal (C<T> versus C < T >),
+		// but that incomplete relational reading must not suppress the
+		// completed instantiation's native line-break boundary. Reuse the ASI
+		// path instead of adding another StatementEnd alternative.
+		p.asiOK[i] = i == n || p.toks[i].text == "}" || p.toks[i].nl && (p.toks[i].text == "{" || len(p.sets[i+1]) == 0)
 		if !p.asiOK[i] {
 			return
 		}
