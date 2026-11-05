@@ -287,6 +287,15 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		// Parsed per-code entries for them come from the supported legacy
 		// map and still control those compatibility diagnostics.
 		legacyInterim := slices.Contains(facts.Interim, code) && facts.Default(code) == DefaultOff
+		if legacyInterim && d.File() != nil {
+			if severity, configured := legacyDirectiveSeverityAt(d.File().Text(), d.Pos(), name); configured {
+				want := map[string]DefaultCategory{"error": DefaultError, "warning": DefaultWarning, "off": DefaultOff}[severity]
+				if !CategoryMatches(want, d.Category()) {
+					g.Add("ek:"+name, "%s has source directive %s, but was reported as %s: %s", name, severity, d.Category().Name(), keyOf(dir, d))
+				}
+				continue
+			}
+		}
 		if (adjustable || legacyInterim) && len(severities) != 0 {
 			if severity, ok := severities[0][name]; ok {
 				matches := severity == "error" && d.Category() == diagnostics.CategoryError ||
