@@ -355,6 +355,16 @@ Migration recognizes TypeScript/TSX aliases without case sensitivity. With a JSX
 
 ## Bundlers inside unchanged tests
 
+Node tests that call Rolldown or esbuild on native source graphs can preload
+`vibelang-unplugin/rolldown/register` or `vibelang-unplugin/esbuild/register`
+with `node --import`. The preloads include the runtime loader and add a fresh
+native plugin to each later bundler call, preserving explicit plugins and
+caller options. They support Rolldown build/watch and esbuild build/context;
+esbuild `buildSync` does not support plugins. Load them before importing the
+bundler. Under Bun, pass the corresponding bundler plugin explicitly. Literal
+entry paths and module filename assertions still refer to their original files.
+
+
 For `Bun.build` calls, configure `vibelang-unplugin/bun/register` as both
 the top-level and `[test]` preload in `bunfig.toml`. It loads runtime
 imports and adds the VibeLang adapter to test-owned builds without editing

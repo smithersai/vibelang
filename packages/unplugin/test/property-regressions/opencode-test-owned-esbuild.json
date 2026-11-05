@@ -1,0 +1,7 @@
+{
+  "key": "opencode-test-owned-esbuild",
+  "bundler": "esbuild",
+  "entry": "export { answer } from './leaf.vibe'\n",
+  "source": "export const answer: number = 42\n",
+  "answer": 42
+}

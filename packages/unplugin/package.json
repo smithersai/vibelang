@@ -64,6 +64,16 @@
     "./bun/register": {
       "types": "./src/bun-register.d.ts",
       "import": "./src/bun-register.js"
+    },
+    "./rolldown/register": {
+      "types": "./src/register.d.ts",
+      "import": "./src/register-rolldown.js",
+      "require": "./src/register-rolldown.js"
+    },
+    "./esbuild/register": {
+      "types": "./src/register.d.ts",
+      "import": "./src/register-esbuild.js",
+      "require": "./src/register-esbuild.js"
     }
   },
   "files": [

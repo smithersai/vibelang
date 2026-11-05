@@ -80,6 +80,32 @@ import `build` from `bun`. Child processes need the preload in their own
 configuration or command: `bun --preload vibelang-unplugin/bun/register run.ts`.
 This does not change Bun's test filename discovery or configure other bundlers.
 
+## Bundlers called by tests
+
+For a Node script or test that calls Rolldown or esbuild itself, preload the
+matching adapter before it imports the bundler:
+
+```sh
+node --import vibelang-unplugin/rolldown/register scripts/bundle.mjs
+node --import vibelang-unplugin/esbuild/register --test test/bundle.test.mjs
+```
+
+These entries include `vibelang/register`. They require a supported Node release
+and affect subsequent bare `rolldown` or `esbuild` imports and `require`
+calls. Register both if a process uses both bundlers. Each build receives
+a fresh native adapter; an explicit plugin named `vibelang` takes precedence.
+Caller plugins and options are preserved. Rolldown's `rolldown`, `build`
+and `watch` APIs and esbuild's asynchronous `build` and `context` APIs
+are supported. esbuild's `buildSync` cannot use plugins and is unchanged.
+
+Load the preload before any bundler import; an already imported namespace
+or function is unchanged. Absolute package-file imports and subprocesses
+without the preload keep their usual behavior. Under Bun, pass
+`vibelang-unplugin/rolldown` or `vibelang-unplugin/esbuild` explicitly
+in the bundler's `plugins` array. These Node preloads reject Bun with that
+instruction. A missing literal `input.ts` remains missing: source loading
+does not rename test-owned entry paths or change module filenames.
+
 Import local sources as `./welcome.vibe` and `./config.ts`. The compiler
 rewrites those imports to `./welcome.js` and `./config.js`; the plugin resolves
 them back to `welcome.vibe` and `config.ts`. A `module` declaration of
