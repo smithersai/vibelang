@@ -1820,3 +1820,5 @@ The `//:native-using-advisories` check covers native resource bindings in each c
 The `//:optional-foreign-contracts` target gives reviewed pure TypeScript fixture helpers explicit never-throw contracts. It retains all optional receiver, argument and execution observations and separately checks that unannotated scalar, Config and Exit callbacks are rejected by fresh no-throw callback types.
 
 The `//:native-inferred-declarations` target covers inferred native consumer imports as well as written re-exports. Stock TypeScript controls vary relative suffixes, quotes, nested paths and extension-rewriting settings; native consumers must not acquire VibeLang sidecars.
+
+The `//:pipe-topic-regressions` target executes the implemented direct and nested missing-topic cases without pending markers. Its keyed corpus covers ordinary and Effect callables, with explicit positive controls that supply the correct outer topic.

@@ -22,6 +22,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The throwing match-arm example could fail TypeScript's impossible-comparison check. It now uses a general `boolean` parameter and retains the selected failure.
 - The `Experimental` namespace documentation described every addition as a service; it now makes clear that pure modules need no service key or layer.
+- Contributor pipeline checks stopped on empty markers before checking implemented missing-topic diagnostics. Both direct and nested cases now run, with positive topic controls.
 - Contributor cache warmup omitted the Effect lint package and recompiled it during validation. The warmup now includes it.
 - Contributor validation omitted stale-manifest preservation checks. It now runs both disk and editor regression cases.
 - Contributor API checks failed after a comparison helper moved into another file. Their fixtures now include local helper dependencies transitively.
