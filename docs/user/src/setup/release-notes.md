@@ -206,6 +206,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Contributor API checks loaded browser declarations while comparing aliases of built-in generic types. Those fixtures now load only their ECMAScript declarations.
 
 - A misplaced `fork` or `join` operator could hide errors inside its operand. Those TypeScript errors now remain visible beside `EK1701`.
+- Parameterless Effect arrows and function expressions with several statements could lose their source names, and arrows could become regular functions. They now keep their source callable form and name while their bodies remain cold.
 - Contributor cache warmup omitted the Effect lint package and recompiled it during validation. The warmup now includes it.
 - Contributor validation omitted stale-manifest preservation checks. It now runs both disk and editor regression cases.
 - Contributor API checks failed after a comparison helper moved into another file. Their fixtures now include local helper dependencies transitively.

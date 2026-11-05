@@ -1,0 +1,22 @@
+// expect-result: [["arrow","grouped","expression","inner","member","[sample]","", "method"],[false,false,true,true,false,true,true,false],[0,0,0,0,0,0,0,0],0,[1,2],2]
+// docs/design/src/001-functions.md#meaning: each callable keeps its source form.
+let runs = 0
+const arrow = effect () => { const value = ++runs; return value }
+const grouped = (effect () => { const value = 7; return value })
+const expression = effect function () { const value = 7; return value }
+const named = effect function inner() { const value = 7; return value }
+const key = Symbol("sample")
+const object = {
+  member: effect () => { const value = 7; return value },
+  [key]: effect function () { const value = 7; return value },
+  effect method() { const value = 7; return value },
+}
+const values = [effect function () { const value = 7; return value }]
+export effect function main() {
+  const functions = [arrow, grouped, expression, named, object.member, object[key], values[0], object.method]
+  const program = arrow()
+  const atCall = runs
+  const first = try program
+  const second = try program
+  return [functions.map(f => f.name), functions.map(f => "prototype" in f), functions.map(f => f.length), atCall, [first, second], runs]
+}

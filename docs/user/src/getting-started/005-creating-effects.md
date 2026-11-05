@@ -8,6 +8,8 @@ Use `effect` on functions, arrows, and class or object methods. Getters, setters
 
 `vibelang --fix` can preserve a parameterless legacy Effect constructor by returning a cold `effect { … }` block from an ordinary constructor. Constructors with parameters, type parameters, a return annotation, `async`, `super`, or `new.target` need a manual migration: the old Effect method lowering deferred parameter initialization until each run, so simply removing `effect` would change when work happens.
 
+An `effect` arrow keeps its arrow form, and a function expression keeps its written or inferred name. This also holds for parameterless, multi-statement bodies that contain no `try`: the body remains cold and runs again each time its Effect runs.
+
 An `effect` function binds its parameters and evaluates defaults when you call it. Running the returned Effect executes the body. Repeated runs of that same Effect share the call's parameter bindings, including writes the body makes. If a default or destructuring binding throws, the call returns an Effect that dies with that value.
 
 A synchronous call of an unannotated `.ts` function in an effect function's or producer's parameter default reports `EK0401`: compute that value in the body through `Effect.try`. Class field initializers and `static` blocks keep their plain JavaScript context even inside an effect function; an unannotated `.ts` call there stays an ordinary call.

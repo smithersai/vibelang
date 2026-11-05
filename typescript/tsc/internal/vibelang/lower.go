@@ -495,7 +495,7 @@ func (tx *lowering) lowerFunction(node *ast.Node) *ast.Node {
 			return tx.directFunction(node, parameters, effect)
 		}
 	}
-	if isMarkedEffect(node) && (len(node.Parameters()) > 0 || tx.plan.sourceTryDelegation[node]) {
+	if isMarkedEffect(node) {
 		parameters, body = tx.callTimeEffectBody(node, parameters, body)
 		return tx.directFunctionBody(node, parameters, body)
 	}
