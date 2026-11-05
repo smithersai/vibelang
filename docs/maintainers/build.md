@@ -1735,6 +1735,10 @@ tests keep their existing environments.
 
 Ambient self-identity helpers select `lib.es5.d.ts` for pure module and
 global fixtures, including generated JSON and intrinsic-array cases.
+Independent native checks for module-resolution changes and invalid ambient
+inputs use the same ES5 selection as their comparisons. They still require
+native `TS2304` errors for unresolved names and `TS2583` for missing
+`BigInt`; shared invalid inputs must make comparison unavailable.
 Global `Request` declarations and `Window` augmentations retain their
 browser environment. Guards inspect native programs and require the actual
 browser-library declaration to participate in those bindings. Resource

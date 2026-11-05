@@ -157,11 +157,13 @@ test("ambient closure proofs preserve each module resolution edge", () => {
     "tsconfig.json": JSON.stringify({compilerOptions:{strict:true,baseUrl:".",paths:{chosen:["./a.d.ts"]}}}),
   }
   fixture(files, {...files,"tsconfig.json":JSON.stringify({compilerOptions:{strict:true,baseUrl:".",paths:{chosen:["./b.d.ts"]}}})}, (a,b) => {
-    for (const dir of [a,b]) {
-      const options = ts.getParsedCommandLineOfConfigFile(join(dir,"tsconfig.json"), {}, {...ts.sys,onUnRecoverableConfigFileDiagnostic:()=>{}}).options
-      const program = ts.createProgram([join(dir,"index.d.ts")],{...options,noEmit:true,types:[]})
-      assert.equal(ts.getPreEmitDiagnostics(program).length,0)
-    }
+    withFixtureCompiler(undefined, (compiler, compilerOptions) => {
+      for (const dir of [a,b]) {
+        const options = ts.getParsedCommandLineOfConfigFile(join(dir,"tsconfig.json"), {}, {...ts.sys,onUnRecoverableConfigFileDiagnostic:()=>{}}).options
+        const program = compiler.createProgram([join(dir,"index.d.ts")],{...options,...compilerOptions,noEmit:true,types:[]})
+        assert.equal(ts.getPreEmitDiagnostics(program).length,0)
+      }
+    })
     const result=compareFixture(a,b)
     assert.equal(result.identical,false,JSON.stringify(result))
     assert.ok(result.typeDifferences.some(item=>item.export==="X"),JSON.stringify(result))
@@ -235,10 +237,12 @@ test("errors shared by both ambient inputs remain invalid comparisons", () => {
     'export {}; declare global { interface InvalidGlobal { value: Missing } }',
   ]) {
     fixture(source, source, (before, after) => {
-      for (const dir of [before, after]) {
-        const program = ts.createProgram([join(dir, "index.d.ts")], { strict: true, noEmit: true, types: [] })
-        assert.ok(ts.getPreEmitDiagnostics(program).some(d => d.code === 2304))
-      }
+      withFixtureCompiler(undefined, (compiler, compilerOptions) => {
+        for (const dir of [before, after]) {
+          const program = compiler.createProgram([join(dir, "index.d.ts")], { ...compilerOptions, strict: true, noEmit: true, types: [] })
+          assert.ok(ts.getPreEmitDiagnostics(program).some(d => d.code === 2304))
+        }
+      })
       for (const other of [before, after]) {
         const result = compareFixture(before, other)
         assert.equal(result.identical, false, JSON.stringify(result))
@@ -248,4 +252,20 @@ test("errors shared by both ambient inputs remain invalid comparisons", () => {
       }
     })
   }
+})
+
+test("pure ambient native validators retain missing-library errors", () => {
+  const source = 'declare const value: BigInt;'
+  fixture(source, source, (before, after) => {
+    withFixtureCompiler(undefined, (compiler, compilerOptions) => {
+      for (const dir of [before, after]) {
+        const program = compiler.createProgram([join(dir, "index.d.ts")], { ...compilerOptions, strict: true, noEmit: true, types: [] })
+        assert.ok(ts.getPreEmitDiagnostics(program).some(d => d.code === 2583))
+      }
+      const result = compareApiIdentity(compiler, before, after, { compilerOptions })
+      assert.equal(result.identical, false, JSON.stringify(result))
+      assert.equal(result.comparisonComplete, false, JSON.stringify(result))
+      assert.ok(result.environmentDiagnostics.some(d => d.blocking && /TS2583/.test(d.diagnostic)), JSON.stringify(result))
+    })
+  })
 })

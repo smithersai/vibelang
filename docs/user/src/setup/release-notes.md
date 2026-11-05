@@ -9,6 +9,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Pure ambient API validation loaded unrelated browser declarations. It now uses ES5 while browser augmentations retain native `Request` and `Window` types.
+
+
 - A service could capture an enclosing generic type through a callable's explicit `this` parameter. These receiver contracts now report `EK3005`, while concrete and member-local generic receivers remain valid.
 
 - The grammar admission audit could mistake an identifier after a line break for a `schema` or `error` declaration. It now retains the expression's existing grammar finding.
