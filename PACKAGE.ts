@@ -1089,8 +1089,8 @@ const targets = {
   ),
   "mapper-error-registration-members": goVibelang(
     "Generated error registration retains source members and native projection types",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^(TestPlainErrorRegistrationKeepsNativeStaticBlock|TestErrorPayloadCommaStockProjection|TestErrorExtractorSubjectReads|TestThrowCauseRuntime)$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=10m -run \"^(TestMapperErrorRegistrationMembersQuoted|FuzzMapperErrorRegistrationMembers)$\" ./internal/vibelangfuzz",
-    [],
+    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run \"^(TestPlainErrorRegistrationKeepsNativeStaticBlock|TestErrorPayloadCommaStockProjection|TestErrorExtractorSubjectReads|TestThrowCauseRuntime)$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=10m -run \"^(TestMapperErrorRegistrationMembersQuoted|FuzzMapperErrorRegistrationMembers)$\" ./internal/vibelangfuzz",
+    [Typescript.compiler, Typescript.mapper],
     "20m"
   ),
   "layer-repair-service-receivers": goVibelang(
