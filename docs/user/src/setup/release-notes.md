@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The process identity example now reads its native comparison through an explicit boundary, retaining native values and unexpected defects.
+
+
 - The interruption example now uses lexical masks and retains its restored interruption result and outward return value.
 
 

@@ -21,7 +21,7 @@ effect function failedIdentity() {
 }
 export effect function main() {
   return {
-    matchesNative: try nativeIdentity() === nativeUid(),
+    matchesNative: try nativeIdentity() === (try Effect.orDie(Effect.try({ try: () => nativeUid(), catch: (error) => error }))),
     missing: try missingIdentity(),
     root: try rootIdentity(),
     classified: try failedIdentity(),

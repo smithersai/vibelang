@@ -1862,3 +1862,5 @@ The `//:plain-runner-promise-data` check preserves eager Promise creation, the o
 The `//:option-direct-consumption` check covers direct and parenthesized `try` operands alongside assigned, returned, passed and stored generic Effect results.
 
 The `//:lexical-restore-regressions` check retains nested mask entry state, restored interruption, outward returns and rejection of masks in plain activations.
+
+The `//:native-value-boundaries` check retains native process comparison, missing identity, root identity and failure classification, with tagged and untagged foreign boundary mutations.
