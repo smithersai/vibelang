@@ -328,3 +328,12 @@ as a comparison operand without a syntax error. That shape stays pending as
 `admission:import-relational-recovery`. The key follows a bare import-keyword
 node directly inside a binary expression. Ordinary dynamic imports, import
 meta-properties, property names and import types remain separate controls.
+
+
+The `is-operand-precedence` pending family also covers a tighter arithmetic
+operator after a signed or relational pattern, such as `x is > -1 + 1`.
+The pattern's leading relational operator and unary sign are consumed before
+looking for arithmetic after the complete `is` test. A later relational, bitwise or
+logical continuation ends that scan; `x is > -1`, `x is > 1 < 2 + 3` and
+`(x is > 1) + 1` remain separate valid controls. The keyed
+`is-relational-operand-precedence` corpus retains the accepted invalid form.

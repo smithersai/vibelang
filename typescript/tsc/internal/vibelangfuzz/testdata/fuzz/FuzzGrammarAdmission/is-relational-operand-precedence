@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:is-relational-operand-precedence\nconst b = x is > 1 + 1; ;")

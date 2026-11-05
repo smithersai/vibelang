@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Contributor helper re-export checks now require a missing `BigInt` library to produce `TS2583` and make comparison unavailable, matching stock TypeScript validation.
 - Services with a written whole shape could silently accept index signatures and constructors in their body. They now report `EK0902` and explain where to put the signature or initialization.
 
+- The grammar admission audit could stop on arithmetic after a signed or relational `is` pattern. It now records that known precedence gap while preserving valid pattern prefixes and grouped expressions.
+
 - Optional schema fields and tuple elements with an explicit `undefined` union could expose a different codec type from `Schema.optional(S)`. They now retain the underlying codec type while accepting omission and present `undefined`; repairs keep an explicit union codec when rewriting it would change its type.
 - The platform guide mapped `os.tmpdir` to creating a new directory. Its replacement now reads the system temporary-directory path without creating anything.
 - The matching guide left regex capture types under strict indexed-access and optional-property checks implicit. It now explains the native types of global literals, other literals and named expressions.

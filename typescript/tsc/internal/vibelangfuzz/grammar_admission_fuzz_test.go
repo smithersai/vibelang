@@ -80,6 +80,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fork", "effect function f(p) { return fork p; }"},
 	{"join", "effect function f(p) { return join p; }"},
 	{"is-operand-precedence", "const b = x is 1 + 1;"},
+	{"is-relational-operand-precedence", "const b = x is > 1 + 1; ;"},
 	{"pipe", "const n = 1 |> % + 1;"},
 	{"pipe-chain", "const n = 1 |> % + 1 |> % * 2;"},
 	{"function-kind", "function f(p) { return try p; }"},
@@ -216,23 +217,36 @@ func FuzzGrammarAdmission(f *testing.F) {
 // [no LineTerminator here] `is` MatchPattern, so an is expression is a
 // RelationalExpression and can't be the left operand of +, * or <<; no
 // MatchPattern contains them either. The compiler reads `x is 1 + 1` as
-// `(x is 1) + 1`. A pattern's own leading sign or relational operator
-// (`is -1`, `is < 5`) is not counted; <, &&, ?? and the rest are derivable.
+// `(x is 1) + 1`. A pattern's leading relational operator and unary sign
+// are not counted. A later relational or logical operator starts a derivable
+// continuation and ends this scan.
 func grammarIsOperandPrecedence(ts []grammarToken) bool {
 	tighter := map[string]bool{"+": true, "-": true, "*": true, "/": true, "%": true, "**": true, "<<": true, ">>": true, ">>>": true}
 	for i, tok := range ts {
 		if tok.kind != 'w' || tok.text != "is" || i == 0 || i+1 >= len(ts) || tok.nl || ts[i+1].nl {
 			continue
 		}
-		switch ts[i+1].text {
-		case "<", "<=", ">", ">=", "==", "===", "!=", "!==", "+", "-":
+		at := i + 1
+		for at < len(ts) && ts[at].text == "not" {
+			at++
+		}
+		if at >= len(ts) {
 			continue
+		}
+		switch ts[at].text {
+		case "<", "<=", ">", ">=", "==", "===", "!=", "!==", "in", "instanceof":
+			at++
+		}
+		// These belong to the pattern; later operators still follow the
+		// complete is expression and must obey its relational precedence.
+		if at < len(ts) && (ts[at].text == "+" || ts[at].text == "-") {
+			at++
 		}
 		depth := 0
 	scan:
-		for k, next := range ts[i+1:] {
+		for k, next := range ts[at:] {
 			// The lab lexes << and >> as two tokens; two in a row are a shift.
-			if depth == 0 && (next.text == "<" || next.text == ">") && i+2+k < len(ts) && ts[i+2+k].text == next.text {
+			if depth == 0 && (next.text == "<" || next.text == ">") && at+k+1 < len(ts) && ts[at+k+1].text == next.text {
 				return true
 			}
 			switch next.text {
@@ -242,7 +256,8 @@ func grammarIsOperandPrecedence(ts []grammarToken) bool {
 				if depth--; depth < 0 {
 					break scan
 				}
-			case ";", ",", "?", ":", "=", "&&", "||", "??", "|>", "=>":
+			case "<", "<=", ">", ">=", "==", "===", "!=", "!==", "in", "instanceof",
+				";", ",", "?", ":", "=", "&", "^", "|", "&&", "||", "??", "|>", "=>":
 				if depth == 0 {
 					break scan
 				}
