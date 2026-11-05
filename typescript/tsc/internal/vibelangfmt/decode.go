@@ -319,6 +319,18 @@ func (d *decoder) node(node *ast.Node) error {
 			return lost()
 		}
 		d.replace(commaEnd, params.End(), "")
+	case placeholderComparisonType:
+		assertion := parent
+		for assertion != nil && assertion.Kind != ast.KindAsExpression && assertion.Kind != ast.KindSatisfiesExpression {
+			assertion = assertion.Parent
+		}
+		if assertion == nil || assertion.Parent == nil || assertion.Parent.Kind != ast.KindParenthesizedExpression {
+			return lost()
+		}
+		group := assertion.Parent
+		d.replace(d.start(group), d.start(group)+1, "")
+		d.replace(group.End()-1, group.End(), "")
+		d.replace(start, end, d.reindent(holder, start))
 	case placeholderText:
 		d.replace(start, end, d.reindent(holder, start))
 	case placeholderEmptyStatement:

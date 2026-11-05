@@ -485,3 +485,5 @@ Migration verification compares actual pack file lists with the upstream
 baseline. Sidecars, missing files and unexpected additions fail the check;
 a migrated `.vibe` source may replace its deliberately published `.ts` twin.
 Setup preserves tests, fixtures and their package manifests.
+
+The formatter preserves comparisons after Effect type assertions, including `value as number!! < limit`, without treating `<` as a type argument list.

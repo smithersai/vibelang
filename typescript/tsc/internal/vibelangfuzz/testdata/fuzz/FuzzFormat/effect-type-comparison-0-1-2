@@ -1,0 +1,2 @@
+go test fuzz v1
+string("declare const value: unknown\nexport const result = value as number!!\n<= 3\n")

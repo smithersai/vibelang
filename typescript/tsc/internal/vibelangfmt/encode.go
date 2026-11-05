@@ -58,6 +58,7 @@ type placeholderKind int
 
 const (
 	placeholderText                 placeholderKind = iota // the identifier is the text
+	placeholderComparisonType                              // parenthesized type before a comparison
 	placeholderIsPattern                                   // a pattern; the >= before it is is
 	placeholderMatchHead                                   // the property that holds a match's subject
 	placeholderMatchArm                                    // when and a pattern, as an arm's property name
@@ -473,6 +474,26 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 		r := form.Range
 		if form.Kind == parser.VibeSyntaxEffectType {
 			r = e.parenthesized(r)
+			// A bare placeholder identifier would absorb a following comparison
+			// as a native type argument list. Close the projected type explicitly.
+			next := scanner.SkipTrivia(e.source, r.End())
+			if next < len(e.source) && e.source[next] == '<' {
+				var assertion *ast.Node
+				var visit func(*ast.Node) bool
+				visit = func(node *ast.Node) bool {
+					if (node.Kind == ast.KindAsExpression || node.Kind == ast.KindSatisfiesExpression) && node.End() == r.End() {
+						assertion = node
+						return true
+					}
+					return node.ForEachChild(visit)
+				}
+				e.file.AsNode().ForEachChild(visit)
+				if assertion != nil {
+					e.insert(scanner.SkipTrivia(e.source, assertion.Pos()), "(", -1)
+					e.opaque(placeholderComparisonType, r, "", ")", firstLineWidth(e.text(r)))
+					break
+				}
+			}
 		}
 		e.opaque(placeholderText, r, "", "", firstLineWidth(e.text(r)))
 	case parser.VibeSyntaxMutable:
