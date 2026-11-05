@@ -107,10 +107,3 @@ test("property: untouched bundle calls load native graphs across bundlers and AP
     succeeded(await run(input.host, { ...input, root }), [input.value])
   }), { seed: 110526, numRuns: 24, endOnFailure: true })
 })
-
-test("Bun preloads explain the explicit adapter requirement", async t => {
-  for (const item of corpus) {
-    const root = await fixture(t, item)
-    await assert.rejects(run("bun", { root, bundler: item.bundler }), /Bundler register preloads require Node/)
-  }
-})

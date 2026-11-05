@@ -366,8 +366,10 @@ with `node --import`. The preloads include the runtime loader and add a fresh
 native plugin to each later bundler call, preserving explicit plugins and
 caller options. They support Rolldown build/watch and esbuild build/context;
 esbuild `buildSync` does not support plugins. Load them before importing the
-bundler. Under Bun, pass the corresponding bundler plugin explicitly. Literal
-entry paths and module filename assertions still refer to their original files.
+bundler. Bun 1.4.4 or later can use the same entries with `--preload`
+or both `bunfig.toml` preload arrays for literal ESM bundler imports.
+Computed imports, CommonJS calls and older Bun releases need the explicit
+bundler plugin. Literal entry paths and module filename assertions still refer to their original files.
 
 
 For `Bun.build` calls, configure `vibelang-unplugin/bun/register` as both

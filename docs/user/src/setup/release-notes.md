@@ -172,6 +172,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Building the compiler’s shared support package failed with undefined helper names; standalone Go builds now resolve those definitions.
 
+- Bun tests that imported Rolldown or esbuild themselves could still fail on native source graphs; bundler preloads now route literal ESM imports through native adapters on supported Bun releases.
+
 - Node tests that created their own Rolldown or esbuild bundles could fail to parse native sources despite a runtime loader; opt-in bundler preloads now add native source support to those calls.
 
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.

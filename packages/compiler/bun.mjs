@@ -180,10 +180,16 @@ function fromModuleOutput(directory, specifier) {
     return isAbsolute(resolved) ? resolved : undefined
   } catch { return undefined /* Bun reports it at the import. */ }
 }
+// Bundler preloads register their literal ESM routes before application loading.
+// Sharing this parser-backed pass preserves the ordinary native-source loader
+// and leaves strings, comments, type imports and shadowed calls untouched.
+const registeredImport = (directory, specifier) =>
+  globalThis[Symbol.for("vibelang.bun.import-resolvers")]?.get(specifier)?.(directory)
+
 function resolveImports(path, contents, loader, inNamespace = false) {
   const replacements = new Map()
   for (const entry of esImports(contents, loader)) {
-    let source = vibeImport(dirname(path), entry.path)
+    let source = registeredImport(dirname(path), entry.path) ?? vibeImport(dirname(path), entry.path)
     // Bun resolves an import from a plugin namespace's path as a directory of
     // its own, /vibelang-module:/x, so it finds no extensionless file, package
     // or imports map, and a dynamic import reaches no onResolve hook. A module
@@ -232,7 +238,8 @@ Bun.plugin({
         rewritten = esImports(code, loader)
         imports = [...new Bun.Transpiler({ loader }).scanImports(code), ...rewritten]
       } catch { return }
-      const needsRewrite = rewritten.some((entry) => vibeImport(dirname(file), entry.path) !== undefined)
+      const needsRewrite = rewritten.some((entry) =>
+        registeredImport(dirname(file), entry.path) !== undefined || vibeImport(dirname(file), entry.path) !== undefined)
       if (needsRewrite && !emittedSource && !commonJS(file, code)) {
         build.onLoad({ filter: exactly(file, physical) },
           ({ path }) => resolveImports(path, readFileSync(path, "utf8"), loaderOf(path)))

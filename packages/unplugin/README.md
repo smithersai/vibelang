@@ -90,9 +90,17 @@ node --import vibelang-unplugin/rolldown/register scripts/bundle.mjs
 node --import vibelang-unplugin/esbuild/register --test test/bundle.test.mjs
 ```
 
-These entries include `vibelang/register`. They require a supported Node release
-and affect subsequent bare `rolldown` or `esbuild` imports and `require`
-calls. Register both if a process uses both bundlers. Each build receives
+Under Node, these entries include `vibelang/register` and affect subsequent
+bare `rolldown` or `esbuild` imports and `require` calls.
+
+Under Bun 1.4.4 or later, use `--preload` with the same entries, or list them
+in both the top-level and `[test]` `preload` arrays in `bunfig.toml`.
+They include `vibelang/bun` and route literal ESM imports, including
+`await import("rolldown")`, through the native adapter. Computed imports,
+CommonJS `require` calls and older Bun releases need the explicit plugin
+in the bundler's `plugins` array.
+
+Register both entries if a process uses both bundlers. Each build receives
 a fresh native adapter; an explicit plugin named `vibelang` takes precedence.
 Caller plugins and options are preserved. Rolldown's `rolldown`, `build`
 and `watch` APIs and esbuild's asynchronous `build` and `context` APIs
@@ -100,11 +108,9 @@ are supported. esbuild's `buildSync` cannot use plugins and is unchanged.
 
 Load the preload before any bundler import; an already imported namespace
 or function is unchanged. Absolute package-file imports and subprocesses
-without the preload keep their usual behavior. Under Bun, pass
-`vibelang-unplugin/rolldown` or `vibelang-unplugin/esbuild` explicitly
-in the bundler's `plugins` array. These Node preloads reject Bun with that
-instruction. A missing literal `input.ts` remains missing: source loading
-does not rename test-owned entry paths or change module filenames.
+without the preload keep their usual behavior. A missing literal `input.ts`
+remains missing: source loading does not rename test-owned entry paths or
+change module filenames.
 
 Import local sources as `./welcome.vibe` and `./config.ts`. The compiler
 rewrites those imports to `./welcome.js` and `./config.js`; the plugin resolves

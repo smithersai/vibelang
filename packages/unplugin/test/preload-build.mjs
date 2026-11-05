@@ -5,7 +5,9 @@ import { join } from "node:path"
 const config = JSON.parse(process.argv[2])
 const { bundler, root, mode = "build", access = "import", explicit = false } = config
 const require = createRequire(import.meta.url)
-const namespace = access === "require" ? require(bundler) : await import(bundler)
+const namespace = globalThis.__preloadTestAPI ?? (access === "require" ? require(bundler)
+  : typeof Bun === "undefined" ? await import(bundler)
+  : bundler === "rolldown" ? await import("rolldown") : await import("esbuild"))
 const api = access === "default" ? namespace.default : namespace
 let calls = 0
 const ownPlugin = bundler === "rolldown"

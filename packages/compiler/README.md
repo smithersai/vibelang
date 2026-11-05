@@ -584,3 +584,13 @@ same checking scope as the preload described above. Run
 In a mixed migrated package, emitted native TypeScript entries under `.vibelang/js` resolve back to their original sources under the Node and Bun source hooks. Relative source imports and package imports therefore share module instances.
 
 Bundler and loader compiles preserve the project declaration layout under `vibe.sidecarDir`, including inherited settings. Returned source maps continue to name the original source files.
+
+### Bundlers loaded by Bun tests
+
+A runtime loader does not configure a separate bundler. With Bun 1.4.4 or later,
+preload `vibelang-unplugin/rolldown/register` or
+`vibelang-unplugin/esbuild/register` to route literal ESM bundler imports
+through their native adapters. The preload includes `vibelang/bun` and
+shares its parsed source-import pass, so ordinary strings and type-only
+imports keep their meaning. Use the explicit adapter for computed imports
+or CommonJS calls. Literal bundle entry filenames remain unchanged.

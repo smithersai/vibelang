@@ -1,4 +1,5 @@
 import * as nodeModule from "node:module"
+import { registerBunBundler } from "./register-bun-bundler.js"
 
 const require = nodeModule.createRequire(import.meta.url)
 const apiURL = new URL("./bundler-api.js", import.meta.url).href
@@ -18,11 +19,14 @@ function wrapperSource(original, bundler, commonjs = false) {
 }
 
 export function registerBundler(bundler) {
-  if (typeof Bun !== "undefined") {
-    throw new Error("Bundler register preloads require Node; under Bun, pass the vibelang-unplugin/" + bundler + " plugin to the bundler.")
-  }
   const registered = globalThis[registryKey] ??= new Set()
   if (registered.has(bundler)) return
+  if (typeof Bun !== "undefined") {
+    registerBunBundler(bundler, wrapperSource)
+    registered.add(bundler)
+    if (process.env.VIBELANG_UNPLUGIN_DEBUG) console.error(`vibelang-unplugin: registered ${bundler} source bundles`)
+    return
+  }
   require("vibelang/register")
   const wrappers = new Map()
   nodeModule.registerHooks({
