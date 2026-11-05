@@ -64,6 +64,15 @@ test("retired lexical-capture and clock diagnostics require no live Appendix exa
  }
 })
 
+test("current fixtures resolve and every host witness runs in the Appendix host target",()=>{
+ const read=path=>readCaptureFixtures(new URL(path,import.meta.url),"utf8")
+ const fixtures=JSON.parse(read("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json"))
+ assert.ok(resolveExamples(fixtures,appendixCodes(read("../design/src/900-appendices.md"))).length)
+ const selected=/const specAppendixHostExamples = goVibelang\([\s\S]*?-run "([^"]+)"/.exec(read("../../PACKAGE.ts"))
+ assert.ok(selected,"spec-appendix-host-examples selects tests by name")
+ for(const fixture of fixtures)if(fixture.host)assert.match(fixture.testName,new RegExp(selected[1]),fixture.code)
+})
+
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:13:10; error; also EK0403](../../../typescript/vibelang/cases/any-call-error-recovery.fail/main.vibe).
 
 test("the legacy any-call witness retains every co-located native throw diagnostic",()=>{
