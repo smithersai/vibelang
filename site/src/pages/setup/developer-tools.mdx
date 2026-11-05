@@ -170,6 +170,8 @@ learns the `.vibe` extension and its parser. A TypeScript glob on a script's
 `--no-error-on-unmatched-pattern`. A configuration in another shape, such as
 `module.exports`, gets a setup warning instead. A test's fixtures stay as they are.
 
+The lint parser reports `EK1010` for an unparenthesized throw expression before a comma. Write `[(throw error), value]` or apply `vibelang --fix`; the grouped form remains visible to lint rules.
+
 Plain `error` payloads keep their fields and written methods and getters in the lint tree, including a payload field named `constructor`. Their source names, parameters and references still receive the ordinary rule checks.
 
 ## Knip a package installs itself
