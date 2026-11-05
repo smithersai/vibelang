@@ -50,7 +50,8 @@ export function patching():readonly boolean[] {
 }
 class Plain {}
 function constructed():readonly boolean[]{return [Object.create(Plain.prototype),new Plain(),{}].map(s=>s is Plain)}
-function predicates(s:unknown):readonly boolean[]{return [s is Predicate.isError,s is CliError.isCliError,s is HttpClient.isTransientError]}
+function nativeError(value:unknown):value is Error{return Predicate.isError(value)}
+function predicates(s:unknown):readonly boolean[]{return [s is nativeError,s is CliError.isCliError,s is HttpClient.isTransientError]}
 export function localOption(s:unknown):number {const Option={Some:(x:unknown):x is number=>typeof x==="number"};return match(s){when Option.Some:1;default:0;}}
 export function ordinary(s:unknown):readonly boolean[] {return [s is Config.ConfigError,s is PlatformError.BadArgument,s is PlatformError.SystemError,s is AiError.RateLimitError,s is SqlError.ConnectionError,s is CliError.UnrecognizedOption,s is CliError.DuplicateOption,s is CliError.MissingOption,s is CliError.MissingArgument,s is CliError.UnexpectedArgument,s is CliError.InvalidValue,s is CliError.UnknownSubcommand,s is CliError.ValidationError,s is CliError.UserError,s is CliError.ShowHelp]}
 export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>[fixedInvocations(),patching(),constructed(),[new Error("x"),null,{}, {_tag:"TimeoutError","~effect/Cause/TimeoutError":"~effect/Cause/TimeoutError"}].map(predicates),localOption(2),localOption("x"),[Config.ConfigError,PlatformError.BadArgument,PlatformError.SystemError,AiError.RateLimitError,SqlError.ConnectionError,CliError.UnrecognizedOption,CliError.DuplicateOption,CliError.MissingOption,CliError.MissingArgument,CliError.UnexpectedArgument,CliError.InvalidValue,CliError.UnknownSubcommand,CliError.ValidationError,CliError.UserError,CliError.ShowHelp].flatMap(C=>[Object.create(C.prototype),{_tag:C.name},null]).map(ordinary)])}

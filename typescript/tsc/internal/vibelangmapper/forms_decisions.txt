@@ -5016,9 +5016,9 @@ typescript/vibelang/cases/match-vip7-patching/main.vibe:44:57 lambda plain table
 typescript/vibelang/cases/match-vip7-patching/main.vibe:44:65 lambda dual fallback
 typescript/vibelang/cases/match-vip7-patching/main.vibe:49:23 lambda plain table
 typescript/vibelang/cases/match-vip7-patching/main.vibe:52:102 lambda plain table
-typescript/vibelang/cases/match-vip7-patching/main.vibe:54:67 lambda plain annotation
-typescript/vibelang/cases/match-vip7-patching/main.vibe:56:650 lambda plain table
-typescript/vibelang/cases/match-vip7-patching/main.vibe:56:78 lambda plain table
+typescript/vibelang/cases/match-vip7-patching/main.vibe:55:67 lambda plain annotation
+typescript/vibelang/cases/match-vip7-patching/main.vibe:57:650 lambda plain table
+typescript/vibelang/cases/match-vip7-patching/main.vibe:57:78 lambda plain table
 typescript/vibelang/cases/match-vip7-predicate-receiver/main.vibe:10:22 lambda plain table
 typescript/vibelang/cases/match-vip7-predicate-receiver/main.vibe:4:3 lambda plain annotation
 typescript/vibelang/cases/match-vip7-primitive-types/main.vibe:4:78 lambda plain table
