@@ -185,7 +185,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	if ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator != 0 {
 		return nil
 	}
-	if asyncReturnsPromiseValue(rc.c, fn.Body()) {
+	if asyncReferencesSelf(rc.c, fn) || asyncReturnsPromiseValue(rc.c, fn.Body()) {
 		return nil
 	}
 	var awaits []*ast.Node
