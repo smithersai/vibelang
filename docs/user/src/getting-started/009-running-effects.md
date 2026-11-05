@@ -23,7 +23,7 @@ const makeNoop = (): Journal => ({ read: effect () => 0 })
 
 Constructing the object runs nothing; `journal.read()` returns an Effect, and `try journal.read()` runs it. Write a `Layer.sync` service literal's members the same way, `{ read: effect () => { return try work() } }`. A plain field stores the value its initializer returns, including an unrun Effect when the initializer calls an effect function.
 
-Constructing another Effect and rerunning one saved Effect are separate operations. Empty `effect` functions and blocks follow the same `Effect.gen` construction as nonempty bodies; explicit sharing of a saved value remains sharing.
+Constructing another Effect and rerunning one saved Effect are separate operations. Empty `effect` functions, arrows and blocks follow the same `Effect.gen` construction as nonempty bodies, including arrows with a written `void!!` contract; explicit sharing of a saved value remains sharing.
 
 Running the same Effect again starts a fresh execution of its body. Objects passed by the caller keep their identity; changing their contents remains visible to later executions. A factory that explicitly returns an Effect keeps the outer state it captured when called.
 
