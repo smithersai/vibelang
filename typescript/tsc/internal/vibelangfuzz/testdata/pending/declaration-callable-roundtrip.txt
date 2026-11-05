@@ -1,0 +1,5 @@
+# Declaration reloading must preserve signature-local contracts.
+FuzzDeclarationCallableRoundTrip shape:alias compiler VIP-27: emitted inline signature tag loses attachment; lane migfix-foldkit
+FuzzDeclarationCallableRoundTrip shape:conditional compiler VIP-27: emitted inline signature tag loses attachment; lane migfix-foldkit
+FuzzDeclarationCallableRoundTrip shape:nested compiler VIP-27: emitted inline signature tag loses attachment; lane migfix-foldkit
+FuzzDeclarationCallableRoundTrip corpus:foldkit-callable-declaration-roundtrip compiler VIP-27: emitted inline signature tag loses attachment; lane migfix-foldkit

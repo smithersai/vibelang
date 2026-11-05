@@ -1,0 +1,4 @@
+{
+  "source": "export type F = (value: number) => number;\nexport const make = (): F => (value: number): number => value;\n",
+  "quote": "Tags attach to call signatures: each overload and a returned callable's own signature carry their own."
+}
