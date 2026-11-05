@@ -1,23 +1,19 @@
-// D26: for...of over a Stream pulls it and closes it when the loop exits; wherever a Stream is
-// expected, a producer is a Stream. Separate from ch08-producers.vibe because the producer-to-Stream
-// adapter (G12) is the least settled part of producers.
-import { Stream } from "effect"
+// A producer returns a Stream. Its scope releases registered finalizers
+// when the consumer completes or stops taking elements (VIP-20, VIP-21).
+import { Effect, Stream } from "effect"
 
 const events: string[] = []
 
 effect function* countdown(from: number) {
-  try {
-    let n = from
-    while (n > 0) {
-      yield n
-      n--
-    }
-  } finally {
-    events.push("countdown closed")
+  try Effect.addFinalizer(() => Effect.sync(() => { events.push("countdown closed") }))
+  let n = from
+  while (n > 0) {
+    yield n
+    n--
   }
 }
 
-// for...of over a Stream
+// for try over a Stream
 effect function sumStream() {
   let total = 0
   for try (const n of Stream.make(1, 2, 3, 4)) {

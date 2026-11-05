@@ -24,6 +24,7 @@ func reviewProducerScopeRules() []reviewProducerScopeRule {
 		for _, operation := range []struct{ name, body string }{
 			{"scope", "try Effect.scope;"},
 			{"finalizer", "try Effect.addFinalizer(() => Effect.void);"},
+			{"cleanup-effect", "const events: string[] = []; try Effect.addFinalizer(() => Effect.sync(() => { events.push(\"closed\") }));"},
 		} {
 			head := "import { Effect, Scope, Stream } from \"effect\"; import { Token, getValue, foreign } from \"./lib.js\";\n"
 			add := func(context, program string, reject bool) {

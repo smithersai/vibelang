@@ -1034,6 +1034,8 @@ typescript/vibelang/cases/ch08-producers/ch08-producers.vibe:63:5 lambda program
 typescript/vibelang/cases/ch08-producers/ch08-producers.vibe:68:19 lambda effectFn keyword
 typescript/vibelang/cases/ch08-producers/ch08-producers.vibe:78:5 lambda effectFn keyword
 typescript/vibelang/cases/ch08-producers/ch08-producers.vibe:97:29 lambda program table
+typescript/vibelang/cases/ch08-streams/ch08-streams.vibe:8:27 lambda effectFn table
+typescript/vibelang/cases/ch08-streams/ch08-streams.vibe:8:45 lambda plain table
 typescript/vibelang/cases/ch10-effect-gen.fail/ch10-effect-gen.fail.vibe:16:18 lambda effectFn keyword
 typescript/vibelang/cases/ch10-effect-gen.fail/ch10-effect-gen.fail.vibe:16:56 lambda plain table
 typescript/vibelang/cases/ch10-fetch.fail/ch10-fetch.fail.vibe:12:10 lambda plain table
