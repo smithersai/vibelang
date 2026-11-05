@@ -58,6 +58,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Mapper callback tests could erase effect block syntax while removing function markers; their negative controls now retain valid blocks and still require every unresolved host callback.
 
 - Abstract error repair tests lacked the import collision that blocked child constructors; keyed controls now include existing Effect imports in every repair mode.
+
+- Catch declaration checks could reject equivalent generated Effect imports; they now compare the same exact success, failure and requirement types through the resolved namespace alias.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 
