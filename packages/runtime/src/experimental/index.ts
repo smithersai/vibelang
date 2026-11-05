@@ -1,11 +1,12 @@
 /**
  * The `Experimental` namespace (D313): VibeLang's additions where Effect
  * lacks an API, in Effect's style, until Effect ships it. One module per
- * service, named after the Effect module it extends (`FileSystem`, `Dns`), the
+ * service or pure capability, named after the Effect module it extends
+ * (`FileSystem`, `Dns`), the
  * Effect 4.0 module it keeps (`Crypto`), or as Effect would name it
  * (`Process`, `Locks` and the browser services). A `.vibe` file sees the
- * namespace without an import. Each service has its own key; pure Encoding
- * has no service or layer. The platform layers are in
+ * namespace without an import. Each service has its own key.
+ * Pure modules need no service key or layer. The platform layers are in
  * `vibelang-runtime/experimental/platform-node`, `-bun`, `-browser` and `-worker`.
  *
  * @experimental
