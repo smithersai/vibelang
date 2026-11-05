@@ -168,6 +168,8 @@ imports back into either snapshot bypass reuse. Changed dependencies or
 resolutions cannot reuse an earlier receipt, including an earlier error.
 The fuzz worker also uses TypeScript’s document registry for dependency declaration syntax trees. It retains at most 1,024 documents and 32 MiB of declaration text per worker, keys versions by complete text and compiler settings, and preserves the actual module format. A changed dependency clears the registry before acquiring its new version. Owned and virtual declarations remain fresh; no checker or program survives a comparison. Cold-versus-warm controls cover dependency edits, documentation, module format and augmentation isolation.
 
+`FuzzDeclarationIdentity` compares emitted bytes first and runs this worker only on trees that differ. Identical bytes declare the same names, types and JSDoc, and about nine seeds in ten emit identical trees. The stock baseline runs `tsc --singleThreaded` with garbage collection off below 1 GiB, because each compile is short and every process is charged to the target's CPU budget.
+
 The ordinary CLI and migration calls keep the default gate behavior.
 Workers are replaced after 128 completed requests; crashes and cancellations
 fail the input without retrying it. Worker cleanup precedes CPU-budget
