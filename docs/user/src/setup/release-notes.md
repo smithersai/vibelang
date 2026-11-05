@@ -35,6 +35,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Catch-binding examples used a retired statement catch inside effect functions; they now use plain functions and show how an explicit `do` block scopes a default binding.
 
 - The migration table recommended calling the `interrupt` and `yieldNow` Effect values as functions; it now shows `try interrupt` and `try yieldNow`.
+- The JSX throw-expression example used a retired statement catch; it now uses a catch expression while preserving the failure payload and lazy JSX evaluation.
 - The migrated Effect-function example expected an expanded parameter brand; its declaration check now preserves the written type alias, matching TypeScript.
 - Exhaustive-match examples expected an older error-matcher encoding; their output checks now retain the current matcher calls and verify every arm and extracted payload.
 - Producer cleanup examples still used retired `try` statements; they now register scope finalizers and check disposal order against native Effect streams.
