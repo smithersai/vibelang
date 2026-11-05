@@ -229,6 +229,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Calling a parameterless `effect function` declaration could invoke or throw from a replaced `Function.prototype.apply`; it now constructs its unrun Effect without that extra lookup.
 - `is` bindings in `for concurrent` and `for try` heads now retain their lexical homes and per-item values. Native `catch (...: any)` parameter bindings report `EK0705` instead of retired catch and home errors.
+- The grammar admission audit could mistake a valid `for await … of` target named `async` for undefined syntax. It now derives that native form while retaining the ordinary `for … of` restriction.
 - The grammar admission audit could mistake an already rejected `for … of` head named `async` for undefined syntax. It now recognizes the native `TS1106` error while preserving ordinary identifier and property targets.
 - The grammar admission audit could miss an incomplete computed member after a combined pattern. It now tracks that existing parser gap through `and`, `or` and `not` while preserving pattern boundaries.
 - The grammar admission audit missed an incomplete computed pattern member split across lines. It now records that parser gap while retaining class-pattern type errors as semantic diagnostics.
