@@ -28,6 +28,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Pure `HttpClientRequest` setter pipelines could remain unconverted or use the wrong pipe argument order. Supported stable-argument pipelines now convert with the request first.
 - Converted generator callbacks in array maps could leave stored programs with an inferred-effect warning. The repair now records their program contract explicitly.
 - Converted `Effect.fn` callbacks could read destructured inputs when the program was constructed. Supported bindings now run on each execution; bindings whose scope, public labels or rest semantics cannot be preserved keep their original generator.
+- Declaration self-comparison tests repeatedly loaded unrelated browser libraries. Their fixtures now select ES5 while retaining nominal types, unrelated diagnostics and changed-export checks.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.

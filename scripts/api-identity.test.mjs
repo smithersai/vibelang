@@ -523,6 +523,14 @@ test("Smithers: unrelated diagnostics are environment and do not become export d
   }, { types: "./index.d.ts" })
 })
 
+const reflexiveFiles = ({ value, nominal, unrelated }) => ({
+  "index.d.ts": '/// <reference no-default-lib="true"/>\n/// <reference lib="es5"/>\n' + (nominal ? "export declare class C { private brand; }\n" : "") +
+    'export { X } from "./value.vibe";' + (unrelated ? '\nimport "foreign";' : ""),
+  "value.d.vibe.ts": `export type X = { value: ${value} };`,
+  "node_modules/foreign/package.json": JSON.stringify({ types: "index.d.ts" }),
+  "node_modules/foreign/index.d.ts": "export type Unused = Missing;",
+})
+
 test("property: a package compared with itself is API-identical", async () => {
   await checkProperty(fc, {
     name: "api-identity-reflexivity",
@@ -530,18 +538,51 @@ test("property: a package compared with itself is API-identical", async () => {
     command: "node --test scripts/api-identity.test.mjs",
     arbitrary: fc.record({ value: fc.integer({ min: 0, max: 100 }), nominal: fc.boolean(), unrelated: fc.boolean() }),
     numRuns: 8,
-    check: ({ value, nominal, unrelated }) => fixture({
-      "index.d.ts": (nominal ? "export declare class C { private brand; }\n" : "") +
-        'export { X } from "./value.vibe";' + (unrelated ? '\nimport "foreign";' : ""),
-      "value.d.vibe.ts": `export type X = { value: ${value} };`,
-      "node_modules/foreign/package.json": JSON.stringify({ types: "index.d.ts" }),
-      "node_modules/foreign/index.d.ts": "export type Unused = Missing;",
-    }, {}, a => {
-      const result = compareApiIdentity(ts, a, a)
+    check: ({ value, nominal, unrelated }) => fixture(reflexiveFiles({ value, nominal, unrelated }), {}, a => {
+      const result = withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, a))
       assert.equal(result.identical, true, JSON.stringify(result))
       assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+      assert.deepEqual(result.nameDifferences, [])
+      assert.deepEqual(result.typeDifferences, [])
+      assert.deepEqual(result.docDifferences, [])
+      assert.equal(result.environmentDiagnostics.some(d => /TS2304/.test(d.diagnostic) && !d.blocking), unrelated)
     }, { types: "./index.d.ts" }),
   })
+})
+
+test("self-comparison fixtures preserve all nominal and unrelated-error combinations", () => {
+  for (const nominal of [false, true]) for (const unrelated of [false, true]) {
+    const files = reflexiveFiles({ value: 7, nominal, unrelated })
+    fixture(files, files, (a, b) => {
+      const compare = () => withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, b))
+      const unchanged = compare()
+      assert.equal(unchanged.identical, true, JSON.stringify(unchanged))
+      assert.equal(unchanged.comparisonComplete, true)
+      assert.equal(unchanged.environmentDiagnostics.some(d => /TS2304/.test(d.diagnostic) && !d.blocking), unrelated)
+      writeFileSync(join(b, "value.d.vibe.ts"), "export type X = { value: string };")
+      const changed = compare()
+      assert.equal(changed.identical, false, JSON.stringify(changed))
+      assert.equal(changed.comparisonComplete, true, JSON.stringify(changed))
+      assert.ok(changed.typeDifferences.some(d => d.export === "X" && /TS2344/.test(d.diagnostic)), JSON.stringify(changed))
+      assert.equal(changed.environmentDiagnostics.some(d => /TS2304/.test(d.diagnostic) && !d.blocking), unrelated)
+    }, { types: "./index.d.ts" })
+  }
+})
+
+test("self-comparison fixture libraries retain stock missing-library errors", () => {
+  const files = reflexiveFiles({ value: 7, nominal: false, unrelated: false })
+  files["value.d.vibe.ts"] = "export type X = BigInt;"
+  fixture(files, files, a => {
+    const stock = ts.createProgram([join(a, "index.d.ts")], {
+      strict: true, noEmit: true, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    })
+    assert.ok(stock.getSourceFiles().some(file => /[/\\]lib\.es5\.d\.ts$/.test(file.fileName)))
+    assert.ok(ts.getPreEmitDiagnostics(stock).some(d => d.code === 2583), "stock ES5 TypeScript must reject BigInt")
+    const result = withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, a))
+    assert.equal(result.identical, false, JSON.stringify(result))
+    assert.equal(result.comparisonComplete, false)
+    assert.ok(result.environmentDiagnostics.some(d => /TS2583/.test(d.diagnostic) && d.blocking), JSON.stringify(result))
+  }, { types: "./index.d.ts" })
 })
 
 test("Smithers journal resolves sidecarDir and beside .vibe declarations", () => {

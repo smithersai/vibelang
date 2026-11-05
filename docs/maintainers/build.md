@@ -1728,3 +1728,11 @@ The `//:go-failure-aliases` target checks that failure aliases preserve the decl
 The diagnostic registry gate also requires a keyed preservation generator for every registered quick fix. It reads the compiler case corpus used to build those generators, so changing a fixture re-keys the check.
 
 The `//:go-generator-return-contracts` target checks generator migration against written result types, including incompatible bare returns, optional and `void` results, nested functions and source trivia.
+
+The API self-comparison property selects ES5 through entry declaration references,
+without overriding comparison options or project discovery. All eight generated
+samples retain nominal declarations and unrelated missing-name diagnostics.
+Four fixed nominal/diagnostic combinations require unchanged declarations to
+pass and a changed exported field to fail. A stock TypeScript control still
+requires `TS2583` for `BigInt` without its library, and comparison must remain
+unavailable for that declaration.
