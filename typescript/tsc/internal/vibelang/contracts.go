@@ -157,11 +157,11 @@ func inferredReturnInference(c *checker.Checker, fn *ast.Node, t *checker.Type) 
 	return t
 }
 
-// unwrappedReturnType checks what a .vibe function with a contract returns
-// against the contract's A, as TypeScript checks what an async function
-// returns against the type its Promise wraps.
+// unwrappedReturnType checks an effect function's returned values against
+// its success type, whether the contract is written or inferred, as TypeScript
+// checks an async function against the type its Promise wraps.
 func unwrappedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *checker.Type {
-	if !isLowerable(fn) || !analyzerFor(c).isEffect(fn) || analyzerFor(c).contractOf(fn) == nil {
+	if !isLowerable(fn) || !analyzerFor(c).isEffect(fn) {
 		return t
 	}
 	if success := successType(c, c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(fn))); success != nil {

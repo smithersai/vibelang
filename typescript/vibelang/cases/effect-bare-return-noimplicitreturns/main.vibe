@@ -1,0 +1,49 @@
+effect function bare(flag: boolean) {
+  if (flag) return
+  try Effect.void
+}
+
+const arrow = effect (flag: boolean) => {
+  if (flag) return
+  try Effect.void
+}
+
+class Cleanup {
+  effect run(flag: boolean) {
+    if (flag) return
+    try Effect.void
+  }
+}
+
+effect function explicitUndefined(flag: boolean) {
+  if (flag) return undefined
+  try Effect.void
+}
+
+effect function nested(flag: boolean) {
+  if (flag) {
+    if (flag) return
+  }
+  try Effect.void
+}
+
+effect function finalizer(flag: boolean) {
+  try Effect.addFinalizer(effect () => {
+    if (flag) return
+    try Effect.void
+  })
+}
+
+// expect-result: [true,true,true,true,true,true,true,true,true,true,true,true]
+export effect function main() {
+  const cleanup = new Cleanup()
+  const results = try Effect.all([
+    bare(false), bare(true),
+    arrow(false), arrow(true),
+    cleanup.run(false), cleanup.run(true),
+    explicitUndefined(false), explicitUndefined(true),
+    nested(false), nested(true),
+    Effect.scoped(finalizer(false)), Effect.scoped(finalizer(true))
+  ])
+  return results.map((value) => value === undefined)
+}

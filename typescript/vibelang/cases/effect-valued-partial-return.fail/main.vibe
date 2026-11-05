@@ -1,0 +1,5 @@
+// expect: TS7030
+export effect function partial(flag: boolean) {
+  if (flag) return 1
+  try Effect.void
+}

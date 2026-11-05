@@ -1,5 +1,15 @@
 [
   {
+    "code": "TS7030",
+    "case": "typescript/vibelang/cases/effect-valued-partial-return.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md#decision: accepted explicit effects infer their success type from returned values as Effect.gen does; docs/design/src/001-functions.md retains TypeScript return checking."
+    },
+    "reason": "This negative control preserves TypeScript noImplicitReturns for a function that returns a value on only one path. The inferred-success repair accepts bare returns without relaxing partial value-return checking or rejecting any new form. Automatically choosing a return value or changing control flow would require author intent."
+  },
+  {
     "code": "EK3005",
     "case": "typescript/vibelang/cases/service-predicate-outer-capture.fail",
     "vip": "VIP-9",
