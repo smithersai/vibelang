@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Reading a function constructor through a `Function` intersection, inherited interface or generic constraint could miss `EK0107`. Those reads now report the same restriction as a direct `Function` receiver.
 - Failure-alias examples could still report a resolved declaration-tag assignment gap. They now require the correct `EK0402` rejection and retain the saved examples.
 - An `is` binding in a `do…while` condition reported `EK4703`. It now has fresh loop-head cells for each condition: the initial body sees uninitialized cells, closures retain their own iteration, and `continue`, `break` and labels keep their meaning. A skipped `for` condition or update binding now also stays uninitialized instead of inheriting the previous value.
+- Checking diagnostic documentation could stop with a TypeScript syntax error in obsolete variant-pattern exemptions. The check now loads correctly and uses the current diagnostics.
 - The legacy abstract-error migration lacked generated preservation examples. Its error and schema-error forms now exercise field types, optional fields and line-ending trivia through the same API and runtime checks as other repairs.
 - The diagnostic reference’s replay link made syntax checks reject the published effect-block jump rule. Those checks now quote the complete rule and keep its existing diagnostic cases.
 
@@ -42,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Bare `forkIn` used the old scope-first wrapper, and disabling Effect globals left some functions available. It now exposes the native function, and the option disables all implicit Effect functions.
 - Declaration sidecar tests repeatedly loaded unrelated browser libraries. They now select ES5 while retaining project discovery, saved migration examples and changed-export checks.
 - A `catch` handler missing `=>` could receive an editor repair that still failed to parse when its body began on a new line. The repair now keeps comments and line breaks after the inserted arrow.
+
+- Declaration checks could report valid relative re-exports as mismatches. They now compare public `.d.ts` output with the TypeScript twin and compatibility sidecars with the source spelling.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.

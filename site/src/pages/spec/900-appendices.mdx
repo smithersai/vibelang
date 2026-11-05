@@ -974,7 +974,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 \<details>
-\<summary>Parser and lowering hooks (986 records)\</summary>
+\<summary>Parser and lowering hooks (989 records)\</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1964,6 +1964,9 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:coveragePattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 004-match.md ` | ` support ` | VIP-7: remove irrefutable captures only from coverage analysis while preserving source pattern evaluation |
 | ` parser/vibelang_match.go:Parser.mExtractCall ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#RegularExpressionPattern `, ` 004-match.md ` | ` support ` | VIP-7: emit the existing extractor call and preserve the global regular-expression literal flag for its extraction type |
 | ` parser/vibelang_modules.go:Parser.vibelangModuleReference@keyword ` | ` admission:module-specifier-keyword ` | ` - ` | ` pending ` | VIP-40: a strict reserved word is retained as an identifier module specifier with only module-name diagnostics |
+| ` parser/vibelang_match.go:Parser.bindsIs ` | ` admission:is-binding-tdz ` | ` 004-match.md ` | ` support ` | VIP-7: locate condition bindings outside nested callable and class homes |
+| ` parser/vibelang_match.go:Parser.restructureVibeLangDo ` | ` admission:is-binding-tdz ` | ` 004-match.md ` | ` support ` | VIP-7: give `do…while` conditions fresh loop-head binding cells |
+| ` vibelang/is_binding_tdz.go:lowering.resetIsBindingIteration ` | ` admission:is-binding-tdz ` | ` 004-match.md ` | ` support ` | VIP-7: reset `test` and `update` bindings after native environment copying |
 
 \</details>
 
