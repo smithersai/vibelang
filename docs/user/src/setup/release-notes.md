@@ -91,6 +91,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Publishing the retired-forms migration guide in isolation falsely reported valid relative links as missing; the publication check now includes their real pages and sidebar entries while still rejecting broken links.
 
+- Comparing generated matcher declarations could time out while repeatedly loading browser libraries for primitive-only classes; those comparisons now use the standard library their declarations need, retaining the same type and member checks.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
