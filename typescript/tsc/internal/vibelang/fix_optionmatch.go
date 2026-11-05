@@ -43,6 +43,7 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	prefix := "do { const "
 	handlersAnnotation := ": " + handlersType
 	destructureAnnotation := ""
+	preserveResult := false
 	// Option.match accepts a callback that ignores its argument. Keep its
 	// contextual type at the first binding, then widen only the extracted
 	// callable to accept the ignored value as unknown. A local unique symbol
@@ -50,6 +51,20 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	// private, infer the factory result and use scoped type queries instead.
 	actualSome := c.GetPropertyOfType(c.GetTypeAtLocation(handlers), "onSome")
 	if actualSome != nil {
+		// The higher-order match call instantiates a generic callback before
+		// calling it. Calling the extracted generic afresh can narrow the
+		// exported result (for example Effect<unknown> to Effect<number>).
+		// Retain the instantiated contextual signature at the binding.
+		for _, signature := range c.GetSignaturesOfType(c.GetTypeOfSymbol(actualSome), checker.SignatureKindCall) {
+			if len(signature.TypeParameters()) == 0 {
+				continue
+			}
+			if contextual := c.GetContextualType(handlers, checker.ContextFlagsNone); contextual != nil {
+				handlersAnnotation = ": " + c.TypeToStringEx(contextual, handlers, format, nil)
+				preserveResult = true
+			}
+			break
+		}
 		for _, signature := range c.GetSignaturesOfType(c.GetTypeOfSymbol(actualSome), checker.SignatureKindCall) {
 			parameters := c.GetExpandedParameters(signature, true)
 			if len(parameters) != 1 || len(parameters[0]) != 0 {
@@ -86,6 +101,11 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	}
 	text := prefix + input + " = " + expressionText(file, value) + "; const " + callbacks + handlersAnnotation + " = " + expressionText(file, handlers) +
 		"; const { onNone: " + none + ", onSome: " + some + " }" + destructureAnnotation + " = " + callbacks + "; match (" + input + ") { when " + option + ".Some(let " + payload + "): " + run + some + "(" + payload + "); default: " + run + none + "(); }; }"
+	// Preserve the union inferred by the higher-order call too:
+	// match's best common type can otherwise collapse a covariant member.
+	if preserveResult && !runs && !ast.IsExpressionStatement(call.Parent) {
+		text = "(" + text + " as " + c.TypeToStringEx(c.GetTypeAtLocation(call), call, format&^checker.TypeFormatFlagsUseFullyQualifiedType, nil) + ")"
+	}
 	if !ast.IsExpressionStatement(call.Parent) {
 		// A call/property/binary chain can begin an expression statement too.
 		// Keep do in expression position when this call supplies its first token.

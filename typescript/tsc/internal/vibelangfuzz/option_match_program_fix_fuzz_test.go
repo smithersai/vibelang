@@ -12,6 +12,11 @@ func FuzzOptionMatchProgramFix(f *testing.F) {
 	for _, key := range []string{"\x00\x00\x00\x00\x00\x00\x00\x00\x01", "\x01\x07\x01\x00\x01\x00\x00\x00\x01", "\x02\xff\x00\x01\x01\x00\x00\x00\x01", "\x00\x03\x00\x00\x00\x01\x00\x00\x01", "\x01\x05\x01\x00\x01\x02\x00\x00\x01", "\x02\x09\x00\x00\x00\x02\x00\x00\x01"} {
 		f.Add(optionMatchFixKey + key)
 	}
+	for mode := byte(0); mode < 3; mode++ {
+		for variant := byte(0); variant < 2; variant++ {
+			f.Add(optionMatchFixKey + "program-constructor:" + string([]byte{mode, 7, variant, 0, variant, mode}))
+		}
+	}
 	fuzzFixProjects(f, "FuzzOptionMatchProgramFix")
 }
 
@@ -36,6 +41,11 @@ func optionMatchProgramFixArchive(data []byte) string {
 	// Defaults, branches and comments remain inside the original callbacks.
 	some := "(n: number): Effect.Effect<number> => { events.push(\"some\"); /* payload stays cold */ return Effect.sync(() => { events.push(\"run-some\"); return n; }); }"
 	none := "(): Effect.Effect<number> => { events.push(\"none\"); return Effect.sync(() => { events.push(\"run-none\"); return -1; }); }"
+	// A generic constructor is already a callable program factory. Keep
+	// its inference and call timing, including when read through a getter.
+	if len(data) > 9 && data[9]&1 != 0 {
+		some = "Effect.succeed"
+	}
 	handlers := "{ onNone: " + none + ", onSome: " + some + " }"
 	if pick(4)&1 != 0 {
 		handlers = "{ get onNone(): () => Effect.Effect<number> { events.push(\"read-none\"); return " + none + "; }, get onSome(): (n: number) => Effect.Effect<number> { events.push(\"read-some\"); return " + some + "; } }"

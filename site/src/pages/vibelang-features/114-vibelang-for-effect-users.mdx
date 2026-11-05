@@ -207,6 +207,8 @@ The name is an identifier specifier in the containing VibeLang file. When moving
 | `Effect.forkDetach(program)` | `fork.detached program` |
 | `Stream.runForEachWhile` | `for try (const value of stream) { ... }` |
 
+A direct `Option.match` call can migrate to `match` even when a handler is a constructor such as `Effect.succeed`. The repair captures the subject and handlers in their original order, keeps the callback type instantiated by the original call, and returns the selected Effect without running it unless the source used `try`.
+
 `sync`, `callback` and `never` can be stored and passed as values: `const evaluate = sync`, `const register = callback`, `const waiting = never`. These bindings are `Effect.sync`, `Effect.callback` and `Effect.never`, with their native types. Older annotations, including factory return types, that require the compatibility helper's signature migrate with `vibelang --fix` to a qualified runtime import type; the underlying value and calls stay unchanged. Their arrows capture surrounding locals; an aliased `callback` resumes with an Effect, as in `register<number>((resume) => resume(Effect.succeed(value)))`.
 
 `try.allSettled` captures every element's full outcome as an `Exit`, including defects and interruption, and the whole never fails.
