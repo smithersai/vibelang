@@ -101,12 +101,15 @@ node --import vibelang-unplugin/esbuild/register --test test/bundle.test.mjs
 Under Node, these entries include `vibelang/register` and affect subsequent
 bare `rolldown` or `esbuild` imports and `require` calls.
 
-Under Bun 1.4.4 or later, use `--preload` with the same entries, or list them
+Under Bun 1.4.1 or later, use `--preload` with the same entries, or list them
 in both the top-level and `[test]` `preload` arrays in `bunfig.toml`.
 They include `vibelang/bun` and route literal ESM imports, including
 `await import("rolldown")`, through the native adapter. Computed imports,
 CommonJS `require` calls and older Bun releases need the explicit plugin
 in the bundler's `plugins` array.
+The literal import route uses a private temporary module per resolved bundler
+package and removes these modules on normal process exit. Use Bun `1.4.2`
+or newer when the application also needs complete runtime loader support.
 
 Register both entries if a process uses both bundlers. Each build receives
 a fresh native adapter; an explicit plugin named `vibelang` takes precedence.

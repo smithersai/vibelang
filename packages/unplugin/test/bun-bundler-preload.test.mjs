@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
@@ -14,9 +14,23 @@ test("Bun bundler routes retain the published native source contract", async () 
 })
 
 const bunVersion = spawnSync("bun", ["--version"], { encoding: "utf8" }).stdout?.trim() ?? ""
-const [major, minor, patch] = bunVersion.split(".").map(Number)
-const supported = major > 1 || major === 1 && (minor > 4 || minor === 4 && patch >= 4)
-const skip = !supported && "literal bundler import preloads need Bun 1.4.4 or later"
+const [major = 0, minor = 0, patch = 0] = bunVersion.split(".").map(Number)
+const supported = major > 1 || major === 1 && (minor > 4 || minor === 4 && patch >= 1)
+const skip = !bunVersion ? "Bun is required for runtime integration tests" :
+  !supported && "Bundler register preloads require Bun 1.4.1 or later"
+
+test("unsupported Bun versions fail before registering native loader callbacks", async () => {
+  const { registerBunBundler } = await import("../src/register-bun-bundler.js")
+  const previous = globalThis.Bun
+  try {
+    globalThis.Bun = { version: "1.3.13" }
+    assert.throws(() => registerBunBundler("rolldown", () => ""), /need Bun 1\.4\.1 or later/)
+    assert.equal(globalThis[Symbol.for("vibelang.bun.import-resolvers")], undefined)
+  } finally {
+    if (previous === undefined) delete globalThis.Bun
+    else globalThis.Bun = previous
+  }
+})
 
 const here = fileURLToPath(new URL(".", import.meta.url))
 const runner = join(here, "preload-build.mjs")
@@ -39,9 +53,14 @@ async function fixture(t, bundler, value = 42) {
   return root
 }
 
-async function run(root, bundler, config = {}, { native = true, staticImport = false, runtimeFirst = false, both = false } = {}) {
+async function run(root, bundler, config = {}, { native = true, staticImport = false, runtimeFirst = false, both = false, caller, inspectRoutes = false } = {}) {
   const driver = join(root, "driver.mjs")
   await writeFile(driver, [
+    ...(caller ? [caller] : []),
+    ...(inspectRoutes ? [
+      `const resolveBundler = globalThis[Symbol.for("vibelang.bun.import-resolvers")].get("${bundler}");`,
+      `globalThis.__preloadRoutes = [resolveBundler(${JSON.stringify(root)}), resolveBundler(${JSON.stringify(root)})];`
+    ] : []),
     ...(staticImport ? [`import * as api from "${bundler}"; globalThis.__preloadTestAPI = api;`] : []),
     // A matching ordinary string remains unchanged by the source import route.
     `if ("${bundler}" !== ${JSON.stringify(bundler.slice(0, 2))} + ${JSON.stringify(bundler.slice(2))}) throw new Error("string changed");`,
@@ -108,8 +127,18 @@ test("Bun Rolldown keeps the synchronous watch API", { skip }, async t => {
   succeeded(await run(root, "rolldown", { mode: "watch" }))
 })
 
-test("Bun bundler registration reports unsupported runtimes before loading the caller", async t => {
+test("Alchemy's lazy Rolldown import works on the selected Bun runtime", { skip }, async t => {
+  const corpus = JSON.parse(await readFile(new URL("./property-regressions/alchemy-bun-dynamic-bundler-import.json", import.meta.url), "utf8"))
+  const root = await fixture(t, corpus.bundler)
+  succeeded(await run(root, corpus.bundler, {}, { caller: corpus.source }))
+})
+
+test("Bun bundler wrapper files retain identity and are removed after normal exit", { skip }, async t => {
   const root = await fixture(t, "rolldown")
-  if (supported) succeeded(await run(root, "rolldown"))
-  else await assert.rejects(run(root, "rolldown"), /Bundler register preloads need Bun 1\.4\.4 or later/)
+  const result = await run(root, "rolldown", {}, { inspectRoutes: true })
+  succeeded(result)
+  assert.equal(result.routes.length, 2)
+  assert.equal(result.routes[0], result.routes[1])
+  assert.equal(new URL(result.routes[0]).protocol, "file:")
+  await assert.rejects(access(new URL(result.routes[0])), { code: "ENOENT" })
 })

@@ -1,0 +1,5 @@
+{
+  "key": "alchemy-bun-dynamic-bundler-import",
+  "bundler": "rolldown",
+  "source": "import * as Effect from \"effect/Effect\";\nconst api = await Effect.runPromise(Effect.promise(() => import(\"rolldown\")));\nglobalThis.__preloadTestAPI = api;"
+}

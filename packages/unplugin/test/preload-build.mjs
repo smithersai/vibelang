@@ -80,7 +80,7 @@ try {
   } else if (api.defineConfig(request) !== request) {
     throw new Error("Rolldown defineConfig was changed")
   }
-  console.log(JSON.stringify({ ok: true, answers, calls, callerIntact: request.plugins === plugins && plugins[0] === ownPlugin }))
+  console.log(JSON.stringify({ ok: true, answers, calls, routes: globalThis.__preloadRoutes, callerIntact: request.plugins === plugins && plugins[0] === ownPlugin }))
 } catch (error) {
   console.log(JSON.stringify({ ok: false, message: error.message }))
   process.exitCode = 1

@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - The contributor release target could time out on a four-CPU machine because it ran eight test files at once. It now runs four.
+- Tests using lazy Rolldown or esbuild imports on Bun `1.4.1` and `1.4.2` could not load native bundle graphs; their bundler preloads now route those imports through temporary modules.
 - The migrate flow kept every module under a `node` shebang TypeScript even when the file had no execute bit, and kept script entries whose path it could rewrite. A shebang now counts only on an executable file, bare commands in GitHub workflows and composite actions count as runners, and a rename rewrites a served entry's path in package scripts, workflows and shell scripts.
 
 - Bun builds with an explicit compiler root could bundle a same-named source from the wrong directory; relative entries now resolve from the caller's working directory.
