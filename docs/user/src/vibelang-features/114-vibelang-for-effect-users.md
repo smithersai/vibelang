@@ -144,6 +144,20 @@ For synchronous foreign calls, `@throws {never}` permits a direct call. Other wr
 
 When upgrading existing `.vibe` modules from the former readonly defaults, run `vibelang --fix --fix-migration-only` to make unmarked schema fields and service shape properties explicitly `readonly` and preserve legacy nested service types. Error and data fields remain shallow readonly properties, while the upgrade writes the old nested payload modifiers explicitly to retain published declarations. Ordinary classes, interfaces and object types retain their written modifiers.
 
+### Keep a throwing helper in a TypeScript body
+
+A named `module` body at file scope uses ordinary TypeScript, including native `throw`. Import its members with the module name:
+
+```vibe
+module pem {
+  export function b(message: string): string { throw new Error(message) }
+}
+import { b } from pem
+export { b }
+```
+
+The name is an identifier specifier in the containing VibeLang file. When moving the body to a sibling TypeScript file, import that file with a string specifier. Ordinary TypeScript namespaces remain available inside the body.
+
 ## Translate the idioms
 
 | In Effect TypeScript | In VibeLang |

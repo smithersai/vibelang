@@ -2156,3 +2156,5 @@ The `//:http-request-pipe-rollback-controls` target retains canonical HTTP sette
 `//:native-generator-refusal-site-controls` checks unchanged native generator returns, original source coordinates after earlier repairs, refused-only files and protected prelude edits, including the keyed inside/outside edit matrix.
 
 The corrected pipeline repair check retains all original factory-order, mutable-stage, receiver, callback, runner and accessor-option cases. Canonical HTTP setters additionally keep their proven-safe data-first form and exact declaration output across import layouts and stage order.
+
+The module-body corpus follows accepted VIP-40: the original throwing helper and all retained names and export forms must compile without diagnostics. Ordinary namespace controls, extracted bodies and identifier-import rejection are checked with stock TypeScript; twelve seeded mutations retain the same checks without a pending acceptance exception.
