@@ -1,0 +1,11 @@
+// expect-result: {"result":"handled:caller","events":[]}
+effect function start(events:string[]){
+ const child=fork Effect.succeed(try Effect.fail("caller"))
+ events.push("after")
+ return "started"
+}
+export effect function main(){
+ const events:string[]=[]
+ const result=start(events) catch (error)=>"handled:"+error
+ return {result,events}
+}

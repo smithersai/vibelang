@@ -1,0 +1,6 @@
+// expect-result: [7,7,7]
+import {Fiber} from "effect"
+const identity=<T>(x:T):T=>x
+const collect=<A,E>(xs:ReadonlyArray<Fiber.Fiber<A,E>>)=>Effect.all(xs.map(Fiber.join))
+effect function start(){return fork Effect.succeed(7)}
+export effect function main(){const child=try start();const a=join identity(child);const other=fork Effect.succeed(7);const values=try collect([other]);const last=fork Effect.succeed(7);const later=()=>Fiber.join(last);return [a,values[0],try later()]}

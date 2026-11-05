@@ -51,9 +51,6 @@ type lowering struct {
 
 	// scopes maps each Scope region's block to the name of its Scope (scopes_lower.go).
 	scopes map[*ast.Node]*ast.Node
-	// loopRegion is the loop body visitScopeLoopBody is lowering inside its
-	// region, so that visiting it there lowers the statement itself.
-	loopRegion *ast.Node
 
 	// modules maps an effect module, such as effect/Stream, to the local name
 	// of its namespace import, for method calls (datamethods.go).
@@ -214,15 +211,11 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitPatternReceiver(node)
 	case node.Kind == ast.KindCallExpression && tx.plan.methods[node].module != "":
 		return tx.visitModuleMethodCall(node)
-	// A loop body that is not a block and owns a fork is the region of one
-	// iteration (D408).
-	case tx.inEffect && tx.plan.scopeLoops[node] && tx.loopRegion != node:
-		return tx.visitScopeLoopBody(node)
 	// A provide block may own using resources. Provision alone does not
 	// create a fiber owner; regionStatements lowers an explicit using region.
 	case tx.inEffect && isProvideBlock(node):
 		return tx.visitProvideBlock(node)
-	// An interruption block may also own using resources or forked fibers.
+	// An interruption block may also own using resources.
 	// Keep its mask outside its Scope region; regionStatements lowers that
 	// region inside the masked closure.
 	case tx.inEffect && maskWord(node) != "":
@@ -474,6 +467,10 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 		call = tx.runtimeCall("$catch", value, tx.visit(node.Arguments()[1]))
 	} else if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
 		call = tx.concurrentForCall(node) // its limit runs before its items (order.go)
+	} else if isNativeFork(node) {
+		f := tx.Factory()
+		fork := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("forkChild"), ast.NodeFlagsNone)
+		call = f.NewCallExpression(fork, nil, nil, f.NewNodeList([]*ast.Node{tx.visit(node.Arguments()[0])}), ast.NodeFlagsNone)
 	} else if operand := tryOperand(node); operand != nil {
 		call = tx.Visitor().VisitNode(operand) // try e runs e: yield* e (try.go)
 	} else {
@@ -576,10 +573,6 @@ func (tx *lowering) loweredBody(node *ast.Node) (*ast.NodeList, *ast.Node) {
 	parameters := ec.VisitParameters(node.ParameterList(), tx.Visitor())
 	tx.inEffect = true
 	tx.frame = &frame{name: sourceName(node), clause: tx.plan.resumesInTail(node)}
-	var scope *ast.Node
-	if tx.plan.scopeBodies[node.Body()] {
-		scope = tx.scopeName(node.Body()) // an expression body that owns forks (D353), named before its forks are visited
-	}
 	body := ec.VisitFunctionBody(node.Body(), tx.Visitor())
 	if !ast.IsBlock(body) {
 		body = ec.ConvertToFunctionBlock(body, false /*multiLine*/)
@@ -587,9 +580,6 @@ func (tx *lowering) loweredBody(node *ast.Node) (*ast.NodeList, *ast.Node) {
 		// of the statement list, which would be the expression's source end:
 		// the comment after the arrow would also appear inside the block.
 		body.AsBlock().Statements.Loc = core.UndefinedTextRange()
-	}
-	if scope != nil {
-		body = tx.scopeBody(node.Body(), scope, body)
 	}
 	tx.inEffect, tx.frame, tx.plain = saved, savedFrame, savedPlain
 	return parameters, body

@@ -62,6 +62,9 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 			// and has no trusted failures (callSignature).
 			n.ForEachChild(visit)
 			a.addCall(info, n)
+		case n.Kind == ast.KindCallExpression && isNativeFork(n):
+			n.ForEachChild(visit)
+			a.addFork(info, n)
 		case n.Kind == ast.KindCallExpression && a.getsScope(n):
 			n.ForEachChild(visit)
 			a.addScoped(info, n) // a fork or acquisition in a Scope region (scopes.go)

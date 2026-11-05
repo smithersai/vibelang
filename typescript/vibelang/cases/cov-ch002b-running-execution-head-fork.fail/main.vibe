@@ -1,4 +1,4 @@
-// expect: EK0505 EK4838
+// expect: EK0505
 // Chapter 002: execution head search traverses erased wrappers and stops at parentheses; docs/design/src/002-running.md#893dbf79126f5979
 // Chapter 002: execution head search traverses erased wrappers and stops at parentheses; docs/design/src/002-running.md#eb4b34aecf16bce9
 // Chapter 002: execution head search traverses erased wrappers and stops at parentheses; docs/design/src/002-running.md#bc186178e5adf789
@@ -11,4 +11,4 @@ declare const p:Effect.Effect<Effect.Effect<number,string>>
 declare const f:Fiber.Fiber<Effect.Effect<number,string>>
 export effect function invalid(){return fork p catch ()=>0}
 
-// Returning an owned fiber remains an independent EK4838 error.
+// Returning a native Fiber handle adds no region escape diagnostic.

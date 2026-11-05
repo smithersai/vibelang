@@ -15,11 +15,14 @@ import (
 // The using binds null: an Effect without Scope must give a Disposable (D401).
 func TestProvideBlockKeepsProviderWhenScoped(t *testing.T) {
 	t.Parallel()
-	for _, body := range []string{
-		`using value = null; return 1`,
-		`const child = fork Effect.succeed(1); return 1`,
+	for _, test := range []struct {
+		body   string
+		scoped bool
+	}{
+		{body: "using value = null; return 1", scoped: true},
+		{body: "const child = fork Effect.succeed(1); return 1", scoped: false},
 	} {
-		t.Run(body, func(t *testing.T) {
+		t.Run(test.body, func(t *testing.T) {
 			t.Parallel()
 			files := computedKeyFiles(false)
 			base := "/workspace/x/src/node_modules/"
@@ -36,7 +39,7 @@ export declare function fork<A, E, R>(program: import("effect/Effect").Effect<A,
 `
 			files["/workspace/x/src/main.vibe"] = `
 import { provider } from "./provider.js"
-export effect function example() { provide provider { ` + body + ` } }
+export effect function example() { provide provider { ` + test.body + ` } }
 `
 			// Provider channels have the same variance structure as Effect's Layer.
 			files["/workspace/x/src/provider.d.ts"] = `
@@ -59,8 +62,14 @@ export declare const provider: { readonly "~effect/Layer": {
 				}
 				return nil
 			}})
-			if !strings.Contains(js, ".provide(") || !strings.Contains(js, ", provider)") || !strings.Contains(js, ".$region(") {
-				t.Fatalf("scoped provide must retain both provision and resource ownership:\n%s", js)
+			if !strings.Contains(js, ".provide(") || !strings.Contains(js, ", provider)") {
+				t.Fatalf("provide must retain its supplied services:\n%s", js)
+			}
+			if got := strings.Contains(js, ".$region("); got != test.scoped {
+				t.Fatalf("resource Scope present=%v, want %v; fork stays with the parent fiber:\n%s", got, test.scoped, js)
+			}
+			if !test.scoped && !strings.Contains(js, ".forkChild(") {
+				t.Fatalf("keyword fork lost its current-fiber owner:\n%s", js)
 			}
 		})
 	}

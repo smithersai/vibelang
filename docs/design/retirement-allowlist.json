@@ -732,26 +732,6 @@
     "reason": "The fixture directly witnesses the already-published, accepted VIP-15 non-field-members amendment: ordinary schema bodies contain only Field members; EK1505 is the assigned diagnostic. This records that specific approved language rule; no diagnostic severity or unrelated fixture is exempted."
   },
   {
-    "code": "EK1703",
-    "case": "typescript/vibelang/cases/fork-escape-fork-capture.fail",
-    "vip": "VIP-17",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0017-fork.md: Status accepted by Will (2026-10-28), operand-check amendment D88 and existing capture restriction; VIP-34 diagnostic ownership. This records existing approved rejection authority, not approval of a new rejection."
-    },
-    "reason": "Diagnostic-only compatibility fixture correction: program statements are byte-identical before and after; the only source difference is the expect comment. Existing EK1703/EK4838 expectations are unchanged. The golden only removes a generated-helper TS2345 cascade. The compiler hook filters final applicability diagnostics and leaves admission unchanged."
-  },
-  {
-    "code": "EK4838",
-    "case": "typescript/vibelang/cases/fork-escape-fork-capture.fail",
-    "vip": "VIP-17",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0017-fork.md: Status accepted by Will (2026-10-28), operand-check amendment D88 and existing capture restriction; VIP-34 diagnostic ownership. This records existing approved rejection authority, not approval of a new rejection."
-    },
-    "reason": "Diagnostic-only compatibility fixture correction: program statements are byte-identical before and after; the only source difference is the expect comment. Existing EK1703/EK4838 expectations are unchanged. The golden only removes a generated-helper TS2345 cascade. The compiler hook filters final applicability diagnostics and leaves admission unchanged."
-  },
-  {
     "code": "EK4402",
     "vip": "VIP-33",
     "case": "typescript/vibelang/cases/ek4403-clock.fail",
@@ -1661,16 +1641,6 @@
   },
   {
     "code": "EK0503",
-    "case": "typescript/vibelang/cases/fork-escape-return.fail",
-    "vip": "VIP-5",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision"
-    },
-    "reason": "VIP-5 explicitly forbids the native try statement retained here as a negative control. The registered native-try preserving-fix pair proves the migration; this mixed-error/retired-form fixture also retains its prior diagnostic coverage."
-  },
-  {
-    "code": "EK0503",
     "case": "typescript/vibelang/cases/jump-without-target-region.fail",
     "vip": "VIP-5",
     "approval": {
@@ -1688,16 +1658,6 @@
       "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision"
     },
     "reason": "All three configured legacy dead-catch errors and their existing spans are unchanged. Only VIP-5's EK0503 is added to an already-rejected source; no EK9204 retirement or severity change is introduced."
-  },
-  {
-    "code": "EK4838",
-    "case": "typescript/vibelang/cases/fork-escape-return.fail",
-    "vip": "VIP-38",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision; docs/design/vips/0038-effect-lint-built-in.md#decision"
-    },
-    "reason": "The pre-existing configured fiber-escape lint error and its source are retained. Only VIP-5's native-try error is added; no new fiber rule, lint severity or repair is claimed."
   },
   {
     "code": "TS1107",

@@ -1,1 +1,0 @@
-error EK4838: This fiber is owned by main's body, which interrupts it on exit, but it is captured by a function.

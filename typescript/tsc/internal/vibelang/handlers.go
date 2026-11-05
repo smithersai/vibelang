@@ -114,7 +114,7 @@ func (p *handlerPlan) planResume(c *checker.Checker, call *ast.Node) {
 // whose closure keeps fn's frame but must release what it holds after the
 // resumed program, as any region's cleanup must.
 func (p *plan) resumesInTail(fn *ast.Node) bool {
-	return p.clauses[fn] && !p.scopeBlocks[fn.Body()] && !p.scopeBodies[fn.Body()]
+	return p.clauses[fn] && !p.scopeBlocks[fn.Body()]
 }
 
 // tailResumeOf returns the call to resume or resumeWith that expression is,

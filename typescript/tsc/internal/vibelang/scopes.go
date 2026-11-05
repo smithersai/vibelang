@@ -7,40 +7,13 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// Scope regions (design D14, D19, D25, D47; spec Chapters 6, 7, and 26).
+// A block with using owns a resource Scope, closed on every exit path.
+// Plain keyword fork instead belongs to the current fiber (VIP-17), so no
+// resource region is introduced for it and a helper's return does not end its
+// child's lifetime.
 //
-// A block of an Effect function that declares using is a Scope region, and so
-// is a region the source names that owns a fork (D408): a function body, an
-// arrow's expression body included (D353); one iteration of a loop body; a
-// try, catch, or finally block; a handle clause, which compiles like a
-// function; and a mask block. A provide block keeps the enclosing owner
-// (VIP-12). A block that is only braces, such as an if branch or a bare
-// block, owns nothing, and neither does a do block or a match expression,
-// whose code runs in the region around it, so
-// `if (ready) fork work()` and `if (ready) { fork work() }` mean the same. A
-// region runs under a Scope of its own, which only its using acquisitions
-// and the fibers it owns receive, and which closes when the region exits by
-// any path: success, failure, or interruption. Closing runs the releases and
-// interrupts the owned fibers, newest first, and waits for each before going
-// on:
-//
-//	function serve(port: number) {
-//	  using server = Http.listen(port)   // Effect<Server, never, Scope>: gets the block's Scope
-//	  fork heartbeat()                   // interrupted when serve exits, before the server closes
-//	  return server.awaitShutdown()
-//	}
-//	// Effect<string, never, Http>
-//
-// Everything else in the region runs under the Scope its caller supplies, so
-// a resource acquired without using belongs to the caller, and Scope stays
-// in R (D14). `() => fork p()` means `() => { return fork p() }`, so the
-// arrow's body owns the fiber and Scope leaves R. An owned fiber cannot
-// outlive its region, so the value a fork gives may flow only where the
-// region keeps it, and anywhere else is EK4838 (D409, fork_escape.go). A function that
-// declares using is an Effect function (D54), even when it runs nothing else,
-// so its using is always a Scope region; await using in Effect code is EK0102, and the
-// lowering treats it as using.
-//
+// A using declaration supplies its region's Scope to the whole initializer.
+// Other programs keep the Scope their caller supplies.
 // using runs its initializer with the block's Scope, so every release an
 // acquisition there registers runs when the block exits, and exactly one
 // owner releases the value (D401): the acquisition, when it recorded the
@@ -111,87 +84,6 @@ func isUsingForOf(node *ast.Node) bool {
 	}
 	initializer := node.AsForInOrOfStatement().Initializer
 	return initializer != nil && initializer.Kind == ast.KindVariableDeclarationList && isUsingList(initializer)
-}
-
-// ownerRegion returns the innermost region the source names around node
-// (D408): a function body, an arrow's expression body included (D353), a
-// loop body, a try, catch, or finally block, a handle clause, a block that
-// declares using, or a mask block. A provide block alone owns no fibers. A
-// do block, a match expression, and a catch expression's sides belong to the
-// region around them. It returns nil when no region of node's function
-// encloses it, as in a parameter list.
-func ownerRegion(node *ast.Node) *ast.Node {
-	for n := node; n.Parent != nil; n = n.Parent {
-		parent := n.Parent
-		if isFunctionBoundary(parent) {
-			if parent.Body() != n || !ast.IsFunctionLike(parent) {
-				return nil
-			}
-			if isRegionTransparent(parent) {
-				continue
-			}
-			return n
-		}
-		if isNamedRegion(n) {
-			return n
-		}
-	}
-	return nil
-}
-
-// isNamedRegion reports whether node, which is not a function body, is a
-// region that owns the forks in it (D408): a loop body, a try, catch, or
-// finally block, a handle clause, a block that declares using, or a mask
-// block. Provision alone does not change a child's owner (VIP-12).
-func isNamedRegion(node *ast.Node) bool {
-	parent := node.Parent
-	switch {
-	case parent == nil:
-		return false
-	case ast.IsIterationStatement(parent, false /*lookInLabeledStatements*/):
-		return parent.Statement() == node
-	case parent.Kind == ast.KindTryStatement:
-		if parent.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 {
-			return false
-		}
-		try := parent.AsTryStatement()
-		return try.TryBlock == node || try.FinallyBlock == node
-	case parent.Kind == ast.KindCatchClause:
-		return parent.AsCatchClause().Block == node && (parent.Parent == nil || parent.Parent.Flags&ast.NodeFlagsVibeLangBindingCleanup == 0 && !isHandleStatement(parent.Parent)) // a handle statement's catch block only holds its clauses
-	case node.Kind != ast.KindBlock:
-		return false
-	case handleClauseOfBlock(node) != nil, maskWord(node) != "":
-		return true
-	}
-	for _, statement := range node.AsBlock().Statements.Nodes {
-		if isBlockUsing(statement) {
-			return true
-		}
-		// The generated try holds this block's original statements without naming
-		// a new source Scope. A source using still makes the original block a region.
-		if statement.Kind == ast.KindTryStatement && statement.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 {
-			for _, original := range statement.AsTryStatement().TryBlock.AsBlock().Statements.Nodes {
-				if isBlockUsing(original) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-// isRegionTransparent reports whether fn, a function the parser wrote, holds
-// code of the region around it, which owns its forks: a do block's function
-// and a match expression's, which are called where they stand, an is test's,
-// and a catch expression's sides.
-func isRegionTransparent(fn *ast.Node) bool {
-	if !isProgramArrow(fn) || fn.Parent == nil {
-		return false
-	}
-	if parent := fn.Parent; ast.IsParenthesizedExpression(parent) && parent.Parent != nil && ast.IsCallExpression(parent.Parent) && parent.Parent.Expression() == parent {
-		return true
-	}
-	return catchExpressionOf(fn.Parent) != nil
 }
 
 // usingDeclarationOf returns the declaration whose initializer is node,
@@ -327,15 +219,10 @@ func checkUsingInitializers(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// forkOwner returns the region whose Scope owns the fiber that call starts,
-// or nil (ownerRegion). call must be a call to the prelude's fork that runs,
-// which is fork(program), in the body of a function the lowering can turn
-// into an Effect.
-func (a *analyzer) forkOwner(call *ast.Node) *ast.Node {
-	if !a.isPreludeFork(call) || !inLowerableBody(call) || !a.runs(call) {
-		return nil
-	}
-	return ownerRegion(call)
+// nativeFork reports a source keyword operation, whose owner is the current
+// fiber (VIP-17), independently of lexical resource Scope regions.
+func isNativeFork(call *ast.Node) bool {
+	return isKeywordFormCall(call) && len(call.Arguments()) == 1 && ast.SkipParentheses(call.Expression()).Text() == "fork"
 }
 
 // isPreludeFork reports whether call calls the runtime's fork: the prelude's,
@@ -344,44 +231,15 @@ func (a *analyzer) isPreludeFork(call *ast.Node) bool {
 	return isRuntimeExport(a.checker, ast.SkipParentheses(call.Expression()), "fork")
 }
 
-// getsScope reports whether call runs with the Scope of a Scope region: it
-// forks a fiber the region owns, or it is a using acquisition.
+// getsScope reports whether call is an acquisition supplied with its using
+// region's resource Scope.
 func (a *analyzer) getsScope(call *ast.Node) bool {
-	return a.forkOwner(call) != nil || a.isAcquisition(call)
+	return a.isAcquisition(call)
 }
 
-// addScoped adds to info what call, which getsScope, adds to E and R. A fork
-// adds the requirements of the program it starts, whose fiber sees this
-// fiber's services, and none of its failures, which reach the parent only
-// through Fiber.join. An acquisition adds its failures and its requirements
-// other than Scope, plus the service its callee looks up.
+// addScoped adds an acquisition's failures and requirements other than Scope,
+// plus the service its callee looks up.
 func (a *analyzer) addScoped(info *effectInfo, call *ast.Node) {
-	c := a.checker
-	if a.forkOwner(call) != nil {
-		if arguments := call.Arguments(); len(arguments) > 0 {
-			program := c.GetTypeAtLocation(arguments[0])
-			if operand := ast.SkipParentheses(arguments[0]); a.keywordOperand(operand) {
-				// A keyword operand's own type is its value's; its program's
-				// R is what running it needs (D322).
-				program = a.keywordProgramType(operand, a.keywordValueType(operand))
-			}
-			if r := channelType(c, program, "_R"); r != nil {
-				info.addRequirement(r, call)
-				if info.effect == nil {
-					info.effect = effectInterface(c, program)
-				}
-				return
-			}
-		}
-		forked := &effectInfo{}
-		a.addCall(forked, call)
-		forked = a.withoutScope(forked, nil /*scope*/)
-		info.addRequirements(forked)
-		if info.effect == nil {
-			info.effect = forked.effect
-		}
-		return
-	}
 	a.addServiceLookup(info, call)
 	acquisition := &effectInfo{}
 	a.addCall(acquisition, call)
@@ -390,7 +248,7 @@ func (a *analyzer) addScoped(info *effectInfo, call *ast.Node) {
 
 // withoutScope returns info without effect's Scope among its requirements,
 // splitting unions and keeping each requirement's source: a Scope region
-// supplies the Scope that its acquisitions and forks ask for. Given scope,
+// supplies the Scope that its acquisitions ask for. Given scope,
 // effect's Scope type, a generic member, such as a type parameter R, keeps
 // what the region does not supply, Exclude<R, Scope>, as $using's own type
 // and Effect.scoped leave it: a using supplies Scope to its whole
@@ -491,4 +349,33 @@ func firstUsing(fn *ast.Node) *ast.Node {
 func isUsingList(list *ast.Node) bool {
 	kind := list.Flags & ast.NodeFlagsBlockScoped
 	return kind == ast.NodeFlagsUsing || kind == ast.NodeFlagsAwaitUsing
+}
+
+// addFork contributes the program's requirements and no errors of its child.
+// The Fiber carries those errors until joined; forking itself needs no Scope.
+func (a *analyzer) addFork(info *effectInfo, call *ast.Node) {
+	c := a.checker
+	if arguments := call.Arguments(); len(arguments) > 0 {
+		program := c.GetTypeAtLocation(arguments[0])
+		if operand := ast.SkipParentheses(arguments[0]); a.keywordOperand(operand) {
+			// A keyword operand's own type is its value's; its program's
+			// R is what running it needs (D322).
+			program = a.keywordProgramType(operand, a.keywordValueType(operand))
+		}
+		if r := channelType(c, program, "_R"); r != nil {
+			info.addRequirement(r, call)
+			if info.effect == nil {
+				info.effect = effectInterface(c, program)
+			}
+			return
+		}
+	}
+	forked := &effectInfo{}
+	a.addCall(forked, call)
+	forked = a.withoutScope(forked, nil /*scope*/)
+	info.addRequirements(forked)
+	if info.effect == nil {
+		info.effect = forked.effect
+	}
+	return
 }

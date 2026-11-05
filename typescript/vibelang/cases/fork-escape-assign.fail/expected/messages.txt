@@ -1,6 +1,0 @@
-error EK4838: This fiber is owned by global's body, which interrupts it on exit, but it is assigned to current, which outlives that body.
-error EK4838: This fiber is owned by property's body, which interrupts it on exit, but it is assigned to monitor.fiber, which outlives that body.
-error EK4838: This fiber is owned by this loop iteration, which interrupts it on exit, but it is assigned to last, which outlives that iteration.
-error EK4838: This fiber is owned by throughBinding's body, which interrupts it on exit, but it is assigned to monitor.fiber, which outlives that body.
-error EK4838: This fiber is owned by inVar's body, which interrupts it on exit, but it is held in var fiber, where only a const or let of that body may hold it.
-error EK4838: This fiber is owned by start's body, which interrupts it on exit, but it is assigned to this.fiber, which outlives that body.

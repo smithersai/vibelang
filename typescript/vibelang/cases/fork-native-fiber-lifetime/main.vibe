@@ -1,0 +1,7 @@
+// expect-result: ["started","returned","stopped"]
+import {Deferred} from "effect"
+effect function start(events:string[],ready:Deferred.Deferred<void>){
+ fork Effect.ensuring(Effect.andThen(Effect.sync(()=>{events.push("started")}),Effect.andThen(Deferred.succeed(ready,undefined),Effect.never)),Effect.sync(()=>{events.push("stopped")}))
+ try Deferred.await(ready)
+}
+export effect function main(){const events:string[]=[];const ready=try Deferred.make<void>();try start(events,ready);events.push("returned");return events}

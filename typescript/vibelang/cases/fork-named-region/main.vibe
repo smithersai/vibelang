@@ -1,10 +1,9 @@
 import * as $nativeTryEffect1 from "effect/Effect";
 import * as $nativeTryEffect from "effect/Effect";
-// expect-result: {"events":["if: after","stop if","if without braces: after","stop if without braces","bare: after","stop bare","stop loop 1","stop loop 2","loop: after","do: after","stop do","stop try","try: finally"]}
-// A fiber belongs to the innermost region the source names, never to braces
-// (D408). An if branch, a bare block, and a do block own nothing, so their
-// fibers live until the function's body exits; one iteration of a loop body
-// owns its fibers with or without braces; a try block owns its own.
+// expect-result: {"events":["if: after","if without braces: after","bare: after","loop: after","do: after","try: finally","stop if","stop if without braces","stop bare","stop loop 1","stop loop 2","stop do","stop try"]}
+// Branches, blocks, loop iterations, do expressions and cleanup callbacks
+// preserve the current parent fiber. A child's owner ends when that fiber
+// completes; lexical exits alone do not interrupt a plain fork's child.
 const events: string[] = []
 
 effect function ticker(name: string, started: Deferred.Deferred<void>) {

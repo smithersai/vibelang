@@ -1,9 +1,8 @@
 import * as $nativeTryEffect from "effect/Effect";
-// expect-result: {"results":["stepped","stepped","stepped"],"events":["step","stop concise","after concise","step","stop nested","after nested","step","stop block","after block"]}
-// An arrow's expression body is a function body that owns its forks
-// (D353): the fibers forked in concise and in nested's inner arrow stop when
-// that body exits, as block's does, though a caller's Scope is open around
-// them. Each body discards the fork's value, which D409 allows.
+// expect-result: {"results":["stepped","stepped","stepped"],"events":["step","after concise","step","after nested","step","after block","stop concise","stop nested","stop block"]}
+// Concise, nested and block Effect helpers all run on their caller's fiber.
+// Their children remain alive after each helper returns and stop when the
+// parent fiber completes, including inside an explicitly scoped program.
 const events: string[] = []
 
 effect function ticker(name: string, started: Deferred.Deferred<void>) {

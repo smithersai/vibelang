@@ -8,23 +8,20 @@ import (
 
 // scopePlan records the Scope regions of one file (scopes.go).
 type scopePlan struct {
-	scopeBlocks map[*ast.Node]bool      // blocks that are Scope regions
-	scopeBodies map[*ast.Node]bool      // arrow functions' expression bodies that are Scope regions (D353)
-	scopeLoops  map[*ast.Node]bool      // loop bodies that are statements other than blocks and are Scope regions (D408)
-	usings      map[*ast.Node]bool      // using statements in those blocks
-	forks       map[*ast.Node]*ast.Node // fork calls, mapped to the region that owns the fiber (ownerRegion)
-	usingLoops  map[*ast.Node]bool      // for (using x of values) statements, and for (using x = v; ...) statements under their labels
-	usingScoped map[*ast.Node]bool      // using declarations whose initializer requires Scope, whose value using may bind without disposing it (D401)
-	recording   map[*ast.Node]string    // references to Effect's acquireRelease or acquireDisposable, which denote the runtime's (D401)
-	renamed     map[string]bool         // local names that an import gives acquireRelease or acquireDisposable, or nil before the file's imports are read
+	scopeBlocks map[*ast.Node]bool   // blocks that are Scope regions
+	usings      map[*ast.Node]bool   // using statements in those blocks
+	usingLoops  map[*ast.Node]bool   // for (using x of values) statements, and for (using x = v; ...) statements under their labels
+	usingScoped map[*ast.Node]bool   // using declarations whose initializer requires Scope, whose value using may bind without disposing it (D401)
+	recording   map[*ast.Node]string // references to Effect's acquireRelease or acquireDisposable, which denote the runtime's (D401)
+	renamed     map[string]bool      // local names that an import gives acquireRelease or acquireDisposable, or nil before the file's imports are read
 }
 
 func newScopePlan() scopePlan {
-	return scopePlan{scopeBlocks: map[*ast.Node]bool{}, scopeBodies: map[*ast.Node]bool{}, scopeLoops: map[*ast.Node]bool{}, usings: map[*ast.Node]bool{}, forks: map[*ast.Node]*ast.Node{}, usingLoops: map[*ast.Node]bool{}, usingScoped: map[*ast.Node]bool{}, recording: map[*ast.Node]string{}}
+	return scopePlan{scopeBlocks: map[*ast.Node]bool{}, usings: map[*ast.Node]bool{}, usingLoops: map[*ast.Node]bool{}, usingScoped: map[*ast.Node]bool{}, recording: map[*ast.Node]string{}}
 }
 
 // planScopes records the Scope regions of fn, a function the lowering turns
-// into an Effect, and the using statements and fork calls they own.
+// into an Effect, and the using statements they own.
 func (p *scopePlan) planScopes(a *analyzer, fn *ast.Node) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -41,18 +38,7 @@ func (p *scopePlan) planScopes(a *analyzer, fn *ast.Node) {
 		case isUsingFor(node):
 			p.usingLoops[outermostLabel(node)] = true
 			p.planUsingDeclarations(a, node.AsForStatement().Initializer)
-		case node.Kind == ast.KindCallExpression:
-			if owner := a.forkOwner(node); owner != nil {
-				switch {
-				case owner.Kind == ast.KindBlock:
-					p.scopeBlocks[owner] = true
-				case owner.Parent.Kind == ast.KindArrowFunction:
-					p.scopeBodies[owner] = true // loweredBody makes the region
-				default:
-					p.scopeLoops[owner] = true // for (const x of xs) fork work(x)
-				}
-				p.forks[node] = owner
-			}
+
 		}
 		return node.ForEachChild(visit)
 	}
@@ -161,10 +147,9 @@ func (tx *lowering) usingCall(scope *ast.Node, declaration *ast.Node, initialize
 }
 
 // scoped reports whether the lowering of node belongs to a Scope region: node
-// is a Scope region's block, a using statement in one, a fork it owns, or a
-// loop that takes its values with using.
+// is a Scope region's block, a using statement in one, or a loop that takes its values with using.
 func (p *scopePlan) scoped(node *ast.Node) bool {
-	return p.scopeBlocks[node] || p.usings[node] || p.forks[node] != nil || p.usingLoops[node]
+	return p.scopeBlocks[node] || p.usings[node] || p.usingLoops[node]
 }
 
 // visitScoped lowers a node that scoped reports.
@@ -179,12 +164,12 @@ func (tx *lowering) visitScoped(node *ast.Node) *ast.Node {
 	case ast.KindForStatement, ast.KindLabeledStatement:
 		return tx.visitUsingFor(node)
 	default:
-		return tx.visitFork(node)
+		panic("unexpected resource scope node")
 	}
 }
 
 // scopeName returns a new name for the Scope of the region that block runs
-// in, and records it for the using statements and forks the block owns.
+// in, and records it for the using statements the block owns.
 func (tx *lowering) scopeName(block *ast.Node) *ast.Node {
 	scope := tx.Factory().NewUniqueName("scope")
 	if tx.scopes == nil {
@@ -265,51 +250,6 @@ func (tx *lowering) visitScopeBlock(block *ast.Node) *ast.Node {
 	result := f.NewBlock(f.NewNodeList(lowered), true /*multiLine*/)
 	tx.EmitContext().SetOriginal(result, block)
 	result.Loc = block.Loc
-	return result
-}
-
-// visitScopeLoopBody lowers node, a loop body that is a statement other than
-// a block and owns a fork, to the region of one iteration (D408), as
-// visitScopeBlock lowers a block body: `for (const x of xs) fork work(x)`
-// lowers as `for (const x of xs) { fork work(x) }` does, and a jump out of
-// the statement leaves its region through a completion record.
-func (tx *lowering) visitScopeLoopBody(node *ast.Node) *ast.Node {
-	f := tx.Factory()
-	scope := tx.scopeName(node)
-	r := &region{}
-	saved, savedLoop := tx.frame, tx.loopRegion
-	tx.frame = &frame{name: saved.name, region: r, handleClause: saved.handleClause}
-	tx.loopRegion = node
-	statements := statementsOf(tx.Visitor().VisitNode(node))
-	tx.frame, tx.loopRegion = saved, savedLoop
-	run := tx.scopeRegion(r, scope, node, statements)
-	result := f.NewBlock(f.NewNodeList(statementsOf(tx.runRegion(node, run, r))), true /*multiLine*/)
-	tx.EmitContext().SetOriginal(result, node)
-	result.Loc = node.Loc
-	return result
-}
-
-// scopeBody returns body, the lowered block of an arrow function whose
-// expression body source is a Scope region (D353), run in that region, whose
-// Scope is scope: the arrow lowers as `() => { return fork p() }` does in
-// visitScopeBlock,
-//
-//	() => fork p()
-//
-// becomes
-//
-//	() => { return yield* runtime.$region(Effect.fnUntraced(function* f$using(scope) {
-//	  return yield* runtime.$fork(p(), scope);
-//	})) }
-//
-// so the body interrupts the fiber when it exits. An expression has no jump
-// to dispatch.
-func (tx *lowering) scopeBody(source *ast.Node, scope *ast.Node, body *ast.Node) *ast.Node {
-	f := tx.Factory()
-	run := tx.scopeRegion(&region{}, scope, source, body.Statements())
-	result := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), run))}), false /*multiLine*/)
-	tx.EmitContext().SetOriginal(result, source)
-	result.Loc = body.Loc
 	return result
 }
 
@@ -417,22 +357,6 @@ func (tx *lowering) succeed(value *ast.Node) *ast.Node {
 	f := tx.Factory()
 	succeed := f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("succeed"), ast.NodeFlagsNone)
 	return f.NewCallExpression(succeed, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{value}), ast.NodeFlagsNone)
-}
-
-// visitFork lowers fork(program, options) in a Scope region to
-// `yield* runtime.$fork(program, scope, options)`, Effect.forkIn with the
-// region's Scope: the region interrupts the fiber when it closes, and waits
-// for the fiber's cleanup.
-func (tx *lowering) visitFork(node *ast.Node) *ast.Node {
-	scope := tx.scopes[tx.plan.forks[node]]
-	if scope == nil || len(node.Arguments()) == 0 {
-		return tx.visitRunningCall(node)
-	}
-	visited := tx.Visitor().VisitNodes(node.ArgumentList()).Nodes
-	arguments := append([]*ast.Node{visited[0], scope}, visited[1:]...)
-	run := tx.Factory().NewYieldExpression(tx.Factory().NewToken(ast.KindAsteriskToken), tx.runtimeCall("$fork", arguments...))
-	tx.EmitContext().SetOriginal(run, node)
-	return run
 }
 
 // visitUsingForOf lowers `for (using x of values) body` in an Effect
