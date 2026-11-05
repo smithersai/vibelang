@@ -305,7 +305,7 @@ func schemaErrorFlagExpansionMode(c *checker.Checker, fix *ls.CodeFixContext, cl
 		name := freshSchemaFlagName(file.Text(), "$codec"+strconv.Itoa(start)+"_"+strconv.Itoa(i))
 		bindings = append(bindings, name)
 		factory := freshSchemaFlagName(file.Text(), "$makeCodec"+strconv.Itoa(start)+"_"+strconv.Itoa(i))
-		factories = append(factories, factory+" = (): infer _ => "+schemaFlagExpressionMode(c, file, value, alias, start+nodeStart(raw, member.Type()), start+member.Type().End(), resolveGenerics))
+		factories = append(factories, factory+" = () => "+schemaFlagExpressionMode(c, file, value, alias, start+nodeStart(raw, member.Type()), start+member.Type().End(), resolveGenerics))
 		values = append(values, "get "+name+"() { return "+factory+"(); }")
 		edits = append(edits, replaceRange(fix, start+nodeStart(raw, member.Type()), start+member.Type().End(), holder+"."+name)...)
 	}

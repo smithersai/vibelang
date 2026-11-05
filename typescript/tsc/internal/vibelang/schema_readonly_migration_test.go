@@ -91,10 +91,21 @@ func TestSchemaReadonlyMigrationCodecReferences(t *testing.T) {
 				t.Fatalf("did not keep explicit codec:\n%s", fixed)
 			}
 			next, nextFile, _, _ := editorProgram(t, fixed)
+			// VIP-13 rejects the legacy extends clause before and after this
+			// readonly-field-only migration; the later inheritance fix owns it.
+			legacyExtends := strings.Contains(source, "schema error Child extends")
+			inherited := 0
 			for _, d := range append(next.GetSyntacticDiagnostics(t.Context(), nextFile), next.GetSemanticDiagnostics(t.Context(), nextFile)...) {
 				if d.Category() == diagnostics.CategoryError {
+					if legacyExtends && d.Code() == 2117 {
+						inherited++
+						continue
+					}
 					t.Errorf("fixed:%s\n%s", d.String(), fixed)
 				}
+			}
+			if legacyExtends && inherited != 1 {
+				t.Fatalf("want one retained VIP-13 inheritance diagnostic, got %d", inherited)
 			}
 			if again := schemaReadonlyMigrationFixes(t.Context(), next, nextFile, map[string]bool{}); len(again.fixes) != 0 {
 				t.Fatalf("not idempotent:\n%s", again.text())
