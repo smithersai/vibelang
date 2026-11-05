@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Compiler emission checks retained output from before the coverage and native tail-delegation repairs. Their snapshots now match those repairs while retaining exact JavaScript, declarations and runtime results.
 
 - Comparing declaration APIs could falsely report a missing `NodeJS` namespace in packages with configured ambient types. The comparison now keeps the package's `types` and `typeRoots` settings.
+- The generator guide could imply that plain generator bodies may throw. It now states their `EK0401` restriction and distinguishes `async` generators from Effect producers.
 
 - Optional schema fields and tuple elements with an explicit `undefined` union could expose a different codec type from `Schema.optional(S)`. They now retain the underlying codec type while accepting omission and present `undefined`; repairs keep an explicit union codec when rewriting it would change its type.
 - The platform guide mapped `os.tmpdir` to creating a new directory. Its replacement now reads the system temporary-directory path without creating anything.

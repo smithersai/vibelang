@@ -16,6 +16,8 @@ import (
 // This extends the existing placement target, not the runtime comparator.
 const throwExpressionPlacementQuote = "Where a throw is allowed at all remains [VIP-4's no-throw rule](#plain-code-never-throws) (\x60EK0401\x60). This grammar does not authorize a plain function to throw or change eager parameter-initialization rules."
 
+const plainGeneratorThrowPlacementQuote = "plain methods, constructors, accessors, plain generators, class field initializers"
+
 const throwExpressionGrammarQuote = "unary nesting such as \x60!throw error\x60 parse."
 
 var throwExpressionPlacementKeys = []string{
@@ -24,9 +26,14 @@ var throwExpressionPlacementKeys = []string{
 	"expr-field", "expr-static", "expr-parameter", "expr-effect-parameter",
 	"expr-effect-thunk", "expr-promise-executor",
 	"expr-async", "expr-async-parameter", "expr-effect",
+	"expr-generator-expression", "expr-generator-method", "expr-generator-class",
+	"expr-async-generator", "expr-effect-producer", "expr-nested-generator",
 }
 
 func TestThrowExpressionPlacementQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("003-failures.md"), plainGeneratorThrowPlacementQuote) {
+		t.Fatalf("Chapter 003 no longer says %q; review generator placement", plainGeneratorThrowPlacementQuote)
+	}
 	if !strings.Contains(SpecText("003-failures.md"), throwExpressionGrammarQuote) {
 		t.Fatalf("Chapter 003 no longer says %q; review the grammar oracle", throwExpressionGrammarQuote)
 	}
@@ -66,6 +73,20 @@ func throwExpressionPlacementProgram(key string, variant uint8) (string, string,
 		body = "export const witness = { get value() { return " + expression + " } }"
 	case "expr-generator":
 		body = "export function* witness() { yield " + expression + " }"
+	case "expr-generator-expression":
+		body = "export const witness = function* () { yield " + expression + " }"
+	case "expr-generator-method":
+		body = "export const witness = { *value() { yield " + expression + " } }"
+	case "expr-generator-class":
+		body = "export class Witness { *value() { yield " + expression + " } }"
+	case "expr-async-generator":
+		wantError = false
+		body = "export async function* witness() { yield " + expression + " }"
+	case "expr-effect-producer":
+		wantError = false
+		body = "export effect function* witness() { yield " + expression + " }"
+	case "expr-nested-generator":
+		body = "export effect function witness() { return function* () { yield " + expression + " } }"
 	case "expr-top":
 		body = "export const witness = " + expression
 	case "expr-field":
