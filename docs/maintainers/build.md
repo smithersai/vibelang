@@ -1797,3 +1797,5 @@ The `//:reserved-error-repair` target checks independent reserved-payload and in
 The `//:go-error-inheritance` target also replays every ambient error-class preservation input. It checks the specific diagnostic, independently written native declaration, editor edit, emitted erasure and second repair. Both Go packages share one compilation invocation; named test progress distinguishes compilation from test execution. Resolved inputs retain their corpus files and become mandatory passing cases.
 
 The `//:build-contracts` target checks explicit Bun test deadlines before graph or package-script changes land. Service-call, table-row and runtime export documentation checks receive 30 seconds rather than inheriting Bun’s five-second default.
+
+Compiler test prerequisite checks read the package’s TypeScript syntax, including the shared shard factory. Every compiler shard must declare `runtime-dist` before reading its output; each registration must call the checked factory with its own shard index. A direct target, a factory or a returned target keeps the same prerequisite rule.
