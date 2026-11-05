@@ -1941,8 +1941,22 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 			declined = append(declined, declinedSite{d.Pos(), d.End(), d.Code(), key, declineReason(d)})
 		}
 	}
-	// Take the fixes in source order whose edits overlap no fix taken.
-	slices.SortStableFunc(candidates, func(a, b fileFix) int { return firstEdit(a.edits) - firstEdit(b.edits) })
+	// An inherited error's constructor must be materialized while its
+	// fieldless abstract base is still a declaration. Both repairs can insert
+	// imports at the same position; expanding the base first would otherwise
+	// discard that constructor adaptation before the child can use it.
+	inherits := slices.ContainsFunc(candidates, func(f fileFix) bool { return f.code == EK2117.Code })
+	// Resolve dependent root repairs last, then take nonoverlapping fixes in
+	// source order within each priority.
+	slices.SortStableFunc(candidates, func(a, b fileFix) int {
+		if inherits && (a.code == EK1308.Code) != (b.code == EK1308.Code) {
+			if a.code == EK1308.Code {
+				return 1
+			}
+			return -1
+		}
+		return firstEdit(a.edits) - firstEdit(b.edits)
+	})
 	var taken []sourceEdit
 	p := proposal{file: file, declined: declined}
 	for _, candidate := range candidates {

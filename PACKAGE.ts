@@ -1238,6 +1238,13 @@ const targets = {
     [go, node, bun],
     "10m"
   ),
+  "abstract-error-constructor-migrations": check(
+    "Abstract root migrations preserve inherited fieldless constructor semantics",
+    "cd typescript/tsc && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestAbstractErrorInheritanceRepairsQuoted|FuzzAbstractErrorInheritanceRepairs)$' ./internal/vibelangfuzz && cd ../.. && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test packages/compiler/test/error-inheritance-fix.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"]],
+    [go, node, bun],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
