@@ -15,7 +15,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
+- Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
+- Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
+- Effect parameter defaults could report duplicate no-throw errors; each disallowed call now reports once with parameter-specific guidance.
+- Migration verification tests could mistake retained warnings for blocking errors; severity checks now cover warnings, promoted errors, refusal notes and module provenance together.
+- Vite coverage examples could fail to load service modules; the examples now use explicit service lookups and cover both successful and failing calls.
+- The TypeScript mapper reported `EK2109` for valid computed schema keys. It now preserves native key expressions and reports `EK9001` when a key needs VibeLang operations the mapper cannot lower.
 
+- Migration setup left source-linked documentation examples stale after rewriting their source. It now refreshes matching whole-file code blocks after formatting and reports mismatched excerpts for review.
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
@@ -31,6 +38,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Native compiler builds discarded inherited Go package limits. They now cap package compilation at eight, matching the mapper and forms generator.
 - A service key alias with an intersection type could bypass misuse checks. Constructing, extending or matching it now reports the same service diagnostic as the original key.
 - Some compiler tooling rebuilt Go packages with different path flags. These commands now share path-independent package cache entries.
+- Optional array-pattern bindings reported `EK4704`. They now initialize only for present elements and keep absent bindings uninitialized, including in nested patterns and `is` tests.
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
 - Tagged match migration examples included an unnecessary fallback after covering every tag; their output now reflects the current coverage rule.
