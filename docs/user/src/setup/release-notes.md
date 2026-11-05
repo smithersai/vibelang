@@ -51,6 +51,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration retries could leave host `Request` and `Response` uses behind when they collided with Effect modules; saved platform diagnostic notes now route the unchanged code through the TypeScript platform split.
 - A project inside a dot directory of its repository could fail a `vibelang-unplugin` Bun build with `Could not resolve` on a `./x.js` import of its own `x.vibe`. The plugin now scans the project as well as the repository.
+- A legacy service read inside a held `catch` head, such as `decode((Service()).read()) catch fallback`, kept its retired call and refused the migration with an unknown requirement; the read now migrates with the rest of the head.
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.
