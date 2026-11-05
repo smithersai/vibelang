@@ -47,7 +47,6 @@ func (d *optionalSchemas) field() (typ, codec, valid string) {
 	typ, codec, valid = d.parts()
 	if d.Mode&4 != 0 {
 		typ += " | undefined"
-		codec = "Schema.Union([" + codec + ", Schema.Undefined])"
 	}
 	op := "optional"
 	if d.Exact && d.Mode&4 == 0 {

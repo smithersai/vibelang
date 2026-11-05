@@ -1382,9 +1382,11 @@ func (p *Parser) vibelangSchemaProperties(members []*ast.Node) []*ast.Node {
 			properties = append(properties, p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, name, nil /*postfixToken*/, nil /*typeNode*/, placeholder), member.Loc))
 			continue
 		}
-		value := p.vibelangSchemaOf(member.Type())
+		var value *ast.Node
 		if member.PostfixToken() != nil && member.PostfixToken().Kind == ast.KindQuestionToken {
-			value = p.vibelangOptionalSchema(member.Type(), member.PostfixToken().Loc, value, false)
+			value = p.vibelangOptionalSchema(member.Type(), member.PostfixToken().Loc, false)
+		} else {
+			value = p.vibelangSchemaOf(member.Type())
 		}
 		if !ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) {
 			// Written mutable (D134): the field's key is mutable.

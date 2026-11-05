@@ -37,8 +37,18 @@ func TestSchemaOptionalMigrationDeclarationIdentity(t *testing.T) {
 			"export class Documented extends Schema.TaggedError<Documented>()(\"Documented\", {\n /** status docs */\n status: Schema.optional(Schema.Number)\n }) {}"},
 		{"namespace", "export namespace Nested { export schema Value { readonly value?: string } }",
 			"export namespace Nested { export const Value = Schema.Struct({ value: Schema.optional(Schema.String) }); export type Value = typeof Value.Type; }"},
+		{"grouped-undefined", "export schema Value { readonly value?: (undefined | (string | undefined)) }",
+			"export const Value = Schema.Struct({ value: Schema.optional(Schema.String) }); export type Value = typeof Value.Type;"},
+		{"nested-undefined", "export schema Value { readonly value?: { readonly item?: number | undefined } | undefined }",
+			"export const Value = Schema.Struct({ value: Schema.optional(Schema.Struct({ item: Schema.optional(Schema.Number) })) }); export type Value = typeof Value.Type;"},
+		{"optional-tuple-undefined", "export schema Value = readonly [value?: number | undefined]",
+			"export const Value = Schema.Tuple([Schema.optional(Schema.Number)]); export type Value = typeof Value.Type;"},
+		{"required-undefined-control", "export schema Value { readonly value: number | undefined }",
+			"export const Value = Schema.Struct({ value: Schema.Union([Schema.Number, Schema.Undefined]) }); export type Value = typeof Value.Type;"},
+		{"undefined-only-control", "export schema Value { readonly value?: undefined }",
+			"export const Value = Schema.Struct({ value: Schema.optional(Schema.Undefined) }); export type Value = typeof Value.Type;"},
 		{"explicit-undefined-control", "export schema error Explicit { status?: number | undefined }",
-			"export class Explicit extends Schema.TaggedError<Explicit>()(\"Explicit\", { status: Schema.optional(Schema.Union([Schema.Number, Schema.Undefined])) }) {}"},
+			"export class Explicit extends Schema.TaggedError<Explicit>()(\"Explicit\", { status: Schema.optional(Schema.Number) }) {}"},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			prefix := "import * as Schema from \"effect/Schema\"\n"

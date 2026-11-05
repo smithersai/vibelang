@@ -26,7 +26,12 @@ func (p *Parser) vibelangSchemaTuple(typeNode *ast.Node) *ast.Node {
 	inRest := false
 	for _, position := range positions {
 		inRest = inRest || position.rest
-		value := p.vibelangSchemaOf(position.typ)
+		var value *ast.Node
+		if position.optional {
+			value = p.vibelangOptionalSchema(position.typ, position.typ.Loc, true)
+		} else {
+			value = p.vibelangSchemaOf(position.typ)
+		}
 		for _, name := range position.restNames {
 			cloned := p.vibelangSchemaGenericName(name)
 			cloned.Parent.Parent = value
@@ -34,9 +39,6 @@ func (p *Parser) vibelangSchemaTuple(typeNode *ast.Node) *ast.Node {
 				Arity: 1, Name: cloned, Expression: value, RestArray: true,
 				Legacy: ast.IsIdentifier(name) && (name.Text() == "Array" || name.Text() == "ReadonlyArray"),
 			})
-		}
-		if position.optional {
-			value = p.vibelangOptionalSchema(position.typ, position.typ.Loc, value, true)
 		}
 		if inRest {
 			rest = append(rest, value)

@@ -22,8 +22,8 @@ import (
 func init() { sourceFileMigrations = append(sourceFileMigrations, schemaExactOptionalMigrationFixes) }
 
 // Explicit compatibility upgrades keep the previous Schema.optional codec.
-// Adding undefined preserves decoded values but publishes a different codec
-// type (optional<Union<...>>). Write the original codec instead.
+// Expanding the enclosing declaration retains nested codecs and comments
+// without changing unrelated source fields or native TypeScript payloads.
 func schemaExactOptionalMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
 	result := proposal{file: file}
 	if !program.Options().ExactOptionalPropertyTypes.IsTrue() {

@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Optional schema fields and tuple elements with an explicit `undefined` union could expose a different codec type from `Schema.optional(S)`. They now retain the underlying codec type while accepting omission and present `undefined`; repairs keep an explicit union codec when rewriting it would change its type.
 - The platform guide mapped `os.tmpdir` to creating a new directory. Its replacement now reads the system temporary-directory path without creating anything.
 - Primitive patterns such as `String(let value)` rejected boxed values. They now accept the corresponding native wrapper and bind its primitive value.
 - Factory examples could fail with `EK0402` when a TypeScript validation callback was passed through a non-throwing parameter. Their explicit exception bridge now preserves the original defect and cold evaluation without relaxing that callback contract.

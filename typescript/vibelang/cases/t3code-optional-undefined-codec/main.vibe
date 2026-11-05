@@ -1,0 +1,4 @@
+export schema Value { readonly value?: string | undefined }
+export const field: Schema.optional<Schema.String> = Value.fields.value
+export schema Grouped { readonly value?: ("a" | undefined) | "b" }
+export const groupedField: Schema.optional<Schema.Literals<readonly ["a", "b"]>> = Grouped.fields.value

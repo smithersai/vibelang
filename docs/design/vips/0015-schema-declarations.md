@@ -39,6 +39,8 @@ The project's `exactOptionalPropertyTypes` setting controls mapped optional fiel
 | `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |
 | `name?: T \| undefined` / `(T \| undefined)?` | `Schema.optional(S)` | `Schema.optional(S)` |
 
+An optional field or tuple element maps explicit top-level `undefined` union arms through `Schema.optional`, preserving the underlying codec type: `name?: string | undefined` is `Schema.optional(Schema.String)`. Required positions retain their explicit `undefined` arms.
+
 The rule applies to ordinary schemas, schema errors, and nested mappings; `Schema.mutableKey` keeps its current position outside the optional wrapper. Native `data` payloads follow TypeScript's optional-property types directly. Declarations are identical to the Effect TypeScript twin under the same setting. Without `exactOptionalPropertyTypes`, TypeScript has no exact optional key, so neither does the sugar: a program needing `Schema.optionalKey` writes Effect's class or schema directly. This is not a gap to fill.
 
 - Refinements and transformations stay Schema constants, which a field names, as in `name: NonEmptyString`.

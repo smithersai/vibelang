@@ -21,15 +21,20 @@ func FuzzSchemaExactOptional(f *testing.F) {
 	api := declarationIdentityAPI(f)
 	tsc := filepath.Join(api, "bin/tsc")
 	env := newVIPEnv(f)
-	for _, mode := range []uint8{0, 8, 31} {
+	for _, mode := range []uint8{0, 4, 8, 12, 31} {
 		f.Add("optional-fields", mode, false)
 		f.Add("optional-fields", mode, true)
 	}
+	f.Add("t3code-optional-undefined-codec", uint8(4), true)
 	f.Fuzz(func(t *testing.T, key string, mode uint8, exact bool) {
 		t.Parallel() // Independent projects; keep the short seed wall time bounded.
 		TestSchemaExactOptionalQuoted(t)
 		TestSchemaOptionalMutabilityQuoted(t)
-		key = "optional-fields"
+		if key == "t3code-optional-undefined-codec" {
+			mode |= 4
+		} else {
+			key = "optional-fields"
+		}
 		p := vipgen.SchemaOptionalProgram(mode, exact)
 		run := env.run(t, p)
 		for failure, message := range run.failures() {

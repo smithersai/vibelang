@@ -59,3 +59,48 @@ func TestSchemaExactOptionalInverse(t *testing.T) {
 		}
 	}
 }
+
+// Optional sugar removes explicit undefined union arms. A repair must retain
+// an already-written Union codec whose declaration would otherwise change.
+func TestSchemaOptionalExplicitUnionInverse(t *testing.T) {
+	for _, row := range []struct {
+		name, prefix, codec string
+		convertible         bool
+	}{
+		{"string", "", "Schema.optional(Schema.String)", true},
+		{"undefined-only", "", "Schema.optional(Schema.Undefined)", true},
+		{"explicit-undefined-union", "", "Schema.optional(Schema.Union([Schema.String, Schema.Undefined]))", false},
+		{"undefined-first", "", "Schema.optional(Schema.Union([Schema.Undefined, Schema.String]))", false},
+		{"mutable-undefined-union", "", "Schema.mutableKey(Schema.optional(Schema.Union([Schema.String, Schema.Undefined])))", false},
+		{"undefined-only-union", "", "Schema.optional(Schema.Union([Schema.Undefined, Schema.Undefined]))", true},
+		{"required-union", "", "Schema.Union([Schema.String, Schema.Undefined])", true},
+		{"nullable-union", "", "Schema.optional(Schema.Union([Schema.String, Schema.Null]))", true},
+		{"reference-union", "const U = Schema.Undefined; ", "Schema.optional(Schema.Union([Schema.String, U]))", true},
+		{"nested-optional-union", "", "Schema.Struct({ inside: Schema.optional(Schema.Union([Schema.String, Schema.Undefined])) })", false},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			program, file, _, _ := editorProgram(t, row.prefix+"export const S = Schema.Struct({ value: "+row.codec+" })\n")
+			program.Options().ExactOptionalPropertyTypes = core.TSFalse
+			c, done := program.GetTypeCheckerForFile(t.Context(), file)
+			defer done()
+			c.GetDiagnostics(t.Context(), file)
+			found := false
+			var visit func(*ast.Node) bool
+			visit = func(node *ast.Node) bool {
+				if ast.IsPropertyAssignment(node) && node.Name().Text() == "value" {
+					found = true
+					text, ok := structFieldType(c, file, node, "  ")
+					if ok != row.convertible {
+						t.Fatalf("convertible=%t want=%t: %s", ok, row.convertible, text)
+					}
+					return true
+				}
+				return node.ForEachChild(visit)
+			}
+			file.AsNode().ForEachChild(visit)
+			if !found {
+				t.Fatal("missing control field")
+			}
+		})
+	}
+}

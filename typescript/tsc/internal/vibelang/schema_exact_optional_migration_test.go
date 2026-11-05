@@ -50,10 +50,10 @@ export interface Native { value?: string }
 						t.Errorf("missing %q:\n%s", want, fixed.Text)
 					}
 				}
-				// Only the three source-written explicit undefined types
-				// remain unions; implicit optional fields keep their codec.
-				if strings.Count(fixed.Text, ".Undefined") != 3 {
-					t.Errorf("optional migration changed the explicit undefined codecs:\n%s", fixed.Text)
+				// Optional wrappers supply present undefined without an inner
+				// Union codec, including explicit source undefined arms.
+				if strings.Count(fixed.Text, ".Undefined") != 0 {
+					t.Errorf("optional migration retained a redundant undefined codec:\n%s", fixed.Text)
 				}
 				if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
 					t.Fatal(err)

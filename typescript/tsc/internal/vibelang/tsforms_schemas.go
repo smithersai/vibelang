@@ -317,6 +317,23 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 	if !ok {
 		return "", false
 	}
+	// Optional sugar supplies explicit undefined arms itself. A written
+	// Union must stay native when that normalization would change its codec
+	// type; a value alias is preserved as a reference, not normalized.
+	if optional && isSchemaCall(c, value, "Union", 1) && ast.IsArrayLiteralExpression(value.Arguments()[0]) {
+		undefined, other := false, false
+		for _, member := range value.Arguments()[0].Elements() {
+			module, name := effectMember(c, member)
+			if ast.IsPropertyAccessExpression(member) && module == "Schema" && name == "Undefined" {
+				undefined = true
+			} else {
+				other = true
+			}
+		}
+		if undefined && other {
+			return "", false
+		}
+	}
 	field := key
 	if !mutable {
 		flags := c.GetTypeOfPropertyOfType(c.GetTypeAtLocation(value), "~type.mutability")

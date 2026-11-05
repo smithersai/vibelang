@@ -12,6 +12,7 @@ import (
 const schemaOptionalDefaultQuote = "| `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |"
 
 func TestSchemaExactOptionalQuoted(t *testing.T) {
+	chapterSays(t, "006-data.md", "| `name?: T \\| undefined` / `(T \\| undefined)?` | `Schema.optional(S)` | `Schema.optional(S)` |")
 	chapterSays(t, "007-tooling.md", "A rewrite that can't preserve types, behavior and declaration output refuses at that site")
 	if !strings.Contains(SpecText("006-data.md"), schemaOptionalDefaultQuote) {
 		t.Fatalf("006-data.md no longer contains %q", schemaOptionalDefaultQuote)
@@ -25,11 +26,13 @@ func TestSchemaExactOptionalQuoted(t *testing.T) {
 func FuzzSchemaExactOptionalMigration(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
-	for _, key := range []string{"schema", "schema-error", "tuple", "data", "nested-native", "smithers-jev-session-checker", "t3code-safari-cookies", "smithers-retry-policy"} {
+	for _, key := range []string{"schema", "schema-error", "tuple", "data", "nested-native", "smithers-jev-session-checker", "t3code-safari-cookies", "smithers-retry-policy", "t3code-explicit-optional-codec"} {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(7))
 		f.Add(key, uint8(8))
 		f.Add(key, uint8(15))
+		f.Add(key, uint8(24))
+		f.Add(key, uint8(31))
 	}
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		TestSchemaExactOptionalQuoted(t)
@@ -55,7 +58,6 @@ func FuzzSchemaExactOptionalMigration(f *testing.F) {
 		}
 		if explicitUndefined {
 			typ += " | undefined"
-			codec = alias + ".Union([" + codec + ", " + alias + ".Undefined])"
 		}
 		wrapper := "optional"
 		if exact && !migrate && !explicitUndefined {
@@ -69,6 +71,21 @@ func FuzzSchemaExactOptionalMigration(f *testing.F) {
 		source := "export schema S { " + mod + "value?: " + typ + " }\n"
 		twin := "export const S = " + alias + ".Struct({ value: " + field + " }); export type S = typeof S.Type;\n"
 		switch key {
+		case "t3code-explicit-optional-codec":
+			baseCodec := alias + ".String"
+			if mode&2 != 0 {
+				baseCodec = alias + ".Number"
+			}
+			members := baseCodec + ", " + alias + ".Undefined"
+			if mode&16 != 0 {
+				members = alias + ".Undefined, " + baseCodec
+			}
+			value := alias + ".optional(" + alias + ".Union([" + members + "]))"
+			if mod == "" {
+				value = alias + ".mutableKey(" + value + ")"
+			}
+			source = "export const S = " + alias + ".Struct({ value: " + value + " }); export type S = typeof S.Type;\n"
+			twin = source
 		case "schema-error":
 			source = "export schema error S { value?: " + typ + " }\n"
 			twin = "export class S extends " + alias + ".TaggedError<S>()(\"S\", { value: " + optional + " }) {}\n"
