@@ -1765,3 +1765,5 @@ option overrides. Guards reject browser-library loading; independent stock
 TypeScript and the comparison gate both report `TS2583` for an unavailable
 `BigInt`. Adjacent and mirrored declarations retain nominal and structural
 self-identity checks, and changed public fields still produce type differences.
+
+The `//packages:runtime-dist` build runs Node's package-entry export audit after compiling the runtime. The audit checks every runtime value and identity and replays generated family matchers. Because the conditional `//packages:runtime-package` gate depends on this build, export drift fails before its package tests.

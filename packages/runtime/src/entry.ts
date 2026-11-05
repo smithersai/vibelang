@@ -67,6 +67,7 @@ export const {
   $provideEntries,
   $provideService,
   $reference,
+  $registerErrorMatcher,
   $region,
   $relation,
   $rest,
@@ -121,4 +122,3 @@ export const {
   uninterruptible,
   wire,
 } = abi
-

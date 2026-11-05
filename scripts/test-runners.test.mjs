@@ -35,6 +35,7 @@ const runs = [
   [".smithers/flows/effect-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
   ["docs/tools/*.test.*", "PACKAGE.ts", "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.*"],
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
+  ["packages/runtime/tests/entry-exports.node.test.mjs", "packages/PACKAGE.ts", "node --test packages/runtime/tests/entry-exports.node.test.mjs"],
   // Sharded by file: each shard runs node --test --test-shard=<n>/<total> over the same glob (checked below).
   ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-shard=${shard}/${COMPILER_TEST_SHARDS} test/*.test.mjs"],
   ["packages/compiler/test/tools/*.test.mjs", "packages/compiler/test/tools/run.sh", "./*.test.mjs"],

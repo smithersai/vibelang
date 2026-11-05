@@ -14,10 +14,10 @@ import { Package as Tsc } from "../typescript/tsc/PACKAGE.ts"
 const install = [S.file("runtime/package.json"), S.file("runtime/bun.lock")]
 
 const runtimeDist = S.Shell.Build({
-  summary: "Compile the runtime's sources to dist/ with the TypeScript its lockfile pins.",
-  shell: "cd packages/runtime && rm -rf dist && bun run build",
-  data: [...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
-  tools: [S.Host.bin("bun")],
+  summary: "Compile the runtime with its pinned TypeScript and verify Node's guarded entry preserves the ABI.",
+  shell: "cd packages/runtime && rm -rf dist && bun run build && cd ../.. && node --test packages/runtime/tests/entry-exports.node.test.mjs",
+  data: [...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**"), S.file("runtime/tests/entry-exports.node.test.mjs")],
+  tools: [S.Host.bin("bun"), S.Host.bin("node")],
   outDirs: ["runtime/dist"],
   sandbox: "none",
   timeout: "10m"
