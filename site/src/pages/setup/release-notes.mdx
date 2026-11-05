@@ -15,7 +15,19 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Preparing declaration sidecars for large migrations could exhaust memory. Explicit `rootDir` settings and `composite` boundaries now let setup plan paths without loading unrelated source programs.
 
+- Export-fallback API checks loaded unrelated browser declarations. They now use fewer libraries while retaining ordered resolution and native type errors.
+
+- Native `try/catch` and `try/finally` statements in Effect bodies were accepted. They now report `EK0503`; use catch expressions or a plain function for JavaScript exception handling.
+
+- Wildcard-export API checks loaded unrelated browser declarations. They now use fewer libraries while retaining export selection and native type errors.
+
+- Error declarations retain authored class members and their order while installing their generated matcher before static initialization.
+
+- A legacy abstract error root could reject its own subclass in an `is` or `match` pattern; it now retains native family matching.
 - Diagnostic identity updates preserve authored source and project configuration without depending on generated declarations.
+- The legacy `infer` migration examples now retain trailing comments after the last declaration, matching the output of `vibelang --fix --fix-vip-only`.
+
+- A class whose own custom matcher was replaced could silently use `instanceof`. Patterns now preserve the native `TypeError` for non-callable values and identity matching for an own `undefined` value.
 
 - A `private` or `protected` constructor in `error` or `schema error` could add a spurious argument error from generated code. It now reports the constructor restriction once; `--fix` preserves constructor visibility and tag matching, while authored type errors remain visible.
 
@@ -26,6 +38,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration API verification could reject unchanged module augmentations when an adjacent callable gained generated `@throws {never}` metadata. Ambient closure checks now allow that addition while preserving authored contracts, comments and types.
 
 - Legacy editor contract actions keep cross-file edits attached to the right documents and reuse existing aliases without duplicate wrappers.
+
+- Code coverage no longer counts generated `error` setup as source functions and retains static initialization written in ordinary classes.
 
 - Schema alias repair checks now use explicit `readonly` properties and ordinary writable properties, preserving the original `Schema.Struct` type.
 - Migrating an implicit generator API could refuse an unannotated foreign call; the repair now preserves synchronous exceptions as defects.
