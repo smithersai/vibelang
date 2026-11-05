@@ -20,7 +20,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,140 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,865 |
 | The skill and the user guide (142 pages) | 490,000 |
-| The user guide alone | 480,000 |
+| The user guide alone | 490,000 |
 | The specification (11 chapters) | 250,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -97,7 +97,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,100 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,300 |
-| **Core Concepts** | **29,000** |
+| **Core Concepts** | **30,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,600 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,000 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,000 |
@@ -115,7 +115,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 3,600 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,000 |
-| **Build and test** | **19,000** |
+| **Build and test** | **20,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 16,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,700 |
 | **Format and lint** | **10,000** |
