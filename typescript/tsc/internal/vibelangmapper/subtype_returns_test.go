@@ -68,7 +68,13 @@ func assertSubtypeHostForms(t *testing.T, source string) {
 			t.Fatalf("written effect callbacks need no form choice: %v", diagnostics)
 		}
 	}
-	legacy := strings.ReplaceAll(source, "effect ", "")
+	// Remove the callable spellings used by this fixture, retaining effect
+	// blocks: erasing a block keyword makes the control unparsable.
+	legacy := strings.ReplaceAll(source, "effect function", "function")
+	legacy = strings.ReplaceAll(legacy, "effect (", "(")
+	if strings.Count(legacy, "effect {") != strings.Count(source, "effect {") {
+		t.Fatal("unmarked callable control lost an effect block")
+	}
 	checked = Project(legacy, testContext)
 	_, _, emitted = Emit(legacy, testContext)
 	for _, diagnostics := range [][]Diagnostic{checked.Diagnostics, emitted} {
