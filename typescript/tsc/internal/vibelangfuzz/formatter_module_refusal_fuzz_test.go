@@ -9,17 +9,20 @@ import (
 
 func TestFormatterModuleRefusalsQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", "formatting preserves parsed program meaning")
+	chapterSays(t, "007-tooling.md", formatUnnamedModuleQuote)
 	chapterSays(t, "001-functions.md", "| the name redeclares a binding of the file | `EK4005` | rename one |")
 	chapterSays(t, "007-tooling.md", "An unparsable file is reported and left unchanged; formatting is idempotent.")
 }
 
-// Negative declarations stay in the corpus. Refusals precede host callbacks.
+// Recovered top-level declarations preserve diagnostics. Structural refusals
+// precede host callbacks, including a missing name below the top level.
 func FuzzFormatterModuleRefusals(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"duplicate", "nameless", "distinct"} {
+	for _, key := range []string{"duplicate", "nameless", "nameless-nested", "distinct"} {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(255))
 	}
+	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		TestFormatterModuleRefusalsQuoted(t)
 		name := []string{"text", "helpers", "café"}[mode%3]
@@ -28,9 +31,11 @@ func FuzzFormatterModuleRefusals(f *testing.F) {
 		switch key {
 		case "duplicate":
 			want = "module " + name + " is declared twice"
-		case "nameless":
+		case "nameless", "nameless-nested":
 			head = "module"
-			want = "a module declaration needs a name"
+			if key == "nameless-nested" {
+				want = "a module declaration needs a name"
+			}
 		default:
 			key = "distinct"
 		}
@@ -39,6 +44,9 @@ func FuzzFormatterModuleRefusals(f *testing.F) {
 			gap = " /* body */ "
 		}
 		source := fmt.Sprintf("%s%s{ export const one = 1 }\n", head, gap)
+		if key == "nameless-nested" {
+			source = "function outer() {\n" + source + "}\n"
+		}
 		if key == "duplicate" {
 			source += fmt.Sprintf("module %s%s{ export const two = 2 }\n", name, gap)
 		}
@@ -70,6 +78,28 @@ func FuzzFormatterModuleRefusals(f *testing.F) {
 		}
 		if err := vibelangfmt.SameProgram(source, once); err != nil {
 			Gap(t, "FuzzFormatterModuleRefusals", "program:"+key, "%v\n%s\n%s", err, source, once)
+		}
+		if key == "nameless" {
+			config := strings.Replace(DefaultConfig, `"target": "ES2022"`, `"target": "ES2022", "jsx": "preserve"`, 1)
+			config = strings.TrimSuffix(config, "\n}") + fmt.Sprintf(",\n  \"files\": [%q]\n}", file)
+			before, compileErr := w.Compile(t.Context(), Project{Files: map[string]string{file: source}, Config: config})
+			if compileErr != nil {
+				t.Fatal(compileErr)
+			}
+			defer before.Remove()
+			after := toolsRecompile(t, w, before, map[string]string{file: once})
+			if difference := toolsFormatDifference(before, after); difference != "" {
+				Gap(t, "FuzzFormatterModuleRefusals", "diagnostics:"+key, "%s", difference)
+			}
+			count := 0
+			for _, diagnostic := range after.Diagnostics {
+				if diagnosticCodeName(diagnostic.Source(), diagnostic.Code()) == "EK4003" {
+					count++
+				}
+			}
+			if count != 1 {
+				Gap(t, "FuzzFormatterModuleRefusals", "diagnostics:"+key, "want one retained EK4003, got %d: %v", count, after.Diagnostics)
+			}
 		}
 		twice, err := vibelangfmt.Format(file, once, host)
 		if err != nil || twice != once {
