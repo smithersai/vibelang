@@ -63,7 +63,7 @@ function check(input) {
     // Restore actual publication evidence, then prove the resolver-selected
     // shadow changes the API without changing the old declaration text.
     for(const dir of [before,after]){
-      writeFileSync(join(dir,"package.json"),JSON.stringify({types:"./ambient.d.ts"}))
+      writeFileSync(join(dir,"package.json"),JSON.stringify({types:"./ambient.d.ts",exports:{".":{types:"./ambient.d.ts"}}}))
       writeFileSync(join(dir,"tsconfig.json"),JSON.stringify({compilerOptions:{rootDir:"src",outDir:"dist",declaration:true},include:["src/**/*"]}))
       mkdirSync(join(dir,"src",input.stem),{recursive:true})
       writeFileSync(join(dir,"src",input.stem,"index.ts"),"export {};")

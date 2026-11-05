@@ -11,7 +11,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const ts = require("typescript")
 const fc = require("fast-check")
 const quote = "Equivalent formatting, quotes, alias expansion, member/import order and module-specifier spelling pass."
-const manifest = { name: "@opencode/stats-core", types: "./index.d.ts" }
+const manifest = { name: "@opencode/stats-core", types: "./index.d.ts", exports: { ".": { types: "./index.d.ts" } } }
 
 function compare(before, after) {
   const root = mkdtempSync(join(tmpdir(), "migrate-published-specifiers-"))

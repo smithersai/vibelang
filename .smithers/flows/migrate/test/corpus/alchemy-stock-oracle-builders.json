@@ -26,5 +26,12 @@
     },
     "expected": "tsrs",
     "missingExpected": "unavailable, no tsc fallback"
-  }
+  },
+  "publishedFiles": [
+    "src",
+    "lib"
+  ],
+  "sourceOnlyFiles": [
+    "src"
+  ]
 }

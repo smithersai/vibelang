@@ -37,6 +37,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The TypeScript mapper could mistake an explicit `effect` block for an unclassified callback and reject a valid `catch`; blocks now retain their program form and execution boundary after reparsing. `try effect { … }` also failed there with a syntax error; it now runs the block where it stands.
 
 - A private schema reference case could inherit unrelated ambient declarations and reject a valid class base. Its TypeScript program now loads only the intended libraries and preserves source-error diagnostics.
+- Declaration reference packages confused published outputs with private files. Their manifests now declare shipped output and explicit public entry points, preserving the intended API checks.
 
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
