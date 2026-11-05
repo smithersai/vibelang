@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -194,4 +195,88 @@ func TestEffectTypeHintGroupingFixKeepsDeclarations(t *testing.T) {
 			})
 		}
 	}
+}
+
+// Required shorthand grouping preserves each directly nested Effect boundary;
+// an intervening Array already delimits its element type.
+func FuzzDeepEffectTypeFix(f *testing.F) {
+	startShortBudget(f)
+	effectTypeHintParenthesesQuoted(f)
+	type sample struct {
+		key   string
+		depth int
+		array bool
+	}
+	var samples []sample
+	for _, depth := range []int{1, 2, 3, 8, 20, 32} {
+		// Decimal keys keep retained inputs stable if this table is extended.
+		suffix := strings.TrimSpace(fmt.Sprint(depth))
+		samples = append(samples, sample{"direct/" + suffix, depth, false}, sample{"array/" + suffix, depth, true})
+	}
+	for _, s := range samples {
+		f.Add([]byte("key:" + s.key))
+	}
+	w := NewWorkspace(f)
+	const config = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"types":[],"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["main.vibe"]}`
+	f.Fuzz(func(t *testing.T, data []byte) {
+		effectTypeHintParenthesesQuoted(t)
+		defer recoverCompilerPanic(t, "FuzzDeepEffectTypeFix")
+		i := slices.IndexFunc(samples, func(s sample) bool { return "key:"+s.key == string(data) })
+		if i < 0 {
+			i = 0
+			for _, b := range data {
+				i = (i*31 + int(b)) % len(samples)
+			}
+		}
+		s := samples[i]
+		qualified, short := "number", "number"
+		for n := 0; n < s.depth; n++ {
+			if s.array {
+				qualified = "Effect.Effect<Array<" + qualified + ">>"
+				short = "Array<" + short + ">!!"
+			} else {
+				qualified = "Effect.Effect<" + qualified + ">"
+				if n > 0 {
+					short = "(" + short + ")"
+				}
+				short += "!!"
+			}
+		}
+		source := "export type Sample = " + qualified + ";\n"
+		compile := func(text string) (*Result, string) {
+			r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": text, "package.json": `{"type":"module"}`}, Config: config})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !toolsErrorFree(r) {
+				t.Fatalf("valid nested Effect type: %v", r4Errors(r.Diagnostics))
+			}
+			for name, declaration := range r.Outputs {
+				if strings.HasSuffix(name, "/main.d.ts") {
+					return r, declaration
+				}
+			}
+			t.Fatal("missing declaration output")
+			return nil, ""
+		}
+		before, declaration := compile(source)
+		defer before.Remove()
+		fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
+		if fixed.Err != nil || len(fixed.Files) != 1 || len(fixed.Refused) != 0 {
+			Gap(t, "FuzzDeepEffectTypeFix", s.key+"/repair", "required grouping must be repairable: files=%d refused=%v err=%v", len(fixed.Files), fixed.Refused, fixed.Err)
+			return
+		}
+		var text string
+		for _, file := range fixed.Files {
+			text = file.Text
+		}
+		if !strings.Contains(text, "export type Sample = "+short+";") {
+			Gap(t, "FuzzDeepEffectTypeFix", s.key+"/spelling", "want nested shorthand %s, got %s", short, text)
+		}
+		after, got := compile(text)
+		defer after.Remove()
+		if got != declaration {
+			Gap(t, "FuzzDeepEffectTypeFix", s.key+"/declaration", "required grouping changed declarations\nbefore:%s\nafter:%s", declaration, got)
+		}
+	})
 }

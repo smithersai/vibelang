@@ -871,6 +871,13 @@ const targets = {
     [node, bun],
     "10m"
   ),
+  "deep-type-repair": check(
+    "Nested Effect type repairs keep exact grouped shorthand, declaration output and runtime behavior.",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestEffectTypeHintParenthesesQuoted|TestEffectTypeHintGroupingFixKeepsDeclarations|FuzzDeepEffectTypeFix)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose rewrite-deep-types",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
+    [go, node, bun],
+    "15m"
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,
