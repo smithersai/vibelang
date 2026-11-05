@@ -945,6 +945,8 @@ declaration sidecar and `vibelang-source` keeps the source. This also covers an
 esbuild entry passed through a helper, whose input cannot be found statically.
 No caller flag, test edit or user-authored configuration is required.
 
+With emitted routing enabled, planning retains bare entrypoints and direct protected test imports, but admits selected dependencies behind native relative imports that emission can route. Unconfigured runners keep their original dependency deferrals. Both inventory and whole-scope plans use this boundary; runtime and API checks still decide whether the converted modules can remain.
+
 For bare Node, we compared adding a loader to each spawn, package `imports`
 conditions, and the existing VibeLang source-loader contract. Setup still adds
 preloads to owned native launchers, but that cannot reach a protected test's

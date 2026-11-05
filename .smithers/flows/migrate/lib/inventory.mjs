@@ -139,7 +139,7 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
     record.bundledBy = deferred.bundledBy
     record.bundleReason = deferred.reason
   }
-  const bareRunners = bareRunnerDeferrals(root, records.map(r => r.path), { paths })
+  const bareRunners = bareRunnerDeferrals(root, records.map(r => r.path), { paths, routed: routedBundles })
   for (const deferred of bareRunners.deferred) {
     const record = byPath.get(deferred.file)
     record.bareRunBy = deferred.runBy

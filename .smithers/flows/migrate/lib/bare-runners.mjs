@@ -8,6 +8,8 @@ import { join, posix } from "node:path"
 import { parseImports } from "./imports.mjs"
 import { sourceGraph } from "./test-bundles.mjs"
 import { ownedPaths } from "./wire.mjs"
+import { isFixtureFile, isTestFile } from "./inventory.mjs"
+import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 
 const loader = /\bvibelang\/(?:register|bun)\b/
 const runners = new Set(["node", "bun", "tsx", "ts-node"])
@@ -74,10 +76,10 @@ const bunfigPreloads = (root, dir) => {
  * receipts and the reason it stays TypeScript. Only a static, runtime import is
  * followed, and only an emitted file a package's map names is a boundary.
  */
-export function bareRunnerDeferrals(root, selected, { paths = {}, ts } = {}) {
+export function bareRunnerDeferrals(root, selected, { paths = {}, ts, routed = false } = {}) {
   if (!selected.length) return { entries: [], wired: [], deferred: [] }
   const graph = sourceGraph(root, { paths, ts })
-  const { files, manifests, known, text, deps, runtimeFile } = graph
+  const { files, manifests, known, text, deps, runtimeFile, owner, dependency } = graph
   const entries = [], wired = [], binEntries = new Set(), named = []
   const add = (target, receipt) => (target ? entries : wired).push(receipt)
   for (const [dir, manifest] of manifests) {
@@ -154,6 +156,22 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts } = {}) {
     }
   }
   const wanted = new Set(selected), found = new Map(), walked = new Map(), names = new Map()
+  const protectedFiles = new Set(routed ? [...manifests].flatMap(([dir, manifest]) =>
+    [...testOnlyScripts(root, dir, packageScripts(root, dir), manifest)]) : [])
+  const routeable = new Map()
+  const routedFrom = file => {
+    if (!routeable.has(file)) {
+      // Only the relative edges normal emission can rewrite form a boundary.
+      // Entries and protected tests keep their direct source paths.
+      const native = /(?<!\.d)\.(?:[cm]?tsx?)$/.test(file) && !/\.d\.vibe\.ts$/.test(file)
+      routeable.set(file, new Set(native && !isTestFile(file) && !isFixtureFile(file) && !protectedFiles.has(file)
+        ? parseImports(text(file)).filter(edge => !edge.typeOnly && edge.specifier.startsWith("."))
+          .flatMap(edge => dependency(file, edge.specifier))
+          .filter(target => wanted.has(target) && /\.(?:ts|mts|vibe)$/.test(target) && owner(file) === owner(target))
+        : []))
+    }
+    return routeable.get(file)
+  }
   const reach = entry => {
     if (walked.has(entry)) return walked.get(entry)
     const seen = new Set(), todo = [entry]
@@ -161,7 +179,7 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts } = {}) {
       const file = todo.pop()
       if (seen.has(file) || !known.has(file)) continue
       seen.add(file)
-      todo.push(...deps(file))
+      todo.push(...deps(file).filter(target => !routed || !routedFrom(file).has(target)))
     }
     walked.set(entry, seen)
     return seen

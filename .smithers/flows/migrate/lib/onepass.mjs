@@ -44,7 +44,7 @@ export function planScope(root, scope, { nativeConfigs = [], routeBundledImports
   const bundled = testBundleDeferrals(root, files, { routed: routeBundledImports })
   const retained = new Set(bundled.map(d => d.file))
   deferred.push(...bundled)
-  for (const bare of bareRunnerDeferrals(root, files).deferred) {
+  for (const bare of bareRunnerDeferrals(root, files, { routed: routeBundledImports }).deferred) {
     if (retained.has(bare.file)) continue
     retained.add(bare.file)
     deferred.push(bare)

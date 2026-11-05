@@ -1,0 +1,7 @@
+{
+  "source": "opencode native CLI entry reaching migrated library modules",
+  "entry": "src/entry.ts",
+  "body": "#!/usr/bin/env node\nimport { value } from \"./leaf.ts\"\nconsole.log(value)\n",
+  "dependency": "src/leaf.ts",
+  "value": 42
+}
