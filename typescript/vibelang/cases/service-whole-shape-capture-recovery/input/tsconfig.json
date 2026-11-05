@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [],
+    "outDir": "out",
+    "paths": {
+      "vibelang-runtime": [
+        "../../../../../packages/runtime/dist/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "main.vibe"
+  ]
+}

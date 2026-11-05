@@ -1,0 +1,7 @@
+export function outer1<T>() { service S: { n: number } { static readonly key="whole/one"; value: T } }
+export function outer2<T>() { service S: { n: number } { static readonly key="whole/two"; read(): T } }
+export function outer3<T>() { service S: { n: number } { static readonly key="whole/three"; read(value: T): T { return value } } }
+export function outer4<T>() { service S: { n: T } { static readonly key="whole/four"; value: T } }
+type Phantom<U> = { n: number }; export function outer5<T>() { service S: Phantom<T> { static readonly key="whole/five"; value: T } }
+export function outer6<T>() { class Native { constructor(public value: T) {} }; return Native }
+export const invalid: number = "wrong"

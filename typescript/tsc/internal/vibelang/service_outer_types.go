@@ -42,6 +42,7 @@ func checkServiceOuterTypeParameters(c *checker.Checker, class *ast.Node) bool {
 			note(d, "Declare the service outside the generic scope, or use a concrete shape that does not depend on {0}.", captured.Symbol().Name())
 			return true
 		}
+		return false
 	}
 	bodyService := serviceShape(class) == nil && declarationWord(class) == "service"
 	for _, member := range class.Members() {

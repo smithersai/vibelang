@@ -329,6 +329,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Generic service declarations could lose their error when another member was invalid; both errors are now reported.
 - A rejected service member could hide an enclosing type parameter in another member's contract; the compiler now reports that capture.
+- Rejected whole-shape service members could add a misleading generic-capture error; only the written shape now determines that error.
 - Invalid service keys could hide errors in their expressions and type annotations; those TypeScript errors now remain visible.
 
 - Object patterns could read a getter or test a property more than once across match arms. They now retain each property observation for one `match` or `is` evaluation.
