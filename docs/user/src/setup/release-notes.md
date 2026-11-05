@@ -57,6 +57,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration test-edit checks stopped at missing compiler provenance in simulated conversions. Their integration fixtures now record provenance before conversion and exercise the protected-edit checks.
 
 - Mapper callback tests could erase effect block syntax while removing function markers; their negative controls now retain valid blocks and still require every unresolved host callback.
+
+- Abstract error repair tests lacked the import collision that blocked child constructors; keyed controls now include existing Effect imports in every repair mode.
 - The foreign-predicate repair regression expected a boolean bridge that lost narrowing; it now checks the captured narrowed value, unchanged helper declarations, repeatable fixes and equivalent defect results.
 
 - The empty-effect regression still expected the retired single-operation lowering; it now compares scheduling with native `Effect.gen` and checks cold construction and repeated execution.
