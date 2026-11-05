@@ -85,8 +85,9 @@ var patternValueAdmissionFix = &ls.CodeFixProvider{
 
 // A runtime guard cannot carry the original pattern's narrowing to a later
 // written read of its subject. Refuse that migration instead of silently
-// widening an inferred public return type. Also keep the evaluation count of
-// the old inline extractor: it can contain repeated helper calls.
+// widening an inferred public return type. An extractor migration also needs
+// one helper call at that source location; the captured inline result satisfies
+// this check without changing the matcher's evaluation count.
 func patternGuardPreservesReferences(c *checker.Checker, file *ast.SourceFile, call *ast.Node, extractor bool) bool {
 	matcher := call.Arguments()[0]
 	if extractor {

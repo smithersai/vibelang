@@ -47,6 +47,7 @@ func TestPatternValueAdmissionPreservingFix(t *testing.T) {
 		{"indexed", `export function f(s:unknown,holder:{p:Function}){return s is holder["p"]}`, `$patternIs(holder["p"], $patternSubject)`},
 		{"extractor", `export function f(s:unknown,p:object){return match(s){when p(let x):x;default:0;}}`, "$patternExtract(p, $patternSubject) is [let x]"},
 		{"comments", `export function f(s:unknown,p:object){return match(s){when p /* keep */ (let x):x;default:0;}}`, "p /* keep */ , $patternSubject) is [let x]"},
+		{"inline-empty-extractor", `export function f(s:unknown,h:{p:Function}){return s is h["p"]()}`, `$patternExtract(h["p"], $patternSubject) is []`},
 		{"rest", `export function f(s:unknown,p:object){return match(s){when p(let x,...let xs):[x,xs];default:0;}}`, "is [let x,...let xs]"},
 		{"hygiene", `const $patternSubject=1,$patternIs=2; export function f(s:unknown,p:object){return match(s){when p:[$patternSubject,$patternIs];default:0;}}`, "$patternIs$1(p, $patternSubject$1)"},
 		{"directive", `"use client"; export function f(s:unknown,p:object){return s is p}`, "\"use client\";\nimport {"},
@@ -95,12 +96,11 @@ func TestPatternValueAdmissionFixRefusesChangedObservations(t *testing.T) {
 	for _, source := range []string{
 		`const String:object={}; export function f(s:unknown){return match(s){when String():1;default:0;}}`,
 		`export function f(s:unknown,p:object){return match(s){when p:s;default:null;}}`,
-		`export function f(s:unknown,h:{p:Function}){return s is h["p"]()}`,
 		`function read():unknown{return 1}; export function f(p:object){return match(read()){when p:1;default:0;}}`,
 	} {
 		result := fixProjectOf(t, map[string]string{"main.vibe": source})
 		if result.Err != nil || len(result.Files) != 0 {
-			t.Fatalf("unsafe rewrite was applied: %+v", result)
+			t.Fatalf("unsafe rewrite was applied to %q: %+v", source, result)
 		}
 	}
 }

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.inline-extractor-not-plain\x00\x1f")

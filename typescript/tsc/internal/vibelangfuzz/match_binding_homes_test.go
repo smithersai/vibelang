@@ -118,7 +118,7 @@ func regexBindingHomePatterns() []bindingHomePattern {
 			})
 		}
 	}
-	return patterns
+	return append(patterns, inlineRegexBindingHomePatterns()...)
 }
 
 // bindingHomeHomes are where the match expression stands.

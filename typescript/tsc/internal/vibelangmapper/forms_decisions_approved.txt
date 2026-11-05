@@ -2124,3 +2124,5 @@ typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:14:8 lambda: dua
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:15:8 lambda: dual fallback -> plain fallback # VIP-7: generated match-cache observation and lifecycle calls are synchronous; this pattern predicate retains the source plain function form.
 typescript/vibelang/cases/match-or-not-bindings/main.vibe:38:19 lambda: dual fallback -> plain fallback # VIP-7: generated match-cache observation and lifecycle calls are synchronous; this pattern predicate retains the source plain function form.
 typescript/vibelang/cases/order-match-part-read-once/main.vibe:42:19 lambda: dual fallback -> plain fallback # VIP-7: generated match-cache observation and lifecycle calls are synchronous; this pattern predicate retains the source plain function form.
+
+typescript/vibelang/cases/match-ordinary-extractor.fail/main.vibe:9:42 lambda: effectFn fallback -> removed # Capturing the inline extractor reads its identifier subject once, so the binding-free is test needs no synthesized arrow.

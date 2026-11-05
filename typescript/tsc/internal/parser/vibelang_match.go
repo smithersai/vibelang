@@ -1794,25 +1794,15 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		}
 		// A matcher the compiler does not know: $extract runs its custom matcher.
 		matcher := pat.expr
-		var extracted matchPath
+		p.vibelangMatchTemps++
+		name := "$extracted" + strconv.Itoa(p.vibelangMatchTemps)
+		declaration := p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, p.mExtractCall(matcher, path(), at), at)
 		if ctx.inline {
-			first := true
-			extracted = func() *ast.Node {
-				m := matcher
-				if !first {
-					if copied := p.cloneIdentExpression(matcher); copied != nil {
-						m = copied
-					}
-				}
-				first = false
-				return p.mExtractCall(m, path(), at)
-			}
+			test(p.hoistDeclaration(declaration, at))
 		} else {
-			p.vibelangMatchTemps++
-			name := "$extracted" + strconv.Itoa(p.vibelangMatchTemps)
-			*steps = append(*steps, matchStep{decl: p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, p.mExtractCall(matcher, path(), at), at)})
-			extracted = func() *ast.Node { return p.mTemp(name, at) }
+			*steps = append(*steps, matchStep{decl: declaration})
 		}
+		extracted := func() *ast.Node { return p.mTemp(name, at) }
 		test(p.mBinary(extracted(), ast.KindExclamationEqualsEqualsToken, p.mKeyword(ast.KindFalseKeyword, at), at))
 		p.compileList(pat, extracted, len(pat.items), func(i int) matchPath {
 			return func() *ast.Node { return p.mPatternRead(p.mElement(extracted(), p.mNumber(i, at), at)) }

@@ -1,0 +1,24 @@
+// expect-result: ["a","b","miss",0,-1,[11,1],[12,2],[0,1],[1,1],[true,1],[false,1]]
+import { Effect } from "effect"
+
+function regexOr(s:string) {
+ return match(s){when /(a)/g(let value) or /(b)/(let value):value[0];default:"miss";};
+}
+function regexIs(s:string) {
+ if(s is /(a)/g(let value))return value.index
+ return -1
+}
+function run(kind:number,missFirst:boolean) {
+ let calls=0
+ function extractor(subject:unknown,_hint:{matchType:"boolean"|"extractor"}):number[]|false {
+  calls++
+  if(typeof subject!=="number" || (missFirst&&calls===1))return false
+  return [subject+calls]
+ }
+ if(kind===0)return [match(10){when extractor(let value) or extractor(let value):value;default:-1;},calls]
+ if(kind===1)return [match(10){when not extractor(let value):1;default:0;},calls]
+ return [10 is extractor(let value),calls]
+}
+export function main():Effect.Effect<readonly unknown[]> {
+ return Effect.succeed([regexOr("a"),regexOr("b"),regexOr("z"),regexIs("a"),regexIs("z"),run(0,false),run(0,true),run(1,false),run(1,true),run(2,false),run(2,true)])
+}
