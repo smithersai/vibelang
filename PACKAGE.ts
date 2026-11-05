@@ -808,6 +808,12 @@ const targets = {
     [Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]],
     "15m"
   ),
+  "go-registry-witnesses": goVibelang(
+    "Compatibility witnesses retain their current identities, and module calls keep cold Effect types.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestRegistryDebtWitnessIdentity|TestModuleColdCallTypesQuoted|FuzzModuleColdCallTypes)$' ./internal/vibelangfuzz/`,
+    [Tsc["vibelangfuzz-files"]],
+    "10m"
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,

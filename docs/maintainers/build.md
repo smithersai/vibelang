@@ -1744,3 +1744,5 @@ and retain their changed-field checks. Configuration and source bytes must remai
 unchanged during comparison; the journal corpus itself is unchanged. Adjacent
 and both mirrored layouts still require `TS2583` and an unavailable comparison
 when a public declaration refers to `BigInt` without its library.
+
+The `//:go-registry-witnesses` target checks reachable compatibility diagnostics and the current type rules for module-level cold calls. A retained diagnostic allocation does not override a language rule that replaced its old execution behavior.

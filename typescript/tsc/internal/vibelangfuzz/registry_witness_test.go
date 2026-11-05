@@ -13,8 +13,10 @@ import (
 // TestRegistryDebtWitnessIdentity checks pending-witness receipts, not the
 // expected diagnostics of valid programs. Appendix B says: "A transitional
 // compiler may still print compatibility diagnostics from the old language."
-// These codes now have interim inventory rows. A differently named violation
-// must not conceal a stale witness when another compiler rule changes.
+// These codes retain their interim inventory rows. VIP-26 replaced the
+// implicit module execution behind EK1001: that saved source must now retain
+// its explicit-try and service-shape errors without the obsolete execution
+// error. The other witnesses still reach their named compatibility debt.
 func TestRegistryDebtWitnessIdentity(t *testing.T) {
 	const quote = "A transitional compiler may still print compatibility diagnostics from the old language."
 	chapter, err := os.ReadFile(SpecPath("900-appendices.md"))
@@ -44,7 +46,13 @@ func TestRegistryDebtWitnessIdentity(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				c, err := w.CompileOrdered(t.Context(), ProjectFromArchive(archive), OrderTsc, true)
+				project := ProjectFromArchive(archive)
+				if code == 1001 {
+					// Keep the unkeyed-service control independent of the
+					// enclosing test workspace's package identity.
+					project.Files["package.json"] = `{"type":"module"}`
+				}
+				c, err := w.CompileOrdered(t.Context(), project, OrderTsc, true)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -57,8 +65,21 @@ func TestRegistryDebtWitnessIdentity(t *testing.T) {
 						found = found || d.Code() == code
 					}
 				}
-				if !found {
-					t.Fatalf("%s/%s no longer reaches its named registry debt; emitted %v", target, name, actual)
+				if code == 1001 {
+					TestModuleColdCallTypesQuoted(t)
+					if found || !slices.Contains(actual, "EK0501") || !slices.Contains(actual, "EK0903") {
+						t.Fatalf("%s/%s must keep the current explicit-try and service-shape controls without implicit execution; emitted %v", target, name, actual)
+					}
+				} else if !found {
+					var all []string
+					for _, d := range c.Diagnostics {
+						if IsEK(d) {
+							all = append(all, specCodeName(d.Code()))
+						} else {
+							all = append(all, fmt.Sprintf("TS%d", d.Code()))
+						}
+					}
+					t.Fatalf("%s/%s no longer reaches its named registry debt; emitted %v", target, name, all)
 				}
 			})
 		}
