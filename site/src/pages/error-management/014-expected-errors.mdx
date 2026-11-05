@@ -506,6 +506,8 @@ The operand of `try` can start on the next line, including after a comment. Memb
 
 For an old typed statement catch such as `try { ... } catch (e: Missing) { ... }` in effect code, run `vibelang --fix`. Its `try statements` codemod writes an explicit Effect and a `catch effect` handler, preserving structural `_tag` matching and declaration bytes. Unsupported outward jumps, whole-`Cause` catches and destructured bindings require manual migration.
 
+A foreign type-predicate repair keeps the narrowed value inside the defect bridge and captures it in a local such as `resolved`. The following branch and property reads use that captured value, so the repair preserves both the predicate’s narrowing and the original defect behavior.
+
 A foreign callback returning `Effect`, `Stream` or `Layer` has synchronous thrown type `never`, even if its declaration writes `@throws`. Generic signatures use their constraints before substitution. A `Promise` return alone does not provide this contract; neither do `any`, `unknown`, `never`, an unconstrained type parameter or a union containing a non-effectful member.
 
 A foreign constructor's own `@throws` contract also applies when its value is passed, assigned or returned as a construct signature. A construct signature without `@throws` admits only `never`; a signature with `@throws {E}` admits subtypes of `E`, and `@throws {unknown}` admits any thrown type. Overloads match their native parameter types. Constructors returning an effectful value keep their intrinsic synchronous thrown type `never`.

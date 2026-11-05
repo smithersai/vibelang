@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { createRequire } from "node:module"
+const fc = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))("fast-check")
 import { execFileSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -6,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { Cause, Effect, Exit } from "effect"
 
 // rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws
-// Proxy ruling, 2026-11-04: the default fix keeps the Effect.gen defect Exit.
+// A preserving predicate repair keeps narrowing and the Effect.gen defect Exit.
 const here = dirname(fileURLToPath(import.meta.url))
 const dir = mkdtempSync(join(here, ".defect-default-"))
 try {
@@ -16,7 +18,7 @@ try {
   }
   const helper = readFileSync(join(dir, "helpers.ts"), "utf8")
   const fixed = readFileSync(join(here, "main.vibe"), "utf8")
-  const original = fixed.replaceAll(/\(try Effect\.orDie\(Effect\.try\(\{ try: \(\) => (.*?), catch: \(e\) => e \}\)\)\)/g, "$1")
+  const original = readFileSync(join(here, "alchemy-property-diff.vibe.txt"), "utf8")
   assert.notEqual(original, fixed)
   writeFileSync(join(dir, "main.vibe"), original)
   const compile = (...args) => execFileSync(process.env.VIBELANG_BINARY, ["-p", dir, "--pretty", "false", ...args], { encoding: "utf8" })
@@ -41,7 +43,7 @@ try {
 
   // Fuzz oracle: bridge Exit equals the gen twin for throwing and non-throwing callees.
   // Generate ordinary values, throwing getters/Proxy traps, deferred input and BigInt.
-  for (let seed = 0; seed < 256; seed++) {
+  const assertTwin = (seed) => {
     const defect = { seed }
     const news = seed % 5 === 0 ? { value: seed } :
       seed % 5 === 1 ? Object.defineProperty({}, "value", { enumerable: true, get() { throw defect } }) :
@@ -61,7 +63,11 @@ try {
       assert(a.cause.reasons[0].defect instanceof TypeError)
     }
   }
-  console.log("defect default: zero diagnostics; 256 Exit twins")
+  for (let seed = 0; seed < 256; seed++) assertTwin(seed)
+  fc.assert(fc.property(fc.integer({ min: 256, max: 65535 }), assertTwin), {
+    seed: 403256, numRuns: 256
+  })
+  console.log("defect default: zero diagnostics; 512 Exit twins")
 } finally {
   rmSync(dir, { recursive: true, force: true })
 }

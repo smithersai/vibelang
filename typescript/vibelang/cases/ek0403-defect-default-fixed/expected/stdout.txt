@@ -1,1 +1,1 @@
-defect default: zero diagnostics; 256 Exit twins
+defect default: zero diagnostics; 512 Exit twins
