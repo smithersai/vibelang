@@ -228,7 +228,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 			}
 		}
 	}
-	if asyncModifier == nil {
+	if asyncModifier == nil || asyncReservesFiberBindings(rc.c, fn) {
 		return nil
 	}
 	// The removed shorthand `async f()` (EK0101) has no function keyword after

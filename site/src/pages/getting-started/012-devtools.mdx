@@ -51,6 +51,8 @@ The conversion is withheld when the function refers to its own callable binding,
 
 The async conversion edits the selected function. It leaves containing variable and callback signatures, inherited member contracts and other overload signatures in place. When those require a `Promise`, the editor withholds the conversion; migrate the function and its contracts together. Inferred functions and contexts that accept any result remain eligible.
 
+`fork` and `join` become reserved in an `effect` function's parameters and body. Async conversion is withheld when it would turn a binding or reference into a reserved name or fiber operation. Rename those bindings before converting. Property names and nested plain callable bodies keep their usual rules.
+
 The Promise conversion refactors apply to ordinary `async` functions. For an async generator, write an Effect producer and handle its terminal result and Promise yields explicitly.
 
 ## Inspect inferred information

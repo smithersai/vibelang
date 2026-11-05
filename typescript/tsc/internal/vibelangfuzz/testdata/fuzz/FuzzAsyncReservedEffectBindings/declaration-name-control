@@ -1,0 +1,3 @@
+go test fuzz v1
+string("declaration-name-control")
+byte(7)
