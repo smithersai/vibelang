@@ -32,6 +32,12 @@ retain selected declaration types and missing-library errors. All twenty-four
 generated resolution cases, module modes, source-only branches, exclusions
 and selected-type mutations remain required.
 
+Export-fallback fixtures select `lib.es5.d.ts` in native validation and API
+comparison, and reject unrelated browser libraries. Native consumers retain
+the selected fallback's type and missing-library errors. Ordered resolution,
+custom conditions, unreachable and selected mutations, and all twenty-four
+generated discovery cases remain required.
+
 Separate import and require type conditions are checked separately. Explicit `resolution-mode` attributes on type imports are retained in both the probe resolver and the dependency-equivalence proof; two uses of one specifier may select different package conditions. Private
 files do not become entry points. A bare directory without publishing metadata
 compares each declaration module, suitable for sidecars and their TypeScript

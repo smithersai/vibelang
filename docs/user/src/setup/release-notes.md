@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Export-fallback API checks loaded unrelated browser declarations. They now use fewer libraries while retaining ordered resolution and native type errors.
+
 - Native `try/catch` and `try/finally` statements in Effect bodies were accepted. They now report `EK0503`; use catch expressions or a plain function for JavaScript exception handling.
 
 - Wildcard-export API checks loaded unrelated browser declarations. They now use fewer libraries while retaining export selection and native type errors.
