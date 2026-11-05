@@ -96,7 +96,7 @@ const compilerTest = (shard: number) => S.Shell.Test({
   // 206-297 s of a box before the tests start (measured 2026-11-04).
   data: [compilerNative, ...(shard === 1 ? [Tsc["go-vibelangfmt"]] : []), runtimeDist, S.glob("compiler/**"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
-    S.file("//scripts/testing/node-failures.mjs"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/node-failures.mjs"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/004-match.md"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/007-tooling.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"),
     S.file("//typescript/vibelang/lsp-format-shape.mjs"), S.file("//typescript/vibelang/lsp-connection.mjs"),
     S.file("//typescript/vibelang/lsp-framing.mjs"), ...install],

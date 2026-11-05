@@ -30,6 +30,8 @@ func mutableErrorRelicFixes(_ context.Context, _ *compiler.Program, file *ast.So
 		return result
 	}
 	alias := freshSchemaFlagName(file.Text(), "$MutableErrorBase")
+	matcherAlias := freshSchemaFlagName(file.Text(), "$MutableErrorMatcher")
+	needsMatcher := false
 	emit := printer.NewEmitContext()
 	p := printer.NewPrinter(printer.PrinterOptions{NewLine: core.NewLineKindLF}, printer.PrintHandlers{}, emit)
 	var edits []sourceEdit
@@ -145,6 +147,15 @@ func mutableErrorRelicFixes(_ context.Context, _ *compiler.Program, file *ast.So
 		for _, member := range class.Members() {
 			if member.Flags&ast.NodeFlagsReparsed == 0 {
 				members = append(members, file.Text()[member.Pos():member.End()])
+			} else if member.Kind == ast.KindClassStaticBlockDeclaration {
+				// Keep the parser's own matcher and private-base cleanup before
+				// authored static members. The runtime factory alone is inherited
+				// and cannot preserve the declaration's tag-only match behavior.
+				registration := p.Emit(member, file)
+				if strings.Contains(registration, "$schemaErrorMatcher(") {
+					members = append(members, strings.Replace(registration, "$schemaErrorMatcher(", matcherAlias+"(", 1))
+					needsMatcher = true
+				}
 			}
 		}
 		last := args.Nodes[0].End()
@@ -173,6 +184,9 @@ func mutableErrorRelicFixes(_ context.Context, _ *compiler.Program, file *ast.So
 		at = len("\ufeff")
 	}
 	added := fmt.Sprintf("import { TaggedError as %s } from \"vibelang-runtime\";\n", alias)
+	if needsMatcher {
+		added += fmt.Sprintf("import { $schemaErrorMatcher as %s } from \"vibelang-runtime\";\n", matcherAlias)
+	}
 	if at > 0 {
 		added = "\n" + added
 	}
