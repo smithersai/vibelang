@@ -427,3 +427,9 @@ and each generic instantiation retains its argument checks.
 The `export-comparison-plan` profiling record reports `errorWalkTypes`,
 `errorWalkCacheHits` and `closedErrorTypes` so repeated traversal can be
 distinguished from input diagnostics and structural probes.
+
+The global-augmentation migration fixture selects `lib.es5.d.ts` in native
+validation and API comparison, and rejects unrelated browser libraries. It
+retains native diagnostics, self and copied comparisons, and the changed-global
+negative for the pinned compiler and the optional `API_IDENTITY_EXTRA_TS`
+compiler.
