@@ -467,3 +467,9 @@ multiplication and remainder bind below right-associative exponentiation. A
 unary expression on the left of `**` requires grouping, as in `(-2) ** 3`;
 `2 ** -3` is admitted. Native and VibeLang derivation controls, keyed mutation
 seeds and an operator-neighborhood property retain these boundaries.
+
+Native erased `as` and `satisfies` assertions can follow an `is` test.
+The bounded lab retains those continuations, repeated assertions and array
+type suffixes across line breaks. They do not extend the pattern member
+chain; incomplete assertions and a line break before the assertion operator
+remain separate rejection controls. The keyed witness is nonpending.

@@ -692,6 +692,7 @@ var grammarSubsetHooks = []struct{ at, name string }{
 	{"PrimaryExpression", "DoExpression"},
 	{"PrimaryExpression", "MatchExpression"},
 	{"RelationalExpression", "IsTest"},
+	{"RelationalExpression", "AssertedIsTest"},
 	{"PrimaryExpression", "EffectFunction"},
 	{"PrimaryExpression", "Producer"},
 	{"PrimaryExpression", "EffectBlock"},
@@ -950,6 +951,17 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 				defined[name] = true
 			}
 		}
+	}
+	// The inherited TypeScript assertion operators can wrap an is test.
+	// Keep this bridge separate from the pinned pattern productions and from
+	// native UpdateExpression assertions, so native expressions gain no duplicate
+	// derivations and a type's [] suffix is not read as a pattern member.
+	if defined["IsTest"] {
+		d := grammarParseDef("AssertedIsTest", `IsTest [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | IsTest [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }] | AssertedIsTest [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | AssertedIsTest [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }]`, 0)
+		d.vibe = true
+		d.source = a.file
+		defs = append(defs, d)
+		defined["AssertedIsTest"] = true
 	}
 	// VIP-41 imports the pinned throw-expression draft: one UnaryExpression
 	// alternative whose lookahead is Appendix A's ThrowExpressionInvalidPunctuator.

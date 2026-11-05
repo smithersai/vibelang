@@ -101,6 +101,8 @@ const specTests = [
   "TestGrammarAdmissionAssertedForHeads",
   "TestGrammarAdmissionArithmetic",
   "TestGrammarAdmissionArithmeticGrouping",
+  "TestGrammarAdmissionAssertedIs",
+  "TestGrammarAdmissionAssertedIsRegression",
   "FuzzGrammarArithmeticOperators",
   "TestGrammarAdmissionForAwaitAsyncHead",
   "TestGrammarAdmissionForOfAsyncModuleKeys",

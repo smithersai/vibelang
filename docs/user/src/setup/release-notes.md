@@ -9,6 +9,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- The grammar admission audit could flag valid `as` and `satisfies` type assertions after `is` tests as undefined syntax. It now recognizes those expression continuations.
+
+
 - A refused authored `@throws` comment can accompany legacy `Stream<A>` or `Layer<A>` types in the same file. `--fix` preserves the comment and repairs the independent type aliases.
 
 - Optional-schema upgrade checks failed on an invalid inherited native error sample; they now verify the documented unions of errors.
