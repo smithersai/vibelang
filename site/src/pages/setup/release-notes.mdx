@@ -28,6 +28,16 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Effect type examples could fail on a missing non-null assertion group or a discarded Effect value. They now use `(value as number!!)!` and retain the asserted value.
 
 - `Experimental` service references called operations on module namespaces or service keys and failed with missing-property errors. They now look up the implementation before calling it.
+- `--fix` could rewrite a generator whose bare `return` violated `Effect.fn.Return<A>`, leaving an invalid generated function. It now leaves that generator unchanged and explains why; valid `void` and optional success types still migrate.
+- Converting an inline program passed to `Effect.provide` could stop at a construction-order refusal. The repair now captures the program before its provider and preserves the original execution order.
+- Pure `HttpClientRequest` setter pipelines could remain unconverted or use the wrong pipe argument order. Supported stable-argument pipelines now convert with the request first.
+- Converted generator callbacks in array maps could leave stored programs with an inferred-effect warning. The repair now records their program contract explicitly.
+- Converted `Effect.fn` callbacks could read destructured inputs when the program was constructed. Supported bindings now run on each execution; bindings whose scope, public labels or rest semantics cannot be preserved keep their original generator.
+- Declaration self-comparison tests repeatedly loaded unrelated browser libraries. Their fixtures now select ES5 while retaining nominal types, unrelated diagnostics and changed-export checks.
+
+- Bare `forkIn` used the old scope-first wrapper, and disabling Effect globals left some functions available. It now exposes the native function, and the option disables all implicit Effect functions.
+- Declaration sidecar tests repeatedly loaded unrelated browser libraries. They now select ES5 while retaining project discovery, saved migration examples and changed-export checks.
+- A `catch` handler missing `=>` could receive an editor repair that still failed to parse when its body began on a new line. The repair now keeps comments and line breaks after the inserted arrow.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.
