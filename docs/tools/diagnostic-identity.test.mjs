@@ -344,3 +344,31 @@ test("retired service-member diagnostics have no active row or archive replay", 
  const fixtures=JSON.parse(readFileSync(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
  assert.equal(fixtures.some(example=>example.code==="EK4503"),false)
 })
+
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4707` is retired and will never be reassigned: data-variant class patterns use `EK0702` under VIP-7.
+test("retired variant-pattern identity stays absent from active rows and replay", async () => {
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const audit=loadIdentity(repository)
+ assert.equal(audit.registered.has("EK4707"),false)
+ assert.equal(audit.appendix.has("EK4707"),false)
+ const fixtures=JSON.parse(readFileSync(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
+ const fixture=fixtures.find(example=>example.code==="EK4707")
+ assert.equal(fixture?.retired,true)
+ assert.equal(fixture?.archive,undefined)
+ const text=readFileSync(new URL("../design/src/900-appendices.md",import.meta.url),"utf8")
+ const retirement=text.match(/^The old `EK4707` is retired and will never be reassigned:.*$/m)?.[0]
+ assert.ok(retirement)
+ fc.assert(fc.property(
+  fc.constantFrom("message","messageOff","registryMessage"),
+  fc.array(fc.constantFrom("a","b","_","0"," "),{maxLength:30}),
+  (constructor,characters)=>{
+   const body=JSON.stringify(characters.join(""))
+   const definition=constructor==="registryMessage"?'var d=registryMessage("EK4707",'+body+')'
+    :constructor==="messageOff"?'var d=messageOff(4707,'+body+')'
+    :'var d=message(4707,errorCategory,'+body+')'
+   const registered=new Map([...audit.registered,...compilerCodes(source(definition))])
+   const rows=new Map([...audit.appendix,["EK4707","error: "+characters.join("")]])
+   const documents=[{path:"docs/design/src/900-appendices.md",text:retirement}]
+   assert.deepEqual(auditIdentity(registered,rows,documents).map(f=>f.kind),["retired-registered","retired-row"])
+  }),{seed:4707,numRuns:200})
+})

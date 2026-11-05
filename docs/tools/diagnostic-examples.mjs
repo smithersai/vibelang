@@ -151,7 +151,6 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Wrap native code with `Effect.try` or `tryPromise`, then run its Effect with `try`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:9:13](../../../typescript/vibelang/cases/ek4616-try-hatch.fail/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4704` | error: legacy compiler compatibility — the current lowering does not support a pattern form.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4707` | error: legacy compiler compatibility — a legacy variant pattern selects a case absent from the subject's type.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4801` | error: legacy compiler compatibility — an Effect value is discarded as a statement.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4803` | warning: legacy compiler compatibility — multiple versions of an Effect package are loaded.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4804` | warning: legacy compiler compatibility — an Effect failure is a global `Error` without a distinguishing tag.

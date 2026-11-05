@@ -1970,6 +1970,8 @@ This implementation census records each parser or lowering hook and its specific
 
 ## Appendix B. Diagnostics
 
+The old `EK4707` is retired and will never be reassigned: data-variant class patterns use `EK0702` under VIP-7.
+
 The old `EK4503` is retired and will never be reassigned: native TypeScript property diagnostics replace the denied service shorthand (VIP-10).
 
 The old `EK4843` is retired and will never be reassigned: it was the entry-point warning. Under VIP-26 an exported lexical `main` keeps its ordinary binding, with no entry warning or declaration-changing quick fix.
@@ -2224,7 +2226,6 @@ A transitional compiler may still print compatibility diagnostics from the old l
 | interim `EK4604` | error: legacy compiler compatibility — a legacy non-async hatch body contains `await`. Hatches are retired; native async functions retain JavaScript await. Replay [example: main.vibe:12:5](../../../typescript/vibelang/cases/await-ops.fail/main.vibe). | 6 | [Rule chapter](002-running.md) |
 | interim `EK4616` | error: legacy compiler compatibility — the retired `try(…)` hatch form is used. Wrap native code with `Effect.try` or `tryPromise`, then run its Effect with `try`. Replay [example: main.vibe:9:13](../../../typescript/vibelang/cases/ek4616-try-hatch.fail/main.vibe). | 5, 6 | [Rule chapter](003-failures.md) |
 | interim `EK4704` | error: legacy compiler compatibility — the current lowering does not support a pattern form. This is a compiler limitation rather than authority to reject an adopted pattern. Replay [example: main.vibe:9:80](../../../typescript/vibelang/cases/match-object-grammar.fail/main.vibe). | 7 | [Rule chapter](004-match.md) |
-| interim `EK4707` | error: legacy compiler compatibility — a legacy variant pattern selects a case absent from the subject's type. Use an accepted object pattern that matches the subject's union. Replay [example: main.vibe:46:10](../../../typescript/vibelang/cases/data-patterns.fail/main.vibe). | 7, 16 | [Rule chapter](004-match.md) |
 | interim `EK4801` | error: legacy compiler compatibility — an Effect value is discarded as a statement. The imported `floatingEffect` rule has its single `EK38…` identity; this is the still-registered legacy port. Replay [example: main.vibe:22:3](../../../typescript/vibelang/cases/floating-program-reference.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
 | interim `EK4803` | warning: legacy compiler compatibility — multiple versions of an Effect package are loaded. The imported `duplicatePackage` rule uses its assigned `EK38…` identity. Replay [example: main.vibe:4:1; error](../../../typescript/vibelang/cases/lsrules-duplicate-package.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
 | interim `EK4804` | warning: legacy compiler compatibility — an Effect failure is a global `Error` without a distinguishing tag. Imported global-error failure/catch rules use their assigned `EK38…` identities. Replay [example: main.vibe:12:20](../../../typescript/vibelang/cases/lsrules-defaults.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
