@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Lexical wrapper captures remain supported, and retired capture and clock diagnostics no longer appear as current error examples.
 - Qualified `Effect.uninterruptible` and `Effect.interruptible` calls remain valid; their retired unqualified function-call syntax stays rejected.
 
+- Converting an error declaration to an explicit class could lose its own matcher and break saved callbacks or tag-based patterns. The quick fix now preserves the matcher on the converted class.
 - Class patterns could read an inherited matcher getter and throw before testing the instance. Generated patterns now check ownership first and leave inherited matcher getters untouched.
 - Deleting an error class's own matcher could leave tag matching active through its generated base. The class now falls back to native `instanceof` matching.
 - Nested callbacks use their own rethrow admission; functions escaping those callbacks still retain the plain-code throw check.

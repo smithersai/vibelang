@@ -200,8 +200,8 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			addedImport += "import { $schemaErrorFamily as " + familyAlias + " } from \"vibelang-runtime\"\n"
 		}
 		var members []string
-		if module == "Schema" && class.Flags&ast.NodeFlagsAmbient == 0 {
-			// VIP-7/VIP-29: an explicit class keeps the declaration's tag
+		if class.Flags&ast.NodeFlagsAmbient == 0 {
+			// VIP-7/VIP-13/VIP-29: an explicit class keeps the declaration's own tag
 			// matcher, including before user-written static initializers.
 			matcher := "$ErrorMatcher"
 			for i := 2; c.ResolveName(matcher, class, ast.SymbolFlagsAll, false) != nil; i++ {

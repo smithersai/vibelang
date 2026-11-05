@@ -20,7 +20,7 @@ func TestErrorMemberClassFixKeepsMatcher(t *testing.T) {
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatal("node is required to check the migration's runtime matcher")
 	}
-	for _, prefix := range []string{"", "const Data = 0; const TaggedError = 1; const $ErrorTaggedError = 2;\n"} {
+	for _, prefix := range []string{"", "const Data = 0; const TaggedError = 1; const $ErrorTaggedError = 2; const $ErrorMatcher = 3; const $ErrorMatcher2 = 4;\n"} {
 		for _, member := range []string{
 			"static meta = 3",
 			"static meta(): number { return 3 }",
@@ -29,6 +29,7 @@ func TestErrorMemberClassFixKeepsMatcher(t *testing.T) {
 		} {
 			t.Run(prefix+member, func(t *testing.T) {
 				fixed := applyQuickFixOf(t, prefix+"export error E { id: string; "+member+" }\n", 1302, diagnostics.CategoryError)
+				fixed += "\nexport function matchesCopy(value: unknown) { return match(value) { when E: true; default: false; } }\n"
 				_, file, _, _ := editorProgram(t, fixed)
 				dir := filepath.Dir(file.FileName().AsString())
 				configPath := filepath.Join(dir, "tsconfig.json")
@@ -56,9 +57,16 @@ func TestErrorMemberClassFixKeepsMatcher(t *testing.T) {
 				if result.EmitSkipped {
 					t.Fatal("class repair emitted no JavaScript")
 				}
-				script := `import { E } from "./out/main.js";
+				script := `import { E, matchesCopy } from "./out/main.js";
 const subject = { _tag: "E", id: "copy" };
-const matcher = E[Symbol.customMatcher ?? Symbol.for("Symbol.customMatcher")];
+const key = Symbol.customMatcher ?? Symbol.for("Symbol.customMatcher");
+if (!Object.hasOwn(E, key)) throw new Error("class repair lost its own matcher");
+const matcher = E[key];
+for (const matchType of ["boolean", "extractor"]) {
+ const result = matcher(subject, { matchType });
+ if (!Array.isArray(result) || result.length !== 1 || result[0] !== subject) throw new Error("saved matcher lost its subject");
+}
+if (!matchesCopy(subject)) throw new Error("class repair lost class-pattern tag matching");
 if (typeof matcher !== "function" || matcher.call(E, subject, { matchType: "extractor" })?.[0] !== subject) {
   throw new Error("class repair lost its cross-copy matcher");
 }
