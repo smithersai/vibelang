@@ -1,0 +1,4 @@
+go test fuzz v1
+string("declarations")
+byte(0)
+int16(-17)

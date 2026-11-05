@@ -1832,3 +1832,5 @@ The `//:build-contracts` target runs six bounded declaration checks: Bun deadlin
 The `//:declaration-contract-twins` check compares ordinary, unmodified stock declaration twins with emitted declarations and sidecars. Generated never-throw contracts are the only documentation exception; exported types and authored comments remain checked. It includes function signatures, callbacks, constructors and JSX containers.
 
 The `//:trusted-callback-contracts` check verifies foreign callback contracts, native constructor shadowing and all runtime observations in the throwing-callback fixture.
+
+The `//:declaration-manifest-retirement` target verifies complete package file sets against stock TypeScript in five emission layouts, checks that no provenance manifest is emitted, and retains the forms fixture’s exact declarations and runtime observations. Foreign-call contracts travel in declarations; stale provenance files do not grant permission.
