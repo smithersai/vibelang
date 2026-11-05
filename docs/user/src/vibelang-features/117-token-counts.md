@@ -133,8 +133,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 520 |
 | [Other editors](../setup/other-editors.md) | 700 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
-| **Upgrade** | **140,000** |
-| [Release notes](../setup/release-notes.md) | 140,000 |
+| **Upgrade** | **150,000** |
+| [Release notes](../setup/release-notes.md) | 150,000 |
 | **All 20 pages** | **200,000** |
 
 ### Guides

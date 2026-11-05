@@ -21,6 +21,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Extracting a generic foreign method into a local `const` lost its thrown type and could require an unnecessary bridge. Aliases now keep the receiver’s substituted contract.
 - Long Go checks could omit compiler and test subprocesses from their progress records when Go started them on another thread. Progress sampling now includes those thread-owned subprocesses.
 - A whole-repository migration could change documentation examples or JSON test data and spend excessive time scanning prose. It now leaves those files unchanged while updating source and configuration paths.
+- The Bun testing guide now explains how to set a longer deadline for service-initialization tests without changing their Effect lifetime.
 
 - Vite rejected typed `.vibex` inputs with a JavaScript parse error. The adapter now compiles native JSX before parsing, passes preserved JSX to framework transforms, and retains source locations through development updates.
 
@@ -41,6 +42,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The devtools guide's `hostname` repair example called an Effect like a function and failed to compile. It now runs the service's Effect-valued property with `try`.
 - Invalid whole-shape service keys could also report a misleading inheritance error. They now report `EK0901` once and retain independent errors.
 - Selected Effect lint rules skipped Vibe inputs or reported the legacy floating-Effect error. They now use the imported rule, severity and exclusions on both source types; `--fix` preserves a deliberate discard with `void (expression)`.
+- A possibly `null` or `undefined` `catch` operand could report a duplicate TypeScript assignment error. It now reports `EK0506` once and keeps independent errors in arguments and handlers.
 - Generated error-family matchers could fail through the normal Node or Bun runtime import because matcher registration was missing from the guarded entry. That entry now exports the same registration helper as the runtime ABI, with a build check preventing export drift.
 - The migration planner could keep a module in TypeScript after `Bun.build` excluded its package from the bundle. It now follows proven `packages: "external"` boundaries while retaining local source dependencies.
 - The runtime interop guide now shows Effect's interruption and yielding values alongside the runtime's masking and finalization helpers.
