@@ -1,0 +1,8 @@
+// expect: EK2103 TS2488 TS2504 TS2766
+export effect function* invalidSync(){yield* (()=>{for(const n of 1){void n};return [1]})()}
+export effect function* invalidAsync(){yield* (()=>{const read=async()=>{for await(const n of 1){void n}};void read;return [1]})()}
+export effect function* invalidBinding(){yield* (()=>{const [n]=1;void n;return 1})()}
+export function* nativeControl(){yield* (()=>{for(const n of 1){void n};return [1]})()}
+export effect function* innerNext(){yield* (()=>{function* read():Generator<number,void,undefined>{yield* (function*():Generator<number,void,string>{yield 1})()};void read;return [1]})()}
+declare function source():Generator<number,void,string>;
+export effect function* outerNext():Stream.Stream<number>{yield* source()}

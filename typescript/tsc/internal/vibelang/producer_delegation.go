@@ -41,7 +41,8 @@ func checkProducerDelegation(c *checker.Checker, file *ast.SourceFile) {
 				flags := ast.GetFunctionFlags(fn)
 				if flags&ast.FunctionFlagsGenerator != 0 && flags&ast.FunctionFlagsAsync == 0 {
 					report(c, node, EK2103)
-					coverCodes(c, node, 1163, 2488, 2504, 2766)
+					coverExactErrorCodes(c, node, 1163)
+					coverExactErrorCodes(c, node.Expression(), 2488, 2504, 2766)
 				}
 			}
 		}
