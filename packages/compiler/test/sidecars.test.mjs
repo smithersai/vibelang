@@ -150,6 +150,7 @@ for (const placement of ["first", "last", "only", "extends", "compilerOptions", 
     if (placement === "bom") files["lib/tsconfig.json"] = "\ufeff" + files["lib/tsconfig.json"]
     if (placement === "duplicates") files["lib/tsconfig.json"] = files["lib/tsconfig.json"].replace('"declarationSidecars":true', '"declarationSidecars":true,"declarationSidecars":false')
     const root = project(t, files)
+    if (placement === "extends") mkdirSync(join(root, ".jj"))
     const source = readFileSync(join(root, "lib/src/greet.vibe"), "utf8")
     const fixed = run(native, ["-p", configPath, "--fix", "--fix-vip-only"], root)
     assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
@@ -211,5 +212,60 @@ test("local service declaration errors match TypeScript across explicit keys", {
       key: fc.constantFrom("", "local", "app/local", 'quoted"key')
     }),
     check: ({ name, key }) => checkLocalServiceDeclaration(t, name, key)
+  })
+})
+
+test("retired sidecar settings respect inherited config ownership", { skip }, async (t) => {
+  const rule = "Traverse `extends` only inside the repository and outside `node_modules`; report external configs without editing them."
+  assert.ok(readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8").includes(rule))
+  await checkProperty(fc, {
+    name: "sidecar-config-ownership",
+    rule,
+    command: "node --test test/sidecars.test.mjs",
+    numRuns: 16,
+    arbitrary: fc.record({
+      ownership: fc.constantFrom("owned", "external", "dependency"),
+      section: fc.constantFrom("vibelang", "vibe"),
+      value: fc.boolean(),
+      crlf: fc.boolean()
+    }),
+    check: ({ ownership, section, value, crlf }) => {
+      const files = library()
+      const config = JSON.parse(files["lib/tsconfig.json"])
+      const base = ownership === "dependency" ? "node_modules/preset/base.json" : "base.json"
+      config.extends = "../" + base
+      files["lib/tsconfig.json"] = JSON.stringify(config)
+      const eol = crlf ? "\r\n" : "\n"
+      const original = [
+        "{",
+        "  // preserve this comment",
+        '  "compilerOptions": { "strict": true },',
+        `  "${section}": { "declarationSidecars": ${value} }`,
+        "}",
+        ""
+      ].join(eol)
+      files[base] = original
+      const root = project(t, files)
+      if (ownership !== "external") mkdirSync(join(root, ".jj"))
+      const source = readFileSync(join(root, "lib/src/greet.vibe"), "utf8")
+      const args = ["-p", "lib/tsconfig.json", "--fix", "--fix-vip-only"]
+      const fixed = run(native, args, root)
+      const after = readFileSync(join(root, base), "utf8")
+      if (ownership === "owned") {
+        assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
+        assert.doesNotMatch(after, /declarationSidecars/)
+        assert.match(after, /preserve this comment/)
+        assert.match(after, /"strict": true/)
+        assert.ok(existsSync(join(root, "lib/src/greet.d.vibe.ts")))
+      } else {
+        assert.notEqual(fixed.status, 0, fixed.stdout + fixed.stderr)
+        assert.match(fixed.stdout + fixed.stderr, /(?:TS5023|EK3007)/)
+        assert.equal(after, original)
+      }
+      assert.equal(readFileSync(join(root, "lib/src/greet.vibe"), "utf8"), source)
+      const again = run(native, args, root)
+      assert.equal(again.status, fixed.status, again.stdout + again.stderr)
+      assert.equal(readFileSync(join(root, base), "utf8"), after)
+    }
   })
 })
