@@ -1,0 +1,17 @@
+// expect-result: {"legacy":[true,true,true],"native":[true,true,true],"data":[true,true,true]}
+import {TaggedError,$errorSubclass,customMatcher} from "vibelang-runtime"
+import {Data as NativeData} from "effect"
+abstract error Root {value:number}
+class Child extends $errorSubclass(Root,"Child") {}
+abstract class NativeRoot extends TaggedError("NativeRoot" as string)<{readonly _tag:string;readonly value:number}> {}
+class NativeChild extends $errorSubclass(NativeRoot,"NativeChild") {}
+abstract class DataRoot extends NativeData.TaggedError("DataRoot" as string)<{readonly _tag:string;readonly value:number}> {}
+class DataChild extends $errorSubclass(DataRoot,"DataChild") {}
+export effect function main(){
+ const legacy=new Child({value:1}),native=new NativeChild({value:1}),data=new DataChild({value:1})
+ return {
+  legacy:[legacy is Root,legacy instanceof Root,Object.prototype.isPrototypeOf.call(Root.prototype,legacy)],
+ native:[native is NativeRoot,native instanceof NativeRoot,Object.prototype.isPrototypeOf.call(NativeRoot.prototype,native)],
+ data:[data is DataRoot,data instanceof DataRoot,Object.prototype.isPrototypeOf.call(DataRoot.prototype,data)]
+ }
+}

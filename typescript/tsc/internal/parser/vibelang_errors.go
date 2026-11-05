@@ -547,8 +547,9 @@ func (p *Parser) vibelangSchemaErrorSubclass(d *errorDeclaration) []*ast.Node {
 }
 
 // vibelangErrorRegistration installs the declaration's own tag matcher
-// (VIP-7), then joins a retained schema family where needed. Both error
-// forms use a callback that retains its tag. The static block runs before
+// (VIP-7), then joins a retained schema family where needed. Concrete
+// forms use a callback that retains its tag. Legacy abstract plain
+// roots retain native class matching. The static block runs before
 // user members and adds no declaration surface.
 func (p *Parser) vibelangErrorRegistration(d *errorDeclaration) *ast.Node {
 	at := d.name.Loc
@@ -559,11 +560,14 @@ func (p *Parser) vibelangErrorRegistration(d *errorDeclaration) *ast.Node {
 		return p.vibelangSynthesized(p.factory.NewExpressionStatement(expression), at)
 	}
 	tag := p.vibelangSynthesized(p.factory.NewStringLiteral(d.name.Text(), ast.TokenFlagsNone), at)
-	matcherArgs := []*ast.Node{tag}
-	if !d.schema {
-		matcherArgs = append(matcherArgs, p.vibelangSynthesized(p.factory.NewKeywordExpression(ast.KindTrueKeyword), at))
+	var statements []*ast.Node
+	if d.schema || !d.abstract {
+		matcherArgs := []*ast.Node{tag}
+		if !d.schema {
+			matcherArgs = append(matcherArgs, p.vibelangSynthesized(p.factory.NewKeywordExpression(ast.KindTrueKeyword), at))
+		}
+		statements = append(statements, call("$schemaErrorMatcher", matcherArgs...))
 	}
-	statements := []*ast.Node{call("$schemaErrorMatcher", matcherArgs...)}
 	if d.schema {
 		switch {
 		case d.tag != nil || d.abstract:

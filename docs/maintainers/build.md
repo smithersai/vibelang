@@ -2037,3 +2037,5 @@ The `//:fork-object-operands` check proves the seven object operands are legal T
 The `//:plain-handler-regressions` check retains direct and internally caught plain throws alongside valid Effect handlers and nested Effect functions, across source placements.
 
 Destructuring-default differential observers normalize an `Exit` with `Exit.match` callbacks so they also type-check after generated outward jumps. `FuzzDoBindingObserverAfterJump` covers reachable observers and observers after `return`, `throw`, `break`, `continue` and a constant-false branch.
+
+The `//:abstract-error-family-membership` target compares legacy abstract roots with native error classes across subclasses, aliases, tags and unrelated values.
