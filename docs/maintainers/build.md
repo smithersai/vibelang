@@ -2172,3 +2172,5 @@ The corrected pipeline repair check retains all original factory-order, mutable-
 `//:service-member-diagnostic-ownership` checks single member diagnostics across whole shapes, generic declarations, invalid keys and call or construct signatures, including keyed fuzz inputs.
 
 Compiler shards use `scripts/testing/node-failures.mjs` to report failures with their original error details, ordinary test output, and Node's execution totals. Successful test names do not crowd the graph preview. A progress record lists completed files and files awaiting a summary every 30 seconds. The reporter preserves exit status, nested failures, cancellation, skips and todos; `scripts/compiler-failure-output.test.mjs` runs each real shard command against controlled files to verify those boundaries.
+
+The module-body corpus follows accepted VIP-40: the original throwing helper and all retained names and export forms must compile without diagnostics. Ordinary namespace controls, extracted bodies and identifier-import rejection are checked with stock TypeScript; twelve seeded mutations retain the same checks without a pending acceptance exception.
