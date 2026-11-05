@@ -1778,5 +1778,25 @@
       "reference": "docs/design/vips/0020-for-try.md#decision and docs/design/src/002-running.md#for-try: accepted Stream-only operands use ordinary TypeScript assignability and preserve independent native expression errors."
     },
     "reason": "The fixture keeps its existing diagnostic set and distinguishes rejection of a nullable Stream from a separate nullable property receiver. Unknown operands and unsafe receiver reads keep their native TypeScript errors. Choosing a Stream conversion or a null-handling policy requires author intent; this changes expected locations and examples, not language acceptance."
+  },
+  {
+    "code": "EK0403",
+    "case": "typescript/vibelang/cases/diag-any-contracted.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md: a call through any has unknown thrown type in effect code. docs/design/src/900-appendices.md retains EK4409 for the legacy dynamic-return compatibility rule, including its configured severity."
+    },
+    "reason": "This fixture already receives both diagnostics from the unchanged compiler. Its expected output now records the existing unknown-throw error alongside the existing configured compatibility error. Choosing an explicit callable contract or a different returned program requires author intent; no new language form is rejected by this expectation update."
+  },
+  {
+    "code": "EK4409",
+    "case": "typescript/vibelang/cases/diag-any-contracted.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md: a call through any has unknown thrown type in effect code. docs/design/src/900-appendices.md retains EK4409 for the legacy dynamic-return compatibility rule, including its configured severity."
+    },
+    "reason": "This fixture already receives both diagnostics from the unchanged compiler. Its expected output now records the existing unknown-throw error alongside the existing configured compatibility error. Choosing an explicit callable contract or a different returned program requires author intent; no new language form is rejected by this expectation update."
   }
 ]

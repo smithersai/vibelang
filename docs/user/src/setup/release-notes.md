@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Contracted dynamic-call examples omitted the unknown-throw error; they now show `EK0403` beside the existing `EK4409` compatibility diagnostic.
+
 - Nullable `for try` examples mixed Stream and receiver errors; they now distinguish the Stream rejection `EK2004` from independent unknown-operand and nullable-receiver TypeScript errors.
 
 - Migrating an abstract plain error could replace its inherited matcher and turn boolean results into arrays; `vibelang --fix` now preserves the original matcher and its extraction results.

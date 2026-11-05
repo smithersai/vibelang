@@ -41,7 +41,7 @@ effect function maybeLoad(load?: () => string!!) {
 }
 ```
 
-`try make()` explicitly delegates the call's result even when `make` has type `any`. The compiler no longer describes that result as an unrun Effect. Give the callable an Effect return type to check its success, error, and service channels.
+`try make()` explicitly delegates the call's result even when `make` has type `any`. The compiler no longer describes that result as an unrun Effect. Give the callable an Effect return type to check its success, error, and service channels. An unwrapped tail call through `any` can report both `EK0403` for its unknown synchronous throws and the compatibility warning `EK4409` for its unchecked result; changing the enclosing success type to `unknown` or `object` does not establish a callable contract.
 
 With `strictNullChecks` enabled, `try load?.()` and `try program` where `program` may be `undefined` report `EK0502`. Narrow the callable or operand first, or provide an Effect fallback. Optional syntax on a proven-present callable stays allowed, as does an Effect whose success value is `undefined`. The operand check follows the project's TypeScript nullability settings.
 
