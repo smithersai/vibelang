@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | The repair writes checker-proved inferred channel types and preserves declaration types.\nclass Boom extends Error {readonly _tag=\"Boom\"}\nfunction raise<E>(error: E): Effect<never, E, infer R> {throw error}\nexport function recover(error: Boom): Effect<string, never, infer R> {return raise(error) |> Effect.catchTag(%, \"Boom\", (caught) => caught.message)}\n")

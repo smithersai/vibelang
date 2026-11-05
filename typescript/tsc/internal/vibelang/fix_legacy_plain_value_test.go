@@ -12,7 +12,7 @@ func TestFixVIPMarksPlainEffectHandler(t *testing.T) {
 		{
 			"Smithers raise and catchTag",
 			boom + "function raise<E>(error: E): Effect<never, E, infer R> {\n  throw error\n}\n\nexport function recover(error: Boom): Effect<string, never, infer R> {\n  return raise(error) |> Effect.catchTag(%, \"Boom\", (caught) => caught.message)\n}\n",
-			boom + "effect function raise<E>(error: E): Effect<never, E, infer R> {\n  throw error\n}\n\nexport function recover(error: Boom): Effect<string, never, infer R> {\n  return raise(error) |> Effect.catchTag(%, \"Boom\", effect (caught) => caught.message)\n}\n",
+			boom + "effect function raise<E>(error: E): Effect<never, E, never> {\n  throw error\n}\n\nexport function recover(error: Boom): Effect<string, never, never> {\n  return raise(error) |> Effect.catchTag(%, \"Boom\", effect (caught) => caught.message)\n}\n",
 		},
 		{
 			"template in a data-first call",

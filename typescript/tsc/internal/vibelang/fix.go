@@ -930,7 +930,14 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 						break
 					}
 				}
-				// A later pass meets the same refusals again; report each once.
+				// A completed pass replaces earlier try refusals: a later
+				// annotation repair can make a previously refused rewrite safe.
+				// An interrupted pass has not rechecked every earlier site.
+				if done.Err() == nil {
+					result.Refused = slices.DeleteFunc(result.Refused, func(r FixRefusal) bool {
+						return r.Rewrite == tryLabel
+					})
+				}
 				for _, r := range refused {
 					if !slices.Contains(result.Refused, r) {
 						result.Refused = append(result.Refused, r)

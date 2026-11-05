@@ -1134,6 +1134,12 @@ const targets = {
     [],
     "15m"
   ),
+  "generic-handler-requirement-migration": goVibelang(
+    "Legacy generic handlers resolve inferred requirements while preserving their public contracts.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^TestFixVIPMarksPlainEffectHandler$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzFix$/^fix-vip-only-generic-handler-'`,
+    [Tsc["vibelangfuzz-files"]],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
