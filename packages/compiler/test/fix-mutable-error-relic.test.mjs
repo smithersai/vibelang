@@ -11,6 +11,7 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const runtime = join(repo, "packages/runtime")
+const regressions = new URL("./property-regressions/", import.meta.url)
 const source = [
   "export error Failure { /** payload */ mutable /* field */ value: number; readonly fixed?: string; readonly?: string; /* trailing */ }",
   "export error DocumentedFailure {",
@@ -78,6 +79,7 @@ test("mutable error upgrades preserve tagged subjects across names and helper co
     rule,
     command: "node --test test/fix-mutable-error-relic.test.mjs",
     numRuns: 12,
+    regressions,
     arbitrary: fc.record({
       name: fc.constantFrom("Failure", "Rejected", "Problem"),
       value: fc.integer({ min: -4, max: 12 }),
@@ -87,8 +89,9 @@ test("mutable error upgrades preserve tagged subjects across names and helper co
       crlf: fc.boolean()
     }),
     check: ({ name, value, foreign, collision, migration, crlf }) => {
-      let program = source.replaceAll("Failure", name)
-        .replace("value: 7", `value: ${value}`).replace("value: 8", `value: ${foreign}`)
+      // One pass: a sequential replace would rewrite the literal it just wrote when value is 8.
+      const payload = { "value: 7": value, "value: 8": foreign }
+      let program = source.replaceAll("Failure", name).replace(/value: [78]/g, (literal) => `value: ${payload[literal]}`)
       if (collision) program = "const $MutableErrorBase = 1; const $MutableErrorMatcher = 2;\n" + program
       if (crlf) program = program.replaceAll("\n", "\r\n")
       checkMutableError(t, migration ? ["--fix-migration-only"] : [], program, [value, name, foreign])
