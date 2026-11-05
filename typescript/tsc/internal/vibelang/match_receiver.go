@@ -7,14 +7,20 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 // The checker still sees the original $is/$extract call for narrowing.
 func (tx *lowering) visitPatternReceiver(node *ast.Node) *ast.Node {
 	matcher := ast.SkipParentheses(node.Arguments()[0])
-	if !ast.IsPropertyAccessExpression(matcher) && !ast.IsElementAccessExpression(matcher) {
-		return tx.Visitor().VisitEachChild(node)
-	}
 	f := tx.Factory()
+	// This private emit-only argument selects own class matcher lookup. Keep
+	// source type checking and the public runtime overloads unchanged.
+	ownClassOnly := f.NewKeywordExpression(ast.KindTrueKeyword)
+	if !ast.IsPropertyAccessExpression(matcher) && !ast.IsElementAccessExpression(matcher) {
+		result := tx.runtimeCall(node.Expression().Text(), tx.visit(node.Arguments()[0]), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindNullKeyword), ownClassOnly)
+		tx.EmitContext().SetOriginal(result, node)
+		result.Loc = node.Loc
+		return result
+	}
 	if matcher.Expression().Kind == ast.KindSuperKeyword {
 		// super is not a value to capture: read the member where it stands,
 		// with this as the receiver the member's own call would get.
-		result := tx.runtimeCall(node.Expression().Text(), tx.visit(matcher), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindThisKeyword))
+		result := tx.runtimeCall(node.Expression().Text(), tx.visit(matcher), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindThisKeyword), ownClassOnly)
 		tx.EmitContext().SetOriginal(result, node)
 		result.Loc = node.Loc
 		return result
@@ -33,7 +39,7 @@ func (tx *lowering) visitPatternReceiver(node *ast.Node) *ast.Node {
 		arguments = append(arguments, tx.visit(matcher.AsElementAccessExpression().ArgumentExpression))
 		member = f.NewElementAccessExpression(receiver, nil, key, ast.NodeFlagsNone)
 	}
-	body := tx.runtimeCall(node.Expression().Text(), member, tx.visit(node.Arguments()[1]), receiver)
+	body := tx.runtimeCall(node.Expression().Text(), member, tx.visit(node.Arguments()[1]), receiver, ownClassOnly)
 	arrow := tx.arrow(parameters, body)
 	result := f.NewCallExpression(f.NewParenthesizedExpression(arrow), nil, nil, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	tx.EmitContext().SetOriginal(result, node)

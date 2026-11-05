@@ -19,7 +19,7 @@ func TestErrorMatcherReferenceSyntax(t *testing.T) {
 	if err != nil {
 		t.Fatal("node is required to validate the executable matcher reference")
 	}
-	for _, key := range []string{"vip07.error-matcher-property-plain", "vip07.error-matcher-own-plain", "vip07.error-matcher-delete-plain"} {
+	for _, key := range []string{"vip07.error-matcher-property-plain", "vip07.error-matcher-own-plain", "vip07.error-matcher-delete-plain", "vip07.inherited-matcher-getter-plain"} {
 		t.Run(key, func(t *testing.T) {
 			reference := vipgen.PrintEffect(vipgen.Probe(key))
 			cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "--check")

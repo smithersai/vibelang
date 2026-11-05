@@ -50,8 +50,15 @@ export function $registerErrorMatcher<F extends Function>(matcher: F): F {
  * instanceof. An error family's generated matcher is the exception, because it tests
  * the subject's tag and every subclass of the family is written against it.
  */
-function matcherOf(value: unknown): Function | undefined {
+function matcherOf(value: unknown, ownClassOnly = false): Function | undefined {
   if (value === null || value === undefined) return undefined
+  // Generated class patterns follow the own-matcher rule before reading the
+  // property. The legacy ABI path retains registered error-family lookup.
+  if (ownClassOnly && typeof value === "function") {
+    if (!Object.hasOwn(value, customMatcher)) return undefined
+    const custom = (value as any)[customMatcher]
+    return typeof custom === "function" ? custom : undefined
+  }
   const custom = (value as any)[customMatcher]
   if (typeof custom !== "function") return undefined
   if (typeof value === "function" && !Object.hasOwn(value, customMatcher) && !errorMatchers.has(custom)) return undefined
@@ -151,9 +158,9 @@ export function $is<C extends abstract new(...args: any) => any>(matcher: C, sub
 export function $is<S, T extends S>(matcher: (subject: S, hint: MatchHint) => subject is T, subject: unknown, receiver?: unknown): subject is T
 export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown) | RegExp, subject: unknown, receiver?: unknown): boolean
 export function $is<const T>(matcher: T, subject: unknown, receiver?: unknown): subject is T
-export function $is(matcher: unknown, subject: unknown, receiver: unknown = null): boolean {
+export function $is(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
-    const custom = matcherOf(matcher)
+    const custom = matcherOf(matcher, ownClassOnly)
     if (custom !== undefined) return !!Reflect.apply(custom, matcher, [subject, { matchType: "boolean" }, receiver])
     const builtin = builtinTest(matcher, subject)
     if (builtin !== undefined) return builtin
@@ -241,8 +248,8 @@ export function $extract<C extends abstract new(...args: any) => any>(matcher: C
 export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown, receiver?: unknown): readonly [PrimitiveForConstructor<C> | BoxForConstructor<C>] | false
 export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown, receiver?: unknown): Extracted<R> | false
 export function $extract(matcher: unknown, subject: unknown, receiver?: unknown): ReadonlyArray<any> | false
-export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null): unknown {
-  const custom = matcherOf(matcher)
+export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false): unknown {
+  const custom = matcherOf(matcher, ownClassOnly)
   if (custom !== undefined) return extractedList(Reflect.apply(custom, matcher, [subject, { matchType: "extractor" }, receiver]))
   if (matcher instanceof RegExp) return regExpExtract(matcher, subject)
   if (typeof matcher === "function") {

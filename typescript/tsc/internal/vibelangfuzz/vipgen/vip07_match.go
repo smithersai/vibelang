@@ -1276,3 +1276,16 @@ func init() {
 		Cite:     vip7Cite("Object.hasOwn"),
 	})
 }
+
+// Class dispatch checks ownership before reading a matcher property.
+func init() {
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.inherited-matcher-getter-plain",
+		Chapter: "004-match.md",
+		Quote:   "A static matcher inherited from a superclass is not an own matcher",
+		Vibe:    "function witness():unknown[]{\nconst out:unknown[]=[]\nfor(const kind of [\"throw\",\"function\",\"undefined\"]){\n for(const own of [false,true]){\n  const rows:unknown[]=[]\n  for(let mode=0;mode<4;mode++){\n   const trace:string[]=[]\n   const Ctor=makePattern(kind,own,trace)\n   const holder={pattern:Ctor}\n   function choose(s:unknown,mode:number){\n    switch(mode){\n     case 0:return match(s){when Ctor:true;default:false;}\n     case 1:return match(s){when holder.pattern:true;default:false;}\n     case 2:return match(s){when holder[\"pattern\"]:true;default:false;}\n     default:return s is Ctor\n    }\n   }\n   try{rows.push([choose(new Ctor(),mode),choose({},mode),trace])}\n   catch(error){rows.push([\"threw\",trace])}\n  }\n  out.push(rows)\n }\n}\nreturn out\n}\n",
+		Effect:  "function nativeMatches(Ctor,s){\n const key=Symbol.customMatcher ?? Symbol.for(\"Symbol.customMatcher\")\n if(Object.hasOwn(Ctor,key)){\n  const m=Reflect.get(Ctor,key)\n  if(typeof m===\"function\")return Boolean(Reflect.apply(m,Ctor,[s,{matchType:\"boolean\"}]))\n }\n return s instanceof Ctor\n}\nfunction witness(){\nconst out=[]\nfor(const kind of [\"throw\",\"function\",\"undefined\"]){\n for(const own of [false,true]){\n  const rows=[]\n  for(let mode=0;mode<4;mode++){\n   const trace=[]\n   const Ctor=makePattern(kind,own,trace)\n   const holder={pattern:Ctor}\n   function choose(s,mode){\n    switch(mode){\n     case 0:return nativeMatches(Ctor,s)\n     case 1:return nativeMatches(Ctor,s)\n     case 2:return nativeMatches(Ctor,s)\n     default:return nativeMatches(Ctor,s)\n    }\n   }\n   try{rows.push([choose(new Ctor(),mode),choose({},mode),trace])}\n   catch(error){rows.push([\"threw\",trace])}\n  }\n  out.push(rows)\n }\n}\nreturn out\n}\n",
+		Files:   []ChapterWitnessFile{{Name: "native-pattern.ts", Source: "/** @throws {never} */\nexport function makePattern(kind: string, own: boolean, trace: string[]) {\n const key=(Symbol as any).customMatcher ?? Symbol.for(\"Symbol.customMatcher\")\n const sentinel={inherited:true}\n class Base {}\n Object.defineProperty(Base,key,{get(){\n  trace.push(\"inherited\")\n  if(kind===\"throw\")throw sentinel\n  return kind===\"function\"?()=>false:undefined\n }})\n class Derived extends Base {}\n if(own)Object.defineProperty(Derived,key,{get(){\n  trace.push(\"own\")\n  return function(this:unknown,subject:unknown,hint:{matchType:string}){\n   trace.push(\"call:\"+hint.matchType)\n   return this===Derived && subject instanceof Derived\n  }\n }})\n return Derived\n}\n", Names: []string{"makePattern"}}},
+		Modules: []string{}, Requires: []string{}, Cite: vip7Cite("Object.hasOwn"),
+	})
+}

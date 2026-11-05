@@ -1,0 +1,29 @@
+// expect-result: [[[true,false,[]],[true,false,[]],[true,false,[]],[true,false,[]]],[[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]]],[[true,false,[]],[true,false,[]],[true,false,[]],[true,false,[]]],[[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]]],[[true,false,[]],[true,false,[]],[true,false,[]],[true,false,[]]],[[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]],[true,false,["own","call:boolean","own","call:boolean"]]]]
+import {Effect} from "effect"
+import {makePattern} from "./native-pattern.js"
+function witness():unknown[]{
+const out:unknown[]=[]
+for(const kind of ["throw","function","undefined"]){
+ for(const own of [false,true]){
+  const rows:unknown[]=[]
+  for(let mode=0;mode<4;mode++){
+   const trace:string[]=[]
+   const Ctor=makePattern(kind,own,trace)
+   const holder={pattern:Ctor}
+   function choose(s:unknown,mode:number){
+    switch(mode){
+     case 0:return match(s){when Ctor:true;default:false;}
+     case 1:return match(s){when holder.pattern:true;default:false;}
+     case 2:return match(s){when holder["pattern"]:true;default:false;}
+     default:return s is Ctor
+    }
+   }
+   try{rows.push([choose(new Ctor(),mode),choose({},mode),trace])}
+   catch(error){rows.push(["threw",trace])}
+  }
+  out.push(rows)
+ }
+}
+return out
+}
+export function main(){return Effect.succeed(witness())}
