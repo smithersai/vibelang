@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
+- Large migrations spent time loading TypeScript dependency graphs for an unused annotation pass. Compilers that keep functions plain by syntax now skip that work.
+
 - Optional Effect class methods could appear as unexplained grammar failures. The audit now identifies the missing Appendix A optional-member spelling and checks native counterparts.
 
 

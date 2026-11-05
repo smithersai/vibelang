@@ -1,0 +1,9 @@
+{
+  "key": "migrate:plain-by-syntax-unneeded-typecheck",
+  "rule": "VIP-1: unmodified functions are plain by syntax; decided detail 269: migration writes no legacy return annotation.",
+  "files": {
+    "src/response.ts": "export const empty = () => ({ chunks: [] as string[] })\n",
+    "src/reduce.ts": "export const reduce = (left: string[], right: string) => [...left, right]\n",
+    "src/stream.ts": "export function* chunks(value: string) { yield value }\n"
+  }
+}

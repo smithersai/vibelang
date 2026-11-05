@@ -126,6 +126,9 @@ export function applyPlainEdits(text, edits) {
  * had to leave a generator in.
  */
 export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, exists, flipped = false } = {}) {
+  // The compiler probe already proved that syntax preserves plain functions.
+  // Do not load package graphs for a legacy annotation pass that cannot edit them.
+  if (flipped) return {}
   // read/write/exists take paths relative to root; the codemod passes its
   // prepared state's overlay, so the marks see the platform split's writes.
   const inRoot = (path) => { const rel = relative(root, path); return rel.startsWith("..") || isAbsolute(rel) ? null : rel.split(sep).join("/") }
