@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
@@ -36,9 +37,16 @@ func declarationOrderFunctions(choice uint32) []string {
 // declarationsByFunction splits a declaration file into each function's text.
 func declarationsByFunction(dts string) map[string]string {
 	out := map[string]string{}
-	for _, part := range strings.Split(dts, "export declare function ")[1:] {
-		name, _, _ := strings.Cut(part, "(")
-		out[name] = part
+	for _, declaration := range toolsParse("output.d.ts", dts).Statements.Nodes {
+		if !ast.IsFunctionDeclaration(declaration) || declaration.Name() == nil {
+			continue
+		}
+		name := declaration.Name().Text()
+		text := strings.TrimSpace(dts[declaration.Pos():declaration.End()])
+		if previous := out[name]; previous != "" {
+			text = previous + "\\n" + text
+		}
+		out[name] = text
 	}
 	return out
 }
@@ -91,6 +99,7 @@ func FuzzDeclarationOrder(f *testing.F) {
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, choice uint32) {
+		checkDeclarationOrderExtraction(t, uint8(choice))
 		checkDeclarationOrder(t, w, choice)
 	})
 }
