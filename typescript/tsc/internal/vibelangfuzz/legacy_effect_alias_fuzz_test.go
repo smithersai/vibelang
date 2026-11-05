@@ -81,15 +81,30 @@ func FuzzLegacyEffectAlias(f *testing.F) {
 				warnings++
 			}
 			if d.Category() == diagnostics.CategoryError {
-				errors = append(errors, fmt.Sprint(d))
+				errors = append(errors, fmt.Sprintf("%s%d", d.Source(), d.Code()))
 			}
 		}
 		want := 0
 		if strings.HasPrefix(key, "legacy-") {
 			want = 1
 		}
-		if warnings != want || len(errors) != 0 {
-			Gap(t, "FuzzLegacyEffectAlias", key, "chapter 007 %q: want %d EK4856 and no errors; got %d, %v; %s", legacyAliasQuote, want, warnings, errors, use)
+		wantErrors := legacyHeritageExpectedErrors(key)
+		if warnings != want || !slices.Equal(errors, wantErrors) {
+			Gap(t, "FuzzLegacyEffectAlias", key, "chapter 007 %q: want %d EK4856 and errors %v; got %d, %v; %s", legacyAliasQuote, want, wantErrors, warnings, errors, use)
+		}
+		if key == "legacy-class" {
+			// The qualified spelling independently keeps the inherited foreign
+			// callback rejection. Alias migration cannot remove that VIP-4 error.
+			qualified := maps.Clone(files)
+			qualified["main.vibe"] = strings.ReplaceAll(use, "implements Effect<", "implements Effect.Effect<")
+			control, err := w.Compile(t.Context(), Project{Files: qualified})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer control.Remove()
+			if got := legacyHeritageErrors(control); !slices.Equal(got, wantErrors) {
+				t.Fatalf("qualified heritage errors=%v want=%v", got, wantErrors)
+			}
 		}
 		if heritage {
 			checkLegacyHeritageFix(t, w, key, shape, r)
@@ -356,9 +371,38 @@ func checkLegacyHeritageFix(t *testing.T, w *Workspace, key string, shape uint8,
 		t.Fatal(err)
 	}
 	defer compiled.Remove()
+	if got := legacyHeritageErrors(compiled); !slices.Equal(got, legacyHeritageExpectedErrors(key)) {
+		t.Fatalf("heritage repair changed independent errors: %v want %v", got, legacyHeritageExpectedErrors(key))
+	}
+
 	for _, d := range compiled.Diagnostics {
-		if d.Category() == diagnostics.CategoryError || d.Source() == "EK" && d.Code() == 4856 {
-			Gap(t, "FuzzLegacyEffectAlias", "fixed:"+key, "the heritage fix must compile and retire its legacy-alias warning: %s\n%s", d.String(), after["main.vibe"])
+		if d.Source() == "EK" && d.Code() == 4856 {
+			Gap(t, "FuzzLegacyEffectAlias", "fixed:"+key, "the heritage fix must retire its legacy-alias warning: %s\n%s", d.String(), after["main.vibe"])
 		}
+	}
+}
+
+// Chapter 003 applies throws assignability to implements clauses too.
+// This fixture inherits Effect's unannotated foreign callable members;
+// the alias spelling does not make their throws fit a pure member type.
+func legacyHeritageExpectedErrors(key string) []string {
+	if key == "legacy-class" {
+		return []string{"EK402"}
+	}
+	return nil
+}
+func legacyHeritageErrors(r *Result) []string {
+	var codes []string
+	for _, d := range r.Diagnostics {
+		if d.Category() == diagnostics.CategoryError {
+			codes = append(codes, fmt.Sprintf("%s%d", d.Source(), d.Code()))
+		}
+	}
+	return codes
+}
+func TestLegacyHeritageThrowsQuoted(t *testing.T) {
+	const quote = "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`, with `service` members as interface members."
+	if !strings.Contains(SpecText("003-failures.md"), quote) {
+		t.Fatal("missing heritage throws authority")
 	}
 }
