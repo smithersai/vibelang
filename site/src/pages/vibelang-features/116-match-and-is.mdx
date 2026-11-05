@@ -68,7 +68,7 @@ A function named `match` still works. Only `match (value) {` followed by `when`,
 
 A `return` or an outer labeled jump in `for try` head binding initialization still violates the Stream loop rule (`EK2002` or `EK2003`), even when written inside `do`.
 
-Property reads and existence tests performed by patterns are cached by object identity and property key for one `match` or `is` evaluation. Later arms and combinators reuse the observation, including `false` and `undefined`. A new evaluation starts a fresh cache. Reads in guards, arm values, and object rest copies remain ordinary reads.
+Property reads and existence tests performed by patterns are cached by object identity and property key for one `match` or `is` evaluation. Later arms and combinators reuse the observation, including `false` and `undefined`. A new evaluation starts a fresh cache. Reads in guards, arm values, and object rest copies remain ordinary reads. Cached `match` and `is` patterns, including computed keys, also type-check through the TypeScript content mapper.
 
 
 ## Patterns

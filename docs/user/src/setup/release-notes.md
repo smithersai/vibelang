@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
+
 - Bundlers could write relocated declarations under an incorrect nested path; loader compilation now preserves the configured declaration root and source maps.
 - The TypeScript mapper could reject ordinary error declarations because it treated generated matcher registration as authored syntax; valid error members now project normally.
 - Layer repair examples used unsupported static service calls; they now look up the service before invoking its member.

@@ -117,7 +117,7 @@ export type $TagMatch<T, K extends string> = T extends { readonly _tag: K }
   : T & { readonly _tag: K }
 
 // The pattern matching helpers the parser writes for match and is (D206-D225).
-export { $is, $extract, $rest, $noMatch, $patternError } from "vibelang-runtime"
+export { $is, $extract, $matchCache, $propertyKey, $rest, $noMatch, $patternError } from "vibelang-runtime"
 
 // D196: concurrent programs and held Fibers/Deferreds keep the runtime's
 // tuple, record, result, and race channel inference under stock TypeScript.
