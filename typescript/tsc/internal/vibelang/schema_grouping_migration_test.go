@@ -59,10 +59,24 @@ func TestGroupedSchemaMigration(t *testing.T) {
 				t.Fatal("lost directive")
 			}
 			next, nextFile, _, _ := editorProgram(t, fixed)
+			// VIP-13 rejects legacy inheritance independently of grouped field repair.
+			wantInheritance := 0
+			if strings.Contains(source, "Child extends Family") {
+				wantInheritance = 1
+			}
+			gotInheritance := 0
 			for _, d := range append(next.GetSyntacticDiagnostics(t.Context(), nextFile), next.GetSemanticDiagnostics(t.Context(), nextFile)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("fixed: %s", d.String())
+				if d.Category() != diagnostics.CategoryError {
+					continue
 				}
+				if wantInheritance == 1 && d.Source() == diagnosticSource && d.Code() == 2117 {
+					gotInheritance++
+					continue
+				}
+				t.Errorf("fixed: %s", d.String())
+			}
+			if gotInheritance != wantInheritance {
+				t.Fatalf("got %d inheritance errors, want %d", gotInheritance, wantInheritance)
 			}
 			if again := groupedSchemaMigrationFixes(t.Context(), next, nextFile, map[string]bool{}); len(again.fixes) != 0 {
 				t.Fatalf("not idempotent:\n%s", again.text())

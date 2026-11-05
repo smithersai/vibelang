@@ -1099,6 +1099,12 @@ const targets = {
     [],
     "15m"
   ),
+  "grouped-schema-inheritance-controls": goVibelang(
+    "Grouped field repair retains unrelated inheritance errors until full migration",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestGroupedSchemaMigration$\" ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestGroupedSchemaInheritanceControlsQuoted|FuzzGroupedSchemaInheritanceControls)$\" ./internal/vibelangfuzz",
+    [],
+    "20m"
+  ),
   "schema-codec-native-return-inference": goVibelang(
     "Schema codec factories retain writable references with native return inference",
     "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestFixProjectGroupedSchemaMigration|TestFixProjectSchemaRequiredFieldReference|TestFixProjectSchemaReadonlyFieldReference|TestSchemaReadonlyMigrationCodecReferences|FuzzSchemaCodecFactoryNativeReturns|TestSchemaFactoryMigrationReturnsQuoted|FuzzSchemaFactoryMigrationReturns)$\" ./internal/vibelang ./internal/vibelangfuzz",
