@@ -6,7 +6,8 @@
 // `./App.vibex`." The twin below is the .vibex module's TypeScript twin, which
 // writes ./App.tsx; stock tsc keeps that spelling in written specifiers, in
 // import() types and in the import types it synthesizes. A consumer that only
-// has the package's build/ output must resolve every declaration.
+// has the package's build/ output must resolve every declaration. The native
+// callable carries the generated nonthrowing contract required by VIP-27.
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
@@ -16,7 +17,7 @@ const app = "export interface Shape { readonly n: number }\nexport const makeApp
 const main = (target) => [
  `export { App } from "${target}"`,
  `import { makeApp } from "${target}"`,
- "export const app = () => makeApp()",
+ target.endsWith(".tsx") ? "/** @throws {never} */\nexport const app = () => makeApp()" : "export const app = () => makeApp()",
  `export * as ns from "${target}"`,
  `export type Alias = import("${target}").Shape`,
 ].join("\n") + "\n"
