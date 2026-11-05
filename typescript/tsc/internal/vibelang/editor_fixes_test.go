@@ -188,13 +188,13 @@ func TestEditorQuickFixSkipsMissingCatchType(t *testing.T) {
 }
 
 // TestEditorQuickFixSkipsDestructuredCatch checks that a typed catch binding
-// that destructures, catch ({ code }: any), reports EK2112 naming catch (e)
+// that destructures with a retired failure type reports EK2112 naming catch (e)
 // and offers no rewrite, where reading the pattern as a name panicked the
 // compiler (Node.Text of a binding pattern).
 func TestEditorQuickFixSkipsDestructuredCatch(t *testing.T) {
 	for _, source := range []string{
-		"export function r() { try { throw { code: 7 } } catch ({ code }: any) { return code } }",
-		"export function r() { try { throw [7] } catch ([first]: any) { return first } }",
+		"type Failure = { readonly _tag: \"Failure\"; readonly code: number }; export function r() { try { return 0 } catch ({ code }: Failure) { return code } }",
+		"type Failure = number[] & { readonly _tag: \"Failure\" }; export function r() { try { return 0 } catch ([first]: Failure) { return first } }",
 	} {
 		t.Run(source, func(t *testing.T) {
 			program, file, service, converters := editorProgram(t, source)
@@ -226,6 +226,23 @@ func TestEditorQuickFixSkipsDestructuredCatch(t *testing.T) {
 			}
 			if !found {
 				t.Fatal("missing EK2112")
+			}
+		})
+	}
+}
+
+// Native catch parameter annotations are TypeScript annotations, not retired
+// failure filters. In particular, any permits binding patterns.
+func TestEditorNativeCatchAnnotations(t *testing.T) {
+	for _, source := range []string{
+		"export function r() { try { return 0 } catch ({ code }: any) { return code } }",
+		"export function r() { try { return 0 } catch ([first]: any) { return first } }",
+		"export function r() { try { return 0 } catch (error: unknown) { return error } }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			program, file, _, _ := editorProgram(t, source)
+			if ds := program.GetSemanticDiagnostics(t.Context(), file); len(ds) != 0 {
+				t.Fatalf("native catch annotation: %v; want no diagnostic", ds)
 			}
 		})
 	}
