@@ -57,7 +57,9 @@ func Hooks(root string) (map[string]bool, error) {
 					continue
 				}
 				parserHook := dir == "parser" && (base == "vibelang.go" || strings.HasPrefix(base, "vibelang_") || strings.HasPrefix(fn.Name.Name, "parseVibeLang") || strings.HasPrefix(fn.Name.Name, "isStartOfVibeLang"))
-				lowering := dir == "vibelang" && loweringFile
+				// Extracting a standalone lowering must not remove it from the
+				// census just because its new file has no lowering receiver.
+				lowering := dir == "vibelang" && (loweringFile || strings.HasSuffix(base, "_lower.go") || strings.HasPrefix(fn.Name.Name, "lower"))
 				if parserHook || lowering {
 					symbol := fn.Name.Name
 					if fn.Recv != nil {

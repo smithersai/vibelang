@@ -7,10 +7,14 @@ The checked table is
 `typescript/tsc/internal/vibelangfuzz/testdata/grammar_admission.tsv`.
 `TestGrammarAdmissionInventory` scans every non-test function in
 `parser/vibelang.go` and `parser/vibelang_*.go`, including helpers and recovery
-paths, and every function in a file with a method on `vibelang.lowering`. This intentionally includes
-support machinery so a new entry point cannot evade the census by choosing
-a different function name. Rows ending in `@<form>` document additional
-legacy branches inside a function. Base and branch rows may appear in any order;
+paths, every function in a file with a method on `vibelang.lowering` or a
+name ending in `_lower.go`, and standalone functions whose names start with
+`lower`. This includes support machinery and extracted lowering entry points,
+so moving a lowering into its own file does not remove its specification
+obligation. The shared error-constructor lowering is recovery under the
+error inheritance rejection; its inventory row grants no subclass syntax.
+
+Rows ending in `@<form>` document additional legacy branches inside a function. Base and branch rows may appear in any order;
 repeating either row still fails the census.
 
 Each row names its source hook (methods include their receiver type), `admission:<form>` key, authority, status and

@@ -36,6 +36,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A conditional callback passed to a rethrowing function could report an incompatible callback or lose a branch’s written throw contract. The enclosing call now retains every written branch contract, and catching or bridging the call admits the callback.
 
+- The grammar admission audit could omit error-constructor handling after it moved into a separate file. Extracted lowering helpers now retain their specification checks.
+
 - Migrating schema fields that reference writable codecs could generate an invalid return annotation; generated factories now use ordinary return type inference.
 
 - Scoped fixes retain independent repairs when a platform adapter needs an unlisted companion module, and identify the refused site.
