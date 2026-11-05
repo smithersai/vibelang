@@ -2030,6 +2030,13 @@ unavailable API comparison. Global, referenced-script, inherited-interface
 and module-augmentation controls, documentation normalization and all four
 generated reflexivity/mutation samples remain active.
 
+Browser fixtures in `scripts/api-identity-self.test.mjs` reuse pinned library
+documents through TypeScript's bounded document registry. Programs still load
+the native `Request` and `Window` bindings and check each snapshot
+independently. Resource guards require unchanged browser libraries to retain
+their parsed document identity. All 24 ambient samples still compare self,
+formatting and type mutations.
+
 The `//:schema-alias-native-properties` target checks alias repairs against native writable-property errors across optional, nested and imported schema variations.
 
 The `//:implicit-generator-defect-bridges` target compares implicit generator repairs against native declarations and Effect exits across foreign invocation and contract variations.

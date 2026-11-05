@@ -1,3 +1,4 @@
+import { createDependencyDocuments } from "./api-identity-diagnostics-cache.mjs"
 import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -5,13 +6,33 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { compareApiIdentity, loadTypeScript } from './api-identity.mjs'
 const ts = loadTypeScript()
+const browserDocuments = createDependencyDocuments(ts)
 const pureLibraries = { lib: ["lib.es5.d.ts"] }
 function withFixtureCompiler(browserGlobal, fn) {
-  let unrelatedLibraries = 0, missingBrowserBindings = 0
+  let unrelatedLibraries = 0, missingBrowserBindings = 0, reparsedBrowserLibraries = 0
+  const seenLibraries = new Map()
+  const registry = ts.createDocumentRegistry()
   const compiler = { ...ts, createProgram(...args) {
+    if (browserGlobal) {
+      const options = args[1], host = args[2] ?? ts.createCompilerHost(options)
+      const getSourceFile = host.getSourceFile.bind(host)
+      host.getSourceFile = (file, version, onError, fresh) => {
+        const text = host.readFile(file)
+        if (!fresh && /[/\\]lib\.[^/\\]+\.d\.ts$/.test(file) && typeof text === "string")
+          return browserDocuments.read(file, options, version, text, host) ?? getSourceFile(file, version, onError, fresh)
+        return getSourceFile(file, version, onError, fresh)
+      }
+      args[2] = host
+    }
     const program = ts.createProgram(...args)
     const isBrowser = file => /[/\\]lib\.(?:dom|webworker)(?:\.[\w.]+)?\.d\.ts$/.test(file)
     if (browserGlobal) {
+      const bucket = registry.getKeyForCompilationSettings(program.getCompilerOptions())
+      for (const source of program.getSourceFiles().filter(source => isBrowser(source.fileName))) {
+        const key = JSON.stringify([source.fileName, bucket]), previous = seenLibraries.get(key)
+        if (previous?.text === source.text && previous !== source) reparsedBrowserLibraries++
+        seenLibraries.set(key, source)
+      }
       const binding = program.getTypeChecker().resolveName(browserGlobal, undefined, ts.SymbolFlags.Type, false)
       if (!binding?.declarations?.some(declaration => isBrowser(declaration.getSourceFile().fileName))) missingBrowserBindings++
     } else {
@@ -23,10 +44,11 @@ function withFixtureCompiler(browserGlobal, fn) {
   // Comparisons capture compiler exceptions, so assert resource invariants here.
   assert.equal(unrelatedLibraries, 0, "Pure ambient fixtures must not load unrelated browser libraries")
   assert.equal(missingBrowserBindings, 0, "Browser augmentation fixtures must retain their native library binding")
+  assert.equal(reparsedBrowserLibraries, 0, "Native browser fixtures must reuse unchanged parsed libraries")
   return result
 }
 const compareFixture = (a, b, browserGlobal) => withFixtureCompiler(browserGlobal, (compiler, compilerOptions) =>
-  compareApiIdentity(compiler, a, b, { compilerOptions }))
+  compareApiIdentity(compiler, a, b, { compilerOptions, dependencyDocuments: browserGlobal ? browserDocuments : undefined }))
 
 function fixture(before, after, fn) {
   const root = mkdtempSync(join(tmpdir(), 'api-ambient-'))
@@ -48,7 +70,7 @@ function compare(a, b, expected, browserGlobal) {
         const diagnostics = ts.getPreEmitDiagnostics(program)
         assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, {getCanonicalFileName:x=>x,getCurrentDirectory:()=>dir,getNewLine:()=> '\n'}))
       }
-      const result = compareApiIdentity(compiler, a, b, { compilerOptions })
+      const result = compareApiIdentity(compiler, a, b, { compilerOptions, dependencyDocuments: browserGlobal ? browserDocuments : undefined })
       assert.equal(result.identical, expected, JSON.stringify(result))
     })
   })
