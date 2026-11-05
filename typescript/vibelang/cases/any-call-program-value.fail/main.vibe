@@ -1,4 +1,4 @@
-// expect: EK4409
+// expect: EK0403 EK4409
 // A call of a value of type any returns its value (D24): nothing says whether
 // it is a program. Where that value is what a program or an Effect function
 // returns, a program the callee returns would never run. EK4409 is an error
