@@ -35,7 +35,11 @@ export effect function main() {
     }
     const compileArgs = ["-p", ".", "--pretty", "false"]
     const before = command("before", compiler, [...compileArgs, "--noEmitOnError", "false"], 2)
-    assert.deepEqual([...before.matchAll(/error ((?:EK|TS)\d+)/g)].map(m => m[1]), ["EK2117"])
+    // VIP-13/VIP-29 reject the reserved field and inheritance independently.
+    const expectedDiagnostics = family ? ["EK2117", "EK2117"] : ["EK2117"]
+    assert.deepEqual([...before.matchAll(/error ((?:EK|TS)\d+)/g)].map(m => m[1]), expectedDiagnostics)
+    assert.match(before, /member name _tag is reserved/)
+    if (family) assert.match(before, /cannot have an extends clause/)
     const declaration = fs.readFileSync(path.join(work, "out/main.d.ts"), "utf8")
     const runArgs = ["--input-type=module", "-e", `import { Effect } from "effect";
 import { main } from "./out/main.js";

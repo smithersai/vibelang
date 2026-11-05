@@ -1787,3 +1787,5 @@ The cached-default oracle in `//:appendix-oracles` follows VIP-9's preserving na
 For rejected trailing blocks, ordinary parser recovery output is not a legacy runtime reference. The appendix oracle compares a repair's exact emitted JavaScript with an independently written valid form and checks the program, Effect callback and plain callback runtime results, including generated comment and line-ending variants.
 
 The `//:deep-type-repair` target checks required shorthand grouping through 32 nested Effect or array boundaries. It retains exact declaration output and the native deep-rewrite runtime and idempotence checks.
+
+The `//:reserved-error-repair` target checks independent reserved-payload and inheritance diagnostics across generated declaration forms, with each violation removed separately. Its native case retains exact declaration output, complete runtime Exit and idempotent class repairs.

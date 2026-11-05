@@ -34,6 +34,8 @@ InvalidCode
 
 An `error` or `schema error` declaration constructs a runtime value and cannot occur in a native TypeScript ambient context. An explicit `declare` or an enclosing `declare namespace`, `declare module` or `declare global` reports `EK1307`, including for a bodyless declaration. Write a native ambient class for an erased declaration; `vibelang --fix` offers that conversion when it preserves the declaration. Native ambient classes keep their erased form and are not suggested for conversion back to `error` or `schema error`. Their class repair adds no executable static initialization. In ambient code, `EK1307` takes priority over the error declaration's member restrictions; independent field-type errors still appear.
 
+A reserved `_tag` payload in a base declaration and an `extends` clause in a second declaration are independent violations. That file reports `EK2117` at each site. A preserving class conversion must keep the payload, base, constructor and exported declaration API.
+
 An effect function or method whose body can only throw has success type `never`: it has no successful return. With no other returned value, a conditional `throw` followed by fallthrough infers `undefined`. An empty body or a body containing only a bare `return` keeps success type `void`.
 
 Use `export error InvalidCode` or `export schema error InvalidCode` for a named export. For a default export, declare the error first and write `export { InvalidCode as default }`. Placing either declaration after `export default` reports `EK1305`, including when the declaration has no body.

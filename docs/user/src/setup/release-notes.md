@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - The Effect type guide now shows the grouping used when repairing nested Effects and array boundaries.
+- The error guide now explains why a reserved tag payload and an inheritance clause each report an error, and how a native class retains their contract.
 
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
