@@ -1,3 +1,4 @@
+import { checkProperty } from "../../../../scripts/testing/property.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { symlinkSync, chmodSync, existsSync, readdirSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -1172,4 +1173,111 @@ test("property: foreign project dependencies never enter a temporary fix shard",
     assert.deepEqual(result.groups.flat(), [selected])
     assert.equal(result.sharded, true)
   }), { seed: 110506, numRuns: 80 })
+})
+
+const importedRootsCorpus = readJson(fileURLToPath(new URL("./corpus/opencode-imported-shard-roots.json", import.meta.url)))
+test("imported project roots: VIP34Quoted", () => {
+  const spec = readFileSync(new URL("../../../../" + importedRootsCorpus.spec, import.meta.url), "utf8")
+  assert.ok(spec.includes(importedRootsCorpus.quote))
+})
+
+// Type resolution can select declarations while the migration import graph
+// still sees a native source export in the same package.
+async function foreignNativeProjectFixture() {
+  const f = await fixture()
+  for (let i = 0; i < 245; i++) put(f.target, "core/src/local" + i + ".ts", "export const value = 1\n")
+  put(f.target, importedRootsCorpus.foreign, importedRootsCorpus.source)
+  put(f.run, "scope.txt", "core/src/index.ts\n")
+  writeJson(paths(f.run).inventory, { files: [{
+    path: "core/src/index.ts", imports: [importedRootsCorpus.local, importedRootsCorpus.foreign]
+  }] })
+  await onePassStep("plan", { run: f.run, scope: f.scope })
+  await onePassStep("rename", { run: f.run })
+  const config = readJson(join(f.target, "core/tsconfig.json"))
+  config.compilerOptions.rootDir = "./src"
+  writeJson(join(f.target, "core/tsconfig.json"), config)
+  const compiler = readFileSync(f.compiler, "utf8"), firstLine = compiler.indexOf("\n") + 1
+  const guard = String.raw`
+{
+  const fs = require("node:fs"), path = require("node:path")
+  const args = process.argv.slice(2), project = args[args.indexOf("-p") + 1]
+  if (path.basename(process.cwd()) === "core") {
+    const config = JSON.parse(fs.readFileSync(project, "utf8"))
+    const files = config.files ?? fs.readdirSync("src").filter(f => /\.(ts|vibe)$/.test(f) && !f.includes(".d.")).map(f => "./src/" + f)
+    if (args.includes("--listFilesOnly")) {
+      for (const file of files) console.log(path.resolve(file))
+      if (files.some(file => path.relative(path.resolve("src"), path.resolve(file)).startsWith(".."))) {
+        console.error("error TS6059: A temporary project added a source outside rootDir.")
+        process.exit(1)
+      }
+      process.exit(0)
+    }
+    if (args.includes("--fix")) { console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0) }
+  }
+}
+`
+  writeFileSync(f.compiler, compiler.slice(0, firstLine) + guard + compiler.slice(firstLine))
+  return f
+}
+
+test("foreign native source never becomes a temporary project root through the import graph", async () => {
+  const f = await foreignNativeProjectFixture()
+  try {
+    const result = await onePassStep("fix", { run: f.run, jobs: 2 })
+    assert.equal(result.settled, true)
+    const project = result.projects.find(p => p.package === "core" && p.project === "tsconfig.json")
+    assert.equal(project.mode, "sharded")
+    assert.deepEqual(new Set(project.shards.flatMap(s => s.roots)), new Set(["core/src/index.vibe", "core/src/local0.ts"]))
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("foreign native source: stock TypeScript rejects an added root outside rootDir", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-native-roots-"))
+  try {
+    put(root, "app/src/own.ts", "export const value = 1\n")
+    put(root, "other/src/native.ts", "export const value = 2\n")
+    const ts = require("typescript")
+    const options = { rootDir: join(root, "app/src"), noLib: true, declaration: true }
+    const check = files => ts.getPreEmitDiagnostics(ts.createProgram(files.map(f => join(root, f)), options)).filter(d => d.code === 6059)
+    assert.equal(check(["app/src/own.ts"]).length, 0)
+    const errors = check(["app/src/own.ts", "other/src/native.ts"])
+    assert.equal(errors.length, 1)
+    assert.match(ts.flattenDiagnosticMessageText(errors[0].messageText, "\n"), /rootDir/)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("foreign native source: imported selections keep their original root observer", () => {
+  const root = "src/observer.ts", selected = "lib/value.vibe"
+  const graph = new Map([[root, [selected]], [selected, []]])
+  const result = fixShards([root, selected], graph, new Set([selected]), 1, [root])
+  assert.equal(result.sharded, false)
+  assert.match(result.fallback.reason, /project roots/)
+})
+
+test("property: temporary roots preserve source membership across native and Vibe imports", async () => {
+  await checkProperty(fc, {
+    name: "opencode-imported-project-roots",
+    rule: importedRootsCorpus.quote + " " + importedRootsCorpus.rule,
+    command: "node --test --test-name-pattern='temporary roots preserve' .smithers/flows/migrate/test/onepass.test.mjs",
+    arbitrary: fc.record({
+      count: fc.integer({ min: 1, max: 15 }),
+      extension: fc.constantFrom(".ts", ".mts", ".vibe"),
+      cycle: fc.boolean()
+    }),
+    numRuns: 80,
+    check: ({ count, extension, cycle }) => {
+      const entry = importedRootsCorpus.entry, local = importedRootsCorpus.local
+      const imported = Array.from({ length: count }, (_, i) => "other/value" + i + extension)
+      const spare = Array.from({ length: 20 }, (_, i) => importedRootsCorpus.rootDir + "/spare" + i + ".ts")
+      const roots = [entry, local, ...spare]
+      const files = [...roots, ...imported]
+      const graph = new Map(files.map(file => [file, []]))
+      graph.set(entry, [local, ...imported])
+      if (cycle) for (const file of imported) graph.set(file, [entry])
+      const result = fixShards(files, graph, new Set([entry]), 20, roots)
+      assert.equal(result.sharded, true)
+      assert.deepEqual(result.rootGroups.flat().sort(), [entry, local].sort())
+      assert.deepEqual(new Set(result.groups.flat()), new Set([entry, local, ...imported]))
+    }
+  })
 })

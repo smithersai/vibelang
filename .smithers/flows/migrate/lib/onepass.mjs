@@ -98,7 +98,7 @@ export function shardModules(files, graph, cap = 240) {
 }
 
 /** A large program fixes selected roots and their dependencies; unrelated roots stay for the wide check. */
-export function fixShards(files, graph, selected, cap = 240) {
+export function fixShards(files, graph, selected, cap = 240, roots) {
   positive(cap, 240, "shard cap", 240)
   if (files.length <= cap) return { sharded: false, groups: [files] }
   const members = new Set(files)
@@ -106,9 +106,20 @@ export function fixShards(files, graph, selected, cap = 240) {
   const plan = planShards(work, graph, cap)
   // A temporary project omits reverse observers. An oversized closure must
   // use the original tsconfig, not just an oversized selected-root project.
-  return plan.fallback
-    ? { sharded: false, groups: [files], fallback: plan.fallback }
-    : { sharded: true, groups: plan.groups }
+  if (plan.fallback) return { sharded: false, groups: [files], fallback: plan.fallback }
+  if (!roots) return { sharded: true, groups: plan.groups }
+  const originalRoots = new Set(roots)
+  const rootGroups = plan.groups.map(group => group.filter(file => originalRoots.has(file)))
+  for (let i = 0; i < plan.groups.length; i++) {
+    const reachableFromRoots = new Set(rootGroups[i].flatMap(file => [file, ...reachable(graph, file)]))
+    const missing = plan.groups[i].find(file => selected.has(file) && !reachableFromRoots.has(file))
+    if (missing) return { sharded: false, groups: [files], fallback: {
+      file: missing, reason: "selected source is not reachable from retained project roots"
+    } }
+  }
+  // Imported dependencies remain imports: promoting them to roots can change
+  // rootDir checks and the compiler's declaration-backed source view.
+  return { sharded: true, groups: plan.groups, rootGroups }
 }
 
 async function mapLimit(items, jobs, fn) {
@@ -410,10 +421,10 @@ async function fix(config, p, cm, options) {
           .filter(file => !/\.vibex?$/.test(file) || (existsSync(join(config.target, file)) && program.has(realpathSync(join(config.target, file)))))
         receipt.membership = { source: "compiler", modules: program.size, log: scopeLog + ".scope.log" }
         for (const file of files) if (only.has(file)) covered.add(file)
-        const { sharded, groups, fallback } = fixShards(files, graph, only)
+        const { sharded, groups, rootGroups, fallback } = fixShards(files, graph, only, 240, roots)
         receipt.mode = sharded ? "sharded" : "whole-project"
         if (fallback) receipt.fallback = fallback
-        receipt.shards = groups.map(g => ({ modules: g.length, files: g }))
+        receipt.shards = groups.map((g, i) => ({ modules: g.length, files: g, roots: sharded ? rootGroups[i] : roots }))
         appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-plan", package: dir, project: project.project, mode: receipt.mode, modules: files.length, selected: only.size, shards: groups.map(g => g.length), ...(fallback ? { fallback } : {}) })
         for (let sweep = 1; sweep <= maxRounds; sweep++) {
           let sweepFixes = 0
@@ -425,7 +436,7 @@ async function fix(config, p, cm, options) {
             if (sharded) {
               temporary = join(config.target, dir, `tsconfig.vibelang-fix-${process.pid}-${i}.json`)
               if (existsSync(temporary)) throw new Error("temporary project already exists: " + temporary)
-              writeJson(temporary, { extends: "./" + project.project, files: group.map(f => "./" + posix.relative(dir, f)), include: [], exclude: [] })
+              writeJson(temporary, { extends: "./" + project.project, files: rootGroups[i].map(f => "./" + posix.relative(dir, f)), include: [], exclude: [] })
               tsconfig = posix.basename(temporary)
             }
             try {

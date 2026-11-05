@@ -202,6 +202,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Imported callbacks from native function-type aliases could report `EK0403` after declaration emit; generated `@throws {never}` comments now stay attached when those declarations are loaded.
 
+- Migration could report `TS6059` after treating imported dependencies as temporary project roots. Fixing shards now preserve the original roots and imported dependency views.
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
