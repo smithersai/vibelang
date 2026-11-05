@@ -102,6 +102,7 @@ func (g *grammarCfg) add(lhs int, rhs []grammarGsym, src string, vibe bool) {
 var grammarTokenClasses = map[string]bool{
 	"IdentifierReference": true, "BindingIdentifier": true, "LabelIdentifier": true,
 	"IdentifierName": true, "StringLiteral": true, "NumericLiteral": true, "TemplateLiteral": true,
+	"RegularExpressionLiteral": true,
 }
 
 // A grammarNtok is a token of the notation.
@@ -437,8 +438,8 @@ func grammarSplitLookahead(set string) []string {
 
 // grammarTsSubset is the TypeScript the search embeds: ECMAScript 2025's
 // statements and expressions and TypeScript 5.9's types, cut to what the
-// VibeLang productions and the specification's examples touch (no regular
-// expressions, templates as one token, no JSX, no decorators, no enums or
+// VibeLang productions and the specification's examples touch (regular-expression literals validated independently,
+// templates as one token, no JSX, no decorators, no enums or
 // namespaces). Each rule is ECMAScript's or
 // TypeScript's own, with four liberties: helper names; ASI as an explicit
 // symbol (see earley); the restrictions the TypeScript parser puts on line
@@ -560,7 +561,7 @@ OptionalExpression = MemberExpression OptionalChain | CallExpression OptionalCha
 OptionalChain = "?." IdentifierName | "?." Arguments
 Arguments = "(" ")" | "(" ArgumentList ","? ")"
 ArgumentList = AssignmentExpression | "..." AssignmentExpression | ArgumentList "," AssignmentExpression | ArgumentList "," "..." AssignmentExpression
-PrimaryExpression = "this" | IdentifierReference | Literal | ArrayLiteral | ObjectLiteral | FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression | TemplateLiteral | ParenthesizedExpression
+PrimaryExpression = "this" | IdentifierReference | Literal | RegularExpressionLiteral | ArrayLiteral | ObjectLiteral | FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression | TemplateLiteral | ParenthesizedExpression
 Literal = "null" | "true" | "false" | NumericLiteral | StringLiteral
 ArrayLiteral = "[" ArrayElision? "]" | "[" ArrayElision? ElementList "]" | "[" ArrayElision? ElementList "," ArrayElision? "]"
 ArrayElision = "," | ArrayElision ","

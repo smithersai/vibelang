@@ -224,6 +224,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-regexp-literal", "n = / 2 /\n2\n;"},
 	{"native-regexp-unmatched-paren", "n = / ) 2 /\n2\n;"},
 	{"custom-declaration-export", "type Value = number ; export service type { Value } ;"},
+	{"native-regexp-alternation", "n = / |> 2 /\n2\n;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -374,6 +375,11 @@ func grammarAdmissionMismatch(source string) (bool, string) {
 	}
 	toks := grammarLexSource(source)
 	r := lab.read(lab.g, toks, grammarParseMode{prose: true, names: true})
+	if r.count == 0 {
+		if tokens, ok := grammarValidatedRegExpTokens(source); ok {
+			r = lab.read(lab.g, tokens, grammarParseMode{prose: true, names: true})
+		}
+	}
 	if r.count == 0 {
 		return true, "compiler reports no syntax rejection, but Appendix A has no derivation (check compiler admission or lab coverage)"
 	}
@@ -772,9 +778,6 @@ func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
 	if grammarParenthesizedEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
-	}
-	if grammarSimpleRegExpLabGap(source) {
-		return "admission:native-regexp-literal"
 	}
 	if grammarSchemaAsyncField(ts) {
 		return "admission:schema-async-field"
@@ -1696,7 +1699,7 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1202: // Provider-list line breaks: a recovered head, rejected.
 		return true
-	case 701, 707, 4704: // The pinned draft's match grammar and early errors; a regular expression pattern is not lexed by the lab.
+	case 701, 707, 4704: // The pinned draft's match grammar and early errors.
 		return true
 	case 2005: // ForTry requires a ForDeclaration head.
 		return true
