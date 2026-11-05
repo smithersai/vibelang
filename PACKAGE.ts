@@ -1113,6 +1113,12 @@ const targets = {
     [go,node,bun],
     "12m"
   ),
+  "generator-binding-refusal-contracts": goVibelang(
+    "Generator migrations retain parameter binding timing and their documented refusal",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^TestEffectGenRefusals$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^FuzzFix$/effect-fn-destructure\" ./internal/vibelangfuzz",
+    [],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

@@ -2066,3 +2066,5 @@ The `//:unique-diagnostic-authorizations` target checks that a retired diagnosti
 The `//:syntax-error-matcher-registration` target checks complete syntax goldens and parse/print fuzz seeds, including matcher registrations and authored error members.
 
 The `//:continuation-contract-retirement` target keeps continuation retirement identities consistent across the registry, full-project corpus, native namesake controls and Appendix examples.
+
+The `//:generator-binding-refusal-contracts` target checks complete generator refusal diagnostics and object, defaulted, nested and tuple parameter migration corpus controls.
