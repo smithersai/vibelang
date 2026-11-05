@@ -73,7 +73,6 @@ const renumbering = "lane diag-renumber registers each VIP's hundred-block (deci
 // deletes its entry.
 var specAhead = map[int32]string{
 	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
-	302: renumbering,
 	// Assigned by the round-20 spec for decided detail 100 (an extractor on a class without its own matcher).
 
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.

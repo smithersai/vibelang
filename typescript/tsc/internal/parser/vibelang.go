@@ -324,6 +324,19 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 	name := p.vibelangSynthesized(p.factory.NewQualifiedName(module, member), bang)
 	arguments := p.newNodeList(span, []*ast.Node{result, errors, dependencies})
 	reference := p.vibelangSpanning(p.factory.NewTypeReferenceNode(name, arguments), span)
+	// Appendix A assigns EK0302 to A!!B!C. Recover the left grouping so
+	// one specific error replaces the native missing-semicolon cascade.
+	// An omitted R or a bare expression assertion keeps its existing boundary.
+	if omittedError && dependencies.Flags&ast.NodeFlagsReparsed == 0 &&
+		p.token == ast.KindExclamationToken && !p.hasPrecedingLineBreak() && p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		return !p.hasPrecedingLineBreak() && p.isStartOfVibeLangSlot()
+	}) {
+		nested := p.parseVibeLangEffectType(reference)
+		at := core.NewTextRange(scanner.SkipTrivia(p.sourceText, nested.Pos()), nested.End())
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, at, "EK", diagnostics.CategoryError, 302, VibeLangExtraEffectSlotMessage))
+		return nested
+	}
 	// A postfix ? after the type is TypeScript's, as parsePostfixTypeOrHigher
 	// gives it: the tuple parser makes [A!E?] and [A!!?] optional elements, and
 	// anywhere else the checker refuses it (TS17019).

@@ -17,9 +17,9 @@ function continuation() {
   const a = x as number!! as B
   const b = x as number!! satisfies unknown
   const c = x as number!!as satisfies unknown
-  x as number!!as
+  const captured = x as number!!as
   B
-  return [a, b, c]
+  return [a, b, c, captured]
 }
 type Present = number!!as
 export const check: Equal<Present, Effect.Effect<number, never, as>> = true

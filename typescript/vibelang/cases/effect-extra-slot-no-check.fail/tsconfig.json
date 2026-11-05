@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"Preserve","moduleResolution":"Bundler","types":[],"skipLibCheck":true,"noCheck":true,"outDir":"out"},"files":["main.vibe"]}

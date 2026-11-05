@@ -1,0 +1,2 @@
+// expect: EK0302
+export type X = number!!string!boolean

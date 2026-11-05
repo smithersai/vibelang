@@ -30,6 +30,8 @@ effect function release(version: string) {
 
 **Effect types**. `A!E!R` means exactly `Effect.Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type. A line break ends the type: each `!` and its slot stay on one line, `A!!` may end a line, and a slot in parentheses may span lines; a `!` with no slot on its line is `TS17019`. Both slots can be object types: `number!{ reason: string }!{ service: number }`. After `!!`, parenthesize an object requirement as `number!!({ service: number })` so `{` can still begin a function body. In an expression, write `(value as number!!)!` to apply a non-null assertion to the asserted value. Store or return an asserted Effect; discarding it in an expression statement is `EK4801`.
 
+An Effect type such as `A!!B!C` needs explicit grouping (`EK0302`). Choose `(A!!B)!C` to nest the first Effect or `A!(B!C)` to nest the error channel. The editor and `--fix` make the first grouping explicit. An asserted Effect used to test a line boundary still needs a binding or a return; discarding it reports `EK4801`.
+
 ```ts effect
 // fragment
 type Find = (id: string) => Effect.Effect<User, NotFound>

@@ -8,9 +8,9 @@ function continuation() {
   const a = x as Effect.Effect<number> as B
   const b = x as Effect.Effect<number> satisfies unknown
   const c = x as Effect.Effect<number, never, as> satisfies unknown
-  x as Effect.Effect<number, never, as>
+  const captured = x as Effect.Effect<number, never, as>
   B
-  return [a, b, c]
+  return [a, b, c, captured]
 }
 type Present = Effect.Effect<number, never, as>
 export const check: Equal<Present, Effect.Effect<number, never, as>> = true
