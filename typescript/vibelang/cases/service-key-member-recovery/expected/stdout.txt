@@ -1,0 +1,1 @@
+service member and key diagnostics validated

@@ -209,6 +209,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Parameterless Effect arrows and function expressions with several statements could lose their source names, and arrows could become regular functions. They now keep their source callable form and name while their bodies remain cold.
 
 - `--fix` could report both an `Effect.fn` wrapper and an immediate call of its returned function. It now reports the wrapper once.
+
+- A rejected service member could hide an invalid key; the compiler now reports both member diagnostics.
 - Contributor cache warmup omitted the Effect lint package and recompiled it during validation. The warmup now includes it.
 - Contributor validation omitted stale-manifest preservation checks. It now runs both disk and editor regression cases.
 - Contributor API checks failed after a comparison helper moved into another file. Their fixtures now include local helper dependencies transitively.

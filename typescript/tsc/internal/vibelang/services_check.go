@@ -138,6 +138,13 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 	checkDeclarationMembers(c, class)
 	kind := shapeKindOf(class)
 	if kind == ordinaryClass {
+		// A rejected body member can prevent service-shape synthesis. The
+		// written key still has its independent VIP-9 member rule.
+		if declarationWord(class) == "service" {
+			for _, member := range class.Members() {
+				checkServiceLiteralKey(c, class, member)
+			}
+		}
 		return
 	}
 	if reference := serviceShapeSelfReference(c, class); reference != nil {

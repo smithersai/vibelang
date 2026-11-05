@@ -1,0 +1,6 @@
+service Indexed { static key = "recovery/Indexed"; [x: string]: unknown }
+service Constructed { static readonly key = 7; constructor() {} }
+service Callable { static key = "recovery/Callable"; (): number }
+service Accessor { static key = "recovery/Accessor"; get n() { return 1 } }
+service Implemented { static key = "recovery/Implemented"; read() { return 1 } }
+export const invalid: number = "wrong"
