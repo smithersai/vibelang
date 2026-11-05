@@ -86,7 +86,10 @@ func checkLintDefectBridge(t *testing.T, w *Workspace, row lintDefectBridgeRow, 
 		source = strings.ReplaceAll(source, "\n", "\r\n")
 	}
 	cfg := `{"compilerOptions":{"target":"es2022","module":"nodenext","moduleResolution":"nodenext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true},"files":["main.vibe","foreign.ts"]}`
+	// Go may place temporary projects under an ignored build-cache directory.
+	// This rule fixture has its own repository boundary for CLI discovery.
 	dir, err := w.writeProject(Project{Files: map[string]string{
+		".jj": "",
 		"package.json": servicesPackage, "main.vibe": source,
 		"foreign.ts": string(foreign),
 	}, Config: cfg})
@@ -121,6 +124,9 @@ func checkLintDefectBridge(t *testing.T, w *Workspace, row lintDefectBridgeRow, 
 	sys := &sidecarParitySystem{fs: w.fs, cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
 	status := lint.Command(t.Context(), sys, []string{"-p", filepath.Join(dir, "tsconfig.json"), "-c", ox, filepath.Join(dir, "main.vibe")})
 	output := sys.output.String()
+	if !strings.Contains(output, " in 1 .vibe file(s).") {
+		t.Fatalf("lint fixture discovery: expected one source file; status=%d project=%s source=%s\n%s", status, filepath.Join(dir, "tsconfig.json"), filepath.Join(dir, "main.vibe"), output)
+	}
 	wantStatus := 0
 	if row.Count > 0 && severity == "error" {
 		wantStatus = 1
