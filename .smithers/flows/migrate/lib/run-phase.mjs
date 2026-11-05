@@ -352,6 +352,15 @@ function returned(ts, expression) {
       }
       if (coldGen(ts, node)) return ok
     }
+    // Strict Effect constructors evaluate their value arguments at the call.
+    // Work in a supplied thunk still belongs to that thunk, not this factory.
+    const member = !node.questionDotToken && effectMember(ts, callee)
+    if (member?.module === "Effect" && ["succeed", "fail", "die"].includes(member.name)) {
+      for (const argument of node.arguments) {
+        const work = eagerWork(ts, argument)
+        if (work) return { verdict: "eager", detail: work }
+      }
+    }
     if (valueCalls.test(callee.getText())) return { verdict: "value", detail: "returns " + callee.getText() + "(…)" }
   }
   return { verdict: "review", detail: "returns " + node.getText().slice(0, 60) }

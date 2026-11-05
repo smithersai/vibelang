@@ -250,6 +250,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Declaration verification could reject an unchanged package when its snapshot included both an original declaration and its shipped copy. It now recognizes their recorded common file while retaining conflicts for different declarations.
 
+- Migration verification could let a converted factory delay work inside an `Effect.succeed`, `Effect.fail` or `Effect.die` argument. It now rejects that change while keeping supplied callback bodies deferred.
+
 ### Upgrade from 0.0.11
 | Before | After and repair |
 | --- | --- |
