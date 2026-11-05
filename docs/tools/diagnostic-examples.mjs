@@ -174,7 +174,6 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4820` | error: legacy compiler compatibility — an editor requests the historical return repair for `yield*` of an Effect that never succeeds.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Example: `function* g() { yield* Effect.fail("x") }`; [editor example: yield-return](../../../typescript/tsc/internal/vibelang/diagnostic_appendix_hosts_test.go).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK9209` | error: a legacy layer setup statement follows a member.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK9210` | error: a legacy resumeWith program needs a service or fails outside the operation contract.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | The canonical EK2005 is reserved for a for-try head.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:21:60](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/appendix-ek9210-complete-project).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK9211` | error: a legacy runner or automatic wiring site lacks a required provider.
@@ -312,3 +311,4 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   console.log(JSON.stringify(result,null,2));process.exitCode=result.findings.length?1:0
 }
 // rule-evidence: docs/design/src/900-appendices.md | The old `EK4403` is retired and will never be reassigned: VIP-33 reports host clock and randomness reads as `EK4402` by resolved host origin.
+// rule-evidence: docs/design/src/900-appendices.md | The old `EK9210` is retired and will never be reassigned: the first-release continuation retirement reports `EK3501` before provider or operation-contract analysis; VIP-35 remains open.

@@ -19,7 +19,7 @@ func TestCompatibilityIdentityPrimaryMessages(t *testing.T) {
 		{3007, errorCategory, "configuration"},
 		{3201, errorCategory, "resolved effect"},
 		{9209, errorCategory, "setup statements"},
-		{9210, errorCategory, "resumeWith"},
+		{3501, errorCategory, "Handlers"},
 		{9211, errorCategory, "Nothing provides"},
 		{9214, errorCategory, "service key"},
 	} {
@@ -27,6 +27,9 @@ func TestCompatibilityIdentityPrimaryMessages(t *testing.T) {
 		if m == nil || m.Category != tc.category || !strings.Contains(m.Text, tc.meaning) {
 			t.Fatalf("EK%d: %+v; want %v %s", tc.code, m, tc.category, tc.meaning)
 		}
+	}
+	if registry[9210] != nil {
+		t.Fatal("retired continuation contract identity remains registered; first-release forms use EK3501")
 	}
 	if registry[4408] != nil {
 		t.Fatal("retired shared EK4408 remains registered")

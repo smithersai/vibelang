@@ -271,7 +271,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 11,000 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 12,000 |
-| [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
+| [Diagnostic code map](diagnostic-code-map.md) | 3,400 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
 | **All 8 pages** | **54,000** |
 
@@ -290,7 +290,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 19,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **120,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 97,000 |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 96,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
 | **All 11 pages** | **250,000** |
 

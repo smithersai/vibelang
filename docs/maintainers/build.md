@@ -2064,3 +2064,5 @@ The `//:explicit-diagnostic-category-variants` target checks fixed throw-syntax 
 The `//:unique-diagnostic-authorizations` target checks that a retired diagnostic and its source fixture have one authorization record, preserving approval references and protected source/configuration digests when records are consolidated.
 
 The `//:syntax-error-matcher-registration` target checks complete syntax goldens and parse/print fuzz seeds, including matcher registrations and authored error members.
+
+The `//:continuation-contract-retirement` target keeps continuation retirement identities consistent across the registry, full-project corpus, native namesake controls and Appendix examples.

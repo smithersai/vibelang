@@ -313,7 +313,7 @@ test("a report-site category override cannot hide behind its primary declaration
 })
 
 
-// Chapter 900: EK9210 diagnostic - spec-rule: docs/design/src/900-appendices.md#463ccca02b740422
+// Historical allocation receipts remain verifiable after later diagnostic retirement.
 test("identity-only allocations preserve the independently captured prior checker bodies",()=>{
  const proof=JSON.parse(readFileSync(new URL("../design/diagnostic-identity-renames.json",import.meta.url),"utf8"))
  const bytes=readFileSync(new URL("../design/diagnostic-identity-allocation.json",import.meta.url),"utf8")
@@ -435,4 +435,11 @@ test("service-key argument witness adds only the required whole-shape body",()=>
  assert.equal(executableDigest(source),migration.tokensSha256)
  assert.equal(migration.tokensSha256,entry.identityOnly.tokensSha256)
  assert.equal(source.split("\n")[0],"// expect: EK9214","both original argument rejections stay active")
+})
+
+test("retired continuation contracts have no active registration or Appendix row",async()=>{
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const audit=loadIdentity(repository)
+ assert.equal(audit.registered.has("EK9210"),false)
+ assert.equal(audit.appendix.has("EK9210"),false)
 })

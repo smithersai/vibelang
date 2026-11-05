@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Diagnostic identity migrations retain a single authorization for each source fixture, including its existing source and configuration protections.
+- Retired continuation forms now consistently report `EK3501`; the obsolete provider-contract diagnostic is retired.
 - Preparing declaration sidecars for large migrations could exhaust memory. Explicit `rootDir` settings and `composite` boundaries now let setup plan paths without loading unrelated source programs.
 
 - Export-fallback API checks loaded unrelated browser declarations. They now use fewer libraries while retaining ordered resolution and native type errors.

@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -26,7 +27,7 @@ func relicRejectionQuoted(t testing.TB) {
 func FuzzRelicControlRejection(f *testing.F) {
 	startShortBudget(f)
 	relicRejectionQuoted(f)
-	keys := []string{"control", "handle", "resume", "abandon", "select", "alias", "native-control", "native-handle", "native-resume", "native-abandon", "native-select", "callback-resume", "native-Control-class", "resumeWith", "native-resumeWith", "computed", "native-computed", "runtime-key", "native-key", "control-nocheck", "select-nocheck", "runtime-shorthand", "native-shorthand", "runtime-reexport", "runtime-star-export", "runtime-destructure", "native-destructure", "native-reexport", "native-runtime-namespace", "runtime-Control", "runtime-computed-destructure", "native-computed-destructure", "native-service-Control", "runtime-union-key", "runtime-union-destructure", "native-union-key", "native-union-destructure", "legacy-control-class", "legacy-handle", "control-fork"}
+	keys := []string{"control", "handle", "resume", "abandon", "select", "alias", "native-control", "native-handle", "native-resume", "native-abandon", "native-select", "callback-resume", "native-Control-class", "resumeWith", "native-resumeWith", "computed", "native-computed", "runtime-key", "native-key", "control-nocheck", "select-nocheck", "runtime-shorthand", "native-shorthand", "runtime-reexport", "runtime-star-export", "runtime-destructure", "native-destructure", "native-reexport", "native-runtime-namespace", "runtime-Control", "runtime-computed-destructure", "native-computed-destructure", "native-service-Control", "runtime-union-key", "runtime-union-destructure", "native-union-key", "native-union-destructure", "legacy-control-class", "legacy-handle", "control-fork", "legacy-resumeWith-contract"}
 	for _, key := range keys {
 		f.Add([]byte(key))
 	}
@@ -48,6 +49,17 @@ func FuzzRelicControlRejection(f *testing.F) {
 		source := ""
 		want := int32(3501)
 		switch key {
+		case "legacy-resumeWith-contract":
+			data, err := os.ReadFile("testdata/fuzz/FuzzCompile/appendix-ek9210-complete-project")
+			if err != nil {
+				t.Fatal(err)
+			}
+			line := strings.Split(string(data), "\n")[1]
+			text, err := strconv.Unquote(strings.TrimSuffix(strings.TrimPrefix(line, "string("), ")"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			source = Unarchive(text)["main.vibe"]
 		case "legacy-control-class":
 			source = `abstract class Ask extends Control { abstract ask(x: number): number!! }; export const old = Ask`
 		case "legacy-handle":
@@ -164,6 +176,9 @@ export effect function probe() {provide Control = {value:7} {return (try Control
 		defer result.Remove()
 		found := false
 		for _, d := range result.Diagnostics {
+			if d.Source() == "EK" && d.Code() == 9210 {
+				t.Fatal("retired operation-contract identity emitted after continuation retirement")
+			}
 			if d.Source() == "EK" && d.Code() == want && d.Category() == diagnostics.CategoryError {
 				if !strings.Contains(d.String(), "vibelang --fix") {
 					Gap(t, relicRejectionTarget, "diagnostic:"+key, "retirement diagnostic does not name migration: %v", d)

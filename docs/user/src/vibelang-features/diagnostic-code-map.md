@@ -23,7 +23,6 @@ Current compatibility splits keep the old check's behavior while freeing the can
 | Former use | Compatibility identity |
 | --- | --- |
 | EK2003 in the stock mapper for a plain return contract | EK9203 |
-| EK2005 for resumeWith requirements/errors | EK9210 |
 | EK2104 for layer setup order | EK9209 |
 | EK3007 for a service-key call with arguments | EK9214 |
 | EK3201 for a missing legacy provider | EK9211 |
@@ -133,3 +132,5 @@ Registration reserves a code; it does not mean the compiler already implements e
 `EK0510` reports an unparenthesized `try`, `fork` or `join` on the left of `**`. The editor action wraps the whole execution expression, such as `(try program) ** 2`, in parentheses. `vibelang --fix` applies the same repair when it introduces no new error. Native TypeScript unary expressions retain `TS17006`.
 
 `EK4004` applies when a module name is used as a value. Imported or re-exported member names, destructuring property keys, labels, and names in `import.meta` or `new.target` do not read that binding. Re-export members with `export { member } from name`; exporting the module name itself is an error.
+
+`EK9210` is retired. Continuation forms report `EK3501` before provider or operation-contract checks; handlers remain outside the first release.

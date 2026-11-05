@@ -755,7 +755,7 @@
   {
     "name": "appendix-archive-EK9210",
     "code": "EK9210",
-    "archive": true
+    "retired": true
   },
   {
     "name": "appendix-archive-EK9211",
