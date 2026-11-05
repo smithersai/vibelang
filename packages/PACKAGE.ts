@@ -139,7 +139,7 @@ const migrateWarningProvenance = S.Shell.Test({
   shell: "VIBELANG_COMPILER=$PWD/packages/compiler/native/vibelang node --test " +
     "--test-name-pattern='compile reads the codemod journal' .smithers/flows/migrate/test/global-error.property.test.mjs",
   data: [compilerNative, migrationSources, ...install],
-  tools: [S.Host.bin("node")],
+  tools: [S.Host.bin("node"), S.Host.bin("jj")],
   sandbox: "none",
   timeout: "3m"
 })
