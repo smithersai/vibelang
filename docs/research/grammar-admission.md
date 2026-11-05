@@ -432,3 +432,11 @@ imports, mixed default/named or default/namespace bindings, inline type-only
 aliases and string-literal imported names with a local alias.
 Local names stay `BindingIdentifier` positions, and a type-only clause
 does not combine default and named/namespace bindings.
+
+The pinned matching grammar's computed member access has no line restriction
+and requires an `Expression` inside `[ ]`. The parser currently splits
+`value is Matcher` followed by a new-line empty or elided array into two
+statements, reporting only semantic errors. The exact
+`admission:pattern-member-line-break` family stays pending; explicit
+semicolons, nonempty computed members and non-member patterns stay separate.
+`EK0702` is a class-pattern type error and does not reject syntax.

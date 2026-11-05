@@ -141,6 +141,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"production-match-patterns", "const v = match (x) { when [let a, ...]: a; when { k: let b }: b; default: throw 1; };"},
 	{"production-match-combined", "const v = match (x) { when not 1 and 2: 3; when (> 1 or < 0): 4; when if (y): 5; when P(let a): a; default: 6; };"},
 	{"production-is", "const b = x is [let a];"},
+	{"pattern-member-line-break", "is is join\n[ ]"},
 	{"production-effect-type", "type T = number!string!boolean;"},
 	{"production-effect-type-omitted", "type T = number!!;"},
 	{"production-effect-type-as", "const v = x as number!!;"},
@@ -884,6 +885,9 @@ func grammarAdmissionForm(source string) string {
 	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
 		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
 	}, source)
+	if grammarPatternMemberLineBreak(source, forms) {
+		return "admission:pattern-member-line-break"
+	}
 	if grammarImportMetaSpecifier(file) {
 		return "admission:import-meta-specifier"
 	}
@@ -1849,6 +1853,7 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-module-reference-not-literal", "", diagnostics.CategoryError, 1141, true},
 		{"native-module-reference-not-literal-warning", "", diagnostics.CategoryWarning, 1141, false},
 		{"ek-module-reference-code-collision", "EK", diagnostics.CategoryError, 1141, false},
+		{"class-pattern-type-error", "EK", diagnostics.CategoryError, 702, false},
 		{"data-member-not-field", "EK", diagnostics.CategoryError, 1606, true},
 		{"data-member-not-field-warning", "EK", diagnostics.CategoryWarning, 1606, false},
 		{"native-data-member-code-collision", "", diagnostics.CategoryError, 1606, false},

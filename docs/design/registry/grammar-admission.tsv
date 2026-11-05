@@ -999,3 +999,4 @@ parser/vibelang_match_cache.go:patternUsesPropertyCache	admission:match	004-matc
 parser/vibelang_match_cache.go:patternUsesCache	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
 parser/vibelang_match_cache.go:MatchIsTest	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
 vibelang/match_lower.go:lowering.visitCachedPatternRead	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
+parser/vibelang_match.go:Parser.parseMatchValueExpression@pattern-member-line-break	admission:pattern-member-line-break	-	pending	VIP-7 pinned computed member patterns have no line restriction; splitting an incomplete access into an `is` test and array statement reports only semantic errors

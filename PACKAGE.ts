@@ -96,6 +96,8 @@ const specTests = [
   "TestGrammarAdmissionCore",
   "TestGrammarAdmissionForAwait",
   "TestGrammarAdmissionDiagnostics",
+  "TestGrammarAdmissionPatternMemberRegression",
+  "TestGrammarAdmissionPatternMemberKeys",
   "TestGrammarAdmissionImportClauses",
   "TestGrammarAdmissionModuleModifiers",
   "TestGrammarAdmissionDefaultExports",
