@@ -15,6 +15,7 @@ func TestWholeServiceNamelessMembers(t *testing.T) {
 			"[key: number]: unknown",
 			"constructor() { super() }",
 			"(): number",
+			"(value: string): string",
 			"<T>(value: T): T",
 			"new(): number",
 			"new<T>(value: T): T",

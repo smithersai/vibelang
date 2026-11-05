@@ -45,6 +45,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Repeated sidecar repair checks could fail because they expected a legacy generator error on valid source; they now require a clean initial compile and keep checking source types, idempotence and overwrite protection.
 
 - The readonly upgrade guide lacked an ordinary TypeScript example; it now shows how written modifiers are preserved in interfaces, nested object types and optional properties.
+- A call signature in a service with a written shape could report `EK0902` twice; it now reports the rejected member once while retaining independent key and type errors.
 
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
