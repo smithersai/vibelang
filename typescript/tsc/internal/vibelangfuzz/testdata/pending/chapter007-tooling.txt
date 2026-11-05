@@ -1,12 +1,1 @@
-FuzzVibexNativeParity generator-argument:none compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity corpus:cov-ch007-generator-argument-none compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity generator-argument:preserve compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity corpus:cov-ch007-generator-argument-preserve compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity generator-argument:react-native compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity corpus:cov-ch007-generator-argument-react-native compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity generator-argument:react compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity corpus:cov-ch007-generator-argument-react compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity generator-argument:react-jsx compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity corpus:cov-ch007-generator-argument-react-jsx compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity generator-argument:react-jsxdev compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
-FuzzVibexNativeParity corpus:cov-ch007-generator-argument-react-jsxdev compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
+

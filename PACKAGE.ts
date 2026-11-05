@@ -1119,6 +1119,12 @@ const targets = {
     [],
     "20m"
   ),
+  "resolved-fuzz-gap-regressions": goVibelang(
+    "Enforce native module and execution cases that now meet their specification",
+    "VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=15m -run \"^(TestVibexDeclarationSpellingQuoted|TestVibexDeclarationSpecifierGuard|TestVibexGeneratedContractIdentity|FuzzNativeCrossVariantResolution|FuzzReviewExecutionDiagnostics|FuzzTryGroupedEffects|FuzzVibexDeclarationSpelling|FuzzVibexNativeParity)$\" ./internal/vibelangfuzz",
+    [],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

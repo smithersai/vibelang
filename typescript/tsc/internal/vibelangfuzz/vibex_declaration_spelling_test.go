@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -14,6 +15,10 @@ import (
 const vibexDeclarationSpecifierQuote = "Ordinary package declarations use the native twin\u2019s relative specifiers: \x60./user.vibe\x60 is declared as \x60./user.ts\x60 and \x60./App.vibex\x60 as \x60./App.tsx\x60; written \x60./user.js\x60, \x60./App.jsx\x60, \x60./user\x60 and native \x60./plain.ts\x60 keep their spelling."
 
 func TestVibexDeclarationSpellingQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("../vips/0027-declaration-output.md"), "The emitted declaration may add exactly the generated `@throws {never}` contract where the twin has no authored throw contract.") {
+		t.Fatal("missing generated contract identity rule")
+	}
+
 	const quote = "The public \x60x.d.ts\x60 is API-identical ([VIP-27](0027-declaration-output.md)) to the one the fork writes for the \x60.tsx\x60 twin that carries the same \x60@throws\x60 tags."
 	if !strings.Contains(SpecText("../vips/0039-vibex.md"), quote) {
 		t.Fatalf("VIP39 no longer says %q", quote)
@@ -116,7 +121,15 @@ func FuzzVibexDeclarationSpelling(f *testing.F) {
 		vibe := compile("main.vibe", "vibex", written)
 		got, ok := vibe.Outputs["out/main.d.ts"]
 		gaps := &Gaps{Target: "FuzzVibexDeclarationSpelling", Input: row.key}
-		if HasError(vibe.Diagnostics) || !ok || got != want {
+		// VIP-27 permits exactly the generated never contract. Retain a
+		// separate strict spelling check because API identity intentionally
+		// permits equivalent native import spellings.
+		specifiersEqual := slices.Equal(vibexDeclarationSpecifiers(want), vibexDeclarationSpecifiers(got))
+		identityEqual := got == want
+		if !identityEqual && specifiersEqual && !HasError(vibe.Diagnostics) && ok {
+			identityEqual = compareDeclarationOutputs(t, native.Outputs, vibe.Outputs) == ""
+		}
+		if HasError(vibe.Diagnostics) || !ok || !specifiersEqual || !identityEqual {
 			gaps.Add("declaration:"+row.key, "VIP39: %s\ndiagnostics=%v\nvibe=%s\nnative=%s", vibexDeclarationSpecifierQuote,
 				SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)), got, want)
 		} else {
@@ -124,4 +137,41 @@ func FuzzVibexDeclarationSpelling(f *testing.F) {
 		}
 		gaps.FinishInput(t, specCorpusKey(t))
 	})
+}
+
+// Match module specifiers in import declarations, exports and import types,
+// which are the declaration forms varied by this generator.
+var vibexDeclarationSpecifierPattern = regexp.MustCompile(`(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+)["']`)
+
+func vibexDeclarationSpecifiers(text string) []string {
+	var result []string
+	for _, match := range vibexDeclarationSpecifierPattern.FindAllStringSubmatch(text, -1) {
+		result = append(result, match[1])
+	}
+	return result
+}
+func TestVibexDeclarationSpecifierGuard(t *testing.T) {
+	native := `export declare const get: () => import("./leaf.tsx").T;`
+	generated := "/** @throws {never} */" + native
+	if !slices.Equal(vibexDeclarationSpecifiers(native), vibexDeclarationSpecifiers(generated)) {
+		t.Fatal("generated contract changed a module path")
+	}
+	for _, bad := range []string{"./leaf.js", "./leaf.jsx", "./leaf.vibex", "./leaf.ts"} {
+		changed := strings.Replace(generated, "./leaf.tsx", bad, 1)
+		if slices.Equal(vibexDeclarationSpecifiers(native), vibexDeclarationSpecifiers(changed)) {
+			t.Fatalf("wrong written module spelling escaped: %s", bad)
+		}
+	}
+}
+func TestVibexGeneratedContractIdentity(t *testing.T) {
+	native := map[string]string{"out/main.d.ts": "export declare const get: () => number;"}
+	generated := map[string]string{"out/main.d.ts": "/** @throws {never} */\nexport declare const get: () => number;"}
+	if diff := compareDeclarationOutputs(t, native, generated); diff != "" {
+		t.Fatal(diff)
+	}
+	for _, bad := range []string{"/** @throws {unknown} */\nexport declare const get: () => number;", "/** @throws {never} */\nexport declare const get: () => string;", "/** changed docs */\nexport declare const get: () => number;"} {
+		if compareDeclarationOutputs(t, native, map[string]string{"out/main.d.ts": bad}) == "" {
+			t.Fatal("changed throw contract, type or documentation escaped identity")
+		}
+	}
 }

@@ -32,18 +32,6 @@ FuzzReviewExecutionDiagnostics diagnostic:fork-map:2 compiler VIP-5/VIP-17/VIP-1
 FuzzReviewExecutionDiagnostics diagnostic:fork-other:0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
 FuzzReviewExecutionDiagnostics diagnostic:fork-other:1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
 FuzzReviewExecutionDiagnostics diagnostic:fork-other:2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-0:0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-0:1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-0:2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-1:0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-1:1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-1:2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-2:0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-2:1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-2:2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-3:0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-3:1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
-FuzzReviewExecutionDiagnostics diagnostic:limit-3:2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
 FuzzReviewExecutionDiagnostics diagnostic:scope-0:0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
 FuzzReviewExecutionDiagnostics diagnostic:scope-0:1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
 FuzzReviewExecutionDiagnostics diagnostic:scope-0:2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: Appendix B requires its owner diagnostic and accepts the valid repair in this exact syntax layout; lane sl1-apply
@@ -92,18 +80,6 @@ FuzzReviewExecutionDiagnostics corpus:diagnostic-fork-map-2 compiler VIP-5/VIP-1
 FuzzReviewExecutionDiagnostics corpus:diagnostic-fork-other-0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:fork-other:0; lane sl1-apply
 FuzzReviewExecutionDiagnostics corpus:diagnostic-fork-other-1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:fork-other:1; lane sl1-apply
 FuzzReviewExecutionDiagnostics corpus:diagnostic-fork-other-2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:fork-other:2; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-0-0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-0:0; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-0-1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-0:1; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-0-2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-0:2; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-1-0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-1:0; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-1-1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-1:1; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-1-2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-1:2; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-2-0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-2:0; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-2-1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-2:1; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-2-2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-2:2; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-3-0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-3:0; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-3-1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-3:1; lane sl1-apply
-FuzzReviewExecutionDiagnostics corpus:diagnostic-limit-3-2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:limit-3:2; lane sl1-apply
 FuzzReviewExecutionDiagnostics corpus:diagnostic-scope-0-0 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:scope-0:0; lane sl1-apply
 FuzzReviewExecutionDiagnostics corpus:diagnostic-scope-0-1 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:scope-0:1; lane sl1-apply
 FuzzReviewExecutionDiagnostics corpus:diagnostic-scope-0-2 compiler VIP-5/VIP-17/VIP-18/VIP-19/VIP-23: minimized keyed reproduction of diagnostic:scope-0:2; lane sl1-apply
