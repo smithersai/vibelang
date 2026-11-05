@@ -1,0 +1,21 @@
+{
+  "repo": "t3code",
+  "pattern": "Entries the convert-first plan kept TypeScript, minimized from run/drive-t3code-convertfirst-465/deferred-causes.json: mode 100644 shebangs, loader-wired package scripts and workflow commands, and one bare workflow command",
+  "files": {
+    "package.json": "{\"scripts\":{\"migrate-dev-db\":\"node --import vibelang/register apps/server/scripts/migrate-dev-db.ts\",\"release:smoke\":\"node --import vibelang/register scripts/release-smoke.ts\"},\"workspaces\":[\"apps/server\"]}",
+    "apps/server/package.json": "{\"name\":\"t3\"}",
+    "apps/server/scripts/migrate-dev-db.ts": "#!/usr/bin/env node\nimport { open } from \"../src/persistence.ts\"\nexport { open }\n",
+    "apps/server/src/persistence.ts": "export const open = 1\n",
+    "scripts/release-smoke.ts": "export const smoke = 1\n",
+    "scripts/build-cli-archive.ts": "#!/usr/bin/env node\nimport { host } from \"./lib/host.ts\"\nexport { host }\n",
+    "scripts/lib/host.ts": "export const host = 1\n",
+    "scripts/notify-discord-release.ts": "#!/usr/bin/env node\nimport { note } from \"./lib/note.ts\"\nexport { note }\n",
+    "scripts/lib/note.ts": "export const note = 1\n",
+    ".github/workflows/release-desktop.yml": "jobs:\n  a:\n    steps:\n      - run: |\n          node --import vibelang/register scripts/build-cli-archive.ts \\\n            --out x\n",
+    ".github/workflows/release.yml": "jobs:\n  a:\n    steps:\n      - run: |\n          node scripts/notify-discord-release.ts prerelease \\\n            --tag x\n"
+  },
+  "deferred": [
+    "scripts/lib/note.ts",
+    "scripts/notify-discord-release.ts"
+  ]
+}

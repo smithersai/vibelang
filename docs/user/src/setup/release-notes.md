@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- The migrate flow kept every module under a `node` shebang TypeScript even when the file had no execute bit, and kept script entries whose path it could rewrite. A shebang now counts only on an executable file, bare commands in GitHub workflows and composite actions count as runners, and a rename rewrites a served entry's path in package scripts, workflows and shell scripts.
 - ESLint could treat a generated concurrency-limit cache as a source variable; the tree now marks that temporary while retaining user-written names and the original limit expression.
 - Editor form suggestions could panic on a property access inside a `for` statement; they now read the loop as the compiler does.
 - Migration regressions for compiler provenance and preserved error channels stopped at missing repository setup. Their fixtures now initialize repositories and reach the intended checks.

@@ -2,6 +2,8 @@
 // separate receipt: nextStep must never mistake "compiler started" for "done".
 import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+import { commandFiles } from "./bare-runners.mjs"
+import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { prepareSourceChildModules } from "./source-child-module.mjs"
@@ -75,7 +77,9 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   }
   const scriptEdits = rewriteViteScripts(target, renames, { read, write })
   const packageScriptEdits = rewriteScripts(target, renames, { read, write })
-  const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
+  // Workflows and shell scripts name an entry on a command line, outside any importer.
+  const commands = commandFiles(target).filter(file => !isTestFile(file) && !isFixtureFile(file) && !referenceFiles.includes(file))
+  const refEdits = rewriteReferences(target, renames, [...referenceFiles.map(file => toOf.get(file) ?? file), ...commands], { read, write, literals: !ts })
   // Literal Vite build inputs that name a renamed module (tracked: the repository's files).
   const buildEntries = ts && tracked ? rewriteBuildEntrypoints(target, tracked, renames, ts, { read, write }) : { edits: [], warnings: [] }
   importEdits.push(...rewriteImports(target, [...scope, ...platform.splits.flatMap(s => s.platform ?? [])].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write }))

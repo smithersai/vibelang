@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -18,6 +18,7 @@ function repository(files) {
   for (const [file, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, file)), { recursive: true })
     writeFileSync(join(root, file), text)
+    if (text.startsWith("#!")) chmodSync(join(root, file), 0o755)
   }
   return root
 }
@@ -35,7 +36,7 @@ test("each runner with no loader keeps what it reaches TypeScript, by name, and 
     assert.match(reason("packages/pkg/src/Manifest.ts"), /node runs packages\/pkg\/src\/cli\/bin\.ts \(packages\/pkg\/package\.json bin pkg\)/)
     assert.match(reason("packages/tools/src/e2e/Target.ts"), /bun runs packages\/tools\/src\/e2e\/Cli\.ts \(packages\/app\/package\.json scripts\.dev\)/)
     assert.match(reason("packages/tools/src/e2e/Vite.ts"), /playwright runs/)
-    assert.match(reason("packages/served/scripts/sync.ts"), /no step rewrites a script's path/)
+    assert.match(reason("packages/served/scripts/sync.ts"), /by a path no rename follows/)
     assert.ok(entries.some(e => e.runner === "playwright" && e.entry === "packages/app/playwright.config.ts"))
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

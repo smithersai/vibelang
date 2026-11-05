@@ -43,7 +43,6 @@
     "packages/app/playwright.config.ts",
     "packages/app/src/helper.ts",
     "packages/served/scripts/sync.ts",
-    "packages/served/scripts/seed.ts",
     "packages/ops/scripts/clean.ts"
   ],
   "migrates": [
@@ -51,6 +50,7 @@
     "packages/pkg/src/Elsewhere.ts",
     "packages/tools/src/Quiet.ts",
     "packages/app/src/unit.ts",
-    "packages/served/src/reached.ts"
+    "packages/served/src/reached.ts",
+    "packages/served/scripts/seed.ts"
   ]
 }

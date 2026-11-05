@@ -1,9 +1,9 @@
 // A runner that loads source with no VibeLang loader cannot read a .vibe module:
-// Node on a package bin (ERR_UNKNOWN_FILE_EXTENSION), `bun file` where no bunfig
+// Node on a package bin or a CI command (ERR_UNKNOWN_FILE_EXTENSION), `bun file` where no bunfig
 // preloads vibelang/bun, or Playwright's Babel. Compile, declarations and tests
 // pass, and the tool fails only when someone runs it. Setup wires what it can, so
 // what is left here stays TypeScript: each module such an entry reaches, by name.
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { parseImports } from "./imports.mjs"
 import { sourceGraph } from "./test-bundles.mjs"
@@ -14,7 +14,7 @@ import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 const loader = /\bvibelang\/(?:register|bun)\b/
 const runners = new Set(["node", "bun", "tsx", "ts-node"])
 // Words that may stand before a runner in a script's command.
-const wrappers = new Set(["exec", "npx", "bunx", "time", "cross-env", "dotenv", "--"])
+const wrappers = new Set(["exec", "npx", "bunx", "time", "cross-env", "dotenv", "--", "if", "!", "then", "else", "elif", "while", "until", "do", "-", "run:"])
 const managers = new Set(["pnpm", "npm", "yarn"])
 const bunCommands = new Set(["test", "t", "install", "i", "add", "a", "remove", "rm", "update", "link", "unlink", "pm", "x", "create", "c", "init", "build", "upgrade", "outdated", "publish", "repl", "patch"])
 const valueFlags = new Set(["--import", "--require", "-r", "--preload", "--loader", "--experimental-loader", "--env-file", "--conditions", "-C", "--tsconfig", "--tsconfig-override", "--config", "-c", "--cwd"])
@@ -64,6 +64,46 @@ export function scriptEntries(script, { locations = false } = {}) {
   return found
 }
 
+/**
+ * The owned files whose commands start runners outside package scripts: shell
+ * scripts, and CI workflows and composite actions, which name a source file
+ * from the repository root or a step's working directory.
+ */
+export function commandFiles(root) {
+  const owns = ownedPaths(root), found = []
+  const shells = dir => {
+    for (const item of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const file = posix.join(dir, item.name)
+      if (item.isDirectory()) {
+        if (!item.name.startsWith(".") && !["node_modules", "dist", "build", "coverage"].includes(item.name) && owns(file + "/_probe.ts")) shells(file)
+      } else if (item.isFile() && file.endsWith(".sh") && owns(file)) found.push(file)
+    }
+  }
+  const listed = dir => existsSync(join(root, dir)) ? readdirSync(join(root, dir), { withFileTypes: true }) : []
+  shells(".")
+  for (const item of listed(".github/workflows")) if (item.isFile() && /\.ya?ml$/.test(item.name)) found.push(".github/workflows/" + item.name)
+  for (const item of listed(".github/actions")) if (item.isDirectory()) {
+    for (const name of ["action.yml", "action.yaml"]) if (existsSync(join(root, ".github/actions", item.name, name))) found.push(`.github/actions/${item.name}/${name}`)
+  }
+  return found
+}
+
+// A shell keeps one working directory; each workflow step starts its own.
+function commandsIn(file, text) {
+  const source = text.replace(/\\\r?\n/g, " ")
+  if (file.endsWith(".sh")) return scriptEntries(source, { locations: true })
+  let line = 0
+  return source.split(/^(?=[ \t]*(?:- +)?run:)/m).flatMap(step => {
+    const commands = scriptEntries(step, { locations: true }).map(command => ({ ...command, line: command.line + line }))
+    line += step.split("\n").length - 1
+    return commands
+  })
+}
+
+// A shebang runs only a file that can execute. On a platform with no execute
+// bit that cannot be told, so the line counts.
+const executable = (root, file) => process.platform === "win32" || (statSync(join(root, file)).mode & 0o111) !== 0
+
 const bunfigPreloads = (root, dir) => {
   const path = join(root, dir, "bunfig.toml")
   return existsSync(path) && /(?:^|\n)\s*preload\s*=[^\n]*vibelang\/bun/.test(readFileSync(path, "utf8").split(/\n\s*\[/)[0])
@@ -102,44 +142,36 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts, routed = f
         const served = command.wired || (command.runner === "bun" && bunfigPreloads(root, cwd))
         const receipt = { runner: command.runner, entry, cwd, via: `${posix.join(dir, "package.json")} scripts.${name}` }
         add(!served, receipt)
-        // A loader reads what it reaches, but the script still names this file by its .ts path.
-        if (served) named.push(receipt)
+        // rewriteScripts follows a rename in a word naming the file from a manifest at or above it,
+        // for Node, whose loader takes a .vibe entry. Anything else keeps the file's name.
+        const word = posix.normalize(command.file)
+        const follows = command.runner === "node" && command.cwd === "." && !word.startsWith("../") && posix.join(dir, word) === entry
+        if (served && !follows) named.push(receipt)
       }
     }
   }
-  // Build targets can invoke a shell outside package scripts. Inspect owned
-  // shells without executing or rewriting them; an unproved cwd retains all
-  // matching source entries rather than certifying a loader from the wrong cwd.
-  const owns = ownedPaths(root)
-  const shells = dir => {
-    for (const item of readdirSync(join(root, dir), { withFileTypes: true })) {
-      const file = posix.join(dir, item.name)
-      if (item.isDirectory()) {
-        if (!item.name.startsWith(".") && !["node_modules", "dist", "build", "coverage"].includes(item.name) && owns(file + "/_probe.ts")) shells(file)
-      } else if (item.isFile() && file.endsWith(".sh") && owns(file)) {
-        const source = readFileSync(join(root, file), "utf8").replace(/\\\r?\n/g, " ")
-        for (const command of scriptEntries(source, { locations: true })) {
-          const uncertain = /[$`]/.test(command.cwd)
-          const candidates = uncertain ? [] : [posix.join(command.cwd, command.file), posix.join(posix.dirname(file), command.cwd, command.file)]
-          let targets = [...new Set(candidates.map(candidate => runtimeFile(candidate)).filter(Boolean))]
-          if (!targets.length) {
-            const suffix = command.file.replace(/^\.\//, "")
-            targets = files.filter(candidate => candidate === suffix || candidate.endsWith("/" + suffix))
-          }
-          for (const entry of targets) {
-            const receipt = { runner: command.runner, entry, cwd: uncertain ? null : command.cwd,
-              via: file + ":" + command.line, command: command.command }
-            add(!(command.wired && !uncertain), receipt)
-          }
-        }
+  // Build targets and CI can invoke a runner outside package scripts. Inspect
+  // owned commands without executing them; an unproved cwd retains all matching
+  // source entries rather than certifying a loader from the wrong cwd.
+  for (const file of commandFiles(root)) {
+    for (const command of commandsIn(file, readFileSync(join(root, file), "utf8"))) {
+      const uncertain = /[$`]/.test(command.cwd)
+      const candidates = uncertain ? [] : [posix.join(command.cwd, command.file), posix.join(posix.dirname(file), command.cwd, command.file)]
+      let targets = [...new Set(candidates.map(candidate => runtimeFile(candidate)).filter(Boolean))]
+      if (!targets.length) {
+        const suffix = command.file.replace(/^\.\//, "")
+        targets = files.filter(candidate => candidate === suffix || candidate.endsWith("/" + suffix))
+      }
+      for (const entry of targets) {
+        add(!(command.wired && !uncertain), { runner: command.runner, entry, cwd: uncertain ? null : command.cwd, via: file + ":" + command.line, command: command.command })
       }
     }
   }
-  shells(".")
   for (const file of files) {
     // A script its shebang runs from any directory: `./scripts/clean.ts`, and only a loader it names itself is sure.
+    // With no execute bit the line runs nothing; whatever starts the file names its runner, and is read above.
     const shebang = /^#!.*\b(node|bun|tsx|ts-node)\b.*$/.exec(text(file).split("\n", 1)[0])
-    if (shebang && !binEntries.has(file)) {
+    if (shebang && !binEntries.has(file) && executable(root, file)) {
       const served = loader.test(shebang[0]) || parseImports(text(file)).some(i => loader.test(i.specifier))
       add(!served, { runner: shebang[1], entry: file, via: `${file} shebang` })
     }
@@ -200,7 +232,7 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts, routed = f
   }))
   for (const [file, receipt] of names) deferred.push({
     file, runBy: [receipt],
-    reason: `stays TypeScript: ${describe(receipt)} by this path, and no step rewrites a script's path; change the script first`
+    reason: `stays TypeScript: ${describe(receipt)} by a path no rename follows; change the script first`
   })
   deferred.sort((a, b) => a.file.localeCompare(b.file))
   return { entries, wired, deferred }
