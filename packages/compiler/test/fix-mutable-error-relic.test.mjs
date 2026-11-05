@@ -5,6 +5,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import fc from "fast-check"
+import { checkProperty } from "../../../scripts/testing/property.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
@@ -23,8 +25,7 @@ const source = [
   "",
 ].join("\n")
 
-for (const scope of [[], ["--fix-migration-only"]]) {
-  test("--fix preserves mutable error payload bytes and matching " + scope.join(" "), (t) => {
+function checkMutableError(t, scope, program = source, expected = [7, "Failure", 8]) {
     assert.ok(existsSync(native), "build the native compiler before running this test")
     assert.ok(existsSync(join(runtime, "dist/entry.js")), "build the runtime before running this test")
     const root = mkdtempSync(join(tmpdir(), "vibelang-mutable-error-"))
@@ -33,7 +34,7 @@ for (const scope of [[], ["--fix-migration-only"]]) {
     symlinkSync(realpathSync(join(runtime, "node_modules/effect")), join(root, "node_modules/effect"))
     symlinkSync(runtime, join(root, "node_modules/vibelang-runtime"))
     writeFileSync(join(root, "package.json"), '{"type":"module"}')
-    writeFileSync(join(root, "main.vibe"), source)
+    writeFileSync(join(root, "main.vibe"), program)
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
       compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, types: [], declaration: true, outDir: "out" },
       files: ["main.vibe"],
@@ -52,17 +53,48 @@ for (const scope of [[], ["--fix-migration-only"]]) {
     compile()
     const api = readFileSync(join(root, "out/main.d.ts"), "utf8")
     const before = exit()
-    assert.deepEqual(JSON.parse(before).value, [7, "Failure", 8])
+    assert.deepEqual(JSON.parse(before).value, expected)
     const receipt = compile("--fix", ...scope)
     const fixed = readFileSync(join(root, "main.vibe"), "utf8")
     assert.doesNotMatch(fixed, /mutable\s+value/, receipt.stdout + receipt.stderr)
-    assert.match(fixed, /class Failure extends \$MutableErrorBase/)
+    assert.match(fixed, /class [A-Za-z]+ extends \$MutableErrorBase/)
     for (const comment of ["/** payload */", "/* field */", "/* trailing */"]) assert.ok(fixed.includes(comment), fixed)
     assert.equal(readFileSync(join(root, "out/main.d.ts"), "utf8"), api)
-    assert.equal(exit(), before)
+    assert.equal(exit(), before, "migration changed matching after rewriting:\n" + fixed)
     assert.match(compile("--fix", ...scope).stdout, /0 fixes in 0 files/)
+}
+
+for (const scope of [[], ["--fix-migration-only"]]) {
+  test("--fix preserves mutable error payload bytes and matching " + scope.join(" "), (t) => {
+    checkMutableError(t, scope)
   })
 }
+
+test("mutable error upgrades preserve tagged subjects across names and helper collisions", async (t) => {
+  const rule = "Generated error matchers deliberately trust `_tag`"
+  assert.ok(readFileSync(join(repo, "docs/design/src/004-match.md"), "utf8").includes(rule))
+  await checkProperty(fc, {
+    name: "mutable-error-own-matcher",
+    rule,
+    command: "node --test test/fix-mutable-error-relic.test.mjs",
+    numRuns: 12,
+    arbitrary: fc.record({
+      name: fc.constantFrom("Failure", "Rejected", "Problem"),
+      value: fc.integer({ min: -4, max: 12 }),
+      foreign: fc.integer({ min: -4, max: 12 }),
+      collision: fc.boolean(),
+      migration: fc.boolean(),
+      crlf: fc.boolean()
+    }),
+    check: ({ name, value, foreign, collision, migration, crlf }) => {
+      let program = source.replaceAll("Failure", name)
+        .replace("value: 7", `value: ${value}`).replace("value: 8", `value: ${foreign}`)
+      if (collision) program = "const $MutableErrorBase = 1; const $MutableErrorMatcher = 2;\n" + program
+      if (crlf) program = program.replaceAll("\n", "\r\n")
+      checkMutableError(t, migration ? ["--fix-migration-only"] : [], program, [value, name, foreign])
+    }
+  })
+})
 
 test("--fix preserves matching through a reassigned constructor alias", (t) => {
   const root = mkdtempSync(join(tmpdir(), "vibelang-mutable-error-alias-"))

@@ -128,6 +128,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Sync constructor repair tests could reject a correct generated call bridge; they now check its native receiver, deferred arguments, declaration types and repeated success or defect outcomes.
 
+- Migrating an error with a legacy `mutable` payload field could stop matching foreign values with the same tag. The class rewrite now preserves its own matcher and extractor behavior.
+
 - The inherited-configuration migration example omitted its repository boundary; it now identifies the owned parent configuration and explains why external presets remain unchanged.
 
 - Local-service declaration examples could report an unrelated missing-key error; they now supply an explicit key and explain that disabling declaration output does not remove that requirement.
