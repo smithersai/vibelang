@@ -25,6 +25,9 @@ func TestFixNamedServiceClasses(t *testing.T) {
 		{"body-comment", "interface Shape { readonly value: string }", "Shape", "{ /* retain class body */ }", "\"alchemy/Database\""},
 		{"header-comment", "interface Shape { readonly value: string }", "Shape", "/* retain brace trivia */ {}", "\"alchemy/Database\""},
 		{"escaped-key", "interface Shape { readonly value: string }", "Shape", "{}", "\"alchemy/\\\"Database\\\"\""},
+		// The comment guard reads // inside a string as the string's contents.
+		{"url-key", "interface Shape { readonly value: string }", "Shape", "{}", "\"https://alchemy/Database\""},
+		{"url-key-header-comment", "interface Shape { readonly value: string }", "Shape", "/* retain brace trivia */ {}", "\"https://alchemy/Database\""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "import * as Context from \"effect/Context\"\n" + tc.head + "\n/** Database docs. */\nexport class Database extends Context.Service<Database, " + tc.shape + ">()(" + tc.key + ") " + tc.body + "\n"
@@ -52,11 +55,10 @@ func TestFixNamedServiceClasses(t *testing.T) {
 func TestFixNamedServiceClassesKeepUnsafe(t *testing.T) {
 	for _, tc := range []struct{ name, header, key, body string }{
 		{"dynamic-key", "class Database", "makeKey()", "{}"},
-		// The shared conservative comment guard treats // in a key as trivia.
-		{"url-key-comment-guard", "class Database", "\"https://alchemy/Database\"", "{}"},
 		{"static-member", "class Database", "\"alchemy/Database\"", "{ static readonly extra = 1 }"},
 		{"instance-member", "class Database", "\"alchemy/Database\"", "{ readonly extra = 1 }"},
 		{"class-comment", "class /* retain modifier trivia */ Database", "\"alchemy/Database\"", "{}"},
+		{"url-key-class-comment", "class /* retain modifier trivia */ Database", "\"https://alchemy/Database\"", "{}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "import * as Context from \"effect/Context\"\ninterface Shape { readonly value: string }\ndeclare function makeKey(): string\nexport " + tc.header + " extends Context.Service<Database, Shape>()(" + tc.key + ") " + tc.body + "\n"
