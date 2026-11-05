@@ -2134,3 +2134,5 @@ The `//:abstract-error-constructor-migrations` target checks abstract root and i
 The binding-free pattern check compiles checking projections with actual runtime cache types, independently of prelude export inventory, and verifies empty, literal, nested, negated and alternative patterns plus iterator closing and getter reads.
 
 The Effect parameter diagnostic check varies callable form, throwing contract, and default binding shape. It retains strict initialization checks and records each diagnostic span when the expected count differs.
+
+The `//:migration-style-severity-controls` target checks printed diagnostic severities independently of safe-fix refusal notes. Warning provenance remains recorded; promoted style errors still block the affected module. Keyed inputs cover all printed severities with both newline styles.

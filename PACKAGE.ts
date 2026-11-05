@@ -1257,6 +1257,13 @@ const targets = {
     [],
     "20m"
   ),
+  "migration-style-severity-controls": check(
+    "Migration style verification retains warning provenance and rejects promoted errors",
+    "node --test packages/compiler/test/diagnostics.property.test.mjs .smithers/flows/migrate/test/diagnostics.test.mjs",
+    [],
+    [node],
+    "2m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

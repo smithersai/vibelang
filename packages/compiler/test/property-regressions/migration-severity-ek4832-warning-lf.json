@@ -1,0 +1,14 @@
+{
+  "property": "opencode-refused-service-verification",
+  "rule": "docs/design/vips/0034-compiler-and-tooling.md; migration rules: warnings never restore modules; promoted errors block",
+  "input": {
+    "line": 3,
+    "column": 14,
+    "shape": "named",
+    "refused": true,
+    "inBatch": true,
+    "code": "EK4832",
+    "category": "warning",
+    "crlf": false
+  }
+}

@@ -5,7 +5,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
-import { parseDiagnostics, styleProblems, assertFinished } from "../../../.smithers/flows/migrate/lib/diagnostics.mjs"
+import { parseDiagnostics, styleProblems, assertFinished, warningExceptions } from "../../../.smithers/flows/migrate/lib/diagnostics.mjs"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const regressions = new URL("./property-regressions/", import.meta.url)
 const tooling=readFileSync(join(repo,"docs/design/src/007-tooling.md"),"utf8")
@@ -13,6 +13,7 @@ const flow=readFileSync(join(repo,".smithers/flows/migrate/rules.md"),"utf8")
 const quote="A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
 const tick=String.fromCharCode(96)
 const flowQuote="A "+tick+"Context.Service"+tick+" class stays a class when EK4831 says it has no quick fix"
+const severityQuote="A warning never returns\n" + "an error-free module to TypeScript, regardless of its code or diagnostic source."
 let diagnostics=""
 function render(input) {
  const parts=[],expected=[]
@@ -25,7 +26,7 @@ function render(input) {
  return {output,expected}
 }
 test("diagnostic migration oracles quote the current specification and flow policy",()=>{
- assert.ok(tooling.includes("Keys are whole printed codes: `EK3801` and `EK38100` identify different rules."));assert.ok(tooling.includes(quote));assert.ok(flow.includes(flowQuote))
+ assert.ok(tooling.includes("Keys are whole printed codes: `EK3801` and `EK38100` identify different rules."));assert.ok(tooling.includes(quote));assert.ok(flow.includes(flowQuote));assert.ok(flow.includes(severityQuote))
 })
 test("diagnostics retain errors, locations and notes across LF, CRLF and mixed streams",async()=>{
  await checkProperty(fc,{
@@ -48,21 +49,30 @@ test("diagnostics retain errors, locations and notes across LF, CRLF and mixed s
   }
  })
 })
-test("verify keeps refused service shapes without silencing repairable or unrelated style diagnostics",async()=>{
+test("verify retains warnings and blocks promoted style errors for every refusal shape",async()=>{
  await checkProperty(fc,{
-  name:"opencode-refused-service-verification",rule:"docs/design/src/007-tooling.md: "+quote+"; flow rules: "+flowQuote,
+  name:"opencode-refused-service-verification",rule:"docs/design/src/007-tooling.md: "+quote+"; flow rules: "+flowQuote+"; "+severityQuote,
   command:"node --test test/diagnostics.property.test.mjs",regressions,numRuns:100,
-  arbitrary:fc.record({line:fc.integer({min:1,max:90}),column:fc.integer({min:1,max:90}),shape:fc.constantFrom("named","static","dynamic"),refused:fc.boolean(),inBatch:fc.boolean(),code:fc.constantFrom("EK4831","EK4837","EK4830","EK4832","EK4402","EK9204"),crlf:fc.boolean()}),
+  arbitrary:fc.record({line:fc.integer({min:1,max:90}),column:fc.integer({min:1,max:90}),shape:fc.constantFrom("named","static","dynamic"),refused:fc.boolean(),inBatch:fc.boolean(),code:fc.constantFrom("EK4831","EK4837","EK4830","EK4832","EK4402","EK9204"),category:fc.constantFrom("error","warning","message","suggestion"),crlf:fc.boolean()}),
   diagnostics:()=>diagnostics,
   artifacts:input=>({"service.vibe":input.shape==="named"?'export interface Shape { readonly count: () => number }\nexport class Svc extends Context.Service<Svc, Shape>()("app/Svc") {}\n':input.shape==="static"?'export class Svc extends Context.Service<Svc, {}>()("app/Svc") { static readonly layer = Layer.empty }\n':'export class Svc extends Context.Service<Svc, {}>()(key) {}\n'}),
   check:input=>{
    const notes={named:"its members come from Shape; write them in the declaration.",static:"move its static members into the declaration.",dynamic:"its key is not a literal."}
-   const out="src/service.vibe("+input.line+","+input.column+"): warning "+input.code+": Svc uses a TypeScript-style form.\n  "+(input.refused?"No quick fix: "+notes[input.shape]:"Its quick fix writes the accepted declaration.")+"\n"
+   const category=input.category??"warning"
+   const out="src/service.vibe("+input.line+","+input.column+"): "+category+" "+input.code+": Svc uses a TypeScript-style form.\n  "+(input.refused?"No quick fix: "+notes[input.shape]:"Its quick fix writes the accepted declaration.")+"\n"
    const parsed=parseDiagnostics(input.crlf?out.replaceAll("\n","\r\n"):out)
    const problems=styleProblems(parsed,input.inBatch?["src/service.vibe"]:["src/other.vibe"])
-   const accepted=input.code==="EK4832" || (input.refused&&["EK4831","EK4837"].includes(input.code))
+   const blocked=input.inBatch&&category==="error"
+   const exceptions=warningExceptions(parsed,input.inBatch?["src/service.vibe"]:["src/other.vibe"])
    diagnostics=JSON.stringify({input,parsed,problems})
-   assert.equal(problems.length,input.inBatch&&!accepted?1:0,diagnostics)
+   assert.equal(problems.length,blocked?1:0,diagnostics)
+   assert.deepEqual(problems,blocked?parsed:[],diagnostics)
+   assert.equal(exceptions.length,input.inBatch&&category==="warning"?1:0,diagnostics)
+   if(exceptions.length) {
+    assert.equal(exceptions[0].code,input.code)
+    assert.equal(exceptions[0].name,input.refused?"warning-fix-refused":"warning-retained")
+    if(input.refused) assert.ok(exceptions[0].reason.includes(notes[input.shape]))
+   }
    assert.equal(parsed[0].line,input.line);assert.equal(parsed[0].notes.length,1)
   }
  })
