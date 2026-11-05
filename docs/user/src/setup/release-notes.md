@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- The diagnostic guide omitted the replacement for a retired constructor error; it now explains the inheritance diagnostic and native class rules.
+
 - Bundler examples could fail when calling a service member on its key. They now retrieve the implementation before calling its methods.
 
 - Assigning a generic overloaded function declared `@throws {never}` could incorrectly report `EK0402`; callback assignments now use TypeScript's overload relation and preserve the no-throw contract.

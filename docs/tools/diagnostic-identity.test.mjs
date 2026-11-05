@@ -451,4 +451,7 @@ test("retired subclass constructor identity has no active registration, row or r
  assert.equal(inventory.appendix.has("EK2118"),false)
  const fixtures=JSON.parse(readFileSync(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
  assert.equal(fixtures.find(x=>x.code==="EK2118")?.retired,true)
+ const userMap=readFileSync(new URL("../user/src/vibelang-features/diagnostic-code-map.md",import.meta.url),"utf8")
+ assert.match(userMap,/EK2118.*permanently retired/)
+ assert.match(userMap,/EK2117.*inheritance/)
 })
