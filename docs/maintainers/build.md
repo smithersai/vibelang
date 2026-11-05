@@ -1933,7 +1933,7 @@ The `//:native-inferred-declarations` target covers inferred native consumer imp
 
 The `//:pipe-topic-regressions` target executes the implemented direct and nested missing-topic cases without pending markers. Its keyed corpus covers ordinary and Effect callables, with explicit positive controls that supply the correct outer topic.
 
-The `//:build-contracts` target runs six bounded declaration checks: Bun deadlines, compiler shard prerequisites, Go build flags, shared cache warmup, shared-package test selection and uncached Go test replay. It declares both Node and Go because cache replay verifies a real Go test against a changed external oracle.
+The `//:build-contracts` target runs bounded declaration checks: Bun deadlines, compiler shard prerequisites, Go build flags, shared cache warmup, shared-package test selection and uncached Go test replay. It declares both Node and Go because cache replay verifies a real Go test against a changed external oracle.
 
 The `//:declaration-contract-twins` check compares ordinary, unmodified stock declaration twins with emitted declarations and sidecars. Generated never-throw contracts are the only documentation exception; exported types and authored comments remain checked. It includes function signatures, callbacks, constructors and JSX containers.
 
@@ -2170,3 +2170,5 @@ The `//:http-request-pipe-rollback-controls` target retains canonical HTTP sette
 The corrected pipeline repair check retains all original factory-order, mutable-stage, receiver, callback, runner and accessor-option cases. Canonical HTTP setters additionally keep their proven-safe data-first form and exact declaration output across import layouts and stage order.
 
 `//:service-member-diagnostic-ownership` checks single member diagnostics across whole shapes, generic declarations, invalid keys and call or construct signatures, including keyed fuzz inputs.
+
+Compiler shards use `scripts/testing/node-failures.mjs` to report failures with their original error details, ordinary test output, and Node's execution totals. Successful test names do not crowd the graph preview. A progress record lists completed files and files awaiting a summary every 30 seconds. The reporter preserves exit status, nested failures, cancellation, skips and todos; `scripts/compiler-failure-output.test.mjs` runs each real shard command against controlled files to verify those boundaries.

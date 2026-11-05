@@ -41,7 +41,7 @@ const runs = [
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
   ["packages/runtime/tests/entry-exports.node.test.mjs", "packages/PACKAGE.ts", "node --test packages/runtime/tests/entry-exports.node.test.mjs"],
   // Sharded by file: each shard runs node --test --test-shard=<n>/<total> over the same glob (checked below).
-  ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-shard=${shard}/${COMPILER_TEST_SHARDS} test/*.test.mjs"],
+  ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-reporter=../../scripts/testing/node-failures.mjs --test-shard=${shard}/${COMPILER_TEST_SHARDS} test/*.test.mjs"],
   ["packages/compiler/test/tools/*.test.mjs", "packages/compiler/test/tools/run.sh", "./*.test.mjs"],
   [".smithers/flows/migrate/test/*.test.mjs", "packages/PACKAGE.ts", "migrate/test/*.test.mjs"],
   [".smithers/flows/convert/*.test.mjs", "packages/PACKAGE.ts", "convert/*.test.mjs"],

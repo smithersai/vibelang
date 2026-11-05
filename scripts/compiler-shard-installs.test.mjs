@@ -55,7 +55,7 @@ test("parallel compiler shards read provisioned dependencies without relinking p
     assert.equal(readdirSync(records).length, count, "every shard must reach the test runner")
     for (let shard = 1; shard <= count; shard++) {
       const record = JSON.parse(readFileSync(join(records, shard + "-" + count + ".json"), "utf8"))
-      assert.deepEqual(record.args, ["--test", "--test-shard=" + shard + "/" + count, ...files.map(file => "test/" + file)])
+      assert.deepEqual(record.args, ["--test", "--test-reporter=../../scripts/testing/node-failures.mjs", "--test-shard=" + shard + "/" + count, ...files.map(file => "test/" + file)])
       assert.equal(record.binary, join(packageDir, "native/vibelang"))
     }
   } finally {
