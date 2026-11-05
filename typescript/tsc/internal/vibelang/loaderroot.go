@@ -41,3 +41,14 @@ func LoaderRootArguments(args []string, cwd tspath.RootedDirectoryPath) ([]strin
 	root := tspath.GetNormalizedAbsolutePath(args[index+1], cwd)
 	return slices.Delete(slices.Clone(args), index, index+2), root, nil
 }
+
+// ProjectEmitArguments removes the internal private-emission marker. The
+// compiler preserves authored declaration layout while JavaScript uses its
+// temporary output root.
+func ProjectEmitArguments(args []string) ([]string, bool) {
+	enabled := slices.ContainsFunc(args, func(arg string) bool { return strings.EqualFold(arg, "--project-emit") })
+	if !enabled {
+		return args, false
+	}
+	return slices.DeleteFunc(slices.Clone(args), func(arg string) bool { return strings.EqualFold(arg, "--project-emit") }), true
+}

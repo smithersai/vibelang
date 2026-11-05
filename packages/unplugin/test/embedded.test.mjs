@@ -175,6 +175,8 @@ for (const sidecarDir of [undefined, ".vibe/declarations"]) {
     await writeFile(path, JSON.stringify(config))
     const result = await build({ entryPoints: [join(root, "src/viaVibe.ts")], bundle: true, write: false, logLevel: "silent", platform: "browser", plugins: [vibelang({ root })] })
     assert.match(text(result), compiled)
+    const declarations = (await readdir(root, { recursive: true })).filter(path => path.endsWith(".d.vibe.ts")).sort()
+    assert.deepEqual(declarations, [join(sidecarDir ?? "", "src/lib.d.vibe.ts")], JSON.stringify({ sidecarDir, declarations }))
     assert.match(await readFile(join(root, sidecarDir ?? "", "src/lib.d.vibe.ts"), "utf8"), /export declare function twice/)
     if (sidecarDir !== undefined) await assert.rejects(readFile(join(root, "src/lib.d.vibe.ts")), { code: "ENOENT" })
   })

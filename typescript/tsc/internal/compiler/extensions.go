@@ -170,3 +170,9 @@ func outsideLoaderRoot(file *ast.SourceFile, caseSensitivity tspath.CaseSensitiv
 	return file.IsDeclarationFile || !file.FileName().IsVibeLangSource() ||
 		!tspath.ContainsPath(loaderRoot, string(file.FileName()), caseSensitivity)
 }
+
+// SetProjectSidecarOptions preserves authored declaration options for a private
+// project emission. Only the command entry point sets this process-local mode.
+func SetProjectSidecarOptions(enabled bool) { projectSidecarOptions = enabled }
+
+var projectSidecarOptions bool

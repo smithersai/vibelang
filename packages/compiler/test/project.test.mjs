@@ -1,9 +1,9 @@
 import { loaderScope } from "../loader-scope.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, packageRoot, parseExplainFiles, parseOutput, projectBackend, projectImports, projects, workspaceProject } from "../project.mjs"
@@ -854,4 +854,57 @@ test("config discovery uses VIP-30 precedence in the nearest directory", (t) => 
   }
   writeFileSync(join(root, "src/jsconfig.json"), "{}")
   assert.equal(nearestProject(join(root, "src/main.vibe")), join(root, "src/jsconfig.json"))
+})
+
+
+test("project emission preserves configured sidecar roots", async (t) => {
+  assert.equal(missing, undefined, "the native compiler and runtime are required")
+  const { default: fc } = await import("fast-check")
+  const { checkProperty } = await import("../../../scripts/testing/property.mjs")
+  const rule = readFileSync(new URL("../../../docs/design/vips/0027-declaration-output.md", import.meta.url), "utf8")
+  const quote = "at the source's path relative to TypeScript's declaration source root"
+  assert.ok(rule.includes(quote))
+  const shape = fc.record({
+    mode: fc.constantFrom("explicit", "inherited", "inferred", "composite"),
+    nested: fc.boolean(),
+    name: fc.constantFrom("lib", "value λ", "hash#file"),
+    loader: fc.boolean(),
+    directory: fc.constantFrom(".vibe/declarations", "types/generated")
+  })
+  const check = async (input) => {
+    const { app, root, compiler } = workspace(t)
+    rmSync(join(app, "src/main.vibe"))
+    const sourceName = "src/" + (input.nested ? "nested/" : "") + input.name + ".vibe"
+    const source = join(app, sourceName)
+    mkdirSync(dirname(source), {recursive:true})
+    writeFileSync(source, "export function twice(n:number):number { return n*2 }\n")
+    writeFileSync(join(app,"src/native.ts"), "export const native:number=1\n")
+    const config = {compilerOptions:{target:"ES2022",module:"NodeNext",moduleResolution:"NodeNext",strict:true,skipLibCheck:true,types:[]},vibe:{sidecarDir:input.directory},files:[sourceName,"src/native.ts"]}
+    if(input.mode==="explicit") config.compilerOptions.rootDir="."
+    if(input.mode==="composite") config.compilerOptions.composite=true
+    if(input.mode==="inherited") {
+      mkdirSync(join(root,"base"))
+      writeFileSync(join(root,"base/tsconfig.json"),JSON.stringify({compilerOptions:{rootDir:"../app/src"}}))
+      config.extends="../base/tsconfig.json"
+    }
+    writeFileSync(join(app,"tsconfig.json"),JSON.stringify(config))
+    const result = compileProjectSync({project:join(app,"tsconfig.json"),root:app,compiler,cache:false,[loaderScope]:input.loader})
+    assert.deepEqual(result.errors,[],JSON.stringify(input))
+    const mirror = (input.mode==="explicit"||input.mode==="composite") ? sourceName : sourceName.slice(4)
+    const expected = input.directory+"/"+mirror.replace(/\.vibe$/,".d.vibe.ts")
+    const actual = readdirSync(app,{recursive:true}).filter(name=>name.endsWith(".d.vibe.ts")).map(name=>name.replaceAll("\\","/")).sort()
+    assert.deepEqual(actual,[expected],JSON.stringify({input,expected,actual}))
+    assert.match(readFileSync(join(app,expected),"utf8"),/export declare function twice/)
+    const output = result.outputs.get(source)
+    assert.ok(output,JSON.stringify({input,sources:[...result.outputs.keys()].map(path=>relative(app,path))}))
+    assert.match(output.code,/n\s*\*\s*2/)
+    assert.ok(output.map.sources.includes(source),JSON.stringify(output.map))
+  }
+  for (const mode of ["explicit","inherited","inferred","composite"]) {
+    for (const loader of [false,true]) await check({mode,loader,nested:true,name:"lib",directory:".vibe/declarations"})
+  }
+  await checkProperty(fc, {name:"ProjectSidecarRoots",rule:quote,
+    command:"node --test --test-name-pattern='project emission preserves configured sidecar roots' packages/compiler/test/project.test.mjs",
+    arbitrary:shape,check,numRuns:24})
+
 })

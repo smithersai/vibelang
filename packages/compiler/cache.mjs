@@ -38,7 +38,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 // 9: a pattern that writes a leading dot scans dotted names.
 // 10: decode compiler UTF-8 incrementally; discard corrupted cached warnings.
 // 11: collect Vibex outputs and fingerprint JSX source discovery.
-const format = 11
+// 12: private emission preserves the configured declaration sidecar layout.
+const format = 12
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed

@@ -41,7 +41,14 @@ func (p *Program) vibeSidecarPaths(source string) (string, string) {
 		options := config.CompilerOptions()
 		return options.VibeSidecarPaths(source, p.caseSensitivity, options.VibeSidecarRoot(config.FileNames(), p.caseSensitivity))
 	}
-	return p.Options().VibeSidecarPaths(source, p.caseSensitivity, p.vibeSidecarSourceRoot())
+	return p.vibeSidecarOptions().VibeSidecarPaths(source, p.caseSensitivity, p.vibeSidecarSourceRoot())
+}
+
+func (p *Program) vibeSidecarOptions() *core.CompilerOptions {
+	if p.sidecarProjectOptions != nil {
+		return p.sidecarProjectOptions
+	}
+	return p.Options()
 }
 
 func (p *Program) vibeSidecarSourceRoot() string {
@@ -52,7 +59,7 @@ func (p *Program) vibeSidecarSourceRoot() string {
 				files = append(files, file.FileName())
 			}
 		}
-		p.sidecarSourceDirectory = p.Options().VibeSidecarRoot(files, p.caseSensitivity)
+		p.sidecarSourceDirectory = p.vibeSidecarOptions().VibeSidecarRoot(files, p.caseSensitivity)
 	})
 	return p.sidecarSourceDirectory
 }

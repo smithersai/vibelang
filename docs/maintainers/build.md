@@ -2112,3 +2112,5 @@ The schema codec return check also replays grouped, required-field, and readonly
 The trusted class visibility check replays the located compatibility example and varies private versus exported classes, import aliases, namespaces, and Unicode names against stock TypeScript visibility controls.
 
 The tagged match repair check compares complete migration output and compiles it, with exhaustive-tag handler and refutable-combinator fuzz controls.
+
+The loader sidecar root check varies explicit, inherited, inferred, and composite roots through public and loader compiles, then runs the embedded bundler declaration checks. Failures report the relative declaration paths actually written.

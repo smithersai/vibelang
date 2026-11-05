@@ -42,3 +42,23 @@ func TestLoaderRootArguments(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectEmitArguments(t *testing.T) {
+	for _, test := range []struct {
+		args, want []string
+		enabled    bool
+	}{
+		{[]string{"-p", "tsconfig.json"}, []string{"-p", "tsconfig.json"}, false},
+		{[]string{"--project-emit", "-p", "tsconfig.json"}, []string{"-p", "tsconfig.json"}, true},
+		{[]string{"-p", "tsconfig.json", "--PROJECT-EMIT", "--project-emit"}, []string{"-p", "tsconfig.json"}, true},
+	} {
+		original := slices.Clone(test.args)
+		got, enabled := ProjectEmitArguments(test.args)
+		if !slices.Equal(got, test.want) || enabled != test.enabled {
+			t.Fatalf("got %v %v want %v %v", got, enabled, test.want, test.enabled)
+		}
+		if !slices.Equal(original, test.args) {
+			t.Fatal("argument parser mutated the caller's slice")
+		}
+	}
+}

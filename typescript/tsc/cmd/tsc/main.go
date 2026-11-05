@@ -49,6 +49,7 @@ func runMain() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	sys := newSystem()
+	args, projectEmit := vibelang.ProjectEmitArguments(args)
 	args, loaderRoot, err := vibelang.LoaderRootArguments(args, sys.GetCurrentDirectory())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "vibelang:", err)
@@ -69,6 +70,7 @@ func runMain() int {
 	}
 	// After --fix, whose own compile checks the whole project.
 	compiler.SetLoaderRoot(loaderRoot)
+	compiler.SetProjectSidecarOptions(projectEmit)
 	result := execute.CommandLine(ctx, sys, args, nil)
 	if refused && result.Status == 0 {
 		return vibelang.FixRefusedExit

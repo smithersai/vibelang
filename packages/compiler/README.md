@@ -527,3 +527,5 @@ same checking scope as the preload described above. Run
 `vibelang -p tsconfig.json` to check every selected project file.
 
 In a mixed migrated package, emitted native TypeScript entries under `.vibelang/js` resolve back to their original sources under the Node and Bun source hooks. Relative source imports and package imports therefore share module instances.
+
+Bundler and loader compiles preserve the project declaration layout under `vibe.sidecarDir`, including inherited settings. Returned source maps continue to name the original source files.

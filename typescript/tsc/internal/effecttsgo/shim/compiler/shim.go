@@ -99,3 +99,6 @@ type SourceFileMayBeEmittedHost = compiler.SourceFileMayBeEmittedHost
 type SourceMapEmitResult = compiler.SourceMapEmitResult
 type WriteFile = compiler.WriteFile
 type WriteFileData = compiler.WriteFileData
+
+//go:linkname SetProjectSidecarOptions github.com/microsoft/TypeScript/tsc/internal/compiler.SetProjectSidecarOptions
+func SetProjectSidecarOptions(enabled bool)

@@ -186,7 +186,7 @@ export function formatDiagnostic(diagnostic) {
 const emitRoot = (root) => parse(resolve(root)).root
 
 const emitArgs = (project, root, out, loader) => [
-  "--project", project, ...(loader ? ["--loader-root", resolve(root)] : []),
+  "--project", project, "--project-emit", ...(loader ? ["--loader-root", resolve(root)] : []),
   "--pretty", "false", "--listFiles", "true", "--rootDir", emitRoot(root),
   "--outDir", out, "--sourceMap", "true", "--inlineSources", "true",
   "--inlineSourceMap", "false", "--sourceRoot", slash(emitRoot(root)).replace(/\/?$/, "/"), "--declaration", "false", "--declarationMap", "false",

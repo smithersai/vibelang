@@ -137,6 +137,7 @@ type Program struct {
 
 	commonSourceDirectory      tspath.RootedDirectoryPath
 	commonSourceDirectoryOnce  sync.Once
+	sidecarProjectOptions      *core.CompilerOptions
 	sidecarSourceDirectory     string
 	sidecarSourceDirectoryOnce sync.Once
 
@@ -353,6 +354,12 @@ func NewProgram(opts ProgramOptions) *Program {
 		opts:            opts.ProgramConfig,
 		hosts:           opts.ProgramHosts,
 		caseSensitivity: opts.Host.FS().CaseSensitivity(),
+	}
+	if projectSidecarOptions && opts.Config.CompilerOptions().ConfigFilePath != "" {
+		authored, errors := tsoptions.GetParsedCommandLineOfConfigFile(opts.Config.CompilerOptions().ConfigFilePath, nil, nil, opts.Host.FS(), nil)
+		if authored != nil && len(errors) == 0 {
+			p.sidecarProjectOptions = authored.CompilerOptions()
+		}
 	}
 	if opts.Tracing != nil {
 		defer opts.Tracing.Push(tracing.PhaseProgram, "createProgram", map[string]any{"configFilePath": opts.Config.CompilerOptions().ConfigFilePath}, true)()
