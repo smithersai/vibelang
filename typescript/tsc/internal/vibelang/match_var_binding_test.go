@@ -100,12 +100,13 @@ func TestMatchVarBindingFixProject(t *testing.T) {
 	}
 }
 
-func TestMatchVarBindingFixLeavesOrdinaryVar(t *testing.T) {
+func TestMatchVarBindingFixPreservesOrdinaryVarScope(t *testing.T) {
 	source := "export function f(): number { var value=7; return value }"
-	program, _, _, _ := editorProgram(t, source)
+	program, file, _, _ := editorProgram(t, source)
 	result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), FixOptions{})
-	if len(result.Files) != 0 {
-		t.Fatalf("pattern repair changed ordinary var: %+v", result)
+	fixed := result.Files[file.FileName()]
+	if result.Err != nil || fixed == nil || !strings.Contains(fixed.Text, "\n"+source+"\n}") {
+		t.Fatalf("ordinary var must retain its native function scope: %+v", result)
 	}
 }
 

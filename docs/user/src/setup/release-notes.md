@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Legacy JavaScript errors now offer an editor repair for closed native files that keeps their scope in a TypeScript `module`, preserving `var` hoisting and direct `eval`.
+
 - Automatic repairs could run a catch handler's returned error or Effect as a computation; they now preserve that value as data, with an explicit editor action available to run it.
 - A preserving call repair could emit an obsolete return annotation and leave a native type error; generated argument functions now use current syntax.
 - Lexical wrapper captures remain supported, and retired capture and clock diagnostics no longer appear as current error examples.
