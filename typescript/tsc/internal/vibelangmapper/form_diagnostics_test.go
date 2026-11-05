@@ -22,24 +22,24 @@ import (
 // the editor and the projection agree, or that the docs no longer hold, fails
 // so that its line is deleted.
 var formChoiceAhead = map[string]string{
-	"docs/user/src/error-management/016-fallback.md#block-4":                    "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/086-getting-started.md#block-7":                       "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/setup/vite.md#block-6":                                       "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/vibelang-features/118-experimental-platform-apis.md#block-9": "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/error-management/006-two-error-types.md#block-1":             "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/scheduling/037-using-schedules.md#block-5":                   "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/091-transformations.md#block-4":                       "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/094-error-messages.md#block-1":                        "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/094-error-messages.md#block-4":                        "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/095-error-formatters.md#block-1":                      "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/095-error-formatters.md#block-2":                      "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/095-error-formatters.md#block-3":                      "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/095-error-formatters.md#block-4":                      "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/097-default-constructors.md#block-3":                  "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/setup/react.md#block-2":                                      "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/setup/vibelang-cli.md#block-4":                               "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/setup/vue.md#block-3":                                        "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/vibelang-features/114-vibelang-for-effect-users.md#block-12": "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/error-management/016-fallback.md#block-4":                            "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/086-getting-started.md#block-7":                               "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/vite.md#block-6":                                               "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/118-experimental-platform-apis.md#file:serve.vibe": "mapper:effect-block-catch-head",
+	"docs/user/src/error-management/006-two-error-types.md#block-1":                     "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/scheduling/037-using-schedules.md#block-5":                           "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/091-transformations.md#block-4":                               "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/094-error-messages.md#block-1":                                "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/094-error-messages.md#block-4":                                "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/095-error-formatters.md#block-1":                              "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/095-error-formatters.md#block-2":                              "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/095-error-formatters.md#block-3":                              "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/095-error-formatters.md#block-4":                              "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/097-default-constructors.md#block-3":                          "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/react.md#block-2":                                              "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/vibelang-cli.md#block-4":                                       "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/vue.md#block-3":                                                "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/114-vibelang-for-effect-users.md#block-12":         "mapper:effect-block-catch-head (impl-hunt-run)",
 	// VIP-6 (d9f6dcb0f3ce) retired these blocks' pending lines; each is the
 	// same effect-block head the entries above wait on.
 	"docs/user/src/error-management/014-expected-errors.md#block-9":       "mapper:effect-block-catch-head (impl-hunt-run)",
@@ -163,7 +163,7 @@ for (const page of markdownPages(join(root,"docs/user"))) {
  // A block in the VIP language waits for the compiler (its pending line); the census skips it, as check-snippets does.
  const pending = new Set(blocks.filter(block => block.pending).map(block => block.number));
  for (const [number,name] of filenames) {
-  if (name.endsWith(".vibe") && !pending.has(number)) cases.push({name:relative(root,page)+"#block-"+number,source:readFileSync(join(dir,name),"utf8")});
+  if (name.endsWith(".vibe") && !pending.has(number)) cases.push({name:relative(root,page)+"#block-"+number,file:name,source:readFileSync(join(dir,name),"utf8")});
  }
 }
 process.stdout.write(JSON.stringify(cases));`
@@ -172,7 +172,7 @@ process.stdout.write(JSON.stringify(cases));`
 	if err != nil {
 		t.Fatalf("materialize docs: %v: %s", err, output)
 	}
-	var docs []struct{ Name, Source string }
+	var docs []struct{ Name, File, Source string }
 	if err := json.Unmarshal(output, &docs); err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ process.stdout.write(JSON.stringify(cases));`
 	cases := make([]struct{ name, source, virtual string }, 0, len(docs))
 	choices := 0
 	for _, doc := range docs {
-		cases = append(cases, struct{ name, source, virtual string }{name: doc.Name, source: doc.Source})
+		cases = append(cases, struct{ name, source, virtual string }{name: docsFormCaseName(doc.Name, doc.File), source: doc.Source})
 		for _, d := range Project(doc.Source, testContext).Diagnostics {
 			if d.Code == CodeFormChoice {
 				choices++
