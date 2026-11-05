@@ -16,9 +16,14 @@ import (
 const serviceDefaultReadsTarget = "FuzzServiceDefaultReads"
 
 // Appendix B, the EK4855 row (VIP-9 amended 2026-10-30).
+const serviceDefaultReadsDeclarationsQuote = "Ordinary declarations use the native twin's relative specifiers"
+
 const serviceDefaultReadsQuote = "preserving migration of a service's cached `static readonly default` to an equivalent native `Context.Service` class; retain its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure, or refuse"
 
 func TestServiceDefaultReadsQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("007-tooling.md"), serviceDefaultReadsDeclarationsQuote) {
+		t.Fatalf("chapter 7 no longer says %q; update the declaration consumer", serviceDefaultReadsDeclarationsQuote)
+	}
 	if !strings.Contains(SpecText("900-appendices.md"), serviceDefaultReadsQuote) {
 		t.Fatalf("Appendix B no longer says %q; update the oracle", serviceDefaultReadsQuote)
 	}
@@ -88,9 +93,14 @@ func serviceDefaultReadsProject(form serviceDefaultRead, annotated, identifier, 
 // alias would write it, so an alias name cannot stand in for its type.
 func serviceDefaultReadType(t *testing.T, r *Result) string {
 	t.Helper()
-	file := r.SourceFile("main.vibe")
+	return serviceDefaultReadModuleType(t, r, "main.vibe")
+}
+
+func serviceDefaultReadModuleType(t *testing.T, r *Result, name string) string {
+	t.Helper()
+	file := r.SourceFile(name)
 	if file == nil {
-		t.Fatal("main.vibe is not in the program")
+		t.Fatalf("%s is not in the program", name)
 	}
 	c, done := r.Program.GetTypeChecker(t.Context())
 	defer done()
@@ -111,21 +121,21 @@ func serviceDefaultReadType(t *testing.T, r *Result) string {
 	if found != nil {
 		return c.TypeToStringEx(c.GetTypeAtLocation(found), nil, checker.TypeFormatFlagsInTypeAlias|checker.TypeFormatFlagsNoTruncation, nil)
 	}
-	t.Fatal("main.vibe declares no read")
+	t.Fatalf("%s declares no read", name)
 	return ""
 }
 
 // Check the public declaration output as a consumer would: recheck the
 // emitted declarations and expand Read/read there, rather than trusting the
-// source checker's type alone. Keeping .vibe module names preserves the
-// declaration emitter's relative imports in these isolated fixture files.
+// source checker's type alone. Ordinary declarations retain their emitted
+// .d.ts names so native relative specifiers resolve as they do for consumers.
 func serviceDefaultReadDeclarationType(t *testing.T, w *Workspace, form serviceDefaultRead, r *Result) string {
 	t.Helper()
 	files := map[string]string{}
 	for name, text := range r.Outputs {
 		if strings.HasSuffix(name, ".d.ts") {
 			name = strings.TrimPrefix(name, "out/")
-			files[strings.TrimSuffix(name, ".d.ts")+".vibe"] = text
+			files[name] = text
 		}
 	}
 	if len(files) == 0 {
@@ -137,7 +147,7 @@ func serviceDefaultReadDeclarationType(t *testing.T, w *Workspace, form serviceD
 		Gap(t, serviceDefaultReadsTarget, "declaration:compile:"+form.key, "Appendix B %q: emitted declarations do not compile: %v\n%s", serviceDefaultReadsQuote, SortedKeys(Keys(declaration.Dir, declaration.Diagnostics)), Archive(files))
 		return ""
 	}
-	return serviceDefaultReadType(t, declaration)
+	return serviceDefaultReadModuleType(t, declaration, "main.d.ts")
 }
 
 func serviceDefaultReadCodes(r *Result, code int32) int {
@@ -248,6 +258,28 @@ func TestServiceDefaultReads(t *testing.T) {
 	}
 }
 
+func TestServiceDefaultReadNativeDeclarations(t *testing.T) {
+	w := NewWorkspace(t)
+	for _, form := range serviceDefaultReads {
+		if form.kind != "type" || form.shadow != "" {
+			continue
+		}
+		for _, variant := range []struct {
+			name                  string
+			annotated, identifier bool
+		}{
+			{"annotated-literal", true, false},
+			{"annotated-identifier", true, true},
+			{"inferred-literal", false, false},
+			{"inferred-identifier", false, true},
+		} {
+			t.Run(form.key+"/"+variant.name, func(t *testing.T) {
+				checkServiceDefaultReads(t, w, form, serviceDefaultReadsProject(form, variant.annotated, variant.identifier, true))
+			})
+		}
+	}
+}
+
 // The input is the form key and one byte: bit 0 writes no member type, bit 1
 // initializes from a constant, bit 2 reads from another module.
 func FuzzServiceDefaultReads(f *testing.F) {
@@ -255,6 +287,12 @@ func FuzzServiceDefaultReads(f *testing.F) {
 	for _, form := range serviceDefaultReads {
 		if form.shadow == "" {
 			f.Add(form.key, uint8(0))
+		}
+	}
+	for _, form := range serviceDefaultReads {
+		if form.kind == "type" && form.shadow == "" {
+			f.Add(form.key, uint8(4))
+			f.Add(form.key, uint8(7))
 		}
 	}
 	f.Add("value", uint8(4))
