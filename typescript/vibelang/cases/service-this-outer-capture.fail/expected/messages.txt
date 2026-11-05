@@ -1,0 +1,2 @@
+error EK3005:
+a type parameter of an enclosing scope

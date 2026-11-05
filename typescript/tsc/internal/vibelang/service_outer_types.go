@@ -272,6 +272,13 @@ func (w *outerTypeWalk) find(t *checker.Type) (captured *checker.Type) {
 						return found
 					}
 				}
+				// TypeScript stores an explicit receiver separately from the
+				// ordinary parameters, but it is part of the callable contract.
+				if receiver := signature.ThisParameter(); receiver != nil {
+					if found := w.find(c.GetTypeOfSymbol(receiver)); found != nil {
+						return found
+					}
+				}
 				for _, parameter := range signature.Parameters() {
 					if found := w.find(c.GetTypeOfSymbol(parameter)); found != nil {
 						return found

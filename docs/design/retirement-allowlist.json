@@ -1698,5 +1698,15 @@
       "reference": "Accepted VIP-5 (docs/design/src/002-running.md#try) requires EK0503 for native try statements in effect code."
     },
     "reason": "VIP-5 forbids the native try statement retained as a negative control. The registered EK0503 migration pair proves supported preserving rewrites; this retired typed-clause witness retains diagnostic coverage."
+  },
+  {
+    "code": "EK3005",
+    "case": "typescript/vibelang/cases/service-this-outer-capture.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks and its outer generic capture amendment require a resolved written Shape contract to be independent of free type parameters from enclosing scopes. This records existing published authority, not a new language decision."
+    },
+    "reason": "An explicit receiver is part of the callable's written contract. This fixes a missing traversal of that existing capture rule. No automatic repair can choose whether the author intends a concrete receiver, a member-local generic operation or a separately identified service; changing that contract or removing the service safeguards is not a preserving mechanical repair."
   }
 ]

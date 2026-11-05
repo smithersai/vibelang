@@ -1,0 +1,1 @@
+export service Valid { static readonly key = "receiver/Valid"; n: number }

@@ -1,0 +1,15 @@
+export function bad0<T>() { service S { static readonly key = "receiver/0"; read: (this: T) => number } }
+export function bad1<T>() { service S { static readonly key = "receiver/1"; read: { (this: T): number } } }
+export function bad2<T>() { service S { static readonly key = "receiver/2"; read: { read(this: T): number } } }
+export function bad3<T>() { type Receiver = (this: T) => number; service S { static readonly key = "receiver/3"; read: Receiver } }
+export function bad4<T>() { type Receiver<U> = (this: U) => number; service S { static readonly key = "receiver/4"; read: Receiver<T> } }
+export function bad5<T>() { interface Receiver<U> { (this: U): number }; service S { static readonly key = "receiver/5"; read: Receiver<T> } }
+export function bad6<T>() { service S { static readonly key = "receiver/6"; read: { (this: { id: number }): number; (this: T): number } } }
+export function bad7<T>() { service S { static readonly key = "receiver/7"; read: { nested: { read(this: T): number } } } }
+export function bad8<T>() { service S: (this: T) => number { static readonly key = "receiver/8" } }
+export function bad9<T>() { service S: { (this: T): number } { static readonly key = "receiver/9" } }
+export function bad10<T>() { service S: { read(this: T): number } { static readonly key = "receiver/10" } }
+export function fixed<T>() { service S { static readonly key = "receiver/Fixed"; read: (this: { id: number }) => number } }
+export function local<T>() { service S { static readonly key = "receiver/Local"; read: <U>(this: U) => number } }
+export function native<T>() { class S extends Context.Service<S, { read(this: T): number }>()("receiver/Native") {} }
+export const invalid: number = "wrong"
