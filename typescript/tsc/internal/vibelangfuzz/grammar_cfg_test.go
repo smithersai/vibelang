@@ -607,7 +607,7 @@ MethodSignature = PropertyName "?"? TypeParameters? "(" FormalParameters ")" Typ
 ClassElementName = PropertyName | "#" IdentifierName
 GeneratorExpression = "function" "*" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
 AsyncFunctionExpression = "async" [no LineTerminator here] "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
-AsyncGeneratorExpression = "async" [no LineTerminator here] GeneratorExpression
+AsyncGeneratorExpression = "async" [no LineTerminator here] "function" "*" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
 Name = BindingIdentifier
 `
 
@@ -1114,18 +1114,20 @@ func (g *grammarCfg) effectDeclarationNames() {
 // grammarEffectBodies are the subset's function-like productions, whose parameters
 // and body are parsed with [~Effect], as ECMAScript parses a nested plain
 // function's with [~Await].
-var grammarEffectBodies = map[string]bool{"FunctionDeclaration": true, "FunctionExpression": true, "AsyncFunctionExpression": true, "GeneratorExpression": true, "ArrowFunction": true, "AsyncArrowFunction": true, "MethodDefinition": true, "GetAccessor": true, "NonStaticMethod": true}
+var grammarEffectBodies = map[string]bool{"FunctionDeclaration": true, "FunctionExpression": true, "AsyncFunctionExpression": true, "AsyncGeneratorExpression": true, "GeneratorExpression": true, "ArrowFunction": true, "AsyncArrowFunction": true, "MethodDefinition": true, "GetAccessor": true, "NonStaticMethod": true}
 
-// parameterize gives every nonterminal its two copies, N and N[+Effect]
-// (written N⁺), the way ECMAScript parameterizes [Await]: after the token
-// "effect" in a rule (an effect function, arrow, method, producer or block)
-// the rest of the rule is effect code; a plain function's parts are not; and
-// everything else keeps the parameter of the code around it.
+// parameterize carries Effect context and the native async-body context.
+// The latter selects the for-of head only; other Await and Yield early errors
+// remain outside the bounded lab. Plain callables reset both contexts, while
+// async callables enable their own native context and Effect constructs reset it.
 func (g *grammarCfg) parameterize() *grammarCfg {
 	h := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, prose: g.prose, unresolved: g.unresolved, hooks: g.hooks, comments: g.comments}
-	idx := func(nt int, e bool) int {
+	idx := func(nt int, effect, await bool) int {
 		name := g.names[nt]
-		if e {
+		if await {
+			name += "ᵃ"
+		}
+		if effect {
 			name += "⁺"
 		}
 		_, had := h.index[name]
@@ -1136,66 +1138,82 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 		return i
 	}
 	for nt := range g.names {
-		idx(nt, false)
-		idx(nt, true)
+		for _, effect := range []bool{false, true} {
+			for _, await := range []bool{false, true} {
+				idx(nt, effect, await)
+			}
+		}
 	}
 	for _, r := range g.rules {
 		owner := g.names[r.lhs]
+		rawOwner := owner
 		if at := strings.IndexAny(owner, "#:"); at > 0 {
 			owner = owner[:at]
 		}
 		plain := !r.vibe && grammarEffectBodies[owner]
-		for _, e := range []bool{false, true} {
-			rhs := slices.Clone(r.rhs)
-			child := e && !plain
-			for k := range rhs {
-				s := &rhs[k]
-				if s.kind == grammarSymTok && s.text == "effect" || s.kind == grammarSymNT && s.text == "EffectModifier" {
-					child = true
-				}
-				s.eff = e
-				// An inline identifier class after EffectModifier belongs to
-				// the same Effect head as a nonterminal parameter list. Bare
-				// EffectArrow BindingIdentifier must reserve fork/join too.
-				if r.vibe && s.kind == grammarSymClass {
-					s.eff = child
-				}
-				if s.kind == grammarSymNT {
-					s.eff = child
-					// A declaration binds its own name in the surrounding
-					// activation, before its Effect parameters/body begin.
-					if (owner == "EffectFunctionDeclaration" || owner == "EffectFunctionOverloadDeclaration" || owner == "ProducerDeclaration") && s.text == "Name?" {
-						s.eff = e
+		// Group/optional helpers inherit their callable's already-selected
+		// context; they must not reset an async body a second time.
+		callable := plain && rawOwner == owner
+		resetAwait := callable || !r.vibe && rawOwner == "FieldDefinition"
+		for _, effect := range []bool{false, true} {
+			for _, await := range []bool{false, true} {
+				rhs := slices.Clone(r.rhs)
+				child := effect && !plain
+				childAwait := await && !resetAwait
+				for k := range rhs {
+					s := &rhs[k]
+					if callable && s.kind == grammarSymTok && s.text == "async" {
+						childAwait = true
 					}
-					if s.effectArg != 0 {
-						s.eff = s.effectArg > 0
+					if s.kind == grammarSymTok && s.text == "effect" || s.kind == grammarSymNT && s.text == "EffectModifier" {
+						child = true
+						childAwait = false
 					}
-					s.nt = idx(s.nt, s.eff)
-					s.text = h.names[s.nt]
+					s.eff = effect
+					if r.vibe && s.kind == grammarSymClass {
+						s.eff = child
+					}
+					if s.kind == grammarSymNT {
+						s.eff = child
+						symbolAwait := childAwait
+						if (owner == "EffectFunctionDeclaration" || owner == "EffectFunctionOverloadDeclaration" || owner == "ProducerDeclaration") && s.text == "Name?" {
+							s.eff = effect
+							symbolAwait = await
+						}
+						if s.effectArg != 0 {
+							s.eff = s.effectArg > 0
+						}
+						target := s.nt
+						if childAwait && s.text == "ForOfHead" {
+							target = g.index["ForAwaitOfHead"]
+						}
+						s.nt = idx(target, s.eff, symbolAwait)
+						s.text = h.names[s.nt]
+					}
 				}
+				h.add(idx(r.lhs, effect, await), rhs, r.src, r.vibe)
 			}
-			h.add(idx(r.lhs, e), rhs, r.src, r.vibe)
 		}
 	}
-	h.start, h.startE = idx(g.start, false), idx(g.start, true)
+	h.start, h.startE = idx(g.start, false, false), idx(g.start, true, false)
 	h.analyze()
 	return h
 }
 
-// named returns both copies of a nonterminal.
+// named returns every supported context copy of a nonterminal.
 func (g *grammarCfg) named(name string) []int {
 	var out []int
-	for _, n := range []string{name, name + "⁺"} {
-		if i, ok := g.index[n]; ok {
+	for _, suffix := range []string{"", "⁺", "ᵃ", "ᵃ⁺"} {
+		if i, ok := g.index[name+suffix]; ok {
 			out = append(out, i)
 		}
 	}
 	return out
 }
 
-// base is a nonterminal's name without its parameter.
+// base is a nonterminal's name without its context parameters.
 func (g *grammarCfg) base(nt int) string {
-	return strings.TrimSuffix(g.names[nt], "⁺")
+	return strings.TrimSuffix(strings.TrimSuffix(g.names[nt], "⁺"), "ᵃ")
 }
 
 func grammarWalkNames(alt []grammarNelem, f func(string)) {
