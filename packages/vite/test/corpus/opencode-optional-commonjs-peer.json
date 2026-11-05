@@ -1,0 +1,10 @@
+{
+  "key": "resolve:vite-commonjs-optional-require:options",
+  "rule": "Delegated resolution preserves Vite and Rollup hook options, including CommonJS custom metadata and SSR mode.",
+  "files": {
+    "entry.mjs": "import value from 'native-reader'; console.log(value);\n",
+    "node_modules/native-reader/package.json": "{\"name\":\"native-reader\",\"version\":\"1.0.0\",\"main\":\"index.cjs\",\"peerDependencies\":{\"optional-native-binding\":\"*\"},\"peerDependenciesMeta\":{\"optional-native-binding\":{\"optional\":true}}}\n",
+    "node_modules/native-reader/index.cjs": "const { isUtf8 } = require('node:buffer'); let value = 'native'; if (!isUtf8) { try { value = require('optional-native-binding') } catch { value = 'fallback' } } module.exports = value;\n"
+  },
+  "stdout": "native\n"
+}

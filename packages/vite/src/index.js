@@ -255,7 +255,7 @@ export default function vibelang(options = {}) {
         next()
       })
     },
-    resolveId(source, importer) {
+    resolveId(source, importer, resolveOptions) {
       const file = cleanId(source)
       const query = source.slice(file.length)
       const serve = target => slash(isModuleId(source) ? servedId(target) : target) + query
@@ -274,7 +274,7 @@ export default function vibelang(options = {}) {
           if (target !== undefined) return serve(target)
         }
         // A package's exports can name JSX source even when its import is bare.
-        if (this.resolve) return this.resolve(source, importer, { skipSelf: true }).then(resolved => {
+        if (this.resolve) return this.resolve(source, importer, { ...resolveOptions, skipSelf: true }).then(resolved => {
           if (resolved && isModuleId(source) && cleanId(resolved.id).endsWith(".vibex")) return { ...resolved, id: servedId(cleanId(resolved.id)) + resolved.id.slice(cleanId(resolved.id).length) }
           return resolved
         })
