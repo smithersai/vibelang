@@ -735,7 +735,7 @@ const targets = {
     [bun, node]
   ),
   "docs-table-rows": check(
-    "User tables retain headers and widths; temporary-directory queries retain their read semantics.",
+    "User tables retain headers and widths; platform replacements distinguish location reads and argument prefixes.",
     "node docs/tools/table-rows.mjs && bun test --timeout 30000 docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
     [],
     [bun, node]

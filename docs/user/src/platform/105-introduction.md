@@ -66,7 +66,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `http.createServer` | `try HttpRouter.serve(app)` | `ExperimentalNodeHttpServer.layer({ port })` |
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` | `NodeCrypto.layer` |
 | `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
-| `process.argv` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
+| `process.argv.slice(2)` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
 | `process.getuid?.()` | `try (try Experimental.Process.Process).currentUid` | `ExperimentalNodeServices.layer` |
 | `os.hostname` | `try (try Experimental.Process.Process).hostname` | `ExperimentalNodeServices.layer` |
 | `os.homedir` | `try (try Experimental.Process.Process).homeDirectory`, including native account fallback | `ExperimentalNodeServices.layer` |
@@ -82,6 +82,8 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `Math.random` | `try Random.next` | none |
 
 The old `EK4403` is retired: host `performance` and `crypto` reads report `EK4402`, even when a legacy config tries to lower that code. Run native clock Effect values with `try`, and look up `SecureRandom.SecureRandom` before calling its methods.
+
+`try (try Stdio.Stdio).args` reads user arguments, matching `process.argv.slice(2)` on Node. It omits the executable and script entries. Keep a full `process.argv` read in a `.ts` adapter when those entries are needed.
 
 Get a service with `try`, as in `const random = try SecureRandom.SecureRandom`, then run `try random.uuidV4()`; `ChildProcess`, `HttpClient`, `HttpRouter`, and `FetchHttpClient` are in scope too. `NodeServices.layer` provides `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; `BunServices.layer` from `@effect/platform-bun` is Bun's. Since Effect 4.1 the crypto services, `SecureRandom`, `Digest`, `Mac`, `Signature` and the rest of `effect/crypto`, come from `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. Provide the platform's bundle to the application Effect and every other layer inside `main`. Effect's runtime provides the prelude's services itself.
 

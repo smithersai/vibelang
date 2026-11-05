@@ -23,7 +23,7 @@ export function tableRowProblems(text, file, { checkWidths = true, checkPlatform
       if (!delimiter(lines[i + 1] ?? "")) problems.push(file + ":" + (i + 1) + ": a row outside a table")
       width = cells(line)
       const header = line.split("|").slice(1, -1).map(cell => cell.trim())
-      platformReplacements = checkPlatformReplacements && header.join("|") === "Call|Effect|Layer"
+      platformReplacements = checkPlatformReplacements && ["Call|Effect|Layer", "Global|Use instead"].includes(header.join("|"))
       continue
     }
     if (delimiter(line)) continue
@@ -37,6 +37,14 @@ export function tableRowProblems(text, file, { checkWidths = true, checkPlatform
           /\.\s*makeTemp(?:Directory|File)(?:Scoped)?\s*\(/.test(row[1] ?? "")) {
         problems.push(file + ":" + (i + 1) + ": os.tmpdir reads the system temporary-directory location; its replacement must not create a temporary resource")
       }
+      // Node Stdio supplies the user arguments after the executable and script.
+      // Advice for the full native array must state that narrower replacement.
+      if (/^process\.argv(?:\.slice\((?:0|1)?\))?$/.test(call ?? "") &&
+          /\bStdio\b.*\.\s*args\b/.test(row[1] ?? "") &&
+          !/process\s*\.\s*argv\s*\.\s*slice\s*\(\s*2\s*\)/.test(row[1] ?? "")) {
+        problems.push(file + ":" + (i + 1) + ": Stdio args omit the executable and script entries; identify user arguments as process.argv.slice(2)")
+      }
+
     }
   }
   return problems

@@ -114,7 +114,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 | `postMessage` | Worker and WorkerRunner |
 | `process` | `try Config.String("NAME")` |
 | `process.arch` | `try (try Experimental.Process.Process).arch` |
-| `process.argv` | `try (try Stdio.Stdio).args` |
+| `process.argv` | `try (try Stdio.Stdio).args` for user arguments, matching `process.argv.slice(2)`; read the full array in a `.ts` adapter. |
 | `process.cwd` | `(try Path.Path).resolve()` |
 | `process.env` | `try Config.String("NAME")` |
 | `process.execPath` | `try (try Experimental.Process.Process).execPath` |
@@ -163,7 +163,7 @@ The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` 
 
 For storage diagnostics, `KeyValueStore` names a namespace. Obtain `KeyValueStore.KeyValueStore` with `try`, then run the Effect returned by its `get(key)` method.
 
-For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr()` methods return sinks, and its `stdin` property is a stream. Its `args` property is an Effect: use `try (try Stdio.Stdio).args`, without calling `args`. The platform diagnostic's replacement examples use these service members.
+For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr()` methods return sinks, and its `stdin` property is a stream. Its `args` property is an Effect: use `try (try Stdio.Stdio).args`, without calling `args`. `args` omits the executable and script entries; on Node it matches `process.argv.slice(2)`. Read the full array in a `.ts` adapter when needed. The platform diagnostic's replacement examples use these service members.
 
 The terminal diagnostic examples obtain `Terminal.Terminal` with `try` and run its `readLine` Effect property to read a line.
 

@@ -110,3 +110,55 @@ test("temporary-location query mappings reject generated allocating replacements
     }
   ), { numRuns: 200, seed: 30303 })
 })
+
+test("argument replacements distinguish the native prefix from user arguments", () => {
+  const text = readFileSync(new URL("../user/src/platform/105-introduction.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Call|Effect|Layer")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const row = table.rows.find(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "process.argv.slice(2)")
+  expect(row?.[1].text).toContain("Stdio.Stdio).args")
+})
+
+test("global argument advice retains its lookup key and explains the omitted entries", () => {
+  const text = readFileSync(new URL("../user/src/platform/platform-globals.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Global|Use instead")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const row = table.rows.find(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "process.argv")
+  expect(row?.[1].text).toContain("Stdio.Stdio).args")
+  expect(row?.[1].text).toContain("process.argv.slice(2)")
+  expect(row?.[1].text).toContain("user arguments")
+})
+
+test("generated argument mappings preserve which entries are returned", () => {
+  const tick = String.fromCharCode(96)
+  const table = (call: string, replacement: string, global: boolean) => [
+    global ? "| Global | Use instead |" : "| Call | Effect | Layer |",
+    global ? "| --- | --- |" : "| --- | --- | --- |",
+    "| " + tick + call + tick + " | " + replacement + " |" + (global ? "" : " NodeServices.layer |")
+  ].join("\n")
+  fc.assert(fc.property(
+    fc.constantFrom("", ".slice()", ".slice(0)", ".slice(1)"),
+    fc.constantFrom("", " ", "  "),
+    fc.boolean(),
+    fc.array(fc.string({ maxLength: 12 }), { maxLength: 8 }),
+    (suffix, space, global, values) => {
+      const native = ["runtime", "entry", ...values]
+      const source = suffix === ".slice(1)" ? native.slice(1) : native
+      const userArguments = native.slice(2)
+      expect(source).not.toEqual(userArguments)
+      const call = ("process.argv" + suffix).replaceAll(".", space + "." + space)
+      const operation = tick + "try (try Stdio.Stdio)." + space + "args" + tick
+      const options = { checkPlatformReplacements: true }
+      const broken = table(call, operation, global)
+      expect(tableRowProblems(broken, "generated", options)).toHaveLength(1)
+      expect(tableRowProblems(table("process.argv.slice(2)", operation, global), "generated", options)).toEqual([])
+      const qualified = operation + " gives user arguments, matching " + tick + "process.argv.slice(2)" + tick
+      expect(tableRowProblems(table(call, qualified, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table("process.execPath", operation, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(broken, "spec")).toEqual([])
+      expect(tableRowProblems(tick.repeat(3) + "md\n" + broken + "\n" + tick.repeat(3), "generated", options)).toEqual([])
+    }
+  ), { numRuns: 200, seed: 32032 })
+})
