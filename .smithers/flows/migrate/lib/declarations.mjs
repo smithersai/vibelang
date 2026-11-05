@@ -926,15 +926,16 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
  * repository's packages, and a record holds only for the loader version that
  * wrote it.
  */
-export async function writeLoaderRecords({ compiler, packageDir, root }) {
+export async function writeLoaderRecords({ compiler, packageDir, root, timeoutMs = 60_000 }) {
   const name = (path) => rel(root ?? packageDir, path)
-  let loader
+  let loader, loaderUrl
   try {
-    loader = await import(pathToFileURL(createRequire(join(packageDir, "package.json")).resolve("vibelang/project")).href)
+    loaderUrl = pathToFileURL(createRequire(join(packageDir, "package.json")).resolve("vibelang/project")).href
+    loader = await import(loaderUrl)
   } catch (error) {
     return [{ package: name(packageDir), error: `vibelang/project is not installed for this package: ${String(error?.message ?? error).split("\n")[0]}` }]
   }
-  const { formatDiagnostic, nearestProject, writeLoaderRecord } = loader
+  const { nearestProject } = loader
   const inside = (path) => !relative(packageDir, path).startsWith("..")
   const projects = new Set()
   const walk = (directory) => {
@@ -950,15 +951,41 @@ export async function writeLoaderRecords({ compiler, packageDir, root }) {
     }
   }
   walk(packageDir)
-  return [...projects].sort().map((project) => {
+  // The installed writer synchronously compiles and can block on a project.
+  // Isolate it so optional cache metadata cannot hold the emission receipt.
+  const marker = "VIBELANG_LOADER_RECORD "
+  const worker = `
+    const { writeLoaderRecord, formatDiagnostic } = await import(process.argv[1])
+    let result
     try {
-      const written = writeLoaderRecord({ project, compiler })
-      if (written.errors) return { project: name(project), errors: written.errors.length, first: formatDiagnostic(written.errors[0]) }
-      return { project: name(project), file: name(written.file), modules: written.modules }
+      const written = writeLoaderRecord({ project: process.argv[2], compiler: process.argv[3] })
+      result = written.errors
+        ? { errors: written.errors.length, first: formatDiagnostic(written.errors[0]) }
+        : { file: written.file, modules: written.modules }
     } catch (error) {
-      return { project: name(project), error: String(error?.message ?? error).split("\n")[0] }
+      result = { error: String(error?.message ?? error).split("\\n")[0] }
     }
-  })
+    console.log(${JSON.stringify(marker)} + JSON.stringify(result))
+  `
+  const records = []
+  for (const project of [...projects].sort()) {
+    try {
+      const command = [process.execPath, "--input-type=module", "-e", worker, loaderUrl, project, compiler].map(quote).join(" ")
+      const result = await run(command, { cwd: packageDir, timeoutMs })
+      if (result.timedOut) {
+        records.push({ project: name(project), error: "loader record compilation timed out", stage: "loader-record", timedOut: true, timeoutMs, ms: result.ms, signal: result.signal })
+        continue
+      }
+      if (result.code !== 0) throw new Error(`loader record worker exited with code ${result.code}`)
+      const line = result.stdout.split("\n").findLast(line => line.startsWith(marker))
+      if (line === undefined) throw new Error("loader record worker returned no receipt")
+      const written = JSON.parse(line.slice(marker.length))
+      records.push({ project: name(project), ...written, ...(written.file === undefined ? {} : { file: name(written.file) }) })
+    } catch (error) {
+      records.push({ project: name(project), error: String(error?.message ?? error).split("\n")[0] })
+    }
+  }
+  return records
 }
 
 /**

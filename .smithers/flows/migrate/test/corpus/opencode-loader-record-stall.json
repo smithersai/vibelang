@@ -1,0 +1,5 @@
+{
+  "pattern": "Optional loader metadata for one package blocks emission receipts for every package.",
+  "oracle": "A project that cannot produce a loader record leaves a diagnostic receipt; successful emission remains available.",
+  "projects": {"a": "slow", "b": "success"}
+}
