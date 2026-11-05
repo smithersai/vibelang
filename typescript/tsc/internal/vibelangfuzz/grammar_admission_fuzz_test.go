@@ -181,6 +181,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
 	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
+	{"for-of-async-module", "for (async of xs) {}"},
 	{"native-for-of-async", "async\nfunction f ( xs ) { for ( async of xs ) effect { } }"},
 	{"native-for-await-async", "async function f(xs) { for await (async of xs) {} }"},
 	{"native-for-await", "async function f(xs) { for await (const x of xs) { x; } }"},
@@ -888,6 +889,9 @@ func grammarAdmissionForm(source string) string {
 	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
 		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
 	}, source)
+	if grammarForOfAsyncModule(file, source) {
+		return "admission:for-of-async-module"
+	}
 	if grammarPatternMemberLineBreak(source, forms) {
 		return "admission:pattern-member-line-break"
 	}
