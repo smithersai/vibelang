@@ -102,6 +102,9 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 	if a.performs(node) {
 		return nil
 	}
+	if bound, written := foreignThrowsContract(a.checker, node); written && bound == "" {
+		return nil
+	}
 	if t.unknown || t.unreachable != "" {
 		// a written @throws {unknown} says the call may throw anything, an
 		// affirmative contract; no tag at all stays an ordinary call (detail

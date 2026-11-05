@@ -1,0 +1,7 @@
+// expect-result: [7,2,4]
+import {read,largest,identity} from "./lib.js"
+export function direct() { return identity(4) }
+export effect function main() {
+ const parsed=read('{"value":7}') as {value:number}
+ return [parsed.value,largest(1,2),direct()]
+}

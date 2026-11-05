@@ -58,7 +58,7 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 						bounds = append(bounds, "unknown")
 						continue
 					}
-					if t.Kind != ast.KindNeverKeyword {
+					if c.GetTypeFromTypeNode(t).Flags()&checker.TypeFlagsNever == 0 {
 						bounds = append(bounds, strings.TrimSpace(nodeText(source, t)))
 					}
 				}

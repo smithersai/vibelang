@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A label inside a `for concurrent` body could repeat an enclosing label without an error. It now reports `TS1114`, matching TypeScript.
 - Compatibility validation could demand an old implicit-execution error from module-level cold calls. It now checks the current module-call rule and retains the saved legacy inputs and their remaining errors.
+- Foreign calls annotated with a type that resolves to `never` incorrectly required a throw bridge. They now call directly in effect and plain code.
 - Failure-alias examples could still report a resolved declaration-tag assignment gap. They now require the correct `EK0402` rejection and retain the saved examples.
 - An `is` binding in a `do…while` condition reported `EK4703`. It now has fresh loop-head cells for each condition: the initial body sees uninitialized cells, closures retain their own iteration, and `continue`, `break` and labels keep their meaning. A skipped `for` condition or update binding now also stays uninitialized instead of inheriting the previous value.
 - Checking diagnostic documentation could stop with a TypeScript syntax error in obsolete variant-pattern exemptions. The check now loads correctly and uses the current diagnostics.

@@ -562,6 +562,46 @@ func failuresCases() []*failCase {
 		}
 		add(&failCase{Name: name, Quote: q.library, Lib: "export declare const holder: {\n/** @throws {RangeError} */\nparse: typeof JSON.parse\n}", Body: "const value = " + body, Code: code, OneDiagnostic: code != 0})
 	}
+	// A written thrown type uses TypeScript's never after type reduction.
+	for _, bound := range []struct {
+		key, declarations, text string
+		throwing                bool
+	}{
+		{"alias", "type Quiet = never;", "Quiet", false},
+		{"parenthesized", "type Quiet = never;", "(Quiet)", false},
+		{"union", "type Quiet = never;", "Quiet | never", false},
+		{"extract", "", "Extract<string, number>", false},
+		{"exclude", "", "Exclude<'value', 'value'>", false},
+		{"intersection", "", "string & number", false},
+		{"generic", "type Empty<T> = Exclude<T, T>;", "Empty<string>", false},
+		{"array-control", "", "never[]", true},
+	} {
+		for _, style := range []string{"binding", "function"} {
+			lib := bound.declarations + "\n/** @throws {" + bound.text + "} */\n"
+			if style == "binding" {
+				lib += "export declare const read:typeof JSON.parse"
+			} else {
+				lib += "export declare function read(s:string):unknown"
+			}
+			for _, context := range []string{"effect", "plain", "wrapped"} {
+				name := "throws-never-type-" + bound.key + "-" + style + "-" + context
+				host, body, code := "effect", "read(s)", 0
+				if context == "plain" {
+					host = "plain"
+				}
+				if context == "wrapped" {
+					body = "try Effect.try(()=>" + body + ")"
+				} else if bound.throwing {
+					body = "⟦" + body + "⟧"
+					code = 403
+					if host == "plain" {
+						code = 401
+					}
+				}
+				add(&failCase{Name: name, Quote: q.inferred, Host: host, Lib: lib, Body: body, Code: code, OneDiagnostic: code != 0})
+			}
+		}
+	}
 	add(&failCase{Name: "foreign-own-throw-over-type", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦read(s)⟧", Lib: "type Reader = (s: string) => string\n/** @throws {Error} */\nexport declare const read: Reader"})
 	add(&failCase{Name: "foreign-returned-signature", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const read = make()\n⟦read(s)⟧", Lib: "/** @throws {never} */\nexport declare function make(): {\n /** @throws {Error} */\n (s: string): string\n}"})
 	add(&failCase{Name: "foreign-overload-number", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const text = choose(s)\n⟦choose(1)⟧", Lib: "/** @throws {never} */\nexport declare function choose(s: string): string\n/** @throws {RangeError} */\nexport declare function choose(n: number): number"})
