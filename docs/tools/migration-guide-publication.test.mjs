@@ -14,8 +14,11 @@ function render(markdown) {
   try {
     cpSync(new URL('../../site/scripts/', import.meta.url), join(root, 'site/scripts'), { recursive: true })
     mkdirSync(join(root, 'site/src/pages'), { recursive: true })
-    mkdirSync(join(root, 'docs/user/src/setup'), { recursive: true })
-    writeFileSync(join(root, 'docs/user/inventory.md'), '## V4 sidebar in order\n### Setup\n- [Migration](src/setup/migrating-retired-forms.md)\n')
+    // Publish the real documentation graph: the guide links other user pages,
+    // and the publisher checks both their existence and sidebar membership.
+    cpSync(new URL('../user/', import.meta.url), join(root, 'docs/user'), {
+      recursive: true, filter: path => !path.split(/[\\/]/).includes('node_modules')
+    })
     writeFileSync(join(root, 'docs/user/src/setup/migrating-retired-forms.md'), markdown)
     const result = spawnSync(process.execPath, [join(root, 'site/scripts/sync-user-docs.mjs'), join(root, 'docs/user')], { encoding: 'utf8' })
     assert.equal(result.status, 0, result.stderr)
@@ -43,4 +46,15 @@ test('migration guide links survive label mutations during publication', () => {
       assert.ok(render(guide.replace(link[0], replacement)).includes(replacement))
     }
   ), { numRuns: 20, seed: 20261103 })
+})
+
+
+test('publication still rejects a missing relative guide dependency', () => {
+  const links = [...guide.matchAll(/\[[^\]]+\]\((\.\.\/[^)]+\.md(?:#[^)]*)?)\)/g)]
+  assert.ok(links.length > 0)
+  fc.assert(fc.property(fc.integer({ min: 0, max: links.length - 1 }), index => {
+    const link = links[index]
+    const broken = guide.replace(link[1], '../getting-started/missing-guide-fixture.md')
+    assert.throws(() => render(broken), /link to missing page/)
+  }), { seed: 20261105, numRuns: 8 })
 })
