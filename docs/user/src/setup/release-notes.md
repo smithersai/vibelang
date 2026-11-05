@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.
 - Contributor catch-result examples constructed a Promise without the required explicit boundary. They now retain that Promise as data through the boundary while checking identity and lazy thenables.
 - Contributor resource-binding checks omitted the accepted Effect cleanup warning. They now verify it alongside unchanged disposal and jump errors, including severity overrides.
+- The bundled coding skill repeated platform guidance with conflicting service lists. It now lists each platform bundle once and retains the DNS transport requirements.
 - Contributor cache warmup omitted the Effect lint package and recompiled it during validation. The warmup now includes it.
 - Contributor validation omitted stale-manifest preservation checks. It now runs both disk and editor regression cases.
 - Contributor API checks failed after a comparison helper moved into another file. Their fixtures now include local helper dependencies transitively.

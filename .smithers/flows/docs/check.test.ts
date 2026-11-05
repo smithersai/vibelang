@@ -71,6 +71,13 @@ test("the shipped skill teaches current declarations and wraps a call that may t
   expect(skill).not.toContain("trusted");
 });
 
+test("the shipped skill numbers each language rule once and in order", async () => {
+  const skill = (await readSources())[facts.skill];
+  const rules = skill.split("\n## Rules\n")[1]!.split("\n## ")[0]!;
+  const numbers = [...rules.matchAll(/^(\d+)\. /gm)].map(match => Number(match[1]));
+  expect(numbers).toEqual(Array.from({ length: 12 }, (_, index) => index + 1));
+});
+
 test("contributing describes actual CI entrypoints and maintainer-run PR checks", async () => {
   const output = render(await readSources())["CONTRIBUTING.md"]!
   const workflow = await readFile(join(repository, ".github/workflows/mq-pregate.yml"), "utf8")

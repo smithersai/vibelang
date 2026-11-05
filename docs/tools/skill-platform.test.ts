@@ -3,25 +3,38 @@ import { readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
 const repo = resolve(import.meta.dir, "../..")
+const read = (path: string) => readFileSync(join(repo, path), "utf8")
 const skill = "packages/compiler/skills/vibelang/SKILL.md"
 
-// The experimental services VibeLang adds for what Effect lacks (D313).
-const services = ["Animations", "AudioContext", "BrowserInfo", "Crypto", "Dns", "Document", "FileReader", "FileSystem", "Locks", "MediaQuery", "Process", "ResizeObserver", "Stdio", "Window"]
+// Compare the documented bundles with their declared experimental service outputs.
+const services = (platform: string) => {
+  const source = read(`packages/runtime/src/experimental/platform-${platform.toLowerCase()}/Experimental${platform}Services.ts`)
+  const declaration = source.split(`export type Experimental${platform}Services =`)[1]!.split("/**")[0]!
+  return [...declaration.matchAll(/\|\s+(\w+)\.\1\b/g)].map(match => match[1]).sort()
+}
 
-// The experimental modules a clause of the skill names, such as `Experimental.Process`.
-const modules = (clause: string) => [...clause.matchAll(/`Experimental\.(\w+)`/g)].map(m => m[1]).sort()
+const modules = (clause: string) => [...clause.matchAll(/`Experimental\.(\w+)`/g)].map(match => match[1]).sort()
 
-// Rule 2 of the shipped skill names each experimental service and the layer
-// that provides it, as the platform globals page does. A .vibe file has no
-// platform imports (VIP-26, VIP-33): the entry provides the layer.
+// A .vibe file has no platform value imports (VIP-26, VIP-33): the entry
+// provides a bundle, or the DNS layer separately.
 test("skill: rule 2 names the experimental services and the layers that provide them", () => {
-  const text = readFileSync(join(repo, skill), "utf8")
-  const rule = text.split("\n").find(line => line.startsWith("2. "))
-  expect(rule).toBeDefined()
-  expect(modules(rule!)).toEqual(services)
-  for (const layer of ["ExperimentalNodeServices.layer", "ExperimentalBrowserServices.layer"]) {
-    expect(rule).toContain(layer)
-    expect(readFileSync(join(repo, "docs/user/src/platform/platform-globals.md"), "utf8")).toContain(layer)
+  const rules = read(skill).split("\n").filter(line => line.startsWith("2. "))
+  expect(rules).toHaveLength(1)
+  const rule = rules[0]!
+  const clauses = rule.split("; ")
+  for (const platform of ["Node", "Bun", "Browser"]) {
+    const layer = `Experimental${platform}Services.layer`
+    const clause = clauses.find(clause => clause.includes(`\`${layer}\``))!
+    expect(clause, layer).toBeDefined()
+    expect(modules(clause), layer).toEqual(services(platform))
+    expect(read("docs/user/src/platform/platform-globals.md")).toContain(layer)
+  }
+  const pure = clauses.find(clause => clause.includes("pure"))!
+  expect(modules(pure)).toEqual(["Encoding", "NetAddress"])
+  expect(pure).toContain("`decodeBase64Lenient`")
+  const dns = clauses.find(clause => clause.includes("`Experimental.Dns`"))!
+  for (const detail of ["ExperimentalNodeDns.layer", "ExperimentalWorkerDns.layer", "authoritative answers", "typed `Unsupported`"]) {
+    expect(dns).toContain(detail)
   }
   expect(rule).not.toContain("vibelang/platform/")
 })

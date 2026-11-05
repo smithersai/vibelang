@@ -17,8 +17,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,140 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,865 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,933 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,658 |
 | The skill and the user guide (142 pages) | 490,000 |
 | The user guide alone | 490,000 |
 | The specification (11 chapters) | 250,000 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,600 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 9,100 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 9,200 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **180,000** |
