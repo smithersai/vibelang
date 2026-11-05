@@ -1,3 +1,4 @@
+import { assertRecordedPublication, assertReleaseHistory } from "./release-history.mjs"
 import { assertReleasePublication, assertReleaseContrast } from "./release-publication-checks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -20,37 +21,6 @@ function finalPublication() {
 }
 
 // Development headings may lead package versions for the next unreleased section.
-function assertReleaseHistory(notes, version, lastPublishedVersion) {
-  assert.doesNotMatch(notes.split(/^## /m)[0], /^Pending fixes for /m, "pending fixes belong inside the candidate version section")
-  const [current, previous] = notes.split(/^## /m).slice(1)
-  assert.ok(current && previous, "release notes need current and previous sections")
-  const heading = /^(\d+\.\d+\.\d+(?:-[\w.-]+)?)( \(unreleased\))?$/.exec(current.split("\n")[0])
-  assert.ok(heading, "top release must name a version, optionally marked (unreleased)")
-  const previousVersion = previous.split("\n")[0]
-  assert.match(previousVersion, /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/, "the section below must be a published version")
-  if (heading[2]) {
-    const baseVersion = heading[1] === version ? previousVersion : version
-    if (heading[1] !== version) assert.equal(previousVersion, version, "a next-development section follows the compiler version")
-    const next = heading[1].split(/[.-]/).slice(0, 3).map(Number)
-    const published = baseVersion.split(/[.-]/).slice(0, 3).map(Number)
-    const difference = next.map((part, i) => part - published[i]).find(part => part !== 0)
-    assert.ok(difference > 0, "the unreleased version must be newer than the published version")
-  } else {
-    assert.equal(heading[1], version, "a published top section matches the compiler version")
-  }
-  assert.ok(current.split("\n").includes("### Bugs fixed since " + previousVersion),
-    "top release must have ### Bugs fixed since " + previousVersion)
-  if (lastPublishedVersion !== undefined) {
-    assert.match(lastPublishedVersion, /^\d+\.\d+\.\d+$/, "npm publication snapshot must be a stable version")
-    const published = lastPublishedVersion.split(".").map(Number)
-    assert.equal(version, [published[0], published[1], published[2] + 1].join("."), "candidate must advance the last npm patch version once")
-    assert.ok([version, version + " (unreleased)"].includes(current.split("\n")[0]), "all release fixes belong to the compiler candidate")
-    assert.equal(previousVersion, lastPublishedVersion, "release history starts at the version npm actually published")
-    for (const [, baseline] of current.matchAll(/^### Upgrade from (\d+\.\d+\.\d+)$/gm)) {
-      assert.equal(baseline, lastPublishedVersion, "candidate upgrades start at the last npm publication")
-    }
-  }
-}
 
 test("the top release names the previous published version in its bug heading", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
@@ -325,13 +295,13 @@ test("current release notes describe user fixes without internal CI or fuzz book
 })
 
 // Release time supplies the registry snapshot; ordinary tests never query npm.
-test("the release candidate follows the last npm publication", {
+test("release history follows the last npm publication", {
   skip: process.env.VIBELANG_LAST_PUBLISHED_VERSION === undefined
 }, () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
   const notes = readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8")
-  assertReleaseHistory(notes, version, process.env.VIBELANG_LAST_PUBLISHED_VERSION)
+  assertRecordedPublication(notes, version, process.env.VIBELANG_LAST_PUBLISHED_VERSION)
 })
 
 // Publication excludes maintainer audit records while retaining product changes.

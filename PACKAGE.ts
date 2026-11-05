@@ -669,6 +669,12 @@ const targets = {
     [],
     [node]
   ),
+  "docs-release-history": check(
+    "Release notes follow recorded npm publication and keep unpublished fixes in the compiler candidate.",
+    "node docs/tools/release-history.mjs --check && bun test --timeout 60000 docs/tools/release-history.test.ts docs/tools/release-*publication.test.mjs",
+    [],
+    [bun, node]
+  ),
   tokens: check("Token counts in the docs match a fresh count.", "bun docs/tools/token-counts.ts --check", [], [bun]),
   // The executable is source-keyed; generation still reads the entire tree.
   forms: check(

@@ -108,7 +108,7 @@ test("known provider limits agree with literal provider diagnostics", { skip: !a
 function fixture(t) {
   const place = mkdtempSync(join(tmpdir(), "vibelang-note-coverage-"))
   t.after(() => rmSync(place, { recursive: true, force: true }))
-  for (const file of ["docs/tools/release-docs.test.mjs", "docs/tools/release-docs.mjs", "docs/tools/release-publication-checks.mjs"]) {
+  for (const file of ["docs/tools/release-docs.test.mjs", "docs/tools/release-docs.mjs", "docs/tools/release-publication-checks.mjs", "docs/tools/release-history.mjs"]) {
     mkdirSync(dirname(join(place, file)), { recursive: true })
     copyFileSync(join(root, file), join(place, file))
   }

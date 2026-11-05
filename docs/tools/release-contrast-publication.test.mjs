@@ -13,7 +13,7 @@ const fc = require("fast-check")
 function fixture(t, cli = false) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-contrast-publication-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  for (const file of ["docs/tools/release-docs.test.mjs", "docs/tools/release-docs.mjs", "docs/tools/release-publication-checks.mjs"]) {
+  for (const file of ["docs/tools/release-docs.test.mjs", "docs/tools/release-docs.mjs", "docs/tools/release-publication-checks.mjs", "docs/tools/release-history.mjs"]) {
     mkdirSync(dirname(join(root, file)), { recursive: true })
     copyFileSync(fileURLToPath(new URL("../../" + file, import.meta.url)), join(root, file))
   }

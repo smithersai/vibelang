@@ -76,7 +76,7 @@ export const releaseSteps: readonly string[] = [
   "**Build.** `sh scripts/release/build-binaries.sh` cross-compiles the candidate platform binaries. `node scripts/release/make-packages.mjs` assembles the candidate packages and their tarballs in `dist-npm/`. Check manifests, the bundled extension, licenses and notices.",
   "**Rehearse.** `sh scripts/release/rehearse.sh` publishes the tarballs to a throwaway registry, then scaffolds, builds, starts and tests an app with npm and with Bun. It clears checkout compiler and runtime overrides so the app uses its installed packages. It runs on one host, so it can't prove the other platforms' binaries work.",
   "**Publish.** A person runs `sh scripts/release/publish.sh --dry-run`, then `sh scripts/release/publish.sh --otp <one-time-password>`. It publishes the platform packages first and skips versions already published, so a rerun resumes. Keep credentials out of recordings and logs.",
-  "**Verify.** `sh scripts/release/verify-published.sh <version>` scaffolds, installs, builds, starts and tests an app from the public registry. Publish release notes with exact versions, breaking changes and known limitations."
+  "**Verify.** `sh scripts/release/verify-published.sh <version>` scaffolds, installs, builds, starts and tests an app from the public registry. Publish release notes with exact versions, breaking changes and known limitations. After the notes mark the version published and npm confirms it, run `node docs/tools/release-history.mjs --record` to update the recorded publication."
 ];
 
 export const contributing: Document = {
@@ -134,7 +134,7 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
 4. Open a draft for early feedback. {{merge}}
 
-After publishing, start a \`## <next version> (unreleased)\` section in [the release notes](docs/user/src/setup/release-notes.md), with a \`### Bugs fixed since <last published version>\` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.`
+After publishing, finalize that release's heading and record npm's actual version with \`node docs/tools/release-history.mjs --record\`, then start a \`## <next version> (unreleased)\` section in [the release notes](docs/user/src/setup/release-notes.md), with a \`### Bugs fixed since <last published version>\` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.`
     },
     {
       heading: "Style",
