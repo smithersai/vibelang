@@ -2,7 +2,7 @@
 // retires .ts -> .vibe fallback, and also repairs an already-migrated corpus.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { basename, dirname, extname, join, resolve } from "node:path"
-import { applyEdits, parseImports } from "./imports.mjs"
+import { applyEdits, editableImports } from "./imports.mjs"
 
 export function staleSpecifier(ts, root, file, written, options) {
   if (!/^\.{1,2}\/.*\.tsx?$/.test(written)) return written
@@ -52,7 +52,7 @@ export function migrateStaleSpecifiers(ts, root, files, { write = true } = {}) {
   for (const file of files) {
     if (!/\.(?:[cm]?[jt]sx?|vibex?)$/.test(file) || /\.d\.(?:[cm]?ts|vibex?\.ts)$/.test(file) || file.split("/").includes("node_modules")) continue
     const text = readFileSync(join(root, file), "utf8")
-    const imports = parseImports(text).filter(item => item.kind !== "mock" && item.kind !== "test-mock")
+    const imports = editableImports(() => ts, file, text).filter(item => item.kind !== "mock" && item.kind !== "test-mock")
     if (!imports.some(item => /^\.{1,2}\/.*\.tsx?$/.test(item.specifier))) continue
     const config = ts.findConfigFile(dirname(resolve(root, file)), ts.sys.fileExists)
     if (!config) continue // no project rules to infer

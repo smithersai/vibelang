@@ -190,3 +190,40 @@ test("API snapshot aliases resolve JSX source entries to exactly one sidecar", (
     } finally { projection?.cleanup(); rmSync(root, { recursive: true, force: true }) }
   }
 })
+
+// VIP-39: Renaming x.tsx to x.vibex changes nothing in its JSX.
+test("import-shaped text in JSX and template literals survives rewrite and restoration", () => {
+  const spelling = fc.constantFrom("", ".js", ".tsx")
+  fc.assert(fc.property(spelling, spelling, spelling, fc.boolean(), (inText, inAttribute, inTemplate, resolved) => {
+    const root = mkdtempSync(join(tmpdir(), "migrate-vibex-text-"))
+    try {
+      const text = (spec, written = "./Card") => 'import c from "' + written + spec + '"'
+      const consumer = [
+        'import { Card } from "./Card"',
+        "export const View = () => <pre title='" + text(inAttribute) + "'>",
+        text(inText),
+        'export { Card } from "./Card' + inText + '"',
+        "</pre>",
+        "export const Shown = () => <b>from \"./Card" + inText + "\"</b>",
+        "export const sample = `",
+        text(inTemplate),
+        "`",
+        "export const card = Card",
+        ""
+      ].join("\n")
+      put(root, "tsconfig.json", JSON.stringify({ compilerOptions: { jsx: "react-jsx", module: "esnext", moduleResolution: "bundler" } }))
+      put(root, "Card.tsx", "export const Card = () => <div />\n")
+      put(root, "consumer.tsx", consumer)
+      const renames = renameBatch(root, ["Card.tsx", "consumer.tsx"])
+      const aliases = resolved ? pathAliases(ts, root) : undefined
+      const moved = renames.map(rename => rename.to)
+      const edits = rewriteImports(root, moved, moved, aliases)
+      const rewritten = readFileSync(join(root, "consumer.vibex"), "utf8")
+      assert.deepEqual(edits.map(edit => edit.from), ["./Card"], rewritten)
+      assert.equal(rewritten, consumer.replace('import { Card } from "./Card"', 'import { Card } from "' + edits[0].to + '"'))
+      for (const rename of renames) renameSync(join(root, rename.to), join(root, rename.from))
+      for (const rename of renames) restoreSpecifiers(root, edits, rename.from, aliases)
+      assert.equal(readFileSync(join(root, "consumer.tsx"), "utf8"), consumer)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  }), { seed: 390041, numRuns: 40 })
+})

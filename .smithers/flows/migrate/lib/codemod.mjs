@@ -9,7 +9,7 @@ import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
-import { applyEdits, parseImports, resolveAliased, resolveRelative, splitSpecifier } from "./imports.mjs"
+import { applyEdits, editableImports, resolveAliased, resolveRelative, splitSpecifier } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
@@ -613,7 +613,7 @@ export function restoreSpecifiers(root, edits, module, aliases) {
     // recorded them: an import of ./user.js and a mock of ./user.ts both
     // became ./user.vibe, and each gets its own spelling again.
     const pending = [...fileEdits]
-    for (const i of parseImports(text)) {
+    for (const i of editableImports(() => importParser(root), file, text)) {
       const at = pending.findIndex((e) => e.to === i.specifier)
       if (at < 0) continue
       const [edit] = pending.splice(at, 1)
@@ -638,9 +638,10 @@ export const importerFile = /\.(?:ts|tsx|mts|cts|vibe|vibex|js|jsx|mjs|cjs)$/
 // VIP-40 bodies retain TypeScript import spelling. Parse their ranges so
 // comments, strings, regexps and templates cannot impersonate a boundary.
 let importTypeScript
+const importParser = root => importTypeScript ??= loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
 function nativeImportRanges(text, root, jsx = false) {
   if (!/\bmodule\b/.test(text)) return []
-  const ts = importTypeScript ??= loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
+  const ts = importParser(root)
   const kind = jsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS
   const source = ts.createSourceFile("imports.ts", text, ts.ScriptTarget.Latest, true, kind)
   const ranges = []
@@ -690,7 +691,7 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
     const text = read(file)
     const changes = []
     const nativeBodies = /\.vibex?$/.test(file) ? nativeImportRanges(text, root, file.endsWith(".vibex")) : []
-    for (const i of parseImports(text)) {
+    for (const i of editableImports(() => importParser(root), file, text)) {
       if (nativeBodies.some(([start, end]) => start <= i.start && i.start < end)) continue
       const { path: modulePath, suffix } = splitSpecifier(i.specifier)
       if (javascript && !/\.(?:[cm]?tsx?|vibex?)$/.test(modulePath)) continue

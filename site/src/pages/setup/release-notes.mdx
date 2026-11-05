@@ -166,6 +166,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Reverting ordinary source files could fail when the migration toolchain was unavailable; reverts now load reference-build tools only when the project graph needs them.
 
+- Migration rewrote import-shaped text inside JSX and template literals, which changed what a component rendered; it now edits only real imports.
+
 - Migration rejected JSX components in `.tsx` files; they now convert to `.vibex` with matching imports, declaration checks and revert support.
 
 - Mapper catch tests could assume ordinary functions ran Effect code; valid examples now mark their owners explicitly and retain ordinary-body rejection controls.

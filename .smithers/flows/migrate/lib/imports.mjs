@@ -120,6 +120,30 @@ export function parseImports(text) {
   return found.filter((i) => !comments.some(([start, end]) => start <= i.start && i.start < end)).sort((a, b) => a.start - b.start)
 }
 
+/**
+ * The imports of a module that an edit may touch. parseImports reads lines, so
+ * text that only looks like an import counts: JSX text and strings, and template
+ * literals, whose characters the program renders or evaluates. Only a parser
+ * tells them apart, so this one runs when such text can exist. typescript is a
+ * function so that a module with neither kind of text loads no compiler.
+ */
+export function editableImports(typescript, file, text) {
+  const found = parseImports(text)
+  const jsx = /\.(?:tsx|jsx|vibex)$/.test(file)
+  if (!found.length || !jsx && !text.includes("`")) return found
+  const ts = typescript()
+  const source = ts.createSourceFile(jsx ? "imports.tsx" : "imports.ts", text, ts.ScriptTarget.Latest, false, jsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+  const literal = new Set([ts.SyntaxKind.JsxText, ts.SyntaxKind.NoSubstitutionTemplateLiteral, ts.SyntaxKind.TemplateHead, ts.SyntaxKind.TemplateMiddle, ts.SyntaxKind.TemplateTail])
+  const ranges = []
+  const visit = node => {
+    if (literal.has(node.kind)) ranges.push([node.pos, node.end])
+    else if (ts.isJsxAttribute(node) && node.initializer && ts.isStringLiteral(node.initializer)) ranges.push([node.initializer.pos, node.initializer.end])
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return found.filter(i => !ranges.some(([start, end]) => start <= i.start && i.start < end))
+}
+
 /** Whether a specifier names Effect or one of its packages. */
 export const isEffectSpecifier = (specifier) =>
   specifier === "effect" || specifier.startsWith("effect/") || specifier.startsWith("@effect/")
