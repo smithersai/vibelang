@@ -1127,6 +1127,12 @@ const targets = {
     [],
     "20m"
   ),
+  "inherited-error-constructor-arity": goVibelang(
+    "Rejected inheritance hides generated arity failures while preserving authored argument errors",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestInheritedErrorArityQuoted|TestInheritedErrorGeneratedArity|FuzzInheritedErrorConstructorArity)$\" ./internal/vibelangfuzz",
+    [],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

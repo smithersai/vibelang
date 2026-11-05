@@ -153,7 +153,7 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 		} else {
 			cover(c, base)
 		}
-		coverCodes(c, name, 2345, 2416) // synthesized constructor/tag members
+		coverCodes(c, name, 2345, 2416, 2554) // synthesized constructor/tag members
 		coverCodes(c, class.ClassLikeData().HeritageClauses.Nodes[0], 2509)
 		// The generated schema-base call can span the payload fields. Its
 		// diagnostic is redundant, but errors in authored nested classes are not.

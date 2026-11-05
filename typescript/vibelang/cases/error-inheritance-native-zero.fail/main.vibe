@@ -1,0 +1,4 @@
+// expect: EK2117
+// rule-evidence: docs/design/src/003-failures.md#static-rules | Diagnostics from compiler-generated superclass calls do not accompany a rejected inheritance clause.
+class Base { readonly _tag: string = "Base"; constructor() {} }
+export error Child extends Base { value: number }

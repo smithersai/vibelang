@@ -1,0 +1,6 @@
+// expect: EK2117 TS2554
+// rule-evidence: docs/design/src/003-failures.md#static-rules | Errors in user-written methods remain visible.
+class Base { readonly _tag: string = "Base"; constructor() {} }
+export error Child extends Base {
+  method(): number { return Math.imul(1) }
+}

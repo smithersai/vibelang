@@ -2074,3 +2074,5 @@ The `//:continuation-contract-retirement` target keeps continuation retirement i
 The `//:generator-binding-refusal-contracts` target checks complete generator refusal diagnostics and object, defaulted, nested and tuple parameter migration corpus controls.
 
 The `//:resolved-fuzz-gap-regressions` target replays native source resolution, declaration spelling, generator arguments, grouped completion, and execution diagnostics after their compiler gaps are resolved. Changes to those implementations or pending records select it before landing.
+
+The `//:inherited-error-constructor-arity` target checks zero, single, multiple, optional, rest and object constructor shapes, retaining arity errors in authored methods.
