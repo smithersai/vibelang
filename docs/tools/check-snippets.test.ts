@@ -374,6 +374,25 @@ test("Node ambient types are opt-in through a snippet header", () => {
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
+test("the closing export list leaves out listed exports and module names", () => {
+  const root = mkdtempSync(join(tmpdir(), "snippet-exports-"))
+  try {
+    const dir = join(root, "project")
+    const blocks = extract([
+      "```vibe", "module pem {", "  export function b(message: string): string { throw new Error(message) }", "}",
+      "import { b } from pem", "export { b }", "```",
+      "```vibe", "const a = 1", "export { a as c }", "```",
+      "```vibe", "export const value = b(\"x\")", "```"
+    ].join("\n"))
+    const { filenames } = writeProject(dir, blocks)
+    const [module, renamed, later] = blocks.map(block => readFileSync(join(dir, filenames.get(block.number)!), "utf8").trimEnd().split("\n"))
+    expect(module.at(-1)).toBe("export {  }")
+    expect(renamed.at(-1)).toBe("export { a }")
+    expect(later.join("\n")).toMatch(/import \{[^}]*\bb\b[^}]*\} from /)
+    expect(later.join("\n")).not.toMatch(/import \{[^}]*\bpem\b/)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test("a pending-decision line holds a block out with its topic beside its VIPs", () => {
   const [both, decision] = extract([
     "```vibe", "// pending: VIP-13", "// pending-decision: error-extends", "error A { code: string }", "```",
