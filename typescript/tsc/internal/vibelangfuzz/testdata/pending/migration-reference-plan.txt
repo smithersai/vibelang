@@ -1,4 +1,0 @@
-# Unrelated missing children cannot invalidate an independent changed leaf.
-FuzzMigrationReferencePlan missing:direct compiler Chapter 007: refresh only the affected reference closure; lane migfix-t3code
-FuzzMigrationReferencePlan missing:transitive compiler Chapter 007: refresh only the affected reference closure; lane migfix-t3code
-FuzzMigrationReferencePlan corpus:t3code-reference-missing-child compiler Chapter 007: refresh only the affected reference closure; lane migfix-t3code
