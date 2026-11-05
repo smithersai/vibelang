@@ -476,6 +476,10 @@ A run's `issues.jsonl` is the input to the loop that improves the flow. The repa
 
 `report.md` lists all three, with the rewrites `--fix` applied and refused, so a run's report says which rule to write next.
 
+### Provider construction order
+
+A grouped `try` operand recovers its whole program. For an inline cold block passed to `Effect.provide`, the codemod captures the program before constructing its provider, then uses the `provide` block to run the capture. Other eager program factories keep their existing refusal.
+
 ### Pure request pipelines
 
 The native codemod also converts known pure `HttpClientRequest` dual setters to pipe stages with the request first. It accepts only stable arguments, preserving the ordering between argument construction and immediate setter application; observable argument expressions remain in their original form with a refusal.

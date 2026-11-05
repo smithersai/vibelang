@@ -136,7 +136,8 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 		if !analyzerFor(c).runs(call) {
 			return &formRewrite{why: blockPositionNote}
 		}
-		if !coldProgram(c, file, operand) {
+		capture := !coldProgram(c, file, operand) && isEffectBlock(operand)
+		if !coldProgram(c, file, operand) && !capture {
 			return &formRewrite{why: eagerProgramNote}
 		}
 		var providers []string
@@ -163,7 +164,13 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 			return &formRewrite{message: provideServiceNativeForm, why: provideServiceScopeNote}
 		}
 		start, end = nodeStart(file, statement), statement.End()
-		result = "provide " + strings.Join(providers, ", ") + blockText(program, indent, returns)
+		if capture {
+			name := freshName(file, "automatic")
+			program = "try " + name
+			result = "{\n" + indent + "  const " + name + " = " + expressionText(file, arguments[0]) + ";\n" + indent + "  provide " + strings.Join(providers, ", ") + blockText(program, indent+"  ", returns) + "\n" + indent + "}"
+		} else {
+			result = "provide " + strings.Join(providers, ", ") + blockText(program, indent, returns)
+		}
 	}
 	return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{start, end, result}}, description: shortText(result, "the block form")})
 }
