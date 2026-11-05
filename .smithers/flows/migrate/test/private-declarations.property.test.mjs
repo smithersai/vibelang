@@ -67,7 +67,8 @@ async function fixture(manifest, { before = corpus.before, after = corpus.after,
     writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(p.baseline, "upstream-packs")))
     const result = await verify({ run, batch: "01" })
     assert.equal(result.checks.packs, true, JSON.stringify(result.packs))
-    assert.deepEqual(JSON.parse(readFileSync(p.verify("01"), "utf8")), result)
+    // Optional undefined fields have no representation in a JSON receipt.
+    assert.deepEqual(JSON.parse(readFileSync(p.verify("01"), "utf8")), JSON.parse(JSON.stringify(result)))
     return result
   } finally {
     rmSync(root, { recursive: true, force: true })
