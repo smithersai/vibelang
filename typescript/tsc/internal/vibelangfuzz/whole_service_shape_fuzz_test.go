@@ -25,7 +25,7 @@ func TestWholeServiceShapeDeclarationQuoted(t *testing.T) {
 }
 func FuzzWholeServiceShapeDeclaration(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"interface", "generic", "intersection", "primitive", "callable", "unknown", "empty", "array", "union"}
+	keys := []string{"interface", "generic", "intersection", "primitive", "callable", "unknown", "empty", "array", "union", "namespace-imports"}
 	for _, key := range keys {
 		for variant := uint8(0); variant < 4; variant++ {
 			f.Add(key, variant)
@@ -54,6 +54,10 @@ func FuzzWholeServiceShapeDeclaration(f *testing.F) {
 		switch key {
 		case "interface":
 			head = "interface Shape { readonly value:number }"
+		case "namespace-imports":
+			prefix = "import * as Context from \"effect/Context\"\nimport * as Option from \"effect/Option\"\n"
+			head = "interface Shape { readonly value:Option.Option<string> }"
+			value = "{value:Option.none<string>()}"
 		case "generic":
 			head = "type Shape<A>={readonly value:A}"
 			shape = "Shape<number>"

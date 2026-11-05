@@ -1836,3 +1836,5 @@ The `//:trusted-callback-contracts` check verifies foreign callback contracts, n
 The `//:declaration-manifest-retirement` target verifies complete package file sets against stock TypeScript in five emission layouts, checks that no provenance manifest is emitted, and retains the forms fixture’s exact declarations and runtime observations. Foreign-call contracts travel in declarations; stale provenance files do not grant permission.
 
 The `//:class-evaluation-repairs` check exercises preserving repairs in class bases and generated schema error bases, including parentheses, nested calls and repeated fixes.
+
+The `//:whole-service-declarations` check compares whole-shape services with native declarations across namespace imports, defaults and enclosing namespaces.
