@@ -1063,6 +1063,8 @@ The command-line fuzz target builds its nested compiler with `-trimpath`,
 matching the outer Go test build. This lets the two builds share compiler
 package artifacts in the Go build cache on a fresh validation mirror.
 
+The shared compiler support package also builds independently with `cd typescript/tsc && go build ./internal/vibelangfuzz`. Helpers used by ordinary builds belong in regular `.go` files: Go excludes `_test.go` files from those builds. `TestFuzzPackageBuildWithoutTestFiles` runs an actual standalone build to retain that boundary.
+
 The `//:spec-registry-go` gate also checks that every fuzz target starts its short-seed CPU budget. A new fuzz oracle must register its budget before adding seeds; the gate selects changes to any VibeLang fuzz source so a newly added target cannot bypass this check.
 
 ## Benchmark corpus generation

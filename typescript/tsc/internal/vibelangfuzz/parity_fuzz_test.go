@@ -130,10 +130,6 @@ func withoutVibe(text string) string {
 	return trailingComma.ReplaceAllString(vibeEntry.ReplaceAllString(text, ""), "$1")
 }
 
-func isTypeScript(name string) bool {
-	return isSource(name) && !strings.HasSuffix(name, ".vibe")
-}
-
 var stockDiagnostic = regexp.MustCompile(`^(?:(.+)\((\d+),(\d+)\): )?(error|warning|message) TS(\d+): `)
 
 // CheckParity runs FuzzTypeScriptParity's oracles on one input.
@@ -337,10 +333,4 @@ func onlyIn(a, b []string) []string {
 		}
 	}
 	return only
-}
-
-// parityOutput includes every public emitter that ordinary TypeScript selects
-// in the shared configuration (D266, Chapter 27).
-func parityOutput(name string) bool {
-	return isJS(name) || isDeclaration(name) || strings.HasSuffix(name, ".map")
 }

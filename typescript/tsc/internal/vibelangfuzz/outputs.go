@@ -735,3 +735,13 @@ func (w *Workspace) checkFiles(ctx context.Context, dir string, names []string) 
 	}
 	return ds, nil
 }
+
+func isTypeScript(name string) bool {
+	return isSource(name) && !strings.HasSuffix(name, ".vibe")
+}
+
+// parityOutput includes every public emitter that ordinary TypeScript selects
+// in the shared configuration (D266, Chapter 27).
+func parityOutput(name string) bool {
+	return isJS(name) || isDeclaration(name) || strings.HasSuffix(name, ".map")
+}
