@@ -231,6 +231,10 @@ Malformed JSX containers, such as `<p>{render { return 1 }}</p>`, report the sam
 
 A native `.tsx` sibling keeps the project’s `jsx` output extension: a source import such as `./token.tsx` becomes `./token.jsx` in JavaScript under `preserve`, and `./token.js` under `react-native` and the React transform modes, as `tsc` names them.
 
+### Inspect repaired trailing blocks
+
+A legacy trailing block reports `EK1101`. Apply its repair before running the program. Inspect the explicit argument: an Effect program uses `effect { ... }`, an Effect callback uses `effect () => { ... }`, and a plain callback uses `() => { ... }`. These destinations have different execution behavior. The automatic repair needs to prove the argument kind and placement; an ambiguous call requires a manual rewrite.
+
 ## 4. Add an entry point
 
 The `start` script runs `dist/main.js`, so create `src/main.vibe`:

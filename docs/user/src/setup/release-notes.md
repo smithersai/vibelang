@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.
 - The declaration guide now distinguishes generated no-throw metadata from authored documentation when comparing TypeScript APIs.
+- The CLI guide now distinguishes the explicit program and callback arguments produced when repairing a legacy trailing block.
 - The CLI guide now explains the cached value identity, type reads and initialization behavior preserved by a service default repair.
 - The CLI guide now explains how an explicit service key keeps standalone migrations focused on their intended repair.
 - The CLI guide now explains how to call throwing validation helpers from Effect code while retaining the original thrown value.

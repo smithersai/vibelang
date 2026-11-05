@@ -1783,3 +1783,5 @@ The `//:appendix-oracles` target runs the Appendix B probe, quick-fix and stock-
 Give services explicit keys in isolated migration fixtures when the service-key repair is outside the assertion being tested. Keep exact source comparisons so an unrelated repair cannot obscure the callback or requirement migration under test.
 
 The cached-default oracle in `//:appendix-oracles` follows VIP-9's preserving native-class migration. It compares exact repaired source, recompiles its type reads, checks shared cached value identity and mutation visibility, and repeats those observations across generated field names and initial values.
+
+For rejected trailing blocks, ordinary parser recovery output is not a legacy runtime reference. The appendix oracle compares a repair's exact emitted JavaScript with an independently written valid form and checks the program, Effect callback and plain callback runtime results, including generated comment and line-ending variants.

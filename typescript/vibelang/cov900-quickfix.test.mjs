@@ -39,27 +39,65 @@ function fixture(source,body,severities={EK4833:"off"}){
  }finally{rmSync(root,{recursive:true,force:true})}
 }
 
-// docs/design/src/900-appendices.md#7e8e64f64b690629 — Chapter 900: trailing blocks preserve plain, Effect program, and Effect callback destinations.
-test("trailing blocks preserve plain, Effect program, and Effect callback destinations",()=>{
+// VIP-11 rejects trailing blocks; native parser recovery output is not a legacy runtime oracle.
+const trailingRepairRule = "Ordinary parsing uses TypeScript's statement boundaries and recovery"
+const trailingRepairPrelude = "export service Users { static readonly key = \"cov900/Users\"; find(id: string): string!! }\nfunction test(name: string, body: () => Effect.Effect<number>) { return body() }\nfunction twice(f: () => number) { return f() + f() }\n"
+const trailingRepairVariants = [
+  [
+    "export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }",
+    "export const live = Layer.effect(Users, effect { return { effect find(id: string) { return id } } })",
+    "import {Effect,Layer,Context} from \"effect\"; const context=Effect.runSync(Effect.scoped(Layer.build(M.live))); console.log(JSON.stringify(Effect.runSync(Context.get(context,M.Users).find(\"Ada\"))))",
+    "Ada"
+  ],
+  [
+    "export function f() { return Effect.scoped { const r = try Ref.make(1); return try Ref.get(r) } }",
+    "export function f() { return Effect.scoped(effect { const r = try Ref.make(1); return try Ref.get(r) }) }",
+    "import {Effect} from \"effect\"; console.log(JSON.stringify(Effect.runSync(M.f())))",
+    1
+  ],
+  [
+    "export function f() { return test(\"one\") { const r = try Ref.make(1); return try Ref.get(r) } }",
+    "export function f() { return test(\"one\", effect () => { const r = try Ref.make(1); return try Ref.get(r) }) }",
+    "import {Effect} from \"effect\"; console.log(JSON.stringify(Effect.runSync(M.f())))",
+    1
+  ],
+  [
+    "export function f() { return twice() { return 2 } }",
+    "export function f() { return twice(() => { return 2 }) }",
+    "console.log(JSON.stringify(M.f()))",
+    4
+  ]
+]
 
- const prelude="service Users { static readonly key = \"cov900/Users\"; find(id: string): string!! }\nfunction test(name: string, body: () => Effect.Effect<number>) { return body() }\nfunction twice(f: () => number) { return f() + f() }\n"
- const variants=[
-  ["export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }","export const live = Layer.effect(Users, effect { return { effect find(id: string) { return id } } })",true],
-  ["export function f() { return Effect.scoped { const r = try Ref.make(1); return try Ref.get(r) } }","export function f() { return Effect.scoped(effect { const r = try Ref.make(1); return try Ref.get(r) }) }",true],
-  ["export function f() { return test(\"one\") { const r = try Ref.make(1); return try Ref.get(r) } }","export function f() { return test(\"one\", effect () => { const r = try Ref.make(1); return try Ref.get(r) }) }",false],
-  ["export function f() { return twice() { return 2 } }","export function f() { return twice(() => { return 2 }) }",false]
- ]
- for(const [before,after,sameEmit] of variants)fixture(prelude+before,({run,source,emit})=>{
+function checkTrailingRepair(index,crlf=false) {
+ const spec=readFileSync(new URL("../../docs/design/vips/0011-trailing-blocks-denied.md",import.meta.url),"utf8")
+ assert.ok(spec.includes(trailingRepairRule),"VIP-11 native parser recovery rule")
+ let [before,after,observation,value]=trailingRepairVariants[index]
+ const prefix=crlf?"// preserve migration comment 🧪\r\n":""
+ before=prefix+trailingRepairPrelude+before
+ after=prefix+trailingRepairPrelude+after
+ if(crlf){before=before.replace(/(?<!\r)\n/g,"\r\n");after=after.replace(/(?<!\r)\n/g,"\r\n")}
+ fixture(before,({run,source,emit,observe})=>{
   assert.match(run().text,/EK1101:/)
-  const js=emit()
-  const fixed=run("--fix")
-  assert.equal(fixed.status,0,fixed.text)
-  assert.equal(source(),prelude+after)
+  const fixed=run("--fix");assert.equal(fixed.status,0,fixed.text)
+  assert.equal(source(),after)
   const checked=run();assert.equal(checked.status,0,checked.text)
-  if(sameEmit)assert.equal(emit(),js)
-  run("--fix");assert.equal(source(),prelude+after)
+  const actual=emit()
+  // Preserve exact emitted output, using the independently written valid form.
+  fixture(after,reference=>{
+   const compiled=reference.run();assert.equal(compiled.status,0,compiled.text)
+   assert.equal(actual,reference.emit())
+  })
+  assert.deepEqual(observe(observation),value)
+  run("--fix");assert.equal(source(),after)
  })
+}
 
+test("trailing blocks preserve plain, Effect program, and Effect callback destinations",()=>{
+ for(let index=0;index<trailingRepairVariants.length;index++)checkTrailingRepair(index)
+})
+test("trailing repair output and runtime values survive comments and line endings",()=>{
+ fc.assert(fc.property(fc.integer({min:0,max:3}),fc.boolean(),checkTrailingRepair),{seed:9001101,numRuns:6})
 })
 
 // docs/design/src/900-appendices.md#ed55030ff023734c — Chapter 900: EK4833 excludes interfaces extending Effect.
