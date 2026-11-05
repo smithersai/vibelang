@@ -21,6 +21,7 @@ function finalPublication() {
 
 // Development headings may lead package versions for the next unreleased section.
 function assertReleaseHistory(notes, version, lastPublishedVersion) {
+  assert.doesNotMatch(notes.split(/^## /m)[0], /^Pending fixes for /m, "pending fixes belong inside the candidate version section")
   const [current, previous] = notes.split(/^## /m).slice(1)
   assert.ok(current && previous, "release notes need current and previous sections")
   const heading = /^(\d+\.\d+\.\d+(?:-[\w.-]+)?)( \(unreleased\))?$/.exec(current.split("\n")[0])
@@ -45,6 +46,9 @@ function assertReleaseHistory(notes, version, lastPublishedVersion) {
     assert.equal(version, [published[0], published[1], published[2] + 1].join("."), "candidate must advance the last npm patch version once")
     assert.ok([version, version + " (unreleased)"].includes(current.split("\n")[0]), "all release fixes belong to the compiler candidate")
     assert.equal(previousVersion, lastPublishedVersion, "release history starts at the version npm actually published")
+    for (const [, baseline] of current.matchAll(/^### Upgrade from (\d+\.\d+\.\d+)$/gm)) {
+      assert.equal(baseline, lastPublishedVersion, "candidate upgrades start at the last npm publication")
+    }
   }
 }
 
@@ -58,10 +62,24 @@ test("release history rejects a next-development section when the compiler candi
   assert.throws(() => assertReleaseHistory("## 9.8.8 (unreleased)\n### Bugs fixed since 9.8.7\n## 9.8.7\n### Bugs fixed since 9.8.6\n## 9.8.6\n", "9.8.7", "9.8.6"), /candidate|npm/)
 })
 
+test("release history rejects pending fixes outside the candidate section", () => {
+  for (const version of ["9.8.7", "0.0.11", "1.20.3"]) {
+    const notes = "Pending fixes for the " + version + " compiler candidate:\n\n- A pending fix.\n\n" +
+      "## " + version + "\n### Bugs fixed since 0.0.10\n## 0.0.10\n"
+    assert.throws(() => assertReleaseHistory(notes, version), /inside the candidate version section/)
+  }
+})
+
 test("release history rejects an empty or malformed npm publication snapshot", () => {
   for (const last of ["", "9.8", "not-a-version"]) {
     assert.throws(() => assertReleaseHistory("## 9.8.7 (unreleased)\n### Bugs fixed since 9.8.6\n## 9.8.6\n", "9.8.7", last), /npm publication/)
   }
+})
+
+test("release history rejects upgrades from an unpublished candidate", () => {
+  const notes = baseline => "## 9.8.7\n### Bugs fixed since 9.8.6\n### Upgrade from " + baseline + "\n## 9.8.6\n"
+  assert.throws(() => assertReleaseHistory(notes("9.8.7"), "9.8.7", "9.8.6"), /candidate upgrades/)
+  assert.doesNotThrow(() => assertReleaseHistory(notes("9.8.6"), "9.8.7", "9.8.6"))
 })
 
 test("release history accepts an unpublished candidate at the compiler version", () => {
