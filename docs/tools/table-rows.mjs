@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url"
 const cells = line => line.replace(/\\./g, "").split("|").length
 const delimiter = line => /^\|(\s*:?-{3,}:?\s*\|)+\s*$/.test(line)
 
-export function tableRowProblems(text, file, { checkWidths = true } = {}) {
+export function tableRowProblems(text, file, { checkWidths = true, checkPlatformReplacements = false } = {}) {
   const lines = text.split("\n"), problems = []
-  let fence, width = 0
+  let fence, width = 0, platformReplacements = false
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i], marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1]
     if (marker) {
@@ -22,10 +22,22 @@ export function tableRowProblems(text, file, { checkWidths = true } = {}) {
     if (width === 0) {
       if (!delimiter(lines[i + 1] ?? "")) problems.push(file + ":" + (i + 1) + ": a row outside a table")
       width = cells(line)
+      const header = line.split("|").slice(1, -1).map(cell => cell.trim())
+      platformReplacements = checkPlatformReplacements && header.join("|") === "Call|Effect|Layer"
       continue
     }
     if (delimiter(line)) continue
     if (checkWidths && cells(line) !== width) problems.push(file + ":" + (i + 1) + ": " + (cells(line) - 2) + " cells, the header has " + (width - 2))
+    if (platformReplacements) {
+      const row = line.split("|").slice(1, -1).map(cell => cell.trim())
+      const call = row[0]?.replaceAll(String.fromCharCode(96), "").replace(/\s/g, "")
+      // The native query reads a location. Effect's temporary directory/file
+      // factories allocate resources, including their scoped variants.
+      if ((call === "os.tmpdir" || call === "os.tmpdir()") &&
+          /\.\s*makeTemp(?:Directory|File)(?:Scoped)?\s*\(/.test(row[1] ?? "")) {
+        problems.push(file + ":" + (i + 1) + ": os.tmpdir reads the system temporary-directory location; its replacement must not create a temporary resource")
+      }
+    }
   }
   return problems
 }
@@ -33,7 +45,7 @@ export function tableRowProblems(text, file, { checkWidths = true } = {}) {
 export function userTableProblems(root = fileURLToPath(new URL("../user/src", import.meta.url))) {
   const pages = directory => readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
     entry.isDirectory() ? pages(join(directory, entry.name)) : entry.name.endsWith(".md") ? [join(directory, entry.name)] : [])
-  return pages(root).flatMap(file => tableRowProblems(readFileSync(file, "utf8"), file))
+  return pages(root).flatMap(file => tableRowProblems(readFileSync(file, "utf8"), file, { checkPlatformReplacements: true }))
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

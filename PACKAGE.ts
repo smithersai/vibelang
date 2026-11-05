@@ -676,7 +676,7 @@ const targets = {
     [bun, node]
   ),
   "docs-table-rows": check(
-    "User documentation table rows follow their header, delimiter and cell count.",
+    "User tables retain headers and widths; temporary-directory queries retain their read semantics.",
     "node docs/tools/table-rows.mjs && bun test docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
     [],
     [bun, node]

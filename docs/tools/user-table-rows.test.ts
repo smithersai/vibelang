@@ -76,3 +76,37 @@ test("user table widths reject missing and extra cells", () => {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+
+test("temporary-directory query stays a read in the replacement table", () => {
+  const text = readFileSync(new URL("../user/src/platform/105-introduction.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Call|Effect|Layer")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const rows = table.rows.filter(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "os.tmpdir")
+  expect(rows.length).toBeGreaterThan(0)
+  expect(rows.every(row => row[1].text.includes(".temporaryDirectory"))).toBe(true)
+})
+
+test("temporary-location query mappings reject generated allocating replacements", () => {
+  const tick = String.fromCharCode(96)
+  const table = (call: string, operation: string) => [
+    "| Call | Effect | Layer |", "| --- | --- | --- |",
+    "| " + tick + call + tick + " | " + tick + operation + tick + " | NodeServices.layer |"
+  ].join("\n")
+  fc.assert(fc.property(
+    fc.constantFrom("makeTempDirectory", "makeTempDirectoryScoped", "makeTempFile", "makeTempFileScoped"),
+    fc.constantFrom("", " ", "  "),
+    fc.constantFrom("", '{ prefix: "sample-" }', '{ directory: base }'),
+    fc.boolean(),
+    (factory, spacing, argument, parentheses) => {
+      const call = "os.tmpdir" + (parentheses ? "()" : "")
+      const operation = "try (try FileSystem.FileSystem)." + spacing + factory + spacing + "(" + argument + ")"
+      const options = { checkPlatformReplacements: true }
+      expect(tableRowProblems(table(call, operation), "generated", options)).toHaveLength(1)
+      expect(tableRowProblems(table(call, "try (try Experimental.Process.Process).temporaryDirectory"), "generated", options)).toEqual([])
+      expect(tableRowProblems(table("fs.mkdtemp", operation), "generated", options)).toEqual([])
+      expect(tableRowProblems(tick.repeat(3) + "md\n" + table(call, operation) + "\n" + tick.repeat(3), "generated", options)).toEqual([])
+    }
+  ), { numRuns: 200, seed: 30303 })
+})
