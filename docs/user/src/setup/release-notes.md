@@ -178,6 +178,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Bun builds could not find a literal `.ts` entry after it migrated to `.vibe`; the Bun adapter now follows the migrated source while preserving existing TypeScript and in-memory entries.
 
+- Schema rewrite checks could fail after diagnostic coverage annotations changed. The original and rewritten fixtures now keep the same annotations through `--fix`.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
