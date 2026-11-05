@@ -1,0 +1,2 @@
+export const invalid: string = 123
+export const object = { value: true ? 1 : throw 2, tail: 0 }

@@ -1,0 +1,15 @@
+# Static migration oracles retain the contract while the tooling is incomplete.
+FuzzMigrationThrowCallHome home:direct/0 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
+FuzzMigrationThrowCallHome home:direct/1 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
+FuzzMigrationThrowCallHome home:block/0 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
+FuzzMigrationThrowCallHome home:block/1 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
+FuzzMigrationThrowCallHome corpus:alchemy-workflow-encoding-call-home compiler VIP-40: minimized public decode factory has no call-based module-home plan; lane migfix-alchemy
+FuzzMigrationEffectContainers container:object/0 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers container:object/1 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers container:nested/0 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers container:nested/1 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers container:array/0 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers container:array/1 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers container:identity/0 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers container:identity/1 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
+FuzzMigrationEffectContainers corpus:t3code-effect-valued-object-members compiler VIP-1: minimized object-returning factory gets a false lost-wrapper flag; lane migfix-t3code
