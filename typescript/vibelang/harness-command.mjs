@@ -12,13 +12,17 @@ export function runnerHelpers(file, text = fs.readFileSync(file, "utf8")) {
 }
 
 // A custom runner's deadline: the N of its own `// run-seconds: N` line, or
-// else the largest N among its helpers, or else 60 s.
+// else the largest N among its helpers, or else 60 s, and without an own line
+// never less than the stage deadlines written in the runner and its helpers.
+// A runner killed as a whole names no stage, so a new case cannot fall short.
 export function runnerSeconds(file) {
   const text = fs.readFileSync(file, "utf8")
   const own = runSecondsLine.exec(text)
   if (own) return Number(own[1])
-  const inherited = runnerHelpers(file, text).flatMap((helper) => runSecondsLine.exec(fs.readFileSync(helper, "utf8"))?.[1] ?? [])
-  return inherited.length ? Math.max(...inherited.map(Number)) : 60
+  const helpers = runnerHelpers(file, text)
+  const inherited = helpers.flatMap((helper) => runSecondsLine.exec(fs.readFileSync(helper, "utf8"))?.[1] ?? [])
+  const written = helpers.reduce((sum, helper) => sum + stageSeconds(fs.readFileSync(helper, "utf8")), stageSeconds(text))
+  return Math.max(inherited.length ? Math.max(...inherited.map(Number)) : 60, written)
 }
 
 // The stage deadlines written in a file, in seconds.
