@@ -33,7 +33,7 @@ func TestServiceRunHeadQuoted(t *testing.T) {
 func FuzzServiceRunHead(f *testing.F) {
 	startShortBudget(f)
 	for _, key := range serviceRunHeadForms {
-		for _, member := range []string{"record", "write", "stock", "name", "pipe"} {
+		for _, member := range []string{"record", "write", "stock", "read", "name", "pipe"} {
 			f.Add([]byte(key + ":" + member))
 		}
 	}
@@ -50,7 +50,7 @@ func FuzzServiceRunHead(f *testing.F) {
 			}
 		}
 		n := len(data) % 17
-		members := []string{"record", "write", "stock", "name", "pipe"}
+		members := []string{"record", "write", "stock", "read", "name", "pipe"}
 		member := members[0]
 		if len(parts) > 1 && slices.Contains(members, parts[1]) {
 			member = parts[1]

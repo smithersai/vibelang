@@ -1093,6 +1093,12 @@ const targets = {
     [],
     "20m"
   ),
+  "layer-repair-service-receivers": goVibelang(
+    "Layer syntax repairs retain comments and current explicit service lookup",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestLayerRepairWritesCurrentBlockArgument$\" ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^FuzzServiceRunHead$/layer-repair-read-\" ./internal/vibelangfuzz",
+    [],
+    "15m"
+  ),
   "schema-codec-native-return-inference": goVibelang(
     "Schema codec factories retain writable references with native return inference",
     "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestFixProjectGroupedSchemaMigration|TestFixProjectSchemaRequiredFieldReference|TestFixProjectSchemaReadonlyFieldReference|TestSchemaReadonlyMigrationCodecReferences|FuzzSchemaCodecFactoryNativeReturns|TestSchemaFactoryMigrationReturnsQuoted|FuzzSchemaFactoryMigrationReturns)$\" ./internal/vibelang ./internal/vibelangfuzz",

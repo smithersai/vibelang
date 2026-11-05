@@ -2116,3 +2116,5 @@ The tagged match repair check compares complete migration output and compiles it
 The loader sidecar root check varies explicit, inherited, inferred, and composite roots through public and loader compiles, then runs the embedded bundler declaration checks. Failures report the relative declaration paths actually written.
 
 The error registration projection check preserves authored native static blocks while checking error fields, getters, methods, empty declarations, and schema controls in both renderings against native and stock TypeScript.
+
+The layer repair check preserves `LF` and `CRLF` comments while using explicit service lookup; keyed service-call inputs cover `try`, `catch`, pipes, and nested handlers with the same member name.

@@ -13,7 +13,7 @@ func TestLayerRepairWritesCurrentBlockArgument(t *testing.T) {
 		"effect read(){return 7}",
 	} {
 		for _, crlf := range []bool{false, true} {
-			source := "/* café 😀 */\nservice Users {read():number!!}\nlayer Live:Users {" + body + "}\nexport effect function main(){provide Live{return try Users.read()}}\n"
+			source := "/* café 😀 */\nservice Users {read():number!!}\nlayer Live:Users {" + body + "}\nexport effect function main(){provide Live{return try (try Users).read()}}\n"
 			if crlf {
 				source = strings.ReplaceAll(source, "\n", "\r\n")
 			}
