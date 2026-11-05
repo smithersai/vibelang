@@ -25,7 +25,7 @@ func reservedInheritanceCases() []reservedInheritanceCase {
 	var cases []reservedInheritanceCase
 	for _, form := range []struct{ key, text string }{{"error", "error"}, {"schema-error", "schema error"}} {
 		for _, prefix := range []struct{ key, text string }{{"concrete", ""}, {"abstract", "abstract "}} {
-			for _, field := range []struct{ key, text string }{{"plain", "_tag: string"}, {"quoted", "['_tag']: string"}, {"computed", "[\"_tag\"]: string"}} {
+			for _, field := range []struct{ key, text string }{{"plain", "_tag: string"}, {"quoted", "['_tag']: string"}, {"computed", "[\"_tag\"]: string"}, {"literal", "_tag: \"Other\""}, {"union", "_tag: \"Base\" | \"Other\""}} {
 				cases = append(cases, reservedInheritanceCase{form.key + "/" + prefix.key + "/" + field.key, form.text, prefix.text, field.text})
 			}
 		}

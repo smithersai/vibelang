@@ -1530,5 +1530,30 @@
       "tokensSha256": "15b183e5032d325ee9c9e5f6fa0e67dbcb47459e1d30c3319e5e67e770cfbcda",
       "configSha256": "97b7e0e9271e36d81eb459491c86982b84dcbb43f6e6d772c3cdbd23107791ec"
     }
+  },
+  {
+    "code": "TS2416",
+    "vip": "VIP-34",
+    "case": "typescript/vibelang/cases/decl-error-family-own-tag.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision and docs/design/src/007-tooling.md: retain independent native TypeScript errors; literal property overrides follow TypeScript assignability."
+    },
+    "reason": "The same rejected input retains all fourteen existing errors. Record the already-invalid literal-tag overrides as native TS2416 diagnostics; executable tokens and configuration are unchanged. Stock TypeScript positive and negative override twins run with the target.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.d.vibe.ts",
+          "tokensSha256": "fa687673d7cf1d7d737099af21a985d8c48c4fb7445facc8573eb8e69e887cd6"
+        },
+        {
+          "source": "main.vibe",
+          "tokensSha256": "3a0c9ad5b6e236a1fc092c944488b6c765ad97de8a50c8b9689788493c16510a"
+        }
+      ],
+      "tokensSha256": "3a0c9ad5b6e236a1fc092c944488b6c765ad97de8a50c8b9689788493c16510a",
+      "configSha256": "cb8a9fdb5c8c6ce7e1ab194eadd8051d66294ed70ba42f2a445288e309c50bf2"
+    }
   }
 ]
