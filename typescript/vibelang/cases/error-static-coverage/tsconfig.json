@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"types":[],"skipLibCheck":true,"sourceMap":true,"outDir":"out"},"files":["main.vibe"]}

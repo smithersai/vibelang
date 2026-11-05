@@ -11,7 +11,8 @@ import (
 // for each source function, and none for a thunk that passes a call by name
 // (D147), the operands of a catch expression (D236), the function of a
 // throw or do expression (D186, D187), a region's closure (D36), or a
-// generator that runs a function's body.
+// generator that runs a function's body, or a synthesized error registration
+// static block.
 //
 // One source function that lowers to two functions keeps its position on
 // the function its callers call, which binds its parameters: an Effect

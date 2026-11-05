@@ -228,6 +228,7 @@ Coverage with `@vitest/coverage-v8` counts the functions in your `.vibe` source.
 The compiler's private delegation wrappers, including those for `return try value`
 and a `catch effect` handler with a `throw` expression, add no source functions
 or uncovered statements.
+Generated `error` registration adds no source function. Static initialization and methods written in ordinary classes keep their native TypeScript coverage.
 
 ## Dependency pre-bundling
 

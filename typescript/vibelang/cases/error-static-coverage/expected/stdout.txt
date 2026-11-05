@@ -1,0 +1,1 @@
+coverage preserves written static initialization

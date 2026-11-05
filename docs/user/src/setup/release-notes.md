@@ -29,6 +29,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Legacy editor contract actions keep cross-file edits attached to the right documents and reuse existing aliases without duplicate wrappers.
 
+- Code coverage no longer counts generated `error` setup as source functions and retains static initialization written in ordinary classes.
+
 - Schema alias repair checks now use explicit `readonly` properties and ordinary writable properties, preserving the original `Schema.Struct` type.
 - Migrating an implicit generator API could refuse an unannotated foreign call; the repair now preserves synchronous exceptions as defects.
 - The recursive contract example now uses explicit service lookup and shows the legacy return-slot migration error alongside its existing recursion errors.

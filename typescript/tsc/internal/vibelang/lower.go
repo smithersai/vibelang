@@ -156,6 +156,8 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitGuardedChain(node, link) // a ?. before a yield (chains_lower.go)
 	}
 	switch {
+	case node.Kind == ast.KindClassStaticBlockDeclaration && node.Flags&ast.NodeFlagsReparsed != 0:
+		return tx.generated(tx.Visitor().VisitEachChild(node))
 	case len(parser.VibeLangMatchCacheBindings(node)) != 0:
 		return tx.visitMatchCacheBlock(node, parser.VibeLangMatchCacheBindings(node))
 	case parser.VibeLangMatchCacheCondition(node) != nil:
