@@ -512,9 +512,10 @@ ModuleBody = Statement | ModuleBody Statement
 ImportClause = "{" "}" | "{" ImportsList ","? "}" | "*" "as" BindingIdentifier | BindingIdentifier | "type" "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | IdentifierName "as" BindingIdentifier | "type" IdentifierName
-ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "{" ImportsList? "}" StatementEnd | "export" "default" [lookahead ∉ { "{", "function", "class" }] AssignmentExpression StatementEnd
+ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" [lookahead ∉ { "{", "function", "class" }] AssignmentExpression StatementEnd
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
-ExportFromClause = "*" | "*" "as" IdentifierName | "{" ImportsList? "}"
+ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
+NamedExports = "{" "}" | "{" ImportsList ","? "}"
 Expression = AssignmentExpression | Expression "," AssignmentExpression
 AssignmentExpression = ConditionalExpression | ArrowFunction | AsyncArrowFunction | YieldExpression | LeftHandSideExpression "=" AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression
 AssignmentOperator = "+=" | "-=" | "??="

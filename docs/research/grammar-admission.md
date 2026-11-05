@@ -389,3 +389,10 @@ diagnostics, as the corresponding `await` head does in TypeScript. Both
 same-line and multiline witnesses remain nonpending corpus controls.
 Their old `admission:join-for-head` pending entries are removed after XPASS;
 the inventory marks the path as recovery rather than language admission.
+
+Type-only local export clauses (`export type { Value };`) and trailing
+commas in named export clauses belong to the inherited TypeScript grammar.
+The lab derives them in both native and VibeLang modes, alongside ordinary
+exports and string or identifier module re-exports. A trailing comma requires
+a preceding specifier; `export {,};` has no derivation. These native forms
+need no pending exemption.

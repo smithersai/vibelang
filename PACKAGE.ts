@@ -96,6 +96,7 @@ const specTests = [
   "TestGrammarAdmissionCore",
   "TestGrammarAdmissionForAwait",
   "TestGrammarAdmissionDiagnostics",
+  "TestGrammarAdmissionTypeExports",
   "TestGrammarAdmissionExportModifiers",
   "TestGrammarAdmissionJoinForHead",
   "TestGrammarAdmissionSchemaTypeDiagnostic",
