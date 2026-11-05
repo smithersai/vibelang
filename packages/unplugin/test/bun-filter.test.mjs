@@ -71,6 +71,50 @@ test("opencode-20: the Bun filter matches a migrated module's .js name and no de
   }
 })
 
+// A project inside a dot directory of its repository: the scan from the
+// repository skips dot directories, so without its own scan the project's
+// ./x.js never reaches the hook and Bun reports "Could not resolve".
+const dotProjectRule = "packages/unplugin/README.md, Limitations: a relative `./x.js` only where an `x.vibe` exists in the repository"
+function checkDotProject({ parents, marker, name, sibling }) {
+  const root = mkdtempSync(join(tmpdir(), "vibelang-bun-filter-"))
+  try {
+    const project = join(...parents, "app")
+    write(root, {
+      [marker]: "", "package.json": "{}",
+      [`${project}/package.json`]: "{}",
+      [`${project}/src/${name}.vibe`]: "export const value = 1\n",
+      [`${project}/src/entry.ts`]: `export { value } from "./${name}.js"\n`,
+      [`.elsewhere/${sibling}.vibe`]: "export const value = 2\n"
+    })
+    assert.equal(repositoryOf(join(root, project)), root)
+    const { filter, resolve } = bunHook(join(root, project))
+    assert.ok(filter.test(`./${name}.js`), `${project} keeps ./${name}.js`)
+    assert.equal(resolve(`./${name}.js`, join(root, project, "src/entry.ts")), join(root, project, "src", `${name}.vibe`))
+    assert.ok(!filter.test(`./${sibling}.js`), "another dot directory stays skipped")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
+test("a project inside a repository's dot directory resolves its own ./x.js", () => {
+  assert.ok(readme.replace(/\s+/g, " ").includes("a relative `./x.js` only where an `x.vibe` exists in the repository"), "update the quoted rule")
+  checkDotProject({ parents: [".fixtures"], marker: ".git/HEAD", name: "leaf-雪", sibling: "hidden" })
+})
+
+test("bun-dot-directory-project", async () => {
+  await checkProperty(fc, {
+    name: "bun-dot-directory-project", rule: dotProjectRule, command: "node --test test/bun-filter.test.mjs",
+    arbitrary: fc.record({
+      parents: fc.array(fc.constantFrom(".fixtures", ".flows", ".a.b", "tools", "packages"), { minLength: 1, maxLength: 3 })
+        .filter((parents) => parents.some((parent) => parent.startsWith("."))),
+      marker: fc.constantFrom(".git/HEAD", ".jj/repo"),
+      name: fc.constantFrom("leaf", "leaf space", "leaf-雪", "x+y", "a.b"),
+      sibling: fc.constantFrom("hidden", "other.name")
+    }),
+    numRuns: 50, regressions, check: checkDotProject
+  })
+})
+
 test("bunResolveFilter escapes names and matches only relative imports", () => {
   const filter = bunResolveFilter(new Set(["a.b", "x+y", "(p)", "$"]))
   for (const specifier of ["./a.b.js", "./x+y.js", "../(p).js", "./$.js", "./d/a.b.js?raw"]) assert.ok(filter.test(specifier), specifier)

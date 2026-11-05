@@ -255,7 +255,8 @@ as `file:line:column - error TS2322: text`.
   so under Bun the plugin registers its own hooks: resolve for `.vibe` names,
   extensionless relative names, and a relative `./x.js` only where an `x.vibe`
   exists in the repository, in a package it links, or in an installed package
-  with its own `tsconfig.json`; load for `.vibe` modules and their module
+  with its own `tsconfig.json`. Dot directories don't count, except the one
+  that holds the project. Load is for `.vibe` modules and their module
   declarations' outputs. Bun 1.4.4 miscompiles a CommonJS dependency, such as
   `ws` under `@effect/platform-node`, once a resolve hook matches the `.js`
   imports inside the packages a build bundles. Bun maps a compiled module's

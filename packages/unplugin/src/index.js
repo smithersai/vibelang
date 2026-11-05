@@ -73,13 +73,14 @@ export function repositoryOf(root) {
 const projectFiles = ["vibe.config.json", "tsconfig.json", "jsconfig.json"]
 
 /**
- * The names, without .vibe, of the .vibe files under directory, under each
+ * The names, without .vibe, of the .vibe files under each directory, under each
  * package a node_modules there links to (a workspace or file: dependency), and
  * under each installed package with its own project file, the only place an
  * installed .vibe module compiles (workspaceProject). Dot directories and
- * other installed packages, which ship JavaScript, are skipped.
+ * other installed packages, which ship JavaScript, are skipped, except a
+ * directory named here: a project inside a dot directory keeps its own names.
  */
-export function vibeBasenames(directory) {
+export function vibeBasenames(...directories) {
   const names = new Set()
   const visited = new Set()
   const isDirectory = (path) => {
@@ -122,7 +123,7 @@ export function vibeBasenames(directory) {
       else if (entry.isDirectory() && projectFiles.some((name) => existsSync(join(child, name)))) walk(child)
     }
   }
-  walk(directory)
+  for (const directory of directories) walk(directory)
   return names
 }
 
@@ -346,7 +347,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         if (build.config) build.config.conditions = sourceConditions(build.config.conditions)
         configure()
         const repository = repositoryOf(root)
-        const names = vibeBasenames(repository)
+        const names = vibeBasenames(repository, root)
         debug(`bun: .js imports resolve for ${names.size} .vibe names under ${repository}`)
         build.onResolve({ filter: bunResolveFilter(names) }, (args) => {
           const entry = args.kind === "entry-point-build" || args.kind === "entry-point-run"
