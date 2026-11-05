@@ -433,3 +433,10 @@ validation and API comparison, and rejects unrelated browser libraries. It
 retains native diagnostics, self and copied comparisons, and the changed-global
 negative for the pinned compiler and the optional `API_IDENTITY_EXTRA_TS`
 compiler.
+
+Set `API_IDENTITY_EXTRA_TS` to a directory that resolves the requested
+`typescript` package to check the global-augmentation fixture with an
+additional compiler API. The fixture loads that package directly and reports
+an `API_IDENTITY_EXTRA_TS` error if it cannot load or does not expose
+`createProgram`. Run `node --test scripts/api-identity-extra-typescript.test.mjs`
+for the compiler-selection controls.

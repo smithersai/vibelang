@@ -3,9 +3,17 @@ import { mkdtempSync,mkdirSync,writeFileSync,rmSync } from "node:fs"
 import {tmpdir} from "node:os"
 import {join,resolve} from "node:path"
 import {test} from "node:test"
+import {createRequire} from "node:module"
 import {compareApiIdentity,loadTypeScript} from "./api-identity.mjs"
 const compilerOptions={lib:["lib.es5.d.ts"]}
-const versions=[loadTypeScript(),...(process.env.API_IDENTITY_EXTRA_TS?[loadTypeScript([resolve(process.env.API_IDENTITY_EXTRA_TS)])]:[])]
+function extraTypeScript(directory){
+ let ts
+ try{ts=createRequire(join(resolve(directory),"package.json"))("typescript")}
+ catch(cause){throw new Error("API_IDENTITY_EXTRA_TS must resolve the requested TypeScript compiler API",{cause})}
+ assert.equal(typeof ts?.createProgram,"function","API_IDENTITY_EXTRA_TS must expose TypeScript.createProgram")
+ return ts
+}
+const versions=[loadTypeScript(),...(process.env.API_IDENTITY_EXTRA_TS?[extraTypeScript(process.env.API_IDENTITY_EXTRA_TS)]:[])]
 for(const stockTs of versions){
  const ts={...stockTs,createProgram(...args){
   const program=stockTs.createProgram(...args)

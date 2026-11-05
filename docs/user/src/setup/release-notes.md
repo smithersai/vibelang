@@ -195,6 +195,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Invalid service keys could hide errors in their expressions and type annotations; those TypeScript errors now remain visible.
 
 - Object patterns could read a getter or test a property more than once across match arms. They now retain each property observation for one `match` or `is` evaluation.
+- Requesting an unavailable extra compiler for declaration checks could silently rerun the default compiler. It now reports the requested compiler's load or API error.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.
