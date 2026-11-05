@@ -201,6 +201,8 @@ Effect declarations and combinator calls ported from TypeScript compile in a `.v
 
 Written generator return annotations, such as `Effect.fn.Return`, keep their checked `Effect` result contract when `--fix` converts `Effect.gen`. The converted program stays cold and retains contextual literal types. A direct `Generator` annotation already selects a native JavaScript generator and stays native.
 
+A bare `return` in an `Effect.fn` generator must satisfy its written `Effect.fn.Return<A>` success type. If it does not, `--fix` leaves the generator unchanged and reports the incompatible return; `void`, `undefined` and success types that include `undefined` remain eligible for conversion.
+
 When converting an Effect generator, `--fix` preserves a native constructor hidden by an implicit Effect namespace: `new Headers(input)` becomes `new globalThis.Headers(input)`. Local and imported constructors keep their bindings. This qualification does not permit host APIs in VibeLang: a banned constructor still reports `EK4402` and belongs in a TypeScript adapter. If a local `globalThis` prevents safe qualification, the generator stays unchanged.
 
 When migrating a generator, `const inner = yield* make()` becomes `const inner = try make()` even when the result is another Effect. That inner program stays cold until a separate `try inner` runs it. A discarded program result becomes `void try make()`.

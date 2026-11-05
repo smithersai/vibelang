@@ -23,6 +23,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Effect type examples could fail on a missing non-null assertion group or a discarded Effect value. They now use `(value as number!!)!` and retain the asserted value.
 
 - `Experimental` service references called operations on module namespaces or service keys and failed with missing-property errors. They now look up the implementation before calling it.
+- `--fix` could rewrite a generator whose bare `return` violated `Effect.fn.Return<A>`, leaving an invalid generated function. It now leaves that generator unchanged and explains why; valid `void` and optional success types still migrate.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.

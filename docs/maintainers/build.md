@@ -1726,3 +1726,5 @@ shapes and four generated changed-field samples remain enabled.
 The `//:go-failure-aliases` target checks that failure aliases preserve the declaration-tag admission rule, including repaired inputs retained in the failure corpus.
 
 The diagnostic registry gate also requires a keyed preservation generator for every registered quick fix. It reads the compiler case corpus used to build those generators, so changing a fixture re-keys the check.
+
+The `//:go-generator-return-contracts` target checks generator migration against written result types, including incompatible bare returns, optional and `void` results, nested functions and source trivia.

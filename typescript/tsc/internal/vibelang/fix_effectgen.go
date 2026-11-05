@@ -221,6 +221,27 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 			if g.returns = fnReturnEffectType(file, generator.Type()); g.returns == "" {
 				return g, "its generator has a return type other than Effect.fn.Return"
 			}
+			// A bare return in an invalid written contract cannot be repaired
+			// by moving that same error into a generated cold function.
+			result := c.GetTypeFromTypeNode(generator.Type().TypeArguments()[0])
+			if !c.IsTypeAssignableTo(c.GetUndefinedType(), result) {
+				bare := false
+				var visit func(*ast.Node) bool
+				visit = func(node *ast.Node) bool {
+					if ast.IsFunctionLike(node) {
+						return false
+					}
+					if ast.IsReturnStatement(node) && node.AsReturnStatement().Expression == nil {
+						bare = true
+						return true
+					}
+					return node.ForEachChild(visit)
+				}
+				generator.Body().ForEachChild(visit)
+				if bare {
+					return g, "a bare return does not satisfy its written success type"
+				}
+			}
 		} else {
 			// A generator alias or Effect.fn.Return also contextualizes gen's
 			// success expressions. Retain the checked call's complete Effect
