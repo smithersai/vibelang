@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Converting an `async` function could produce syntax or type errors when it used `fork` or `join` as ordinary names; the editor now withholds those conversions until the affected bindings are renamed.
 - Returning a migrated file to TypeScript could stop on an unrelated generated framework configuration. Reference refresh now checks affected projects and their build dependencies, with the configuration and diagnostic named on failure.
 - Migration planning could hold back a native command’s entire dependency graph even with emitted-import routing enabled. It now admits dependencies behind supported native import routes while retaining entrypoint paths and protected test imports.
+- Migration left stale imports in authored declarations such as `.d.mdx.ts`, causing `TS5055` or missing-module errors after a source rename. Those imports now follow the renamed source and return to their original spelling when it is restored.
 - Converting an `async` function could leave an incompatible `Promise` contract on a variable, callback, inherited member or overload; the editor now withholds conversions that would leave those contracts invalid.
 
 - Error declarations with an inheritance clause consistently report the existing inheritance diagnostic; the superseded constructor diagnostic is retired.

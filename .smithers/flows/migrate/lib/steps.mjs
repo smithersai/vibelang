@@ -25,7 +25,7 @@ import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inve
 import * as Enumerations from "./enumerations.mjs"
 import { sidecarPath, sidecarProjectLayout } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { refreshSidecarExports, sidecarOf, bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { refreshSidecarExports, sidecarOf, bareVibeExports, fixToFixedPoint, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -71,6 +71,7 @@ import { bindCompilerArtifact, compilerArtifactOf, readToolchain } from "./toolc
 import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, isDeclarationFile, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
+import { importerPaths } from "./importer-files.mjs"
 
 export const flowDir = fileURLToPath(new URL("../", import.meta.url))
 // The agent runs in the target, so the prompts name this checkout's step.mjs by its full path.
@@ -192,11 +193,11 @@ const scopeFiles = (config) => config.packages.flatMap((pkg) => pkg.sources.flat
 /**
  * The files whose imports the codemod and revert rewrite: every source file
  * the repository tracks, not only the scope's sources, since a module's tests
- * and other packages import it by path too (smithers' crypto tests import
- * ../src/Crypto.ts). A declaration file has no import to rewrite.
+ * and other packages import it by path too. Authored declarations can import
+ * source modules; compiler-generated declarations are regenerated instead.
  */
 export async function importers(t) {
-  return (await Jj.trackedFiles(t)).filter((f) => importerFile.test(f) && !isDeclarationFile(f))
+  return importerPaths(t, await Jj.trackedFiles(t))
 }
 
 /** A batch's files as they are now: each plan path, as .vibe when migrated. */

@@ -370,6 +370,8 @@ The migrate flow also handles a native `.ts` module checked through another pack
 
 Migration drivers can save each completed package declaration layout before planning the next package. Before restoring a saved layout, the driver validates that the original sources and configuration inputs are unchanged. Restoring layouts preserves the full declaration-route selection, including wildcards and imports across packages.
 
+The migrate flow follows source renames in authored declaration imports, including `.d.ts` and asset declarations such as `prompt.d.mdx.ts`. An import of `./Prompt.ts` becomes `./Prompt.vibe` when that source is renamed. Returning the source restores the original specifier. Generated declarations, including compatibility sidecars and configured declaration output directories, are regenerated from their source.
+
 For stock TypeScript consumers, choose a separate directory such as `.vibe/declarations`. When a source is inside the chosen directory, native `rootDirs` longest-prefix resolution can shadow or miss its mirrored declaration. The compiler still emits each source at its mirrored path and preserves every selected output during cleanup.
 
 These checkers read only the sidecars: they do not type-check the `.vibe` files themselves. Run `vibelang` before them, in the same script, so a sidecar is current and a type error in a `.vibe` file fails the check:

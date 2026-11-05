@@ -1,0 +1,6 @@
+{
+  "source": "src/Prompt.ts",
+  "importer": "test/fixtures/mdx/prompt.d.mdx.ts",
+  "sourceText": "export type Component<Props> = (props: Props) => string;\n",
+  "importerText": "import type { Component } from \"../../../src/Prompt.ts\";\ndeclare const Instructions: Component<{ readonly name: string }>;\nexport default Instructions;\n"
+}
