@@ -70,6 +70,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-export-modifiers", "export export { } ;"},
 	{"native-export-assignment-modifiers", "export export default { value: 1 };"},
 	{"native-import-modifiers", "export import value from \"missing\";"},
+	{"native-import-clauses", "import type Value from \"pkg\";"},
 	{"native-type-exports", "type Value = number; export type { Value };"},
 	{"native-export-names", "type Value = number; export { try };"},
 	{"native-default-object-export", "export default { value: 1 };"},

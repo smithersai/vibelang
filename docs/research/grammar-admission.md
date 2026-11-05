@@ -426,3 +426,9 @@ import declaration (`export import value from "pkg";`, `TS1191`).
 Only native errors count; source collisions and other diagnostic categories
 retain their existing classification. These already rejected forms remain
 nonpending corpus controls.
+
+The inherited import grammar includes type-only default and namespace
+imports, mixed default/named or default/namespace bindings, inline type-only
+aliases and string-literal imported names with a local alias.
+Local names stay `BindingIdentifier` positions, and a type-only clause
+does not combine default and named/namespace bindings.

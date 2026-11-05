@@ -509,9 +509,11 @@ TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier StatementEnd 
 ImportEqualsDeclaration = "import" BindingIdentifier "=" ModuleReference StatementEnd | "import" "type" BindingIdentifier "=" ModuleReference StatementEnd
 ModuleReference = "require" "(" StringLiteral ")" | TypeName
 ModuleBody = Statement | ModuleBody Statement
-ImportClause = "{" "}" | "{" ImportsList ","? "}" | "*" "as" BindingIdentifier | BindingIdentifier | "type" "{" ImportsList ","? "}"
+ImportClause = BindingIdentifier | NamespaceImport | NamedImports | BindingIdentifier "," NamespaceImport | BindingIdentifier "," NamedImports | "type" BindingIdentifier | "type" NamespaceImport | "type" NamedImports
+NamespaceImport = "*" "as" BindingIdentifier
+NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
-ImportSpecifier = BindingIdentifier | IdentifierName "as" BindingIdentifier | "type" IdentifierName
+ImportSpecifier = BindingIdentifier | ModuleExportName "as" BindingIdentifier | "type" BindingIdentifier | "type" ModuleExportName "as" BindingIdentifier
 ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd
 DefaultExportDeclaration = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
