@@ -245,6 +245,7 @@ func (p *projector) errorClassDeclaration(node *ast.Node) {
 				}
 				bodyStart = append(bodyStart, "declare readonly _tag: "+tagType+";")
 			case member.Kind == ast.KindConstructor && member.Flags&ast.NodeFlagsReparsed != 0:
+			case generatedErrorStaticBlock(member): // the family's static block
 			case member.Kind == ast.KindPropertyDeclaration && hasSynthesizedDeclare(member):
 				p.errorField(member.Name())
 				p.visit(member.Type(), env{})
