@@ -82,7 +82,8 @@
     "prettier.mjs",
     "ast-grep.mjs",
     "source.mjs",
-    "source.d.mts"
+    "source.d.mts",
+    "source-map-frames.mjs"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs"

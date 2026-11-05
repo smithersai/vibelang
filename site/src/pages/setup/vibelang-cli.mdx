@@ -470,7 +470,7 @@ workers can import `.vibe` modules:
 NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx playwright test
 ```
 
-The hook uses Node's module customization API.
+The hook uses Node's module customization API. Native stack frames keep their source locations even when the runner installs a custom stack formatter.
 A `.vibe` configuration is selected explicitly with
 `--config playwright.config.vibe`. Playwright's test discovery recognizes
 JavaScript and TypeScript extensions; keep its `.spec.ts` entries and import

@@ -186,7 +186,7 @@ NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx pla
 ```
 
 The preload serves native imports from Playwright configurations and test
-workers. Select a native configuration explicitly
+workers. Native stack frames keep their source locations even when the runner installs a custom stack formatter. Select a native configuration explicitly
 with `--config playwright.config.vibe`. Keep Playwright's discoverable
 `.spec.ts` test entries and import `.vibe` modules from them.
 

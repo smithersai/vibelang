@@ -91,9 +91,11 @@ export default { testDir: "./tests", metadata: { answer: Effect.runSync(answer) 
       "tests/entry.spec.ts": `import { test, expect } from "playwright/test"
 import { Effect } from "effect"
 import { answer, boom } from "../src/answer.vibe"
-test("native value", () => {
+test("native value and source map", () => {
   expect(Effect.runSync(answer)).toBe(42)
-  expect(boom).toThrow()
+  let stack = ""
+  try { boom() } catch (error) { stack = String(error.stack) }
+  expect(stack).toMatch(/answer\\.vibe:5:/)
 })
 `
     })
@@ -113,8 +115,8 @@ test("generated native paths retain URL identity through later hooks", { skip },
   await fc.assert(fc.asyncProperty(fc.uniqueArray(fc.tuple(
     fc.constantFrom("space name", "hash#name", "accent-é", "percent%name"),
     fc.integer({ min: 0, max: 100000 })).map(([name, suffix]) => `${name}-${suffix}`),
-    { minLength: 2, maxLength: 4 }), async names => {
-  const files = Object.fromEntries(names.map(name => [`src/${name}.vibe`, source]))
+    { minLength: 2, maxLength: 4 }), fc.integer({ min: 0, max: 12 }), async (names, padding) => {
+  const files = Object.fromEntries(names.map(name => [`src/${name}.vibe`, "\n".repeat(padding) + source]))
   const { run } = fixture(t, {
     ...files,
     "later.mjs": `import { registerHooks } from "node:module"
@@ -125,12 +127,18 @@ registerHooks({ load(url, context, nextLoad) {
 `,
     "entry.mjs": `import assert from "node:assert/strict"
 import { Effect } from "effect"
+import "vibelang-runtime"
+Error.prepareStackTrace = (error, frames) => frames.map(frame => ({ file: frame.getFileName(), line: frame.getLineNumber() }))
 for (const name of ${JSON.stringify(names)}) {
   const url = new URL("./src/" + encodeURIComponent(name) + ".vibe?version=1#same", import.meta.url)
   const a = await import(url.href)
   const b = await import(url.href)
   assert.equal(a, b)
   assert.equal(Effect.runSync(a.answer), 42)
+  let frames
+  try { a.boom() } catch (error) { frames = error.stack }
+  assert.equal(frames[0].line, ${padding + 5})
+  assert.equal(frames[0].file, new URL("./src/" + encodeURIComponent(name) + ".vibe", import.meta.url).href)
 }
 console.log("generated-loaded")
 `
@@ -157,4 +165,34 @@ process.exitCode = result.status ?? 1
     assert.equal(result.status, 0, result.stdout + result.stderr)
     assert.equal(result.stdout, "native-entry\n")
   }
+})
+
+
+test("custom stack formatters keep structured results and native source locations", { skip }, t => {
+  const { run } = fixture(t, {
+    "entry.mjs": `import assert from "node:assert/strict"
+import "vibelang-runtime"
+Error.prepareStackTrace = (error, frames) => ({
+  message: error.message,
+  frames: frames.map(frame => ({
+    file: frame.getFileName(), line: frame.getLineNumber(),
+    column: frame.getColumnNumber(), text: frame.toString(), name: frame.getFunctionName()
+  }))
+})
+const { boom } = await import("./src/answer.vibe")
+let stack
+try { boom() } catch (error) { stack = error.stack }
+assert.equal(typeof stack, "object")
+assert.match(stack.message, /length/)
+assert.equal(stack.frames[0].line, 5)
+assert.match(stack.frames[0].file, /answer\\.vibe$/)
+assert.match(stack.frames[0].text, /answer\\.vibe:5:/)
+assert.equal(stack.frames[0].name, "boom")
+assert.match(stack.frames[1].file, /entry\\.mjs$/)
+console.log("custom-mapped")
+`
+  })
+  const result = run(["--import", register, "entry.mjs"])
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.equal(result.stdout, "custom-mapped\n")
 })

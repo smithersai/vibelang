@@ -1,3 +1,4 @@
+import { rememberSourceMap } from "./source-map-frames.mjs"
 import { loaderScope } from "./loader-scope.mjs"
 import { extensionlessImport } from "./relative-imports.mjs"
 import { sourceOfEmitted } from "./emitted-js.mjs"
@@ -201,7 +202,9 @@ registerHooks({
     // Node resolves a source against the module URL: a path with # or %, or a
     // Windows drive, needs a file URL.
     const sources = map.sources.map((source) => pathToFileURL(source).href)
-    const inline = Buffer.from(JSON.stringify({ ...map, sources })).toString("base64")
+    const payload = { ...map, sources }
+    rememberSourceMap(url, payload)
+    const inline = Buffer.from(JSON.stringify(payload)).toString("base64")
     spent.modules++
     spent.load += since(started) - (spent.compile - compile)
     return {
