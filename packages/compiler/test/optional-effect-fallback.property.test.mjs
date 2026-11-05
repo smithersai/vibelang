@@ -86,7 +86,8 @@ async function check(input, { source = sourceFor(input), mutate = false } = {}) 
     assert.equal(identity.exit, 0, "public types agree in both directions: " + identity.output)
     const comments = name => readFileSync(join(root, "out/" + name + ".d.ts"), "utf8").match(/\/\*\*[\s\S]*?\*\//g) || []
     assert.ok(comments("control").some(comment => comment.includes("Completes stored credentials lazily.")), "the documentation control contains a public comment")
-    assert.deepEqual(comments("candidate"), comments("control"), "declaration documentation is unchanged")
+    // VIP-27, amended 2026-11-04: the output adds exactly the generated contract.
+    assert.deepEqual(comments("candidate"), [...comments("control"), "/** @throws {never} */"], "declaration documentation is unchanged")
     const original = await import(pathToFileURL(join(root, "out/control.js")))
     const changed = await import(pathToFileURL(join(root, "out/candidate.js")))
     assert.deepEqual(Object.keys(changed).sort(), Object.keys(original).sort(), "exported names are unchanged")
