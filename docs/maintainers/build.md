@@ -1956,3 +1956,5 @@ The `//:nothrow-rethrow-escape-controls` gate retains every escape shape and add
 The `//:native-import-preference-twins` gate retains byte-exact unchanged-importer controls and compares explicit source imports with independent native twins and stock TypeScript 5.9.3.
 
 The `//:legacy-schema-key-defect-repairs` gate checks both input diagnostics, zero-error fixed output, defect identity bridges, and idempotence across class heritage and four nested schema layouts.
+
+The `//:throw-repair-native-twins` gate retains every repair and idempotence invocation. It batches the native twin and declaration comparisons into one TypeScript program each, snapshots every declaration before the next repair, and records fixture/stage timing without source payloads. The runner keeps its existing deadline and adds deterministic input variations.

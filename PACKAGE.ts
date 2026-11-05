@@ -927,6 +927,13 @@ const targets = {
     [go, node, bun],
     "10m"
   ),
+  "throw-repair-native-twins": check(
+    "Throw repairs preserve native timing, cleanup, declarations, and failure channels across all input variations.",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose ek0401-preserving-fix",
+    [Packages["compiler-native"], Packages["runtime-dist"], Vibelang.tree],
+    [go, node, bun],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

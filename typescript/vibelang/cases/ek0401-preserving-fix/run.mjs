@@ -1,15 +1,33 @@
 // run-seconds: 180
 import assert from "node:assert/strict"
-import { mkdtempSync, writeFileSync, readFileSync, symlinkSync, rmSync, mkdirSync } from "node:fs"
+import { mkdtempSync, writeFileSync, readFileSync, symlinkSync, rmSync, mkdirSync, copyFileSync, readdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const compiler = process.env.VIBELANG_BINARY ?? resolve(here, "../../../built/local/tsc")
 const stock = resolve(here, "../../../../experiments/node_modules/typescript/bin/tsc")
+function invoke(fixture,stage,command,args,options){
+ const started=Date.now()
+ process.stderr.write(JSON.stringify({fixture,stage,event:"start"})+"\n")
+ const result=spawnSync(command,args,options)
+ process.stderr.write(JSON.stringify({fixture,stage,event:"complete",elapsedMs:Date.now()-started,status:result.status,signal:result.signal})+"\n")
+ return result
+}
 const dir = mkdtempSync(join(tmpdir(), "ek0401-preserving-"))
+const require=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))
+const samples=require("fast-check").sample(require("fast-check").integer({min:-5,max:5}),{seed:401003,numRuns:8})
+function declarations(from,to){
+ mkdirSync(to,{recursive:true})
+ for(const entry of readdirSync(from,{withFileTypes:true})){
+  const source=join(from,entry.name),target=join(to,entry.name)
+  if(entry.isDirectory())declarations(source,target)
+  else if(/\.d\.[cm]?ts$/.test(entry.name))copyFileSync(source,target)
+ }
+}
 const common = 'import { Effect } from "effect"\nexport const events: string[] = []\nconst marker = "marker"\n'
 const fixtures = [
   ["native-effect-catch", 'export function f(n:number):Effect.Effect<number,string> {try{events.push("factory");if(n)throw (events.push("operand"),marker);return Effect.succeed(n)}catch(e){events.push("catch");return Effect.fail(String(e))}}'],
@@ -66,14 +84,22 @@ try {
     '/** @throws {Error} */',
     'constructor(readonly n:number){if(n<0)throw new Error("bad")}}',
   ].join("\n"))
+  const stockFiles=[],apiFiles=[]
+  for(const [name,source,twin=source] of fixtures){
+   const input=join(dir,"stock-input",name)
+   mkdirSync(input,{recursive:true})
+   writeFileSync(join(input,"twin.ts"),common+twin)
+   copyFileSync(join(dir,"native.ts"),join(input,"native.ts"))
+   stockFiles.push(join(input,"twin.ts"))
+  }
+  writeFileSync(join(dir,"tsconfig.stock.json"),JSON.stringify({compilerOptions:{target:"ES2022",module:"NodeNext",strict:true,skipLibCheck:true,declaration:true,rootDir:"stock-input",outDir:"stock"},files:stockFiles}))
+  const stockChecked=invoke("all","stock",process.execPath,[stock,"-p",join(dir,"tsconfig.stock.json"),"--pretty","false"],{encoding:"utf8",timeout:120000})
+  assert.equal(stockChecked.status,0,"stock TypeScript 5.9.3 twins\n"+stockChecked.stdout+stockChecked.stderr)
   for (const [name, source, twin = source] of fixtures) {
     writeFileSync(join(dir, "main.vibe"), common + source)
     writeFileSync(join(dir, "twin.ts"), common + twin)
-    writeFileSync(join(dir, "tsconfig.stock.json"), JSON.stringify({ compilerOptions: { target:"ES2022", module:"NodeNext", strict:true, skipLibCheck:true, declaration:true, outDir:"stock" }, files:["twin.ts"] }))
-    const checked = spawnSync(process.execPath,[stock,"-p",join(dir,"tsconfig.stock.json"),"--pretty","false"],{encoding:"utf8",timeout:120000})
-    assert.equal(checked.status,0,name+" stock TypeScript 5.9.3 twin\n"+checked.stdout+checked.stderr)
     if(process.env.VIBELANG_BASELINE && (name.startsWith("known-") || name.startsWith("effect-factory") || name.startsWith("native-effect-catch"))) {
-      const baseline=spawnSync(process.env.VIBELANG_BASELINE,["-p",dir,"--fix","--noEmit","--pretty","false"],{encoding:"utf8",timeout:120000})
+      const baseline=invoke(name,"baseline",process.env.VIBELANG_BASELINE,["-p",dir,"--fix","--noEmit","--pretty","false"],{encoding:"utf8",timeout:120000})
       assert.equal(baseline.status,2,name+" must fail before this fix\n"+baseline.stdout+baseline.stderr)
       assert.match(baseline.stdout,/error EK0401:/,name+" missing original diagnostic")
       if(process.env.EK0401_EVIDENCE) {
@@ -83,7 +109,7 @@ try {
       }
       writeFileSync(join(dir,"main.vibe"),common+source)
     }
-    const fixed = spawnSync(compiler, ["-p", dir, "--fix", "--pretty", "false"], { encoding:"utf8", timeout:120000 })
+    const fixed = invoke(name,"fix",compiler, ["-p", dir, "--fix", "--pretty", "false"], { encoding:"utf8", timeout:120000 })
     assert.ifError(fixed.error)
     assert.equal(fixed.status, 0, name + "\n" + fixed.stdout + fixed.stderr)
     const text = readFileSync(join(dir, "main.vibe"), "utf8")
@@ -96,15 +122,16 @@ try {
     const declaration = readFileSync(join(dir, "out/main.d.ts"), "utf8")
     assert.doesNotMatch(declaration, /\$raise|raise\(|\$throw\$ts|\$invoke|\$call\$ts/, name + " helper leaked into API")
     assert.match(declaration, /export declare (?:function f\(n.*\)|const f:)/, name)
-    writeFileSync(join(dir,"api.ts"),'import {f as actual} from "./out/main.js"; import {f as expected} from "./stock/twin.js"; const a:typeof actual=expected; const b:typeof expected=actual; type Equal<A,B>=(<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false; const equal:Equal<typeof actual,typeof expected>=true;')
-    writeFileSync(join(dir,"tsconfig.api.json"),JSON.stringify({compilerOptions:{target:"ES2022",module:"NodeNext",strict:true,skipLibCheck:true,noEmit:true},files:["api.ts"]}))
-    const api=spawnSync(process.execPath,[stock,"-p",join(dir,"tsconfig.api.json"),"--pretty","false"],{encoding:"utf8",timeout:120000})
-    assert.equal(api.status,0,name+" declaration compatibility\\n"+api.stdout+api.stderr)
+    const proof=join(dir,"api-input",name)
+    declarations(join(dir,"out"),join(proof,"actual"))
+    declarations(join(dir,"stock",name),join(proof,"expected"))
+    writeFileSync(join(proof,"api.ts"),'import {f as actual} from "./actual/main.js"; import {f as expected} from "./expected/twin.js"; const a:typeof actual=expected; const b:typeof expected=actual; type Equal<A,B>=(<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false; const equal:Equal<typeof actual,typeof expected>=true;')
+    apiFiles.push(join(proof,"api.ts"))
     const observation = [
       'import assert from "node:assert/strict";',
       'import { Effect, Exit } from "effect";',
       'import * as a from "./out/main.js";',
-      'import * as b from "./stock/twin.js";',
+      'import * as b from "./stock/'+name+'/twin.js";',
       'const norm=(v)=>typeof v===\"bigint\"?{bigint:String(v)}:v instanceof Error?{name:v.name,message:v.message}:v;',
       'function observe(m, n) {',
       'm.events.length=0;',
@@ -117,11 +144,11 @@ try {
       ': {tag:"Failure",reasons:exit.cause.reasons.map(r=>({tag:r._tag,value:norm(r._tag==="Die"?r.defect:r.error)}))}};',
       '}',
       'const observations=[];',
-      'for(const n of [-1,0,1,undefined]) {const actual=observe(a,n),twin=observe(b,n);assert.deepEqual(actual,twin,'+JSON.stringify(name)+');observations.push({input:String(n),actual,twin});}',
+      'for(const n of [-1,0,1,undefined,'+samples.join(",")+']) {const actual=observe(a,n),twin=observe(b,n);assert.deepEqual(actual,twin,'+JSON.stringify(name)+');observations.push({input:String(n),actual,twin});}',
       'process.stdout.write(JSON.stringify(observations,null,2));',
     ].join("\n")
     writeFileSync(join(dir, "observe.mjs"), observation)
-    const ran = spawnSync(process.execPath, [join(dir, "observe.mjs")], { encoding:"utf8", timeout:30000 })
+    const ran = invoke(name,"observe",process.execPath, [join(dir, "observe.mjs")], { encoding:"utf8", timeout:30000 })
     assert.equal(ran.status, 0, name + "\n" + ran.stdout + ran.stderr)
     if(process.env.EK0401_EVIDENCE) {
       const dest=join(process.env.EK0401_EVIDENCE,name)
@@ -129,13 +156,16 @@ try {
       for(const [file,value] of Object.entries({
         "before.vibe":common+source,"after.vibe":text,"twin.ts":common+twin,
         "native.ts":readFileSync(join(dir,"native.ts"),"utf8"),
-        "actual.d.ts":declaration,"twin.d.ts":readFileSync(join(dir,"stock/twin.d.ts"),"utf8"),
+        "actual.d.ts":declaration,"twin.d.ts":readFileSync(join(dir,"stock",name,"twin.d.ts"),"utf8"),
         "observations.json":ran.stdout,
       })) writeFileSync(join(dest,file),value)
     }
-    const again = spawnSync(compiler, ["-p",dir,"--fix","--noEmit","--pretty","false"], { encoding:"utf8", timeout:120000 })
+    const again = invoke(name,"idempotence",compiler, ["-p",dir,"--fix","--noEmit","--pretty","false"], { encoding:"utf8", timeout:120000 })
     assert.equal(again.status,0,again.stdout+again.stderr)
     assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),text,name+" fix is not idempotent")
   }
+  writeFileSync(join(dir,"tsconfig.api.json"),JSON.stringify({compilerOptions:{target:"ES2022",module:"NodeNext",strict:true,skipLibCheck:true,noEmit:true},files:apiFiles}))
+  const apiChecked=invoke("all","api",process.execPath,[stock,"-p",join(dir,"tsconfig.api.json"),"--pretty","false"],{encoding:"utf8",timeout:120000})
+  assert.equal(apiChecked.status,0,"all declaration compatibility checks\n"+apiChecked.stdout+apiChecked.stderr)
 } finally { rmSync(dir, { recursive:true, force:true }) }
 console.log("EK0401 throw repairs preserve native throws, evaluation order, declarations and TypeScript twin Exits")
