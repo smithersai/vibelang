@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Contributor checks mistook the compiler’s sharded tests for a missing target. They now verify the runtime build dependency of every shard.
 - Contributor diagnostics checks could compile a second set of packages with workspace paths. They now use the compiler’s `-trimpath` settings.
 
+- A rejected `join` operand could hide errors inside its arguments. Those TypeScript errors now remain visible beside `EK1704`.
+
 - Rejected `try.all`, `try.race`, `try.any` and `try.allSettled` operands could hide errors inside calls, assertions and literals. Those TypeScript errors now remain visible beside `EK1801`.
 - The Effect type guide now shows the grouping used when repairing nested Effects and array boundaries.
 - The error guide now explains why a reserved tag payload and an inheritance clause each report an error, and how a native class retains their contract.

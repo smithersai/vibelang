@@ -1,0 +1,5 @@
+// expect: EK1704 TS2345 TS2322
+declare function take(n:number): Fiber.Fiber<number> | undefined
+declare function object(n:{value:number}): Fiber.Fiber<number> | undefined
+export effect function argument() { return join take("bad") }
+export effect function property() { return join object({value:"bad"}) }

@@ -274,7 +274,6 @@ func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	case isEffectType(c, t) || ast.IsCallExpression(ast.SkipParentheses(operand)) && callReturnsEffect(c, ast.SkipParentheses(operand)):
 		note(d, "A program runs when you call it; to run it concurrently, fork it and join the fiber.")
 	}
-	cover(c, call)
 }
 
 // isJoinable reports whether join can join a value of type t: a Fiber, or (at
