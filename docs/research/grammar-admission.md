@@ -461,3 +461,9 @@ The module-level ordinary `for (async of xs)` head remains pending as `admission
 The lab carries native async-body context when selecting an ordinary `for … of` head. A bare target named `async` derives inside async functions, arrows, methods and generators. Nested plain callables reset that context; nested async callables restore their own. Module-level ordinary heads retain their native restriction and separate pending compiler gap. This models the head distinction; other `Await` and `Yield` early errors remain outside the bounded lab.
 
 Native `for … of`, `for … in` and `for await … of` heads retain TypeScript assignment-target assertions: `as`, `satisfies` and prefix type assertions. The lab derives those wrappers without admitting an arbitrary arithmetic target. Postfix assertions keep their line restrictions; ordinary bare `async` heads keep the separate context rule.
+
+The inherited arithmetic subset includes division and exponentiation. Division,
+multiplication and remainder bind below right-associative exponentiation. A
+unary expression on the left of `**` requires grouping, as in `(-2) ** 3`;
+`2 ** -3` is admitted. Native and VibeLang derivation controls, keyed mutation
+seeds and an operator-neighborhood property retain these boundaries.

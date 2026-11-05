@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Error declarations with an inheritance clause consistently report the existing inheritance diagnostic; the superseded constructor diagnostic is retired.
 - Selecting a subset of bundler examples no longer fails while removing a project that was never created.
 - Anonymous recursive declarations now retain their documented elided types when checked alongside newer TypeScript versions.
+- The grammar admission audit could flag valid division and exponentiation as undefined syntax. It now recognizes their native precedence and grouping rules.
 - Objects with an incomplete fiber shape could pass `join` checking. They now report `EK1704`, while complete fiber types remain accepted.
 
 - JSON preference and provider requirement examples now point to the source spans where their messages are reported.

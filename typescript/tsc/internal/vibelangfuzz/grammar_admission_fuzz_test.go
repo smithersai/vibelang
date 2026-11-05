@@ -77,6 +77,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-default-class-export", "export default class { value = 1; }"},
 	{"native-optional-tuple", "type T = [string?, number?];"},
 	{"native-bitwise", "const n = a | b ^ c & d;"},
+	{"native-division", "const n = 8 / 2 / 2;"},
+	{"native-exponentiation", "const n = 2 ** 3 ** 2;"},
 	{"is-bitwise-continuation", "const b = x is > 1 & 2 + 3;"},
 	{"native-import-meta", "const url = import.meta.url;"},
 	{"native-new-target", "function f() { return new.target; }"},

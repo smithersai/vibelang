@@ -542,7 +542,9 @@ EqualityOperator = "===" | "!==" | "==" | "!="
 RelationalExpression = AdditiveExpression | RelationalExpression RelationalOperator AdditiveExpression
 RelationalOperator = "<" | ">" | "<=" | ">=" | "instanceof" | "in"
 AdditiveExpression = MultiplicativeExpression | AdditiveExpression "+" MultiplicativeExpression | AdditiveExpression "-" MultiplicativeExpression
-MultiplicativeExpression = UnaryExpression | MultiplicativeExpression "*" UnaryExpression | MultiplicativeExpression "%" UnaryExpression
+MultiplicativeExpression = ExponentiationExpression | MultiplicativeExpression MultiplicativeOperator ExponentiationExpression
+MultiplicativeOperator = "*" | "/" | "%"
+ExponentiationExpression = UnaryExpression | UpdateExpression "**" ExponentiationExpression
 UnaryExpression = "<" Type ">" UnaryExpression | UpdateExpression | "!" UnaryExpression | "-" UnaryExpression | "+" UnaryExpression | "typeof" UnaryExpression | "void" UnaryExpression | "delete" UnaryExpression | AwaitExpression
 AwaitExpression = "await" UnaryExpression
 YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator here] AssignmentExpression | "yield" [no LineTerminator here] "*" AssignmentExpression
