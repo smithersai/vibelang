@@ -1,4 +1,6 @@
+// run-seconds: 180
 import assert from "node:assert/strict"
+import { createRequire } from "node:module"
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
@@ -30,14 +32,58 @@ for (const shadow of ["local", "import"]) {
     }
     run([])
     const fixed = run(["--fix"])
-    assert(!fixed.includes("fixes refused"), fixed)
-    assert(readFileSync(new URL("flags.vibe", dir), "utf8").includes("defaultValue"), fixed)
+    // VIP-9 preserves cached defaults; exported keys require an explained refusal.
+    assert.match(fixed, /EK4855/)
+    assert.match(fixed, /No automatic migration for an exported key/)
+    for (const name of ["flags.vibe", "main.vibe", "shadow.vibe"]) {
+      assert.equal(readFileSync(new URL(name, dir), "utf8"), files[name],
+        "refusal must preserve " + name)
+    }
     const main = readFileSync(new URL("main.vibe", dir), "utf8")
     assert(main.includes("export const user: ReturnType<never> = { wrong: true }"), main)
-    assert(!main.includes('["default"]') && !main.includes(".default\n"), main)
+    assert(main.includes(indexed ? '(typeof Flags)["default"]' : "typeof Flags.default"), main)
     run([])
     run(["--fix"])
     assert.equal(readFileSync(new URL("main.vibe", dir), "utf8"), main)
   }
 }
+const require = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))
+const fc = require("fast-check")
+let sample = 0
+fc.assert(fc.property(fc.constantFrom("local", "import"), fc.boolean(), fc.boolean(), (shadow, indexed, enabled) => {
+  const dir = new URL("out/local-default-" + sample++ + "/", import.meta.url)
+  mkdirSync(dir, { recursive: true })
+  const utility = shadow === "local" ? "type ReturnType<T> = { wrong: true }\n"
+    : "import type { ReturnType } from './shadow.vibe'\n"
+  const source = utility +
+    'service Flags { static readonly key = "defaults/Flags"; static readonly default: Flags.Shape = { enabled: ' + enabled + ' }; enabled: boolean }\n' +
+    "export type Read = " + (indexed ? '(typeof Flags)["default"]' : "typeof Flags.default") + "\n" +
+    "export const same: Read extends Flags.Shape ? true : false = true\n" +
+    "export const user: ReturnType<never> = { wrong: true }\n"
+  writeFileSync(new URL("package.json", dir), '{"type":"module"}')
+  writeFileSync(new URL("main.vibe", dir), source)
+  writeFileSync(new URL("shadow.vibe", dir), "export type ReturnType<T> = { wrong: true }\n")
+  writeFileSync(new URL("tsconfig.json", dir), JSON.stringify({
+    compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true },
+    files: ["main.vibe", "shadow.vibe"]
+  }))
+  const compile = (...flags) => {
+    const result = spawnSync(compiler, ["-p", fileURLToPath(dir), "--noEmit", "--pretty", "false", ...flags],
+      { encoding: "utf8", timeout: 30000 })
+    assert.ifError(result.error)
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    return result.stdout + result.stderr
+  }
+  compile()
+  compile("--fix")
+  const fixed = readFileSync(new URL("main.vibe", dir), "utf8")
+  assert.match(fixed, /class Flags extends /)
+  assert.doesNotMatch(fixed, /defaultValue/)
+  assert(fixed.includes("export const user: ReturnType<never> = { wrong: true }"), fixed)
+  assert(fixed.includes(indexed ? '(typeof Flags)["default"]' : "typeof Flags.default"), fixed)
+  compile()
+  compile("--fix")
+  assert.equal(readFileSync(new URL("main.vibe", dir), "utf8"), fixed)
+}), { seed: 934, numRuns: 12 })
 console.log("default migration preserves shadowed utility types")
+
