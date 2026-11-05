@@ -2033,3 +2033,5 @@ The `//:trusted-legacy-client-actions` target checks the legacy client diagnosti
 The `//:recursive-legacy-slot-diagnostics` check retains recursive legacy call-cycle and native recursion errors while testing fully written positive contracts for argument, logical and generic call positions.
 
 The `//:fork-object-operands` check proves the seven object operands are legal TypeScript expressions but not assignable to Effect, requires all seven `EK1703` errors and retains embedded native return errors in wrapped and unwrapped controls.
+
+The `//:plain-handler-regressions` check retains direct and internally caught plain throws alongside valid Effect handlers and nested Effect functions, across source placements.

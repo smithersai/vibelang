@@ -410,6 +410,9 @@ func failuresCases() []*failCase {
 	add(&failCase{Name: "wrapper-trypromise-options", Owner: "nothrow-impl", Quote: nothrowQ.thunks, Host: "effect", Body: "const p = try tryPromise({ try: () => { if (!s) ⟦throw new Error(\"bad\")⟧; return Promise.resolve(s) }, catch: (e) => e })", Code: 401})
 	add(&failCase{Name: "catch-tracked-call", Owner: "nothrow-impl", Quote: nothrowQ.handler, Host: "effect", Body: "Effect.fail(new Error(\"input\")) catch (e) => ⟦parse(s)⟧", Decls: failParse, Code: 401})
 	add(&failCase{Name: "catch-explicit-throw", Owner: "nothrow-impl", Quote: nothrowQ.handler, Host: "effect", Body: "return Effect.fail(new Error(\"input\")) catch (e) => { ⟦throw e⟧ }", Code: 401})
+	add(&failCase{Name: "catch-caught-explicit-throw", Owner: "compiler", Quote: nothrowQ.literal, Host: "effect", Body: "return Effect.fail(new Error(\"input\")) catch (e) => { try { ⟦throw e⟧ } catch { return 0 } }", Code: 401})
+	add(&failCase{Name: "catch-nested-effect-control", Owner: "compiler", Quote: nothrowQ.literal, Host: "effect", Body: "return Effect.fail(new Error(\"input\")) catch (e) => { const nested = effect () => { throw e }; return 0 }"})
+	add(&failCase{Name: "catch-effect-throw-control", Owner: "compiler", Quote: nothrowQ.literal, Host: "effect", Body: "return Effect.fail(new Error(\"input\")) catch effect (e) => { throw e }"})
 	add(&failCase{Name: "foreign-const", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦foreign(s)⟧", Lib: "export declare const foreign: (s: string) => string"})
 	add(&failCase{Name: "foreign-method", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦foreign.read(s)⟧", Lib: "export declare class Reader { read(s: string): string }\nexport declare const foreign: Reader"})
 	// A tag on a function-type alias does not attach: the call is untagged,

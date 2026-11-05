@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrating an implicit generator API could refuse an unannotated foreign call; the repair now preserves synchronous exceptions as defects.
 - The recursive contract example now uses explicit service lookup and shows the legacy return-slot migration error alongside its existing recursion errors.
 - The fork operand example now distinguishes its assignability rejection from independent native errors inside an operand.
+- The plain catch handler example now uses the catch result directly while retaining throw errors and valid Effect-handler controls.
 
 - Ambient-declaration API checks loaded unrelated browser declarations. They now use fewer libraries while preserving isolated global and augmentation checks.
 

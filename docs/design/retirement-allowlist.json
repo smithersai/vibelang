@@ -1639,5 +1639,15 @@
       "tokensSha256": "4585d59c10d1bba70ebf22e39e46dafe1002d1f6f084ff4118dd7524d1e08921",
       "configSha256": "84f7958023f7ca68b365f55943db4feb44ce1cd9520e6232d0f840e4ec3ef7f7"
     }
+  },
+  {
+    "code": "EK0401",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/catch-plain-throw.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md: accepted prohibition of throw in plain VibeLang handlers, including internally caught throws. VIP-5 catch executes directly and produces a success value."
+    },
+    "reason": "Remove obsolete outer try from catch success values. Keep both original plain throw rejections, the internally caught throw, and valid nested Effect/effect-handler controls; no new rejection rule is introduced."
   }
 ]
