@@ -114,8 +114,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Dynamic-call examples omitted the required throwing-call error; they now show `EK0403` alongside the unrun-program diagnostic while preserving TypeScript errors for unresolved callees.
 
-- The regression suite treated correct catch-parameter binding diagnostics as known failures; it now checks `EK0705` directly across defaults, destructuring and computed keys.
-
 - Examples for redacted values, callback adapters, platform services, scope rollback, and schema helpers were still marked unavailable after support landed; they now compile and check their documented output as active examples.
 
 - Migration test failures could disappear from CI logs after successful file progress filled the live output limit; the reporter now reserves output for failures, aggregate progress and completion counts.
