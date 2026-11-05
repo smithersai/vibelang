@@ -1,0 +1,1 @@
+producer contracts match native TypeScript

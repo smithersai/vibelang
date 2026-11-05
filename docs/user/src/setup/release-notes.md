@@ -213,6 +213,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Declaration-check failures repeated full library paths until their logs became unreadable. They now report a total and bounded examples of distinct library names.
 - Contributor diagnostic identity checks could reject later compiler fixes. They now verify the recorded allocation transition while retaining checks against changed checker predicates in that transition.
 
+- Producer return contracts accept `any`, `unknown`, aliases, and compatible unions as TypeScript does; incompatible contracts remain errors.
+
 - Concurrent operators could hide a literal's `satisfies` error or add an unrelated array error. They now preserve the literal's own TypeScript errors beside `EK1801`.
 - Error-class custom matchers could lose their tag when saved or called with a subclass receiver. Plain errors now own their matcher, and both error forms return the original subject in either matching mode regardless of the caller's receiver.
 

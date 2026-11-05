@@ -1942,3 +1942,5 @@ The `//:relocated-sidecar-layout` check covers explicit and inferred source root
 The `//:catch-error-data-advisories` gate checks tagged-error migration twins, their runtime values, and catch-result advisories with independent native-error controls.
 
 The `//:plain-unknown-contracts` gate checks unannotated foreign calls in plain and effect code, with known-throwing and caught-call controls.
+
+The `//:producer-native-annotations` gate checks every reviewed producer contract and runs stock TypeScript 5.9.3 comparisons across nested declarations, aliases, and incompatible return types.
