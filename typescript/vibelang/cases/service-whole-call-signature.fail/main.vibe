@@ -1,0 +1,10 @@
+// expect: EK0902
+type Shape = number
+export service Numeric: Shape {
+  static readonly key = "whole-call/numeric";
+  (): number
+}
+export service Scalar: number {
+  static readonly key = "whole-call/scalar";
+  <T>(value: T): T
+}

@@ -118,10 +118,10 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 
 // checkShapeDeclarationMembers admits only the reserved key/defaultValue
 // properties of a whole-shape service. Specialized checks retain ownership
-// of malformed reserved headers, constructors and index signatures.
+// of malformed reserved headers, constructors, index and call signatures.
 func checkShapeDeclarationMembers(c *checker.Checker, class *ast.Node, shape *ast.Node) {
 	for _, member := range class.Members() {
-		if ast.IsSemicolonClassElement(member) || member.Kind == ast.KindConstructor || member.Kind == ast.KindIndexSignature {
+		if ast.IsSemicolonClassElement(member) || member.Kind == ast.KindConstructor || member.Kind == ast.KindIndexSignature || ast.IsCallSignatureDeclaration(member) {
 			continue
 		}
 		if serviceReservedMemberError(member) != nil || checkServiceLiteralKey(c, class, member) {
