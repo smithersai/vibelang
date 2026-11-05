@@ -8,6 +8,8 @@ The `Schema` module is in scope without an import. An explicit `import { Schema 
 
 A `schema` declaration creates a runtime Schema value. It is `EK1506` in an ambient context, including an explicit `declare` or an enclosing ambient namespace, module, or global declaration. Use native `declare const` and `type` declarations to describe an existing runtime API.
 
+The same ambient contexts reject `error` and `schema error` with `EK1307`. Use a native ambient class to describe an external error contract; an ambient declaration contains no runtime schema or matcher initializer.
+
 ```vibe
 // run: { const jsonValue = try receive({ tracking: "box-76", pieces: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Shipment = Schema.Struct({
