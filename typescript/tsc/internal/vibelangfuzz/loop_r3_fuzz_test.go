@@ -316,6 +316,10 @@ func FuzzIsHomePositions(f *testing.F) {
 		case p.want != "" && !slices.Contains(errs, p.want):
 			Gap(t, "FuzzIsHomePositions", p.key, "004-match: %s; %s reports %v:\n%s", isHomeQuotes[1], p.name, errs, source)
 		case p.want != "":
+			if slices.Contains(errs, "EK4703") {
+				Gap(t, "FuzzIsHomePositions", p.key, "004-match: %s must report its owning EK0705, not EK4703: %v", p.name, errs)
+				return
+			}
 			ExpectPending(t, "FuzzIsHomePositions", p.key)
 		}
 	})
