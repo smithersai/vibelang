@@ -12,5 +12,5 @@ export effect function nested(): Effect.Effect<Effect.Effect<number>, never, nev
 export effect function main() {
   const a = try Effect.suspend(effect () => effect () => 1)
   const b = try Effect.flatMap(Effect.succeed(0), effect () => effect () => 2)
-  return [try a(), try b(), (try functionValue())(), typeof try objectValue(), typeof try unionValue(), try sync((run: () => boolean) => run(), checkNested)]
+  return [try a(), try b(), (try functionValue())(), typeof try objectValue(), typeof try unionValue(), try Effect.orDie(Effect.try({ try: () => checkNested(), catch: error => error }))]
 }

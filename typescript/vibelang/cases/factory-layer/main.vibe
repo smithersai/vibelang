@@ -15,4 +15,4 @@ export effect function read(config: { mutable value: number }) {
 }
 
 // expect-result: "layer snapshot: 1"
-export effect function main() { return try sync((run: () => string) => run(), check) }
+export effect function main() { return try Effect.orDie(Effect.try({ try: () => check(), catch: error => error })) }

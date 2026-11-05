@@ -53,4 +53,4 @@ export const refuse = (reason: string): Effect.Effect<never, string, never> => {
 }
 
 // expect-result: "snapshot: 1 (seven forms, twice)"
-export effect function main() { return try sync((run: () => string) => run(), check) }
+export effect function main() { return try Effect.orDie(Effect.try({ try: () => check(), catch: error => error })) }

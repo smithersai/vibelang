@@ -3344,7 +3344,9 @@ typescript/vibelang/cases/factory-conditional-running-arm/main.vibe:14:70 byname
 typescript/vibelang/cases/factory-contracts.fail/main.vibe:10:44 lambda choice fallback
 typescript/vibelang/cases/factory-contracts.fail/main.vibe:11:44 lambda choice fallback
 typescript/vibelang/cases/factory-contracts.fail/main.vibe:12:44 lambda plain fallback
-typescript/vibelang/cases/factory-forwarding/main.vibe:12:49 lambda plain table
+typescript/vibelang/cases/factory-forwarding/main.vibe:12:57 byname program table
+typescript/vibelang/cases/factory-forwarding/main.vibe:12:75 lambda plain table
+typescript/vibelang/cases/factory-forwarding/main.vibe:12:97 lambda plain table
 typescript/vibelang/cases/factory-forwarding/main.vibe:4:21 lambda plain annotation
 typescript/vibelang/cases/factory-forwarding/main.vibe:5:9 lambda factory annotation
 typescript/vibelang/cases/factory-lambda-infers-channels/main.vibe:12:25 lambda effectFn keyword
@@ -3352,7 +3354,9 @@ typescript/vibelang/cases/factory-lambda-infers-channels/main.vibe:12:74 lambda 
 typescript/vibelang/cases/factory-lambda-infers-channels/main.vibe:16:25 lambda effectFn keyword
 typescript/vibelang/cases/factory-lambda-infers-channels/main.vibe:16:84 lambda choice fallback
 typescript/vibelang/cases/factory-layer/main.vibe:14:29 lambda program table
-typescript/vibelang/cases/factory-layer/main.vibe:18:49 lambda plain table
+typescript/vibelang/cases/factory-layer/main.vibe:18:57 byname program table
+typescript/vibelang/cases/factory-layer/main.vibe:18:75 lambda plain table
+typescript/vibelang/cases/factory-layer/main.vibe:18:97 lambda plain table
 typescript/vibelang/cases/factory-layer/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/factory-layer/main.vibe:7:10 lambda plain fallback
 typescript/vibelang/cases/factory-layer/main.vibe:9:22 lambda plain annotation
@@ -3374,7 +3378,9 @@ typescript/vibelang/cases/factory-snapshot/main.vibe:45:25 lambda plain fallback
 typescript/vibelang/cases/factory-snapshot/main.vibe:47:10 lambda choice fallback
 typescript/vibelang/cases/factory-snapshot/main.vibe:51:23 lambda effectFn annotation
 typescript/vibelang/cases/factory-snapshot/main.vibe:52:10 lambda choice fallback
-typescript/vibelang/cases/factory-snapshot/main.vibe:56:49 lambda plain table
+typescript/vibelang/cases/factory-snapshot/main.vibe:56:57 byname program table
+typescript/vibelang/cases/factory-snapshot/main.vibe:56:75 lambda plain table
+typescript/vibelang/cases/factory-snapshot/main.vibe:56:97 lambda plain table
 typescript/vibelang/cases/factory-snapshot/main.vibe:5:10 lambda choice fallback
 typescript/vibelang/cases/factory-snapshot/main.vibe:9:10 lambda plain fallback
 typescript/vibelang/cases/factory-value-kept/main.vibe:13:32 lambda effectFn keyword
@@ -3382,7 +3388,9 @@ typescript/vibelang/cases/factory-value-kept/main.vibe:13:45 lambda effectFn key
 typescript/vibelang/cases/factory-value-kept/main.vibe:14:32 byname program table
 typescript/vibelang/cases/factory-value-kept/main.vibe:14:51 lambda effectFn keyword
 typescript/vibelang/cases/factory-value-kept/main.vibe:14:64 lambda effectFn keyword
-typescript/vibelang/cases/factory-value-kept/main.vibe:15:114 lambda plain table
+typescript/vibelang/cases/factory-value-kept/main.vibe:15:122 byname program table
+typescript/vibelang/cases/factory-value-kept/main.vibe:15:140 lambda plain table
+typescript/vibelang/cases/factory-value-kept/main.vibe:15:168 lambda plain table
 typescript/vibelang/cases/factory-value-kept/main.vibe:3:60 lambda plain annotation
 typescript/vibelang/cases/factory-value-kept/main.vibe:4:50 lambda effectFn keyword
 typescript/vibelang/cases/factory-value-kept/main.vibe:5:68 lambda plain annotation
@@ -3703,6 +3711,9 @@ typescript/vibelang/cases/foreign-throws-bridge/main.vibe:5:25 lambda plain tabl
 typescript/vibelang/cases/foreign-throws-bridge/main.vibe:5:48 lambda plain table
 typescript/vibelang/cases/foreign-throws-bridge/main.vibe:5:7 byname program table
 typescript/vibelang/cases/foreign-throws-bridge/main.vibe:6:7 lambda effectFn table
+typescript/vibelang/cases/foreign-validation-defect-bridge/main.vibe:6:27 byname program table
+typescript/vibelang/cases/foreign-validation-defect-bridge/main.vibe:7:10 lambda plain table
+typescript/vibelang/cases/foreign-validation-defect-bridge/main.vibe:8:12 lambda plain table
 typescript/vibelang/cases/foreign-variable-callbacks/main.vibe:12:68 lambda plain table
 typescript/vibelang/cases/fork-arrow-body/main.vibe:23:17 lambda effectFn keyword
 typescript/vibelang/cases/fork-arrow-body/main.vibe:23:82 byname program table
@@ -4027,7 +4038,9 @@ typescript/vibelang/cases/held-field-pipe-plain/main.vibe:6:21 byname program ta
 typescript/vibelang/cases/held-field-pipe-plain/main.vibe:7:27 lambda plain table
 typescript/vibelang/cases/held-nested-effect/main.vibe:3:24 lambda plain annotation
 typescript/vibelang/cases/held-nested-effect/main.vibe:4:82 lambda program annotation
-typescript/vibelang/cases/held-nested-effect/main.vibe:9:49 lambda plain table
+typescript/vibelang/cases/held-nested-effect/main.vibe:9:57 byname program table
+typescript/vibelang/cases/held-nested-effect/main.vibe:9:75 lambda plain table
+typescript/vibelang/cases/held-nested-effect/main.vibe:9:97 lambda plain table
 typescript/vibelang/cases/held-pipe-initializer-returned/main.vibe:10:26 lambda factory annotation
 typescript/vibelang/cases/held-pipe-initializer-returned/main.vibe:11:55 byname program table
 typescript/vibelang/cases/held-pipe-initializer-returned/main.vibe:11:58 lambda plain table

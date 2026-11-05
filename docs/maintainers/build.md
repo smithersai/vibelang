@@ -1746,3 +1746,5 @@ and both mirrored layouts still require `TS2583` and an unavailable comparison
 when a public declaration refers to `BigInt` without its library.
 
 The `//:go-registry-witnesses` target checks reachable compatibility diagnostics and the current type rules for module-level cold calls. A retained diagnostic allocation does not override a language rule that replaced its old execution behavior.
+
+The `//:go-foreign-validation` target compiles the factory validation examples and checks foreign callback admission. Its negative controls retain `EK0402`; explicit defect bridges preserve a `never` failure channel.

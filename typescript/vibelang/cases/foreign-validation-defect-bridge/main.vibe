@@ -1,0 +1,10 @@
+// expect-result: {"value":"ok","sameDefect":true}
+import { check } from "./foreign.js"
+export { sentinel } from "./foreign.js"
+
+export effect function validate(fail: boolean): string!! {
+  return try Effect.orDie(Effect.try({
+    try: () => check(fail),
+    catch: error => error,
+  }))
+}

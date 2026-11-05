@@ -6,4 +6,4 @@ export const pending = (migration: Effect.Effect<void, unknown, never>): infer _
 }
 
 // expect-result: "loader returns migration unrun"
-export effect function main() { return try sync((run: () => string) => run(), check) }
+export effect function main() { return try Effect.orDie(Effect.try({ try: () => check(), catch: error => error })) }

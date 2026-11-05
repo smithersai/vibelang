@@ -814,6 +814,12 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "10m"
   ),
+  "go-foreign-validation": goVibelang(
+    "Foreign validation callbacks cross an explicit defect bridge without weakening their no-throw parameter checks.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestForeignValidationCasesCompile|TestForeignValidationBridgesQuoted|FuzzForeignValidationBridges)$' ./internal/vibelangfuzz/`,
+    [Tsc["vibelangfuzz-files"], Vibelang.tree],
+    "10m"
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,
