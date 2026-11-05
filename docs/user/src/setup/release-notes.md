@@ -35,6 +35,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Catch-binding examples used a retired statement catch inside effect functions; they now use plain functions and show how an explicit `do` block scopes a default binding.
 
 - The migration table recommended calling the `interrupt` and `yieldNow` Effect values as functions; it now shows `try interrupt` and `try yieldNow`.
+- Language-service examples omitted the no-throw diagnostic for direct `JSON.parse` calls; their exact diagnostics now include `EK0403` alongside independently configured lint warnings.
 - Throw-expression checks still expected comma violations to be warnings; they now require the documented `EK1010` error and verify that parentheses preserve the thrown value.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 

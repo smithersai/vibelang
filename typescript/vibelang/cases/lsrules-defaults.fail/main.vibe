@@ -1,4 +1,4 @@
-// expect: EK4801
+// expect: EK0403 EK4801
 // Default categories (D241): EK4801 is an error, EK4804 a warning, and EK4818
 // off. tsconfig.json turns EK4805 off, and comments adjust the rest.
 export function floating(program: Effect.Effect<number>) {
