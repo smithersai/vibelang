@@ -642,9 +642,8 @@
     "archive": true
   },
   {
-    "name": "appendix-archive-EK4405",
     "code": "EK4405",
-    "archive": true
+    "retired": true
   },
   {
     "code": "EK4406",
@@ -736,7 +735,7 @@
   {
     "name": "appendix-archive-EK4403",
     "code": "EK4403",
-    "archive": true
+    "retired": true
   },
   {
     "name": "appendix-archive-EK4409",

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import {readFileSync as readCaptureFixtures} from "node:fs"
 import { checkExample, resolveExamples } from "./diagnostic-examples.mjs"
 
 const example={name:"release-0011-pipe",code:"EK2301",source:"export const noTopic = 1 |> 2"}
@@ -47,4 +48,14 @@ test("registration-only hosts cannot silently hide unproved compiler emission",(
  assert.throws(()=>resolveExamples([{...fixture,emissionPending:false}],new Map([["EK1013","error"]])),/must declare pending emission/)
  assert.throws(()=>resolveExamples([{...fixture,code:"EK9998"}],new Map([["EK9998","error: Emission witness pending for `EK9998`"]])),/missing pending emission test/)
  assert.deepEqual(resolveExamples([fixture],new Map([["EK1013","error: Emission witness pending for `EK1013`"]])),[])
+})
+
+test("retired lexical-capture and clock diagnostics require no live Appendix example and cannot be resurrected",()=>{
+ const fixtures=JSON.parse(readCaptureFixtures(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
+ for(const code of ["EK4405","EK4403"]){
+ const fixture=fixtures.find(f=>f.code===code)
+ assert.equal(fixture.retired,true)
+ assert.deepEqual(resolveExamples([fixture],new Map()),[])
+ assert.throws(()=>resolveExamples([fixture],new Map([[code,"error"]])),/retired fixture still has a row or registration/)
+ }
 })

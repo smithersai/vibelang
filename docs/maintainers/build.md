@@ -1966,3 +1966,5 @@ The `//:error-tag-inheritance-identities` check retains all inheritance rejectio
 The `//:automatic-catch-data-preservation` target checks returned data, native contracts, advisories and editor actions across catch handler variations.
 
 The `//:native-repair-argument-thunks` target checks method-argument repairs across calls, defaults, receivers, native narrowing and declaration identity.
+
+The `//:lexical-capture-diagnostic-retirement` gate validates the retired fixture inventory and its resurrection guard, then checks captured values with independent native-error controls.

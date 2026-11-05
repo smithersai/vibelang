@@ -140,9 +140,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4202` | error: legacy compiler compatibility — a TypeScript callable's legacy requirements contain a control operation.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:10:14](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/appendix-ek4202-complete-project).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4301` | error: legacy compiler compatibility — a legacy implicit Effect callback is passed where a synchronous callback is expected.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4405` | error: legacy compiler compatibility — a legacy hatch reads a binding declared outside its body.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Hatches are retired; use an ordinary function in `.ts` for native boundaries.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:27:28](../../../typescript/vibelang/cases/ek4405-self-contained.fail/main.vibe).
+// rule-evidence: docs/design/src/900-appendices.md | The old `EK4405` is retired and will never be reassigned: hatches are retired, and VIP-6 permits lexical wrapper captures.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4406` | warning: legacy compiler compatibility — a legacy trusted or throws declaration tag cannot survive the old emit transition.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Current declaration output carries `@throws`; this warning describes the old transition only.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: lib.vibe:51:45; also EK4401](../../../typescript/vibelang/cases/ek4401-fix.fail/lib.vibe).
@@ -168,9 +166,6 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4601` | error: legacy compiler compatibility — `await` before a call returning an Effect in plain code.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Example: `function run() { return await Effect.succeed(1) }`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Native async functions retain JavaScript `await`; effect code rejects it with `EK0102`.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4403` | error: legacy compiler compatibility — a legacy clock or randomness check rejects a direct read.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | The platform-global inventory governs allowed reads; ordinary `Date.now()` and `Math.random()` remain allowed by the accepted rule.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:17:10](../../../typescript/vibelang/cases/ek4403-clock.fail/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4409` | warning: legacy compiler compatibility — a legacy Effect function returns a call of a value typed `any`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Ordinary return types retain TypeScript's treatment of `any`; use `try` to obtain an Effect's success value.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4838` | error: legacy compiler compatibility — legacy ownership analysis sees a `Fiber` leave its fork region.
@@ -316,3 +311,4 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const result=probeExamples(resolveExamples(fixtures,appendix),appendix,resolve(process.env.VIBELANG_COMPILER??join(repository,"packages/compiler/native/vibelang")))
   console.log(JSON.stringify(result,null,2));process.exitCode=result.findings.length?1:0
 }
+// rule-evidence: docs/design/src/900-appendices.md | The old `EK4403` is retired and will never be reassigned: VIP-33 reports host clock and randomness reads as `EK4402` by resolved host origin.
