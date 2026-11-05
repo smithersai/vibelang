@@ -33,6 +33,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Fork migration examples compared VIP-only repairs with broader ordinary cleanup; they now repeat each selection separately while preserving the fork options.
 
 - Catch-binding examples used a retired statement catch inside effect functions; they now use plain functions and show how an explicit `do` block scopes a default binding.
+
+- The migration table recommended calling the `interrupt` and `yieldNow` Effect values as functions; it now shows `try interrupt` and `try yieldNow`.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 
@@ -365,7 +367,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Early 0.0.11 experimental layer imports named `NodeServices`, `NodeCrypto` or `BrowserLocks` | Exports from `vibelang-runtime/experimental/platform-*` now start with `Experimental`: import `ExperimentalNodeServices`, `ExperimentalNodeCrypto` or `ExperimentalBrowserLocks`. Rename the other experimental layers the same way. Imports from Effect's `@effect/platform-*` packages keep their names. |
 | Both `import "vibelang/platform/node"` and `import "vibelang/platform/bun"` in one file | EK3206 rejects conflicting imports. Keep one platform import per file; use a separate entry file for each host. Repeating the same platform is allowed. |
 | A platform API in a hatch because Effect has no equivalent | Prefer the new `Experimental.FileSystem`, `Experimental.Crypto`, `Experimental.Process` or `Experimental.Locks` where covered. Their layers and platform limits are listed below; an uncovered API stays in TypeScript. |
-| `interrupt` alone as a statement | `EK4801`: it previously ran nothing. Choose `try interrupt()` explicitly when execution is intended, likewise `try yieldNow()` and other zero-argument program references; execution has no automatic quick fix. |
+| `interrupt` alone as a statement | `EK4801`: it previously ran nothing. Choose `try interrupt` explicitly when execution is intended, likewise `try yieldNow` and other Effect values; execution has no automatic quick fix. |
 | A bare native Effect value such as `interrupt` or `yieldNow` | Run it with `try interrupt` or `try yieldNow`; `vibelang --fix --fix-vip-only` rewrites `try interrupt()` and `try yieldNow()` that way. `vibelang --fix` also migrates bare `yieldNow(priority)`, `yieldNow()` and `interrupt()` factory calls, preserving held and returned cold Effects and evaluating an optional priority once. For new code, write `try Effect.yieldNowWith(priority)` for a number, or `try yieldNow` for the default priority. These are values; native functions such as `log` still take parentheses. |
 | `return x ?? throw c ? a : b` | EK1010: it previously parsed as `(x ?? throw c) ? a : b`, throwing only `c`. Write `return x ?? throw (c ? a : b)`. |
 | `throw cause` where `cause` is a `Cause`, as in `when Exit.Failure(let cause): throw cause` | It now fails with the Cause object itself as an expected failure, as `Effect.fail(cause)` does: `throw` fails with the value it is given (VIP-4). It previously rethrew every reason the cause held. To keep that, write `return Effect.failCause(cause)`, as Effect code does. |
