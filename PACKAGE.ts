@@ -154,6 +154,8 @@ const specTests = [
   "TestGrammarAdmissionImportArityKeys",
   "TestGrammarAdmissionImportArityRegression",
   "TestGrammarAdmissionMutationKeys",
+  "TestGrammarAdmissionRegExpSyntaxDiagnostics",
+  "TestGrammarAdmissionRegExpSyntaxRegression",
   "TestGrammarAdmissionRegExpKeys",
   "TestGrammarAdmissionRegExpRegression",
   "TestGrammarAdmissionParenthesizedEffectKeys",

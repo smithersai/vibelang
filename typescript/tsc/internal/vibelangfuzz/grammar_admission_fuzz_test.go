@@ -222,6 +222,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"is-contextual-error", "const b =\nerror is 1 + 1 ;"},
 	{"effect-type-parenthesized-trailing-bang", "{ type T = (\nnumber ! string ! )\nboolean }"},
 	{"native-regexp-literal", "n = / 2 /\n2\n;"},
+	{"native-regexp-unmatched-paren", "n = / ) 2 /\n2\n;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1741,6 +1742,15 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// exact structural diagnostics (including TS1123's empty list) reject syntax; type/name/module errors
 	// such as TS1064, TS1192, TS2304 and TS2322 deliberately remain outside.
 	switch d.Code() {
+	// checkGrammarRegularExpressionLiteral rescans the recovered literal
+	// through scanner/regexp.go. Flag, pattern and early-error diagnostics
+	// reject native syntax. Target-version availability (TS1501/TS1503)
+	// remains separate from grammar, as do ordinary type/name errors.
+	case 1499, 1500, 1502, 1504, 1505, 1506, 1507, 1508, 1509,
+		1510, 1511, 1512, 1513, 1514, 1515, 1516, 1517, 1518, 1519,
+		1520, 1521, 1522, 1523, 1524, 1525, 1526, 1527, 1528, 1529,
+		1530, 1531, 1532, 1533, 1534, 1535, 1536, 1537, 1538:
+		return true
 	case 1024, 1028, 1029, 1030, 1031, 1038, 1040, 1042, 1044,
 		1070, 1071, 1079, 1089, 1090, 1120, 1123, 1184, 1187, 1191, 1193, 1242, 1243, 1248,
 		1273, 1274, 1275, 1277, 1317, 1433, 1491, 1495, 18010, 18019:
@@ -1923,7 +1933,7 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-data-member-code-collision", "", diagnostics.CategoryError, 1606, false},
 		{"schema-member-not-field", "EK", diagnostics.CategoryError, 1505, true},
 		{"schema-member-not-field-warning", "EK", diagnostics.CategoryWarning, 1505, false},
-		{"native-schema-member-code-collision", "", diagnostics.CategoryError, 1505, false},
+		{"native-regexp-incomplete-quantifier", "", diagnostics.CategoryError, 1505, true},
 		{"ek-esm-export-assignment-code-collision", "EK", diagnostics.CategoryError, 1203, false},
 		{"external-module-element-code-collision", "other", diagnostics.CategoryError, 1231, false},
 		{"ek-module-element-code-collision", "EK", diagnostics.CategoryError, 1231, false},
