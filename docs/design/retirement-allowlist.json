@@ -1555,5 +1555,38 @@
       "tokensSha256": "3a0c9ad5b6e236a1fc092c944488b6c765ad97de8a50c8b9689788493c16510a",
       "configSha256": "cb8a9fdb5c8c6ce7e1ab194eadd8051d66294ed70ba42f2a445288e309c50bf2"
     }
+  },
+  {
+    "code": "EK0402",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/ek4402-platform.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md#thrown-types: an unannotated function type admits only never; VIP-34 retains independent diagnostics."
+    },
+    "reason": "The existing platform program and its configuration are unchanged. Retain its platform errors and independently reject the existing unknown-throwing callback argument.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.d.vibe.ts",
+          "tokensSha256": "2645da6b0371184979442bd5ddc2ecff6e513bf9d7a2b13d6ecc455ec4435bcd"
+        },
+        {
+          "source": "main.vibe",
+          "tokensSha256": "7ac72a087dabbb868ee0baa942219107d0efd272d5a63eb774c778384b638626"
+        },
+        {
+          "source": "node-modules.d.ts",
+          "tokensSha256": "3694e445962804ac938be1b77af835962c9725a832c9e08e55633bf0211aeb2b"
+        },
+        {
+          "source": "setup.ts",
+          "tokensSha256": "e8d1737c3f8521460eb03cb60bb32c9c917ed7b42c01b90f0639b80a6d21184d"
+        }
+      ],
+      "tokensSha256": "7ac72a087dabbb868ee0baa942219107d0efd272d5a63eb774c778384b638626",
+      "configSha256": "df9429e5423acea8f681e171e978e2a369c0703163d2b58899ddad8d1f711d45"
+    }
   }
 ]

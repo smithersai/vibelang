@@ -1976,3 +1976,5 @@ The `//:native-await-declaration-twins` gate retains byte-exact declaration comp
 The `//:async-match-throw-contexts` gate enforces the implemented async-match oracle without pending allowances and retains every ordinary, async, and Effect context and the minimized keyed corpus.
 
 The `//:formatter-written-jump-controls` gate reads original jump tokens after concurrent-loop lowering, covers comments and automatic semicolon insertion, and retains the formatter guard unchanged with explicit program-changing negative controls.
+
+The `//:platform-callback-contracts` gate retains all platform diagnostics and tests unknown and non-throwing callback signatures independently.

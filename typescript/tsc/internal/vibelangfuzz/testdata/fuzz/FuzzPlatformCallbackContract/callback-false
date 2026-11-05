@@ -1,0 +1,4 @@
+go test fuzz v1
+bool(false)
+byte(2)
+byte(7)

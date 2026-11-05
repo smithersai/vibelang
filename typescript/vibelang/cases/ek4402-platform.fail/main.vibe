@@ -1,4 +1,4 @@
-// expect: EK4402
+// expect: EK4402 EK0402
 // D310: Node.js reaches .vibe code only through Effect's services or by
 // escaping to TypeScript. A value imported from a platform module is EK4402
 // at the import, and a platform global is EK4402 wherever the code uses it:
