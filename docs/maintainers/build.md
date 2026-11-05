@@ -1647,6 +1647,14 @@ resolved-normalization profile records, nominal distinctions and type, name,
 documentation and dependency mutation checks. Other API fixtures retain the
 libraries their declarations require.
 
+Physical-sidecar import fixtures select `lib.es5.d.ts` for native TypeScript
+validation and every comparator program. Their loaded-library guard runs outside
+comparison failure handling. All seven tests and eight generated mirror depths,
+inline imports and literal types retain physical-path resolution, the wrong
+logical-path decoy, beside-source precedence, inherited directories, changed
+public types and missing-dependency `TS2307` checks. The saved declarations and
+project configuration remain unchanged.
+
 Nested ambient-ownership API fixtures select `lib.es5.d.ts` for both their
 native TypeScript validation and every comparator program. A native source-file
 guard rejects accidental browser-library loading. The fixture still checks

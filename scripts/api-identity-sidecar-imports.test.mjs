@@ -7,7 +7,25 @@ import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 
-const ts = loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const unexpectedLibraries = []
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  const libraries = program.getSourceFiles().map(source => source.fileName)
+    .filter(file => /[/\\]lib\.[^/\\]+\.d\.ts$/.test(file))
+  if (!libraries.some(file => /[/\\]lib\.es5\.d\.ts$/.test(file))) unexpectedLibraries.push("missing ES5")
+  unexpectedLibraries.push(...libraries.filter(file => !/[/\\]lib\.(?:es5|decorators(?:\.legacy)?)\.d\.ts$/.test(file)))
+  return program
+} }
+function assertLibraries() {
+  assert.deepEqual(unexpectedLibraries, [], "Physical-sidecar fixtures must load only ES5 and decorator libraries")
+}
+function compare(a, b, comparisonOptions = {}) {
+  const result = compareApiIdentity(ts, a, b, { ...comparisonOptions, compilerOptions })
+  assertLibraries()
+  return result
+}
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/smithers-physical-sidecar-import.json", import.meta.url)))
 function fixture(before, after, fn) {
@@ -24,15 +42,16 @@ function fixture(before, after, fn) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 function validPhysical(dir, file) {
-  const program = ts.createProgram([join(dir, file)], { strict: true, noEmit: true, types: [],
+  const program = ts.createProgram([join(dir, file)], { ...compilerOptions, strict: true, noEmit: true, types: [],
     module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
     allowArbitraryExtensions: true, allowImportingTsExtensions: true })
+  assertLibraries()
   assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => ({
     code: d.code, text: ts.flattenDiagnosticMessageText(d.messageText, "\n")
   })), [], "stock tsc must accept the original physical declaration")
 }
 function identical(before, after) {
-  const result = compareApiIdentity(ts, before, after, { moduleRoots: [] })
+  const result = compare(before, after, { moduleRoots: [] })
   assert.equal(result.comparisonComplete, true, JSON.stringify(result))
   assert.equal(result.identical, true, JSON.stringify(result))
   return result
@@ -60,7 +79,7 @@ test("physical sidecar resolution does not fall back to a valid but wrong logica
 test("a semantic change reached through a physical sidecar remains a type difference", () => {
   fixture(corpus.before, { ...corpus.after, "src/B.d.ts": "export interface B { readonly x: string }" }, (before, after) => {
     validPhysical(after, ".vibe/declarations/src/A.d.vibe.ts")
-    const result = compareApiIdentity(ts, before, after, { moduleRoots: [] })
+    const result = compare(before, after, { moduleRoots: [] })
     assert.equal(result.comparisonComplete, true, JSON.stringify(result))
     assert.equal(result.identical, false)
     assert.ok(result.typeDifferences.some(d => d.export === "a" && /TS2344/.test(d.diagnostic)), JSON.stringify(result))
@@ -70,7 +89,7 @@ test("missing dependencies of physical sidecars remain unavailable", () => {
   const after = { ...corpus.after }
   delete after["src/B.d.ts"]
   fixture(corpus.before, after, (before, candidate) => {
-    const result = compareApiIdentity(ts, before, candidate, { moduleRoots: [] })
+    const result = compare(before, candidate, { moduleRoots: [] })
     assert.equal(result.comparisonComplete, false, JSON.stringify(result))
     assert.equal(result.identical, false)
     assert.deepEqual(result.typeDifferences, [])
@@ -99,7 +118,7 @@ test("property: changing a sidecar mirror's depth preserves self and twin identi
         identical(a, b)
         identical(b, b)
         writeFileSync(join(b, "src/B.d.ts"), "export interface B { readonly x: " + (value + 1) + " }")
-        const result = compareApiIdentity(ts, a, b, { moduleRoots: [] })
+        const result = compare(a, b, { moduleRoots: [] })
         assert.equal(result.comparisonComplete, true, JSON.stringify(result))
         assert.ok(result.typeDifferences.some(d => d.export === "a"), JSON.stringify(result))
       })

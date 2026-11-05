@@ -202,6 +202,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The declaration example for a service with a whole written shape now matches its TypeScript counterpart without adding an extra exported namespace.
 
 
+- Physical-sidecar declaration tests repeatedly loaded unrelated browser libraries. Their native validation and API comparison now select ES5 while retaining physical import resolution, missing-dependency and changed-type checks.
+
 - Release notes placed pending fixes under a version beyond the current compiler candidate. Those fixes now remain with the candidate until it is published.
 - Contributor optional-call examples passed foreign helpers without the required no-throw contract. Those pure helpers now declare their contracts; unannotated callback rejection remains checked.
 - Contributor declaration checks expected an inferred import spelling that differed from TypeScript. They now use the native spelling and verify suffix and path variations against stock TypeScript.
