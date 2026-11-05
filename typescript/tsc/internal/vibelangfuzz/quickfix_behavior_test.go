@@ -85,6 +85,11 @@ func quickfixBehaviorSeeds() map[int32][]Seed {
 		}
 	}
 	seeds[509] = []Seed{{Name: "EK0509-handler-reference", Files: map[string]string{"main.vibe": "const handler = (_: unknown) => 7\nexport effect function main() { return Effect.fail(1) catch handler }\n"}}}
+	seeds[1308] = []Seed{
+		{Name: "EK1308-error", Files: map[string]string{"main.vibe": "// preserve this comment\nexport abstract error Family { readonly value: number }\nexport function main() { return 7 }\n"}},
+		{Name: "EK1308-schema", Files: map[string]string{"main.vibe": "// preserve this comment\nexport abstract schema error Family { readonly value: number }\nexport function main() { return 7 }\n"}},
+		{Name: "EK1308-fields", Files: map[string]string{"main.vibe": "// preserve this comment\nexport abstract error Family { readonly value: \"left\" | \"right\"; hint?: string }\nexport function main() { return 7 }\n"}},
+	}
 	quickfixInstallGoldenPrograms(seeds)
 	seeds[4802] = []Seed{
 		{Name: "EK4802-runtime", Files: map[string]string{"main.vibe": "function take<T>(x: T[]): number { return 1 }\nexport effect function main() { return take([Effect.succeed(7)]) }\n"}},

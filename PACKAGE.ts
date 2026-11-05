@@ -866,8 +866,8 @@ const targets = {
   }),
   "spec-registry-go": S.Shell.Test({
     summary: "Every assigned code is registered or names its implementation owner; legacy exceptions apply only to unassigned declarations.",
-    shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(TestRegistryMatchesSpec|TestCompilerRegistryIsSpecified|TestRegistryDebtLedger|TestShortTargetsBudgeted|TestRegistryDeclarationAllowanceQuoted|TestRegistryDeclarationAllowancesStayStrict|FuzzRegistryDeclarationAllowances|TestGrammarAdmissionReasonsUsePublishedCodes|FuzzPublicCompatibilityCodeCitations)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
-    data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]] as Array<never>,
+    shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(TestRegistryMatchesSpec|TestCompilerRegistryIsSpecified|TestRegistryDebtLedger|TestShortTargetsBudgeted|TestRegistryDeclarationAllowanceQuoted|TestRegistryDeclarationAllowancesStayStrict|TestQuickFixBehaviorRegistry|FuzzRegistryDeclarationAllowances|TestGrammarAdmissionReasonsUsePublishedCodes|FuzzPublicCompatibilityCodeCitations)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
+    data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Vibelang.tree] as Array<never>,
     tools: [go, node],
     sandbox: "none",
     timeout: "15m"
