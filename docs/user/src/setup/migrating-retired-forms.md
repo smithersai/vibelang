@@ -18,6 +18,8 @@ The repair recognizes pure `HttpClientRequest` setter pipelines and keeps each s
 
 ## Stored program callbacks
 
+Generator repairs distinguish comments from comment-looking literal contents. URL strings such as `"https://example.test"`, template text and regex literals do not prevent a preserving conversion; actual comments still have to survive the edit.
+
 A converted generator returned from an array's `map` callback remains a stored program. The repair writes its checked program type explicitly, so the array can be passed to a later program consumer without an inferred-effect warning.
 
 ## Generator parameter bindings

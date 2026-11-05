@@ -47,12 +47,25 @@ func FuzzEffectGenDOMConstructors(f *testing.F) {
 	domConstructorsQuoted(f)
 	names := []string{"Headers", "Request", "Response", "URL", "Blob", "Event"}
 	forms := []string{"named", "fn", "untraced", "gen"}
+	arguments := map[string]string{
+		"single":     "'https://example.test'",
+		"template":   "`https://example.test`",
+		"block-text": "\"https://example.test/* literal */\"",
+		"comment":    "/* constructor input */ \"https://example.test\"",
+	}
 	var keys []string
 	for _, name := range names {
 		for _, form := range forms {
 			key := name + "/" + form
 			keys = append(keys, key)
 			f.Add([]byte(key))
+			if name == "Request" || name == "URL" {
+				for _, literal := range []string{"single", "template", "block-text", "comment"} {
+					variant := key + "/" + literal
+					keys = append(keys, variant)
+					f.Add([]byte(variant))
+				}
+			}
 		}
 	}
 	w := NewWorkspace(f)
@@ -68,6 +81,9 @@ func FuzzEffectGenDOMConstructors(f *testing.F) {
 		parts := strings.Split(key, "/")
 		name, form := parts[0], parts[1]
 		arg := map[string]string{"Headers": "input", "Request": "\"https://example.test\"", "Response": "\"body\"", "URL": "\"https://example.test\"", "Blob": "[\"body\"]", "Event": "\"ready\""}[name]
+		if len(parts) == 3 {
+			arg = arguments[parts[2]]
+		}
 		body := fmt.Sprintf("return new %s(%s)", name, arg)
 		generator := "function*(input: Readonly<Record<string, string>>) { " + body + " }"
 		call := map[string]string{
@@ -89,6 +105,9 @@ func FuzzEffectGenDOMConstructors(f *testing.F) {
 			afterFiles[strings.TrimPrefix(path.AsString(), filepath.ToSlash(before.Dir)+"/")] = file.Text
 		}
 		text := afterFiles["main.vibe"]
+		if strings.Contains(arg, "/* constructor input */") && !strings.Contains(text, "/* constructor input */") {
+			Gap(t, domConstructorTarget, key, "constructor input comment was lost: %s", text)
+		}
 		if strings.Contains(text, "function*") {
 			Gap(t, domConstructorTarget, key, "%s: constructor conversion refused: %+v\n%s", domConstructorFixQuote, fixed.Refused, text)
 			return
