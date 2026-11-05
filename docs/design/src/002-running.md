@@ -97,6 +97,9 @@ function operands() {
 
 ## `catch`
 
+
+Legacy typed catch clauses have separate migration warnings: `EK2112` for a failure-type test and `EK2113` for a `Cause`-typed clause. Their preserving replacements are listed in [VibeLang warnings](007-tooling.md#vibelang-warnings); they do not add typed clauses to the accepted catch expression.
+
 ### Syntax
 
 [CatchExpression](900-appendices.md#catchexpression) with a [CatchHandler](900-appendices.md#catchhandler). `catch` sits beside `??` in ECMAScript's precedence chain: it has the precedence of `??` and is left-associative, so `a catch (() => b) catch (() => c)` parses as `(a catch (() => b)) catch (() => c)`, which type-checks only when the inner `catch` gives an Effect (below), and `x = a catch () => b` assigns the result. As with `??`, mixing it with `??`, `||` or `&&` needs parentheses; without them it is a syntax error (`EK0512`).
