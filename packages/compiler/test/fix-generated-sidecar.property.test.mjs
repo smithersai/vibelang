@@ -49,7 +49,11 @@ function check({ kind, repeats, annotation, parameter }) {
     for (let i = 0; i < repeats; i++) {
       const compiled = run(["-p", ".", "--pretty", "false"])
       assert.doesNotMatch(compiled.text, /TS5055/)
-      assert.match(compiled.text, /EK1002/, "control must expose the migration site")
+      // Chapter 2: a plain function* stays a JavaScript generator.
+      // This valid Effect.fn callback needs no legacy-producer diagnostic.
+      assert.equal(compiled.status, 0, compiled.text)
+      assert.equal(compiled.text, "", "the original source must compile cleanly before repair")
+      assert.equal(readFileSync(join(dir, "main.vibe"), "utf8"), source, "checking must not rewrite the generator")
     }
     let fixed
     for (let i = 0; i < repeats; i++) {
