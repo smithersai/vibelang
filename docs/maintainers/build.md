@@ -1655,6 +1655,13 @@ logical-path decoy, beside-source precedence, inherited directories, changed
 public types and missing-dependency `TS2307` checks. The saved declarations and
 project configuration remain unchanged.
 
+Conditional-resolution API fixtures select `lib.es5.d.ts` in independent
+native TypeScript oracles and every comparison program. Their loaded-library
+guard runs outside comparison failure handling. All six tests and four generated
+samples retain package export conditions, `import` and `require` branch types,
+two uses of one specifier, declaration import attributes, quote and self identity,
+and changed dependencies with the native type difference and `TS2344` checks.
+
 Nested ambient-ownership API fixtures select `lib.es5.d.ts` for both their
 native TypeScript validation and every comparator program. A native source-file
 guard rejects accidental browser-library loading. The fixture still checks

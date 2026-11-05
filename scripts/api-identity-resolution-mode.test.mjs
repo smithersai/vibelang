@@ -6,7 +6,25 @@ import {tmpdir} from "node:os"
 import {createRequire} from "node:module"
 import {compareApiIdentity,loadTypeScript} from "./api-identity.mjs"
 import {checkProperty} from "./testing/property.mjs"
-const ts=loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const unexpectedLibraries = []
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  const libraries = program.getSourceFiles().map(source => source.fileName)
+    .filter(file => /[/\\]lib\.[^/\\]+\.d\.ts$/.test(file))
+  if (!libraries.some(file => /[/\\]lib\.es5\.d\.ts$/.test(file))) unexpectedLibraries.push("missing ES5")
+  unexpectedLibraries.push(...libraries.filter(file => !/[/\\]lib\.(?:es5|decorators(?:\.legacy)?)\.d\.ts$/.test(file)))
+  return program
+} }
+function assertLibraries() {
+  assert.deepEqual(unexpectedLibraries, [], "Resolution-mode fixtures must load only ES5 and decorator libraries")
+}
+function compare(a, b, comparisonOptions = {}) {
+  const result = compareApiIdentity(ts, a, b, { ...comparisonOptions, compilerOptions })
+  assertLibraries()
+  return result
+}
 const fc=createRequire(new URL("../docs/tools/package.json",import.meta.url))("fast-check")
 const expr=mode=>'import("dual", { with: { "resolution-mode": "'+mode+'" } }).X'
 function fixture(before,after,fn) {
@@ -26,8 +44,9 @@ function fixture(before,after,fn) {
  } finally {rmSync(root,{recursive:true,force:true})}
 }
 function oracle(dir,entry="index.d.ts") {
- const opts={strict:true,noEmit:true,types:[],module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler}
+ const opts={...compilerOptions,strict:true,noEmit:true,types:[],module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler}
  const program=ts.createProgram([join(dir,entry)],opts),checker=program.getTypeChecker()
+ assertLibraries()
  assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>({code:d.code,text:ts.flattenDiagnosticMessageText(d.messageText,"\n")})),[])
  const source=program.getSourceFile(join(dir,entry))
  const symbol=checker.getExportsOfModule(checker.getSymbolAtLocation(source)).find(s=>s.name==="X")
@@ -37,7 +56,7 @@ function differs(before,after) {
  fixture(before,after,(a,b)=>{
   const at=oracle(a,before.entry),bt=oracle(b,after.entry)
   assert.notEqual(at,bt,"Independent tsc must establish the semantic difference")
-  const result=compareApiIdentity(ts,a,b,{moduleRoots:[]})
+  const result=compare(a,b,{moduleRoots:[]})
   assert.equal(result.comparisonComplete,true,JSON.stringify(result))
   assert.equal(result.identical,false,JSON.stringify({at,bt,result}))
   assert.ok(result.typeDifferences.some(d=>d.export==="X" && /TS2344/.test(d.diagnostic)),JSON.stringify(result))
@@ -61,7 +80,7 @@ test("harmless quote changes preserve explicit resolution and self identity",()=
  fixture(a,b,(left,right)=>{
   assert.equal(oracle(left),oracle(right))
   for(const [x,y] of [[left,right],[left,left],[right,right]]) {
-   const result=compareApiIdentity(ts,x,y,{moduleRoots:[]})
+   const result=compare(x,y,{moduleRoots:[]})
    assert.equal(result.identical,true,JSON.stringify(result))
   }
  })
