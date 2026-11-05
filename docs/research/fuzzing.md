@@ -152,6 +152,8 @@ appending a precise claim. The lookup never claims a bug or authorizes work.
 
 ## Running the seed corpus
 
+`FuzzMigrationSourceChildLint` checks stored target requirements for generated launcher imports and comments independently. Its fixture models those requirements rather than importing the target application’s plugin; a pending namespace finding cannot excuse a comment finding. The migration reference properties also check reference-free projects beside unrelated vendored configurations and preserve genuine missing-reference failures before any output is cleared.
+
 The complete short corpus has a 40-minute test deadline. The graph target `//:go-vibelangfuzz` adds 25 minutes for admission and compilation, so its task deadline cannot cancel a test that still has time left. The per-process hang watchdog stays at 120 seconds.
 
 ```sh

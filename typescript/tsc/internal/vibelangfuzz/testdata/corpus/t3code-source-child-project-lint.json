@@ -1,0 +1,9 @@
+{
+  "source": "import * as NodeChildProcess from \"node:child_process\";\n/** @param {string} command */\nexport const launch = command => NodeChildProcess.spawn(command, [\"entry.ts\"]);\n",
+  "namespace": "NodeURL",
+  "maxCommentLines": 4,
+  "rules": {
+    "namespace-node-imports": "Import node:url as a namespace named NodeURL.",
+    "no-low-value-comments": "Cut this to 4 lines or fewer: keep the constraint, drop the background."
+  }
+}

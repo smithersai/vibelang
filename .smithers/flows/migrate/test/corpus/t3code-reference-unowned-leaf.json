@@ -1,0 +1,6 @@
+{
+  "vendor": ".repos/vendor/tsconfig.json",
+  "missing": "missing/tsconfig.json",
+  "source": "export const value = 1\n",
+  "rule": "They follow the reverse reference closure"
+}

@@ -1,0 +1,7 @@
+FuzzMigrationSourceChildLint namespace:mjs compiler VIP-34: full-wiring source-child output violates the target fixture lint policy; lane migfix-t3code-pack
+FuzzMigrationSourceChildLint namespace:js compiler VIP-34: full-wiring source-child output violates the target fixture lint policy; lane migfix-t3code-pack
+FuzzMigrationSourceChildLint namespace:existing-url compiler VIP-34: full-wiring source-child output violates the target fixture lint policy; lane migfix-t3code-pack
+FuzzMigrationSourceChildLint comment:mjs compiler VIP-34: full-wiring source-child output violates the target fixture lint policy; lane migfix-t3code-pack
+FuzzMigrationSourceChildLint comment:js compiler VIP-34: full-wiring source-child output violates the target fixture lint policy; lane migfix-t3code-pack
+FuzzMigrationSourceChildLint comment:existing-url compiler VIP-34: full-wiring source-child output violates the target fixture lint policy; lane migfix-t3code-pack
+FuzzMigrationSourceChildLint corpus:t3code-source-child-project-lint compiler VIP-34: full-wiring source-child output violates the target fixture lint policy; lane migfix-t3code-pack
