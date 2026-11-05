@@ -87,6 +87,8 @@ For a legacy bare prelude `Scope` type, `vibelang --fix` writes `Scope.Scope`; `
 
 The transitional bare `fork { ... }` spelling migrates with `vibelang --fix` to `fork effect { ... }` (VIP-2 and VIP-17). The insertion preserves the cold body, lexical captures, return value, Exit and declaration output; explicit Effect operands are unchanged. Retire the old spelling only after migration consumers have no remaining uses.
 
+A retired statement reports `EK0503`; a typed catch clause also reports warning `EK2112`. These diagnostics do not prevent a preserving migration. The fixed program must compile without errors.
+
 The `try statements` codemod migrates old Effect statement catches and finalizers to explicit Effects, `catch effect`, and native cleanup combinators under VIP-5. It keeps structural tag matching, handler order and the old successful finalizer input `Exit.void`. It refuses unsupported outward jumps, observed `do` completion and any rewrite that changes the declaration's [API identity](https://vibelang.sh/spec/001-functions#api-identity).
 
 The `wire compositions` codemod replaces the retired resolved `wire` intrinsic under VIP-24 with explicit `Layer.provideMerge` composition. It evaluates each supplied layer once in source order and preserves the dependency order of the old graph. Opaque, duplicate or cyclic graphs, spreads and rewrites that change the declaration's [API identity](https://vibelang.sh/spec/001-functions#api-identity) require manual migration. An unrelated local function named `wire` keeps its TypeScript meaning.

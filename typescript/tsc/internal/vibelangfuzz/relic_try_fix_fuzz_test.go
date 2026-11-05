@@ -2,12 +2,14 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
 
 func FuzzRelicTryStatementFix(f *testing.F) {
 	startShortBudget(f)
+	requireRelicTryRejectionQuote(f)
 	if !testing.Short() {
 		for _, key := range []string{"typed", "normal", "return", "failure", "defect", "interrupt", "combined", "do-completion", "held-result", "structural", "chained", "smithers-incur-finally", "smithers-invoke-finally", "cleanup-fails", "combined-cleanup-fails", "partial-return"} {
 			f.Add(key, byte(7))
@@ -46,7 +48,7 @@ func FuzzRelicTryStatementFix(f *testing.F) {
 		}
 		if key == "do-completion" {
 			source := fmt.Sprintf("export effect function main(){const events:string[]=[]; const result=do {try {%d;} finally (observed) {events.push(Exit.isSuccess(observed) ? String(observed.value) : observed._tag)}}; return {result,events}}", value)
-			checkRelicMigration(t, w, &node, "FuzzRelicTryStatementFix", key, source, "")
+			checkRelicMigration(t, w, &node, "FuzzRelicTryStatementFix", key, source, "refused:do expression")
 			return
 		}
 		if key == "typed" {
@@ -85,4 +87,14 @@ func FuzzRelicTryStatementFix(f *testing.F) {
 		}
 		checkRelicMigration(t, w, &node, "FuzzRelicTryStatementFix", key, source, "onExit")
 	})
+}
+
+const relicTryRejectionQuote = "At the start of a statement, `try` followed by `{`, on the same line or not, begins a `try` statement, as in JavaScript, and that is an error in effect code."
+
+func TestRelicTryRejectionQuoted(t *testing.T) { requireRelicTryRejectionQuote(t) }
+func requireRelicTryRejectionQuote(t testing.TB) {
+	text, err := os.ReadFile(SpecPath("002-running.md"))
+	if err != nil || !strings.Contains(string(text), relicTryRejectionQuote) {
+		t.Fatalf("missing retired-try rejection authority: %v", err)
+	}
 }
