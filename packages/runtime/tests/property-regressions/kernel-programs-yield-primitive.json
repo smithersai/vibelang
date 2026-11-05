@@ -1,0 +1,11 @@
+{
+  "property": "kernel-programs",
+  "input": {
+    "op": "yield",
+    "body": {
+      "op": "success",
+      "value": 2
+    }
+  },
+  "rule": "VIP-33 uses Effect primitives while runtime wrappers preserve Exit, interruption and finalizer behavior"
+}

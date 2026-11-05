@@ -1,0 +1,10 @@
+{
+  "property": "kernel-interruption",
+  "input": {
+    "body": {
+      "op": "interrupt"
+    },
+    "masked": false
+  },
+  "rule": "VIP-33 uses Effect primitives while runtime wrappers preserve Exit, interruption and finalizer behavior"
+}

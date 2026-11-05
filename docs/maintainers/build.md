@@ -1767,3 +1767,7 @@ TypeScript and the comparison gate both report `TS2583` for an unavailable
 self-identity checks, and changed public fields still produce type differences.
 
 The `//packages:runtime-dist` build runs Node's package-entry export audit after compiling the runtime. The audit checks every runtime value and identity and replays generated family matchers. Because the conditional `//packages:runtime-package` gate depends on this build, export drift fails before its package tests.
+
+Kernel differential fixtures use Effect's interruption and yielding primitives. Their runtime branch still exercises the runtime's catch, masks, restore, service provision and finalization wrappers; compare the full Exit and ordered trace with the independent Effect branch.
+
+The `//packages:runtime-kernel-contracts` target replays retained interruption/yield inputs and generated programs against Effect, preserving complete Exit and trace comparisons. The conditional runtime gate selects it for runtime and property-runner changes.

@@ -83,6 +83,19 @@ Applications normally write `.vibe` programs and let the compiler pick these
 helpers. Programs stay lazy: a helper that receives a program starts no root
 fiber; an explicit Effect runner starts execution at the application boundary.
 
+### Effect primitives in TypeScript interop
+
+Use `Effect.interrupt` and `Effect.yieldNow` as Effect values when composing
+TypeScript interop code. They work with the runtime's masking, catch, service
+provision and finalization helpers.
+
+```ts
+import { Effect } from "effect"
+
+const interrupted = Effect.interrupt
+const yielded = Effect.andThen(Effect.yieldNow, Effect.succeed(1))
+```
+
 ## Effect version guard
 
 At module load, `version.js` statically imports the public `effect/package.json`

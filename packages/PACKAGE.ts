@@ -32,6 +32,15 @@ const runtimeTest = S.Shell.Test({
   timeout: "15m"
 })
 
+const runtimeKernelContracts = S.Shell.Test({
+  summary: "Runtime wrappers preserve full Exits, interruption masks and finalizer traces against Effect.",
+  shell: "cd packages/runtime && bun test --timeout 60000 tests/kernel.property.test.ts",
+  data: [runtimeDist, ...install, S.file("runtime/tests/kernel.property.test.ts"), S.file("runtime/tests/property-programs.ts"), S.glob("runtime/tests/property-regressions/**"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/history/src/217-part2-ch17-failures.md"), S.file("//docs/design/history/src/320-part3-ch20-machine.md")],
+  tools: [S.Host.bin("bun"), S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "2m"
+})
+
 // A small pre-merge check for package entrypoints, export identity and the Effect pin.
 const runtimePackageTest = S.Shell.Test({
   summary: "Check the runtime package entries, ABI export identity and Effect version guard.",
@@ -231,6 +240,7 @@ export const Package = S.Package({
     "runtime-dist": runtimeDist,
     "runtime-test": runtimeTest,
     "runtime-package": runtimePackageTest,
+    "runtime-kernel-contracts": runtimeKernelContracts,
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
     "migrate-toolchain-baseline": migrateToolchainBaseline,

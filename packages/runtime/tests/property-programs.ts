@@ -57,13 +57,13 @@ function runtime(program: Program, trace: Trace): Run {
     switch (p.op) {
       case "success": return Effect.succeed(p.value)
       case "read": return Effect.tap(Value, value => Effect.sync(() => { trace.push(["read", value]) }))
-      case "interrupt": return Runtime.interrupt()
+      case "interrupt": return Effect.interrupt
       case "cause": return Effect.failCause(Cause.fromReasons(p.reasons.map(r =>
         r.tag === "Fail" ? Cause.makeFailReason(r.value) : r.tag === "Die" ? Cause.makeDieReason(r.value) : Cause.makeInterruptReason(900000000 + r.value))))
       case "then": return Effect.andThen(visit(p.body), visit(p.next))
       case "catch": return (p.kernel ? catchExpected : Runtime.$catch)(visit(p.body), error => Effect.andThen(
         Effect.sync(() => { trace.push(["catch", error]) }), visit(p.next)))
-      case "yield": return Effect.andThen(Runtime.yieldNow(), visit(p.body))
+      case "yield": return Effect.andThen(Effect.yieldNow, visit(p.body))
       case "mask": return Runtime.uninterruptible(visit(p.body))
       case "restore": return Runtime.restore(visit(p.body))
       case "interruptible": return Runtime.interruptible(visit(p.body))
