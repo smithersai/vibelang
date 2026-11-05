@@ -1063,6 +1063,12 @@ const targets = {
     [node],
     "2m"
   ),
+  "parser-error-registration-members": goVibelang(
+    "Error parser snapshots retain generated matcher registration and every authored class member.",
+    `CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -timeout=5m ./internal/parser && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestErrorRegistrationMembersQuoted|FuzzErrorRegistrationMembers)$'`,
+    [Tsc["vibelangfuzz-files"]],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

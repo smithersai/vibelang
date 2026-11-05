@@ -72,6 +72,7 @@ func TestErrorDeclarationRootKeepsClassMembers(t *testing.T) {
 	}
 	got := strings.Join(classMembers(class), "\n")
 	want := strings.Join([]string{
+		"ClassStaticBlockDeclaration synthesized",
 		"PropertyDeclaration docs StaticKeyword ReadonlyKeyword",
 		"PropertyDeclaration #seen",
 		"Constructor",
@@ -97,6 +98,7 @@ export const after = 1`)
 	}
 	got := strings.Join(classMembers(class), "\n")
 	want := strings.Join([]string{
+		"ClassStaticBlockDeclaration synthesized",
 		"PropertyDeclaration _tag DeclareKeyword ReadonlyKeyword synthesized",
 		"PropertyDeclaration extra ReadonlyKeyword DeclareKeyword",
 		"Constructor synthesized",
@@ -105,8 +107,8 @@ export const after = 1`)
 	if got != want {
 		t.Fatalf("members:\n%s\nwant:\n%s", got, want)
 	}
-	if got := strings.Join(classMembers(file.Statements.Nodes[1]), "\n"); got != "PropertyDeclaration _tag DeclareKeyword ReadonlyKeyword synthesized" {
-		t.Fatalf("a subclass without fields has only its tag: got\n%s", got)
+	if got := strings.Join(classMembers(file.Statements.Nodes[1]), "\n"); got != "ClassStaticBlockDeclaration synthesized\nPropertyDeclaration _tag DeclareKeyword ReadonlyKeyword synthesized" {
+		t.Fatalf("a subclass without fields keeps its matcher registration and tag: got\n%s", got)
 	}
 }
 

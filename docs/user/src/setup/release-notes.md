@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Error declarations retain authored class members and their order while installing their generated matcher before static initialization.
+
 - A legacy abstract error root could reject its own subclass in an `is` or `match` pattern; it now retains native family matching.
 - Diagnostic identity updates preserve authored source and project configuration without depending on generated declarations.
 

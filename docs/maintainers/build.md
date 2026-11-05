@@ -2041,3 +2041,5 @@ Destructuring-default differential observers normalize an `Exit` with `Exit.matc
 The `//:abstract-error-family-membership` target compares legacy abstract roots with native error classes across subclasses, aliases, tags and unrelated values.
 
 The `//:native-identity-receipt-inputs` target validates frozen source and configuration inputs on clean source trees. Generated declaration sidecars are compiler output, not additional authored inputs.
+
+The `//:parser-error-registration-members` target checks the complete parser suite and generated matcher blocks across error forms and authored member variations.
