@@ -28,6 +28,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - With an Oxlint configuration, `vibelang lint` could skip native files behind a solution configuration. It now follows `references` during discovery and `-p` selection.
 
+- Converting an `async` function with an error per `await` could duplicate an existing error name or capture a local binding. Generated error declarations now use fresh names.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.

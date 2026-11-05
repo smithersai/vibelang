@@ -246,11 +246,27 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	}
 	plain := slices.Clone(common)
 	mapped := slices.Clone(common)
-	var errorNames []string
+	var errorNames, takenNames []string
+	if len(awaits) > 0 {
+		// The declaration and every mapper reference need a fresh name.
+		// Inner bindings can shadow it even when its outer scope is free.
+		var collect func(*ast.Node) bool
+		collect = func(node *ast.Node) bool {
+			if ast.IsIdentifier(node) {
+				takenNames = append(takenNames, node.Text())
+			}
+			return node.ForEachChild(collect)
+		}
+		rc.file.AsNode().ForEachChild(collect)
+		for _, symbol := range rc.c.GetSymbolsInScope(fn, ast.SymbolFlagsValue|ast.SymbolFlagsType|ast.SymbolFlagsNamespace) {
+			takenNames = append(takenNames, symbol.Name())
+		}
+	}
 	for _, await := range awaits {
 		promise := await.Expression()
 		plain = append(plain, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "")))
-		name := uniqueName(failureName(promise), errorNames)
+		name := uniqueName(failureName(promise), takenNames)
+		takenNames = append(takenNames, name)
 		errorNames = append(errorNames, name)
 		mapped = append(mapped, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "(cause) => new "+name+"({ cause })")))
 	}
