@@ -935,15 +935,22 @@ test("settled success receipts cannot certify a different producer", async () =>
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 
+// Keep this producer stable across conversion and repair. Changing the compiler
+// after fix exercises conversion freshness instead of declaration recovery.
+function cleanOracleCompiler(f) {
+  put(f.root, "tool/compiler.cjs", text(f.root, "tool/compiler.cjs")
+    .replace(/^if \(pkg === "(?:core|app|consumer)".*$/gm, ""))
+}
+
 test("one-pass repair restores a module with an unproven stock declaration baseline", async () => {
   const corpus = readJson(fileURLToPath(new URL("./corpus/t3code-onepass-stock-declaration.json", import.meta.url)))
   const f = await fixture()
   try {
+    cleanOracleCompiler(f)
     await onePassStep("plan", { run: f.run, scope: f.scope })
     await onePassStep("rename", { run: f.run })
     await onePassStep("fix", { run: f.run, jobs: 1 })
     const p = paths(f.run)
-    put(f.root, "tool/compiler.cjs", "#!/usr/bin/env node\nprocess.exit(0)\n")
     const unproven = corpus.unproven
     writeJson(p.compile("01"), { batch: "01" })
     writeJson(p.verify("01"), { ok: false, declarationOracle: { unproven: [unproven] } })
@@ -975,10 +982,10 @@ test("property: one-pass oracle recovery restores only live batch modules and ne
   await fc.assert(fc.asyncProperty(scenario, async ({ files, duplicate, passed }) => {
     const f = await fixture()
     try {
+      cleanOracleCompiler(f)
       await onePassStep("plan", { run: f.run, scope: f.scope })
       await onePassStep("rename", { run: f.run })
       await onePassStep("fix", { run: f.run, jobs: 1 })
-      put(f.root, "tool/compiler.cjs", "#!/usr/bin/env node\nprocess.exit(0)\n")
       const p = paths(f.run)
       const entries = files.map(file => ({ ...corpus.unproven, file }))
       writeJson(p.verify("01"), {
