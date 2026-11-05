@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Failure-alias examples could still report a resolved declaration-tag assignment gap. They now require the correct `EK0402` rejection and retain the saved examples.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.

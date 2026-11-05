@@ -783,6 +783,12 @@ const targets = {
   // parser and prelude change, made 3f57b5b4694e's prelude pass rewrite every Effect.x call to its bare global:
   // the tsforms and migrate fixed twins changed again on a second --fix run and TestFixGateChecksAFewTimes built
   // more programs than its bound, and only post-merge's //:go-vibelang and //:spec-tests saw it.
+  "go-failure-aliases": goVibelang(
+    "Failure aliases retain their declaration-site tags without admitting ordinary throwing calls.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestFailuresSpec|FuzzFailuresSpec)$/^(alias-declaration-tag-not-admitted|foreign-alias-tag-.*)$' ./internal/vibelangfuzz/`,
+    [Tsc["vibelangfuzz-files"]],
+    "10m"
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,

@@ -1722,3 +1722,5 @@ The five fixed variance forms use guarded ES5 programs for native TypeScript
 validation and API comparison. Their original target and strictness settings
 remain in force. The `in`, `out` and `in out` forms, class/interface/type
 shapes and four generated changed-field samples remain enabled.
+
+The `//:go-failure-aliases` target checks that failure aliases preserve the declaration-tag admission rule, including repaired inputs retained in the failure corpus.

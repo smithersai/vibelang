@@ -25,8 +25,6 @@ FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
 
 # Additional chapter-3 boundaries on post-VIP-1 main.
-FuzzFailuresSpec feature:alias-declaration-tag-not-admitted compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0402 at the marked code; main draws no error; lane nothrow-impl
-FuzzFailuresSpec corpus:alias-declaration-tag-not-admitted compiler VIP-4: minimized reproduction of feature:alias-declaration-tag-not-admitted; lane w2-throw
 FuzzFailuresSpec feature:assign-class-override compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws TS2416; lane nothrow-impl
 FuzzFailuresSpec corpus:assign-class-override compiler VIP-4: minimized reproduction of feature:assign-class-override; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec feature:assign-service-layer compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4301, EK9205; lane nothrow-impl
