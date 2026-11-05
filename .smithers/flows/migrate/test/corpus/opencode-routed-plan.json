@@ -1,0 +1,4 @@
+{
+  "source": "opencode native bundle entry importing a migrated dependency",
+  "test": "export const bundle = () => Bun.build({ entrypoints: [\"src/entry.ts\"], target: \"node\", throw: false })\n"
+}

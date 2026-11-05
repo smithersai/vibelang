@@ -32,7 +32,7 @@ const positive = (v, fallback, name, max = Infinity) => {
   return n
 }
 
-export function planScope(root, scope, { nativeConfigs = [] } = {}) {
+export function planScope(root, scope, { nativeConfigs = [], routeBundledImports = false } = {}) {
   const files = [], deferred = []
   for (const file of new Set(scope.map(f => f.trim()).filter(Boolean))) {
     if (posix.isAbsolute(file) || file.split("/").includes("..") || file !== posix.normalize(file)) throw new Error("scope paths must be repository-relative: " + file)
@@ -41,7 +41,7 @@ export function planScope(root, scope, { nativeConfigs = [] } = {}) {
     else if (/\.(?:ts|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
     else deferred.push({ file, reason: file.endsWith(".tsx") ? "JSX source is not supported in .vibe; keep .tsx" : file.endsWith(".vibe") ? "already .vibe; no rename needed" : "not a .ts or .mts source module; keep its source format" })
   }
-  const bundled = testBundleDeferrals(root, files)
+  const bundled = testBundleDeferrals(root, files, { routed: routeBundledImports })
   const retained = new Set(bundled.map(d => d.file))
   deferred.push(...bundled)
   for (const bare of bareRunnerDeferrals(root, files).deferred) {
@@ -492,7 +492,7 @@ export async function onePassStep(step, options) {
   if (step === "plan") {
     const setup = readJsonIf(p.setup, {})
     const nativeConfigs = setup.wired?.nativeViteConfigs ?? setup.nativeViteConfigs ?? []
-    const plan = planScope(config.target, readFileSync(resolve(options.scope), "utf8").split(/\r?\n/), { nativeConfigs })
+    const plan = planScope(config.target, readFileSync(resolve(options.scope), "utf8").split(/\r?\n/), { nativeConfigs, routeBundledImports: Boolean(config.routeBundledImports) })
     const deferred = pathReadDeferrals(config.target, plan.batches[0].files, await Jj.trackedFiles(config.target))
     const keep = new Set(deferred.map(d=>d.file))
     plan.batches[0].files = plan.batches[0].files.filter(f=>!keep.has(f))
