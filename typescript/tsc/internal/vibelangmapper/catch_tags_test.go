@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -28,7 +29,7 @@ func TestCatchTagExhaustiveStock(t *testing.T) {
 		"export declare function inferredDecl(): Effect.Effect<number, never, never>;",
 		"export declare function partial(data: boolean): Effect.Effect<number, DataFailure, never>;",
 	} {
-		if !strings.Contains(declarations, want) {
+		if !hasCatchEffectDeclaration(declarations, want) {
 			t.Fatalf("missing %s\n%s", want, declarations)
 		}
 	}
@@ -84,4 +85,51 @@ func catchTagStock(t *testing.T, source string) (string, string, error) {
 		t.Fatal(readErr)
 	}
 	return string(declarations), string(output), err
+}
+
+// The namespace used by a native try migration is an implementation detail.
+// Compare the expected type through aliases imported from the actual module;
+// a similarly named foreign namespace cannot satisfy the declaration check.
+var catchEffectNamespaceImport = regexp.MustCompile(`(?m)^import \* as ([^ ]+) from "effect/Effect";?$`)
+
+func hasCatchEffectDeclaration(declarations, want string) bool {
+	if strings.Contains(declarations, want) {
+		return true
+	}
+	for _, imported := range catchEffectNamespaceImport.FindAllStringSubmatch(strings.ReplaceAll(declarations, "\r\n", "\n"), -1) {
+		candidate := strings.ReplaceAll(want, "Effect.Effect<", imported[1]+".Effect<")
+		if strings.Contains(declarations, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func FuzzCatchDeclarationNamespaceAliases(f *testing.F) {
+	for alias := range uint8(4) {
+		for mode := range uint8(8) {
+			f.Add(alias, mode)
+		}
+	}
+	f.Fuzz(func(t *testing.T, alias, mode uint8) {
+		name := []string{"Effect_1", "$nativeTryEffect6", "NativeEffect", "Σ"}[alias%4]
+		mode %= 8
+		module := "effect/Effect"
+		if mode&1 != 0 {
+			module = "./foreign.js"
+		}
+		actual := "export declare function recovered(): " + name + ".Effect<number, never, never>;"
+		want := "export declare function recovered(): Effect.Effect<number, never, never>;"
+		if mode&2 != 0 {
+			actual = strings.Replace(actual, "never, never", "Error, never", 1)
+		}
+		declarations := "import * as " + name + " from \"" + module + "\";\n" + actual
+		if mode&4 != 0 {
+			declarations = strings.ReplaceAll(declarations, "\n", "\r\n")
+		}
+		expected := mode&3 == 0
+		if got := hasCatchEffectDeclaration(declarations, want); got != expected {
+			t.Fatalf("namespace %s mode %d: got %t, want %t\n%s", name, mode, got, expected, declarations)
+		}
+	})
 }
