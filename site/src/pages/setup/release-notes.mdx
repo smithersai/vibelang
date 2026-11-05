@@ -14,8 +14,13 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - The Effect type guide now shows the grouping used when repairing nested Effects and array boundaries.
+- The error guide now explains why a reserved tag payload and an inheritance clause each report an error, and how a native class retains their contract.
+- The error guide now explains how bodyless, empty and payload-bearing ambient schema errors convert to erased native classes.
 
 - The grammar admission audit could stop on an async schema field with a `static` prefix. It now records the existing modifier-diagnostic gap while preserving static properties, methods and keyword-named fields as controls.
+- Extracting a generic foreign method into a local `const` lost its thrown type and could require an unnecessary bridge. Aliases now keep the receiver’s substituted contract.
+- Long Go checks could omit compiler and test subprocesses from their progress records when Go started them on another thread. Progress sampling now includes those thread-owned subprocesses.
+- A whole-repository migration could change documentation examples or JSON test data and spend excessive time scanning prose. It now leaves those files unchanged while updating source and configuration paths.
 
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
@@ -26,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The CLI guide now explains how an explicit service key keeps standalone migrations focused on their intended repair.
 - The CLI guide now explains how to call throwing validation helpers from Effect code while retaining the original thrown value.
 - The devtools guide's `hostname` repair example called an Effect like a function and failed to compile. It now runs the service's Effect-valued property with `try`.
+- Invalid whole-shape service keys could also report a misleading inheritance error. They now report `EK0901` once and retain independent errors.
+- Selected Effect lint rules skipped Vibe inputs or reported the legacy floating-Effect error. They now use the imported rule, severity and exclusions on both source types; `--fix` preserves a deliberate discard with `void (expression)`.
 - Generated error-family matchers could fail through the normal Node or Bun runtime import because matcher registration was missing from the guarded entry. That entry now exports the same registration helper as the runtime ABI, with a build check preventing export drift.
 - The migration planner could keep a module in TypeScript after `Bun.build` excluded its package from the bundle. It now follows proven `packages: "external"` boundaries while retaining local source dependencies.
 - The runtime interop guide now shows Effect's interruption and yielding values alongside the runtime's masking and finalization helpers.
