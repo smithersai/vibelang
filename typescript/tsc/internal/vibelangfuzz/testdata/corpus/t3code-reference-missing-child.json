@@ -1,0 +1,11 @@
+{
+  "source": "export const x = 1;\n",
+  "quote": "They follow the reverse reference closure",
+  "vendor": ".repos/vendor/tsconfig.json",
+  "references": [
+    {
+      "path": "./missing"
+    }
+  ],
+  "changed": "owned/src/index.vibe"
+}
