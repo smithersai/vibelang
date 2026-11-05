@@ -2130,3 +2130,5 @@ The grouped schema boundary check retains exactly one inheritance error after a 
 The `//:build-repair-cli-contracts` target checks build aliases, repair flag order, repeated runs and source line endings against VIP-34. It also retains watch refusal controls and the dependency-order, cycle, ownership and cancellation tests for project builds.
 
 The `//:abstract-error-constructor-migrations` target checks abstract root and inherited constructor repairs across ordinary, migration-only and VIP-only runs, including imported bases, namespaces, Unicode and declaration preservation. Runtime controls retain field filtering, tags, getters, constructor identity and repeated repair behavior.
+
+The binding-free pattern check compiles checking projections with actual runtime cache types, independently of prelude export inventory, and verifies empty, literal, nested, negated and alternative patterns plus iterator closing and getter reads.

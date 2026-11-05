@@ -1245,6 +1245,12 @@ const targets = {
     [go, node, bun],
     "20m"
   ),
+  "binding-free-pattern-cache-scopes": goVibelang(
+    "Binding-free iterable tests retain type-checking scope and iterator cleanup",
+    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run \"^TestBindingFreePatternIteratorCleanup$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=8m -run \"^(TestBindingFreePatternCacheQuoted|FuzzBindingFreePatternCache)$\" ./internal/vibelangfuzz",
+    [Typescript.compiler, Typescript.mapper],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

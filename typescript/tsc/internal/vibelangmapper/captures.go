@@ -64,6 +64,39 @@ func (w *printer) isFunction(n *ast.Node) bool {
 		return false
 	}
 	w.capture(name, subject)
+	if ast.IsBlock(arrow.Body()) {
+		// Keep direct subject tests for TypeScript flow. The checking-only cache
+		// declaration must remain visible after the generated function is inlined.
+		if w.p.cacheWitnesses == nil {
+			w.p.cacheWitnesses = map[string]bool{}
+		}
+		at := 0
+		if len(w.p.file.Statements.Nodes) != 0 {
+			at = w.p.tokenStart(w.p.file.Statements.Nodes[0])
+		}
+		for _, cache := range parser.VibeLangMatchCacheBindings(arrow.Body()) {
+			local := w.identifier(cache)
+			if !w.p.cacheWitnesses[local] {
+				factory := w.p.names.helper("$matchCache")
+				w.p.plan.witness(at, "declare const "+local+": typeof "+factory+" extends (...args: any[]) => infer Cached ? Cached : never;\n")
+				w.p.cacheWitnesses[local] = true
+			}
+		}
+		saved := w.runtimeText
+		w.runtimeText = false
+		checking := "("
+		if !readsName(body, name.Text()) {
+			checking = "(void " + w.patternText(subject, env{}) + ", "
+		}
+		checking += w.patternText(body, env{}) + ")"
+		w.runtimeText = true
+		runtimeBody := w.patternText(arrow.Body(), env{})
+		runtimeSubject := w.patternText(subject, env{})
+		w.runtimeText = saved
+		runtime := "((" + w.identifier(name) + ") => " + runtimeBody + ")(" + runtimeSubject + ")"
+		w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{checking, runtime}})
+		return true
+	}
 	checking := "("
 	if !readsName(body, name.Text()) {
 		checking = "(void " + w.patternText(subject, env{}) + ", "

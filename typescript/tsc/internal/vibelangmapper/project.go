@@ -145,6 +145,8 @@ type env struct {
 
 // projector holds the state of one Project call.
 type projector struct {
+	cacheWitnesses map[string]bool
+
 	file *ast.SourceFile
 	text string
 	// keywords are the VIP keywords lower writes over (vipKeywords).
