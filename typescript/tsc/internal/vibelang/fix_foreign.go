@@ -176,7 +176,9 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + defectBridgeIdentity + " }))"
 	// A contracted call formerly lowered through $trusted: listed classes failed
 	// through E; every other exception was a defect. Preserve that distinction.
-	if needsExplicitThrowsBridge(c, call) {
+	// Class-base evaluation formerly ran directly in the generator, so
+	// even a listed intrinsic exception was a defect at this site.
+	if !inClassBase(call) && needsExplicitThrowsBridge(c, call) {
 		failures := legacyForeignCallFailures(c, call)
 		if len(failures) > 0 {
 			var tests, parameters, classes []string
@@ -461,6 +463,8 @@ func (a *analyzer) runsOutOfOrder(statement, call *ast.Node, inputs []boundaryIn
 func standsAlone(node *ast.Node) bool {
 	parent := node.Parent
 	switch {
+	case ast.IsExpressionWithTypeArguments(parent):
+		return false // a class heritage expression needs a parenthesized try
 	case ast.IsPropertyAccessExpression(parent), ast.IsElementAccessExpression(parent), ast.IsCallExpression(parent), ast.IsNonNullExpression(parent):
 		return parent.Expression() != node
 	case ast.IsConditionalExpression(parent):

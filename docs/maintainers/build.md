@@ -1834,3 +1834,5 @@ The `//:declaration-contract-twins` check compares ordinary, unmodified stock de
 The `//:trusted-callback-contracts` check verifies foreign callback contracts, native constructor shadowing and all runtime observations in the throwing-callback fixture.
 
 The `//:declaration-manifest-retirement` target verifies complete package file sets against stock TypeScript in five emission layouts, checks that no provenance manifest is emitted, and retains the forms fixture’s exact declarations and runtime observations. Foreign-call contracts travel in declarations; stale provenance files do not grant permission.
+
+The `//:class-evaluation-repairs` check exercises preserving repairs in class bases and generated schema error bases, including parentheses, nested calls and repeated fixes.

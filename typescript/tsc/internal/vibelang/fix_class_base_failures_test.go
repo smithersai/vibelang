@@ -9,12 +9,14 @@ import (
 
 func TestClassBaseFailureFix(t *testing.T) {
 	for name, declaration := range map[string]string{
-		"heritage":    `class C extends JSON.parse("invalid") {}`,
-		"struct":      `schema error E { value: { readonly [JSON.parse("invalid")]: string } }`,
-		"optional":    `schema error E { value?: { readonly [JSON.parse("invalid")]: string } }`,
-		"array":       `schema error E { value: Array<{ readonly [JSON.parse("invalid")]: string }> }`,
-		"tuple":       `schema error E { value: [{ readonly [JSON.parse("invalid")]: string }] }`,
-		"nested-call": `schema error E { value: { readonly [JSON.parse(JSON.stringify("key")!)]: string } }`,
+		"heritage":             `class C extends JSON.parse("invalid") {}`,
+		"heritage-parentheses": `class C extends (JSON.parse("invalid")) {}`,
+		"heritage-nested-call": `class C extends JSON.parse(JSON.stringify("key")!) {}`,
+		"struct":               `schema error E { value: { readonly [JSON.parse("invalid")]: string } }`,
+		"optional":             `schema error E { value?: { readonly [JSON.parse("invalid")]: string } }`,
+		"array":                `schema error E { value: Array<{ readonly [JSON.parse("invalid")]: string }> }`,
+		"tuple":                `schema error E { value: [{ readonly [JSON.parse("invalid")]: string }] }`,
+		"nested-call":          `schema error E { value: { readonly [JSON.parse(JSON.stringify("key")!)]: string } }`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			source := "export effect function f(): number!! {\n " + declaration + "\n return 1\n}\n"
