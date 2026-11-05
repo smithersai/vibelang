@@ -11,6 +11,7 @@ import (
 
 // Chapter 003: the predicate's narrowed value, sentinel safety, and defect
 // channel survive the EK0403 repair. Every fixed output is a compiling case.
+// rule-evidence: docs/design/src/007-tooling.md#4aeb8089114b40e0 | For EK0403 type predicates in an if condition, the bridge returns isResolved(news) ? news : undefined from its try thunk and replaces narrowed-scope references with an unshadowed const, provided the tested identifier is an unreassigned const or parameter and the checker's predicate type excludes undefined; otherwise it offers the boolean bridge with the refusal reason in the fix title, and predicate throws remain defects with the same Exit as the Effect.gen twin.
 func TestForeignPredicateFixTwins(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {

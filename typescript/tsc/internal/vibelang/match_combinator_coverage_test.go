@@ -131,6 +131,8 @@ func combinatorDeclarations(t *testing.T, source string) string {
 	return text
 }
 
+// rule-evidence: docs/design/vips/0007-match.md#8c614925acdf1e60 | An irrefutable capture on either side of and preserves the other pattern's coverage, including nested conjunctions and captures within a property or extractor argument.
+// rule-evidence: docs/design/vips/0007-match.md#6fb2569a9d96bef4 | This corrects the blanket and exclusion above under Will's explicit capture-preservation rule.
 func TestMatchNestedBindingCombinatorCoverage(t *testing.T) {
 	for name, source := range map[string]string{
 		"right":     `export function f(x:boolean){return match(x){when true and let v:v;when false:false;}}`,
@@ -154,6 +156,7 @@ func TestMatchNestedBindingCombinatorCoverage(t *testing.T) {
 	}
 }
 
+// rule-evidence: docs/design/src/004-match.md#af3b7ca0bf17325b | An and with two refutable conjuncts, not, regex, relational, array, built-in matcher and user-matcher patterns cover nothing, so those arms need a default.
 func TestMatchCaptureKeepsRefutableAlternative(t *testing.T) {
 	for _, pattern := range []string{
 		"(true and true) or false",

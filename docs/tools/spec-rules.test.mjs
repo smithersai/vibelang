@@ -495,6 +495,7 @@ test("r26 OPUS-3: an exported effect function's counterpart stays a function dec
   }
 })
 
+// rule-evidence: docs/design/src/900-appendices.md#8f0f63ef7ea30999 | The additional retained compiler and migration assignments are EK1011, EK2112, EK2113, EK2120, EK2121, EK9001, EK9002, EK9003 and EK9004.
 test("retained diagnostic assignments need an explicit block exception", () => {
   const codes = ["EK1011", "EK2112", "EK2113", "EK2120", "EK2121", "EK9001", "EK9002", "EK9003", "EK9004"]
   const text = read(repository, appendix)
