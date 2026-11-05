@@ -1,0 +1,12 @@
+// expect: EK0107
+// docs/design/src/001-functions.md: Function constructor reads retain their static type.
+export function read0() { const f = (() => 1) as Function & { tag?: number }; return f.constructor }
+export function read1() { type Tagged = Function & { tag?: number }; const f = (() => 1) as Tagged; return f["constructor"] }
+export function read2() { interface Callable extends Function { tag?: number }; const f = (() => 1) as Callable; return f.constructor }
+export function read3() { function read<T extends Function>(f: T) { return f.constructor }; return read }
+export function read4() { function read<T extends Function & { tag?: number }>(f: T) { return f["constructor"] }; return read }
+export function read5() { interface Callable extends Function { tag?: number }; function read<T extends Callable>(f: T) { return f.constructor }; return read }
+export function read6() { const f = null as (Function & { tag?: number }) | null; return f?.constructor }
+export function read7() { interface Callable extends Function { tag?: number }; const f = undefined as Callable | undefined; return f?.["constructor"] }
+export function read8() { interface Left extends Function { left: 1 }; interface Right extends Function { right: 2 }; const f = (() => 1) as unknown as Left | Right; return f.constructor }
+export function read9() { const o = {} as { f: Function & { tag?: number } }; return o.f.constructor }

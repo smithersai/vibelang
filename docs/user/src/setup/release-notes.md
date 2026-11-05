@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Reading a function constructor through a `Function` intersection, inherited interface or generic constraint could miss `EK0107`. Those reads now report the same restriction as a direct `Function` receiver.
 - Failure-alias examples could still report a resolved declaration-tag assignment gap. They now require the correct `EK0402` rejection and retain the saved examples.
 - An `is` binding in a `do…while` condition reported `EK4703`. It now has fresh loop-head cells for each condition: the initial body sees uninitialized cells, closures retain their own iteration, and `continue`, `break` and labels keep their meaning. A skipped `for` condition or update binding now also stays uninitialized instead of inheriting the previous value.
 - Checking diagnostic documentation could stop with a TypeScript syntax error in obsolete variant-pattern exemptions. The check now loads correctly and uses the current diagnostics.
@@ -164,6 +165,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| Reading `f.constructor` when `f` has a `Function` intersection, inherited interface or generic constraint | `EK0107` now applies through those types. Keep native constructor access in a `.ts` or `.js` adapter, as for a direct `Function` receiver. |
 | A `data` variant constructor as a pattern: `when Delivery.Sent:`, `when Delivery.Sent { let tracking }:` or `delivery is Delivery.Sent` | Match the tag with an object pattern (`EK0702`): `when { _tag: "Sent" }:`, `when { _tag: "Sent", let tracking }:`, `delivery is { _tag: "Sent" }`. `vibelang --fix` rewrites a bare variant and a variant with a field list, and refuses a site whose rewrite would report another error. Two forms need a hand: a `let` binding of an optional field, which the tag pattern would require to be present, reads the field from the narrowed subject instead, `delivery.carrier`; a subject of no tagged type whose fields the arm reads needs the data type's own guard, `Delivery.$is("Sent")(value)`, since a tag pattern narrows only a tagged union. |
 | Node value imports written as `import FS = require("node:fs")` bypassed `EK4402` | `vibelang --fix` writes `import type` for aliases with no value use. Move actual Node value access to a `.ts` adapter or use the named Effect service. `export import` keeps its value export and requires that manual repair. |
 | Unicode escapes in an `error`, `schema`, `service` or `data` declaration keyword, such as `er\u0072or E` | Write the literal keyword (`TS1260`). Run `vibelang --fix` to unescape each keyword while preserving the declaration, escaped names and ordinary identifier expressions. |

@@ -130,7 +130,12 @@ func isFunctionValue(c *checker.Checker, expression *ast.Node) bool {
 	if t == c.GetGlobalFunctionType() {
 		return true
 	}
-	return len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) > 0 || len(c.GetSignaturesOfType(t, checker.SignatureKindConstruct)) > 0
+	if len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) > 0 || len(c.GetSignaturesOfType(t, checker.SignatureKindConstruct)) > 0 {
+		return true
+	}
+	// Function has no call signature. Its intersections, derived interfaces
+	// and constrained type parameters still describe function values.
+	return c.GetPropertyOfType(t, "bind") != nil && c.IsTypeAssignableTo(t, c.GetGlobalFunctionType())
 }
 
 // Assertion wrappers erase without reading the underlying reference. Deleting

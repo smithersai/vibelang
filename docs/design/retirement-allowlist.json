@@ -1415,5 +1415,15 @@
       "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status: accepted by Will, 2026-10-28; its legacy-JavaScript amendment rejects arguments, eval, global Function and with statements. This records existing published acceptance, not a new approval."
     },
     "reason": "This diagnostic is unchanged in the exact snapshot. Only the fixture's expected-code comment and the independently required EK0401 snapshot entry change; its executable source was already rejected. A matching previous-compiler receipt confirms zero retirements. Retain this narrow record for offline prechecks without that oracle."
+  },
+  {
+    "code": "EK0107",
+    "case": "typescript/vibelang/cases/legacy-structural-function-constructor.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md: accepted VIP-1, amendment Function through .constructor (decided detail 75), requires EK0107 on constructor reads from function types or Function. This records the existing published restriction, not a new language decision."
+    },
+    "reason": "The constructor-read restriction follows the structural Function type through intersections, derived interfaces and generic constraints. The new witnesses exercise that already accepted ban. Values typed any, ordinary objects and write-only or delete operations keep their existing rules. Code that needs a native function constructor belongs in a .ts or .js adapter, as the accepted legacy-JavaScript rule states."
   }
 ]
