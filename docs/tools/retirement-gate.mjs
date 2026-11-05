@@ -104,6 +104,12 @@ export function requiredRetirements(before, after, cases) {
   }
   return out
 }
+// Only the harness's first-line code list is metadata. Preserve every other
+// source byte, including compiler directives, configuration and line separators.
+function failSourceForComparison(path, text) {
+  if (!/\.(vibex?|ts|mts|cts)$/.test(path) || path.endsWith(".d.ts")) return text
+  return text.replace(/^\/\/ expect:[ \t]*(?:(?:EK|TS)\d+(?:[ \t]+(?:EK|TS)\d+)*)?[ \t]*(?=\r?\n|$)/, "// expect:")
+}
 export function changedFailCases(before, after, changed) {
   const dirs = new Set(changed.map(p => /^(typescript\/vibelang\/cases\/[^/]+\.fail)\//.exec(p)?.[1]).filter(Boolean))
   return [...dirs].filter(dir => after.paths.some(p => p.startsWith(dir + "/"))).map(dir => {
@@ -111,7 +117,7 @@ export function changedFailCases(before, after, changed) {
     const oldSources = before.paths.filter(p => p.startsWith(dir + "/") && !p.startsWith(dir + "/expected/"))
     const newSources = after.paths.filter(p => p.startsWith(dir + "/") && !p.startsWith(dir + "/expected/"))
     const sameSources = JSON.stringify(oldSources) === JSON.stringify(newSources) &&
-      newSources.every(p => before.read(p) === after.read(p))
+      newSources.every(p => failSourceForComparison(p, before.read(p)) === failSourceForComparison(p, after.read(p)))
     const oldErrors = new Set(before.paths.filter(p => p.startsWith(dir + "/expected/"))
       .flatMap(p => [...before.read(p).matchAll(/\berror ((?:EK|TS)\d{4,})\b/g)].map(m => m[1])))
     const codes = new Set(expectations.flatMap(p => [...after.read(p).matchAll(/\berror ((?:EK|TS)\d{4,})\b/g)].map(m => m[1]))

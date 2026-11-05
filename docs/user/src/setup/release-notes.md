@@ -188,6 +188,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Contributor optional-call examples passed foreign helpers without the required no-throw contract. Those pure helpers now declare their contracts; unannotated callback rejection remains checked.
 - Contributor declaration checks expected an inferred import spelling that differed from TypeScript. They now use the native spelling and verify suffix and path variations against stock TypeScript.
 - Global-augmentation declaration tests repeatedly loaded unrelated browser libraries. Their native validation and API comparison now select ES5 while retaining self, copied and changed-type checks with both compiler versions.
+- Contributor checks could mistake a diagnostic expectation update for newly rejected code. Changing only the first-line expected code list now preserves existing rejections while checking new errors and program changes.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.

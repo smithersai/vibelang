@@ -189,3 +189,80 @@ test("a per-form error cannot hide behind a warning default or native diagnostic
   assert.equal(requiredRetirements(error, warning, []).length, 0)
   assert.throws(() => nativeCategories('{"rule":{"code":7777,"category":"unknown"}}'), /unresolved/)
 })
+
+{
+  const dir = "typescript/vibelang/cases/retirement-header.fail"
+  const main = dir + "/main.vibe"
+  const diagnostics = dir + "/expected/diagnostics.txt"
+  const snapshot = files => ({ paths: Object.keys(files).sort(), read: path => files[path] ?? "" })
+  const golden = codes => codes.map(code => "main.vibe(4,13): error " + code).join("\n")
+  const program = header => header + '\nexport effect function main() { const f = fork sleep("1 minute"); return f }\n'
+  const before = snapshot({
+    [main]: program("// expect: EK1703 EK4838 TS2345"),
+    [diagnostics]: golden(["EK1703", "EK4838", "TS2345"])
+  })
+  const after = snapshot({
+    [main]: program("// expect: EK1703 EK4838"),
+    [diagnostics]: golden(["EK1703", "EK4838"])
+  })
+  const codes = (a, b, changed = [main, diagnostics]) => changedFailCases(a, b, changed)[0].codes
+
+  test("removing a helper diagnostic from an expectation header does not widen rejection", () => {
+    assert.deepEqual(codes(before, after), [])
+  })
+
+  test("new diagnostics remain retirements when only expectation headers change", () => {
+    const added = snapshot({ [main]: after.read(main), [diagnostics]: golden(["EK1703", "EK4838", "EK7777"]) })
+    assert.deepEqual(codes(before, added), ["EK7777"])
+  })
+
+  test("written program and configuration changes still require retirement authority", () => {
+    const changedProgram = snapshot({ [main]: after.read(main).replace('sleep("1 minute")', "42"), [diagnostics]: after.read(diagnostics) })
+    assert.deepEqual(codes(before, changedProgram), ["EK1703", "EK4838"])
+    const changedConfig = snapshot({ [main]: after.read(main), [diagnostics]: after.read(diagnostics), [dir + "/tsconfig.json"]: "{}" })
+    assert.deepEqual(codes(before, changedConfig), ["EK1703", "EK4838"])
+  })
+
+  test("compiler directives and later comments are not harness headers", () => {
+    for (const [oldText, newText] of [
+      ["// @ts-ignore\nconst x = 1", "// @ts-expect-error\nconst x = 1"],
+      ['const x = "// expect: EK1703"', 'const x = "// expect: EK4838"'],
+      ["const x = 1\n// expect: EK1703", "const x = 1\n// expect: EK4838"],
+      ["// expect: EK1703\u2028const x = 1", "// expect: EK1703\u2028const x = 2"],
+      ["// expect: EK1703\u2029const x = 1", "// expect: EK1703\u2029const x = 2"]
+    ]) {
+      const a = snapshot({ [main]: oldText, [diagnostics]: golden(["EK1703"]) })
+      const b = snapshot({ [main]: newText, [diagnostics]: golden(["EK1703"]) })
+      assert.deepEqual(codes(a, b), ["EK1703"])
+    }
+  })
+
+  test("all harness source extensions support metadata changes; data and declarations retain bytes", () => {
+    for (const extension of [".vibe", ".vibex", ".ts", ".mts", ".cts", ".json", ".d.ts"]) {
+      const path = dir + "/main" + extension
+      const a = snapshot({ [path]: before.read(main), [diagnostics]: before.read(diagnostics) })
+      const b = snapshot({ [path]: after.read(main), [diagnostics]: after.read(diagnostics) })
+      assert.deepEqual(codes(a, b, [path, diagnostics]), [".json", ".d.ts"].includes(extension) ? ["EK1703", "EK4838"] : [], extension)
+    }
+  })
+
+  test("new fail cases and newly added source files are still checked", () => {
+    assert.deepEqual(codes(snapshot({}), after), ["EK1703", "EK4838"])
+    const newSource = snapshot({ [main]: after.read(main), [diagnostics]: after.read(diagnostics), [dir + "/helper.ts"]: "export const helper = 1" })
+    assert.deepEqual(codes(before, newSource), ["EK1703", "EK4838"])
+  })
+
+  test("generated diagnostic subsets agree with an independent set-difference oracle", () => {
+    const pool = ["EK1703", "EK4838", "TS2345", "TS2353", "TS2322", "EK7777"]
+    fc.assert(fc.property(fc.subarray(pool), fc.subarray(pool), (oldCodes, newCodes) => {
+      const oldHeader = "// expect: " + oldCodes.join(" ")
+      const newHeader = "// expect: " + newCodes.join(" ")
+      const a = snapshot({ [main]: program(oldHeader), [diagnostics]: golden(oldCodes) })
+      const b = snapshot({ [main]: program(newHeader), [diagnostics]: golden(newCodes) })
+      const expected = newCodes.filter(code => !oldCodes.includes(code))
+      assert.deepEqual(codes(a, b), expected, "metadata preserves existing diagnostics")
+      const changed = snapshot({ [main]: program(newHeader).replace("return f", "return 42"), [diagnostics]: golden(newCodes) })
+      assert.deepEqual(codes(a, changed), newCodes, "written source changes retain every diagnostic")
+    }), { seed: 48381703, numRuns: 512 })
+  })
+}

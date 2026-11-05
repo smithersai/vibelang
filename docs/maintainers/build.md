@@ -1522,8 +1522,12 @@ commit in the requested range, including each parent of a merge. A later fix
 cannot excuse an earlier retirement. New error severities and new or changed
 error witnesses in `typescript/vibelang/cases/*.fail` require a fix or a scoped,
 reviewed exception. Changes only to diagnostic wording on unchanged failing
-source do not establish a newly retired form. Without an earlier compiler,
-the check conservatively treats new failing witnesses as retirements.
+source do not establish a newly retired form. The first-line harness comment
+`// expect: EK1703 TS2345` is metadata: changing its code list alone preserves
+the existing error set. New diagnostic codes, written program changes,
+compiler directives, configuration changes and added source files still
+require retirement authority. Without an earlier compiler, the check
+conservatively treats new failing witnesses as retirements.
 
 Register a fix in `docs/design/retirement-fixes.json`:
 
