@@ -2,6 +2,8 @@
 
 [dprint](https://dprint.dev) formats `.vibe` files through the `vibelang` package's dprint plugin. The plugin writes each `.vibe` file as TypeScript, has dprint's TypeScript plugin format it, and writes the result back as VibeLang, so `.vibe` and `.ts` files follow the same `typescript` settings of the project's dprint configuration. Install the packages with [Add VibeLang to an existing project](existing-project.md) first.
 
+![vibelang format with dprint](/videos/eco-format.mp4)
+
 ## 1. Install dprint
 
 Use dprint 0.64.3 or later, the minimum supported version for this configuration. dprint 0.50.2 cannot resolve `npm:vibelang/dprint-plugin.json`. The alpha review verified it with 0.64.3.

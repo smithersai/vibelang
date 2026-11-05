@@ -1,5 +1,5 @@
 import { renderSiteRelease } from "./published-site.mjs"
-import { stripRunDirectives, stripDecisionReferences } from "../../site/scripts/user-docs.mjs"
+import { stripRunDirectives, stripDecisionReferences, stripVideos } from "../../site/scripts/user-docs.mjs"
 // Markdown copies and llms.txt for the single Vocs site. Extracted from the former renderer.
 import { Marked, type Tokens } from "marked"
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
@@ -43,14 +43,14 @@ export function buildMarkdown(site: string, facts: Record<string, string>, relea
   }
   // Read a snapshot: writers can keep working, and validation and rendering use the same bytes.
   const sourceEffect = release ? JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies.effect : undefined
-  const sources = new Map(files(src).map(path => [path, renderSiteRelease(path, stripDecisionReferences(stripRunDirectives(readFileSync(join(src, path), "utf8"))), release, sourceEffect)]))
+  const sources = new Map(files(src).map(path => [path, renderSiteRelease(path, stripDecisionReferences(stripVideos(stripRunDirectives(readFileSync(join(src, path), "utf8")))), release, sourceEffect)]))
   const errors: string[] = []
   for (const name of readdirSync(design).filter(f => f.endsWith(".md")).sort()) {
     const markdown = readFileSync(join(design, name), "utf8").replace(/\{\{(\w+)\}\}/g, (match, fact: string) => {
       if (!(fact in facts)) errors.push(`docs/design/src/${name}: unknown placeholder ${match}`)
       return facts[fact] ?? match
     })
-    sources.set(`spec/${name}`, stripRunDirectives(markdown))
+    sources.set(`spec/${name}`, stripVideos(stripRunDirectives(markdown)))
     if (!order.some(p => p.path === `spec/${name}`)) errors.push(`inventory.md: the sidebar is missing docs/design/src/${name}`)
   }
   for (const page of order) if (!sources.has(page.path)) errors.push(`inventory.md: missing ${where(page.path)}`)

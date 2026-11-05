@@ -6,6 +6,8 @@ Retry transient domain failures when a new attempt has a useful chance of succee
 
 ## Retrying failed computations
 
+![Retry with an exponential schedule](/videos/retry.mp4)
+
 ```vibe
 // run: try Console.log(try loadWithRetries())
 error Busy { attempt: number }

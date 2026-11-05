@@ -7,6 +7,8 @@ description: "npx vibelang agents init sets up a repository's coding agents for 
 
 `npx vibelang agents init` sets up a repository's coding agents for `.vibe` files. Each agent gets the VibeLang skill, instructions in `AGENTS.md`, the language server where it has an LSP client, and a check after each edit that applies `vibelang --fix` and returns the errors left to the agent. Each part uses the agent's own configuration files.
 
+<figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/agent-loop.jpg"><source src="/videos/agent-loop.mp4" type="video/mp4" /></video><figcaption>The compiler tells the agent what to write instead</figcaption></figure>
+
 ## 1. Set up the repository
 
 Install `vibelang` ([Add VibeLang to an existing project](/setup/existing-project)), then run this from the repository root:

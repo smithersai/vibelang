@@ -140,3 +140,11 @@ test('a link label may hold code with brackets', () => {
   assert.ok(body.includes('[the `[Effect]` parameter](/spec/101-calls#the-effect-parameter)'), body)
   assert.ok(body.includes('`[not](a-link.md)`'))
 })
+
+test('a video line in a chapter becomes a player, not an unresolvable link', () => {
+  const { put, load } = fixture()
+  put('docs/design/src/000-intro.md', '# Intro\n\nText.\n\n![The specification overview](/videos/spec-walkthrough.mp4)\n')
+  const body = load().convert('000-intro.md', facts)
+  assert.ok(body.includes('<source src="/videos/spec-walkthrough.mp4" type="video/mp4" />'), body)
+  assert.ok(body.includes('<figcaption>The specification overview</figcaption>'), body)
+})

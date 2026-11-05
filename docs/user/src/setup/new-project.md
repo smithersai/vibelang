@@ -4,6 +4,8 @@ Create a project from the VibeLang starter. It builds with the `vibelang` CLI an
 
 ## 1. Create the project
 
+![bun create vibelang@latest](/videos/term-create.mp4)
+
 Choose a new directory name or an empty directory. With npm, run:
 
 ```sh
@@ -49,6 +51,8 @@ Recovered from EmptyName
 ```
 
 ## 3. Run the tests
+
+![bun run test](/videos/term-test.mp4)
 
 ```sh
 bun run test

@@ -2,6 +2,8 @@
 
 Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 TypeScript in labeled tabs. The [specification](../../../design/src/000-intro.md) states the rules behind each. In a `.vibe` file, the Effect tab's error classes, services, schemas, Effect types, `Effect.succeed` and `Effect.fail`, catch combinators, and `withSpan` and `provide` calls draw warnings whose quick fixes, and `vibelang --fix`, write the VibeLang tab where it keeps the program's meaning ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Complete Effect tabs import their dependencies and are typechecked. Tabs marked `// fragment` use the declarations below or a surrounding `Effect.gen` body. Converted VibeLang blocks name the VIPs they need with `// pending:`. Support for the new forms arrives with the compiler's VIP implementation. The VibeLang examples share these declarations:
 
+![Every form on one page](/videos/periodic.mp4)
+
 ```vibe es
 // run: provide Approval = { approve: (_request) => succeed(true) } { { const jsonValue = [try getUser("1"), try getOrders("1"), try release("v1")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 error NotFound { id: string }

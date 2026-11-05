@@ -72,3 +72,21 @@ test('a code-only page has no description and code ends an existing paragraph', 
   assert.doesNotMatch(render('# Example\n\n```sh\ncommand\n```\n'), /^description:/m)
   assert.match(render('# Example\n\nFirst prose.\n```sh\ncommand\n```\nLater prose.\n'), /description: "First prose\."/)
 })
+
+test('a video line becomes a captioned HTML5 player, keeps the description, and stays inside prose only', () => {
+  const page = render([
+    '# Example', '', 'The intro paragraph.', '', '![Tests in {.vibe} <b>](/videos/clip-1.mp4)', '',
+    '```md', '![kept](/videos/clip-1.mp4)', '```', ''
+  ].join('\n'))
+  assert.match(page, /<video controls preload="metadata" playsInline poster="\/videos\/clip-1\.jpg"><source src="\/videos\/clip-1\.mp4" type="video\/mp4" \/><\/video>/)
+  assert.match(page, /<figcaption>Tests in &#123;\.vibe&#125; &lt;b&gt;<\/figcaption>/)
+  assert.doesNotMatch(page, /autoPlay|autoplay/)
+  assert.match(page, /description: "The intro paragraph\."/)
+  assert.match(page, /```md\n!\[kept\]\(\/videos\/clip-1\.mp4\)\n```/)
+})
+
+test('Markdown copies drop video lines but keep them inside code fences', async () => {
+  const { stripVideos } = await import('./user-docs.mjs')
+  const text = ['Intro.', '', '![Caption](/videos/a-1.mp4)', '', '```md', '![Caption](/videos/a-1.mp4)', '```', '![Image](/images/a.png)'].join('\n')
+  assert.equal(stripVideos(text), ['Intro.', '', '', '```md', '![Caption](/videos/a-1.mp4)', '```', '![Image](/images/a.png)'].join('\n'))
+})

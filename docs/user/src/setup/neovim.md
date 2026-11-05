@@ -2,6 +2,8 @@
 
 With one Lua module, Neovim 0.10 or later runs `vibelang --lsp --stdio` in its built-in LSP client. `.vibe` and `.vibex` files get the `vibe` and `vibex` filetypes, TypeScript and TSX highlighting, and the project's compiler as language server: `node_modules/.bin/vibelang`, else `vibelang` on `PATH`.
 
+![Errors and hovers in Neovim](/videos/nvim-lsp.mp4)
+
 ## 1. Check Neovim
 
 Run `nvim --version`; the first line must be `NVIM v0.10.0` or later.

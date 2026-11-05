@@ -10,6 +10,10 @@ node scripts/sync-user-docs.mjs ../docs/user
 
 The script replaces every page in `src/pages` except `index.mdx`, `_root.css`, `proposals.mdx`, and `spec/`, rewrites `sidebar.ts`, and converts the Markdown that MDX rejects. Each page keeps its source path: `docs/user/src/error-management/014-expected-errors.md` becomes `/error-management/014-expected-errors`. Edit the source docs, not the generated pages, and run the script again. Production builds sync both sets of pages automatically after measuring kernel facts. `vibe.tmLanguage.json` is the grammar from the language repository's `editors/vscode/syntaxes/VibeLang.tmLanguage.json`; it highlights `vibe` code blocks.
 
+## Add a video
+
+Put `name.mp4` (H.264 and AAC, `-movflags +faststart`) and its poster `name.jpg` in `public/videos/`, then put `![One-line caption](/videos/name.mp4)` on its own line in the page's source Markdown. The sync writes an HTML5 player with controls, metadata-only preloading and no autoplay; the Markdown copies for agents drop the line. The home page, `src/index.mdx`, holds the player markup directly.
+
 ## Update the specification
 
 ```bash

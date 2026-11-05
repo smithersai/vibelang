@@ -19,7 +19,7 @@
 // link appears once. The script fails on a page
 // missing from the inventory, an inventory entry with no page, or a link it
 // cannot resolve.
-import { stripRunDirectives, stripDecisionReferences } from './user-docs.mjs'
+import { stripRunDirectives, stripDecisionReferences, VIDEO_LINE } from './user-docs.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { convertText, readFences, fence, LABELS } from './docs-markdown.mjs'
@@ -166,7 +166,7 @@ function convertPage(rel) {
     }
     const line = part.line
     if (line.trim() === '' && paragraph.length > 0) break
-    if (line.trim() === '') continue
+    if (line.trim() === '' || VIDEO_LINE.test(line.trim())) continue
     if (/^(```|~~~|#|>|\||- |\* |\d+\. )/.test(line.trim())) {
       if (paragraph.length > 0) break
       continue

@@ -143,6 +143,8 @@ Existing dprint JSON configs gain the shipped plugin and `.vibe` includes. A con
 
 ## ESLint a repository runs itself
 
+<figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/eco-lint-eslint.jpg"><source src="/videos/eco-lint-eslint.mp4" type="video/mp4" /></video><figcaption>ESLint rules on .vibe files</figcaption></figure>
+
 A repository that runs ESLint itself names its files as `*.ts`, in its
 configurations and in the helpers they share, so its rules would miss a `.vibe`
 module and `eslint src` would pass without reading it. Setup writes
@@ -192,6 +194,8 @@ handler. Captured names, local variables and control flow inside the block
 still receive their normal checks.
 
 ## Oxlint
+
+<figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/eco-lint-oxlint.jpg"><source src="/videos/eco-lint-oxlint.mp4" type="video/mp4" /></video><figcaption>Oxlint on .vibe files</figcaption></figure>
 
 Oxlint's [JS plugin API](https://oxc.rs/docs/guide/usage/linter/js-plugins.html#api-support)
 explicitly excludes custom formats and parsers. Its

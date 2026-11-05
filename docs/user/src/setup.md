@@ -2,6 +2,8 @@
 
 VibeLang is a fork of TypeScript for Effect programs. These steps set it up in a project; each gives a command and its expected output. When the output differs, stop and show the user the command and its output. VibeLang is v0: the language will change in major, breaking ways, and it is not suitable for production use.
 
+![VibeLang with your TypeScript tools](/videos/ecosystem.mp4)
+
 ## 1. Check the tools
 
 Run `node --version` and expect `v26.0.0` or later. With Bun, run `bun --version` and expect `1.4.0` or later.
@@ -71,6 +73,8 @@ The first prints `VibeLang 0.0.11 (TypeScript 7.1.0-dev)`; the second prints not
 First follow [Add VibeLang to an existing project](setup/existing-project.md). Keep a `tsconfig.json` that includes the `.vibe` modules and `.ts` / `.tsx` importers. The bundler compiles with this project; a missing config is an error. Run `npx vibelang --noEmit` separately to check the whole program.
 
 ### Next.js with webpack
+
+![vibelang-unplugin in webpack](/videos/webpack.mp4)
 
 Install `vibelang-unplugin@0.0.11` as a dev dependency. Next's Turbopack does not run webpack plugins: use `next dev --webpack` and `next build --webpack` with this integration. In `next.config.mjs`:
 

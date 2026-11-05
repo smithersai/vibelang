@@ -489,3 +489,23 @@
     padding-inline: 1rem;
   }
 }
+
+.vibe-video {
+  margin: 1.5rem 0;
+}
+
+.vibe-video video {
+  aspect-ratio: 16 / 9;
+  background: #0d0d0f;
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  max-width: 100%;
+  width: 100%;
+}
+
+.vibe-video figcaption {
+  color: var(--vocs-text-color-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}

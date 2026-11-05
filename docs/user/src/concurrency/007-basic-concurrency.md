@@ -6,6 +6,8 @@ Running a completed Effect with `try` can continue in the same fiber turn. It ad
 
 ## Sequential, bounded, and unbounded work
 
+![try all runs calls together](/videos/concurrent.mp4)
+
 ```vibe
 // run: { const jsonValue = try runTasks(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function task(id: number) {
@@ -130,6 +132,8 @@ Above a limit of 1, `for concurrent` runs each item in its own fiber. At a limit
 The right-hand operand sees uninitialized loop-head bindings, as in JavaScript's `for…of`; a closure created there keeps those bindings rather than an outer or per-item binding. This also holds for an empty iterable and after an item reassigns a `let` head; calling the saved closure still encounters a `ReferenceError`. If an older program used an outer binding there and now fails type checking, `vibelang --fix` renames the item binding and its uses, keeping the RHS reference attached to the live outer binding. Outward `return` is rejected in both head binding initialization and the body (`EK1904`), including a `return` in a default's `do`. A `do` return in the concurrency-limit or iterable expression still targets the enclosing function. A labeled `break` from a `do` in the limit or iterable can leave an enclosing labeled block. The block keeps its own jump target when a declaration precedes the loop; an item-ending labeled `continue` must name the loop itself.
 
 ## Racing under different winner rules
+
+![try race: the first answer wins, the losers are cancelled](/videos/race.mp4)
 
 ```vibe
 // run: { const jsonValue = try raceExamples(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }

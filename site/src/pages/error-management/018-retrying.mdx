@@ -10,6 +10,8 @@ Retry transient domain failures when a new attempt has a useful chance of succee
 
 ## Retrying failed computations
 
+<figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/retry.jpg"><source src="/videos/retry.mp4" type="video/mp4" /></video><figcaption>Retry with an exponential schedule</figcaption></figure>
+
 ```vibe
 error Busy { attempt: number }
 

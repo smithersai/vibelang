@@ -4,6 +4,8 @@
 
 ## Success, failure, and services
 
+![A function's type says what it returns, how it fails and what it needs](/videos/contract.mp4)
+
 ```vibe
 // run: try Console.log(try Effect.provide(convert(30, "EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 error MissingRate {
@@ -35,6 +37,8 @@ Errors and services from several Effects run with `try` accumulate as unions. Ca
 Inferred errors and services are unions: running the same Effect more than once does not add another copy of its error or service types. Chains of repeated calls do not need written contracts to keep inference bounded.
 
 ## Write a contract
+
+![The compiler infers the type as you write](/videos/infer.mp4)
 
 ```vibe
 // run: try Console.log(try Effect.provide(safeRate("EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))

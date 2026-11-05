@@ -90,6 +90,8 @@ For `export { value } from "./producer.vibe"`, public `.d.ts` output writes `./p
 
 ## 2. Replace tsc in the scripts
 
+![vibelang in place of tsc](/videos/eco-tsc.mp4)
+
 In `package.json`, replace `tsc` with `vibelang` in every script. `vibelang` runs the rules of the tsconfig's `@effect/language-service` entry, which plain `tsc` ignores. If nothing in the project runs `effect-tsgo patch` or `effect-language-service patch`, set `ignoreEffectWarningsInTscExitCode` and `ignoreEffectErrorsInTscExitCode` to `true` in that entry so Effect diagnostics print without failing a build `tsc` passed ([Lint Effect code](#lint-effect-code)). If the project has no build script, add these:
 
 ```json
@@ -153,6 +155,8 @@ vibelang -b -w packages/app
 Repeated foreign calls in one effect function can be fixed together without redeclaring their captured inputs. The repair preserves argument evaluation order and existing narrowed property types.
 
 ### Lint Effect code
+
+![Effect's lint rules in vibelang lint](/videos/eco-lint-effect.mp4)
 
 Lint leaves existing declaration sidecars and incremental build information unchanged and creates no output files.
 

@@ -17,6 +17,14 @@ function mapLines(markdown, transform) {
   }).join('\n')
 }
 
+// A launch video sits on its own line as `![caption](/videos/name.mp4)`. The site renders
+// a player; the Markdown copies for agents drop the line.
+export const VIDEO_LINE = /^!\[([^\]]*)\]\(\/videos\/([a-z0-9-]+)\.mp4\)\s*$/
+
+export function stripVideos(markdown) {
+  return mapLines(markdown, (line, code) => !code && VIDEO_LINE.test(line) ? undefined : line)
+}
+
 // A pending line names the VIPs a block waits for; only the snippet checker reads it.
 export function stripRunDirectives(markdown) {
   return mapLines(markdown, (line, code) => code && /^\s*\/\/\s*(?:run|pending|pending-decision):/.test(line) ? undefined : line)

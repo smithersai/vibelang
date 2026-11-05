@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { readFences, convertText, fence, LABELS } from './docs-markdown.mjs'
+import { VIDEO_LINE } from './user-docs.mjs'
 
 export function substituteFacts(raw, facts) {
   return raw.replace(/\{\{([^{}]+)\}\}/g, (_, key) => {
@@ -107,6 +108,7 @@ export function loadSpec(root) {
       if (callout) line = line.replace(/^> ?/, '')
       // Repository references keep their label. Inline code stays untouched,
       // and a label may hold code with brackets, as in [the `[Effect]` parameter](…).
+      if (VIDEO_LINE.test(line)) { out.push(convertText(line, file, href => href)); continue }
       line = line.replace(/(`+).*?\1|\[((?:`[^`]*`|[^\]`])+)\]\(([^\s)]+)\)/g, (match, ticks, label, href) => {
         if (ticks) return match
         const result = link(href, path.join(dir, file))
