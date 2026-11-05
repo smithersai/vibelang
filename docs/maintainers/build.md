@@ -1842,3 +1842,5 @@ The `//:whole-service-declarations` check compares whole-shape services with nat
 
 The `//:legacy-provider-identities` target keeps missing-provider and version-pin identities distinct. It checks union and variadic-tuple provider cases with renamed services, trivia and both flag values, and uses stored Effect values as controls that require no runner providers.
 
+
+The `//:legacy-json-advisory` check replays the JSON advisory registry witness through legacy project configuration and checks each interim severity independently.

@@ -48,7 +48,7 @@ func checkInterimLegacySeverity(t *testing.T, code int32, severity string) {
 }
 
 func TestInterimLegacySeverityOverrides(t *testing.T) {
-	for code := int32(4821); code <= 4825; code++ {
+	for _, code := range []int32{4816, 4818, 4821, 4822, 4823, 4824, 4825} {
 		for _, severity := range []string{"error", "warning", "off"} {
 			t.Run(fmt.Sprintf("%d/%s", code, severity), func(t *testing.T) { checkInterimLegacySeverity(t, code, severity) })
 		}
@@ -57,12 +57,12 @@ func TestInterimLegacySeverityOverrides(t *testing.T) {
 
 func FuzzInterimLegacySeverities(f *testing.F) {
 	startShortBudget(f)
-	for code := uint8(0); code < 5; code++ {
+	for code := uint8(0); code < 7; code++ {
 		f.Add(code, uint8(0))
 		f.Add(code, uint8(1))
 		f.Add(code, uint8(2))
 	}
 	f.Fuzz(func(t *testing.T, code, category uint8) {
-		checkInterimLegacySeverity(t, 4821+int32(code%5), []string{"error", "warning", "off"}[category%3])
+		checkInterimLegacySeverity(t, []int32{4816, 4818, 4821, 4822, 4823, 4824, 4825}[code%7], []string{"error", "warning", "off"}[category%3])
 	})
 }

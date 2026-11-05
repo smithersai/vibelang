@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- main.vibe --\n// @vibelang-diagnostics EK4818:warning\n  return JSON.parse(text) as number\n")
+string("-- tsconfig.json --\n{\"vibelang\":{\"diagnostics\":{\"EK4818\":\"warning\"}}}\n-- main.vibe --\n  return JSON.parse(text) as number\n")
