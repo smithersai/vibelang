@@ -81,6 +81,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Examples for redacted values, callback adapters, platform services, scope rollback, and schema helpers were still marked unavailable after support landed; they now compile and check their documented output as active examples.
 
+- Migration test failures could disappear from CI logs after successful file progress filled the live output limit; the reporter now reserves output for failures, aggregate progress and completion counts.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

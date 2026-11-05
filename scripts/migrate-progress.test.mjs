@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -17,10 +17,10 @@ function fixture(t, sources) {
     return file
   })
 }
-function run(t, files, signalAfter, withProgress = true) {
+function run(t, files, signalAfter, withProgress = true, withSpec = true) {
   return new Promise((resolve, reject) => {
     const env = { ...process.env }; delete env.NODE_TEST_CONTEXT
-    const child = spawn(process.execPath, ["--test", "--test-reporter=spec", "--test-reporter-destination=stdout",
+    const child = spawn(process.execPath, ["--test", ...(withSpec ? ["--test-reporter=spec", "--test-reporter-destination=stdout"] : []),
       ...(withProgress ? ["--test-reporter=" + reporter, "--test-reporter-destination=stderr"] : []), ...files],
       { env, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] })
     let stdout = "", stderr = "", done = false
@@ -89,4 +89,45 @@ test("migration progress calls a file that cannot load incomplete and preserves 
   assert.equal(final.event, "incomplete")
   assert.ok(final.missing.includes(relative(process.cwd(), files[1])))
   assert.equal(final.success, false)
+})
+
+test("migration failures remain visible after more files than the graph's live output budget", async () => {
+  const { default: progress } = await import("./testing/migrate-progress.mjs")
+  const events = async function* () {
+    for (let i = 0; i < 350; i++) {
+      const file = join(process.cwd(), "fixture", `file-${i}.test.mjs`)
+      yield { type: "test:pass", data: { file, name: "passing control" } }
+      yield { type: "test:summary", data: { file, success: true, counts: { tests: 1, passed: 1 } } }
+    }
+    yield { type: "test:fail", data: { file: join(process.cwd(), "fixture", "late.test.mjs"),
+      name: "late assertion", details: { error: new Error("LATE_FAILURE_WITNESS") } } }
+  }
+  const output = []
+  for await (const line of progress(events())) output.push(line)
+  const visible = output.join("").split("\n").slice(0, 200).join("\n")
+  assert.ok(visible.includes("LATE_FAILURE_WITNESS"),
+    "successful file lifecycle records consumed the graph's first 200 lines")
+  const final = records(output.join("")).at(-1)
+  assert.equal(final.counts.passed, 350)
+})
+
+test("migration target uses the progress reporter without verbose successful test output", () => {
+  const source = readFileSync(new URL("../packages/PACKAGE.ts", import.meta.url), "utf8")
+  const declaration = source.slice(source.indexOf("const migrateTest ="), source.indexOf("const migrateHelperIdentity ="))
+  assert.ok(declaration.includes("--test-reporter=../../scripts/testing/migrate-progress.mjs"))
+  assert.ok(!declaration.includes("--test-reporter=spec"))
+  assert.ok(declaration.includes("migrate/test/*.test.mjs convert/*.test.mjs"))
+})
+
+test("the compact reporter alone preserves assertion and loader failures", { timeout: 20_000 }, async t => {
+  const files = fixture(t, {
+    assertion: 'test("assertion", () => assert.fail("COMPACT_ASSERTION_WITNESS"))\n',
+    syntax: 'test("broken", => {})\n',
+  })
+  const result = await run(t, files, undefined, true, false)
+  assert.equal(result.code, 1)
+  assert.ok(result.stderr.includes("COMPACT_ASSERTION_WITNESS"), result.stderr)
+  assert.ok(result.stderr.includes("SyntaxError"), result.stderr)
+  assert.equal(result.records.at(-1).event, "incomplete")
+  assert.equal(result.records.at(-1).success, false)
 })
