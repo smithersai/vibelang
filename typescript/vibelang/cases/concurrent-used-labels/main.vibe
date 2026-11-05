@@ -1,0 +1,17 @@
+export effect function main() {
+ let total=0
+ item: for concurrent(1)(const x of [1,2]) {
+  if(x===1)continue item
+  total+=x
+ }
+ first: second: for concurrent(1)(const x of [1,2,3]) {
+  if(x===1)continue first
+  if(x===2)continue second
+  total+=x
+ }
+ lifted: for concurrent(1)(const x of [1,2]) {
+  const value=do {if(x===1)continue lifted;7}
+  total+=value
+ }
+ return total
+}

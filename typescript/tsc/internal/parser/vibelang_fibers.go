@@ -652,30 +652,34 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 // would leave the loop. With selfLabel, only continues naming that source
 // loop are rewritten, including through nested native loops. inSwitch is set
 // inside a switch, where a break leaves the switch.
-func (p *Parser) rewriteConcurrentJumps(node *ast.Node, inSwitch bool, selfLabel string) {
+func (p *Parser) rewriteConcurrentJumps(node *ast.Node, inSwitch bool, selfLabel string) bool {
+	rewritten := false
 	replace := func(statement *ast.Node) *ast.Node {
 		if statement != nil && statement.Kind == ast.KindContinueStatement && (selfLabel == "" && statement.Label() == nil || selfLabel != "" && statement.Label() != nil && statement.Label().Text() == selfLabel) {
+			rewritten = true
 			ret := p.vibelangSynthesized(p.factory.NewReturnStatement(nil), p.jumpKeywordRange(statement))
 			ret.Parent = statement.Parent
 			return ret
 		}
-		p.rewriteConcurrentJumps(statement, inSwitch, selfLabel)
+		if p.rewriteConcurrentJumps(statement, inSwitch, selfLabel) {
+			rewritten = true
+		}
 		return statement
 	}
 	switch {
 	case node == nil:
-		return
+		return false
 	case node.Kind == ast.KindBreakStatement:
 		if selfLabel == "" && !inSwitch && node.AsBreakStatement().Label == nil {
 			node.Flags |= ast.NodeFlagsVibeLang // EK1903
 		}
-		return
+		return false
 	case isFunctionOrClassBoundary(node):
-		return
+		return false
 	case ast.IsIterationStatement(node, false /*lookInLabeledStatements*/):
 		if selfLabel == "" || node.Kind == ast.KindForOfStatement && node.Flags&ast.NodeFlagsVibeLang != 0 {
 			// A nested for try has its own outward-jump restriction.
-			return
+			return false
 		}
 		switch node.Kind {
 		case ast.KindForStatement:
@@ -701,7 +705,7 @@ func (p *Parser) rewriteConcurrentJumps(node *ast.Node, inSwitch bool, selfLabel
 	case node.Kind == ast.KindLabeledStatement:
 		s := node.AsLabeledStatement()
 		if selfLabel != "" && s.Label.Text() == selfLabel {
-			return
+			return false
 		}
 		s.Statement = replace(s.Statement)
 	case node.Kind == ast.KindSwitchStatement:
@@ -711,16 +715,21 @@ func (p *Parser) rewriteConcurrentJumps(node *ast.Node, inSwitch bool, selfLabel
 				if statement.Kind == ast.KindContinueStatement && (selfLabel == "" && statement.Label() == nil || selfLabel != "" && statement.Label() != nil && statement.Label().Text() == selfLabel) {
 					statements[i] = replace(statement)
 				} else {
-					p.rewriteConcurrentJumps(statement, true /*inSwitch*/, selfLabel)
+					if p.rewriteConcurrentJumps(statement, true /*inSwitch*/, selfLabel) {
+						rewritten = true
+					}
 				}
 			}
 		}
 	default:
 		node.ForEachChild(func(child *ast.Node) bool {
-			p.rewriteConcurrentJumps(child, inSwitch, selfLabel)
+			if p.rewriteConcurrentJumps(child, inSwitch, selfLabel) {
+				rewritten = true
+			}
 			return false
 		})
 	}
+	return rewritten
 }
 
 // rewriteConcurrentLabelContinues runs once the source label is available.
@@ -742,5 +751,8 @@ func (p *Parser) rewriteConcurrentLabelContinues(node *ast.Node) {
 	if !ast.IsCallExpression(call) || isIntrinsicCall(call) != "$forConcurrent" || len(call.Arguments()) != 3 {
 		return
 	}
-	p.rewriteConcurrentJumps(call.Arguments()[2].Body(), false, node.Label().Text())
+	if p.rewriteConcurrentJumps(call.Arguments()[2].Body(), false, node.Label().Text()) {
+		// The item return still references this source label for unused-label checks.
+		node.Label().Flags |= ast.NodeFlagsVibeLang
+	}
 }

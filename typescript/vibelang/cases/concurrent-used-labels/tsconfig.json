@@ -1,0 +1,1 @@
+{"compilerOptions": {"strict": true, "allowUnusedLabels": false, "skipLibCheck": true, "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext", "outDir": "out"}, "files": ["main.vibe", "reference.ts"]}

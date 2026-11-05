@@ -4325,7 +4325,8 @@ func (c *Checker) checkLabeledStatement(node *ast.Node) {
 			}
 		}
 	}
-	if labelNode.Flags&ast.NodeFlagsUnreachable != 0 && c.compilerOptions.AllowUnusedLabels != core.TSTrue {
+	// Rewritten concurrent item continues retain a source-label reference.
+	if labelNode.Flags&ast.NodeFlagsUnreachable != 0 && labelNode.Flags&ast.NodeFlagsVibeLang == 0 && c.compilerOptions.AllowUnusedLabels != core.TSTrue {
 		c.errorOrSuggestion(c.compilerOptions.AllowUnusedLabels == core.TSFalse, labelNode, diagnostics.Unused_label)
 	}
 	c.checkSourceElement(labeledStatement.Statement)
