@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - Contributor checks mistook the compiler’s sharded tests for a missing target. They now verify the runtime build dependency of every shard.
+- Contributor diagnostics checks could compile a second set of packages with workspace paths. They now use the compiler’s `-trimpath` settings.
 - The Effect type guide now shows the grouping used when repairing nested Effects and array boundaries.
 - The error guide now explains why a reserved tag payload and an inheritance clause each report an error, and how a native class retains their contract.
 - The error guide now explains how bodyless, empty and payload-bearing ambient schema errors convert to erased native classes.

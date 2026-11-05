@@ -1799,3 +1799,5 @@ The `//:go-error-inheritance` target also replays every ambient error-class pres
 The `//:build-contracts` target checks explicit Bun test deadlines before graph or package-script changes land. Service-call, table-row and runtime export documentation checks receive 30 seconds rather than inheriting Bun’s five-second default.
 
 Compiler test prerequisite checks read the package’s TypeScript syntax, including the shared shard factory. Every compiler shard must declare `runtime-dist` before reading its output; each registration must call the checked factory with its own shard index. A direct target, a factory or a returned target keeps the same prerequisite rule.
+
+Appendix Go checks use `-trimpath` to share compiled packages with the compiler and `-count=1` to reread their test inputs. Put the flags before the selector and package paths so the command’s build settings and cache policy are visible together.
