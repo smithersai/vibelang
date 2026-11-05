@@ -19,7 +19,7 @@ const emitted = /(?:^|\/)\.vibelang\/js\//
 export function batchScope({ files, codemod, testDiff, manifestSnapshots, sidecar = () => null }) {
   const scope = new Set()
   const withSidecars = (path) => {
-    if (/\.(?:[cm]?ts|vibe)$/.test(path) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(path)) scope.add(path.replace(/\.(?:[cm]?ts|vibe)$/, ".d.vibe.ts"))
+    if (/\.(?:[cm]?ts|tsx|vibex?)$/.test(path) && !/\.d\.(?:vibex?\.)?[cm]?ts$/.test(path)) scope.add(path.replace(/\.(?:[cm]?ts|tsx|vibex?)$/, extension => /x$/.test(extension) ? ".d.vibex.ts" : ".d.vibe.ts"))
     const located = sidecar(path)
     if (located) scope.add(located)
   }
@@ -39,7 +39,7 @@ export function batchScope({ files, codemod, testDiff, manifestSnapshots, sideca
   // A rewritten importer's declaration may name the renamed module, so its sidecar is written again.
   for (const edit of codemod?.importEdits ?? []) {
     scope.add(edit.file)
-    if (edit.file.endsWith(".vibe")) withSidecars(edit.file)
+    if (/\.vibex?$/.test(edit.file)) withSidecars(edit.file)
   }
   for (const edit of codemod?.refEdits ?? []) scope.add(edit.file)
   for (const edit of codemod?.referenceEdits ?? []) scope.add(edit.file)

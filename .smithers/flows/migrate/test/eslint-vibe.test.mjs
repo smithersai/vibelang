@@ -93,7 +93,7 @@ test("addEslintVibe wraps what a flat configuration exports", () => {
 test("a script's TypeScript globs gain .vibe companions; directories, files and flag values stay", () => {
   assert.equal(eslintScriptReadsVibe('eslint --config eslint.config.js "packages/*/src/**/*.ts" --max-warnings=0'),
     'eslint --config eslint.config.js "packages/*/src/**/*.ts" "packages/*/src/**/*.vibe" --max-warnings=0 --no-error-on-unmatched-pattern')
-  assert.equal(eslintScriptReadsVibe("eslint 'src/**/*.{ts,tsx}' && dprint check"), "eslint 'src/**/*.{ts,tsx}' 'src/**/*.vibe' --no-error-on-unmatched-pattern && dprint check")
+  assert.equal(eslintScriptReadsVibe("eslint 'src/**/*.{ts,tsx}' && dprint check"), "eslint 'src/**/*.{ts,tsx}' 'src/**/*.vibe' 'src/**/*.vibex' --no-error-on-unmatched-pattern && dprint check")
   for (const same of ["eslint src examples --max-warnings=0 && dprint check", "eslint src/a.ts", "eslint --ignore-pattern '**/*.ts' src", "eslint 'src/**/*.d.ts'", "eslint-doctor '**/*.ts'", "eslint --config .vibelang/eslint.config.mjs 'src/**/*.ts'"]) {
     assert.equal(eslintScriptReadsVibe(same), same)
   }

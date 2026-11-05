@@ -152,7 +152,7 @@ export function patchTransformEntry(text) {
   }
   return text
     .replace(exports[0], `// VibeLang: a .vibe module reaches the transform as its JavaScript (vibelang/emit's toolArguments).
-const vibelangArguments = (args) => typeof args[0] === 'string' && args[0].endsWith('.vibe')
+const vibelangArguments = (args) => typeof args[0] === 'string' && /\\.vibex?$/.test(args[0])
   ? createRequire(require('path').resolve(args[0]))('vibelang/emit').toolArguments(...args)
   : args
 const vibelangTransform = async (...args) => transform(...vibelangArguments(args))

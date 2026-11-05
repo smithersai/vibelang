@@ -120,7 +120,7 @@ function entries(text, file, ts, warn) {
 // Change only the suffix in the original literal, retaining its quotes/escapes.
 function literalEdit(node, source, to) {
   const raw = node.getText(source)
-  const extension = /\.(?:ts|vibe)(["'`])$/.exec(raw)
+  const extension = /\.(?:tsx?|vibex?)(["'`])$/.exec(raw)
   if (!extension) return null
   return { start: node.getStart(source), end: node.end, text: raw.slice(0, extension.index) + to.slice(to.lastIndexOf(".")) + extension[1] }
 }
@@ -143,8 +143,8 @@ export function rewriteBuildEntrypoints(root, files, renames, ts, { read = (file
     for (const { node, base } of literals) {
       if (posix.isAbsolute(node.text) || posix.isAbsolute(base)) continue
       const renamed = moved.get(posix.normalize(posix.join(directory, base, node.text)))
-      if (!renamed || !node.text.endsWith(".ts")) continue
-      const to = node.text.slice(0, -3) + ".vibe"
+      if (!renamed || !/\.tsx?$/.test(node.text)) continue
+      const to = node.text.replace(/\.tsx$/, ".vibex").replace(/\.ts$/, ".vibe")
       const edit = literalEdit(node, source, to)
       if (!edit) { warn(node, "escaped build input suffix left as written"); continue }
       changes.push(edit)
@@ -167,7 +167,7 @@ export function restoreBuildEntrypoints(root, recorded, restored, ts) {
     const changes = []
     for (const { node, base } of literals) {
       const target = posix.normalize(posix.join(packageDirOf(root, file), base, node.text))
-      const index = remaining.findIndex(edit => edit.to === node.text && target === edit.source.replace(/\.ts$/, ".vibe"))
+      const index = remaining.findIndex(edit => edit.to === node.text && target === edit.source.replace(/\.tsx$/, ".vibex").replace(/\.ts$/, ".vibe"))
       if (index < 0) continue
       const original = remaining.splice(index, 1)[0]
       const edit = literalEdit(node, source, original.from)

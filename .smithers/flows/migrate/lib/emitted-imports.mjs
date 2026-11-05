@@ -31,7 +31,7 @@ export function sourceTypeEdges(text, file, ts, compiler, root) {
 function moduleEdges(text, file, ts, compiler, root, includeTypes) {
   if (!/\bimport\b|\bexport\b[\s\S]*?\bfrom\b/.test(text)) return []
   const edges = []
-  if (file.endsWith(".vibe")) {
+  if (/\.vibex?$/.test(file)) {
     if (!compiler) throw new Error(file + ": the native compiler is required to read VibeLang imports")
     const parsed = spawnSync(compiler, ["--estree", join(root, file)], { input: text, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
     if (parsed.status !== 0 || parsed.error) throw new Error(file + ": cannot read native imports: " + (parsed.error?.message ?? parsed.stderr))
@@ -151,12 +151,12 @@ export function planEmittedImports({ root, packages, projects = [], ts, compiler
     const selected = new Map()
     for (const file of parsed.fileNames) {
       const source = posix.relative(root, file)
-      if (!/\.(?:ts|mts|cts|vibe)$/.test(source) || ts.isDeclarationFileName(source) || protectedFile(source) || packageDirOf(root, source) !== dir) continue
+      if (!/\.(?:ts|tsx|mts|cts|vibe|vibex)$/.test(source) || ts.isDeclarationFileName(source) || protectedFile(source) || packageDirOf(root, source) !== dir) continue
       if (!packages.some(p => inside(p.dir, source) && (p.sources ?? ["src"]).some(s => inside(posix.join(p.dir, s), source)))) continue
       // Stock TypeScript preserves unknown extensions; VibeLang's emitter
       // treats .vibe exactly as .ts for its JavaScript output name.
-      const emitPath = path => path.replace(/\.vibe$/, ".ts")
-      const emitted = ts.getOutputFileNames({ ...parsed, fileNames: parsed.fileNames.map(emitPath) }, emitPath(file), false).filter(f => /\.(?:js|mjs|cjs)$/.test(f))
+      const emitPath = path => path.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
+      const emitted = ts.getOutputFileNames({ ...parsed, fileNames: parsed.fileNames.map(emitPath) }, emitPath(file), false).filter(f => /\.(?:js|jsx|mjs|cjs)$/.test(f))
       if (emitted.length !== 1) throw new Error(source + ": needs exactly one emitted JavaScript module")
       const output = posix.relative(root, emitted[0])
       if (output.startsWith("../") || !inside(dir, output) || all.has(output)) throw new Error(source + ": emitted JavaScript must be private output within its package")
@@ -172,8 +172,8 @@ export function planEmittedImports({ root, packages, projects = [], ts, compiler
       for (const edge of runtimeEdges(text, file, ts, compiler, root)) {
         const source = resolveRelative(file, edge.specifier, all)
         if (!selected.has(source)) continue
-        const key = "#vibelang/emitted/" + posix.relative(dir, source).replace(/\.(?:ts|mts|cts|vibe)$/, "")
-        const target = { "vibelang-source": relativeTarget(dir, source), types: relativeTarget(dir, source).replace(/\.vibe$/, ".d.vibe.ts"), default: relativeTarget(dir, selected.get(source)) }
+        const key = "#vibelang/emitted/" + posix.relative(dir, source).replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, "")
+        const target = { "vibelang-source": relativeTarget(dir, source), types: relativeTarget(dir, source).replace(/\.(vibex?)$/, ".d.$1.ts"), default: relativeTarget(dir, selected.get(source)) }
         const previous = pkg.imports?.[key]
         if (previous && JSON.stringify(previous) !== JSON.stringify(target)) throw new Error(manifest + ": conflicting emitted import " + key)
         pkg.imports = { ...pkg.imports, [key]: target }

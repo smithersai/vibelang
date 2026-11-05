@@ -195,7 +195,7 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts, routed = f
     if (!routeable.has(file)) {
       // Only the relative edges normal emission can rewrite form a boundary.
       // Entries and protected tests keep their direct source paths.
-      const native = /(?<!\.d)\.(?:[cm]?tsx?)$/.test(file) && !/\.d\.vibe\.ts$/.test(file)
+      const native = /(?<!\.d)\.(?:[cm]?tsx?)$/.test(file) && !/\.d\.vibex?\.ts$/.test(file)
       routeable.set(file, new Set(native && !isTestFile(file) && !isFixtureFile(file) && !protectedFiles.has(file)
         ? parseImports(text(file)).filter(edge => !edge.typeOnly && edge.specifier.startsWith("."))
           .flatMap(edge => dependency(file, edge.specifier))

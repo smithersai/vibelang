@@ -90,7 +90,7 @@ function move(from, to) {
 
 const HASH = /-[A-Za-z0-9_-]{8}(?=\.(?:[cm]?js|d\.[cm]?ts)(?:\.map)?$)/
 
-const stem = path => posix.basename(path).replace(/(?:\.d)?\.(?:[cm]?[jt]sx?|vibe|map)(?:\.map)?$/, "")
+const stem = path => posix.basename(path).replace(/(?:\.d)?\.(?:[cm]?[jt]sx?|vibex?|map)(?:\.map)?$/, "")
 
 /**
  * Compares two clean dist lists. Each file the baseline shipped and the
@@ -114,7 +114,7 @@ export function compareDistLists(baseline, candidate, renames = []) {
     // A chunk the bundler renamed (rolldown names a chunk by a module it holds): another new chunk in its directory.
     const sibling = key !== file && [...unhashed].find(([k, files]) => files.length && posix.dirname(k) === posix.dirname(key) && /\.[cm]?js$/.test(k) === /\.[cm]?js$/.test(key))
     if (sibling) { rehashed.push({ from: file, to: sibling[1].shift(), renamed: true }); continue }
-    const vibe = file.replace(/\.[cm]?ts$/, ".vibe")
+    const vibe = file.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
     if (vibe !== file && after.has(vibe) && renames.some(r => stem(r.from) === stem(file))) { renamedSources.push({ from: file, to: vibe }); continue }
     const modules = renames.filter(r => stem(r.from) === stem(file)).map(r => r.from)
     refusals.push({ kind: "dist-missing", file, modules,

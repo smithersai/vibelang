@@ -62,16 +62,18 @@ export function declarationNames(ts, packageDir, projects) {
     const config = ts.readConfigFile(path, ts.sys.readFile)
     if (config.error) throw new Error("cannot read declaration project " + tsconfig)
     const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, posix.dirname(path), { allowNonTsExtensions: true }, path,
-      undefined, [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }])
+      undefined, [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }, { extension: ".vibex", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }])
     const options = { ...parsed.options, outDir: posix.join(out, prefix), declarationDir: undefined, composite: false, declaration: true, emitDeclarationOnly: true }
-    const asTs = { ...parsed, fileNames: parsed.fileNames.map((f) => f.replace(/\.vibe$/, ".ts")), options }
-    for (const source of parsed.fileNames.filter((f) => !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
-      const output = ts.getOutputFileNames(asTs, source.replace(/\.vibe$/, ".ts"), false).find((f) => /\.d\.[cm]?ts$/.test(f))
+    const typescriptName = (f) => f.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
+    const asTs = { ...parsed, fileNames: parsed.fileNames.map(typescriptName), options }
+    for (const source of parsed.fileNames.filter((f) => !/\.d\.(?:vibex?\.)?[cm]?ts$/.test(f))) {
+      const output = ts.getOutputFileNames(asTs, typescriptName(source), false).find((f) => /\.d\.[cm]?ts$/.test(f))
       if (!output) continue
       const declaration = posix.relative(out, output.split("\\").join("/"))
       const name = rel(packageDir, source)
       names[name] = declaration
       if (/\.(?:ts|vibe)$/.test(name)) for (const ext of [".ts", ".vibe", ".d.vibe.ts"]) names[name.replace(/\.(?:ts|vibe)$/, ext)] = declaration
+      if (/\.(?:tsx|vibex)$/.test(name)) for (const ext of [".tsx", ".vibex", ".d.vibex.ts"]) names[name.replace(/\.(?:tsx|vibex)$/, ext)] = declaration
     }
   }
   return names

@@ -55,7 +55,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     for (const [entries, base] of snapshots) {
       if (source.fileName !== base && !source.fileName.startsWith(base + "/")) continue
       const entry = Object.entries(entries).filter(([, file]) => file === source.fileName).map(([key]) => key).sort()[0]
-      path = entry !== undefined ? "entry:" + entry : relative(base, source.fileName).replace(/\.d\.vibe\.ts$/, ".d.ts")
+      path = entry !== undefined ? "entry:" + entry : relative(base, source.fileName).replace(/\.d\.vibex?\.ts$/, ".d.ts")
       break
     }
     const names = []

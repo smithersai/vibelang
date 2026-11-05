@@ -5,10 +5,12 @@ import { packageDirOf } from "./codemod.mjs"
 import { commentRanges, parseImports } from "./imports.mjs"
 import { isDeclarationFile } from "./util.mjs"
 
-const token = /(?<![\w@/.$-])((?:\.{1,2}\/)*[\w@][\w@.\/-]*?)\.ts(?![\w.\/-])/g
-const eligible = /\.(?:ts|tsx|mts|cts|js|mjs|cjs|json|jsonc|ya?ml|toml|sh|nix|vibe)$/
-const strings = /(["'`])([^"'\`\s]*?)\.(ts|js|vibe)\1/g
-const code = /\.(?:[cm]?[jt]sx?|vibe)$/
+const token = /(?<![\w@/.$-])((?:\.{1,2}\/)*[\w@][\w@.\/-]*?)\.(tsx?)(?![\w.\/-])/g
+const eligible = /\.(?:ts|tsx|mts|cts|js|mjs|cjs|json|jsonc|ya?ml|toml|sh|nix|vibe|vibex)$/
+const strings = /(["'`])([^"'\`\s]*?)\.(tsx?|js|vibex?)\1/g
+// The sources a literal's extension can name: x.js names a module of either kind.
+const namedSources = { ts: [".ts"], vibe: [".ts"], tsx: [".tsx"], vibex: [".tsx"], js: [".ts", ".tsx"] }
+const code = /\.(?:[cm]?[jt]sx?|vibex?)$/
 const literal = /(["'`])(?:\\.|(?!\1)[^\\])*?\1/g
 // Ranges arrive in source order from commentRanges or matchAll. Build the
 // masked text once so documentation-heavy generated modules take linear work.
@@ -34,18 +36,18 @@ function commentsOf(file,source) {
 const moduleCall = before => /\b(?:vi\.(?:mock|doMock|importActual|importMock|unmock)|require(?:\.resolve)?)\s*(?:<[^>]*>)?\s*\(\s*$/.test(before)
 const testFile = /(^|\/)(?:tests?|__tests__|fixtures?|__fixtures__|e2e)\/|\.(?:test|spec)\.[^/]+$/
 
-function pathTarget(root, file, source, at, whole, stem) {
+function pathTarget(root, file, source, at, whole, stem, extension) {
   const before = source.slice(Math.max(0, at - 200), at)
-  if (/\brequire\.resolve\s*\(\s*$/.test(before)) return posix.normalize(posix.join(posix.dirname(file),stem)) + ".ts"
+  if (/\brequire\.resolve\s*\(\s*$/.test(before)) return posix.normalize(posix.join(posix.dirname(file),stem)) + extension
   const call = /(?:\bnew\s+URL|\b(?:[\w$]+\.)?(?:join|resolve))\s*\([^()]*$/.exec(before)?.[0]
   if (call) {
     if (/new\s+URL/.test(call)) {
       if (!/^\s*,\s*import\.meta\.url\b/.test(source.slice(at + whole.length))) return null
     } else if (!/\(\s*(?:__dirname|import\.meta\.dirname)\s*,\s*$/.test(call)) return null
-    return posix.normalize(posix.join(posix.dirname(file), stem)) + ".ts"
+    return posix.normalize(posix.join(posix.dirname(file), stem)) + extension
   }
-  if (stem.startsWith("./") || stem.startsWith("../")) return posix.normalize(posix.join(posix.dirname(file), stem)) + ".ts"
-  if (stem.includes("/")) return posix.normalize(posix.join(packageDirOf(root, file), stem)) + ".ts"
+  if (stem.startsWith("./") || stem.startsWith("../")) return posix.normalize(posix.join(posix.dirname(file), stem)) + extension
+  if (stem.includes("/")) return posix.normalize(posix.join(packageDirOf(root, file), stem)) + extension
   return null
 }
 
@@ -111,14 +113,14 @@ export function pathReadDeferrals(root, modules, files) {
     if (!testFile.test(file)) continue
     const bundleInputs = observesBundleInputs(source, comments)
     for (const m of source.matchAll(strings)) {
-      if (m[3] !== "ts") continue
+      if (!/^tsx?$/.test(m[3])) continue
       if (comments.some(([a,b]) => a <= m.index && m.index < b) || imports.some(i => i.start <= m.index && m.index < i.end)) continue
-      const target = pathTarget(root,file,source,m.index,m[0],m[2])
+      const target = pathTarget(root,file,source,m.index,m[0],m[2],"." + m[3])
       if (bundleInputs && !moduleCall(source.slice(Math.max(0,m.index-150),m.index))) {
         // Metafiles may use a package or repository working directory.
         // Retain every statically identified owner when those bases overlap.
-        const targets = new Set([target, posix.normalize(m[2] + ".ts")])
-        if (m[2].startsWith(root + "/")) targets.add(m[2].slice(root.length+1) + ".ts")
+        const targets = new Set([target, posix.normalize(m[2] + "." + m[3])])
+        if (m[2].startsWith(root + "/")) targets.add(m[2].slice(root.length+1) + "." + m[3])
         for (const observed of targets) if (available.has(observed)) {
           const owner = packageDirOf(root,observed)
           for (const candidate of modules) if (packageDirOf(root,candidate) === owner) causes.set(candidate,{
@@ -134,9 +136,11 @@ export function pathReadDeferrals(root, modules, files) {
 
 const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
+const sourceOf = file => file.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
+
 export function rewriteReferences(root, renames, files, { read = file => existsSync(join(root,file)) ? readFileSync(join(root,file),"utf8") : null, write = (file,text) => writeFileSync(join(root,file),text), literals = true } = {}) {
   const moved = new Set(renames.map(r => r.from))
-  const all = new Set(files.map(f => f.endsWith(".vibe") && moved.has(f.replace(/\.vibe$/, ".ts")) ? f.replace(/\.vibe$/, ".ts") : f))
+  const all = new Set(files.map(f => /\.vibex?$/.test(f) && moved.has(sourceOf(f)) ? sourceOf(f) : f))
   const edits = []
   for (const file of files) {
     if (!eligible.test(file) || isDeclarationFile(file) || /(^|\/)node_modules\//.test(file)) continue
@@ -151,28 +155,28 @@ export function rewriteReferences(root, renames, files, { read = file => existsS
       if (!literals) return whole
       if (ext === "js" && !moduleCall(source.slice(Math.max(0,offset-150),offset))) return whole
       if (comments.some(([a,b]) => a <= offset && offset < b) || imports.some(i => offset >= i.start && offset < i.end)) return whole
-      const module = pathTarget(root, file, source, offset, whole, stem)
-      if (!moved.has(module)) return whole
+      const module = namedSources[ext].map(extension => pathTarget(root, file, source, offset, whole, stem, extension)).find(path => moved.has(path))
+      if (!module) return whole
       if (testFile.test(file) && readsText(source,offset)) throw new Error("source text test requires .ts: " + module)
-      const to = stem + ".vibe", from = stem + "." + ext
+      const to = stem + (module.endsWith(".tsx") ? ".vibex" : ".vibe"), from = stem + "." + ext
       edits.push({ file, from, to, module, quoted: true })
       changes.push({start:offset,end:offset+whole.length,text:q+to+q})
       return whole
     })
     // Shell commands and configuration command values retain their existing path support.
     // Offsets below refer to the original source; collect edits before applying.
-    source.replace(token, (from, stem, offset) => {
+    source.replace(token, (from, stem, extension, offset) => {
       if (quoted.some(m => m.index <= offset && offset < m.index + m[0].length)) return from
       if (comments.some(([start, end]) => start <= offset && offset < end)) return from
       if (imports.some(i => offset >= i.start && offset < i.end)) return from
-      const tries = [posix.join(posix.dirname(file), stem), posix.join(packageDirOf(root, file), stem), posix.normalize(stem)].map(x => posix.normalize(x) + ".ts")
+      const tries = [posix.join(posix.dirname(file), stem), posix.join(packageDirOf(root, file), stem), posix.normalize(stem)].map(x => posix.normalize(x) + "." + extension)
       let module = tries.find(x => all.has(x))
       if (!module && stem.includes("/") && !stem.startsWith(".")) {
-        const matches = [...all].filter(f => f.endsWith("/" + stem + ".ts"))
+        const matches = [...all].filter(f => f.endsWith("/" + stem + "." + extension))
         if (matches.length === 1) module = matches[0]
       }
       if (!moved.has(module)) return from
-      const to = stem + ".vibe"
+      const to = stem + (extension === "tsx" ? ".vibex" : ".vibe")
       edits.push({ file, from, to, module })
       changes.push({start:offset,end:offset+from.length,text:to})
       return to
@@ -188,13 +192,13 @@ export function restoreReferences(root, edits, module) {
   const restored = []
   for (const edit of edits.filter(e => e.module === module)) {
     // An importer in the same bulk revert may already be back to .ts.
-    const file = existsSync(join(root, edit.file)) ? edit.file : edit.file.replace(/\.vibe$/, ".ts")
+    const file = existsSync(join(root, edit.file)) ? edit.file : sourceOf(edit.file)
     if (!existsSync(join(root, file))) throw new Error(`path-reference importer missing: ${edit.file}`)
     const source = readFileSync(join(root, file), "utf8")
     const comments = commentsOf(file,source)
     const next = edit.quoted ? source.replace(strings, (whole,q,stem,ext,at) => {
       if (comments.some(([a,b]) => a <= at && at < b)) return whole
-      return stem + "." + ext === edit.to && pathTarget(root,file,source,at,whole,stem) === module ? q + edit.from + q : whole
+      return stem + "." + ext === edit.to && pathTarget(root,file,source,at,whole,stem,posix.extname(module)) === module ? q + edit.from + q : whole
     }) : source.replace(new RegExp("(?<![\\w@/.$-])" + escape(edit.to) + "(?![\\w.\\/-])", "g"), (match, offset) => comments.some(([start, end]) => start <= offset && offset < end) ? match : edit.from)
     if (next !== source) { writeFileSync(join(root, file), next); restored.push({ ...edit, file }) }
   }

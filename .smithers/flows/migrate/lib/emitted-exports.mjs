@@ -24,7 +24,7 @@ export function hasVibeSource(directory) {
   for (const item of readdirSync(directory, { withFileTypes: true })) {
     if (item.isDirectory()) {
       if (!skipped(item.name) && !existsSync(join(directory, item.name, "package.json")) && hasVibeSource(join(directory, item.name))) return true
-    } else if (item.name.endsWith(".vibe") && !/\.(?:test|spec)\.vibe$/.test(item.name)) return true
+    } else if (/\.vibex?$/.test(item.name) && !/\.(?:test|spec)\.vibex?$/.test(item.name)) return true
   }
   return false
 }
@@ -80,7 +80,7 @@ function mappedTargets(map, key) {
 // shared by a Vibe module and a public native export on one emitted instance.
 // An opaque runtime edge keeps the previous conservative package-wide routing.
 function runtimeComponentOutputs(root, outputs, pkg, typescript) {
-  const entries=Object.entries(outputs),roots=entries.filter(([source])=>source.endsWith(".vibe")).map(([source])=>plainPath(source))
+  const entries=Object.entries(outputs),roots=entries.filter(([source])=>/\.vibex?$/.test(source)).map(([source])=>plainPath(source))
   const fallback=reason=>({outputs,summary:{mode:"package",reason,modules:entries.length,selected:entries.length}})
   if (!roots.length) return fallback("no Vibe output map")
   if (entries.some(([,output])=>!existsSync(join(root,output)))) return fallback("missing emitted module")

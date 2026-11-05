@@ -166,6 +166,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Reverting ordinary source files could fail when the migration toolchain was unavailable; reverts now load reference-build tools only when the project graph needs them.
 
+- Migration handled a converted `.vibex` module only at its rename: batch scope, sidecar ignores, lint paths, path reads, build inputs, file selectors and emitted routes still expected `.vibe`, and tools read its source untranspiled. Each now treats `.vibex` as it treats `.vibe`.
+
 - Migration rewrote import-shaped text inside JSX and template literals, which changed what a component rendered; it now edits only real imports.
 
 - Migration rejected JSX components in `.tsx` files; they now convert to `.vibex` with matching imports, declaration checks and revert support.

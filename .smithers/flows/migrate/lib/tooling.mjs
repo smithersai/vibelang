@@ -5,7 +5,7 @@ import { wireSourceChildren } from "./source-children.mjs"
 import { wireRolldownSources } from "./rolldown-builds.mjs"
 import { wireOxlint } from "./oxlint.mjs"
 import { preloadRegister } from "./oxlint-plugins.mjs"
-import { addEslintIgnore, addEslintImportParsers, addEslintVibe, emittedIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, addEslintVibe, emittedIgnore, jsxSidecarIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
 
@@ -103,6 +103,11 @@ export function extensionAllowlistWarnings(ts, text, file) {
   const visit = node => {
     if (ts.isArrayLiteralExpression(node) && node.elements.length &&
         node.elements.every(e => ts.isStringLiteralLike(e) && /^\.[a-zA-Z][a-zA-Z0-9.]*$/.test(e.text))) {
+      const jsxOnly = node.elements.find(e => e.text === ".tsx")
+      if (jsxOnly && !node.elements.some(e => e.text === ".ts" || e.text === ".vibex")) {
+        const line = source.getLineAndCharacterOfPosition(jsxOnly.getStart(source)).line + 1
+        warnings.push(`${file}:${line}: source-extension allowlist includes ".tsx" but omits ".vibex"; include ".vibex"`)
+      }
       const literal = node.elements.find(e => e.text === ".ts")
       if (literal && !node.elements.some(e => e.text === ".vibe")) {
         const line = source.getLineAndCharacterOfPosition(literal.getStart(source)).line + 1
@@ -160,10 +165,10 @@ function nativeIgnorePatterns(patterns) {
       .replace(/\.\{([^{}]+)\}$/, (whole, list) => {
         const parts = list.split(",")
         if (!parts.some(part => /^(?:[cm]?ts|tsx)$/.test(part))) return whole
-        const mapped = [...new Set(parts.map(part => /^(?:[cm]?ts|tsx)$/.test(part) ? "vibe" : part))]
+        const mapped = [...new Set(parts.map(part => part === "tsx" ? "vibex" : /^[cm]?ts$/.test(part) ? "vibe" : part))]
         return mapped.length === 1 ? "." + mapped[0] : ".{" + mapped.join(",") + "}"
       })
-      .replace(/\.(?:[cm]?ts|tsx)$/, ".vibe")
+      .replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
     const mapped = [...new Set([pattern, native])].flatMap(convert)
     if (!pattern.startsWith("!")) return mapped
     // Reopen only ancestors the negated glob can reach. A fixed prefix
@@ -206,8 +211,11 @@ export function eslintScriptReadsVibe(command) {
       if (/\.d\.[^/]*$/.test(glob)) continue
       const match = /\.(?:[cm]?tsx?|\{([^{}]*)\})$/.exec(glob)
       if (!match || (match[1] !== undefined && !match[1].split(",").some(name => /^[cm]?tsx?$/.test(name)))) continue
-      const companion = `${quote}${glob.slice(0, match.index)}.vibe${quote}`
-      if (!words.includes(companion)) { out.push(companion); added = true }
+      const names = match[1]?.split(",") ?? [glob.slice(match.index + 1)]
+      for (const extension of [...(names.some(name => /^[cm]?ts$/.test(name)) ? ["vibe"] : []), ...(names.includes("tsx") ? ["vibex"] : [])]) {
+        const companion = `${quote}${glob.slice(0, match.index)}.${extension}${quote}`
+        if (!words.includes(companion)) { out.push(companion); added = true }
+      }
     }
     if (added && !words.includes("--no-error-on-unmatched-pattern")) out.push("--no-error-on-unmatched-pattern")
     return added ? `${before}eslint ${out.join(" ")}` : all
@@ -344,7 +352,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
       needsCompiler = true
     }
     // The declaration sidecars are vibelang's output, in its format.
-    config.excludes = [...new Set([...(config.excludes ?? []), `**/${sidecarIgnore}`, emittedIgnore])]
+    config.excludes = [...new Set([...(config.excludes ?? []), `**/${sidecarIgnore}`, `**/${jsxSidecarIgnore}`, emittedIgnore])]
     write(file, JSON.stringify(config, null, 2) + "\n")
   }
   if (pinned.size) warnings.push(`${pinned.size} dprint configuration${pinned.size === 1 ? " pins" : "s pin"} every plugin by checksum (${[...pinned].slice(0, 3).join(", ")}${pinned.size > 3 ? ", …" : ""}), and VibeLang's dprint plugin, npm:vibelang/dprint-plugin.json, has none: dprint leaves .vibe files there to vibelang-format, which their dprint scripts now run`)
@@ -353,7 +361,8 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   for (const file of all.filter(f => /(^|\/)eslint\.config\.[cm]?[jt]s$/.test(f) && !f.startsWith(".vibelang/"))) {
     const text = readFileSync(join(root, file), "utf8")
     const sidecars = addEslintIgnore(text)
-    const ignored = sidecars === null ? null : addEslintIgnore(sidecars, emittedIgnore)
+    const jsxSidecars = sidecars === null ? null : addEslintIgnore(sidecars, `**/${jsxSidecarIgnore}`)
+    const ignored = jsxSidecars === null ? null : addEslintIgnore(jsxSidecars, emittedIgnore)
     // eslint-plugin-import reads a .vibe module's exports through vibelang/eslint.
     const parsers = addEslintImportParsers(ignored ?? text)
     if (parsers === null && /["'`]eslint-plugin-import(-x)?["'`]/.test(text)) warnings.push(`${file}: add { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } } as its first configuration by hand`)

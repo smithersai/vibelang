@@ -23,7 +23,8 @@ export function widenExtensionRegex(text) {
   if (!p || !/^[iu]*$/.test(p.flags)) return null
   const m = /^\\\.(.+)\$$/.exec(p.body)
   if (!m || !extensionGroups.has(m[1])) return null
-  return "/(?<!\\.d\\.vibe)\\.(?:" + m[1] + "|vibe)$/" + p.flags
+  // A group that admits .tsx admits its native twin; .vibe alone would drop every .vibex module.
+  return /x/.test(m[1]) ? "/(?<!\\.d\\.vibex?)\\.(?:" + m[1] + "|vibex?)$/" + p.flags : "/(?<!\\.d\\.vibe)\\.(?:" + m[1] + "|vibe)$/" + p.flags
 }
 
 export function compileRegex(text) {
@@ -304,15 +305,17 @@ export function regexIdentity(before, after, beforePaths, afterPaths, renames, b
   // sidecar an earlier batch committed, which the unwidened regex selects.
   const fromOf = new Map(renames.map(r => [r.to, r.from]))
   const beforeSet0 = new Set(beforePaths)
-  const logicalBefore = p => p.endsWith(".d.vibe.ts") && beforeSet0.has(p.slice(0, -10) + ".vibe") ? fromOf.get(p.slice(0, -10) + ".vibe") ?? p.slice(0, -10) + ".ts" : p
-  const logicalAfter = p => fromOf.get(p) ?? (p.endsWith(".vibe") && beforeSet0.has(p.slice(0, -5) + ".d.vibe.ts") ? p.slice(0, -5) + ".ts" : p)
-  const withSidecars = [...new Set([...afterPaths, ...afterPaths.filter(p => p.endsWith(".vibe")).map(p => p.slice(0, -5) + ".d.vibe.ts")])]
+  const sidecarOf = p => p.replace(/\.(vibex?)$/, ".d.$1.ts"), nativeOf = p => p.replace(/\.d\.(vibex?)\.ts$/, ".$1")
+  const sourceOf = p => p.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
+  const logicalBefore = p => /\.d\.vibex?\.ts$/.test(p) && beforeSet0.has(nativeOf(p)) ? fromOf.get(nativeOf(p)) ?? sourceOf(nativeOf(p)) : p
+  const logicalAfter = p => fromOf.get(p) ?? (/\.vibex?$/.test(p) && beforeSet0.has(sidecarOf(p)) ? sourceOf(p) : p)
+  const withSidecars = [...new Set([...afterPaths, ...afterPaths.filter(p => /\.vibex?$/.test(p)).map(sidecarOf)])]
   const beforeNames = [...new Set(beforePaths.filter(p => old.test(p)).map(logicalBefore))].sort()
   const afterNames = withSidecars.filter(p => next.test(p)).sort()
   const mapped = afterNames.map(logicalAfter).sort()
   const beforeSet = new Set(beforeNames), afterSet = new Set(mapped)
   const added = mapped.filter(p => !beforeSet.has(p)), dropped = beforeNames.filter(p => !afterSet.has(p))
-  const sidecars = afterNames.filter(p => p.endsWith(".d.vibe.ts"))
+  const sidecars = afterNames.filter(p => /\.d\.vibex?\.ts$/.test(p))
   const pass = !added.length && !dropped.length && !sidecars.length && mapped.length === new Set(mapped).size
   // The lists name the files under the selecting file's package; the identity holds for every path.
   const scoped = p => base === "." || p.startsWith(base + "/")

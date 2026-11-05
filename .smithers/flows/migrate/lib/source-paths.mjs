@@ -228,20 +228,20 @@ export function selectorIdentity(kind, before, after, file, renames, inventory, 
     return { kind, ...proof }
   }
   const mappedOriginals = originals.map(path => toOf.get(path) ?? path)
-  const actual = [...new Set([...mappedOriginals, ...mappedOriginals.filter(path => path.endsWith(".vibe")).map(path => path.replace(/\.vibe$/, ".d.vibe.ts"))])]
+  const actual = [...new Set([...mappedOriginals, ...mappedOriginals.filter(path => /\.vibex?$/.test(path)).map(path => path.replace(/\.(vibex?)$/, ".d.$1.ts"))])]
   const old = kind === "source-glob" ? compiledSelector(before, matcherCache) : null
   const next = kind === "source-glob" ? compiledSelector(after, matcherCache) : null
   if (kind === "source-glob" && (!old || !next)) return { kind, pass: false, reason: "bounded matcher could not prove the selector", contexts: [] }
   const contexts = []
   for (const base of kind === "source-glob" ? globBases(file, inventory) : ["."]) {
     const matches = (pattern, matcher, path) => kind === "source-glob" ? matcher.match(posix.relative(base, path)) :
-      !path.endsWith(".d.vibe.ts") && pattern.includes(posix.extname(path))
+      !/\.d\.vibex?\.ts$/.test(path) && pattern.includes(posix.extname(path))
     const beforeNames = originals.filter(path => matches(before, old, path))
     const afterNames = actual.filter(path => matches(after, next, path)).sort()
     const mapped = afterNames.map(path => fromOf.get(path) ?? path).sort()
     const beforeSet = new Set(beforeNames), afterSet = new Set(mapped)
     const added = mapped.filter(path => !beforeSet.has(path)), dropped = beforeNames.filter(path => !afterSet.has(path))
-    const sidecars = afterNames.filter(path => path.endsWith(".d.vibe.ts"))
+    const sidecars = afterNames.filter(path => /\.d\.vibex?\.ts$/.test(path))
     contexts.push({ base, before: beforeNames, after: afterNames, mapped, beforeCount: beforeNames.length, afterCount: afterNames.length, added, dropped,
       pass: JSON.stringify(beforeNames) === JSON.stringify(mapped) && !sidecars.length, ...(sidecars.length ? { sidecars } : {}) })
   }
@@ -360,7 +360,7 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
         const matches = value => matcher.match(value)
         const selected = renames.filter(r => bases.some(base => matches(posix.relative(base, r.from))))
         const nativeCovered = selected.every(r => {
-          const sidecar = r.to.replace(/\.vibe$/, ".d.vibe.ts")
+          const sidecar = r.to.replace(/\.(vibex?)$/, ".d.$1.ts")
           return bases.filter(base => matches(posix.relative(base, r.from))).every(base =>
             matches(posix.relative(base, r.to)) && !matches(posix.relative(base, sidecar)))
         })
@@ -369,7 +369,7 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
         } else if (selected.length && !nativeCovered) {
           // Retain TypeScript sources while adding native ones. The negative
           // stem excludes generated x.d.vibe.ts without excluding x.d.ts.
-          const next = pattern.replace(/([^/]+)\.([cm]?ts)$/, (_, stem, ext) => (stem === "*" ? "!(*.d.vibe)" : stem) + ".{" + ext + ",vibe}")
+          const next = pattern.replace(/([^/]+)\.tsx$/, "$1.{tsx,vibex}").replace(/([^/]+)\.([cm]?ts)$/, (_, stem, ext) => (stem === "*" ? "!(*.d.vibe)" : stem) + ".{" + ext + ",vibe}")
           if (next !== pattern) put(node, next, "source-glob")
           else warnings.push(file + ":" + line(node) + ": source glob selects renamed files but needs a manual native extension/sidecar selector")
         }
@@ -377,14 +377,17 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
     }
     if (selectors && ts.isArrayLiteralExpression(node) && node.elements.length && node.elements.every(literal)) {
       const values = node.elements.map(n => n.text)
-      if (values.includes(".ts") && !values.includes(".vibe") && values.every(v => /^\.[a-z0-9.]+$/i.test(v))) {
+      // .vibex joins only for a module this batch renamed to it, so a list in a repository without JSX stays as it was.
+      const natives = [...(values.includes(".ts") && !values.includes(".vibe") ? [".vibe"] : []),
+        ...(values.includes(".tsx") && !values.includes(".vibex") && renames.some(r => r.to.endsWith(".vibex")) ? [".vibex"] : [])]
+      if (natives.length && values.every(v => /^\.[a-z0-9.]+$/i.test(v))) {
         if (excludesSidecars(ts, source, node) && !literalOnly(node)) {
           const last = node.elements.at(-1)
-          const proof = { file, line: line(node), ...selectorIdentity("source-extensions", values, [...values, ".vibe"], file, renames, inventory, matcherCache) }
+          const proof = { file, line: line(node), ...selectorIdentity("source-extensions", values, [...values, ...natives], file, renames, inventory, matcherCache) }
           selectorChecks.push(proof)
           if (proof.pass) {
-            changes.push({ start: last.end, end: last.end, text: ", " + quote(".vibe", last) })
-            edits.push({ file, from: values, to: [...values, ".vibe"], kind: "source-extensions", context: literalContext(ts,node), line: line(node) })
+            changes.push({ start: last.end, end: last.end, text: natives.map(native => ", " + quote(native, last)).join("") })
+            edits.push({ file, from: values, to: [...values, ...natives], kind: "source-extensions", context: literalContext(ts,node), line: line(node) })
           } else warnings.push(file + ":" + line(node) + ": extension selector changes the selected set or lacks a complete inventory; rewrite refused")
         } else {
           // A bare allowlist cannot express a filename exclusion. Keep an
@@ -444,13 +447,15 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
 /** Restore exact filename literals for a module returned to TypeScript.
  * Additive glob/extension selectors remain valid for the mixed repository. */
 export function restoreSourceLiterals(ts, root, edits, module, renames) {
-  const vibe = renames.find(r => r.from === module)?.to ?? module.replace(/\.[cm]?ts$/, ".vibe")
+  const vibe = renames.find(r => r.from === module)?.to ?? module.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
   const restored = []
   const byFile = new Map()
   for (const edit of edits) {
     if (edit.kind !== "source-reference" || edit.module !== vibe) continue
     const fallback = renames.find(r => r.to === edit.file)?.from
-    const candidates = edit.file.endsWith(".vibe") ? [fallback, ...[".ts", ".mts", ".cts"].map(ext => edit.file.replace(/\.vibe$/, ext))] : [edit.file.replace(/\.[cm]?ts$/, ".vibe")]
+    const candidates = edit.file.endsWith(".vibex") ? [fallback, edit.file.replace(/\.vibex$/, ".tsx")]
+      : edit.file.endsWith(".vibe") ? [fallback, ...[".ts", ".mts", ".cts"].map(ext => edit.file.replace(/\.vibe$/, ext))]
+      : [edit.file.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")]
     const available = [...new Set(candidates.filter(f => f && existsSync(join(root, f))))]
     if (!existsSync(join(root, edit.file)) && available.length > 1) throw new Error(edit.file + ": ambiguous restored source for literal wiring")
     const file = existsSync(join(root, edit.file)) ? edit.file : available[0]

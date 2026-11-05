@@ -18,7 +18,7 @@ export function packageScriptProofs({ files, codemod, manifestSnapshots = {} }) 
       for (const edit of codemod.packageScriptEdits) if (edit.manifest === manifest) {
         const from = moved.get(edit.module), value = before.scripts[edit.script]
         if (!from) continue // A reverted module authorizes no replacement.
-        if (typeof value !== "string" || !edit.module.endsWith(".vibe")) throw new Error("unproven module or script")
+        if (typeof value !== "string" || !/\.vibex?$/.test(edit.module)) throw new Error("unproven module or script")
         const next = replaceWord(value, posix.relative(posix.dirname(manifest), from), posix.relative(posix.dirname(manifest), edit.module))
         if (next === value) throw new Error("stale script receipt")
         before.scripts[edit.script] = next

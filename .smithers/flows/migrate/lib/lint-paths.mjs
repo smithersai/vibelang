@@ -61,10 +61,11 @@ function followed(value, dir, exists) {
   const { lead, path } = parts(value)
   for (const candidate of new Set([posix.join(dir, path), path])) {
     if (exists(candidate)) return null
-    if (candidate.endsWith(".ts") && !isDeclarationFile(candidate) && exists(candidate.slice(0, -3) + ".vibe")) {
-      return { to: lead + path.slice(0, -3) + ".vibe", also: exists(platformPath(candidate)) ? lead + platformPath(path) : null }
+    const [source, native] = candidate.endsWith(".tsx") || candidate.endsWith(".vibex") ? [".tsx", ".vibex"] : [".ts", ".vibe"]
+    if (candidate.endsWith(source) && !isDeclarationFile(candidate) && exists(candidate.slice(0, -source.length) + native)) {
+      return { to: lead + path.slice(0, -source.length) + native, also: exists(platformPath(candidate)) ? lead + platformPath(path) : null }
     }
-    if (candidate.endsWith(".vibe") && exists(candidate.slice(0, -5) + ".ts")) return { to: lead + path.slice(0, -5) + ".ts", also: null }
+    if (candidate.endsWith(native) && exists(candidate.slice(0, -native.length) + source)) return { to: lead + path.slice(0, -native.length) + source, also: null }
     // revert removes the sibling a split wrote; a path to it goes too.
     if (candidate.endsWith(".platform.ts") && exists(candidate.slice(0, -12) + ".ts")) return { remove: true }
   }
@@ -76,8 +77,8 @@ function followed(value, dir, exists) {
 // matches a glob as written; the generated ESLint bridge reads .ts as .vibe.
 function vibeGlob(value, dir, modules) {
   const { lead, path } = parts(value)
-  if (!/[*?[]/.test(path) || !path.endsWith(".ts")) return null
-  const glob = path.slice(0, -3) + ".vibe"
+  if (!/[*?[]/.test(path) || !/\.tsx?$/.test(path)) return null
+  const glob = path.replace(/\.tsx$/, ".vibex").replace(/\.ts$/, ".vibe")
   const pattern = glob.includes("/") ? glob : "**/" + glob
   const matches = (module) => posix.matchesGlob(module, pattern) || posix.matchesGlob(posix.relative(dir, module), pattern)
   return modules.some(matches) ? lead + glob : null
@@ -99,7 +100,7 @@ function removal(text, { start, end }) {
  */
 export function followLintRenames(root, tracked) {
   const exists = (file) => existsSync(join(root, file))
-  const modules = tracked.filter((file) => file.endsWith(".vibe"))
+  const modules = tracked.filter((file) => /\.vibex?$/.test(file))
   const edits = []
   for (const config of lintConfigs(tracked).filter(exists)) {
     const text = readFileSync(join(root, config), "utf8")

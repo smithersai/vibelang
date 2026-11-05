@@ -13,7 +13,8 @@ const declaration = /\.d\.(?:vibe\.)?[cm]?ts$/
 const textData = /\.(?:ya?ml|toml|sh)$/
 const jsonData = /\.jsonc?$/
 const toolJson = /(?:^|\/)(?:package-lock|tsconfig[^/]*|jsconfig[^/]*|vibe\.config|turbo|biome|\.oxlintrc|\.eslintrc)\.jsonc?$/
-const sourceName = /\.m?ts$/
+const sourceName = /\.(?:m?ts|tsx)$/
+const nativeName = value => value.replace(sourceName, extension => extension === ".tsx" ? ".vibex" : ".vibe")
 const scheme = /^[a-z][a-z0-9+.-]*:/i
 const extensionName = /(?:^|[^a-z])ext(?:ension)?$|Ext(?:ension)?$/
 // Configuration properties whose string value a bundler or runner opens as a file.
@@ -96,7 +97,7 @@ export function processArgument(ts, node) {
 export function twinListed(ts, node) {
   const list = node.parent
   if (!ts.isArrayLiteralExpression(list) || !sourceName.test(node.text)) return false
-  const twin = node.text.replace(sourceName, ".vibe")
+  const twin = nativeName(node.text)
   return list.elements.some(element => isString(ts, element) && element.text === twin)
 }
 
@@ -488,7 +489,7 @@ export function scanSource(ts, text, file, index) {
       if (parts.some(part => part.remote)) continue
       if (!parts.some(part => part.hole)) {
         const value = parts.filter(part => typeof part === "string").join("")
-        if (sourceName.test(value) && spellings.has(value.replace(sourceName, ".vibe"))) continue
+        if (sourceName.test(value) && spellings.has(nativeName(value))) continue
         // A fragment with no base, join("src", "x.ts"): whatever it is joined to later decides.
         if (kind === "path" && parts[0] !== DIR) {
           const hit = resolveRenamed(value, file, index.byFrom, { packages: index.packages, live: index.live })
@@ -541,7 +542,7 @@ export function scanSource(ts, text, file, index) {
   const regexNamesSource = text => /\\\.[^/]*(?:ts|\[[a-z]*t[a-z]*\]s)/.test(text)
   const regexSelectsSource = node => {
     const compiled = regexOf(node.text)
-    return !!compiled && regexNamesSource(node.text) && ["a.ts", "a.tsx", "a.mts"].some(name => compiled.test(name)) && !compiled.test("a.vibe")
+    return !!compiled && regexNamesSource(node.text) && ["a.ts", "a.tsx", "a.mts"].some(name => compiled.test(name)) && !compiled.test("a.vibe") && !compiled.test("a.vibex")
   }
   // The expression and the value an extension test reads, or null.
   const extensionTest = node => {
@@ -577,7 +578,7 @@ export function scanSource(ts, text, file, index) {
         return alternative(candidate.left) || alternative(candidate.right)
       return ts.isCallExpression(candidate) && candidate.arguments.length === 1 &&
         ts.isPropertyAccessExpression(candidate.expression) && candidate.expression.name.text === "endsWith" &&
-        sameValue(candidate.expression.expression) && isString(ts, candidate.arguments[0]) && candidate.arguments[0].text === ".vibe"
+        sameValue(candidate.expression.expression) && isString(ts, candidate.arguments[0]) && /^\.vibex?$/.test(candidate.arguments[0].text)
     }
     for (let expression = node; expression.parent; expression = expression.parent) {
       const parent = expression.parent
@@ -702,17 +703,18 @@ function scanText(text, file, index) {
       if (!match[1].includes("/")) continue
       const move = resolveRenamed(match[1], file, index.byFrom, options).move
       // A workflow's path filter listing both spellings keeps working: foldkit's deploy-website.yml.
-      if (move && !text.includes(match[1].replace(sourceName, ".vibe"))) refusals.push({ refusal: REFUSAL, module: move.from, to: move.to, file, line: at + 1, kind: "static", expression: raw.trim().slice(0, 160), reason: "the line still names the module's old file; " + REMEDY })
+      if (move && !text.includes(nativeName(match[1]))) refusals.push({ refusal: REFUSAL, module: move.from, to: move.to, file, line: at + 1, kind: "static", expression: raw.trim().slice(0, 160), reason: "the line still names the module's old file; " + REMEDY })
     }
   })
   return { refusals, reports: [], opaque: 0 }
 }
 
-/** The modules a tracked tree has converted: x.vibe with no x.ts or x.mts beside it. */
+/** The modules a tracked tree has converted: x.vibe with no x.ts or x.mts beside it, x.vibex with no x.tsx. */
 export function convertedModules(tracked) {
   const live = new Set(tracked)
-  return tracked.filter(file => file.endsWith(".vibe") && !live.has(file.replace(/\.vibe$/, ".ts")) && !live.has(file.replace(/\.vibe$/, ".mts")))
-    .flatMap(to => [{ from: to.replace(/\.vibe$/, ".ts"), to }, { from: to.replace(/\.vibe$/, ".mts"), to }])
+  const sources = to => to.endsWith(".vibex") ? [to.replace(/\.vibex$/, ".tsx")] : [to.replace(/\.vibe$/, ".ts"), to.replace(/\.vibe$/, ".mts")]
+  return tracked.filter(file => /\.vibex?$/.test(file) && !sources(file).some(from => live.has(from)))
+    .flatMap(to => sources(to).map(from => ({ from, to })))
 }
 
 /** Tracked files whose text can hold a path to a module. Fixtures keep their own trees. */

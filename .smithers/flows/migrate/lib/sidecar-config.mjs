@@ -145,7 +145,7 @@ function removeSupersededByGraph(root, tracked, configs, ts) {
 // Overlapping output directories keep the complete selected-output oracle.
 export function removeSupersededSidecars(root, tracked, configs, ts) {
   const candidates = [...new Map(tracked.filter(file => /\.vibex?$/.test(file)).map(file => [resolve(root, file), {
-    source: resolve(root, file), stale: resolve(root, file.replace(/\.vibe$/, ".d.vibe.ts"))
+    source: resolve(root, file), stale: resolve(root, file.replace(/\.(vibex?)$/, ".d.$1.ts"))
   }])).values()].filter(({ stale }) => existsSync(stale) && !lstatSync(stale).isDirectory())
   const projects = [...configs].map(config => {
     const file = resolve(root, config), settings = sidecarSettings(file, ts, undefined, { sourceRootOnly: true })
@@ -156,7 +156,7 @@ export function removeSupersededSidecars(root, tracked, configs, ts) {
     return removeSupersededByGraph(root, tracked, configs, ts)
   const eligible = new Set()
   const add = (sources, settings, references = []) => {
-    for (const source of sources) if (source.endsWith(".vibe") && within(settings.sourceRoot, source) &&
+    for (const source of sources) if (/\.vibex?$/.test(source) && within(settings.sourceRoot, source) &&
         !references.some(home => within(home, source)) && ts.sys.readFile(source) !== undefined) eligible.add(resolve(source))
   }
   for (const { settings } of projects) {

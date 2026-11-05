@@ -51,7 +51,7 @@ export function nativeConfigDependency({ root, file, packages, ts }) {
   const visit = path => {
     if (seen.has(path)) return false
     seen.add(path)
-    if (path.endsWith(".vibe") || planned(path)) return true
+    if (/\.vibex?$/.test(path) || planned(path)) return true
     if (!existsSync(join(root, path))) return false
     const text = readFileSync(join(root, path), "utf8")
     // Resolve package exports and tsconfig paths with the project's own options.
@@ -62,7 +62,7 @@ export function nativeConfigDependency({ root, file, packages, ts }) {
       let target = resolveRelative(path, specifier, sources)
       if (!target) {
         const resolved = ts.resolveModuleName(specifier, join(root, path), options, ts.sys).resolvedModule?.resolvedFileName
-        if (resolved && !resolved.includes("/node_modules/")) target = posix.relative(root, resolved).replace(/\.d\.vibe\.ts$/, ".vibe")
+        if (resolved && !resolved.includes("/node_modules/")) target = posix.relative(root, resolved).replace(/\.d\.(vibex?)\.ts$/, ".$1")
       }
       return target !== undefined && !target.startsWith("../") && visit(target)
     })

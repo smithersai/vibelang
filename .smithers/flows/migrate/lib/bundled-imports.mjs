@@ -17,7 +17,7 @@ import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 export const routePrefix = "#vibelang/emitted/"
 const routeKey = routePrefix + "*"
 const nativeSource = /(?<!\.d)\.(?:[cm]?tsx?)$/
-const owned = file => nativeSource.test(file) && !/\.d\.vibe\.ts$/.test(file) && !isTestFile(file) && !isFixtureFile(file)
+const owned = file => nativeSource.test(file) && !/\.d\.vibex?\.ts$/.test(file) && !isTestFile(file) && !isFixtureFile(file)
 
 const route = sidecars => ({
   types: sidecars ? "./.vibe/declarations/*.d.vibe.ts" : "./*.d.vibe.ts",
@@ -42,7 +42,7 @@ const relativeTo = (file, target) => {
  */
 export function routeBundledImports({ root, packages, ts, compiler, restore = false, bundled, native = false, outputs }) {
   const changed = [], modules = new Set(), warnings = []
-  const vibes = packages.flatMap(pkg => listSources(root, pkg.dir).filter(file => file.endsWith(".vibe")))
+  const vibes = packages.flatMap(pkg => listSources(root, pkg.dir).filter(file => /\.vibex?$/.test(file)))
   const reached = bundled ?? new Set(restore ? [] : native ? vibes : testBundleDeferrals(root, vibes, { ts }).map(item => item.file))
   const generated = value => value && typeof value === "object" &&
     typeof value["vibelang-source"] === "string" && typeof value.default === "string" &&
@@ -57,8 +57,8 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     const sidecars = existsSync(join(root, dir, ".vibe/declarations"))
     const targets = new Map(), used = new Set()
     const targetFor = (source, path) => ({
-      types: source.endsWith(".vibe")
-        ? "./" + (sidecars ? ".vibe/declarations/" : "") + path + ".d.vibe.ts"
+      types: /\.vibex?$/.test(source)
+        ? "./" + (sidecars ? ".vibe/declarations/" : "") + path + ".d" + posix.extname(source) + ".ts"
         : "./" + inPackage(source),
       "vibelang-source": "./" + inPackage(source),
       default: outputs?.[source] ? "./" + posix.relative(dir, outputs[source]) : "./.vibelang/js/" + path + ".js"
@@ -69,7 +69,7 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
       // Exact routes from normal project emission retain their own output.
       if (prior && typeof prior === "object" && typeof prior["vibelang-source"] === "string") {
         const originalSource = posix.join(dir, prior["vibelang-source"])
-        if (native && outputs && generated(prior) && originalSource.endsWith(".vibe")) {
+        if (native && outputs && generated(prior) && /\.vibex?$/.test(originalSource)) {
           const output = outputs[originalSource]
           if (!output || !existsSync(join(root, output))) {
             warnings.push(posix.join(dir, "package.json") + ": missing emitted JavaScript for " + originalSource + " (" + key + ")")
@@ -89,10 +89,10 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     }
     // A previously native importer can itself become VibeLang. Keep its
     // existing routes even though only native value edges need rewriting.
-    for (const file of sources.filter(file => owned(file) || file.endsWith(".vibe") && !isTestFile(file) && !isFixtureFile(file))) {
+    for (const file of sources.filter(file => owned(file) || /\.vibex?$/.test(file) && !isTestFile(file) && !isFixtureFile(file))) {
       const text = readFileSync(join(root, file), "utf8"), edits = []
       // A Vibe source only needs parsing to retain or restore an existing route.
-      if (file.endsWith(".vibe") && !text.includes(routePrefix)) continue
+      if (/\.vibex?$/.test(file) && !text.includes(routePrefix)) continue
       for (const edge of runtimeEdges(text, file, ts, compiler, root)) {
         if (edge.specifier.startsWith(routePrefix)) {
           if (restore) {
@@ -106,8 +106,8 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
         }
         if (restore || !owned(file) || protectedFiles.has(file)) continue
         const source = resolveRelative(file, edge.specifier, all)
-        if (!source?.endsWith(".vibe") || !reached.has(source)) continue
-        const path = inPackage(source).replace(/\.vibe$/, "")
+        if (!/\.vibex?$/.test(source ?? "") || !reached.has(source)) continue
+        const path = inPackage(source).replace(/\.vibex?$/, "")
         const output = outputs ? outputs[source] : posix.join(dir, ".vibelang/js", path + ".js")
         if (!output || !existsSync(join(root, output))) {
           if (native) warnings.push(file + ":" + (text.slice(0, edge.start).split("\n").length) + ": missing emitted JavaScript for " + source + "; the native load path remains unresolved")

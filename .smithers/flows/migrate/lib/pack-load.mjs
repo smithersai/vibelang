@@ -402,9 +402,9 @@ export function comparePackLoads(baseline, candidate) {
     for (const specifier of Object.keys(headEntries)) {
       if (specifier in baseEntries) continue
       // A wildcard over source files also matches each module's declaration sidecar.
-      const sidecar = specifier.endsWith(".d.vibe")
+      const sidecar = /\.d\.vibex?$/.test(specifier)
       refuse("exports-added", { specifier, ...(sidecar ? { sidecar } : {}) }, `the pack now answers ${specifier}, which the baseline did not publish: ` +
-        (sidecar ? 'a wildcard target matches the module\'s declaration sidecar; add "./*.d.vibe": null to exports' : "exclude it from exports (a null target, or the generator's filter) so a converted module adds no public path"))
+        (sidecar ? 'a wildcard target matches the module\'s declaration sidecar; add "./*.d.' + specifier.split(".").pop() + '": null to exports' : "exclude it from exports (a null target, or the generator's filter) so a converted module adds no public path"))
     }
     for (const [specifier, entry] of Object.entries(headEntries)) {
       const was = new Set((baseEntries[specifier]?.missing ?? []).map(item => item.split(":")[0]))

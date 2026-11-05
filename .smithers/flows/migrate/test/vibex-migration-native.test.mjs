@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { test } from "node:test"
 import { fixToFixedPoint, renameBatch, rewriteImports } from "../lib/codemod.mjs"
 import { compareDeclarations, recordDeclarationSurface } from "../lib/declarations.mjs"
+import { runtimeEdges } from "../lib/emitted-imports.mjs"
 import { quote, must } from "../lib/util.mjs"
 
 const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))
@@ -25,6 +26,7 @@ test("a TSX component with hooks, generics and an Effect value compiles identica
     mkdirSync(join(root, "node_modules/@types"), { recursive: true })
     for (const name of ["effect"]) symlinkSync(dirname(require.resolve(name + "/package.json")), join(root, "node_modules", name), "dir")
     symlinkSync(runtime, join(root, "node_modules/vibelang-runtime"), "dir")
+    symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/", import.meta.url)), join(root, "node_modules/vibelang"), "dir")
     for (const name of ["react", "react-dom", "@types/react"]) symlinkSync(dirname(reactRequire.resolve(name + "/package.json")), join(root, "node_modules", name), "dir")
     put("package.json", JSON.stringify({ name: "jsx-component-fixture", type: "module", exports: { ".": "./Card.tsx" } }))
     put(corpus.file, corpus.source)
@@ -53,6 +55,13 @@ test("a TSX component with hooks, generics and an Effect value compiles identica
     const comparison = compareDeclarations(ts, before, after)
     assert.equal(comparison.comparisonComplete, true, JSON.stringify(comparison))
     assert.equal(comparison.identical, true, JSON.stringify(comparison))
+    // A tool that reads source gets the emitted module, and a native edge reads through the compiler.
+    const { toolArguments } = await import(new URL("../../../../packages/compiler/emit.mjs", import.meta.url).href)
+    const nativeText = readFileSync(join(root, "Card.vibex"), "utf8")
+    const [, toolText, toolOptions] = toolArguments(join(root, "Card.vibex"), nativeText, {})
+    assert.equal(toolOptions.lang, "jsx")
+    assert.equal(toolText.trim().startsWith(readFileSync(join(root, "dist/Card.js"), "utf8").trim().split("\n")[0]), true)
+    assert.ok(runtimeEdges(nativeText, "Card.vibex", ts, compiler, root).some(edge => edge.specifier === "effect"))
     const { createElement } = await import(pathToFileURL(reactRequire.resolve("react")).href)
     const { renderToStaticMarkup } = await import(pathToFileURL(reactRequire.resolve("react-dom/server")).href)
     const { Effect } = await import(pathToFileURL(require.resolve("effect")).href)

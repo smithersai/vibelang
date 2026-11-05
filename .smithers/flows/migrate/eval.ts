@@ -97,7 +97,7 @@ async function migrateFresh(input: Input): Promise<Output & { readonly compiler:
     const record = readIf(join(run, "batches/01/record.json"));
     return {
       scope: scope.length,
-      migrated: scope.filter((f) => existsSync(join(repo, f.replace(/\.ts$/, ".vibe")))).length,
+      migrated: scope.filter((f) => existsSync(join(repo, f.replace(/\.tsx$/, ".vibex").replace(/\.ts$/, ".vibe")))).length,
       checks: {
         passed: Object.keys(verify?.checks ?? {}).filter((name) => verify.checks[name] === true),
         failed: Object.keys(verify?.checks ?? {}).filter((name) => verify.checks[name] !== true)

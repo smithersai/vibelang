@@ -1104,6 +1104,7 @@ export function rootTsconfigs(root, ts) {
 
 /** The ignore line that keeps formatters reading .prettierignore (Prettier, Oxfmt, Vite+) off vibelang's declaration sidecars. */
 export const sidecarIgnore = "*.d.vibe.ts"
+export const jsxSidecarIgnore = "*.d.vibex.ts"
 // A migrated package's emitted JavaScript (emitPackageJs), vibelang's output too.
 export const emittedIgnore = "**/.vibelang/js/**"
 
@@ -1658,7 +1659,7 @@ export function formatterOf(manifest = {}) {
  * formatter owns them) or the declaration sidecars vibelang writes.
  */
 export function formattable(files) {
-  return files.filter((file) => /\.(?:jsonc?|ya?ml|md|[cm]?[jt]sx?)$/.test(file) && !/\.d\.vibe\.ts$/.test(file) &&
+  return files.filter((file) => /\.(?:jsonc?|ya?ml|md|[cm]?[jt]sx?)$/.test(file) && !/\.d\.vibex?\.ts$/.test(file) &&
     !["pnpm-lock.yaml", "package-lock.json", "yarn.lock", "bun.lock"].includes(posix.basename(file)))
 }
 

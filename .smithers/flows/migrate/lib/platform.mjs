@@ -93,7 +93,7 @@ export function platformGlobalsFromCauses(receipts) {
   const messages = new Map()
   const add = (file, message) => {
     if (typeof file !== "string" || typeof message !== "string") return
-    for (const key of /\.vibe$/.test(file) ? [file.replace(/\.vibe$/, ".ts"), file.replace(/\.vibe$/, ".mts")] : [file]) {
+    for (const key of /\.vibex$/.test(file) ? [file.replace(/\.vibex$/, ".tsx")] : /\.vibe$/.test(file) ? [file.replace(/\.vibe$/, ".ts"), file.replace(/\.vibe$/, ".mts")] : [file]) {
       messages.set(key, [...(messages.get(key) ?? []), message])
     }
   }
@@ -298,7 +298,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   const platformImports = imports.map((i) => importText(i, source, ts, (b) => movedReads.has(b.name))).filter(Boolean)
   if (typesFromModule.size) platformImports.push(`import type { ${[...typesFromModule].sort().join(", ")} } from "./${posix.basename(file)}"`)
   const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : !d.exported && fromSibling.some((n) => d.names.has(n)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
-  const note = `// The platform code of ${posix.basename(file).replace(/\.m?ts$/, ".vibe")}, which a .vibe file does not import as a value (EK4402).`
+  const note = `// The platform code of ${posix.basename(file).replace(/\.tsx$/, ".vibex").replace(/\.m?ts$/, ".vibe")}, which a .vibe file does not import as a value (EK4402).`
   // A file-wide directive governed the moved code too, so the sibling keeps it
   // (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
   const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)))

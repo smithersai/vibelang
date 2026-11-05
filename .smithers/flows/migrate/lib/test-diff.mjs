@@ -21,8 +21,8 @@ export const isProtectedFile = path => isTestFile(path) || isFixtureFile(path)
  * output, wherever setup moves it. An orphan is authored TypeScript (VIP-27).
  */
 export function pairedSidecar(path, tree) {
-  if (!path.endsWith(".d.vibe.ts")) return false
-  const source = path.slice(0, -".d.vibe.ts".length) + ".vibe"
+  if (!/\.d\.vibex?\.ts$/.test(path)) return false
+  const source = path.replace(/\.d\.(vibex?)\.ts$/, ".$1")
   if (Object.hasOwn(tree, source)) return true
   const parts = source.split("/")
   for (let start = 0; start < parts.length - 1; start++) {
@@ -296,8 +296,8 @@ function globWidening(before, after) {
     if (p.endsWith(".tsx")) expected.add(p.slice(0, -4) + ".vibex")
   }
   const extra = next.filter(p => !expected.has(p))
-  if (extra.some(p => !p.startsWith("!") || !p.endsWith(".d.vibe.ts"))) return false
-  return next.some(p => p.startsWith("!") && p.endsWith(".d.vibe.ts")) && same(sorted(next.filter(p => expected.has(p))), sorted(expected))
+  if (extra.some(p => !p.startsWith("!") || !/\.d\.vibex?\.ts$/.test(p))) return false
+  return next.some(p => p.startsWith("!") && /\.d\.vibex?\.ts$/.test(p)) && same(sorted(next.filter(p => expected.has(p))), sorted(expected))
 }
 
 // Evaluate a small, side-effect-free subset of extension predicates. Unsupported
@@ -486,7 +486,7 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], gener
       try {
         if (Buffer.isBuffer(before[file]) || Buffer.isBuffer(after[file])) throw new Error("binary test or fixture edits are forbidden")
         if (typeof before[file] !== "string" || typeof after[file] !== "string") throw new Error("missing test snapshot")
-        if (file.endsWith(".vibe") && isTestFile(file) && !isFixtureFile(file)) {
+        if (/\.vibex?$/.test(file) && isTestFile(file) && !isFixtureFile(file)) {
           entry.hunks.push(proveFormatterOnly({file, before: before[file], after: after[file], parseVibe}))
           continue
         }
@@ -547,7 +547,7 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], gener
               // this snapshot happens not to contain any yet.
               const side = Object.keys(after).filter(p => /\.(vibe|vibex)$/.test(p)).map(p => p.replace(/\.(vibe|vibex)$/, ".d.vibe.ts"))
               for (const p of side) { mkdirSync(dirname(join(roots.after, p)), { recursive: true }); writeFileSync(join(roots.after, p), "") }
-              const includesSidecar = selectGlob(toolGlob, bp, roots.after, file, options, globRoot).some(p => p.endsWith(".d.vibe.ts"))
+              const includesSidecar = selectGlob(toolGlob, bp, roots.after, file, options, globRoot).some(p => /\.d\.vibex?\.ts$/.test(p))
               for (const p of side) if (!Object.hasOwn(after, p)) rmSync(join(roots.after, p))
               if (includesSidecar) throw new Error("selector includes declaration sidecars")
             } else {
@@ -559,8 +559,8 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], gener
               if (ad !== bd || ad.startsWith("../")) throw new Error("selector directory changed or leaves the repository")
               // Since only suffix predicates qualify, these representatives
               // cover every supported extension and the complement class.
-              for (const name of ["probe.ts", "probe.tsx", "probe.js", "probe.json", "probe", "probe.d.vibe.ts"]) {
-                if (bp(name) !== (name.endsWith(".d.vibe.ts") ? false : ap(name))) throw new Error("selector changes an existing extension")
+              for (const name of ["probe.ts", "probe.tsx", "probe.js", "probe.json", "probe", "probe.d.vibe.ts", "probe.d.vibex.ts"]) {
+                if (bp(name) !== (/\.d\.vibex?\.ts$/.test(name) ? false : ap(name))) throw new Error("selector changes an existing extension")
               }
               if (bp("probe.vibe") !== ap("probe.ts") || bp("probe.vibex") !== ap("probe.tsx"))
                 throw new Error("selector is not a matching VibeLang extension widening")

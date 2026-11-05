@@ -150,7 +150,7 @@ export const enumerates = (finding, path) => within(finding.directory, path) && 
  * a .ts source that imports Effect, which the plan may migrate.
  */
 export function relevantEnumerations(findings, files, read) {
-  const holders = files.filter((path) => path.endsWith(".vibe") ||
+  const holders = files.filter((path) => /\.vibex?$/.test(path) ||
     /\.(?:ts|tsx|mts|cts)$/.test(path) && !/\.d\.[^/]*ts$/.test(path) && /\bfrom\s*["']effect(?:\/[^"']*)?["']|\bimport\(\s*["']effect["']/.test(read(path) ?? ""))
   return findings.filter((finding) => holders.some((path) => enumerates(finding, path) && path !== finding.file))
 }

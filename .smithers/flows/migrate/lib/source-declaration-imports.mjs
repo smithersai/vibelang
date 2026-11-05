@@ -46,7 +46,7 @@ export function planSourceDeclarationImports({root,packages,ts,compiler,restore=
   const headers=source=>declarationPaths(source).filter(file=>existsSync(join(root,file)))
   const owned=files.filter(file=>owners.get(file)===dir&&!protectedFile(file))
   for(const file of owned) {
-   if(!native(file)&&(!file.endsWith(".vibe")||!restore||!texts.get(file).includes(sourceDeclarationPrefix)))continue
+   if(!native(file)&&(!/\.vibex?$/.test(file)||!restore||!texts.get(file).includes(sourceDeclarationPrefix)))continue
    const text=texts.get(file),changes=[]
    const warning=(edge,reason,details={})=>warnings.push({file,line:text.slice(0,edge.start).split("\n").length,reason,...details})
    const edges=sourceTypeEdges(text,file,ts,compiler,root)
@@ -55,7 +55,7 @@ export function planSourceDeclarationImports({root,packages,ts,compiler,restore=
    const generatedSource=/@generated|code generated|generated file|file is generated|do not edit/i.test(leading)||/(?:^|\/)generated\//.test(file)||/\.generated\.[cm]?tsx?$/.test(file)
    for(const edge of edges) {
     if(generatedSource) {
-     if(edge.specifier.startsWith(sourceDeclarationPrefix)||resolveRelative(file,edge.specifier,all)?.endsWith(".vibe"))warning(edge,"generated native importer: update its source instead")
+     if(edge.specifier.startsWith(sourceDeclarationPrefix)||/\.vibex?$/.test(resolveRelative(file,edge.specifier,all)??""))warning(edge,"generated native importer: update its source instead")
      continue
     }
     if(edge.specifier.startsWith(sourceDeclarationPrefix)) {
@@ -74,12 +74,12 @@ export function planSourceDeclarationImports({root,packages,ts,compiler,restore=
     }
     if(restore||!native(file))continue
     const source=resolveRelative(file,edge.specifier,all)
-    if(!source?.endsWith(".vibe"))continue
+    if(!/\.vibex?$/.test(source??""))continue
     if(packageDirOf(root,source)!==dir) {
      warning(edge,"a private declaration route cannot cross a package boundary; retain this import for review")
      continue
     }
-    const hidden=declarationPaths(source).filter(path=>path!==source.replace(/\.vibe$/,".d.vibe.ts"))
+    const hidden=declarationPaths(source).filter(path=>path!==source.replace(/\.(vibex?)$/,".d.$1.ts"))
     if(!hidden.length)continue
     const candidates=hidden.filter(file=>existsSync(join(root,file)))
     if(candidates.length!==1) {
@@ -87,13 +87,13 @@ export function planSourceDeclarationImports({root,packages,ts,compiler,restore=
      continue
     }
     // Beside-source declarations already resolve for foreign native checkers.
-    if(candidates[0]===source.replace(/\.vibe$/,".d.vibe.ts"))continue
+    if(candidates[0]===source.replace(/\.(vibex?)$/,".d.$1.ts"))continue
     const header=targetIn(dir,candidates[0]),original=targetIn(dir,source)
     if(!contained(header)||!contained(original)) {
      warning(edge,"a private declaration route cannot target a file outside its package; retain this import for review")
      continue
     }
-    const path=posix.relative(dir,source).replace(/\.vibe$/,"")
+    const path=posix.relative(dir,source).replace(/\.vibex?$/,"")
     const key=sourceDeclarationPrefix+path.split("/").map(encodeURIComponent).join("/")
     const prior=imports[key]
     if(prior&&!generated(prior))throw new Error(manifest+": conflicting import "+key)
@@ -122,7 +122,7 @@ export function planSourceDeclarationImports({root,packages,ts,compiler,restore=
      if(!source)throw new Error(manifest+": source declaration route has no source "+key)
     }
     const original=targetIn(dir,source)
-    const candidates=source.endsWith(".vibe")?headers(source):[source]
+    const candidates=/\.vibex?$/.test(source)?headers(source):[source]
     if(candidates.length!==1)throw new Error(manifest+": source declaration route has no unique physical declaration "+key)
     const runtime=emitted.get(dir)?.[original]??(original===value["vibelang-source"]?value.default:original)
     const target=targetIn(dir,candidates[0])

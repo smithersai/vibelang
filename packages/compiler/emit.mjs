@@ -67,13 +67,13 @@ export function emitModule(file) {
 
 /**
  * What a tool should parse for `file` when it holds `text`: the module's
- * emitted { code, map } when `file` is a .vibe module and `text` is its source
- * as on disk (or omitted), else undefined. A .vibe path with other text holds
+ * emitted { code, map } when `file` is a .vibe or .vibex module and `text` is its
+ * source as on disk (or omitted), else undefined. Such a path with other text holds
  * JavaScript a bundler plugin already compiled, as vibelang-vite hands it to
  * the plugins after it, so the tool parses that text as it is.
  */
 export function toolSource(file, text) {
-  if (typeof file !== "string" || !file.endsWith(".vibe")) return undefined
+  if (typeof file !== "string" || !/\.vibex?$/.test(file)) return undefined
   if (text !== undefined && String(text) !== readFileSync(file, "utf8")) return undefined
   return emitModule(file)
 }

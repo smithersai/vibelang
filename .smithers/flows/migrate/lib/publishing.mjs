@@ -56,7 +56,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     const target = entry ? fresh("__vibelangTarget") : imports && expression === "target" ? "__vibelangTarget" : "target"
     const parameter = isJS ? "[" + key + ", " + target + "]" : "[" + key + ", " + target + "]: [string, unknown]"
     const explicit = target + ' !== null && typeof ' + target + ' === "object" && "vibelang-source" in ' + target + ' && typeof ' + target + '["vibelang-source"] === "string"'
-    const paired = target + ' !== null && typeof ' + target + ' === "object" && "default" in ' + target + ' && typeof ' + target + '.default === "string" && ' + target + '.default.endsWith(".vibe") && "types" in ' + target + ' && ' + target + '.types === ' + target + '.default.slice(0, -5) + ".d.vibe.ts"'
+    const paired = target + ' !== null && typeof ' + target + ' === "object" && "default" in ' + target + ' && typeof ' + target + '.default === "string" && ' + "/\\.vibex?$/.test(" + target + '.default) && "types" in ' + target + ' && ' + target + '.types === ' + target + '.default.slice(0, -5) + ".d.vibe.ts"'
     let value = explicit + " ? " + target + '["vibelang-source"] : ' + paired + " ? " + target + ".default : " + target
     // Only the owning migration condition supplies a types source. Runtime
     // conditions retain the repository's own publication mapping policy.

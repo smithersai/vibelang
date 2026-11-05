@@ -47,16 +47,18 @@ export function addOxlintSelectors(text, ts) {
             const receiver = child.expression.expression
             const argument = child.arguments[0]
             if (child.expression.name.text === "endsWith" && argument && ts.isStringLiteral(argument) && /^\.[cm]?tsx?$/.test(argument.text)) {
-              if (ts.isBinaryExpression(child.parent) && child.parent.operatorToken.kind === ts.SyntaxKind.BarBarToken && child.parent.getText(source).includes('.endsWith(".vibe")')) return
+              const native = argument.text === ".tsx" ? ".vibex" : ".vibe"
+              if (ts.isBinaryExpression(child.parent) && child.parent.operatorToken.kind === ts.SyntaxKind.BarBarToken && child.parent.getText(source).includes('.endsWith("' + native + '")')) return
               const value = child.getText(source)
-              local.push({ start: child.getStart(source), end: child.end, text: "(" + value + " || " + receiver.getText(source) + '.endsWith(".vibe"))' })
+              local.push({ start: child.getStart(source), end: child.end, text: "(" + value + " || " + receiver.getText(source) + '.endsWith("' + native + '"))' })
               return
             }
             if (child.expression.name.text === "includes" && ts.isArrayLiteralExpression(receiver)) {
               const extensions = receiver.elements.filter(ts.isStringLiteral).map(value => value.text)
               if (extensions.some(value => /^\.?[cm]?tsx?$/.test(value)) && !extensions.some(value => value === "vibe" || value === ".vibe")) {
-                const extension = extensions.some(value => value.startsWith(".")) ? ".vibe" : "vibe"
-                local.push({ start: receiver.end - 1, end: receiver.end - 1, text: ", " + JSON.stringify(extension) })
+                const dot = extensions.some(value => value.startsWith(".")) ? "." : ""
+                const added = ["vibe", ...(extensions.some(value => value.endsWith("tsx")) ? ["vibex"] : [])]
+                local.push({ start: receiver.end - 1, end: receiver.end - 1, text: added.map(extension => ", " + JSON.stringify(dot + extension)).join("") })
                 return
               }
             }
@@ -74,7 +76,7 @@ export function addOxlintSelectors(text, ts) {
           } else {
             const start = body.getStart(source)
             const replacement = editsOf(body.getText(source), local.map(edit => ({ ...edit, start: edit.start - start, end: edit.end - start })))
-            edits.push({ start, end: body.end, text: "(" + replacement + ') && !' + parameter.text + '.endsWith(".d.vibe.ts")' })
+            edits.push({ start, end: body.end, text: "(" + replacement + ') && !' + parameter.text + '.endsWith(".d.vibe.ts") && !' + parameter.text + '.endsWith(".d.vibex.ts")' })
           }
         }
         return
