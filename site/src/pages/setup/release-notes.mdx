@@ -45,6 +45,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Invalid throw-expression punctuation remains an error; host compatibility warnings retain their documented context.
 
+- Generated error declarations retain matcher registrations and authored members when their syntax is printed and parsed again.
+
 - A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
 
 - API provenance checks loaded unrelated browser declarations. They now use fewer libraries while retaining selected dependencies and native type errors.
