@@ -58,3 +58,4 @@ export effect function getterAfter() {
   const out = try Effect.try(() => { const textInput = text; const ignoredInput = box.value; { let text = textInput; let ignored = ignoredInput; return text } })
   return [out, text]
 }
+// Chapter 900: EK4616 diagnostic - spec-rule: docs/design/src/900-appendices.md#974a1cf7a9d1e3a8

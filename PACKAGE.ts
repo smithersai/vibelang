@@ -1320,6 +1320,13 @@ const targets = {
     [Typescript.compiler, Typescript.mapper],
     "15m"
   ),
+  "migration-metadata-comment-twins": check(
+    "Preserving migrations keep source metadata in fixed twins and repeated repairs",
+    "cd typescript/tsc && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run '^(TestForeignCallFixNarrowedTwin|TestFixVIPHatchKeepsParameterCell)$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestMigrationMetadataCommentsQuoted|FuzzMigrationMetadataComments)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose opencode-narrowed-property-call-fixed hatch-parameter-cell-fixed",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
+    [go, node, bun],
+    "25m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

@@ -2163,6 +2163,8 @@ Computed schema keys in TypeScript projections keep their native expressions, in
 
 The `//:http-request-pipe-rollback-controls` target retains canonical HTTP setter repairs, observable argument refusal and exact declaration controls across namespace and named imports, aliases, reexports, Unicode and stage order. The complete pipeline-order preservation controls also run in `//:pure-request-pipe-receiver-controls`.
 
+The `//:migration-metadata-comment-twins` target checks exact narrowed-call and parameter-cell repair twins and executes both fixed cases. Keyed comment controls cover headers, footers, trailing comments, Unicode and line endings without erasing source metadata from comparisons.
+
 `//:mapper-catch-declaration-imports` checks inferred and partial catch channels with stock TypeScript and namespace-alias controls.
 
 The abstract error constructor controls also retain an existing `Data` and `Schema` import while migrating a fieldless base and a child with fields and a getter. This reproduces overlapping import insertions in all three repair modes; the import-free cases remain positive controls.
