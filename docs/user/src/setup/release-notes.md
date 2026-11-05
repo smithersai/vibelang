@@ -144,6 +144,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Mapper catch examples could fail by omitting their Effect boundary; the checks now use explicit effect scopes and retain the unmarked examples as boundary-error controls.
 
 - An `is` binding in a `for` head could make the TypeScript mapper reject the file with overlapping edits; it now projects the loop and emits its executable output with valid source mappings.
+- Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
+
 
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.

@@ -202,7 +202,8 @@ differ.
 
 Each Go test invocation passes `-trimpath` explicitly, including every
 invocation in an `&&` chain. This keeps portable workers on the same
-package-cache key convention as local builds.
+package-cache key convention as local builds. New loader and migration
+checks follow the same convention; a later target addition must retain it.
 
 A `node_modules` symlink in any of these directories, including `.smithers`,
 is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never

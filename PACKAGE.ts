@@ -1089,19 +1089,19 @@ const targets = {
   ),
   "mapper-error-registration-members": goVibelang(
     "Generated error registration retains source members and native projection types",
-    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run \"^(TestPlainErrorRegistrationKeepsNativeStaticBlock|TestErrorPayloadCommaStockProjection|TestErrorExtractorSubjectReads|TestThrowCauseRuntime)$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=10m -run \"^(TestMapperErrorRegistrationMembersQuoted|FuzzMapperErrorRegistrationMembers)$\" ./internal/vibelangfuzz",
+    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run \"^(TestPlainErrorRegistrationKeepsNativeStaticBlock|TestErrorPayloadCommaStockProjection|TestErrorExtractorSubjectReads|TestThrowCauseRuntime)$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run \"^(TestMapperErrorRegistrationMembersQuoted|FuzzMapperErrorRegistrationMembers)$\" ./internal/vibelangfuzz",
     [Typescript.compiler, Typescript.mapper],
     "20m"
   ),
   "layer-repair-service-receivers": goVibelang(
     "Layer syntax repairs retain comments and current explicit service lookup",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestLayerRepairWritesCurrentBlockArgument$\" ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^FuzzServiceRunHead$/layer-repair-read-\" ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run \"^TestLayerRepairWritesCurrentBlockArgument$\" ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run \"^FuzzServiceRunHead$/layer-repair-read-\" ./internal/vibelangfuzz",
     [],
     "15m"
   ),
   "grouped-schema-inheritance-controls": goVibelang(
     "Grouped field repair retains unrelated inheritance errors until full migration",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestGroupedSchemaMigration$\" ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestGroupedSchemaInheritanceControlsQuoted|FuzzGroupedSchemaInheritanceControls)$\" ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run \"^TestGroupedSchemaMigration$\" ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestGroupedSchemaInheritanceControlsQuoted|FuzzGroupedSchemaInheritanceControls)$\" ./internal/vibelangfuzz",
     [],
     "20m"
   ),
@@ -1226,7 +1226,7 @@ const targets = {
   ),
   "loader-sidecar-project-roots": check(
     "Private loader emission retains native declaration layouts and source maps",
-    "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestProjectEmitArguments$\" ./internal/vibelang && cd ../.. && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test --test-name-pattern='project emission preserves configured sidecar roots' packages/compiler/test/project.test.mjs && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/unplugin/test/run.sh --test-name-pattern='embedded esbuild resolves VibeLang modules with sidecarDir'",
+    "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run \"^TestProjectEmitArguments$\" ./internal/vibelang && cd ../.. && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test --test-name-pattern='project emission preserves configured sidecar roots' packages/compiler/test/project.test.mjs && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/unplugin/test/run.sh --test-name-pattern='embedded esbuild resolves VibeLang modules with sidecarDir'",
     [Packages["compiler-native"],Packages["runtime-dist"]],
     [go, node],
     "20m"
@@ -1247,13 +1247,13 @@ const targets = {
   ),
   "binding-free-pattern-cache-scopes": goVibelang(
     "Binding-free iterable tests retain type-checking scope and iterator cleanup",
-    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run \"^TestBindingFreePatternIteratorCleanup$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=8m -run \"^(TestBindingFreePatternCacheQuoted|FuzzBindingFreePatternCache)$\" ./internal/vibelangfuzz",
+    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run \"^TestBindingFreePatternIteratorCleanup$\" ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=8m -run \"^(TestBindingFreePatternCacheQuoted|FuzzBindingFreePatternCache)$\" ./internal/vibelangfuzz",
     [Typescript.compiler, Typescript.mapper],
     "20m"
   ),
   "effect-parameter-nothrow-diagnostics": goVibelang(
     "Effect parameter initialization reports one precise no-throw diagnostic per call",
-    "VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -short -p 8 -count=1 -timeout=10m -run \"^(TestEffectParameterDiagnosticOwnershipQuoted|FuzzEffectParameterDiagnosticOwnership|TestNothrowPlacementQuoted|FuzzNothrowPlacement)$\" ./internal/vibelangfuzz",
+    "VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run \"^(TestEffectParameterDiagnosticOwnershipQuoted|FuzzEffectParameterDiagnosticOwnership|TestNothrowPlacementQuoted|FuzzNothrowPlacement)$\" ./internal/vibelangfuzz",
     [],
     "20m"
   ),
