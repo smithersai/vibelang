@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Assigning a generic overloaded function declared `@throws {never}` could incorrectly report `EK0402`; callback assignments now use TypeScript's overload relation and preserve the no-throw contract.
+
 - The grammar admission audit could flag valid `as` and `satisfies` type assertions after `is` tests as undefined syntax. It now recognizes those expression continuations.
 
 

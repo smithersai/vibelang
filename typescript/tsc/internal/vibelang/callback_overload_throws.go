@@ -64,7 +64,11 @@ func checkOverloadedCallbackValue(c *checker.Checker, expr *ast.Node) bool {
 			}
 			matched := false
 			for i, sourceType := range sourceTypes {
-				if !c.IsTypeAssignableTo(sourceType, targetType) {
+				related := c.IsTypeAssignableTo(sourceType, targetType)
+				if len(sources) > 1 || len(c.GetSignaturesOfType(member, checker.SignatureKindCall)) > 1 {
+					related = c.IsOverloadSignatureAssignableTo(sources[i], target)
+				}
+				if !related {
 					continue
 				}
 				if destination.admits(c, contracts[i]) {

@@ -1,0 +1,14 @@
+// expect:
+import { Struct as Foreign } from "./helpers.js"
+import { Struct } from "effect"
+type Transform<O> = Partial<{ [K in keyof O]: (a: O[K]) => O[K] }>
+type Handler = { <O, const T extends Transform<O>>(o: O, t: T): unknown }
+export const packageValue: Handler = Struct.evolve
+export const direct: Handler = Foreign.evolve
+const alias = Foreign.evolve
+export const saved: Handler = alias
+export function returned(): Handler { return Foreign.evolve }
+function accept(handler: Handler): Handler { return handler }
+export const argument = accept(Foreign.evolve)
+declare const union: typeof Foreign.evolve | Handler
+export const unionValue: Handler = union

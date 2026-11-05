@@ -73,6 +73,12 @@ func (c *Checker) NewFunctionType(members ast.SymbolTable, signatures []*Signatu
 	return c.newAnonymousType(nil, members, signatures, nil, nil)
 }
 
+// IsOverloadSignatureAssignableTo uses the signature relation TypeScript uses
+// for an overloaded source or destination, including generic erasure.
+func (c *Checker) IsOverloadSignatureAssignableTo(source *Signature, target *Signature) bool {
+	return c.isSignatureAssignableTo(c.getErasedSignature(source), c.getErasedSignature(target), false)
+}
+
 // GetIntersectionType returns the intersection of types.
 func (c *Checker) GetIntersectionType(types []*Type) *Type {
 	return c.getIntersectionType(types)

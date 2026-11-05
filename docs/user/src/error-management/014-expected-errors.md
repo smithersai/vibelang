@@ -542,7 +542,7 @@ A returned callable carries its own throw contract. A foreign factory’s `@thro
 
 Direct instantiation values such as `read<Program>` keep the foreign generic signature’s throw contract, just like an alias of that value. An unconstrained signature stays `unknown` even when its chosen type argument is an `Effect`. A signature constrained to `Effect`, `Stream` or `Layer` remains effectful and nonthrowing.
 
-An overloaded callback is checked signature by signature. Passing a callback that throws `Error` for argument `0` but throws `never` for argument `1` to `(value: 1) => number` is allowed. Every signature of an overloaded destination must have a type-compatible source signature with an admitted `@throws` contract. A union of function types admits a value when one alternative fits.
+An overloaded callback is checked signature by signature. Generic overloads use TypeScript's overload assignability rules before their throw contracts are compared. Specializing a compatible generic overload that throws `never` keeps it admissible to a callback without `@throws`. Passing a callback that throws `Error` for argument `0` but throws `never` for argument `1` to `(value: 1) => number` is allowed. Every signature of an overloaded destination must have a type-compatible source signature with an admitted `@throws` contract. A union of function types admits a value when one alternative fits.
 
 A foreign function type alias cannot admit throws through a tag on the alias itself. Put the tag on its call signature, on a separate line:
 
