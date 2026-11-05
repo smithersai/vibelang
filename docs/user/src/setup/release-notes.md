@@ -19,6 +19,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Bundler examples could fail when calling a service member on its key. They now retrieve the implementation before calling its methods.
 
+- Migration retries left casted `globalThis` platform accesses in native modules. Saved diagnostics now route the unchanged code through the TypeScript platform split.
 - Assigning a generic overloaded function declared `@throws {never}` could incorrectly report `EK0402`; callback assignments now use TypeScript's overload relation and preserve the no-throw contract.
 
 - The grammar admission audit could flag valid `as` and `satisfies` type assertions after `is` tests as undefined syntax. It now recognizes those expression continuations.

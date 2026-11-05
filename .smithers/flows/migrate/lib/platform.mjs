@@ -37,6 +37,10 @@ export function isPlatformModule(specifier) {
 // platform_host_members.go). test/platform-globals-wording.test.mjs reads that
 // table and fails on an EK4402 text this list does not classify.
 export const globalWordings = ["is platform code", "reads a host global", "reaches the host"]
+// EK0107 also covers legacy JavaScript. Only this explicit platform escape
+// names a host global for the preserving TypeScript split.
+const globalThisEscapeMessage = "Use globalThis only as the object of a statically named member access; move this use to a .ts file."
+const platformGlobalCause = (code, message) => code === "EK4402" || code === "EK0107" && message === globalThisEscapeMessage
 const globalMessage = new RegExp(String.raw`^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* (?:${globalWordings.join("|")})`)
 
 /**
@@ -47,13 +51,15 @@ const globalMessage = new RegExp(String.raw`^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|
  * "AbortSignal.timeout reaches the host" (a platform member) names
  * AbortSignal. A builtin import ("createHash from node:crypto is platform
  * code") is split without being named, and a message about anything else
- * names nothing. The diagnostic carries only its text, so these are the
+ * names nothing. The explicit EK0107 globalThis escape names globalThis too.
+ * The diagnostic carries only its text, so these are the
  * wordings of the compiler's message table (globalWordings).
  */
 export function platformGlobalsOf(messages) {
   const names = new Set()
   for (const message of messages) {
     const text = String(message).replace(/^\s*(?:error\s+)?EK4402:\s*/, "")
+    if (text.replace(/^\s*(?:error\s+)?EK0107:\s*/, "") === globalThisEscapeMessage) { names.add("globalThis"); continue }
     if (/^\S+ from \S+ is platform code/.test(text)) continue
     const m = globalMessage.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
@@ -66,7 +72,8 @@ export function platformGlobalsOf(messages) {
  * settle-causes.json ({ "src/a.vibe": { diagnostics: [{ code, message }] } })
  * or reverted.json ([{ file, reason: "compile error: EK4402 ..." }]). A
  * receipt names a module by its .vibe or .ts path; file is the TypeScript
- * path the split reads. Only EK4402 messages count.
+ * path the split reads. EK4402 messages and the explicit EK0107
+ * globalThis platform escape count; unrelated legacy JavaScript does not.
  */
 export function platformGlobalsFromCauses(receipts) {
   const messages = new Map()
@@ -79,12 +86,12 @@ export function platformGlobalsFromCauses(receipts) {
   for (const receipt of receipts) {
     if (Array.isArray(receipt)) {
       for (const r of receipt) {
-        const m = /\bEK4402:?\s+(.*)$/s.exec(String(r?.reason ?? ""))
-        if (m) add(r.file, m[1])
+        const m = /\b(EK4402|EK0107):?\s+(.*)$/s.exec(String(r?.reason ?? ""))
+        if (m && platformGlobalCause(m[1], m[2])) add(r.file, m[2])
       }
     } else if (receipt && typeof receipt === "object") {
       for (const [file, cause] of Object.entries(receipt)) {
-        for (const d of cause?.diagnostics ?? []) if (d?.code === "EK4402") add(file, d.message)
+        for (const d of cause?.diagnostics ?? []) if (platformGlobalCause(d?.code, d?.message)) add(file, d.message)
       }
     }
   }

@@ -1,0 +1,7 @@
+{
+  "file": "src/HttpServer.ts",
+  "message": "Use globalThis only as the object of a statically named member access; move this use to a .ts file.",
+  "source": "export const getClient = () => (globalThis as { Bun?: { connect: () => unknown } }).Bun;\nexport const retained = 42;\n",
+  "moved": ["getClient"],
+  "retained": ["retained"]
+}
