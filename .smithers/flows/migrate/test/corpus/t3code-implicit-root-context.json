@@ -1,0 +1,7 @@
+{
+  "key": "t3code-implicit-root-context",
+  "quote": "each export's type identical to `tsc`'s in both directions",
+  "source": "/** Reads the environment. */\nexport const env: NodeJS.ProcessEnv = {};\n",
+  "compilerOptions": { "types": ["node"], "module": "NodeNext", "moduleResolution": "NodeNext" },
+  "include": ["src"]
+}

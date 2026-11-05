@@ -429,6 +429,46 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
   return { roots: [...roots].sort(), reachable: [...reachable].sort(), unresolved, resolutions: [...edges.values()].sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) }
 }
 
+// TypeScript compiler generations infer different roots when rootDir is absent.
+// Select one coherent project layout against the files actually emitted; never
+// choose a root independently for each source, which can misattribute siblings.
+function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
+  const sources = parsed.fileNames.filter(file => !/\.d\.(?:vibe\.)?[cm]?ts$/.test(file))
+  const fileNames = parsed.fileNames.map(file => file.replace(/\.vibe$/, ".ts"))
+  const candidates = [{ strategy: parsed.options.rootDir ? "configured" : "common-source", rootDir: parsed.options.rootDir }]
+  if (!parsed.options.rootDir)
+    candidates.push({ strategy: "config-directory", rootDir: dirname(configPath) })
+  for (const candidate of candidates) {
+    const rootOptions = candidate.rootDir ? { rootDir: candidate.rootDir } : {}
+    candidate.originalOptions = { ...parsed.options, ...rootOptions, declaration: true, emitDeclarationOnly: true }
+    const emittedOptions = { ...candidate.originalOptions, outDir: snapshot, declarationDir: undefined, composite: false }
+    candidate.outputs = sources.map(source => {
+      const outputNames = options => ts.getOutputFileNames({ ...parsed, fileNames, options },
+        source.replace(/\.vibe$/, ".ts"), false)
+      const output = outputNames(emittedOptions).find(file => /\.d\.[cm]?ts$/.test(file))
+      return { source, output, originals: outputNames(candidate.originalOptions) }
+    })
+    candidate.present = candidate.outputs.filter(({ output }) => output &&
+      output.startsWith(resolve(snapshot) + sep) && existsSync(output))
+    candidate.mapping = JSON.stringify(candidate.present.map(({ source, output }) => [source, output]))
+  }
+  const most = Math.max(...candidates.map(candidate => candidate.present.length))
+  const matches = candidates.filter(candidate => candidate.present.length === most)
+  if (matches.some(candidate => candidate.mapping !== matches[0].mapping))
+    throw new Error("ambiguous declaration output layout for " + project +
+      ": common-source and config-directory roots match different source owners")
+  const selected = matches[0]
+  const assigned = new Set(selected.present.map(({ output }) => output))
+  selected.receipt = {
+    strategy: selected.strategy,
+    candidates: candidates.map(({ strategy, present }) => ({ strategy, matched: present.length })),
+    matched: selected.present.length,
+    missing: selected.outputs.length - selected.present.length,
+    unassigned: listDeclarations(snapshot).filter(file => !assigned.has(resolve(snapshot, file))).length
+  }
+  return selected
+}
+
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten } = {}) {
   const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map()
@@ -462,20 +502,16 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       context.pathsBase = rel(packageDir, parsed.options.pathsBasePath ?? dirname(path)) || "."
     projectContexts.push(context)
     projectDeclarations.set(context, new Set(parsed.fileNames.filter(file => /\.d\.[cm]?ts$/.test(file)).map(file => rel(packageDir, file))))
-    const emitted = { ...parsed, options: { ...parsed.options, outDir: resolve(dir, prefix), declarationDir: undefined, composite: false, declaration: true, emitDeclarationOnly: true } }
-    for (const source of parsed.fileNames.filter(f => !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
-      // Stock TypeScript does not know .vibe; its output layout is that of .ts.
-      const outputNames = options => ts.getOutputFileNames({ ...parsed, fileNames: parsed.fileNames.map(f => f.replace(/\.vibe$/, ".ts")), options }, source.replace(/\.vibe$/, ".ts"), false)
-      const output = outputNames(emitted.options).find(f => /\.d\.[cm]?ts$/.test(f))
-      if (!output) continue
+    const emitted = recordedOutputLayout(ts, parsed, resolve(dir, prefix), path, tsconfig)
+    context.outputLayout = emitted.receipt
+    for (const { source, output, originals } of emitted.present) {
       const declaration = rel(dir, output)
-      if (!existsSync(join(dir, declaration))) continue
       context.files.push(declaration)
       aliases[rel(packageDir, source)] = declaration
       if (/\.(ts|vibe)$/.test(source)) {
         for (const ext of [".ts", ".vibe", ".d.vibe.ts"]) aliases[rel(packageDir, source).replace(/\.(ts|vibe)$/, ext)] = declaration
       }
-      for (const original of outputNames({ ...parsed.options, declaration: true, emitDeclarationOnly: true })) {
+      for (const original of originals) {
         aliases[rel(packageDir, original)] = declaration
         logicalPaths[declaration] ??= rel(packageDir, original)
         const tail = posix.relative(prefix, declaration)

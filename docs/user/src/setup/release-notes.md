@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Bun scripts and tests could load a source module but fail when bundling it with `Bun.build`; the `vibelang-unplugin/bun/register` preload now loads both runtime imports and build graphs while preserving existing plugins.
 
+- Migration API checks could lose ambient types such as `NodeJS` when a project omitted `rootDir`. Declaration snapshots now match the actual output layout and retain each declaration's project context.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
