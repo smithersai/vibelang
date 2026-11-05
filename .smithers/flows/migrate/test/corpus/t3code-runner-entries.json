@@ -1,6 +1,6 @@
 {
   "repo": "t3code",
-  "pattern": "Entries the convert-first plan kept TypeScript, minimized from run/drive-t3code-convertfirst-465/deferred-causes.json: mode 100644 shebangs, loader-wired package scripts and workflow commands, and one bare workflow command",
+  "pattern": "Non-executable shebangs, loader-served package scripts and workflow commands, and a bare workflow command",
   "files": {
     "package.json": "{\"scripts\":{\"migrate-dev-db\":\"node --import vibelang/register apps/server/scripts/migrate-dev-db.ts\",\"release:smoke\":\"node --import vibelang/register scripts/release-smoke.ts\"},\"workspaces\":[\"apps/server\"]}",
     "apps/server/package.json": "{\"name\":\"t3\"}",
@@ -17,5 +17,11 @@
   "deferred": [
     "scripts/lib/note.ts",
     "scripts/notify-discord-release.ts"
+  ],
+  "specQuote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site.",
+  "runnerQuotes": [
+    "an executable file with a `node`, `bun`, `tsx` or `ts-node` shebang (with no execute bit the line runs nothing, and whatever starts the file names its own runner)",
+    "Where a loader serves the script, the modules it reaches can migrate",
+    "revert gives those bytes back."
   ]
 }

@@ -1,8 +1,5 @@
-// t3code's convert-first plan (drive-t3code 20:14Z) kept 75 modules TypeScript.
-// 68 sat under a `#!/usr/bin/env node` line on a file with no execute bit, which
-// nothing can run through that line; every real command names the loader. 7 were
-// script entries whose path "no step rewrites", though rewriteScripts does. CI
-// commands are the runners those shebangs were standing in for.
+// Non-executable shebangs do not select a runner. Loader-served commands may
+// migrate their entries while bare commands retain their dependency closure.
 import assert from "node:assert/strict"
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -13,9 +10,16 @@ import { bareRunnerDeferrals, commandFiles, scriptEntries } from "../lib/bare-ru
 import { restoreReferences, rewriteReferences } from "../lib/references.mjs"
 import { applyState, prepareState } from "../lib/codemod-state.mjs"
 import { batchScope } from "../lib/touched.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-runner-entries.json", import.meta.url)))
+
+test("runner inventory quotes the preservation and executable-entry rules", () => {
+  assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(corpus.specQuote))
+  const guide = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+  for (const quote of corpus.runnerQuotes) assert.ok(guide.includes(quote), quote)
+})
 
 function repository(files, executable = []) {
   const root = mkdtempSync(join(tmpdir(), "command-runners-"))
