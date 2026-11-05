@@ -1,0 +1,30 @@
+// expect-result: [0,[2,0],[3,0],3,5,4,7,6]
+let runs = 0
+effect function declaration(n: number) {
+  const tuple: [n?: typeof n] = []
+  n++
+  runs++
+  return [n, tuple.length]
+}
+const arrow = effect(n: number) => {
+  type Tuple<T> = [head: T, ...tail: T[]]
+  const tuple: Tuple<number> = [n]
+  n += 2
+  runs++
+  return n + tuple.length - 1
+}
+const holder = {
+  effect read(n: number) {
+    const tuple: readonly [label?: number] = []
+    n += 3
+    runs++
+    return n + tuple.length
+  }
+}
+export effect function main() {
+  const first = declaration(1)
+  const second = arrow(1)
+  const third = holder.read(1)
+  const before = runs
+  return [before, try first, try first, try second, try second, try third, try third, runs]
+}

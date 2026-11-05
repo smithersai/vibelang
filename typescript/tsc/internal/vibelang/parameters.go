@@ -33,6 +33,9 @@ func writesParameters(c *checker.Checker, fn *ast.Node) bool {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsIdentifier(node) {
+			if node.Parent != nil && node.Parent.Kind == ast.KindNamedTupleMember && node.Parent.Name() == node {
+				return false // A tuple label is type-only, not a reference write.
+			}
 			// GetAssignmentTarget includes updates, compound/logical assignments,
 			// destructuring and for-in/of targets. Declarations also matter:
 			// a body may initialize a parameter again with "var n = ...".

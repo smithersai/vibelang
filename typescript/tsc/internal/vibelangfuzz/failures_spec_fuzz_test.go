@@ -1235,6 +1235,9 @@ func failuresCases() []*failCase {
 	for _, c := range failuresOptionalTupleCases() {
 		add(c)
 	}
+	for _, c := range failuresNamedTupleLabelCases() {
+		add(c)
+	}
 	return foreignFixtures(append(append(cases, failuresExtraCases()...), failuresNoThrowCases()...))
 }
 
