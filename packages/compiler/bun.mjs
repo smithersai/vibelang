@@ -52,12 +52,24 @@ function configOf(directory) {
 // starts itself is never a .vibe import, so it goes to Bun alone; otherwise
 // each nested call reads the same config again until the stack runs out
 // (2,653 hook calls for one require("fs")).
+// Native launchers may keep a literal TypeScript import after migration.
+// Existing native files keep Bun's precedence; only a missing source falls
+// back, and declaration names never become executable modules.
+function migratedTypeScriptImport(directory, specifier) {
+  if (!(isRelative(specifier) || isAbsolute(specifier)) ||
+      !specifier.endsWith(".ts") || specifier.endsWith(".d.ts")) return undefined
+  const target = resolve(directory, specifier)
+  if (existsSync(target) || existsSync(target.slice(0, -3) + ".tsx")) return undefined
+  const source = target.slice(0, -3) + ".vibe"
+  return existsSync(source) ? source : undefined
+}
+
 let looking = false
 function vibeImport(directory, specifier) {
   if (looking) return undefined
   looking = true
   try {
-    const source = isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier)
+    const source = migratedTypeScriptImport(directory, specifier) ?? (isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier))
     return source !== undefined && /\.vibex?$/.test(source) ? source : undefined
   } finally { looking = false }
 }
@@ -289,6 +301,8 @@ Bun.plugin({
         // Bun.resolveSync(path, directory) names that directory as the importer (Bun 1.4.4).
         const from = pathOf(importer)
         const origin = !from || !isAbsolute(from) ? process.cwd() : isDirectory(from) ? from : dirname(from)
+        const migrated = migratedTypeScriptImport(origin, path)
+        if (migrated !== undefined) return { path: migrated }
         discover(Bun.resolveSync(path, origin))
       } catch { /* The specific resolver and Bun report resolution errors. */ } finally { discovering = false }
       return undefined

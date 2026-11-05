@@ -42,6 +42,62 @@ function green(result) {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
 }
 
+
+test("Bun native launchers resolve missing TypeScript imports to migrated source", (t) => {
+  const launcher = JSON.parse(readFileSync(new URL("./corpus/alchemy-bun-native-launcher.json", import.meta.url), "utf8"))
+  const root = fixture(t, launcher.files)
+  const result = run(root, ["run", "bin/cli.ts"])
+  green(result)
+  assert.equal(result.stdout.trim(), "42")
+})
+
+test("Bun migrated import fallback preserves native priority and module identity", (t) => {
+  const root = fixture(t, {
+    "src/native.ts": "export const answer = 7\n",
+    "src/native.vibe": "export const answer = 99\n",
+    "src/native-jsx.tsx": "export const answer = 8\n",
+    "src/native-jsx.vibe": "export const answer = 98\n",
+    "run.ts": `import assert from "node:assert/strict"
+import { answer } from "./src/leaf.ts"
+import * as direct from "./src/leaf.vibe"
+import { answer as native } from "./src/native.ts"
+assert.equal(answer, 42)
+assert.equal(native, 7)
+await assert.rejects(() => import("./src/native-jsx.ts"))
+assert.equal(await import("./src/leaf.ts"), direct)
+const absolute = process.cwd() + "/src/leaf.ts"
+assert.equal(await import(absolute), direct)
+const missing = "./src/absent.ts"
+await assert.rejects(() => import(missing))
+console.log("identity")
+`
+  })
+  green(run(root, ["run", "run.ts"]))
+})
+
+test("generated native Bun launchers find migrated files across directory and name variants", (t) => {
+  fc.assert(fc.property(
+    fc.array(fc.record({
+      name: fc.constantFrom("plain", "with space", "leaf-雪", "dash-name"),
+      value: fc.integer({ min: -1000, max: 1000 }),
+      depth: fc.integer({ min: 0, max: 3 })
+    }), { minLength: 2, maxLength: 5 }),
+    (cases) => {
+      const files = {}, checks = []
+      cases.forEach(({ name, value, depth }, i) => {
+        const directory = "src/" + "nested/".repeat(depth)
+        const stem = directory + name + "-" + i
+        files[stem + ".vibe"] = `export const answer = ${value}\n`
+        const literal = "../" + stem + ".ts"
+        checks.push(`import { answer as a${i} } from ${JSON.stringify(literal)}; assert.equal(a${i}, ${value})`)
+      })
+      files["bin/cli.ts"] = 'import assert from "node:assert/strict"\n' + checks.join("\n") + '\nconsole.log("generated")\n'
+      const root = fixture(t, files)
+      green(run(root, ["run", "bin/cli.ts"]))
+    }
+  ), { numRuns: 6 })
+})
+
 const execute = `
 async function answer(options) {
   const result = await Bun.build({ entrypoints: ["./src/entry.ts"], target: "bun", ...options })

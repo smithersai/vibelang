@@ -358,6 +358,11 @@ load registered languages directly. Existing pinned versions are retained.
 Migration recognizes TypeScript/TSX aliases without case sensitivity. With a JSX grammar installed, `.ts` selectors and ignores map to `.vibe`, and `.tsx` maps to `.vibex`, preserving directory scope.
 
 
+The Bun preload resolves a missing relative or absolute `.ts` import to its
+sibling `.vibe` source, so a native launcher can retain the import after
+migration. Existing native files keep their priority. The command-line entry
+itself must name an existing file; update that path when migrating the entry.
+
 ## Bundlers inside unchanged tests
 
 Node tests that call Rolldown or esbuild on native source graphs can preload

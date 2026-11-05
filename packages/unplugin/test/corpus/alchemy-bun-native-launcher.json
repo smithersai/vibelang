@@ -1,0 +1,7 @@
+{
+  "description": "A native Bun launcher retains a literal TypeScript import of its migrated CLI.",
+  "files": {
+    "bin/cli.ts": "import { answer } from \"../src/cli.ts\"; console.log(answer)\n",
+    "src/cli.vibe": "export const answer = 42\n"
+  }
+}

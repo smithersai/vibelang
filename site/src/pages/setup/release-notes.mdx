@@ -70,6 +70,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Forked children could stop when an Effect helper or loop iteration returned, and storing their handles could report an obsolete escape error. They now stay with the current parent fiber, matching `Effect.forkChild`.
 
+- Native Bun launchers could lose an imported module after its TypeScript source migrated; the preload now follows missing relative or absolute `.ts` imports to their `.vibe` source while preserving existing native files.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
