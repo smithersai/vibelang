@@ -1,0 +1,30 @@
+export const ApplicationProvider = () =>
+  Provider.effect(
+    Effect.gen(function* () {
+      return Application.Provider.of({
+        reconcile: Effect.fn(function* ({     }) {
+          if (observed === undefined) {
+            yield* create(createRequest)
+              |> Effect.catchTag(%, "ConcurrentModificationException", () =>
+                create({ ...createRequest, Tags: undefined }),
+              );
+          }
+          const syncConfiguration = effect {
+            if (!detail) return;
+            if (!dirty) return;
+          };
+          if (news.maintenanceWindowStartTime !== undefined) {
+            const syncMaintenanceWindow = effect {
+              if (!detail) return;
+              if (observedStart === news.maintenanceWindowStartTime) return;
+            };
+          }
+          const syncVpcAttachment = effect {
+            if (!detail) return;
+          };
+          const observedTagsResponse = yield* analytics
+            .listTagsForResource({  })|> Effect.catchTag(%, "ResourceNotFoundException", () => Effect.undefined);
+        }),
+      });
+    }),
+  );

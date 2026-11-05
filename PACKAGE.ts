@@ -262,7 +262,8 @@ const fuzzTopicTargets = Object.fromEntries(
       `The ${topic} fuzz oracles over their seeds, and the topic's tests: ${names.join(", ")}.`,
       `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
         `go test -short -count=1 -timeout=15m -trimpath -run '^(${names.join("|")})$' ./internal/vibelangfuzz/`,
-      [Tsc["vibelangfuzz-files"]],
+      // Migration formatter probes execute the shipped process plugin.
+      [Tsc["vibelangfuzz-files"], ...(topic === "migration" ? [Packages["compiler-native"]] : [])],
       "30m"
     )
   ])
@@ -1266,7 +1267,7 @@ const targets = {
   "go-vibelangfuzz-pending": goVibelang(
     "The inputs testdata/pending/ lists still fail, and every probe passes or is pending: a change that makes one pass deletes its line.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} sh internal/vibelangfuzz/pending.sh`,
-    [Tsc["vibelangfuzz-files"], pendingHangs],
+    [Tsc["vibelangfuzz-files"], pendingHangs, Packages["compiler-native"]],
     "30m",
     fuzzBudgetEnv
   ),
@@ -1317,7 +1318,7 @@ const targets = {
     "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
     `CGO_ENABLED=0 GOMAXPROCS=$(n=$(node -p 'require("node:os").availableParallelism()'); [ "$n" -lt 24 ] && echo "$n" || echo 24) GOFLAGS=-p=6 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       `go test -short -count=1 -timeout=40m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/...`,
-    [Tsc["vibelangfuzz-files"], S.file("//scripts/go-test-shards.sh")],
+    [Tsc["vibelangfuzz-files"], S.file("//scripts/go-test-shards.sh"), Packages["compiler-native"]],
     // The package's tests and seed corpora run one after another, so the
     // binary runs as six processes at once (scripts/go-test-shards.sh); each
     // keeps the documented 40m corpus deadline. Admission and compilation

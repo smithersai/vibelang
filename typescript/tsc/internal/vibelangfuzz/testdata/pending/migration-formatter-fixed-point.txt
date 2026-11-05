@@ -1,0 +1,9 @@
+FuzzMigrationFormatterFixedPoint layout:comment/120/alwaysDouble compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint layout:crlf/120/alwaysDouble compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint layout:effect-functions/120/alwaysDouble compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint layout:original/120/alwaysDouble compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint layout:original/120/alwaysSingle compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint layout:without-blocks/120/alwaysDouble compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint layout:without-pipe/120/alwaysDouble compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint layout:wrapped-pipe/120/alwaysDouble compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy
+FuzzMigrationFormatterFixedPoint corpus:alchemy-native-layout compiler VIP-34/Chapter-7: the shipped dprint plugin cannot reach a fixed point on a syntax-valid provider layout; lane migfix-alchemy

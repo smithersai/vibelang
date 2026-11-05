@@ -12,7 +12,7 @@ function targets(env = {}) {
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
     createApiIdentityInputs,
-    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
+    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]], ["migration", ["FuzzMigrationFormatterFixedPoint"]]]),
     vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
     process: { env },
     migrationSources: { migrationSources: true },
@@ -100,5 +100,14 @@ for (const path of ["", "/tmp/fuzz budget.tsv"]) {
       "go-vibelangfuzz-editor", "go-vibelangfuzz-compile", "go-vibelangfuzz-config", "go-vibelangfuzz-hangs"]) {
       assert.equal(graph[name].env?.VIBELANG_FUZZ_BUDGET_LOG, path, name)
     }
+  })
+}
+
+for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending", "go-vibelangfuzz-topic-migration"]) {
+  test(name + " schedules the shipped formatter plugin before its regressions", () => {
+    const graph = targets()
+    assert.ok(graph[name].data.includes("packages.compiler-native"),
+      "the process formatter needs the compiler package binary and plugin manifest")
+    assert.ok(graph[name].tools.includes("node"))
   })
 }
