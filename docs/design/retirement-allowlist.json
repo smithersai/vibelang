@@ -1025,7 +1025,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2104 layer setup order report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1036,7 +1036,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2005 resumeWith contract report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1047,7 +1047,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3201 legacy provider report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1058,7 +1058,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3007 service-key arguments report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1069,7 +1069,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9100 fatal mapper form choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1080,7 +1080,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9101 fatal mapper data-method choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1354,7 +1354,7 @@
       "by": "Will",
       "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
     },
-    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B\u2019s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
+    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B’s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
   },
   {
     "code": "TS2345",
@@ -1425,5 +1425,47 @@
       "reference": "docs/design/vips/0001-effect-and-async-functions.md: accepted VIP-1, amendment Function through .constructor (decided detail 75), requires EK0107 on constructor reads from function types or Function. This records the existing published restriction, not a new language decision."
     },
     "reason": "The constructor-read restriction follows the structural Function type through intersections, derived interfaces and generic constraints. The new witnesses exercise that already accepted ban. Values typed any, ordinary objects and write-only or delete operations keep their existing rules. Code that needs a native function constructor belongs in a .ts or .js adapter, as the accepted legacy-JavaScript rule states."
+  },
+  {
+    "code": "EK9211",
+    "vip": "VIP-34",
+    "case": "typescript/vibelang/cases/d362-effect-provide-union.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted diagnostic identity ownership; the RED repair task authorizes updating superseded diagnostic expectations to accepted VIPs. Appendix B reserves EK3201 for the Effect version pin and EK9211 for the existing missing-provider rule."
+    },
+    "reason": "Only diagnostic expectations change in this existing rejected program. Executable tokens and complete configuration are identical to the parent; no rejected form or severity is added.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.vibe",
+          "tokensSha256": "0a4c947f3574f3dbeedf13919966382ef88291e4ac11c577fd9e5fe0ce33c690"
+        }
+      ],
+      "tokensSha256": "0a4c947f3574f3dbeedf13919966382ef88291e4ac11c577fd9e5fe0ce33c690",
+      "configSha256": "f3209e28c7e29c698ac7186b8c4d608f5bf1f47118f868b7bad3a7be149722d4"
+    }
+  },
+  {
+    "code": "EK9211",
+    "vip": "VIP-34",
+    "case": "typescript/vibelang/cases/d362-provide-tuple.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted diagnostic identity ownership; the RED repair task authorizes updating superseded diagnostic expectations to accepted VIPs. Appendix B reserves EK3201 for the Effect version pin and EK9211 for the existing missing-provider rule."
+    },
+    "reason": "Only diagnostic expectations change in this existing rejected program. Executable tokens and complete configuration are identical to the parent; no rejected form or severity is added.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.vibe",
+          "tokensSha256": "c991880ad7edc9f4bc40543d364ed1d717ddb204be6374712751163d8d86a2ec"
+        }
+      ],
+      "tokensSha256": "c991880ad7edc9f4bc40543d364ed1d717ddb204be6374712751163d8d86a2ec",
+      "configSha256": "f3209e28c7e29c698ac7186b8c4d608f5bf1f47118f868b7bad3a7be149722d4"
+    }
   }
 ]

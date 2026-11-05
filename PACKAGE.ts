@@ -688,6 +688,13 @@ const targets = {
     [go, node, bun],
     "10m"
   ),
+  "legacy-provider-identities": check(
+    "Missing-provider diagnostics keep their compatibility identity and do not apply to stored Effect data.",
+    "cd typescript/tsc && CGO_ENABLED=0 go test -v -p 8 -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^TestCompatibilityIdentityPrimaryMessages$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestLegacyProviderIdentityQuoted|FuzzLegacyProviderIdentity)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose d362-effect-provide-union.fail d362-provide-tuple.fail",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Tsc["vibelang-files"], Vibelang.tree],
+    [go, node, bun],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

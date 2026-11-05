@@ -1,4 +1,4 @@
-// expect: EK3201
+// expect: EK9211
 service Left { left: number }
 service Right { right: number }
 const LeftLive = Layer.succeed(Left, { left: 1 })

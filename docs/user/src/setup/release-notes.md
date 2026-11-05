@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Contributor provider checks confused missing providers with an Effect-version mismatch. They now verify the distinct diagnostic identities and retain their provider coverage checks.
+
+
 - The declaration example for a service with a whole written shape now matches its TypeScript counterpart without adding an extra exported namespace.
 
 

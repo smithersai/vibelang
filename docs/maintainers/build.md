@@ -1838,3 +1838,7 @@ The `//:declaration-manifest-retirement` target verifies complete package file s
 The `//:class-evaluation-repairs` check exercises preserving repairs in class bases and generated schema error bases, including parentheses, nested calls and repeated fixes.
 
 The `//:whole-service-declarations` check compares whole-shape services with native declarations across namespace imports, defaults and enclosing namespaces.
+
+
+The `//:legacy-provider-identities` target keeps missing-provider and version-pin identities distinct. It checks union and variadic-tuple provider cases with renamed services, trivia and both flag values, and uses stored Effect values as controls that require no runner providers.
+
