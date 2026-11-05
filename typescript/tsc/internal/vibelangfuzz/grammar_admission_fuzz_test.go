@@ -183,6 +183,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-member-not-field", "schema C {\nstring }"},
 	{"module-reference-not-literal", "import x = require ( ( \"m\" ) ) ; ; import y = N . a ;"},
 	{"module-require-identifier", "import x = require(join);"},
+	{"module-specifier-keyword", "import static\nx;"},
+	{"module-require-reserved-identifier", "import x = require(static);"},
 	{"schema-jsdoc-postfix-type", "schema C { id: string? }"},
 	{"schema-jsdoc-field-type", "schema C { id: ?? string }"},
 	{"schema-error-jsdoc-field-type", "schema error E { id: ?? string }"},
@@ -867,6 +869,19 @@ func grammarAdmissionForm(source string) string {
 	}
 	for _, form := range forms {
 		switch form.Kind {
+		case parser.VibeSyntaxModuleReference:
+			if grammarModuleReferenceInRequire(file, form.Word.Pos()) {
+				// Ordinary identifier arguments use the token classifier above.
+				// A recovered member, call or extra argument is not this family.
+				tail := grammarLexSource(source[form.Word.End():])
+				if grammarReservedWords[form.Name] && len(tail) > 0 && tail[0].text == ")" {
+					return "admission:module-require-identifier"
+				}
+				continue
+			}
+			if grammarReservedWords[form.Name] {
+				return "admission:module-specifier-keyword"
+			}
 		case parser.VibeSyntaxPrefix:
 			// The parser records expression-position throw only. Native
 			// throw statements stay distinct, including in Effect code.

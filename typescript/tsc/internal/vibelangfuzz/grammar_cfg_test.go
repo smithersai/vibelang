@@ -512,7 +512,9 @@ ModuleBody = Statement | ModuleBody Statement
 ImportClause = "{" "}" | "{" ImportsList ","? "}" | "*" "as" BindingIdentifier | BindingIdentifier | "type" "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | IdentifierName "as" BindingIdentifier | "type" IdentifierName
-ExportDeclaration = "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "{" ImportsList? "}" StatementEnd | "export" "default" [lookahead ∉ { "{", "function", "class" }] AssignmentExpression StatementEnd
+ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "{" ImportsList? "}" StatementEnd | "export" "default" [lookahead ∉ { "{", "function", "class" }] AssignmentExpression StatementEnd
+ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
+ExportFromClause = "*" | "*" "as" IdentifierName | "{" ImportsList? "}"
 Expression = AssignmentExpression | Expression "," AssignmentExpression
 AssignmentExpression = ConditionalExpression | ArrowFunction | AsyncArrowFunction | YieldExpression | LeftHandSideExpression "=" AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression
 AssignmentOperator = "+=" | "-=" | "??="
@@ -887,6 +889,11 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	defined := map[string]bool{}
 	for _, d := range a.defs {
 		defined[d.name] = true
+	}
+	// VIP-40 keeps native re-export syntax and extends its specifier to an
+	// IdentifierReference. Native TypeScript keeps its StringLiteral boundary.
+	if defined["ModuleSpecifier"] {
+		tsDefs["ReExportDeclaration"] = grammarParseDef("ReExportDeclaration", `"export" "type"? ExportFromClause "from" ModuleSpecifier StatementEnd`, 0)
 	}
 	for _, l := range strings.Split(grammarTsSubset, "\n") {
 		if m := production.FindStringSubmatch(l); m != nil && !defined[m[1]] {

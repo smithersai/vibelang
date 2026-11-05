@@ -47,3 +47,6 @@ FuzzGrammarAdmission admission:schema-async-field compiler Appendix A Field and 
 FuzzGrammarAdmission corpus:schema-async-field compiler Appendix A Field and VIP-15: schema S { async id: Missing } reports only unsupported-type EK2109
 FuzzGrammarAdmission corpus:schema-async-duplicate-modifier compiler Appendix A Field and VIP-15: repeated async field modifiers share the unsupported-reference EK2109 cover path
 FuzzGrammarAdmission corpus:schema-jsdoc-postfix-type compiler Appendix A Field and VIP-15: schema mapping discards a postfix JSDoc nullable source type before native syntax checking
+FuzzGrammarAdmission admission:module-specifier-keyword compiler Appendix A ModuleSpecifier and VIP-40: strict reserved source identifiers become module-reference strings before native identifier checking
+FuzzGrammarAdmission corpus:module-specifier-keyword compiler Appendix A ModuleSpecifier and VIP-40: import static reports only EK4006 and a following name error
+FuzzGrammarAdmission corpus:module-require-reserved-identifier compiler Appendix A and VIP-40: a reserved identifier in require shares the existing nonliteral ExternalModuleReference gap

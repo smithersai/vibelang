@@ -304,3 +304,21 @@ types remain separate from this suffix recovery.
 The inherited tuple subset derives optional, labeled and rest elements, including
 a trailing comma. These are positive controls in both native and VibeLang
 grammars; a postfix nullable schema type is still a separate pending gap.
+
+Reserved words used as identifier module specifiers, such as `import static;`,
+remain pending as `admission:module-specifier-keyword`. The parser replaces the
+written identifier with a synthetic string before native identifier checking.
+`EK4006` still denotes a missing module name; a valid identifier with no matching
+module declaration is a grammar-derived control. Quoted specifiers and native
+import bindings retain their separate grammar.
+Stock TypeScript reports `TS2304` for `export {}; static;`, while Node's
+module syntax checker rejects that reference as a strict reserved word. The
+finding records the Appendix A mismatch together with this native recovery
+behavior; converting the specifier to a string alone does not explain it.
+
+The lab derives native named and star re-exports, including type-only forms.
+VIP-40 extends their module specifier to an identifier; the native TypeScript
+grammar retains a string specifier. A reserved name recovered inside `require`
+keeps the separate nonliteral `ExternalModuleReference` pending family. That key
+requires a single identifier argument; recovered members, calls and extra
+arguments stay outside the family.
