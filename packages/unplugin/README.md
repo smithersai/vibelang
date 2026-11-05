@@ -53,6 +53,33 @@ import vibelang from "vibelang-unplugin/bun"
 await Bun.build({ entrypoints: ["src/main.ts"], outdir: "out", plugins: [vibelang()] })
 ```
 
+### Bun builds inside tools and tests
+
+A runtime preload alone does not configure `Bun.build`. To load source
+modules in `bun run`, `bun test`, and builds inside those processes,
+use `vibelang-unplugin/bun/register` in `bunfig.toml`:
+
+```toml
+preload = ["vibelang-unplugin/bun/register"]
+
+[test]
+preload = ["vibelang-unplugin/bun/register"]
+```
+
+This preload includes `vibelang/bun` and adds the Bun adapter to each
+`Bun.build` call, including calls owned by unchanged tests. Existing plugins
+keep their order and options; an explicitly configured `vibelang` plugin
+takes precedence. Each build gets a fresh compiler backend, so concurrent
+builds and builds after source edits remain independent. Set
+`VIBELANG_PROJECT` to select a project other than `tsconfig.json`, or
+keep an explicit `vibelang({ project, compiler })` plugin for per-build
+configuration. `VIBELANG_UNPLUGIN_DEBUG=1` traces registration and compilation.
+
+Register the preload before application modules capture `Bun.build` or
+import `build` from `bun`. Child processes need the preload in their own
+configuration or command: `bun --preload vibelang-unplugin/bun/register run.ts`.
+This does not change Bun's test filename discovery or configure other bundlers.
+
 Import local sources as `./welcome.vibe` and `./config.ts`. The compiler
 rewrites those imports to `./welcome.js` and `./config.js`; the plugin resolves
 them back to `welcome.vibe` and `config.ts`. A `module` declaration of

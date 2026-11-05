@@ -441,6 +441,19 @@ A child `bun test` process reads `bunfig.toml` from its own working directory. I
 
 Set up the editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](zed.md), or [other editors](other-editors.md). Then verify with step 4 of [Set up VibeLang](../setup.md).
 
+### Builds inside Bun scripts and tests
+
+The runtime preload `vibelang/bun` does not configure `Bun.build`.
+Install `vibelang-unplugin` alongside `vibelang` and use
+`vibelang-unplugin/bun/register` in both top-level `preload` and
+`[test].preload` to compile `.vibe` dependencies in builds owned by scripts
+or unchanged tests. It includes the runtime loader, preserves existing
+plugins and options, and gives each build its own compiler backend.
+An explicitly configured `vibelang-unplugin/bun` plugin keeps its own
+project and compiler choices. Child processes need the preload in their own
+working directory's configuration, or the `--preload` flag.
+See the [Bun configuration](https://github.com/smithersai/vibelang/tree/main/packages/unplugin#bun-builds-inside-tools-and-tests).
+
 ### Bun runtime watch limitation
 
 With Bun 1.4.1, `bun --watch --preload vibelang/bun` does not reliably restart after a `.vibe` save. The preload compiles once per process and does not invalidate that result during watch. For development, use the starter's `npm run dev` or `bun run dev`: its compiler watch and Node process rebuild and restart the app.

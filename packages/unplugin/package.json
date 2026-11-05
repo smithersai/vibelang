@@ -60,6 +60,10 @@
     "./deferred": {
       "types": "./src/deferred.d.ts",
       "import": "./src/deferred.js"
+    },
+    "./bun/register": {
+      "types": "./src/bun-register.d.ts",
+      "import": "./src/bun-register.js"
     }
   },
   "files": [

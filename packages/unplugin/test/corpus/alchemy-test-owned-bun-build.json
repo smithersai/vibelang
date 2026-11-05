@@ -1,0 +1,8 @@
+{
+  "key": "bun:preload-test-owned-build-graphs",
+  "description": "An unchanged test bundles an entry whose native dependency has migrated.",
+  "files": {
+    "src/entry.ts": "export { answer } from \"./leaf.vibe\"\n",
+    "src/leaf.vibe": "export const answer: number = 42\n"
+  }
+}

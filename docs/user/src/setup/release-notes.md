@@ -20,6 +20,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration setup left source-linked documentation examples stale after rewriting their source. It now refreshes matching whole-file code blocks after formatting and reports mismatched excerpts for review.
 - Canonical HTTP request pipelines could be refused by a pipeline migration update; that update has been rolled back while its corrected implementation is validated.
 
+- Bun scripts and tests could load a source module but fail when bundling it with `Bun.build`; the `vibelang-unplugin/bun/register` preload now loads both runtime imports and build graphs while preserving existing plugins.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.

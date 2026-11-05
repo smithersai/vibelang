@@ -348,6 +348,14 @@ Migration recognizes TypeScript/TSX aliases without case sensitivity. With a JSX
 
 ## Bundlers inside unchanged tests
 
+For `Bun.build` calls, configure `vibelang-unplugin/bun/register` as both
+the top-level and `[test]` preload in `bunfig.toml`. It loads runtime
+imports and adds the VibeLang adapter to test-owned builds without editing
+their source, options, plugins or assertions. Each child Bun process needs
+its own preload configuration. Runtime-only `vibelang/bun` does not
+configure the bundler; other bundlers still need their own integration.
+
+
 After conversion, the flow emits JavaScript even for private packages without
 public exports. Native TypeScript runtime imports of a converted module use an
 exact private package `imports` entry: ordinary Node and unconfigured esbuild
