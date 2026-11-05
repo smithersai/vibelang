@@ -1,0 +1,23 @@
+/** Identity callback. */
+export type Identity = (value: number) => number;
+export type Conditional<T extends boolean> =
+  T extends true ? (value: number) => number : () => number;
+export type Parenthesized = ((value: number) => number);
+export type Nested = () => (value: number) => number;
+export type Generic = <T>(value: T) => T;
+export type Constructor = new (value: number) => { value: number };
+export interface Holder {
+  callback: (value: number) => number;
+}
+/** Make an identity callback. */
+export const make = (): Identity => (value: number): number => value;
+export const conditional = (): Conditional<true> => (value: number): number => value;
+export const parenthesized = (): Parenthesized => (value: number): number => value;
+export const nested = (): Nested => () => (value: number): number => value;
+export const generic = (): Generic => <T>(value: T): T => value;
+export const holder: Holder = { callback: (value: number): number => value };
+export const first = (value: number): number => value, second = (value: number): number => value;
+export class Box {
+  constructor(readonly value: number) {}
+}
+export const constructor = (): Constructor => Box;

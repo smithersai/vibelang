@@ -1362,6 +1362,9 @@ func annotateExportThrows(c *checker.Checker, context *printer.EmitContext, sour
 // `/** @throws {never} */` would hide the authored documentation. The tag joins
 // that last block; without authored JSDoc it is a block of its own.
 func addThrowsNever(context *printer.EmitContext, source *ast.SourceFile, node *ast.Node) {
+	// A function type can follow an equals sign, a conditional branch or an
+	// arrow on the same line. A JSDoc block there is trailing trivia, so start
+	// it on a new line to attach the contract when declarations are reloaded.
 	const tag = "* @throws {never} "
 	// Documentation a node builder already attached as synthesized comments.
 	synthesized := context.GetSyntheticLeadingComments(node)
@@ -1369,6 +1372,7 @@ func addThrowsNever(context *printer.EmitContext, source *ast.SourceFile, node *
 		if c := synthesized[i]; c.Kind == ast.KindMultiLineCommentTrivia && isJSDocText(c.Text) {
 			joined := slices.Clone(synthesized)
 			joined[i].Text = joinThrowsNever("/*" + c.Text + "*/")
+			joined[i].HasLeadingNewLine = true
 			context.SetSyntheticLeadingComments(node, joined)
 			return
 		}
@@ -1379,7 +1383,7 @@ func addThrowsNever(context *printer.EmitContext, source *ast.SourceFile, node *
 	rng := context.CommentRange(node)
 	text := source.Text()
 	if rng.Pos() < 0 || rng.Pos() > len(text) {
-		context.AddSyntheticLeadingComment(node, ast.KindMultiLineCommentTrivia, tag, true)
+		context.SetSyntheticLeadingComments(node, append(slices.Clone(synthesized), printer.SynthesizedComment{Kind: ast.KindMultiLineCommentTrivia, Loc: core.UndefinedTextRange(), HasLeadingNewLine: true, HasTrailingNewLine: true, Text: tag}))
 		return
 	}
 	var kept []ast.CommentRange
@@ -1399,7 +1403,7 @@ func addThrowsNever(context *printer.EmitContext, source *ast.SourceFile, node *
 		kept = append(kept, comment)
 	}
 	if last < 0 {
-		context.AddSyntheticLeadingComment(node, ast.KindMultiLineCommentTrivia, tag, true)
+		context.SetSyntheticLeadingComments(node, append(slices.Clone(synthesized), printer.SynthesizedComment{Kind: ast.KindMultiLineCommentTrivia, Loc: core.UndefinedTextRange(), HasLeadingNewLine: true, HasTrailingNewLine: true, Text: tag}))
 		return
 	}
 	context.SetCommentRange(node, core.UndefinedTextRange())
@@ -1411,7 +1415,7 @@ func addThrowsNever(context *printer.EmitContext, source *ast.SourceFile, node *
 		if i == last {
 			inner = joinThrowsNever(body)
 		}
-		comments = append(comments, printer.SynthesizedComment{Kind: ast.KindMultiLineCommentTrivia, Loc: core.UndefinedTextRange(), HasTrailingNewLine: true, Text: inner})
+		comments = append(comments, printer.SynthesizedComment{Kind: ast.KindMultiLineCommentTrivia, Loc: core.UndefinedTextRange(), HasLeadingNewLine: true, HasTrailingNewLine: true, Text: inner})
 	}
 	context.SetSyntheticLeadingComments(node, comments)
 }
