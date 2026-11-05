@@ -2,7 +2,7 @@
   "key": "alchemy-30:pnpm-node-path-namespace-capture:rename-revert",
   "repo": "alchemy",
   "spec": "docs/design/src/007-tooling.md",
-  "quote": "Every tool is tested against the dogfood repositories.",
+  "quote": "A written `./x.ts` keeps native substitutions, including `x.tsx` and `x.d.ts`, but never falls back to VibeLang source; no native candidate means `TS2307`.",
   "depth": 1,
   "scoped": false,
   "parallel": true,
@@ -11,14 +11,14 @@
   "value": 42,
   "pattern": {
     "Leaf": "export const make = (): number => 42; export const Layer = 7",
-    "Use": "import * as Leaf from './Leaf.ts'; const captured = Leaf.make; export const run = (): number => captured()",
+    "Use": "import * as Leaf from './Leaf.js'; const captured = Leaf.make; export const run = (): number => captured()",
     "stages": [
       "ts",
       "vibe",
       "ts"
     ],
     "cache": "same Bun transpiler cache in all three processes",
-    "unchangedImporter": "Use.vibe source bytes and modification time stay unchanged while Leaf switches .ts/.vibe/.ts"
+    "unchangedImporter": "Use.vibe keeps a runtime ./Leaf.js import, with source bytes and modification time unchanged while Leaf switches .ts/.vibe/.ts"
   },
   "boundary": "Coverage only. Historical full InMemory failure is not reproduced by the old one-state minimized fixture.",
   "stableImporter": true

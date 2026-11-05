@@ -4,6 +4,7 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join, delimiter } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -11,6 +12,7 @@ import test from "node:test"
 import fc from "fast-check"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
+const stock = createRequire(new URL("../../../experiments/package.json", import.meta.url))("typescript")
 const preload = fileURLToPath(new URL("../bun.mjs", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const bun = process.env.VIBELANG_TEST_BUN || "bun"
@@ -51,7 +53,9 @@ function inspect(input) {
     })
     put("pnpm/node_modules/" + name + "/wrong.ts", "export const Layer=-999; export const run=()=>-999;\n")
     put(app + "/control.ts", 'import { Layer, make } from ' + JSON.stringify(name + "/Leaf") + '; console.log(Layer,make());\n')
-    if (input.stableImporter) put(pkg + "/Use.vibe", 'import * as Leaf from "./Leaf.ts"\nconst captured = Leaf.make\nexport const run = (): number => captured()\n')
+    // Chapter 7 permits .js substitution across native source extensions; an
+    // explicit .ts name must not silently select a renamed .vibe source.
+    if (input.stableImporter) put(pkg + "/Use.vibe", 'import * as Leaf from "./Leaf.js"\nconst captured = Leaf.make\nexport const run = (): number => captured()\n')
     const importerTime = input.stableImporter && statSync(join(root, pkg, "Use.vibe")).mtimeMs
     const outputs = []
     for (const [stage, extension] of ["ts", "vibe", "ts"].entries()) {
@@ -100,4 +104,42 @@ test("property: namespace captures keep local export identity across pnpm layout
     depth: fc.integer({ min: 0, max: 3 }), scoped: fc.boolean(), parallel: fc.boolean(),
     config: fc.boolean(), nodePath: fc.boolean(), stableImporter: fc.boolean(), value: fc.integer({ min: -50, max: 50 })
   }), input => { inspect(input); return true }), { seed: 300055, numRuns: 16 })
+})
+
+test("explicit TypeScript source imports reject a removed native target after rename", { skip }, () => {
+  assert.equal(stock.version, "5.9.3")
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "bun-namespace-native-import-")))
+  const source = 'import * as Leaf from "./Leaf.ts"\nexport const value = Leaf.value\n'
+  try {
+    writeFileSync(join(root, "package.json"), '{"type":"module"}')
+    writeFileSync(join(root, "Use.ts"), source)
+    writeFileSync(join(root, "Use.vibe"), source)
+    const compilerOptions = { target: "ES2022", module: "Preserve", moduleResolution: "Bundler",
+      strict: true, skipLibCheck: true, types: [], noEmit: true, allowImportingTsExtensions: true }
+    writeFileSync(join(root, "vibe.json"), JSON.stringify({ compilerOptions,
+      vibe: { effectGlobals: false, effectModules: false }, files: ["Use.vibe"] }))
+    const codes = () => {
+      const parsed = stock.parseJsonConfigFileContent({ compilerOptions, files: ["Use.ts"] }, stock.sys, root)
+      const program = stock.createProgram(parsed.fileNames, parsed.options)
+      return [...parsed.errors, ...stock.getPreEmitDiagnostics(program)].map(d => d.code)
+    }
+    const native = () => {
+      const result = spawnSync(compiler, ["-p", "vibe.json", "--pretty", "false"], {
+        cwd: root, encoding: "utf8", timeout: 30000 })
+      assert.ifError(result.error)
+      assert.equal(result.signal, null)
+      return { ...result, text: result.stdout + result.stderr }
+    }
+    writeFileSync(join(root, "Leaf.ts"), "export const value = 42\n")
+    assert.deepEqual(codes(), [])
+    const before = native()
+    assert.equal(before.status, 0, before.text)
+    rmSync(join(root, "Leaf.ts"))
+    writeFileSync(join(root, "Leaf.vibe"), "export const value = 42\n")
+    assert.deepEqual(codes(), [2307], "stock TypeScript does not substitute a VibeLang source for .ts")
+    const after = native()
+    assert.notEqual(after.status, 0, after.text)
+    assert.match(after.text, /TS2307/)
+    assert.equal(readFileSync(join(root, "Use.vibe"), "utf8"), source)
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })

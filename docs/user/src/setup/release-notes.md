@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.
 
 - Migrating an unmarked function with a legacy service call could freeze inferred channels too early and refuse the repair; its marker, receiver and dependent calls now migrate together before channel inference is written.
+
+- Bun rename checks incorrectly expected an explicit `.ts` import to load a renamed `.vibe` module; cache coverage now uses a stable `.js` import and separately verifies the required `TS2307` rejection.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 
