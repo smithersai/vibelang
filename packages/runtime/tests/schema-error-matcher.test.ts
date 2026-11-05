@@ -62,6 +62,18 @@ test("schema error tag matching agrees with the literal tag oracle for generated
     }
     const positive = { _tag: tag }
     expect(($extract(C, positive) as [unknown])[0]).toBe(positive)
+    class Child extends C {}
+    const opaqueReceiver = new Proxy(Child, {
+      getOwnPropertyDescriptor() { throw new Error("a matcher must not inspect its call receiver") },
+      getPrototypeOf() { throw new Error("a matcher must not inspect its call receiver") }
+    })
+    for (const receiver of [undefined, null, {}, C, Child, opaqueReceiver]) {
+      for (const matchType of ["boolean", "extractor"] as const) {
+        const result = method.call(receiver, positive, { matchType })
+        expect(result).toEqual([positive])
+        expect(result[0]).toBe(positive)
+      }
+    }
   }), { numRuns: 150 })
 })
 

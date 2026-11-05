@@ -214,9 +214,7 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 	default:
 		heritage, members = p.vibelangSchemaErrorSubclass(d), d.members
 	}
-	if registration := p.vibelangSchemaErrorRegistration(d); registration != nil {
-		members = append([]*ast.Node{registration}, members...)
-	}
+	members = append([]*ast.Node{p.vibelangErrorRegistration(d)}, members...)
 	heritage = append(heritage, d.implements...)
 	membersLoc := core.NewTextRange(d.body.End(), d.body.End())
 	if d.hasBody {
@@ -548,13 +546,11 @@ func (p *Parser) vibelangSchemaErrorSubclass(d *errorDeclaration) []*ast.Node {
 	return p.vibelangErrorHeritage(base, d.base.Loc)
 }
 
-// vibelangSchemaErrorRegistration installs the schema error declaration's
-// own tag matcher (VIP-7/VIP-29), then joins a retained family where needed.
-// The static block runs before user members and adds no declaration surface.
-func (p *Parser) vibelangSchemaErrorRegistration(d *errorDeclaration) *ast.Node {
-	if !d.schema {
-		return nil
-	}
+// vibelangErrorRegistration installs the declaration's own tag matcher
+// (VIP-7), then joins a retained schema family where needed. Both error
+// forms use a callback that retains its tag. The static block runs before
+// user members and adds no declaration surface.
+func (p *Parser) vibelangErrorRegistration(d *errorDeclaration) *ast.Node {
 	at := d.name.Loc
 	call := func(helper string, args ...*ast.Node) *ast.Node {
 		callee := p.vibelangIntrinsic(helper, at)
@@ -564,11 +560,13 @@ func (p *Parser) vibelangSchemaErrorRegistration(d *errorDeclaration) *ast.Node 
 	}
 	tag := p.vibelangSynthesized(p.factory.NewStringLiteral(d.name.Text(), ast.TokenFlagsNone), at)
 	statements := []*ast.Node{call("$schemaErrorMatcher", tag)}
-	switch {
-	case d.tag != nil || d.abstract:
-		statements = append(statements, call("$schemaErrorFamily"))
-	case d.base != nil:
-		statements = append(statements, call("$schemaErrorMember"))
+	if d.schema {
+		switch {
+		case d.tag != nil || d.abstract:
+			statements = append(statements, call("$schemaErrorFamily"))
+		case d.base != nil:
+			statements = append(statements, call("$schemaErrorMember"))
+		}
 	}
 	body := p.vibelangSynthesized(p.factory.NewBlock(p.newNodeList(at, statements), true /*multiLine*/), at)
 	return p.vibelangSynthesized(p.factory.NewClassStaticBlockDeclaration(nil, body), at)

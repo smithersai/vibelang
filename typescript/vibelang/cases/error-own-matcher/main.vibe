@@ -1,0 +1,32 @@
+// expect-result: [[[true,true,true,true,true,true,true,true,true],[true,true,true,true,true,true,true,true,true],[true,true,true,true,true,true,true,true,true],[true,true,true,true,true,true,true,true,true]],false,false,true]
+import { Effect, Data } from "effect"
+function witness():unknown[] { try {
+const symbol=(Symbol as any).customMatcher ?? Symbol.for("Symbol.customMatcher")
+error First { n: number }
+error Empty
+error Last { reason: string; messageText() { return this.reason } }
+class Child extends First {}
+const Alias = First
+const rows: boolean[][] = []
+for (const entry of [{type:First,tag:"First"},{type:Empty,tag:"Empty"},{type:Last,tag:"Last"},{type:Alias,tag:"First"}]) {
+ const matcher = Reflect.get(entry.type, symbol)
+ if(typeof matcher!=="function")return ["missing"]
+ const subject={_tag:entry.tag}
+ const booleans: boolean[]=[Object.hasOwn(entry.type,symbol)]
+ for(const matchType of ["boolean","extractor"] as const) {
+  const result=matcher(subject,{matchType})
+  booleans.push(Array.isArray(result)&&result.length===1&&result[0]===subject)
+  const bound=matcher.call(Child,subject,{matchType})
+  booleans.push(Array.isArray(bound)&&bound.length===1&&bound[0]===subject)
+  booleans.push(matcher({_tag:"Other"},{matchType})===false)
+  booleans.push(matcher(null,{matchType})===false)
+ }
+ rows.push(booleans)
+}
+const tagOnly:unknown={_tag:"First",n:1}
+const own=new Child({n:1})
+function childMatches(value:unknown){return match(value){when Child:true;default:false;}}
+return [rows,Object.hasOwn(Child,symbol),childMatches(tagOnly),childMatches(own)]
+} catch(e) { return ["threw",(e as Error).name] } }
+
+export function main(): Effect.Effect<unknown[]> { return Effect.succeed(witness()) }

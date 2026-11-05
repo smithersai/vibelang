@@ -116,7 +116,7 @@ parser/vibelang_errors.go:Parser.vibelangErrorSelf	admission:error	900-appendice
 parser/vibelang_errors.go:Parser.vibelangSchemaErrorFields	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.vibelangSchemaErrorRoot	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.vibelangSchemaErrorSubclass	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
-parser/vibelang_errors.go:Parser.vibelangSchemaErrorRegistration	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorRegistration	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-7/13/29 own error tag matchers and schema-family registration
 parser/vibelang_errors.go:Parser.vibelangErrorSubclass	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.vibelangDeclareField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.vibelangErrorConstructor	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
