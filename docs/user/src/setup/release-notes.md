@@ -35,6 +35,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The devtools guide's `hostname` repair example called an Effect like a function and failed to compile. It now runs the service's Effect-valued property with `try`.
 - Invalid whole-shape service keys could also report a misleading inheritance error. They now report `EK0901` once and retain independent errors.
 - Selected Effect lint rules skipped Vibe inputs or reported the legacy floating-Effect error. They now use the imported rule, severity and exclusions on both source types; `--fix` preserves a deliberate discard with `void (expression)`.
+- A possibly `null` or `undefined` `catch` operand could report a duplicate TypeScript assignment error. It now reports `EK0506` once and keeps independent errors in arguments and handlers.
 - Generated error-family matchers could fail through the normal Node or Bun runtime import because matcher registration was missing from the guarded entry. That entry now exports the same registration helper as the runtime ABI, with a build check preventing export drift.
 - The migration planner could keep a module in TypeScript after `Bun.build` excluded its package from the bundle. It now follows proven `packages: "external"` boundaries while retaining local source dependencies.
 - The runtime interop guide now shows Effect's interruption and yielding values alongside the runtime's masking and finalization helpers.

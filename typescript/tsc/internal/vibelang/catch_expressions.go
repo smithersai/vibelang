@@ -182,7 +182,7 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				// Cover the rejected operand, retaining independent argument and
 				// handler-body diagnostics inside this catch expression.
 				coverArgument(c, left)
-				catchExecutionMismatchStarts(c)[file] = append(catchExecutionMismatchStarts(c)[file], scanner.GetErrorRangeForNode(file, left).Pos())
+				catchExecutionMismatchRanges(c)[file] = append(catchExecutionMismatchRanges(c)[file], scanner.GetErrorRangeForNode(file, left))
 				return node.ForEachChild(visit)
 			}
 			checkCatchHandlerResult(c, file, call, fallback)

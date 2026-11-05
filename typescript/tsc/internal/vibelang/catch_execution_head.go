@@ -7,24 +7,29 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 type catchExecutionDiagnosticsKey struct{}
 
-func catchExecutionMismatchStarts(c *checker.Checker) map[*ast.SourceFile][]int {
-	return c.ExtensionState(catchExecutionDiagnosticsKey{}, func() any { return map[*ast.SourceFile][]int{} }).(map[*ast.SourceFile][]int)
+func catchExecutionMismatchRanges(c *checker.Checker) map[*ast.SourceFile][]core.TextRange {
+	return c.ExtensionState(catchExecutionDiagnosticsKey{}, func() any { return map[*ast.SourceFile][]core.TextRange{} }).(map[*ast.SourceFile][]core.TextRange)
 }
 
 func init() {
 	checker.RegisterDiagnosticsFilterHook(func(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagnostic) []*ast.Diagnostic {
-		starts := catchExecutionMismatchStarts(c)[file]
-		if len(starts) == 0 {
+		ranges := catchExecutionMismatchRanges(c)[file]
+		if len(ranges) == 0 {
 			return ds
 		}
 		return slices.DeleteFunc(slices.Clone(ds), func(d *ast.Diagnostic) bool {
-			return d.Source() == "" && (d.Code() == 2322 || d.Code() == 2739 || d.Code() == 2740) && slices.Contains(starts, d.Pos()) && strings.Contains(d.String(), "Effect<unknown, unknown, unknown>")
+			// The generated catch-operand return duplicates the owning head
+			// diagnostic. Match its mapped range, retaining errors inside it.
+			return d.Source() == "" && (d.Code() == 2322 || d.Code() == 2739 || d.Code() == 2740) && slices.ContainsFunc(ranges, func(r core.TextRange) bool {
+				return r.Pos() == d.Pos() && r.End() == d.End()
+			})
 		})
 	})
 
@@ -92,7 +97,7 @@ func checkCatchExecutionHead(c *checker.Checker, file *ast.SourceFile, call, lef
 	if found {
 		// Match diagnostic anchors: satisfies points at its keyword,
 		// while the source execution head starts at its operand.
-		catchExecutionMismatchStarts(c)[file] = append(catchExecutionMismatchStarts(c)[file], scanner.GetErrorRangeForNode(file, left).Pos())
+		catchExecutionMismatchRanges(c)[file] = append(catchExecutionMismatchRanges(c)[file], scanner.GetErrorRangeForNode(file, left))
 	}
 	return found
 }
