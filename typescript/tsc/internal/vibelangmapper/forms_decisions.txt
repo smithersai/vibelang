@@ -2292,6 +2292,9 @@ typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:4:18 lambda effectF
 typescript/vibelang/cases/diag-call-pipe.fail/main.vibe:7:29 lambda effectFn keyword
 typescript/vibelang/cases/diag-default-parameter.fail/main.vibe:10:43 lambda effectFn keyword
 typescript/vibelang/cases/diag-default-parameter.fail/main.vibe:11:53 lambda dual fallback
+typescript/vibelang/cases/diag-nested-exhaustive-fixed-output/main.vibe:17:19 lambda dual fallback
+typescript/vibelang/cases/diag-nested-exhaustive-fixed-output/main.vibe:25:19 lambda dual fallback
+typescript/vibelang/cases/diag-nested-exhaustive-fixed-output/main.vibe:8:19 lambda dual fallback
 typescript/vibelang/cases/diag-platform-spelling.fail/main.vibe:12:19 lambda plain table
 typescript/vibelang/cases/diag-readonly.fail/main.vibe:9:21 lambda plain annotation
 typescript/vibelang/cases/diag-shared-subpath-name.fail/main.vibe:4:23 lambda effectFn keyword
@@ -4579,6 +4582,9 @@ typescript/vibelang/cases/match-extractor-optional-cells/main.vibe:13:47 lambda 
 typescript/vibelang/cases/match-extractor-optional-cells/main.vibe:14:47 lambda choice fallback
 typescript/vibelang/cases/match-extractor-optional-cells/main.vibe:6:45 lambda choice fallback
 typescript/vibelang/cases/match-extractor-optional-cells/main.vibe:7:45 lambda choice fallback
+typescript/vibelang/cases/match-finite-fallback/main.vibe:10:20 lambda dual fallback
+typescript/vibelang/cases/match-finite-fallback/main.vibe:16:20 lambda dual fallback
+typescript/vibelang/cases/match-finite-fallback/main.vibe:4:20 lambda dual fallback
 typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:5:75 lambda dual fallback
 typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:9:24 lambda plain annotation

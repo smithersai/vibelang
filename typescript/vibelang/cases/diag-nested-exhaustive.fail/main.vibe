@@ -3,8 +3,8 @@ data Shape { Circle { r: number }; Rect { w: number }; Tri { a: number } }
 data Wrap { Of { s: Shape } }
 export function inspect(value: Wrap) {
   return match (value) {
-    when Wrap.Of { s: Shape.Circle }: 1;
-    when Wrap.Of { s: Shape.Rect }: 2;
+    when { _tag: "Of", s: { _tag: "Circle" } }: 1;
+    when { _tag: "Of", s: { _tag: "Rect" } }: 2;
   }
 }
 
@@ -13,14 +13,14 @@ data Inner { Box { a: Choice } }
 data Outer { Hold { v: Inner } }
 export function deep(value: Outer) {
   return match (value) {
-    when Outer.Hold { v: Inner.Box { a: Choice.One } }: 1;
+    when { _tag: "Hold", v: { _tag: "Box", a: { _tag: "One" } } }: 1;
   }
 }
 
 error Missing
 export function mixed(value: Wrap | Missing) {
   return match (value) {
-    when Wrap.Of { s: Shape.Circle }: 1;
-    when Wrap.Of { s: Shape.Rect }: 2;
+    when { _tag: "Of", s: { _tag: "Circle" } }: 1;
+    when { _tag: "Of", s: { _tag: "Rect" } }: 2;
   }
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -25,7 +26,7 @@ func init() {
 // and shadowed TypeError/Effect bindings. No original pattern is re-evaluated.
 const matchCombinatorFallback = " default: match (void 0 as unknown) { when 0: (void 0 as never); }; "
 
-func matchCombinatorCoverageActions(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+func matchCombinatorCoverageActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 	var call *ast.Node
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
@@ -60,7 +61,20 @@ func matchCombinatorCoverageActions(_ context.Context, fix *ls.CodeFixContext) (
 	}
 	mark(statement.Parent)
 	if !marked {
-		return nil, nil
+		// The constrained-type repair keeps its own provider and spelling.
+		// Other missing finite cases can retain the same implicit fallback.
+		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
+		declared, remaining := matchRemainder(c, call)
+		original, _ := matchSubjectTypes(c, call)
+		generic := false
+		if original != nil {
+			constraint := c.GetBaseConstraintOfType(original)
+			generic = constraint != nil && constraint != original
+		}
+		done()
+		if declared == nil || remaining == nil || remaining.Flags()&checker.TypeFlagsNever != 0 || generic {
+			return nil, nil
+		}
 	}
 	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: fix.SourceFile.FileName(), PathKey: fix.SourceFile.PathKey()}, fix.SourceFile.Text())
 	start := scanner.SkipTrivia(fix.SourceFile.Text(), call.Expression().Pos())

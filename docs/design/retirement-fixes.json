@@ -102,6 +102,10 @@
       {
         "input": "typescript/vibelang/cases/match-combinator-coverage.fail",
         "output": "typescript/vibelang/cases/match-combinator-coverage-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/diag-nested-exhaustive.fail",
+        "output": "typescript/vibelang/cases/diag-nested-exhaustive-fixed-output"
       }
     ]
   },
