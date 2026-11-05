@@ -317,6 +317,7 @@ each at most `240` modules, using temporary projects that extend the original
 options. Unselected roots remain in the full-project checks. Even a single
 selected shard uses a temporary project when the full program is above the cap.
 A selected import closure larger than the cap uses the original project.
+Every selected module must be reached by a configured project. The fix pass fails with the paths in `fix.uncovered` when a script is outside every project, or its package is not configured. It preserves those sources and does not bank that package as complete. Add the module’s actual project to the run before retrying.
 This fallback keeps every project root in the compiler's fix gate, including
 TypeScript and TSX observers outside the migration scope. Only selected modules'
 rewrites are retained. It uses the same fixed-point, timeout and compiler

@@ -361,7 +361,6 @@ async function fix(config, p, cm, options) {
     bank = { identity, packages: {}, timedOut: [] }
     writeJson(bankFile, bank)
   }
-  const settledBank = readJsonIf(join(p.run,"done.json"),{})
   const pending = new Set(packages.sort((a,b) => cm.renames.filter(r=>owner(config,r.to)===a).length - cm.renames.filter(r=>owner(config,r.to)===b).length))
   const done = new Set(), running = new Map(), failures = []
   const timedOut = new Set(bank.timedOut)
@@ -370,18 +369,20 @@ async function fix(config, p, cm, options) {
     if (cm.fix) appendJsonl(join(p.run, "fix-result-history.jsonl"), cm.fix)
     cm.fix = { identity, rounds: [], byFile: {}, totals: {}, refused: [] }
   }
-  cm.fix.projects ??= []
+  cm.fix.projects = (cm.fix.projects ?? []).filter(project => packages.includes(project.package))
+  cm.fix.uncovered = []
   cm.fix.settled = false
   writeJson(p.codemod("01"), cm)
   const save = () => { cm.fix.totals = rewriteTotals(cm.fix.byFile); writeJson(p.codemod("01"), cm) }
   async function fixPackage(dir) {
     const only = new Set(cm.renames.filter(r => owner(config, r.to) === dir && existsSync(join(config.target, r.to))).map(r => r.to))
     const digest = packageDigest(config,dir,cm.renames.map(r=>r.to))
-    if (!only.size || bank.packages[dir]?.digest === digest || settledBank[dir]?.identity === identity && settledBank[dir]?.digest === digest) {
+    if (!only.size || bank.packages[dir]?.digest === digest) {
       appendJsonl(join(p.batch("01"),"progress.jsonl"),{stage:"fix-skip-banked",package:dir})
       return
     }
     cm.fix.projects = cm.fix.projects.filter(p => p.package !== dir)
+    const covered = new Set()
     for (const project of projects.filter(p => p.package === dir)) {
       const started = Date.now()
       const receipt = { ...project, startedAt: new Date().toISOString(), settled: false }
@@ -397,6 +398,7 @@ async function fix(config, p, cm, options) {
         if (!Array.isArray(membership)) throw new Error("showConfig did not return project files")
         const roots = membership.map(f => posix.normalize(posix.join(dir, f))).filter(sourceModule)
         const files = [...new Set(roots.flatMap(f => [f, ...reachable(graph, f)]))]
+        for (const file of files) if (only.has(file)) covered.add(file)
         const { sharded, groups, fallback } = fixShards(files, graph, only)
         receipt.mode = sharded ? "sharded" : "whole-project"
         if (fallback) receipt.fallback = fallback
@@ -438,6 +440,18 @@ async function fix(config, p, cm, options) {
         save()
       }
     }
+    const uncovered = [...only].filter(file => !covered.has(file)).sort()
+    if (uncovered.length) {
+      const receipt = { package: dir, file: dir, settled: false, uncovered,
+        error: "selected modules outside configured projects: " + uncovered.join(", ") }
+      cm.fix.uncovered.push(...uncovered)
+      cm.fix.projects.push(receipt)
+      failures.push(receipt)
+      appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-uncovered", ...receipt })
+      delete bank.packages[dir]
+      saveBank()
+      save()
+    }
     if (!failures.some(f => f.package === dir)) {
       bank.packages[dir] = { identity, at: new Date().toISOString(), files: [...only], digest: packageDigest(config,dir,cm.renames.map(r=>r.to)) }
       saveBank()
@@ -454,6 +468,16 @@ async function fix(config, p, cm, options) {
     if (running.size) await Promise.race(running.values())
     else if (pending.size) throw new Error("fix dependency scheduler made no progress: " + [...pending].join(", "))
   }
+  const unowned = cm.renames.map(r => r.to).filter(file => existsSync(join(config.target, file)) && !owner(config, file)).sort()
+  if (unowned.length) {
+    const receipt = { file: "unconfigured package", settled: false, uncovered: unowned,
+      error: "selected modules outside configured projects: " + unowned.join(", ") }
+    cm.fix.uncovered.push(...unowned)
+    cm.fix.projects.push(receipt)
+    failures.push(receipt)
+    appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-uncovered", ...receipt })
+  }
+  cm.fix.uncovered.sort()
   cm.fix.settled = !failures.length && cm.fix.projects.every(p => p.settled)
   save()
   if (failures.length) throw new Error("fix failed; see codemod.json and progress.jsonl: " + failures.map(f => f.file + ": " + f.error).join("; "))

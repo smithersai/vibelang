@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Optional-schema upgrade checks failed on an invalid inherited native error sample; they now verify the documented unions of errors.
 - Browser-augmentation validation repeatedly parsed the same native declarations. It now reuses parsed library documents while still checking each snapshot independently.
+- A migration could report fixing complete while skipping selected scripts outside its projects. It now names the uncovered modules and keeps the fix pass incomplete until their projects are included.
 - Converting an `async` function could leave an incompatible `Promise` contract on a variable, callback, inherited member or overload; the editor now withholds conversions that would leave those contracts invalid.
 
 - Error declarations with an inheritance clause consistently report the existing inheritance diagnostic; the superseded constructor diagnostic is retired.

@@ -1020,3 +1020,73 @@ test("property: one-pass oracle recovery restores only live batch modules and ne
     ]
   })
 })
+
+
+// The flow fixes every selected module, or names the modules no configured
+// project reaches. Project success must not certify an unvisited script.
+async function uncoveredFixture({ script = "script/generate.ts", imported = false, outside = false } = {}) {
+  const f = await fixture()
+  const selected = outside ? script : "core/" + script
+  put(f.target, selected, "export const answer = 42\n")
+  if (imported && !outside) put(f.target, "core/src/index.ts", `export { answer } from "../${script}"\n`)
+  put(f.run, "scope.txt", ["core/src/index.ts", selected].join("\n") + "\n")
+  await onePassStep("plan", { run: f.run, scope: f.scope })
+  await onePassStep("rename", { run: f.run })
+  return { ...f, selected: selected.replace(/\.ts$/, ".vibe") }
+}
+
+test("uncovered selected script refuses a settled fix and records its path", async () => {
+  const f = await uncoveredFixture()
+  try {
+    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
+    const receipt = readJson(paths(f.run).codemod("01"))
+    assert.equal(receipt.fix.settled, false)
+    assert.deepEqual(receipt.fix.uncovered, [f.selected])
+    assert.equal(readJson(join(f.run, "fix-bank.json")).packages.core, undefined)
+    assert.ok(existsSync(join(f.target, f.selected)), "refusal must preserve the source")
+    put(f.target, "core/src/index.vibe", 'export { answer } from "../script/generate.vibe"\n')
+    const retried = await onePassStep("fix", { run: f.run, jobs: 2 })
+    assert.equal(retried.settled, true)
+    assert.deepEqual(retried.uncovered, [])
+
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("uncovered selected module with no configured package is reported", async () => {
+  const f = await uncoveredFixture({ script: "tools/generate.ts", outside: true })
+  try {
+    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
+    assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, [f.selected])
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("property: selected scripts are covered through imports or reported uncovered", async () => {
+  const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+  assert.ok(contract.includes("Every selected module must be reached by a configured project."))
+  const corpus = readJson(fileURLToPath(new URL("./corpus/opencode-uncovered-script.json", import.meta.url)))
+  await fc.assert(fc.asyncProperty(fc.constantFrom(...corpus.directories), fc.nat(100), fc.boolean(), async (directory, suffix, imported) => {
+    const f = await uncoveredFixture({ script: `${directory}/generate${suffix}.ts`, imported })
+    try {
+      const operation = onePassStep("fix", { run: f.run, jobs: 2 })
+      if (imported) {
+        const result = await operation
+        assert.equal(result.settled, true)
+        assert.deepEqual(result.uncovered, [])
+      } else {
+        await assert.rejects(operation, /selected modules outside configured projects/)
+        assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, [f.selected])
+      }
+    } finally { rmSync(f.root, { recursive: true, force: true }) }
+  }), { seed: 1066, numRuns: 12 })
+})
+
+
+test("uncovered script is not certified by successful checks of other modules", async () => {
+  const f = await uncoveredFixture()
+  try {
+    cleanOracleCompiler(f)
+    assert.equal((await onePassStep("settle", { run: f.run })).settled, true)
+    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
+    assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, [f.selected])
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
