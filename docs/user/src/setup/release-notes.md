@@ -21,6 +21,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A throwing TypeScript callback could bypass its function-type contract through `satisfies`. Incompatible contracts now report `EK0402`; `--fix` preserves a simple inline constraint without changing the callback or its inferred type.
 - The Appendix diagnostic replay could time out before checking every example. It now checks independent projects concurrently while preserving every code, category and source-location assertion.
 - Grouped schema field repair examples treated unsupported inheritance as valid; they now retain the inheritance error until it is migrated.
+- Native compiler builds discarded inherited Go package limits. They now cap package compilation at eight, matching the mapper and forms generator.
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
 - Tagged match migration examples included an unnecessary fallback after covering every tag; their output now reflects the current coverage rule.

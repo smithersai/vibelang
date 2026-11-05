@@ -148,3 +148,39 @@ test("a failed native build keeps the previous executable and removes its tempor
   assert.equal(statSync(binary).ino, before)
   assert.deepEqual(readdirSync(dirname(binary)), ["vibelang"])
 })
+
+// The graph's --jobs bounds targets, while Go's -p bounds packages inside
+// each native build. Inherited GOFLAGS can be replaced by a target command;
+// inspect what its actual shell passes to Go, after native-output dispatch.
+for (const name of ["compiler", "forms-generator", "mapper"]) {
+  for (const inherited of [null, "", "-p=1", "-p=8", "-p=32", "-p=64", "-p=32 -trimpath", "-trimpath -p=64"]) {
+    test("graph " + name + " bounds package compilation with inherited GOFLAGS " + JSON.stringify(inherited), t => {
+      const f = fixture(t)
+      const record = join(f.root, "go-arguments.json")
+      f.put("bin/go", `#!${process.execPath}
+const fs = require("node:fs")
+const args = process.argv.slice(2)
+fs.writeFileSync(process.env.GO_ARGUMENTS_RECORD, JSON.stringify({ args, flags: process.env.GOFLAGS ?? "", cgo: process.env.CGO_ENABLED }))
+const output = args[args.indexOf("-o") + 1]
+fs.writeFileSync(output, "#!/bin/sh\\nexit 0\\n", { mode: 0o755 })
+`, 0o755)
+      const env = { ...f.env, GO_ARGUMENTS_RECORD: record }
+      if (inherited === null) delete env.GOFLAGS
+      else env.GOFLAGS = inherited
+      const run = spawnSync("sh", ["-c", targets("typescript/PACKAGE.ts")[name].shell], { cwd: f.root, env, encoding: "utf8" })
+      assert.equal(run.status, 0, run.stderr)
+      const { args, flags, cgo } = JSON.parse(readFileSync(record, "utf8"))
+      assert.equal(args[0], "build")
+      assert.equal(cgo, "0")
+      assert.ok(args.includes("-trimpath") || flags.split(/\s+/).includes("-trimpath"), "native builds retain the shared cache flags")
+      const effective = [...flags.split(/\s+/), ...args]
+      let packages
+      for (let i = 0; i < effective.length; i++) {
+        if (effective[i] === "-p") packages = Number(effective[++i])
+        else if (effective[i].startsWith("-p=")) packages = Number(effective[i].slice(3))
+      }
+      assert.ok(Number.isInteger(packages) && packages >= 1 && packages <= 8,
+        "native build must explicitly cap package parallelism: " + JSON.stringify({ args, flags }))
+    })
+  }
+}
