@@ -2175,3 +2175,5 @@ The corrected pipeline repair check retains all original factory-order, mutable-
 The module-body corpus follows accepted VIP-40: the original throwing helper and all retained names and export forms must compile without diagnostics. Ordinary namespace controls, extracted bodies and identifier-import rejection are checked with stock TypeScript; twelve seeded mutations retain the same checks without a pending acceptance exception.
 
 The `//:legacy-directive-category-controls` target retains the original spliced JSON witness and compares source-scoped legacy severities with actual diagnostics. Keyed cases cover file and next-line scope, unrelated files, strings, block comments, wildcard precedence, near-miss codes and both line endings. Injected wrong categories must still fail the oracle; no original corpus input is removed.
+
+`//:mapper-effect-block-source-ownership` checks explicit program blocks, blocks run directly by `try`, nested plain callback boundaries, resolver controls and keyed native-to-mapper diagnostic comparisons.

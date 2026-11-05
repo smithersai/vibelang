@@ -34,6 +34,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A service recovery example applied `try` after `catch` had returned its value. It now consumes that value directly; the error guide explains when an outer `try` is valid.
 
+- The TypeScript mapper could mistake an explicit `effect` block for an unclassified callback and reject a valid `catch`; blocks now retain their program form and execution boundary after reparsing. `try effect { … }` also failed there with a syntax error; it now runs the block where it stands.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - The legacy catch diagnostic example for `Cause` linked to code that had already been migrated. It now links to an executable original input that still demonstrates the warning.

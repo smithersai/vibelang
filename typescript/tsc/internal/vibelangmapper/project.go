@@ -235,7 +235,11 @@ func lower(text string, ctx FileContext) *projector {
 	effectDeclarations := writtenEffectDeclarationMarks(file)
 	operandTries := tryOperandMarks(file, text)
 	effectLambdas := writtenEffectLambdaMarks(file)
+	effectBlocks := writtenEffectBlockMarks(file)
 	keywords := vipKeywords(file, text, ctx.Lint)
+	if !ctx.Lint {
+		operandTries = append(operandTries, tryBlockMarks(file, text, keywords)...)
+	}
 	if len(keywords) > 0 {
 		methods := producerMethodMarks(file)
 		text = blank(text, keywords)
@@ -243,6 +247,7 @@ func lower(text string, ctx FileContext) *projector {
 		restoreProducerMethodMarks(file, methods)
 	}
 	restoreWrittenEffectLambdaMarks(file, effectLambdas)
+	restoreWrittenEffectBlockMarks(file, effectBlocks)
 	restoreTryOperandMarks(file, text, operandTries)
 	restoreWrittenEffectDeclarationMarks(file, effectDeclarations)
 	p := &projector{
@@ -258,6 +263,7 @@ func lower(text string, ctx FileContext) *projector {
 		statementStarts: map[int]bool{},
 		reported:        map[*ast.Node]bool{},
 	}
+	p.forms.(*Resolver).effectBlocks = effectBlocks
 	if ctx.Lint {
 		p.lintEffectArrows = lintEffectArrows(text, keywords)
 	}
@@ -292,7 +298,7 @@ func (p *projector) visit(node *ast.Node, e env) {
 	if p.ctx.Lint && p.lintForm(node, e) {
 		return
 	}
-	if e.holdCalls && node != e.rawTry && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+	if (e.holdCalls || ast.IsArrowFunction(node)) && node != e.rawTry && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
 		p.tryOperandExpression(node, e)
 		return
 	}
