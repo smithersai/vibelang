@@ -15,6 +15,9 @@ const skip = !existsSync(native) && "run sh scripts/build-vibelang.sh"
 const runtime = fileURLToPath(new URL("../../runtime/", import.meta.url))
 const skipRuntime = skip || (!existsSync(join(runtime, "dist")) && "build packages/runtime")
 
+// The rules come from .oxlintrc.json, so this runs the explicit legacy adapter:
+// a plain vibelang lint ignores that file and selects rules through the Effect
+// plugin in tsconfig.json (VIP-38, amended 2026-11-03).
 function lint(rules, source) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-lint-rules-"))
   try {
@@ -29,7 +32,7 @@ function lint(rules, source) {
     writeFileSync(join(dir, "tsconfig.json"), '{"compilerOptions":{"target":"es2022","module":"nodenext","moduleResolution":"nodenext","strict":true,"types":[],"skipLibCheck":true,"noEmit":true},"files":["m.vibe"]}')
     writeFileSync(join(dir, ".oxlintrc.json"), JSON.stringify({ rules }))
     writeFileSync(join(dir, "m.vibe"), source)
-    return spawnSync(process.execPath, [launcher, "lint"], { cwd: dir, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: native, NO_COLOR: "1" } })
+    return spawnSync(process.execPath, [launcher, "lint", "-c", ".oxlintrc.json"], { cwd: dir, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: native, NO_COLOR: "1" } })
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 const header = 'import * as Effect from "effect/Effect"\n'
@@ -42,11 +45,11 @@ test("effect-succeed-with-void reports a .vibe file under its imported code", { 
   assert.equal(result.stderr, "")
 })
 
-test("floating-effect reports a .vibe file once, through its port", { skip }, () => {
+test("floating-effect reports a .vibe file once, under its imported code", { skip }, () => {
   const result = lint({ "effecttsgo/floating-effect": "error" }, header + "export const g = Effect.gen(function* () { Effect.succeed(1); return 1 })\n")
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.equal(result.stdout.match(/m\.vibe\(2,/g)?.length, 1, result.stdout)
-  assert.match(result.stdout, /error EK4801:/)
+  assert.match(result.stdout, /m\.vibe\(2,44\): error EK3801: floatingEffect:/)
 })
 
 // alchemy's 207 reports of unknown types came from an unbuilt tree: each sat on a
