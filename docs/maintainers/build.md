@@ -1647,6 +1647,12 @@ resolved-normalization profile records, nominal distinctions and type, name,
 documentation and dependency mutation checks. Other API fixtures retain the
 libraries their declarations require.
 
+The shared ES5 fixture library guard records distinct library names and a total,
+with at most 16 example names in a failure. It omits installation paths and checks
+after comparison returns. Its five native TypeScript controls and four generated
+library/repetition samples preserve real declaration validity, missing ES5 and
+`BigInt` errors, and stable diagnostic counts across repeated programs.
+
 Physical-sidecar import fixtures select `lib.es5.d.ts` for native TypeScript
 validation and every comparator program. Their loaded-library guard runs outside
 comparison failure handling. All seven tests and eight generated mirror depths,

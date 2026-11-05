@@ -6,21 +6,10 @@ import { createRequire } from "node:module"
 import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
+import { createEs5FixtureGuard } from "./testing/fixture-libraries.mjs"
 
 const compilerOptions = { lib: ["lib.es5.d.ts"] }
-const stockTs = loadTypeScript()
-const unexpectedLibraries = []
-const ts = { ...stockTs, createProgram(...args) {
-  const program = stockTs.createProgram(...args)
-  const libraries = program.getSourceFiles().map(source => source.fileName)
-    .filter(file => /[/\\]lib\.[^/\\]+\.d\.ts$/.test(file))
-  if (!libraries.some(file => /[/\\]lib\.es5\.d\.ts$/.test(file))) unexpectedLibraries.push("missing ES5")
-  unexpectedLibraries.push(...libraries.filter(file => !/[/\\]lib\.(?:es5|decorators(?:\.legacy)?)\.d\.ts$/.test(file)))
-  return program
-} }
-function assertLibraries() {
-  assert.deepEqual(unexpectedLibraries, [], "Physical-sidecar fixtures must load only ES5 and decorator libraries")
-}
+const { ts, assertLibraries } = createEs5FixtureGuard(loadTypeScript(), "Physical-sidecar fixtures")
 function compare(a, b, comparisonOptions = {}) {
   const result = compareApiIdentity(ts, a, b, { ...comparisonOptions, compilerOptions })
   assertLibraries()
