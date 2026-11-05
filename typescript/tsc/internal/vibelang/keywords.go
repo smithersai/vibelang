@@ -408,7 +408,15 @@ func checkForkOperand(c *checker.Checker, file *ast.SourceFile, operand *ast.Nod
 // errors in written calls, assignments and satisfies expressions stay intact.
 func filterRejectedForkArgumentDiagnostics(c *checker.Checker, call *ast.Node, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
 	if len(diagnostics) == 0 || !ast.IsCallExpression(call) || len(call.Arguments()) != 1 ||
-		!isVibeLangFile(ast.GetSourceFileOfNode(call)) || inHatch(call) || !inEffectCode(call) {
+		!isVibeLangFile(ast.GetSourceFileOfNode(call)) {
+		return diagnostics
+	}
+	// Placement explains only the generated operator call. Inner source
+	// calls, constraints and assignments retain their own diagnostics.
+	if isFiberOperator(call) && !inEffectCode(call) {
+		return nil
+	}
+	if inHatch(call) || !inEffectCode(call) {
 		return diagnostics
 	}
 	operand := call.Arguments()[0]

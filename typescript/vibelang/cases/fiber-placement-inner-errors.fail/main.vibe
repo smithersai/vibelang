@@ -1,0 +1,10 @@
+// expect: EK1701 TS2345 TS2322
+declare function take(n: number): number
+declare function object(n: { value: number }): number
+function plain() { return join take("bad") }
+async function nativeAsync() { return fork take("bad") }
+effect function defaultValue(x = join take("bad")) { return 1 }
+effect function staticOwner() {
+  class C { static { const child = fork object({ value: "bad" }) } }
+  return 1
+}

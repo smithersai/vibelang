@@ -96,7 +96,6 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 		// operator marker so ordinary helpers in plain code stay ordinary.
 		if isFiberOperator(node) && !inEffectCode(node) {
 			reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1701)
-			cover(c, node)
 			return node.ForEachChild(visit)
 		}
 		// Native async await keeps JavaScript behavior. Awaiting a Fiber or

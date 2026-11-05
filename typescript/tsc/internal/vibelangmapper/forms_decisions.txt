@@ -3501,6 +3501,8 @@ typescript/vibelang/cases/fiber-join-held-masked/main.vibe:43:23 byname program 
 typescript/vibelang/cases/fiber-join-held-masked/main.vibe:45:26 byname program table
 typescript/vibelang/cases/fiber-join-held-masked/main.vibe:59:22 lambda program table
 typescript/vibelang/cases/fiber-join-held-masked/main.vibe:71:24 byname program table
+typescript/vibelang/cases/fiber-placement-inner-errors.fail/main.vibe:5:44 byname program table
+typescript/vibelang/cases/fiber-placement-inner-errors.fail/main.vibe:8:41 byname program table
 typescript/vibelang/cases/fiber-unary-exponentiation-error/main.vibe:4:22 byname program table
 typescript/vibelang/cases/fiber-unary-exponentiation-error/main.vibe:8:15 byname program table
 typescript/vibelang/cases/fiber-unary-exponentiation/main.vibe:3:22 byname program table
