@@ -63,7 +63,7 @@ func FuzzAbstractErrorInheritanceRepairs(f *testing.F) {
 			files["main.vibe"] = "export namespace Family {\n" + parent + child + "}\n"
 		}
 		if key == "explicit-imports" {
-			files = map[string]string{"main.vibe": "import { Data, Schema } from \"effect\"\nabstract error Base\nexport error Child extends Base { id: string; value?: number; get label(): string { return this.id + \":\" + this._tag } }\n"}
+			files = map[string]string{"main.vibe": "import { Data, Schema } from \"effect\"\nexport abstract error Base\nexport error Child extends Base { id: string; value?: number; get label(): string { return this.id + \":\" + this._tag } }\n"}
 		}
 		if mode&1 != 0 {
 			for name, text := range files {
