@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,600 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 9,500 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 9,600 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **180,000** |
@@ -273,7 +273,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 12,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 8 pages** | **53,000** |
+| **All 8 pages** | **54,000** |
 
 ### Specification
 

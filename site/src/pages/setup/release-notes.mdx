@@ -14,12 +14,38 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
-- Automatic repairs could run a catch handler's returned error or Effect as a computation; they now preserve that value as data, with an explicit editor action available to run it.
+- Ambient-declaration API checks loaded unrelated browser declarations. They now use fewer libraries while preserving isolated global and augmentation checks.
 
+- Conditional-export API checks loaded unrelated browser declarations. They now use fewer libraries while retaining export selection, sidecar and native type checks.
+
+- An extra unparenthesized Effect type slot now reports `EK0302` with a grouping repair instead of a missing-semicolon error.
+
+- Complete matches using `error` extractors could report missing cases after matcher registration. Irrefutable captures now retain coverage for plain and schema errors; guarded captures still require another arm or a `default`.
+
+- API checks for reserved export aliases loaded unrelated browser declarations. They now use fewer libraries while retaining native alias and return-type checks.
+
+- API checks for unrelated diagnostics loaded browser declarations they did not use. They now retain native `Map` types with fewer library inputs.
+
+- Legacy JavaScript errors now offer an editor repair for closed native files that keeps their scope in a TypeScript `module`, preserving `var` hoisting and direct `eval`.
+
+- Automatic repairs could run a catch handler's returned error or Effect as a computation; they now preserve that value as data, with an explicit editor action available to run it.
+- A preserving call repair could emit an obsolete return annotation and leave a native type error; generated argument functions now use current syntax.
+- Lexical wrapper captures remain supported, and retired capture and clock diagnostics no longer appear as current error examples.
+- Qualified `Effect.uninterruptible` and `Effect.interruptible` calls remain valid; their retired unqualified function-call syntax stays rejected.
+
+- Converting an error declaration to an explicit class could lose its own matcher and break saved callbacks or tag-based patterns. The quick fix now preserves the matcher on the converted class.
+- Class patterns could read an inherited matcher getter and throw before testing the instance. Generated patterns now check ownership first and leave inherited matcher getters untouched.
+- Deleting an error class's own matcher could leave tag matching active through its generated base. The class now falls back to native `instanceof` matching.
 - Nested callbacks use their own rethrow admission; functions escaping those callbacks still retain the plain-code throw check.
 - Unchanged native importers retain their declaration spelling during a one-file migration; explicit source imports use the corresponding TypeScript import preference.
 - Legacy computed schema keys retain throwing-call errors alongside their migration diagnostic; preserving repairs still compile without errors.
 - Native `Option.gen(function* …)` remains valid JavaScript generator code; explicit producer arguments retain the diagnostic and iterator-preserving repair refusal.
+- Await-advisory repairs retain their async return types and non-throwing declaration contracts, including callable parameters.
+- A throw inside `async match` rejects its Promise; ordinary and Effect match expressions retain their surrounding throw rules.
+- Formatting examples retain labeled control-flow targets when adding braces, including concurrent loop bodies.
+- The global replacement table could turn Node's version string into a component object. It now selects the Node version and retains its leading `v`.
+- Following the random-integer replacement could return the excluded upper bound. The guide now uses `halfOpen: true` to preserve the native range.
+- API absence checks loaded browser declarations for pure type fixtures. They now use the libraries each fixture needs while retaining native `URL` checks.
 
 - The fibers guide omitted labeled `continue` targeting the `for concurrent` loop itself. It now explains that this ends the current item.
 - `vibelang --fix` left ordinary incomplete finite matches unchanged. It now adds a `default` that preserves the implicit empty-message `TypeError`, including an Effect defect or Promise rejection, without widening the function's result or channels.
@@ -203,6 +229,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - Throwing callbacks passed through fixed tuple spreads could bypass throw checks or use the wrong parameter contract. They now keep their thrown contract and argument position, and `vibelang --fix` can preserve their defects with an Effect bridge.
+
+- Calling a parameterless `effect function` declaration could invoke or throw from a replaced `Function.prototype.apply`; it now constructs its unrun Effect without that extra lookup.
+- `is` bindings in `for concurrent` and `for try` heads now retain their lexical homes and per-item values. Native `catch (...: any)` parameter bindings report `EK0705` instead of retired catch and home errors.
 - The grammar admission audit missed an incomplete computed pattern member split across lines. It now records that parser gap while retaining class-pattern type errors as semantic diagnostics.
 - The grammar admission audit could mistake native type-only and mixed import clauses for undefined syntax. It now derives those forms while retaining local binding restrictions.
 - The grammar admission audit could mistake rejected import declarations and default export assignments with modifiers for accepted syntax. It now recognizes their existing native errors.
@@ -238,6 +267,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Throw-repair examples retain declaration types, initialization order, iterator cleanup, and exact failure channels across a wider range of input values.
 - The error inheritance example now records every forbidden declaration and retains the independent native property-type error.
 - A rejected producer `yield*` could hide native iterator errors inside its operand. Those errors now remain visible beside `EK2103`.
+- Platform misuse reports keep callback contract errors alongside the platform diagnostic, so each invalid argument remains visible.
+- Calls through `any` or `Function` could bypass the foreign-call check in effect code; they now require an explicit bridge, and `vibelang --fix` preserves thrown exceptions as defects.
 
 - Concurrent operators could hide a literal's `satisfies` error or add an unrelated array error. They now preserve the literal's own TypeScript errors beside `EK1801`.
 - Error-class custom matchers could lose their tag when saved or called with a subclass receiver. Plain errors now own their matcher, and both error forms return the original subject in either matching mode regardless of the caller's receiver.
@@ -308,6 +339,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Generic service declarations could lose their error when another member was invalid; both errors are now reported.
 - A rejected service member could hide an enclosing type parameter in another member's contract; the compiler now reports that capture.
+- Rejected whole-shape service members could add a misleading generic-capture error; only the written shape now determines that error.
 - Invalid service keys could hide errors in their expressions and type annotations; those TypeScript errors now remain visible.
 
 - Object patterns could read a getter or test a property more than once across match arms. They now retain each property observation for one `match` or `is` evaluation.
