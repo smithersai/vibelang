@@ -9,6 +9,7 @@ import { candidates, draftPlan, validatePlan } from "../lib/plan.mjs"
 import { planScope, onePassStep } from "../lib/onepass.mjs"
 import { codemod, paths } from "../lib/steps.mjs"
 import { testBundleDeferrals } from "../lib/test-bundles.mjs"
+import { must } from "../lib/util.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-test-owned-bundle-graph.json", import.meta.url)))
@@ -61,6 +62,7 @@ test("explicit and one-pass plans preserve test bundle deferrals", () => {
 test("stale ordinary and one-pass plans are rejected before any source rename or compiler launch", async () => {
   const f=fixture()
   try {
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: f.root })
     const run=join(f.base,"run"), p=paths(run)
     const json=(file,value)=>{mkdirSync(dirname(file),{recursive:true});writeFileSync(file,JSON.stringify(value))}
     json(p.config,{target:f.root,packages:f.packages,toolchain:{dir:join(f.base,"missing-toolchain")}})
