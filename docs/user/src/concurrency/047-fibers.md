@@ -29,6 +29,8 @@ effect function buildDashboard() {
 
 An operand that is not assignable to `Fiber.Fiber<any, any>` reports `EK1704`. An object with only a `~effect/Fiber` marker or an incomplete fiber shape is rejected; complete structural fiber types remain valid. TypeScript still reports independent errors inside the operand, including wrong call arguments, assignments and `satisfies` checks.
 
+With `strictNullChecks` disabled, `null` and `undefined` pass the operand's TypeScript assignability check; `void` remains invalid.
+
 A misplaced `fork` or `join` operator reports `EK1701`. Independent TypeScript errors in their operands, including wrong arguments and generic constraints, retain their own diagnostics.
 
 `any` and `never` follow TypeScript's operand assignability for `join`. A value typed `unknown` must first be narrowed to a fiber.

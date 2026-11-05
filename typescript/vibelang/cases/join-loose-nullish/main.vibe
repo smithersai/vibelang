@@ -1,0 +1,18 @@
+// expect-result: 7
+// Loose null checking uses the same operand assignability as Fiber.join.
+declare const nullable: null
+declare const missing: undefined
+type Nullish = null | undefined
+declare const aliased: Nullish
+
+export effect function literalNull() { return join null }
+export effect function literalUndefined() { return join undefined }
+export effect function undefinedExpression() { return join (void 0) }
+export effect function typedNull() { return join nullable }
+export effect function typedUndefined() { return join missing }
+export effect function alias() { return join (aliased satisfies unknown) }
+
+export effect function main() {
+  const child = fork Effect.succeed(7)
+  return join child
+}

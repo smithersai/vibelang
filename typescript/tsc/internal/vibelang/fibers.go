@@ -262,7 +262,9 @@ func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	operand := args[0]
 	t := c.GetTypeAtLocation(operand)
 	// TypeScript assigns any and never to the Fiber operand domain.
-	if t != nil && t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsNever) != 0 {
+	if t != nil && (t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsNever) != 0 ||
+		!c.CompilerOptions().GetStrictOptionValue(c.CompilerOptions().StrictNullChecks) &&
+			t.Flags()&(checker.TypeFlagsNull|checker.TypeFlagsUndefined) != 0) {
 		return
 	}
 	if t == nil || isJoinable(c, t, 0) || analyzerFor(c).joinsRejectedFork(operand) {
