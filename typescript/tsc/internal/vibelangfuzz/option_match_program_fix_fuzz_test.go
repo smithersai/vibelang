@@ -17,6 +17,11 @@ func FuzzOptionMatchProgramFix(f *testing.F) {
 			f.Add(optionMatchFixKey + "program-constructor:" + string([]byte{mode, 7, variant, 0, variant, mode}))
 		}
 	}
+	for mode := byte(0); mode < 3; mode++ {
+		data := make([]byte, 15)
+		data[5], data[8], data[14] = mode, 1, 1
+		f.Add(optionMatchFixKey + string(data))
+	}
 	fuzzFixProjects(f, "FuzzOptionMatchProgramFix")
 }
 
@@ -33,6 +38,11 @@ func optionMatchProgramFixArchive(data []byte) string {
 	}
 	if pick(0)%3 == 2 {
 		option, imports = "Opt", "import { Option as Opt, Effect } from \"effect\""
+	}
+	legacyType := len(data) > 14 && pick(14)&1 != 0
+	optionType := option + ".Option<number>"
+	if legacyType {
+		option, imports, optionType = "Option", "", "Option<number>"
 	}
 	value := fmt.Sprintf("%s.some(%d)", option, pick(1))
 	if pick(2)&1 != 0 {
@@ -66,13 +76,16 @@ func optionMatchProgramFixArchive(data []byte) string {
 	}
 	source := fmt.Sprintf(`%s
 const events: string[] = [];
-function subject(): %s.Option<number> { events.push("subject"); return %s; }
+function subject(): %s { events.push("subject"); return %s; }
 function handlers() { events.push("handlers"); return %s; }
 %s
 export effect function main() {
  %s
  return [a, b, events.join(",")];
 }
-`, imports, option, value, handlers, choose, run)
+`, imports, optionType, value, handlers, choose, run)
+	if legacyType {
+		source += "// Option migration witness: keep this trailing note.\n"
+	}
 	return Archive(map[string]string{"main.vibe": source})
 }
