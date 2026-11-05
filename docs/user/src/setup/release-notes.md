@@ -61,6 +61,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Abstract error repair tests lacked the import collision that blocked child constructors; keyed controls now include existing Effect imports in every repair mode.
 
 - Catch declaration checks could reject equivalent generated Effect imports; they now compare the same exact success, failure and requirement types through the resolved namespace alias.
+
+- Repair twin tests could reject correctly retained coverage comments; fixed witnesses now keep their source metadata, with comment association and repeat-run controls.
 - The foreign-predicate repair regression expected a boolean bridge that lost narrowing; it now checks the captured narrowed value, unchanged helper declarations, repeatable fixes and equivalent defect results.
 
 - The empty-effect regression still expected the retired single-operation lowering; it now compares scheduling with native `Effect.gen` and checks cold construction and repeated execution.

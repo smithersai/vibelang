@@ -31,3 +31,6 @@ export const early = effect (o: Options) => {
   const n = o.p
   return try Effect.orDie(Effect.try({ try: () => double(n), catch: (e) => e }))
 }
+
+// rule-evidence: docs/design/src/900-appendices.md#7914d40ee2945304
+// Chapter 900: EK0403 unwrapped throwing call
