@@ -103,6 +103,8 @@ const specTests = [
   "TestGrammarAdmissionModuleSpecifierKeywordRegression",
   "TestGrammarAdmissionModuleReExports",
   "TestGrammarAdmissionModuleRequireReservedKeys",
+  "TestGrammarAdmissionImportRelationalKeys",
+  "TestGrammarAdmissionImportRelationalRegression",
   "TestGrammarAdmissionSchemaJSDocKeys",
   "TestGrammarAdmissionSchemaJSDocRegression",
   "TestGrammarAdmissionOptionalTuples",

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-relational-campaign\n1\nimport < require(join)")

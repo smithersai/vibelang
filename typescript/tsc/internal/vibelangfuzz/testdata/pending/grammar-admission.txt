@@ -50,3 +50,6 @@ FuzzGrammarAdmission corpus:schema-jsdoc-postfix-type compiler Appendix A Field 
 FuzzGrammarAdmission admission:module-specifier-keyword compiler Appendix A ModuleSpecifier and VIP-40: strict reserved source identifiers become module-reference strings before native identifier checking
 FuzzGrammarAdmission corpus:module-specifier-keyword compiler Appendix A ModuleSpecifier and VIP-40: import static reports only EK4006 and a following name error
 FuzzGrammarAdmission corpus:module-require-reserved-identifier compiler Appendix A and VIP-40: a reserved identifier in require shares the existing nonliteral ExternalModuleReference gap
+FuzzGrammarAdmission admission:import-relational-recovery compiler Appendix A: inherited ImportCall and MetaProperty do not admit a bare import keyword as a comparison operand; native recovery reports only name/type diagnostics
+FuzzGrammarAdmission corpus:import-relational-recovery compiler Appendix A: inherited ImportCall and MetaProperty do not admit a bare import keyword as a comparison operand; native recovery reports only name/type diagnostics
+FuzzGrammarAdmission corpus:import-relational-campaign compiler Appendix A: inherited ImportCall and MetaProperty do not admit a bare import keyword as a comparison operand; native recovery reports only name/type diagnostics

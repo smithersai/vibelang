@@ -185,6 +185,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"module-require-identifier", "import x = require(join);"},
 	{"module-specifier-keyword", "import static\nx;"},
 	{"module-require-reserved-identifier", "import x = require(static);"},
+	{"import-relational-recovery", "import < value;"},
+	{"import-relational-campaign", "1\nimport < require(join)"},
 	{"schema-jsdoc-postfix-type", "schema C { id: string? }"},
 	{"schema-jsdoc-field-type", "schema C { id: ?? string }"},
 	{"schema-error-jsdoc-field-type", "schema error E { id: ?? string }"},
@@ -848,6 +850,9 @@ func grammarAdmissionForm(source string) string {
 	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
 		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
 	}, source)
+	if grammarImportRelationalRecovery(file) {
+		return "admission:import-relational-recovery"
+	}
 	// EK2201: an interruption block outside effect code. The bare block has no
 	// other reading, so the key follows the source callable around the word.
 	// EK1702: fork and join are reserved in effect code, in any binding.

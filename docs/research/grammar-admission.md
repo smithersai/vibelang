@@ -322,3 +322,9 @@ grammar retains a string specifier. A reserved name recovered inside `require`
 keeps the separate nonliteral `ExternalModuleReference` pending family. That key
 requires a single identifier argument; recovered members, calls and extra
 arguments stay outside the family.
+
+A native import-call lookahead can recover the keyword in `import < value`
+as a comparison operand without a syntax error. That shape stays pending as
+`admission:import-relational-recovery`. The key follows a bare import-keyword
+node directly inside a binary expression. Ordinary dynamic imports, import
+meta-properties, property names and import types remain separate controls.
