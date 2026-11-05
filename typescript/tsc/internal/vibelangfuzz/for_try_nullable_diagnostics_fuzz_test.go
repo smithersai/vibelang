@@ -27,6 +27,8 @@ func FuzzForTryNullableDiagnostics(f *testing.F) {
 		{"property-argument", "declare function p(n:{value:number}):Stream.Stream<number>|undefined;", "p({value:\"bad\"})", "void value", "TS2322", "", true},
 		{"receiver-and-stream", "declare const obj:{stream?:Stream.Stream<number>}|undefined;", "obj.stream", "void value", "", "TS18048", true},
 		{"receiver-only", "declare const obj:{stream:Stream.Stream<number>}|undefined;", "obj.stream", "void value", "", "TS18048", false},
+		{"computed-receiver-only", "declare const obj:{stream:Stream.Stream<number>}|undefined;", "obj[\"stream\"]", "void value", "", "TS18048", false},
+		{"computed-receiver-and-stream", "declare const obj:{stream?:Stream.Stream<number>}|undefined;", "obj[\"stream\"]", "void value", "", "TS18048", true},
 		{"nonnull", "declare const p:Stream.Stream<number>|undefined;", "p!", "void value", "", "", false},
 	}
 	for _, shape := range shapes {

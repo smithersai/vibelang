@@ -1748,5 +1748,35 @@
       "reference": "docs/design/vips/0007-match.md#binding-homes-and-redeclarations and docs/design/src/004-match.md#is-bindings-in-parameter-initialization: the accepted catch-parameter home rule requires EK0705 for direct defaults, nested destructuring and computed binding keys; explicit source blocks remain allowed."
     },
     "reason": "These negative controls exercise the existing parameter-home restriction in plain statement catches, as VIP-5 requires. Moving initialization into the catch body or inventing a lexical home changes binding scope and requires author intent. The fixture port adds no rejected language form and retains the allowed explicit-do runtime control."
+  },
+  {
+    "code": "EK2004",
+    "case": "typescript/vibelang/cases/for-try-operand-assignability.fail",
+    "vip": "VIP-20",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0020-for-try.md#decision and docs/design/src/002-running.md#for-try: accepted Stream-only operands use ordinary TypeScript assignability and preserve independent native expression errors."
+    },
+    "reason": "The fixture keeps its existing diagnostic set and distinguishes rejection of a nullable Stream from a separate nullable property receiver. Unknown operands and unsafe receiver reads keep their native TypeScript errors. Choosing a Stream conversion or a null-handling policy requires author intent; this changes expected locations and examples, not language acceptance."
+  },
+  {
+    "code": "TS18046",
+    "case": "typescript/vibelang/cases/for-try-operand-assignability.fail",
+    "vip": "VIP-20",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0020-for-try.md#decision and docs/design/src/002-running.md#for-try: accepted Stream-only operands use ordinary TypeScript assignability and preserve independent native expression errors."
+    },
+    "reason": "The fixture keeps its existing diagnostic set and distinguishes rejection of a nullable Stream from a separate nullable property receiver. Unknown operands and unsafe receiver reads keep their native TypeScript errors. Choosing a Stream conversion or a null-handling policy requires author intent; this changes expected locations and examples, not language acceptance."
+  },
+  {
+    "code": "TS18048",
+    "case": "typescript/vibelang/cases/for-try-operand-assignability.fail",
+    "vip": "VIP-20",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0020-for-try.md#decision and docs/design/src/002-running.md#for-try: accepted Stream-only operands use ordinary TypeScript assignability and preserve independent native expression errors."
+    },
+    "reason": "The fixture keeps its existing diagnostic set and distinguishes rejection of a nullable Stream from a separate nullable property receiver. Unknown operands and unsafe receiver reads keep their native TypeScript errors. Choosing a Stream conversion or a null-handling policy requires author intent; this changes expected locations and examples, not language acceptance."
   }
 ]
