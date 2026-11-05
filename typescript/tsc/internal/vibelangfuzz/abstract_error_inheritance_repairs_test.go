@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"bytes"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -32,6 +33,10 @@ func FuzzAbstractErrorInheritanceRepairs(f *testing.F) {
 		}
 	}
 	w := NewWorkspace(f)
+	node, err := NewNode(w.Dir)
+	if err != nil {
+		f.Fatal(err)
+	}
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		TestAbstractErrorInheritanceRepairsQuoted(t)
 		name := "value"
@@ -62,6 +67,33 @@ func FuzzAbstractErrorInheritanceRepairs(f *testing.F) {
 				files[name] = strings.ReplaceAll(text, "\n", "\r\n")
 			}
 		}
+		module, root := "./main.js", "source.Base"
+		if key == "imported" {
+			module = "./base.js"
+		}
+		if key == "namespace" {
+			root = "source.Family.Base"
+		}
+		files["observer.ts"] = fmt.Sprintf(`import { Effect } from "effect"
+import { customMatcher } from "vibelang-runtime"
+import * as source from %q
+export const main = () => Effect.sync(() => {
+ const Base = %s as any
+ class Concrete extends Base {}
+ const own = new Concrete()
+ const cross = { _tag: "Base", value: 1 }
+ const other = { _tag: "Other" }
+ const matcher = Base[customMatcher]
+ return {
+  ownProperty: Object.hasOwn(Base, customMatcher),
+  own: matcher.call(Base, own),
+  cross: matcher.call(Base, cross),
+  other: matcher.call(Base, other),
+  boolean: matcher.call(Base, own, { matchType: "boolean" }),
+  extracted: matcher.call(Base, cross, { matchType: "extractor" }),
+ }
+})
+`, module, root)
 		before := toolsCompile(t, w, "FuzzAbstractErrorInheritanceRepairs", files)
 		defer before.Remove()
 		errors := 0
@@ -103,6 +135,12 @@ func FuzzAbstractErrorInheritanceRepairs(f *testing.F) {
 			if strings.Contains(text, "abstract error") || strings.Contains(text, "error Child extends") {
 				t.Fatalf("unconverted source %s: %s", name, text)
 			}
+		}
+		original := node.Run(before, "out/observer.js", "main")
+		repaired := node.Run(after, "out/observer.js", "main")
+		if toolsInvalidOutcome(original) || toolsInvalidOutcome(repaired) || original.Kind != "success" || repaired.Kind != "success" || !bytes.Equal(original.Value, repaired.Value) {
+			Gap(t, "FuzzAbstractErrorInheritanceRepairs", "matcher:"+key,
+				"chapter 7 preserving repair changed matcher observations: before=%+v after=%+v", original, repaired)
 		}
 		second := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, after.Dir), options)
 		if second.Err != nil || len(second.Files) != 0 || len(second.Refused) != 0 {

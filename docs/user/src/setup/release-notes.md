@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Migrating an abstract plain error could replace its inherited matcher and turn boolean results into arrays; `vibelang --fix` now preserves the original matcher and its extraction results.
+
 - Whole-shape service examples omitted required bodies and failed with `EK0906`; the runtime and declaration examples now include empty bodies for primitive and callable shapes.
 
 - Compiler commands could bury late failure details behind successful test output; their summaries now retain the failure details and execution totals.

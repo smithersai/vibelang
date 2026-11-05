@@ -208,7 +208,9 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			}
 		}
 		var members []string
-		if class.Flags&ast.NodeFlagsAmbient == 0 {
+		if class.Flags&ast.NodeFlagsAmbient == 0 && !(module == "Data" && ast.HasSyntacticModifier(class, ast.ModifierFlagsAbstract)) {
+			// Abstract plain roots inherit the factory matcher. Installing an own
+			// matcher would change direct boolean/extractor calls during migration.
 			// VIP-7/VIP-13/VIP-29: an explicit class keeps the declaration's own tag
 			// matcher, including before user-written static initializers.
 			matcher := "$ErrorMatcher"

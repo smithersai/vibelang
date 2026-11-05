@@ -18,6 +18,9 @@ func TestAbstractErrorFixPreservesDeclarations(t *testing.T) {
 		if strings.Contains(fixed, "abstract error") || !strings.Contains(fixed, "abstract ") || !strings.Contains(fixed, "class ") {
 			t.Fatalf("abstract native class migration missing:\n%s", fixed)
 		}
+		if strings.Contains(fixed, "$schemaErrorMatcher") {
+			t.Fatalf("abstract root acquired an own matcher:\n%s", fixed)
+		}
 		for _, comment := range []string{"/*keep abstract*/", "/*keep error*/"} {
 			if strings.Contains(source, comment) && !strings.Contains(fixed, comment) {
 				t.Fatalf("lost %s:\n%s", comment, fixed)
