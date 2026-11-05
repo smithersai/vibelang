@@ -12,7 +12,9 @@ import (
 
 // TestCatchDeclarationGoldens pins both clean-file parity regressions from
 // decl-catch: an exhaustive switch must not invent a normal completion in
-// rethrow, or propagate undefined into its caller's success record.
+// rethrow, or propagate undefined into its caller's success record. The
+// fixture's literals cross nested effect functions, so they are written
+// `as const` and stay literal in the caller's record.
 func TestCatchDeclarationGoldens(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	assert.NilError(t, err)
@@ -43,7 +45,7 @@ func TestCatchDeclarationGoldens(t *testing.T) {
     b: string;
     c: string;
     d: string;
-    e: string;
+    e: "none" | "rethrown" | "wrongly caught";
     f: string;
     g: string;
 }, Broken | Offline | Schema.SchemaError, never>;`},

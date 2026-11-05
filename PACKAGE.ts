@@ -1358,6 +1358,13 @@ const targets = {
     [Typescript.compiler, Typescript.mapper],
     "20m"
   ),
+  "catch-completion-declaration-surface": check(
+    "Nested catch fixtures preserve literal returns and exclude invented normal completions",
+    "cd typescript/tsc && VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^TestCatchDeclarationGoldens$' ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=8m -run '^(TestCatchCompletionDeclarationsQuoted|FuzzCatchCompletionDeclarations)$' ./internal/vibelangfuzz && cd .. && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --verbose decl-catch",
+    [Typescript.compiler, Typescript.mapper, Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"]],
+    [go, node, bun],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
