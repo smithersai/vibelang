@@ -352,7 +352,7 @@ const specAppendixExamples = S.Shell.Test({
   summary: "Executable Appendix B diagnostic examples retain their printed codes and categories.",
   shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/diagnostic-examples.mjs",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
-  tools: [node], sandbox: "none", timeout: "2m"
+  tools: [node], sandbox: "none", timeout: "5m"
 })
 const specAppendixHostExamples = goVibelang(
   "Appendix mapper diagnostics and explicit editor repairs keep their documented identities.",

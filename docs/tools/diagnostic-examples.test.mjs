@@ -81,3 +81,14 @@ test("the legacy any-call witness retains every co-located native throw diagnost
   assert.equal(checkExample(example,appendix,{status:2,stdout:lines.join("\n")}).length===0,coLocated)
  }),{seed:4409,numRuns:100})
 })
+
+// Replay runs four single-threaded compilers. One takes about 1.3 s on a quiet
+// four-core runner and about 5 s on one shared with other targets.
+test("the Appendix replay budget covers every compiled example on a loaded runner",()=>{
+ const read=path=>readCaptureFixtures(new URL(path,import.meta.url),"utf8")
+ const fixtures=JSON.parse(read("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json"))
+ const compiled=resolveExamples(fixtures,appendixCodes(read("../design/src/900-appendices.md")))
+ const budget=/const specAppendixExamples = S\.Shell\.Test\(\{[\s\S]*?timeout: "(\d+)m"/.exec(read("../../PACKAGE.ts"))
+ assert.ok(budget,"spec-appendix-examples declares a timeout in minutes")
+ assert.ok(Number(budget[1])*60>=compiled.length*5/4,compiled.length+" examples need more than "+budget[1]+"m")
+})
