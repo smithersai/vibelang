@@ -18,7 +18,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,976 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,825 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,840 |
 | The skill and the user guide (142 pages) | 500,000 |
 | The user guide alone | 500,000 |
 | The specification (11 chapters) | 250,000 |
@@ -96,7 +96,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Installation](../getting-started/004-installation.md) | 2,900 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,300 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
-| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,300 |
+| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,400 |
 | **Core Concepts** | **30,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,600 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,000 |
@@ -112,9 +112,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Set up VibeLang](../setup.md) | 1,900 |
 | [Known limitations](../setup/known-limitations.md) | 550 |
 | **Start a project** | **8,500** |
-| [New project](../setup/new-project.md) | 540 |
+| [New project](../setup/new-project.md) | 570 |
 | [Existing project](../setup/existing-project.md) | 3,700 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,200 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,300 |
 | **Build and test** | **20,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 16,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,700 |
@@ -147,7 +147,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,500 |
 | [Fallback](../error-management/016-fallback.md) | 2,900 |
 | [Matching](../error-management/017-matching.md) | 790 |
-| [Retrying](../error-management/018-retrying.md) | 760 |
+| [Retrying](../error-management/018-retrying.md) | 780 |
 | [Timing Out](../error-management/019-timing-out.md) | 830 |
 | [Sandboxing](../error-management/020-sandboxing.md) | 750 |
 | [Error Accumulation](../error-management/021-error-accumulation.md) | 680 |
