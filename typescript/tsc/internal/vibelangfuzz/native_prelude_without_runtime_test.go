@@ -12,8 +12,10 @@ import (
 )
 
 const nativePreludeQuote = "Every root export of the core `effect` package is in scope in a `.vibe` file without an import."
+const nativePreludeModulesDisabledQuote = "\"vibe\": { \"effectModules\": false }"
+const nativePreludeGlobalsDisabledQuote = "\"vibe\": { \"effectGlobals\": false }"
 
-var nativePreludeKeys = []string{"Effect", "Layer", "Schema", "Scope", "contract", "explicit", "shadow", "disabled"}
+var nativePreludeKeys = []string{"Effect", "Layer", "Schema", "Scope", "contract", "explicit", "shadow", "disabled", "disabled-all"}
 
 func TestNativePreludeWithoutRuntimeQuoted(t *testing.T) { nativePreludeQuoted(t) }
 func nativePreludeQuoted(t testing.TB) {
@@ -22,8 +24,10 @@ func nativePreludeQuoted(t testing.TB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(chapter), nativePreludeQuote) {
-		t.Fatalf("chapter 5 no longer says %q", nativePreludeQuote)
+	for _, quote := range []string{nativePreludeQuote, nativePreludeModulesDisabledQuote, nativePreludeGlobalsDisabledQuote} {
+		if !strings.Contains(string(chapter), quote) {
+			t.Fatalf("chapter 5 no longer says %q", quote)
+		}
 	}
 }
 
@@ -67,15 +71,20 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 			source = "import { Effect as Fx } from 'effect'\nexport const value = Fx.runSync(Fx.succeed(7))\n"
 		case "shadow":
 			source = "const Effect = { local: 7 as const }\nexport const value: 7 = Effect.local\n"
-		case "disabled":
+		case "disabled", "disabled-all":
 			source = "export const value = Effect\n"
 		}
 		if variant&2 != 0 {
 			source = "/* retained */\n" + strings.ReplaceAll(source, "value", "valueCafé")
 		}
 		config := strings.TrimSuffix(DefaultConfig, "\n}") + ",\n\"files\":[\"main.vibe\"]\n}"
-		if key == "disabled" {
-			config = strings.TrimSuffix(config, "\n}") + ",\n\"vibe\": { \"effectModules\": false }\n}"
+		disabled := key == "disabled" || key == "disabled-all"
+		if disabled {
+			options := "\"effectModules\": false"
+			if key == "disabled-all" {
+				options += ", \"effectGlobals\": false"
+			}
+			config = strings.TrimSuffix(config, "\n}") + ",\n\"vibe\": { " + options + " }\n}"
 		}
 		for _, control := range []struct {
 			name string
@@ -89,18 +98,23 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 			var codes []int32
 			for _, d := range r.Diagnostics {
 				if d.Category() == diagnostics.CategoryError {
-					codes = append(codes, d.Code())
+					code := d.Code()
+					if !IsEK(d) && code == 2552 {
+						// A native spelling suggestion keeps the name unresolved.
+						code = 2304
+					}
+					codes = append(codes, code)
 				}
 			}
 			want := []int32(nil)
-			if key == "disabled" {
+			if disabled {
 				want = []int32{2304}
 			}
 			if !slices.Equal(codes, want) {
 				Gap(t, "FuzzNativePreludeWithoutRuntime", key+":"+control.name, "VIP-14 native Effect namespaces: want %v, got %v; diagnostics=%v; source=%s", want, codes, r.Diagnostics, source)
 				return
 			}
-			if key != "disabled" {
+			if !disabled {
 				found := false
 				for name, text := range r.Outputs {
 					if strings.HasSuffix(name, "main.js") {
