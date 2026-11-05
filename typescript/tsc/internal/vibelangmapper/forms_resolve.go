@@ -268,15 +268,16 @@ func (c *Choice) Message() string {
 
 // Resolver answers form decisions for one parsed .vibe file.
 type Resolver struct {
-	file  *ast.SourceFile
-	text  string
-	table *Table
+	effectBlocks map[[2]int]bool
+	file         *ast.SourceFile
+	text         string
+	table        *Table
 }
 
 // NewResolver returns a resolver for file, a parse of a .vibe file, over
 // table.
 func NewResolver(file *ast.SourceFile, table *Table) *Resolver {
-	return &Resolver{file: file, text: file.Text(), table: table}
+	return &Resolver{file: file, text: file.Text(), table: table, effectBlocks: writtenEffectBlockMarks(file)}
 }
 
 // formsProviderCallees are the canonical keys of calls whose object literal
@@ -297,6 +298,14 @@ var formsProviderCallees = map[string]int{
 // Lambda decides the form of fn, an arrow function, a function
 // expression, or a method of an object literal.
 func (r *Resolver) Lambda(fn *ast.Node) Decision {
+	d := r.lambdaForm(fn)
+	if ast.IsArrowFunction(fn) && fn.Body() != nil && ast.IsBlock(fn.Body()) && r.effectBlocks[effectBlockMark(r.file, fn)] && (d.Form != FormProgram || d.Choice != nil) {
+		d.Form, d.Class, d.Provenance, d.Note, d.Choice = FormProgram, ClassProgram, FromKeyword, "written effect block (VIP-2)", nil
+	}
+	return d
+}
+
+func (r *Resolver) lambdaForm(fn *ast.Node) Decision {
 	d := Decision{Node: fn}
 	// A destination never changes the kind written on a function (VIP-1).
 	// This also precedes the retired D269 factory heuristics.

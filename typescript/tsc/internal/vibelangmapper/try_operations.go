@@ -93,6 +93,59 @@ func tryOperandMarks(file *ast.SourceFile, text string) []tryOperandMark {
 	return marks
 }
 
+// tryOfBlock returns where the word try starts when it runs the effect block
+// fn directly, or -1. A catch expression's parentheses already end try's
+// operand, so a block before catch keeps its try.
+func tryOfBlock(text string, fn *ast.Node) int {
+	call := fn.Parent
+	if call == nil || !ast.IsCallExpression(call) || len(call.Arguments()) != 1 || call.Arguments()[0] != fn || catchFollows(text, fn.Body().End()) {
+		return -1
+	}
+	callee := call.Expression()
+	if !ast.IsIdentifier(callee) || callee.Flags&ast.NodeFlagsReparsed == 0 || callee.Text() != "$try" {
+		return -1
+	}
+	return scanner.SkipTrivia(text, call.Pos())
+}
+
+// tryBlockWord is what stands for try before a block it runs. A blanked word
+// lets a statement run on from the line before it, so a statement in a list
+// ends that line first. An if or a label still owns its one statement.
+func tryBlockWord(fn *ast.Node) string {
+	statement := fn.Parent.Parent
+	if statement == nil || statement.Kind != ast.KindExpressionStatement || statement.Parent == nil {
+		return "   "
+	}
+	switch statement.Parent.Kind {
+	case ast.KindBlock, ast.KindSourceFile, ast.KindModuleBlock, ast.KindCaseClause, ast.KindDefaultClause:
+		return ";  "
+	}
+	return "   "
+}
+
+// tryBlockMarks records the effect blocks whose try lower writes over, so the
+// reparsed arrow still runs where the try stood. Reading keywords keeps the two
+// in step: a block loses its try only if its mark exists.
+func tryBlockMarks(file *ast.SourceFile, text string, keywords []keyword) []tryOperandMark {
+	written := map[int]bool{}
+	for _, k := range keywords {
+		written[k.at] = true
+	}
+	var marks []tryOperandMark
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsArrowFunction(node) && node.Body() != nil && ast.IsBlock(node.Body()) {
+			// The word's place may hold a semicolon now, so the mark names the block.
+			if word := tryOfBlock(text, node); word >= 0 && written[word] {
+				marks = append(marks, tryOperandMark{node.Kind, scanner.SkipTrivia(text, node.Pos()), node.End()})
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return marks
+}
+
 func restoreTryOperandMarks(file *ast.SourceFile, text string, marks []tryOperandMark) {
 	if len(marks) == 0 {
 		return

@@ -324,6 +324,10 @@ func vipKeywords(file *ast.SourceFile, text string, lint bool) []keyword {
 					} else if end := body.End(); catchFollows(text, end) {
 						with = "(()=> "
 						keywords = append(keywords, keyword{end, ")"})
+					} else if word := tryOfBlock(text, node); word >= 0 {
+						// try effect { … } reparses as a call of try on (), so
+						// the word goes and tryBlockMarks keeps the run.
+						keywords = append(keywords, keyword{word, tryBlockWord(node)})
 					}
 				}
 				keywords = append(keywords, keyword{at, with})
@@ -448,6 +452,43 @@ func restoreWrittenEffectLambdaMarks(file *ast.SourceFile, marks map[writtenEffe
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if isLambda(n) && n.ParameterList() != nil && marks[effectLambdaMark(n)] {
+			n.Flags |= ast.NodeFlagsVibeLangEffect
+		}
+		n.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+}
+
+// Effect blocks have a synthetic arrow token rather than a written parameter
+// list. Keep their body range through keyword blanking so the replacement arrow
+// remains a program and retains the source execution boundary.
+func effectBlockMark(file *ast.SourceFile, fn *ast.Node) [2]int {
+	return [2]int{scanner.SkipTrivia(file.Text(), fn.Body().Pos()), fn.Body().End()}
+}
+
+func writtenEffectBlockMarks(file *ast.SourceFile) map[[2]int]bool {
+	marks := map[[2]int]bool{}
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if ast.IsArrowFunction(n) && sourceCatchProgramArrow(n) && n.Flags&ast.NodeFlagsVibeLangEffect != 0 && n.Body() != nil && ast.IsBlock(n.Body()) {
+			start := scanner.SkipTrivia(file.Text(), n.Pos())
+			open := scanner.SkipTrivia(file.Text(), n.Body().Pos())
+			if start+len("effect") <= len(file.Text()) && file.Text()[start:start+len("effect")] == "effect" && scanner.SkipTrivia(file.Text(), start+len("effect")) == open {
+				marks[effectBlockMark(file, n)] = true
+			}
+		}
+		n.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+	return marks
+}
+
+func restoreWrittenEffectBlockMarks(file *ast.SourceFile, marks map[[2]int]bool) {
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if ast.IsArrowFunction(n) && len(n.Parameters()) == 0 && n.Body() != nil && ast.IsBlock(n.Body()) && marks[effectBlockMark(file, n)] {
 			n.Flags |= ast.NodeFlagsVibeLangEffect
 		}
 		n.ForEachChild(visit)
