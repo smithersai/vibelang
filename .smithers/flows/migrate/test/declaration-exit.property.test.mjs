@@ -10,11 +10,12 @@ import { emitErrorsIn, recordDeclarationSurface } from "../lib/declarations.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
 import * as Jj from "../lib/jj.mjs"
+import { recordQuotedModuleReferences } from "../lib/quoted-module-emit.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-ui-declaration-exit.json", import.meta.url)))
 
-async function check(code, diagnostic, { baselineEmit, dependencyPaths = false, migrated = true, expectedEmit = baselineEmit !== undefined || (code === 0 && !diagnostic) } = {}) {
+async function check(code, diagnostic, { baselineEmit, dependencyPaths = false, moduleSuffix = false, migrated = true, expectedEmit = baselineEmit !== undefined || (code === 0 && !diagnostic) } = {}) {
   const root = mkdtempSync(join(tmpdir(), "foldkit-declaration-exit-"))
   try {
     const target = join(root, "repo"), run = join(root, "run")
@@ -34,6 +35,14 @@ async function check(code, diagnostic, { baselineEmit, dependencyPaths = false, 
       const message = path => "main.vibe(3,1): error TS4023: Exported variable 'value' has or is using name 'NodeInspectSymbol' from external module " + JSON.stringify(path) + " but cannot be named."
       baselineEmit = { code, diagnostics: parseDiagnostics(message(module("4.1.0")).replace("main.vibe", "main.ts")) }
       diagnostic = message(module("4.1.1"))
+    }
+    if (moduleSuffix) {
+      mkdirSync(join(target, "node_modules/library"), { recursive: true })
+      writeFileSync(join(target, "node_modules/library/tokenStore.d.ts"), "export interface Token { readonly id: string }\n")
+      const message = suffix => "main.vibe(3,1): error TS2883: The inferred type of 'value' cannot be named without a reference to 'Token' from './node_modules/library/tokenStore" + suffix + "'. This is likely not portable. A type annotation is necessary."
+      baselineEmit = { code, diagnostics: parseDiagnostics(message("").replace("main.vibe", "main.ts")) }
+      baselineEmit.moduleReferences = recordQuotedModuleReferences(baselineEmit.diagnostics, { root: target, typescript: require("typescript"), tsconfig: join(target, "tsconfig.json") })
+      diagnostic = message(".js")
     }
     const declaration = "export declare const value: number;\n"
     writeFileSync(join(target, "node_modules/.bin/vibelang"), [
@@ -85,6 +94,12 @@ async function check(code, diagnostic, { baselineEmit, dependencyPaths = false, 
         assert.equal(substitutions[0].before.version, "4.1.0")
         assert.equal(substitutions[0].after.version, "4.1.1")
       }
+      if (moduleSuffix) {
+        const substitutions = result.compile.declarationEmits["."].modulePathSubstitutions
+        assert.equal(substitutions.length, 1)
+        assert.equal(substitutions[0].declaration, "node_modules/library/tokenStore.d.ts")
+        assert.match(substitutions[0].sha256, /^[a-f0-9]{64}$/)
+      }
     } else assert.ok(result.compile.emitErrors.length, JSON.stringify(result))
     await report({ run })
     const summary = readFileSync(p.report, "utf8")
@@ -133,4 +148,8 @@ test("saved original emit diagnostics explain inherited exits through the real v
 
 test("real verifier retains raw diagnostics and proof for inherited dependency-version paths", async () => {
   await check(2, "", { dependencyPaths: true, expectedEmit: true })
+})
+
+test("real verifier records declaration provenance for a quoted module suffix", async () => {
+  await check(1, "", { moduleSuffix: true, expectedEmit: true })
 })

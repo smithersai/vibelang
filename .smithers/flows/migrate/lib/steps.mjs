@@ -473,7 +473,7 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   const cwd = join(t, pkg.dir)
   const projects = Wire.projectsOf(ts, cwd, pkg.dtsTsconfig)
   if (projects.length === 1) {
-    const result = await emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t })
+    const result = await emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t, typescript: ts })
     recordDeclarationSurface(ts, outDir, cwd, [{ tsconfig: projects[0], prefix: "." }])
     return result
   }
@@ -481,14 +481,16 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   let code = 0
   let files = 0
   const diagnostics = []
+  const moduleReferences = []
   for (const tsconfig of projects) {
-    const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, slug(tsconfig)), log: projectLog(log, tsconfig, projects), root: t })
+    const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, slug(tsconfig)), log: projectLog(log, tsconfig, projects), root: t, typescript: ts })
     code ||= emitted.code
     files += emitted.files
     diagnostics.push(...emitted.diagnostics)
+    moduleReferences.push(...emitted.moduleReferences)
   }
   recordDeclarationSurface(ts, outDir, cwd, projects.map(tsconfig => ({ tsconfig, prefix: slug(tsconfig) })))
-  return { code, files, diagnostics }
+  return { code, files, diagnostics, moduleReferences }
 }
 
 // Compare an existing native package with its installed predecessor before any repin.
@@ -2116,11 +2118,12 @@ export async function verify(options) {
     const originalEmit = originalEmits[pkg.dir]
     const emitLog = join(logs, "dts-" + slug(pkg.dir) + ".log")
     const dependencyPathSubstitutions = []
-    const errors = emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: emitLog, baseline: originalEmit, cwd: join(t, pkg.dir), pathSubstitutions: dependencyPathSubstitutions })
+    const modulePathSubstitutions = []
+    const errors = emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: emitLog, baseline: originalEmit, cwd: join(t, pkg.dir), pathSubstitutions: dependencyPathSubstitutions, moduleReferences: emitted.moduleReferences, modulePathSubstitutions })
     emitErrors.push(...errors)
     declarationEmits[pkg.dir] = { code: emitted.code, baselineCode: originalEmit?.code ?? null,
       diagnostics: emitted.diagnostics, baselineDiagnostics: originalEmit?.diagnostics?.length ?? null,
-      errors: errors.length, dependencyPathSubstitutions, log: emitLog }
+      errors: errors.length, dependencyPathSubstitutions, modulePathSubstitutions, log: emitLog }
     const stock = oracle?.[pkg.dir]
     const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
     const names = declarationNames(ts, join(t, pkg.dir), projects.map((tsconfig) => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })))

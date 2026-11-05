@@ -12,6 +12,7 @@ import { apiProjection } from "./api-projection.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 import { dependencyEmitPathSubstitution } from "./dependency-emit-paths.mjs"
+import { quotedModuleEmitSubstitution, recordQuotedModuleReferences } from "./quoted-module-emit.mjs"
 
 /** The TypeScript compiler API (5.x or 6.x; TypeScript 7's package has no such API), from the first directory that has it. */
 export function loadTypeScript(directories) {
@@ -977,7 +978,7 @@ function emittedAssetImports(text, source, output, ts) {
  * the emit created it, and put back as it was when it existed: opencode tracks
  * packages/stories/playwright/config.d.ts, which packages/app's emit rewrites.
  */
-export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, root }) {
+export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, root, typescript }) {
   rmSync(outDir, { recursive: true, force: true })
   const existing = declarationFiles(resolve(root ?? cwd), resolve(outDir))
   mkdirSync(outDir, { recursive: true })
@@ -1008,17 +1009,19 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
   }
   const files = listDeclarations(outDir)
   if (!files.length) throw new Error(`vibelang emitted no declarations for ${tsconfig} (exit ${result.code}${log ? `, log ${log}` : ""})`)
-  return { code: result.code, files: files.length, diagnostics: parseDiagnostics(result.stdout + result.stderr, { cwd, root }), ...(unsupportedSingleThreaded ? { unsupportedOptions: ["--singleThreaded"], optionProbeLog } : {}) }
+  const diagnostics = parseDiagnostics(result.stdout + result.stderr, { cwd, root })
+  const moduleReferences = recordQuotedModuleReferences(diagnostics, { root, typescript, tsconfig: resolve(cwd, tsconfig) })
+  return { code: result.code, files: files.length, diagnostics, moduleReferences, ...(unsupportedSingleThreaded ? { unsupportedOptions: ["--singleThreaded"], optionProbeLog } : {}) }
 }
 
 /**
  * New declaration emit errors compared with the saved original program.
  * Source locations may move during conversion; source identity, diagnostic
  * code, message, notes and multiplicity must agree, except a proved installed
- * dependency-version path substitution. Without an original
+ * dependency-version or resolved module-suffix path substitution. Without an original
  * receipt, retain the strict file/global errors and failing-exit check.
  */
-export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd, pathSubstitutions = [] } = {}) {
+export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd, moduleReferences = [], pathSubstitutions = [], modulePathSubstitutions = [] } = {}) {
   const current = diagnostics.filter(d => d.category === "error")
   const recorded = baseline && Number.isInteger(baseline.code) && Array.isArray(baseline.diagnostics)
   const source = d => (d.file ?? "").replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, "")
@@ -1047,9 +1050,11 @@ export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd,
       if (!entry.count || source(original) !== source(d) ||
         JSON.stringify(original.notes ?? []) !== JSON.stringify(d.notes ?? [])) continue
       const proof = dependencyEmitPathSubstitution(original, d, { cwd })
-      if (!proof) continue
+      const moduleProof = proof ? null : quotedModuleEmitSubstitution(original, d, { baseline, diagnostics, moduleReferences })
+      if (!proof && !moduleProof) continue
       entry.count--
-      pathSubstitutions.push(proof)
+      if (proof) pathSubstitutions.push(proof)
+      if (moduleProof) modulePathSubstitutions.push(moduleProof)
       return false
     }
     return true

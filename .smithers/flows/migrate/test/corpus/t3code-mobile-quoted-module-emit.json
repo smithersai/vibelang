@@ -1,0 +1,9 @@
+{
+  "file": "apps/mobile/src/util.ts",
+  "line": 4,
+  "column": 17,
+  "category": "error",
+  "code": "TS2883",
+  "message": "The inferred type of 'flattenStyles' cannot be named without a reference to 'AnimatedNode' from '$MODULE'. This is likely not portable. A type annotation is necessary.",
+  "notes": []
+}
