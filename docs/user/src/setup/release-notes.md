@@ -192,6 +192,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Promise-producing call examples now show the boundary error alongside independent host-access and root-runner errors.
 - Error-family examples use native class tests and object destructuring, retaining subclass tags, catch routing, public declarations, and runtime results.
 - Pattern predicate checks use an explicit source callable for an unannotated foreign predicate, retaining every matching result and the guarantee that global objects stay untouched.
+- Plain catch handlers returning tagged errors as data keep the Effect-result advisory; the returned error objects and migration behavior remain covered.
 
 - Concurrent operators could hide a literal's `satisfies` error or add an unrelated array error. They now preserve the literal's own TypeScript errors beside `EK1801`.
 

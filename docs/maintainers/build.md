@@ -1923,3 +1923,5 @@ The `//:error-family-native-patterns` gate checks native family patterns, unsupp
 The `//:pattern-predicate-contracts` gate checks foreign and source predicate contracts and runs all fixed-pattern, ordinary-class, and global-object identity controls.
 
 The `//:relocated-sidecar-layout` check covers explicit and inferred source roots, package/paths/import routes, symlink identity and negative forward-mapping controls. Mismatches include the route and root configuration in their diagnostic context.
+
+The `//:catch-error-data-advisories` gate checks tagged-error migration twins, their runtime values, and catch-result advisories with independent native-error controls.
