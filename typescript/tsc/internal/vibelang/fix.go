@@ -737,6 +737,22 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
 			// Refuse each fix that would edit a refused site (fix_sites.go).
 			name, text := p.file.FileName(), p.file.Text()
+			// Module-export proposals can be selected before fileFixes runs.
+			// Discover declined diagnostics before these independent edits,
+			// so a protected site is recorded in the original source state.
+			if slices.ContainsFunc(p.fixes, func(f fileFix) bool { return f.label == preludeKeyLabel }) {
+				codes := tsFormFixCodes
+				if options.VIPOnly || options.MigrationOnly {
+					codes = vipMigrationFixCodes
+				}
+				for _, d := range fileFixes(ctx, program, file, g.refused, codes).declined {
+					reason := d.reason
+					if why := refusedWhy[d.key]; why != "" {
+						reason = why
+					}
+					sites.add(name, text, d.start, d.end, fixCodeName(d.code), reason)
+				}
+			}
 			if len(p.fixes) > 0 {
 				kept, blocked, by := sites.guard(name, text, p.fixes)
 				for i, f := range blocked {

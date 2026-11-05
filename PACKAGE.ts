@@ -1290,6 +1290,12 @@ const targets = {
     [go, node, bun],
     "20m"
   ),
+  "native-generator-refusal-site-controls": goVibelang(
+    "Native generator returns remain native while producer refusals retain exact spans and bytes",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=8m -run '^(TestFixReportsDeclined.*|TestFixNativeGeneratorReturnIsNotDeclined|TestFixPrelude.*|TestKeepPreludeEdits.*|TestFixSites.*|FuzzFixPreludeRefusedSite|FuzzTextHunks)$' ./internal/vibelang",
+    [],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

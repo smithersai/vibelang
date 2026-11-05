@@ -143,3 +143,5 @@ A plain catch handler returns its result as data, including an error or an `Effe
 Preserving call repairs use ordinary native arrow functions to defer method arguments until after receiver access. Their inferred return types retain the original argument's type without a legacy `infer _` annotation.
 
 An implicit prelude `Effect.gen` repair preserves the native generator's synchronous exceptions as defects. Unknown foreign calls use an explicit defect bridge; a proven `@throws {never}` call needs none.
+
+A declined automatic repair retains its source bytes. Module-export qualification elsewhere in the same file still proceeds, and the refusal report refers to the original source location. Native JavaScript generators retain their return values.

@@ -117,53 +117,58 @@ func TestFixSitesCheck(t *testing.T) {
 	}
 }
 
-// End to end: the producer's EK2128 fix moves the plain generator's EK2128,
-// which --fix declines; the site is reported where it stood, and its bytes
-// hold.
+// A producer repair before an unrepairable native try statement must keep
+// the refusal at its original source coordinates, even after earlier edits.
+const refusedProducerTry = "try {\n    yield n\n  } finally {\n  }"
+
 func TestFixReportsDeclinedPlainGeneratorReturn(t *testing.T) {
-	source := `export effect function* p(n: number) {
-  yield n
-  return n + 1
-}
-export function* g(n: number) {
-  yield n
-  return n + 1
-}
-`
+	source := "export effect function* p(n: number) {\n  yield n\n  return n + 1\n}\nexport effect function* g(n: number) {\n  " + refusedProducerTry + "\n}\n"
 	_, file, _, _ := editorProgramWith(t, source, map[string]string{})
 	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
 	fixed := result.Files[file.FileName()]
 	if fixed == nil || fixed.Text == source {
-		t.Fatalf("no fix applied; the test needs one before the site")
+		t.Fatal("no earlier producer repair applied")
 	}
 	var site *RefusedSite
 	for i := range result.Sites {
-		if result.Sites[i].Code == "EK2128" {
+		if result.Sites[i].Code == "EK0503" {
 			site = &result.Sites[i]
 		}
 	}
-	at := strings.LastIndex(source, "n + 1")
-	if site == nil || site.Start != at || site.End != at+5 || !strings.HasPrefix(site.Reason, "no fix applies: A JavaScript caller") {
-		t.Fatalf("site %+v, want [%d,%d); sites %+v", site, at, at+5, result.Sites)
+	at := strings.Index(source, "try {")
+	if site == nil || site.Start != at || site.End != at+len(refusedProducerTry) || !strings.Contains(site.Reason, "producer") {
+		t.Fatalf("want original producer try span [%d,%d), got %+v; sites %+v", at, at+len(refusedProducerTry), site, result.Sites)
 	}
 	if !SiteHolds(source, fixed.Text, *site) || len(result.Changed) != 0 {
 		t.Fatalf("site changed:\n%s", fixed.Text)
 	}
 	var out bytes.Buffer
 	result.Report(&out, func(n tspath.RootedFilePath) string { return filepath.Base(n.AsString()) })
-	if want := fmt.Sprintf("vibelang --fix: refused site: main.vibe:7:10-7:15 [%d,%d) EK2128: no fix applies: ", at, at+5); !strings.Contains(out.String(), want) {
-		t.Fatalf("report:\n%s\nwant a line starting %q", out.String(), want)
+	if want := fmt.Sprintf("vibelang --fix: refused site: main.vibe:6:3-9:4 [%d,%d) EK0503: no fix applies: ", at, at+len(refusedProducerTry)); !strings.Contains(out.String(), want) {
+		t.Fatalf("report:\n%s\nwant prefix %q", out.String(), want)
 	}
 }
 
-// A file whose only diagnostic --fix declines still reports its site.
+// A file with only an unrepairable producer try still reports its site.
 func TestFixReportsDeclinedWithoutFixes(t *testing.T) {
+	source := "export effect function* g(n: number) {\n  " + refusedProducerTry + "\n}\n"
+	_, file, _, _ := editorProgramWith(t, source, map[string]string{})
+	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
+	at := strings.Index(source, "try {")
+	if len(result.Sites) != 1 || result.Sites[0].Code != "EK0503" || result.Sites[0].Start != at ||
+		result.Sites[0].End != at+len(refusedProducerTry) || result.Files[file.FileName()] != nil {
+		t.Fatalf("sites %+v, files %v", result.Sites, result.Files)
+	}
+}
+
+// VIP-21 keeps the original JavaScript generator witness as a positive
+// control: its return value is native and is neither rewritten nor refused.
+func TestFixNativeGeneratorReturnIsNotDeclined(t *testing.T) {
 	source := "export function* g(n: number) {\n  yield n\n  return n + 1\n}\n"
 	_, file, _, _ := editorProgramWith(t, source, map[string]string{})
 	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	at := strings.Index(source, "n + 1")
-	if len(result.Sites) != 1 || result.Sites[0].Code != "EK2128" || result.Sites[0].Start != at || result.Files[file.FileName()] != nil {
-		t.Fatalf("sites %+v, files %v", result.Sites, result.Files)
+	if len(result.Sites) != 0 || len(result.Refused) != 0 || result.Files[file.FileName()] != nil {
+		t.Fatalf("native generator changed or refused: %+v", result)
 	}
 }
 
@@ -255,47 +260,43 @@ func preludeFixCase(t *testing.T, source string) (*FixResult, tspath.RootedFileP
 	return fixCase(t, dir), file.FileName()
 }
 
-// End to end: a module's name written for its export is repaired outside a
-// declined site (FileSystem.of becomes FileSystem.FileSystem.of, chapter 7),
-// while the same repair inside a plain generator's return is blocked by the
-// refused site and reported. A written FileSystem.FileSystem.of is kept.
+// A module export inside a refused producer try retains its spelling;
+// the same export outside that site is still repaired.
 func TestFixPreludeKeepsRefusedSite(t *testing.T) {
 	source := `import { FileSystem } from "effect"
 
-function* g(x: unknown) {
-  yield 1
-  return FileSystem.of
+effect function* g(x: unknown) {
+  try {
+    yield FileSystem.of
+  } finally {}
 }
 const first = FileSystem.of
 const written = FileSystem.FileSystem.of
 `
 	result, name := preludeFixCase(t, source)
 	if len(result.Changed) != 0 {
-		t.Fatalf("a rewrite changed a refused site: %+v", result.Changed)
+		t.Fatalf("changed refused site: %+v", result.Changed)
 	}
 	fixed := result.Files[name]
 	if fixed == nil {
-		t.Fatalf("no rewrite kept; sites %+v", result.Sites)
+		t.Fatalf("no rewrite retained; sites %+v", result.Sites)
 	}
 	want := strings.Replace(strings.TrimPrefix(source, "import { FileSystem } from \"effect\"\n"), "const first = FileSystem.of", "const first = FileSystem.FileSystem.of", 1)
 	if fixed.Text != want || fixed.Rewrites[preludeKeyLabel] != 1 {
-		t.Fatalf("wrote %q\nwant %q\nrewrites %v", fixed.Text, want, fixed.Rewrites)
+		t.Fatalf("wrote %q, want %q; rewrites %v", fixed.Text, want, fixed.Rewrites)
 	}
 	at := strings.Index(source, "FileSystem.of")
 	var declined, blocked bool
 	for _, site := range result.Sites {
-		if site.Code == "EK2128" && site.Start == at && site.End == at+len("FileSystem.of") {
+		if site.Code == "EK0503" && site.Start <= at && site.End >= at+len("FileSystem.of") && SiteHolds(source, fixed.Text, site) {
 			declined = true
 		}
-		// The repair inside the site is either blocked by the site guard or
-		// refused by the gate (its text changes the EK2128 message); both
-		// report it at the written module name.
 		if site.Code == preludeKeyLabel && site.Start >= at && site.Start <= at+len("FileSystem.of") {
 			blocked = true
 		}
 	}
 	if !declined || !blocked {
-		t.Fatalf("sites %+v: want the EK2128 site at [%d,...) and the repair reported inside it", result.Sites, at)
+		t.Fatalf("want producer try refusal and blocked export edit, got %+v", result.Sites)
 	}
 }
 
@@ -323,7 +324,7 @@ const first = (value: Option.Option<number>): number => Option.getOrElse(value, 
 
 // Property: whatever mix of qualified value exports sits inside a declined
 // site and outside it, --fix changes no refused site (no exit 3), every
-// declined site keeps its bytes, and only the exports outside are shortened.
+// declined site keeps its bytes, and only the exports outside are qualified.
 func FuzzFixPreludeRefusedSite(f *testing.F) {
 	f.Add(uint8(1), uint8(1))
 	f.Add(uint8(2), uint8(0))
@@ -331,18 +332,39 @@ func FuzzFixPreludeRefusedSite(f *testing.F) {
 	f.Fuzz(func(t *testing.T, inside, outside uint8) {
 		inside, outside = inside%3, outside%3
 		var b strings.Builder
-		b.WriteString("import { FileSystem } from \"effect\"\n\nfunction* g(x: unknown) {\n  yield 1\n  return [")
+		b.WriteString("import { FileSystem } from \"effect\"\n\neffect function* g(x: unknown) {\n  try {\n    yield [")
 		for i := range inside {
 			if i > 0 {
 				b.WriteString(", ")
 			}
-			b.WriteString("FileSystem.FileSystem.of")
+			b.WriteString("FileSystem.of")
 		}
-		b.WriteString("]\n}\n")
+		b.WriteString("]\n  } finally {}\n}\n")
 		for i := range outside {
-			fmt.Fprintf(&b, "const f%d = FileSystem.FileSystem.of\n", i)
+			fmt.Fprintf(&b, "const f%d = FileSystem.of\n", i)
 		}
 		source := b.String()
+		var native strings.Builder
+		native.WriteString("import { FileSystem } from \"effect\"\n\nfunction* g(x: unknown) {\n  yield 1\n  return [")
+		for i := range inside {
+			if i > 0 {
+				native.WriteString(", ")
+			}
+			native.WriteString("FileSystem.FileSystem.of")
+		}
+		native.WriteString("]\n}\n")
+		for i := range outside {
+			fmt.Fprintf(&native, "const f%d = FileSystem.FileSystem.of\n", i)
+		}
+		original := native.String()
+		control, controlName := preludeFixCase(t, original)
+		controlText := original
+		if file := control.Files[controlName]; file != nil {
+			controlText = file.Text
+		}
+		if len(control.Refused) != 0 || len(control.Sites) != 0 || strings.Count(controlText, "FileSystem.FileSystem.of") != int(inside+outside) {
+			t.Fatalf("native generator changed or refused: %+v\n%s", control, controlText)
+		}
 		result, name := preludeFixCase(t, source)
 		if len(result.Changed) != 0 {
 			t.Fatalf("a rewrite changed a refused site: %+v\n%s", result.Changed, source)
@@ -351,13 +373,22 @@ func FuzzFixPreludeRefusedSite(f *testing.F) {
 		if fixed := result.Files[name]; fixed != nil {
 			text = fixed.Text
 		}
+		refusals := 0
 		for _, site := range result.Sites {
-			if site.Code == "EK2128" && !SiteHolds(source, text, site) {
+			if site.Code == "EK0503" {
+				refusals++
+			}
+		}
+		if refusals != 1 {
+			t.Fatalf("want one producer try refusal, got %+v", result.Sites)
+		}
+		for _, site := range result.Sites {
+			if site.Code == "EK0503" && !SiteHolds(source, text, site) {
 				t.Fatalf("site %+v changed:\n%s", site, text)
 			}
 		}
-		if got := strings.Count(text, "FileSystem.FileSystem.of"); got != int(inside) {
-			t.Fatalf("%d FileSystem.FileSystem.of left, want the %d inside the site:\n%s", got, inside, text)
+		if got := strings.Count(text, "FileSystem.FileSystem.of"); got != int(outside) {
+			t.Fatalf("%d FileSystem.FileSystem.of left, want the %d repaired outside the site:\n%s", got, outside, text)
 		}
 	})
 }
