@@ -1,0 +1,17 @@
+{
+  "file": "src/entry.ts",
+  "source": "export const marker = 42\n",
+  "importer": "import { marker } from \"@/entry.ts\";\nconsole.log(marker);\n",
+  "config": {
+    "compilerOptions": {
+      "module": "ESNext",
+      "moduleResolution": "Bundler",
+      "paths": {
+        "@/*": [
+          "./src/*"
+        ]
+      }
+    }
+  },
+  "quote": "A written `./x.ts` keeps native substitutions, including `x.tsx` and `x.d.ts`, but never falls back to VibeLang source; no native candidate means `TS2307`."
+}

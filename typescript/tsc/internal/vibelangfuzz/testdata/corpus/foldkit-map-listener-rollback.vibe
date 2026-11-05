@@ -1,0 +1,1 @@
+export const register = (start: () => void, stop: () => void) => { try { start() } catch (error) { stop(); throw error } }
