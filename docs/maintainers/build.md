@@ -2136,3 +2136,5 @@ The binding-free pattern check compiles checking projections with actual runtime
 The Effect parameter diagnostic check varies callable form, throwing contract, and default binding shape. It retains strict initialization checks and records each diagnostic span when the expected count differs.
 
 The `//:migration-style-severity-controls` target checks printed diagnostic severities independently of safe-fix refusal notes. Warning provenance remains recorded; promoted style errors still block the affected module. Keyed inputs cover all printed severities with both newline styles.
+
+The `//:vite-service-coverage` target runs the real coverage provider with native TypeScript twins and keyed service lookup controls. It retains authored function counts and uncovered statement and branch comparisons, including failure and fallback paths.

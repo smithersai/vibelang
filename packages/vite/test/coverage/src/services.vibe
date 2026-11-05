@@ -16,11 +16,11 @@ export effect function nameOf(id: string): string!!Users {
 }
 
 export effect function greet(id: string): string!Bad!Users {
-  const name = try Users.find(id)
+  const name = try (try Users).find(id)
   return `hi ${name}`
 }
 
 export effect function neverGreeted(id: string): string!Bad!Users {
-  const name = try Users.find(id)
+  const name = try (try Users).find(id)
   return `bye ${name}`
 }
