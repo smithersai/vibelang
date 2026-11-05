@@ -1818,3 +1818,5 @@ The `//:promise-data-bridge` check keeps Promise construction inside an explicit
 The `//:native-using-advisories` check covers native resource bindings in each callable context and every configurable severity. TypeScript disposal errors remain present even when the Effect advice is disabled. The native regression snapshots retain both disposal and jump errors alongside the advice.
 
 The `//:optional-foreign-contracts` target gives reviewed pure TypeScript fixture helpers explicit never-throw contracts. It retains all optional receiver, argument and execution observations and separately checks that unannotated scalar, Config and Exit callbacks are rejected by fresh no-throw callback types.
+
+The `//:native-inferred-declarations` target covers inferred native consumer imports as well as written re-exports. Stock TypeScript controls vary relative suffixes, quotes, nested paths and extension-rewriting settings; native consumers must not acquire VibeLang sidecars.

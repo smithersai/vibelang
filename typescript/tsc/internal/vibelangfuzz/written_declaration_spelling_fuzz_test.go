@@ -28,7 +28,7 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 	startShortBudget(f)
 	writtenSourceDeclarationSpellingsQuoted(f)
 	for _, extension := range []string{"vibe", "vibex"} {
-		for _, form := range []string{"reexport", "namespace", "import-type", "export-type"} {
+		for _, form := range []string{"reexport", "namespace", "import-type", "export-type", "inferred"} {
 			for _, mode := range []uint8{0, 1, 2, 3, 4, 5, 6, 7} {
 				f.Add(extension+":"+form, mode)
 			}
@@ -45,6 +45,7 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 			"namespace":   "export * as model from %s;\n",
 			"import-type": "export type Value = import(%s).Value;\n",
 			"export-type": "export type { Value } from %s;\n",
+			"inferred":    "import { use } from %s; import { value } from \"./banners\"; export function read() { use(1); return { now: value() } };\n",
 		}
 		if _, ok := forms[form]; !ok {
 			form = "reexport"
@@ -67,11 +68,20 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 			config := fmt.Sprintf(
 				"{\"compilerOptions\":{\"strict\":true,\"types\":[],\"skipLibCheck\":true,\"target\":\"ES2022\",\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"jsx\":\"preserve\",\"declaration\":true,\"emitDeclarationOnly\":true,\"allowImportingTsExtensions\":true,\"rewriteRelativeImportExtensions\":%t,\"rootDir\":\".\",\"outDir\":\"out\"},\"files\":[%q,%q]}",
 				mode&2 != 0, "main."+mainExtension, stem+"."+leafExtension)
+			leaf := "export const value = 1; export interface Value { readonly n: number }\n"
+			files := map[string]string{
+				"main." + mainExtension:    fmt.Sprintf(forms[form], quote+specifier+quote),
+				stem + "." + leafExtension: leaf,
+			}
+			if form == "inferred" {
+				// The bridge changes source language; the inferred public type
+				// still originates in the same ordinary TypeScript module.
+				files[stem+"."+leafExtension] = "export function use(value: number): number { return value; }\n"
+				files["banners.ts"] = "import type { Value } from " + quote + "./" + stem + "-view" + quote + "; export declare function value(): Value;\n"
+				files[stem+"-view.ts"] = "export interface Value { readonly n: number };\n"
+			}
 			result, err := w.Compile(t.Context(), Project{
-				Files: map[string]string{
-					"main." + mainExtension:    fmt.Sprintf(forms[form], quote+specifier+quote),
-					stem + "." + leafExtension: "export const value = 1; export interface Value { readonly n: number }\n",
-				},
+				Files:  files,
 				Config: config,
 			})
 			if err != nil {
@@ -85,7 +95,11 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 		if HasError(native.Diagnostics) || !ok {
 			t.Fatalf("invalid native control: %v; output %q", SortedKeys(Keys(native.Dir, native.Diagnostics)), want)
 		}
-		vibe := compile("vibe", extension, written)
+		consumer := "vibe"
+		if form == "inferred" {
+			consumer = "ts"
+		}
+		vibe := compile(consumer, extension, written)
 		got, emitted := vibe.Outputs["out/main.d.ts"]
 		if HasError(vibe.Diagnostics) || !emitted || got != want {
 			Gap(t, "FuzzWrittenSourceDeclarationSpellings", extension+":"+form+":public",
@@ -99,7 +113,11 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 			return nil
 		})
 		wantSidecar := strings.ReplaceAll(want, twin, written)
-		if count != 1 || sidecar != wantSidecar || result != nil && HasError(result.Diagnostics) {
+		wantCount := 1
+		if form == "inferred" {
+			wantCount, wantSidecar = 0, ""
+		}
+		if count != wantCount || sidecar != wantSidecar || result != nil && HasError(result.Diagnostics) {
 			Gap(t, "FuzzWrittenSourceDeclarationSpellings", extension+":"+form+":sidecar",
 				"%s\ncount=%d\nwant=%s\ngot=%s", writtenDeclarationSidecarQuote, count, wantSidecar, sidecar)
 		}
