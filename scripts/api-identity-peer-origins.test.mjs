@@ -7,9 +7,16 @@ import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/alchemy-peer-ambient-context.json",import.meta.url)))
-const ts = loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Peer-context fixtures must not load unrelated browser libraries")
+  return program
+} }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
-const options = { strict:true,noEmit:true,types:[],module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler,target:ts.ScriptTarget.ESNext }
+const options = { ...compilerOptions,strict:true,noEmit:true,types:[],module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler,target:ts.ScriptTarget.ESNext }
 function verify({ count = 3, tag = 1 } = {}) {
   const root=mkdtempSync(join(tmpdir(),"api-peer-origins-")),before=join(root,"before"),after=join(root,"after")
   const peerFile=(dir,i)=>join(dir,`node_modules/.pnpm/peer-lib@1.0.0_peer@${i+1}.0.0/node_modules/peer/index.d.ts`)
@@ -33,11 +40,11 @@ function verify({ count = 3, tag = 1 } = {}) {
       assert.equal(c.typeToString(c.getDeclaredTypeOfSymbol(symbol)),"true","peer contexts must retain distinct nominal types")
     }
     for(const other of [before,after]){
-      const r=compareApiIdentity(ts,before,other)
+      const r=compareApiIdentity(ts,before,other,{compilerOptions})
       assert.equal(r.comparisonComplete,true,JSON.stringify(r));assert.equal(r.identical,true,JSON.stringify(r))
     }
     put(peerFile(after,0),`export interface Context { tag: ${tag+100} }`)
-    const changed=compareApiIdentity(ts,before,after)
+    const changed=compareApiIdentity(ts,before,after,{compilerOptions})
     assert.equal(changed.identical,false,JSON.stringify(changed))
     assert.ok(changed.typeDifferences.length||changed.environmentDiagnostics.some(d=>d.blocking),JSON.stringify(changed))
   }finally{rmSync(root,{recursive:true,force:true})}
