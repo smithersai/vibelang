@@ -164,6 +164,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration could spend minutes scanning generated modules with many comments. Source-path checks now mask comments in one pass while preserving their protection rules.
 
+- Parenthesized Effect types with a missing final slot could appear as unexplained grammar failures. The audit now reports the existing dangling-bang gap precisely.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

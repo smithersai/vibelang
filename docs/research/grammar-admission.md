@@ -484,3 +484,5 @@ only the header markers restores a derivation, so unrelated body gaps keep
 their own keys. Native optional generator and `async`
 class methods derive independently; their object-literal twins report
 `TS1162` and stay outside that class-only branch.
+
+Parenthesized Effect types retain the existing `admission:effect-type-trailing-bang` gap: `type T = (number!string!);` has no final slot. The classifier tracks bangs separately in each delimiter scope, including nested parentheses, tuple entries, object fields and function returns. It groups this family only when removing those dangling bangs restores a complete Appendix A derivation, so an independent expression or body gap keeps its own key. A keyed corpus preserves the multiline minimized witness and its pending XPASS check.

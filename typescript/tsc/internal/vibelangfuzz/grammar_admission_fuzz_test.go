@@ -220,6 +220,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-error-jsdoc-field-type", "schema error E { id: ?? string }"},
 	{"is-contextual-schema", "const b =\nschema is 1 + 1 ;"},
 	{"is-contextual-error", "const b =\nerror is 1 + 1 ;"},
+	{"effect-type-parenthesized-trailing-bang", "{ type T = (\nnumber ! string ! )\nboolean }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -766,6 +767,9 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarParenthesizedEffectTrailingBang(ts) {
+		return "admission:effect-type-trailing-bang"
+	}
 	if grammarSchemaAsyncField(ts) {
 		return "admission:schema-async-field"
 	}
