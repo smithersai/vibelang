@@ -5,6 +5,12 @@ Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
+## 0.0.12 (unreleased)
+
+### Bugs fixed since 0.0.11
+
+- The fibers guide omitted labeled `continue` targeting the `for concurrent` loop itself. It now explains that this ends the current item.
+
 ## 0.0.11
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
