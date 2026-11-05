@@ -19,6 +19,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A legacy abstract error root could reject its own subclass in an `is` or `match` pattern; it now retains native family matching.
 - Diagnostic identity updates preserve authored source and project configuration without depending on generated declarations.
+- The legacy `infer` migration examples now retain trailing comments after the last declaration, matching the output of `vibelang --fix --fix-vip-only`.
 
 - A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
 

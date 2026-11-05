@@ -9,7 +9,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
+const inferSlotCommentQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+
 func TestVIP3InferSlotMigrationOrderQuoted(t *testing.T) {
+	chapterSays(t, "007-tooling.md", inferSlotCommentQuote)
 	chapterSays(t, "007-tooling.md", legacyEffectAliasQuote)
 	annotationTwinChapters(t)
 }
@@ -19,6 +22,7 @@ func TestVIP3InferSlotMigrationOrderQuoted(t *testing.T) {
 // In particular, an unrun service call must not freeze E as never.
 func FuzzVIP3InferSlotMigrationOrder(f *testing.F) {
 	startShortBudget(f)
+	chapterSays(f, "007-tooling.md", inferSlotCommentQuote)
 	chapterSays(f, "007-tooling.md", legacyEffectAliasQuote)
 	annotationTwinChapters(f)
 	w := NewWorkspace(f)
@@ -48,8 +52,10 @@ func FuzzVIP3InferSlotMigrationOrder(f *testing.F) {
 		if marked {
 			mark = "effect "
 		}
-		source := "import { FileSystem } from \"effect\"\nexport const work = " + mark +
-			"(path: string): " + annotations[shape] + " => { const fs = FileSystem.FileSystem(); " + oldBody + " }\n"
+		leading := []string{"// Leading migration comment.\n", "/* Leading migration comment. */\n"}[shape%2]
+		trailing := []string{"// Trailing migration comment.\n", "/* Trailing migration comment. */\n"}[op]
+		source := leading + "import { FileSystem } from \"effect\"\nexport const work = " + mark +
+			"(path: string): " + annotations[shape] + " => { const fs = FileSystem.FileSystem(); " + oldBody + " }\n" + trailing
 		before := toolsCompile(t, w, target, map[string]string{"main.vibe": source})
 		defer before.Remove()
 		options := vibelang.FixOptions{VIPOnly: true}
@@ -62,6 +68,10 @@ func FuzzVIP3InferSlotMigrationOrder(f *testing.F) {
 		text := ""
 		for _, file := range fixed.Files {
 			text = file.Text
+		}
+		if !strings.HasPrefix(text, leading) || !strings.HasSuffix(text, trailing) {
+			Gap(t, target, "comments:"+key, "%s\nfixed:\n%s", inferSlotCommentQuote, text)
+			return
 		}
 		if strings.Contains(text, "infer ") || !strings.Contains(text, "const fs = try FileSystem.FileSystem") {
 			Gap(t, target, "incomplete:"+key, "VIP-1 runs and VIP-3 infer slots must both migrate\n%s", text)
