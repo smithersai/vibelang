@@ -154,6 +154,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migrating `Option.match` with a generic program constructor could narrow its inferred result type; the repair now preserves the original callback instantiation and cold execution.
 
+- Mapper catch examples could fail by omitting their Effect boundary; the checks now use explicit effect scopes and retain the unmarked examples as boundary-error controls.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

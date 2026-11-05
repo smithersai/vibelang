@@ -19,10 +19,11 @@ func TestCatchBoundaryIdentityQuoted(t *testing.T) {
 
 func FuzzCatchBoundaryIdentity(f *testing.F) {
 	startShortBudget(f)
-	homes := []string{"module", "plain", "async", "field", "static", "getter", "parameter", "callback"}
+	homes := []string{"module", "plain", "async", "field", "static", "getter", "parameter", "callback", "nested-plain", "method", "effect-parameter"}
 	for _, home := range homes {
-		f.Add(home, uint8(0))
-		f.Add(home, uint8(3))
+		for _, variant := range []uint8{0, 3, 4, 7, 8, 11} {
+			f.Add(home, variant)
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, home string, variant uint8) {
@@ -32,15 +33,27 @@ func FuzzCatchBoundaryIdentity(f *testing.F) {
 			handler = "effect () => 0"
 		}
 		expression := "work() catch " + handler
+		if variant&4 != 0 {
+			expression = "true ? (" + expression + ") : 0"
+		}
+		if variant&8 != 0 {
+			expression = "((" + expression + "))"
+		}
 		templates := map[string]string{
-			"module":    "export const value = %s",
-			"plain":     "export function probe() { return %s }",
-			"async":     "export async function probe() { return %s }",
-			"field":     "export class Store { value = %s }",
-			"static":    "export class Store { static value = %s }",
-			"getter":    "export class Store { get value() { return %s } }",
-			"parameter": "export function probe(value = %s) { return value }",
-			"callback":  "declare function schedule(f: () => number): number; export const value = schedule(() => %s)",
+			"nested-plain":     "export effect function outer() { return () => %s }",
+			"method":           "export class Store { read() { return %s } }",
+			"effect-parameter": "export effect function probe(value = %s) { return value }",
+			"module":           "export const value = %s",
+			"plain":            "export function probe() { return %s }",
+			"async":            "export async function probe() { return %s }",
+			"field":            "export class Store { value = %s }",
+			"static":           "export class Store { static value = %s }",
+			"getter":           "export class Store { get value() { return %s } }",
+			"parameter":        "export function probe(value = %s) { return value }",
+			"callback":         "declare function schedule(f: () => number): number; export const value = schedule(() => %s)",
+		}
+		if variant&12 != 0 {
+			templates["callback"] = "declare function schedule<A>(f: () => A): A; export const value = schedule(() => %s)"
 		}
 		template, ok := templates[home]
 		if !ok {

@@ -175,3 +175,5 @@ The fix gate also refuses a rewrite that introduces another error, such as
 capturing an owned fiber in a stored effect block.
 Plain and `async` functions, including those nested in effect code, keep
 JavaScript's native `try` statements.
+
+A catch expression needs an explicit effect scope. An ordinary callback keeps its own plain scope even when an enclosing function is `effect` or the callback is expected to return an Effect; mark that callback `effect` too.

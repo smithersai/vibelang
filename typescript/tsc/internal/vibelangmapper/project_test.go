@@ -237,48 +237,48 @@ var projectionCases = []struct {
 	},
 	{
 		name:    "catch expression defers a value fallback (D236)",
-		source:  "function f() { return a() catch 2 }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 2 })))) })}",
+		source:  "effect function f() { return a() catch 2 }",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 2 })))) })}",
 	},
 	{
 		name:    "catch expression contextually types a handler arrow (D238)",
-		source:  "function f() { return a() catch (e) => recover(e) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), (e) => $gen(function* () { return (yield* $run(recover(e))) })))) })}",
+		source:  "effect function f() { return a() catch (e) => recover(e) }",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), (e) => $gen(function* () { return (yield* $run(recover(e))) })))) })}",
 	},
 	{
 		name:    "catch expressions associate to the left (D237)",
-		source:  "function f() { return a() catch b() catch c }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return (yield* $run($value(b)())) })))) }), () => $gen(function* () { return c })))) })}",
+		source:  "effect function f() { return a() catch b() catch c }",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return (yield* $run($value(b)())) })))) }), () => $gen(function* () { return c })))) })}",
 	},
 	{
 		name:    "nullish coalescing stays inside the catch (D237)",
-		source:  "function f() { return a() ?? 1 catch 2 }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) ?? 1 }), () => $gen(function* () { return 2 })))) })}",
+		source:  "effect function f() { return a() ?? 1 catch 2 }",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) ?? 1 }), () => $gen(function* () { return 2 })))) })}",
 	},
 	{
 		name:    "catch expression stays in its conditional branch (D237)",
-		source:  "function f(ok: boolean) { return ok ? a() catch 1 : 2 }",
-		virtual: "function f(ok: boolean) { return $gen(function* () { return ok ? (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 1 })))) : 2 })}",
+		source:  "effect function f(ok: boolean) { return ok ? a() catch 1 : 2 }",
+		virtual: "       function f(ok: boolean) { return $gen(function* () { return ok ? (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 1 })))) : 2 })}",
 	},
 	{
 		name:    "catch in a pipe body captures its topic (D237)",
-		source:  "declare function find(id: string): string!!; function f(id: string) { return id |> find(%) catch 1 }",
-		virtual: "declare function find(id: string): Effect.Effect<string, never, never>; function f(id: string) { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = id; return (yield* $run($catch($gen(function* () { return (yield* $run(find($topic))) }), () => $gen(function* () { return 1 })))) }))) })}",
+		source:  "declare function find(id: string): string!!; effect function f(id: string) { return id |> find(%) catch 1 }",
+		virtual: "declare function find(id: string): Effect.Effect<string, never, never>;        function f(id: string) { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = id; return (yield* $run($catch($gen(function* () { return (yield* $run(find($topic))) }), () => $gen(function* () { return 1 })))) }))) })}",
 	},
 	{
 		name:    "catch expression statement guards ASI",
-		source:  "function f() {\n  a() catch 1\n}",
-		virtual: "function f() { return $gen(function* () {\n  ;(yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 1 }))))\n})}",
+		source:  "effect function f() {\n  a() catch 1\n}",
+		virtual: "       function f() { return $gen(function* () {\n  ;(yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 1 }))))\n})}",
 	},
 	{
 		name:    "catch handler block runs its own Effect body",
-		source:  "function f() { return a() catch e => { return recover(e) } }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), e => { return $gen(function* () { return (yield* $run(recover(e))) })}))) })}",
+		source:  "effect function f() { return a() catch e => { return recover(e) } }",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), e => { return $gen(function* () { return (yield* $run(recover(e))) })}))) })}",
 	},
 	{
 		name:    "catch expression retains this in both operands",
-		source:  "function f() { return this.a() catch this.b() }",
-		virtual: "function f() { return $gen({ self: this }, function* () { return (yield* $run($catch($gen({ self: this }, function* () { return (yield* $run(this.a())) }), () => $gen({ self: this }, function* () { return (yield* $run(this.b())) })))) })}",
+		source:  "effect function f() { return this.a() catch this.b() }",
+		virtual: "       function f() { return $gen({ self: this }, function* () { return (yield* $run($catch($gen({ self: this }, function* () { return (yield* $run(this.a())) }), () => $gen({ self: this }, function* () { return (yield* $run(this.b())) })))) })}",
 	},
 	{
 		name:    "a written catch helper call keeps ordinary call semantics",
@@ -590,7 +590,7 @@ func TestCatchExpressionHatch(t *testing.T) {
 		assert.Equal(t, source[d.Start:d.Start+d.Length], "catch")
 		assertValidMap(t, projection, source)
 	}
-	source := "function f() { function sync(f: () => number!!) { return f() }; return sync(() => a() catch 1) }"
+	source := "function f() { function sync(f: () => number!!) { return f() }; return sync(effect () => a() catch 1) }"
 	invalid := Project(source, testContext)
 	assert.Equal(t, len(invalid.Diagnostics), 1, "%v", invalid.Diagnostics)
 	assert.Equal(t, invalid.Diagnostics[0].Code, int32(504))
@@ -613,6 +613,59 @@ func TestCatchExpressionOutsideEffect(t *testing.T) {
 		assert.Equal(t, projection.Diagnostics[0].Code, int32(504))
 		assertParses(t, projection.Text)
 	}
+}
+
+// The original unmarked lowering witnesses stay invalid. A surrounding
+// expression or expected program return does not turn a source callable effectful.
+func TestCatchFixturesRequireExplicitEffect(t *testing.T) {
+	for _, source := range []string{
+		"function f() { return a() catch 2 }",
+		"function f() { return a() catch (e) => recover(e) }",
+		"function f() { return a() catch b() catch c }",
+		"function f() { return a() ?? 1 catch 2 }",
+		"function f(ok: boolean) { return ok ? a() catch 1 : 2 }",
+		"declare function find(id: string): string!!; function f(id: string) { return id |> find(%) catch 1 }",
+		"function f() {\n  a() catch 1\n}",
+		"function f() { return a() catch e => { return recover(e) } }",
+		"function f() { return this.a() catch this.b() }",
+		"function f() { function sync(f: () => number!!) { return f() }; return sync(() => a() catch 1) }",
+	} {
+		projection := Project(source, testContext)
+		count := 0
+		for _, d := range projection.Diagnostics {
+			if d.Code == 504 {
+				count++
+				assert.Equal(t, source[d.Start:d.Start+d.Length], "catch")
+			} else {
+				assert.Equal(t, d.Code, int32(CodeFormChoice), "%s: %+v", source, d)
+			}
+		}
+		assert.Equal(t, count, strings.Count(source, " catch "), "%s: %+v", source, projection.Diagnostics)
+		assertValidMap(t, projection, source)
+		assertParses(t, projection.Text)
+	}
+}
+
+// A form-choice error retains unsupported source for the caller to repair;
+// its catch still reports the missing boundary independently.
+func TestOpaquePipeCatchRequiresEffect(t *testing.T) {
+	source := "import { opaque } from './other'; function f() { return a() |> opaque(%) catch 1 }"
+	projection := Project(source, testContext)
+	boundary, choice := 0, 0
+	for _, d := range projection.Diagnostics {
+		switch d.Code {
+		case 504:
+			boundary++
+			assert.Equal(t, source[d.Start:d.Start+d.Length], "catch")
+		case int32(CodeFormChoice):
+			choice++
+		default:
+			t.Fatalf("unexpected diagnostic: %+v", d)
+		}
+	}
+	assert.Equal(t, boundary, 1)
+	assert.Assert(t, choice > 0)
+	assertValidMap(t, projection, source)
 }
 
 // TestCatchExpressionCorpus checks synthesized match and do operands in
