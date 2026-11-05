@@ -260,7 +260,6 @@ Both reservations register in the same scope. A successful exit keeps the create
 The finalizers see the whole setup's exit, so defects and interruption trigger the same rollback. Nested `scoped` calls would end those lifetimes earlier and withhold the overall outcome from the finalizers. This compensates for successful steps; it is not an atomic transaction with an external system.
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: const result = try exerciseRollback(); try Console.log(try Effect.try(() => JSON.stringify({ outcome: result.outcome._tag, removed: result.removed })))
 effect function exerciseRollback() {
   const removed: string[] = []

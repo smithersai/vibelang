@@ -79,6 +79,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The regression suite treated correct catch-parameter binding diagnostics as known failures; it now checks `EK0705` directly across defaults, destructuring and computed keys.
 
+- Examples for redacted values, callback adapters, platform services, scope rollback, and schema helpers were still marked unavailable after support landed; they now compile and check their documented output as active examples.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

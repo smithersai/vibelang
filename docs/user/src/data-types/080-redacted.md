@@ -47,7 +47,6 @@ true false
 ## Wiping stored secrets
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try useOnce("example-token")) }; const wiped = Redacted.make("example-token"); Redacted.wipeUnsafe(wiped); const failed = try exit(Effect.try(() => Redacted.value(wiped))); try Console.log(Exit.isFailure(failed), String(wiped))
 effect function useOnce(raw: string) {
   const token = Redacted.make(raw)

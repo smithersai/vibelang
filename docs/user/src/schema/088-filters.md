@@ -103,7 +103,6 @@ String checks include `isNonEmpty`, `isPattern`, `isStartingWith`, `isEndingWith
 Numbers have strict and inclusive lower and upper bounds, `isBetween`, `isInt`, and `isMultipleOf`; bigints have the matching `BigInt` bounds, `isBetweenBigInt` included. Checks only validate: they do not round numbers, change case, or trim strings.
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid"))); try Console.log(Schema.is(try sync(() => boundedPriceSchema()))(try sync(() => BigDecimal.fromStringUnsafe("1.25")))); try Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31)))
 const ShipDate = Schema.Date.check(
   Schema.isBetweenDate({

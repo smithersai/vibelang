@@ -94,7 +94,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Learning Path** | **14,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 3,100 |
 | [Installation](../getting-started/004-installation.md) | 2,900 |
-| [Creating Effects](../getting-started/005-creating-effects.md) | 4,300 |
+| [Creating Effects](../getting-started/005-creating-effects.md) | 4,200 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,400 |
 | **Core Concepts** | **30,000** |
@@ -221,7 +221,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Exit](../data-types/077-exit.md) | 1,200 |
 | [HashSet](../data-types/078-hash-set.md) | 1,600 |
 | [Option](../data-types/079-option.md) | 2,400 |
-| [Redacted](../data-types/080-redacted.md) | 770 |
+| [Redacted](../data-types/080-redacted.md) | 740 |
 | **Trait** | **1,700** |
 | [Equal](../trait/081-equal.md) | 1,000 |
 | [Hash](../trait/082-hash.md) | 620 |
@@ -244,7 +244,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Default Constructors](../schema/097-default-constructors.md) | 1,400 |
 | [Effect Data Types](../schema/098-effect-data-types.md) | 1,800 |
 | [Standard Schema](../schema/099-standard-schema.md) | 880 |
-| [Arbitrary](../schema/100-arbitrary.md) | 1,900 |
+| [Arbitrary](../schema/100-arbitrary.md) | 1,800 |
 | [JSON Schema](../schema/101-json-schema.md) | 1,900 |
 | [Equivalence](../schema/102-equivalence.md) | 770 |
 | [Formatter](../schema/103-formatter.md) | 540 |

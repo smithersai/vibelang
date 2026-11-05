@@ -5,7 +5,6 @@ Effect's native `Arbitrary` module derives generators and shrinkers from schemas
 ## Generating schema-conforming random values
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: const values = try sampleParcels(); try Console.log(values.length, values.every(Schema.is(Parcel)))
 const Parcel = Schema.Struct({
   label: Schema.NonEmptyString,
@@ -27,7 +26,6 @@ effect function sampleParcels() {
 ## Translating filters into generation constraints
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: const generator = try sync(() => Arbitrary.schema(EvenCapacity)); const values = try Arbitrary.sampleEffect(generator, { count: 12, seed: 17 }); try Console.log(values.length, values.every(Schema.is(EvenCapacity)))
 const EvenCapacity = Schema.Number.check(Schema.makeFilter(
   (value) => Number.isInteger(value) && value >= 2 && value <= 40 && value % 2 === 0,
@@ -122,7 +120,6 @@ A custom `shrink` replaces the derived shrink strategy, not root generation. It 
 ## Supporting custom declarations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: const values = try sampleShelves(); try Console.log(values.length, values.every((shelf) => shelf instanceof ShelfRef && shelf.code.startsWith("shelf_")))
 class ShelfRef {
   constructor(readonly code: `shelf_${string}`) {}

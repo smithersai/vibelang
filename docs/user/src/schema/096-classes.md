@@ -48,7 +48,6 @@ For a cross-field invariant, pass a checked `Schema.Struct` instead of a fields 
 ## Bypassing checks deliberately
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log((try sync(() => fromVerifiedFields("", 2))).reference === "")
 function fromVerifiedFields(reference: string, pieces: number) {
   return new Package({ reference, pieces }, { disableChecks: true })
