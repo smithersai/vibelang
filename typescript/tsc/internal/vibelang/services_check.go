@@ -146,6 +146,8 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			}
 			if class.TypeParameters() != nil {
 				note(report(c, class.Name(), EK3005), "Use an interface for the generic type.")
+			} else {
+				checkServiceOuterTypeParameters(c, class)
 			}
 		}
 		return

@@ -43,8 +43,14 @@ func checkServiceOuterTypeParameters(c *checker.Checker, class *ast.Node) bool {
 			return true
 		}
 	}
+	bodyService := serviceShape(class) == nil && declarationWord(class) == "service"
 	for _, member := range class.Members() {
 		if ast.IsStatic(member) || member.Name() == nil {
+			continue
+		}
+		if bodyService && (member.Body() != nil ||
+			ast.IsPropertyDeclaration(member) && member.Initializer() != nil ||
+			serviceContractClassSyntax(member)) {
 			continue
 		}
 		var written []*ast.Node

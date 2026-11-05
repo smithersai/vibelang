@@ -1,0 +1,1 @@
+export service Valid { static readonly key = "capture/Valid"; n: number }

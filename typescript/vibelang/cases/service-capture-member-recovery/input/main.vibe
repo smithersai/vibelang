@@ -1,0 +1,6 @@
+export function outer1<T>() { service S { static readonly key = "capture/S1"; value: T; constructor() {} } }
+export function outer2<T>() { service S { static readonly key = "capture/S2"; read(): T; [name: string]: unknown } }
+export function outer3<T>() { service S { static readonly key = "capture/S3"; value: { nested: T }; get n() { return 1 } } }
+export function outer4<T>() { service S { static readonly key = "capture/S4"; read<U extends T>(value: U): U; impl() { return 1 } } }
+export function outer5<T>() { service S { static readonly key = "capture/S5"; value: T; (): number } }
+export const invalid: number = "wrong"

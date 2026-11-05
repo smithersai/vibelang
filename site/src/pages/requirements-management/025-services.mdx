@@ -80,7 +80,7 @@ A service's shape may have properties named `key` or `defaultValue`. They are or
 
 Service members form an object type, so a written `this` type there gets TypeScript's `TS2526` rather than referring to a service instance. For recursive members, name the implementation type; a separately declared interface can use its ordinary polymorphic `this` type and become a service's shape. Ordinary classes keep their `this` types.
 
-A custom `service` has one key across every instantiation of its enclosing function or class. Its implementation contract must therefore use concrete types: capturing an enclosing type parameter reports `EK3005`, including in a whole-shape annotation such as `service S: { value: T } { ... }`. For generic operations, give individual members their own generic parameters.
+A custom `service` has one key across every instantiation of its enclosing function or class. Its implementation contract must therefore use concrete types: capturing an enclosing type parameter reports `EK3005`, including in a whole-shape annotation such as `service S: { value: T } { ... }`. For generic operations, give individual members their own generic parameters. A rejected member does not create a service contract; capture checks continue on the other valid contracts.
 
 ## Declaring a service of any shape
 
