@@ -201,6 +201,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The throwing-callback example now writes its foreign contracts explicitly and retains every expected failure when a local parameter shadows the constructor name.
 
 - Contributor forms examples still required the retired declaration manifest. They now verify its absence while retaining declaration and runtime checks.
+- A migrated service contract could unexpectedly qualify another requirement beside `FileSystem`. The FileSystem guide now explains why both `FileSystem.FileSystem` and `Path.Path` appear.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.

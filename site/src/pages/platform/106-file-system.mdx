@@ -19,6 +19,8 @@ effect function readSettings() {
 
 Getting the service adds `FileSystem` to the Effect's requirements. `readFileString` returns an Effect that succeeds with text or fails with `PlatformError`. The module's own exports, such as `FileSystem.layerNoop`, keep their meaning, and the key itself is `FileSystem.FileSystem`.
 
+In a written requirement type, use `FileSystem.FileSystem`. A bare `FileSystem` in a type position can name the DOM interface. When `--fix` repairs that collision, it can also qualify another legacy service name in the same contract: `FileSystem | Path` becomes `FileSystem.FileSystem | Path.Path`. Both union orders keep the same service requirements.
+
 ## Performing file operations
 
 ```vibe

@@ -22,7 +22,9 @@ func TestContractAmbientNamesake(t *testing.T) {
 		name, contract, want, fullWant string
 	}{
 		{"alone", "Effect<string, never, FileSystem>", "Effect<string, never, FileSystem.FileSystem>", "string!never!FileSystem.FileSystem"},
-		{"union", "Effect<string, never, FileSystem | Path>", "Effect<string, never, FileSystem.FileSystem | Path>", "string!never!(FileSystem.FileSystem | Path)"}, // EK4833 then groups the union (VIP-3, 2026-11-04)
+		{"union", "Effect<string, never, FileSystem | Path>", "Effect<string, never, FileSystem.FileSystem | Path.Path>", "string!never!(FileSystem.FileSystem | Path.Path)"}, // EK4833 then groups the union (VIP-3, 2026-11-04)
+		{"reversed union", "Effect<string, never, Path | FileSystem>", "Effect<string, never, Path.Path | FileSystem.FileSystem>", "string!never!(Path.Path | FileSystem.FileSystem)"},
+		{"qualified peer", "Effect<string, never, FileSystem | Path.Path>", "Effect<string, never, FileSystem.FileSystem | Path.Path>", "string!never!(FileSystem.FileSystem | Path.Path)"},
 		{"bang form", "string!!FileSystem", "string!!FileSystem.FileSystem", "string!!FileSystem.FileSystem"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -60,6 +62,9 @@ func TestContractAmbientNamesake(t *testing.T) {
 				}
 				if want := "export effect function read(): " + wantType + " {\n" + body; fixed.Text != want {
 					t.Errorf("%+v: --fix wrote\n%s\nwant\n%s", options, fixed.Text, want)
+				}
+				if ds := errorsOf(t, fixed.Text); len(ds) != 0 {
+					t.Fatalf("%+v: repaired service contract: %v\n%s", options, ds, fixed.Text)
 				}
 			}
 		})
