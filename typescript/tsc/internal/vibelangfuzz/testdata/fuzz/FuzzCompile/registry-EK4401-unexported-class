@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- foreign.ts --\nimport { trusted } from \"vibelang-runtime\"\nclass Hidden extends Error {\n  readonly _tag = \"Hidden\"\n  private readonly brand = true\n  constructor(message: string) { super(message) }\n}\nexport const read = trusted((value = 0): number => {\n  if (value) throw new Hidden(\"hidden\")\n  return 7\n}, [Hidden])\n-- main.vibe --\nimport { read } from \"./foreign.ts\"\nexport effect function main(): number! Error {\n  return read(0)\n}\n")

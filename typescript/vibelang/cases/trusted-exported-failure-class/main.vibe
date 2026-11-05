@@ -1,0 +1,6 @@
+// expect-result: 7
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | A listed failure class exported by an imported module is visible; the compatibility visibility error applies to private classes.
+import { read } from "./foreign.ts"
+export effect function main(): number! Error {
+  return read(0)
+}

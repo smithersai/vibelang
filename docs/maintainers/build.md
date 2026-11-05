@@ -2108,3 +2108,5 @@ This check also compares native and mapper `EK0504` keyword spans across module,
 The `//:native-and-legacy-catch-bindings` target checks unchanged native catch bindings with stock TypeScript, full declaration identity and JavaScript equality, alongside legacy typed-filter rejection controls.
 
 The schema codec return check also replays grouped, required-field, and readonly-field migration fixtures, with mutable, optional, grouped, and readonly codec fuzz inputs.
+
+The trusted class visibility check replays the located compatibility example and varies private versus exported classes, import aliases, namespaces, and Unicode names against stock TypeScript visibility controls.
