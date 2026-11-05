@@ -590,7 +590,7 @@ func TestCatchExpressionHatch(t *testing.T) {
 		assert.Equal(t, source[d.Start:d.Start+d.Length], "catch")
 		assertValidMap(t, projection, source)
 	}
-	source := "function f() { function sync(f: () => number!!) { return f() }; return sync(effect () => a() catch 1) }"
+	source := "function f() { function sync(f: () => number!!) { return f() }; return sync(() => a() catch 1) }"
 	invalid := Project(source, testContext)
 	assert.Equal(t, len(invalid.Diagnostics), 1, "%v", invalid.Diagnostics)
 	assert.Equal(t, invalid.Diagnostics[0].Code, int32(504))
