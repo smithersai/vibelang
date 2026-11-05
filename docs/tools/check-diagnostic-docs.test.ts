@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+import fc from "fast-check"
 import { readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { diagnosticCodes, importedLintRules, pendingRegistryCodes, retiredByVips, undocumentedCodes } from "./check-diagnostic-docs"
@@ -20,7 +21,7 @@ test("extracts message declarations across files without counting references or 
 
 test("coverage requires a whole code and exempts the deferred name-resolution code and codes the VIPs retire", () => {
   expect(undocumentedCodes(["EK2301", "EK4407", "EK4610", "EK9100"], ["EK10060; EK4610: wait with d.await()"])).toEqual(["EK2301", "EK9100"])
-  expect(undocumentedCodes(["EK2005"], [])).toEqual([])
+  expect(undocumentedCodes(["EK2005"], [])).toEqual(["EK2005"])
   for (const reason of Object.values(retiredByVips)) expect(reason).toMatch(/VIP-\d+|no VIP/)
 })
 
@@ -80,4 +81,15 @@ test("imported registry extraction preserves whole codes and ignores other Go ma
   expect(() => importedLintRules(source.replace('"EK38100"', '"EK3810"'))).toThrow(/duplicate/)
   expect(() => importedLintRules(source.replace('"EK38100"', '"EK39000"'))).toThrow(/Invalid/)
   expect(() => importedLintRules("")).toThrow(/Missing/)
+})
+
+
+// VIP-20 assigns EK2005 to for-try declaration heads; old handler exemptions
+// cannot suppress coverage of the current rule.
+test("a reassigned diagnostic requires its own complete printed identity", () => {
+  fc.assert(fc.property(fc.nat({ max: 99999 }), fc.boolean(), (suffix, documented) => {
+    const pages = ["EK2005" + suffix, "legacy handler diagnostics",
+      documented ? "`EK2005`: use a const or let declaration in for try" : ""]
+    expect(undocumentedCodes(["EK2005"], pages)).toEqual(documented ? [] : ["EK2005"])
+  }), { seed: 200520, numRuns: 100 })
 })
