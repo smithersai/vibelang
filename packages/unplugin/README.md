@@ -75,6 +75,12 @@ builds and builds after source edits remain independent. Set
 keep an explicit `vibelang({ project, compiler })` plugin for per-build
 configuration. `VIBELANG_UNPLUGIN_DEBUG=1` traces registration and compilation.
 
+An unchanged `Bun.build` entrypoint can keep its literal `.ts` name after
+that source migrates: when the file is absent, the adapter loads its sibling
+`.vibe` source. Existing TypeScript and in-memory files still win, and
+declaration files are never treated as runtime entries. This fallback also
+works with an explicitly configured `vibelang-unplugin/bun` plugin.
+
 Register the preload before application modules capture `Bun.build` or
 import `build` from `bun`. Child processes need the preload in their own
 configuration or command: `bun --preload vibelang-unplugin/bun/register run.ts`.

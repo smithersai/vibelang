@@ -187,3 +187,57 @@ console.log("graphs:" + entries.length)
   assert.match(result.stdout, new RegExp("graphs:" + cells.length))
   }), { seed: 11052026, numRuns: 6 })
 })
+
+test("unchanged literal TypeScript entrypoints reach their migrated source", (t) => {
+  const root = fixture(t, {
+    ...JSON.parse(readFileSync(new URL("./corpus/opencode-bun-literal-entrypoint.json", import.meta.url), "utf8")).files,
+    "build.ts": `import assert from "node:assert/strict"
+import { join } from "node:path"
+${execute}
+for (const path of ["src/database.ts", "./src/database.ts", join(process.cwd(), "src/database.ts")]) {
+  assert.equal(await answer({ entrypoints: [path] }), 73)
+}
+const virtual = await answer({ entrypoints: ["src/database.ts"], files: { "src/database.ts": "export const answer = 99" } })
+assert.equal(virtual, 99)
+await Bun.write("src/database.ts", "export const answer = 84")
+assert.equal(await answer({ entrypoints: ["src/database.ts"] }), 84)
+console.log("entries")
+`
+  })
+  const result = run(root, ["run", "build.ts"])
+  green(result)
+  assert.match(result.stdout, /entries/)
+})
+
+test("generated migrated Bun entries preserve native and in-memory precedence", (t) => {
+  fc.assert(fc.property(fc.array(fc.record({
+    name: fc.constantFrom("entry", "entry space", "entry-雪", "x+y"),
+    value: fc.integer({ min: -100, max: 100 }),
+    spelling: fc.constantFrom("relative", "dot", "absolute"),
+    native: fc.boolean(),
+    virtual: fc.boolean()
+  }), { minLength: 2, maxLength: 5 }), (cells) => {
+    const files = {}
+    for (const [i, cell] of cells.entries()) {
+      const stem = `src/p${i}/${cell.name}`
+      files[stem + ".vibe"] = `export const answer: number = ${cell.value}\n`
+      if (cell.native) files[stem + ".ts"] = `export const answer = ${cell.value + 1000}\n`
+    }
+    files["build.ts"] = `import assert from "node:assert/strict"
+import { join } from "node:path"
+${execute}
+const cells = ${JSON.stringify(cells)}
+for (const [i, cell] of cells.entries()) {
+  const filename = "src/p" + i + "/" + cell.name + ".ts"
+  const path = cell.spelling === "absolute" ? join(process.cwd(), filename) : (cell.spelling === "dot" ? "./" : "") + filename
+  const files = cell.virtual ? { [path]: "export const answer = " + (cell.value + 2000) } : undefined
+  assert.equal(await answer({ entrypoints: [path], files }), cell.value + (cell.virtual ? 2000 : cell.native ? 1000 : 0))
+}
+console.log("precedence")
+`
+    const root = fixture(t, files)
+    const result = run(root, ["run", "build.ts"])
+    green(result)
+    assert.match(result.stdout, /precedence/)
+  }), { seed: 11052027, numRuns: 6 })
+})

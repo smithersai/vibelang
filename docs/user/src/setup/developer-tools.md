@@ -371,7 +371,10 @@ For `Bun.build` calls, configure `vibelang-unplugin/bun/register` as both
 the top-level and `[test]` preload in `bunfig.toml`. It loads runtime
 imports and adds the VibeLang adapter to test-owned builds without editing
 their source, options, plugins or assertions. Each child Bun process needs
-its own preload configuration. Runtime-only `vibelang/bun` does not
+its own preload configuration. A literal `.ts` bundle entry can remain
+unchanged after migration: the Bun adapter loads the sibling `.vibe` only when the TypeScript file is missing.
+Existing native and in-memory entries keep their priority.
+Runtime-only `vibelang/bun` does not
 configure the bundler; other bundlers still need their own integration.
 
 

@@ -1,0 +1,8 @@
+{
+  "key": "unplugin:bun-missing-ts-entrypoint",
+  "entrypoints": ["src/database.ts"],
+  "files": {
+    "src/database.vibe": "export const answer: number = 73\n"
+  },
+  "description": "An unchanged test bundles a literal TypeScript entry after its source migrates."
+}

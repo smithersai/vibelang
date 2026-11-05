@@ -519,6 +519,9 @@ Install `vibelang-unplugin` alongside `vibelang` and use
 `[test].preload` to compile `.vibe` dependencies in builds owned by scripts
 or unchanged tests. It includes the runtime loader, preserves existing
 plugins and options, and gives each build its own compiler backend.
+A missing literal `.ts` bundle entry resolves to its sibling `.vibe`,
+so an unchanged test can keep its entrypoint. Existing TypeScript and
+in-memory entries retain their priority.
 An explicitly configured `vibelang-unplugin/bun` plugin keeps its own
 project and compiler choices. Child processes need the preload in their own
 working directory's configuration, or the `--preload` flag.
