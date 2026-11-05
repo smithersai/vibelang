@@ -71,7 +71,8 @@ import (
 // migrations: that fix, then try before each call that runs where it stands
 // (fix_try.go), which keeps the call's meaning while every call still runs
 // where it stands. --only limits a run to the modules it lists (fix_only.go).
-// --fix cannot be combined with --build or --watch.
+// In build mode each project repairs its own files in dependency order.
+// --fix cannot be combined with --watch.
 
 // vipMigrationFixCodes are the codes whose quick fixes migrate code to an
 // accepted VIP, which --fix-migration-only applies too.
@@ -156,7 +157,7 @@ func Fix(ctx context.Context, sys tsc.System, args []string) int {
 func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options FixOptions) int {
 	for _, arg := range args {
 		switch strings.ToLower(arg) {
-		case "-b", "--b", "-build", "--build", "-w", "--w", "-watch", "--watch":
+		case "-w", "--w", "-watch", "--watch":
 			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %s cannot be combined with --fix; run vibelang -p <tsconfig> --fix for each project.\n", arg)
 			return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 		}
@@ -165,6 +166,12 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	if err != nil {
 		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+	}
+	if len(args) > 0 {
+		switch strings.ToLower(args[0]) {
+		case "-b", "--b", "-build", "--build":
+			return fixBuild(ctx, sys, args, options)
+		}
 	}
 	commandLine := tsoptions.ParseCommandLine(args, sys.FS(), sys.GetCurrentDirectory())
 	if len(commandLine.Errors) > 0 {
@@ -175,6 +182,10 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 		fmt.Fprintln(sys.ErrorWriter(), "vibelang --fix: no tsconfig.json: name a project with -p.")
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 	}
+	return fixSingleProject(ctx, sys, configFileName, commandLine.CompilerOptions(), options)
+}
+
+func fixSingleProject(ctx context.Context, sys tsc.System, configFileName tspath.RootedFilePath, compilerOptions *core.CompilerOptions, options FixOptions) int {
 	// A list names the files the run may write, and no config is on it. A
 	// config these fixes would change stays for the compilation to report.
 	listed := options.Only != nil
@@ -185,7 +196,7 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 		}
 	}
 	path := sys.FS().CaseSensitivity().PathKey(tspath.RootedPath(configFileName))
-	config, errors := tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, commandLine.CompilerOptions(), nil, sys.FS(), &tsc.ExtendedConfigCache{})
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, compilerOptions, nil, sys.FS(), &tsc.ExtendedConfigCache{})
 	configDiagnostics := errors
 	if config != nil {
 		configDiagnostics = slices.Concat(configDiagnostics, config.GetConfigFileParsingDiagnostics())
@@ -202,7 +213,7 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 		configFS, configChanges = sidecarConfigFixes(sys.FS(), ownedDiagnostics)
 	}
 	if len(configChanges) > 0 {
-		config, errors = tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, commandLine.CompilerOptions(), nil, configFS, &tsc.ExtendedConfigCache{})
+		config, errors = tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, compilerOptions, nil, configFS, &tsc.ExtendedConfigCache{})
 	}
 	if len(errors) > 0 || config == nil {
 		return 0 // the compilation reports them

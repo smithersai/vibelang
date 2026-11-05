@@ -56,6 +56,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A comment after the semicolon of a `schema` body could disappear from declarations, including a comment before its written type alias. Declaration emit now retains it in TypeScript’s position.
 - Converting `.pipe(...)` could interleave stage construction and application, read options early, or change a custom stage’s receiver. The quick fix now preserves construction order and declines custom stages that may observe the receiver supplied by `.pipe`.
 
+- `vibelang --build --fix` rejected project-reference builds. It now applies each project's safe source and config repairs in dependency order before building.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

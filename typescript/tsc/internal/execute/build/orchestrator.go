@@ -102,6 +102,10 @@ func (o *Orchestrator) relativePath(path tspath.RootedPath) string {
 	return path.AsString()
 }
 
+// GraphDiagnostics returns graph errors after GenerateGraph. A repair caller
+// checks these before it writes files in dependency order.
+func (o *Orchestrator) GraphDiagnostics() []*ast.Diagnostic { return o.errors }
+
 func (o *Orchestrator) Order() []tspath.RootedFilePath {
 	return core.Map(o.order, func(task *BuildTask) tspath.RootedFilePath {
 		return task.config
