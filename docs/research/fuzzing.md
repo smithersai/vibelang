@@ -474,6 +474,8 @@ Left on purpose: ESTree token parity with `typescript-estree` (not installed in 
 
 Returned-callable migration coverage uses the minimized T3 Code curried-factory corpus and a keyed property over nesting depth, expression and block returns, casts and multiple return sites. Independent value-loss and outer timing controls keep unsafe conversions visible.
 
+`FuzzESTreeWarningSeverity` covers the minimized T3 Code crypto property and nearby throw/comma forms. Warning-only files must produce a syntax tree; a later syntax error must retain its own UTF-16 location across LF, CRLF, JSX-enabled files and module bodies.
+
 ## FuzzVIPDifferential: the VIPs' differential test
 
 Computed object member keys use the `vip01.object-member-key` construct in `FuzzVIPDifferential`. Its keyed corpus covers ordinary methods, getters, setters, written Effect methods and property controls, with string, symbol and coercing keys in direct and nested Effect bodies. The shared worker compares the canonical `Exit`, call-time snapshots and ordered events. `FuzzObjectMemberKeyContext` separately checks static context diagnostics; it runs no runtime comparator.

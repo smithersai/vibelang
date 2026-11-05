@@ -161,6 +161,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migrating a factory that returns an Effect function could falsely report that the outer call had changed. Verification now compares each returned function with its own original.
 
+- ESLint and migration verification could reject a file that had only a parser warning. They now receive its syntax tree, while actual syntax errors still report their own locations.
+
 ## 0.0.11
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to

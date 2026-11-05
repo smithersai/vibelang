@@ -16,6 +16,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -66,8 +67,10 @@ func Parse(fileName string, text string) (json string, failure *Error) {
 	// text is the one ESLint reports.
 	var first *ast.Diagnostic
 	for _, f := range append([]*ast.SourceFile{file}, bodies...) {
-		if diagnostics := f.Diagnostics(); len(diagnostics) != 0 && (first == nil || diagnostics[0].Pos() < first.Pos()) {
-			first = diagnostics[0]
+		for _, diagnostic := range f.Diagnostics() {
+			if diagnostic.Category() == diagnostics.CategoryError && (first == nil || diagnostic.Pos() < first.Pos()) {
+				first = diagnostic
+			}
 		}
 	}
 	if first != nil {

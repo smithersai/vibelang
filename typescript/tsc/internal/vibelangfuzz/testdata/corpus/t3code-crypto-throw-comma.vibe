@@ -1,0 +1,1 @@
+export const make = (valid: boolean, badArgument: () => unknown) => ({ randomBytes: effect () => valid ? 1 : throw badArgument(), digest: 0 });

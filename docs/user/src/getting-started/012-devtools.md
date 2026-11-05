@@ -482,7 +482,7 @@ export default defineConfig({
 
 The starter already includes this configuration. `bun run test` checks and compiles source tests without a prior build. See [TestClock](../testing/063-testclock.md) for tests with virtual time.
 
-Lint `.vibe` and `.vibex` files with ESLint through `vibelang/eslint`, the parser the `vibelang` package ships. The compiler parses each file, and ESLint gets the tree typescript-eslint gives it for TypeScript: typescript-eslint's rules and plugins such as `eslint-plugin-import`, `eslint-plugin-jsdoc`, and `eslint-plugin-unicorn` apply unchanged. Install `eslint` and `typescript-eslint` 8 beside `vibelang`; the parser uses typescript-eslint's scope analysis.
+Lint `.vibe` and `.vibex` files with ESLint through `vibelang/eslint`, the parser the `vibelang` package ships. A parser warning alone does not prevent the tree from being produced. If a file also has a syntax error, the parser reports the first error at its own location. The compiler parses each file, and ESLint gets the tree typescript-eslint gives it for TypeScript: typescript-eslint's rules and plugins such as `eslint-plugin-import`, `eslint-plugin-jsdoc`, and `eslint-plugin-unicorn` apply unchanged. Install `eslint` and `typescript-eslint` 8 beside `vibelang`; the parser uses typescript-eslint's scope analysis.
 
 ```js
 // eslint.config.js
