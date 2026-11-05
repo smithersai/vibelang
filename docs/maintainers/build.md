@@ -1556,6 +1556,15 @@ admission. A reviewed `retirement-allowlist.json` entry must contain `code`,
 "reference": "<approval record>" }`, and either a matching `case` directory
 or `severity: "error"`.
 
+The identity-allocation checkpoint compares the recorded before/after allocation
+transition in `docs/design/diagnostic-identity-allocation.json`. Its original
+normalized hashes remain in `diagnostic-identity-renames.json`; later compiler
+fixes keep their own semantic regression tests. Recreate the capture with
+`node scripts/capture-diagnostic-identity-allocation.mjs --write` from a
+repository retaining the recorded revisions. The generator verifies both full
+source snapshots against the original hashes before capturing the transition;
+portable checks retain those references and reject added checker predicates.
+
 Run `node docs/tools/retirement-gate.mjs --base BASE --head HEAD`, or select
 `//:spec-retirement-gate` with full commit IDs in `RETIREMENT_BASE` and
 `RETIREMENT_HEAD`. The normal `//:spec-linters-test` includes the regression

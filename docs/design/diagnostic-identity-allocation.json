@@ -1,0 +1,164 @@
+{
+  "generatedBy": "scripts/capture-diagnostic-identity-allocation.mjs",
+  "allocation": "db1440a657d21fdfcdca52556d295530fea2ca8e",
+  "files": [
+    {
+      "path": "typescript/tsc/internal/vibelang/handlers.go",
+      "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+      "normalizedSha256": "e968af29284a5cca9ce5887a1aa647fd20af3425a30b040ecd0c885df437df6c",
+      "beforeSourceSha256": "e4c7dad98dbec25704a74d9ded62ac8b8e38fa57681757bddc64c3e91b91391f",
+      "afterSourceSha256": "a9eefa827bb01851c9899eab4a4e66ceb1c7dcdf5d203191e2a5140a372f738f",
+      "segments": [
+        {
+          "before": "tx . EmitContext ( ) . SetOriginal ( request , call ) request . Loc = call . Loc return request } func init ( ) { fileChecks = append ( fileChecks , checkResumeWith ) } var undeclaredFailure = EK2005 . With ( \"resumeWith runs this code at the perform site, where callers of {1} expect only its declared errors. It can fail with {0}.\" ) func checkResumeWith ( c * checker . Checker , file * ast . SourceFile ) { var visit func ( node * ast . Node ) bool visit = func ( node * ast . Node ) bool { if ast . IsCallExpression ( node ) & & len ( node . Arguments ( ) ) > = 2 & & resumeKind ( c , node ) = = \"resumeWith\" { checkResumeWithProgram ( c , file , node ) } return node . ForEachChild ( visit )",
+          "after": "tx . EmitContext ( ) . SetOriginal ( request , call ) request . Loc = call . Loc return request } func init ( ) { fileChecks = append ( fileChecks , checkResumeWith ) } var undeclaredFailure = EK9210 . With ( \"resumeWith runs this code at the perform site, where callers of {1} expect only its declared errors. It can fail with {0}.\" ) func checkResumeWith ( c * checker . Checker , file * ast . SourceFile ) { var visit func ( node * ast . Node ) bool visit = func ( node * ast . Node ) bool { if ast . IsCallExpression ( node ) & & len ( node . Arguments ( ) ) > = 2 & & resumeKind ( c , node ) = = \"resumeWith\" { checkResumeWithProgram ( c , file , node ) } return node . ForEachChild ( visit )"
+        },
+        {
+          "before": "func checkResumeWithProgram ( c * checker . Checker , file * ast . SourceFile , call * ast . Node ) { program : = call . Arguments ( ) [ 1 ] effect : = effectOfValue ( c , c . GetTypeAtLocation ( program ) ) if effect = = nil { return } reported : = false if r : = channelType ( c , effect , \"_R\" ) ; r ! = nil & & r . Flags ( ) & checker . TypeFlagsNever = = 0 { d : = report ( c , program , EK2005 , c . TypeToString ( r ) ) if isClauseContinuation ( call . Arguments ( ) [ 0 ] ) { note ( d , \"Read it in the clause first, and resume with the value: resumeWith(() => value).\" ) } else { note ( d , \"Read it in the clause first, and resume with the value: resumeWith(k, () => value).\" ) } reported = true } if signature : = c . GetResolvedSignature ( call ) ; signature ! = nil {",
+          "after": "func checkResumeWithProgram ( c * checker . Checker , file * ast . SourceFile , call * ast . Node ) { program : = call . Arguments ( ) [ 1 ] effect : = effectOfValue ( c , c . GetTypeAtLocation ( program ) ) if effect = = nil { return } reported : = false if r : = channelType ( c , effect , \"_R\" ) ; r ! = nil & & r . Flags ( ) & checker . TypeFlagsNever = = 0 { d : = report ( c , program , EK9210 , c . TypeToString ( r ) ) if isClauseContinuation ( call . Arguments ( ) [ 0 ] ) { note ( d , \"Read it in the clause first, and resume with the value: resumeWith(() => value).\" ) } else { note ( d , \"Read it in the clause first, and resume with the value: resumeWith(k, () => value).\" ) } reported = true } if signature : = c . GetResolvedSignature ( call ) ; signature ! = nil {"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/layers_check.go",
+      "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+      "normalizedSha256": "cf638212e297ca2c3e8a54235176e6c934e30addaf23c41c1d02773af2cf8c1f",
+      "beforeSourceSha256": "8b0aa96c4e1d77c31da7595fcb6ce63b18ebf1ca436064d3996c47f4dba742e7",
+      "afterSourceSha256": "8e663791f54836439a71c4e99e2ef41f43d50313a65682c270161dd6fd1cda25",
+      "segments": [
+        {
+          "before": ") func init ( ) { fileChecks = append ( fileChecks , checkLayerDeclarations ) } func checkLayerDeclarations ( c * checker . Checker , file * ast . SourceFile ) { for _ , statement : = range file . Statements . Nodes { checkLayerDeclaration ( c , statement ) } } func checkLayerDeclaration ( c * checker . Checker , statement * ast . Node ) { if ! ast . IsVariableStatement ( statement ) { return } declarations : = statement . AsVariableStatement ( ) . DeclarationList . AsVariableDeclarationList ( ) . Declarations . Nodes if len ( declarations ) ! = 1 | | declarations [ 0 ] . Initializer ( ) = = nil | | ! ast . IsCallExpression ( declarations [ 0 ] . Initializer ( ) ) { return",
+          "after": ") func init ( ) { fileChecks = append ( fileChecks , checkLayerDeclarations ) } func checkLayerDeclarations ( c * checker . Checker , file * ast . SourceFile ) { for _ , statement : = range file . Statements . Nodes { checkLayerDeclaration ( c , statement ) } } func checkLayerDeclaration ( c * checker . Checker , statement * ast . Node ) { if ! ast . IsVariableStatement ( statement ) { return } declarations : = statement . AsVariableStatement ( ) . DeclarationList . AsVariableDeclarationList ( ) . Declarations . Nodes if len ( declarations ) ! = 1 | | declarations [ 0 ] . Initializer ( ) = = nil | | ! ast . IsCallExpression ( declarations [ 0 ] . Initializer ( ) ) { return"
+        },
+        {
+          "before": "} members : = returned . Expression ( ) . AsObjectLiteralExpression ( ) . Properties . Nodes if len ( members ) = = 0 { return } first : = members [ 0 ] for _ , setup : = range statements [ : len ( statements ) - 1 ] { if setup . Pos ( ) > first . Pos ( ) { d : = report ( c , setup , EK2104 ) note ( d , \"Move it above {0}: setup runs once, before the members exist.\" , scanner . GetTextOfNode ( first . Name ( ) ) ) } } }",
+          "after": "} members : = returned . Expression ( ) . AsObjectLiteralExpression ( ) . Properties . Nodes if len ( members ) = = 0 { return } first : = members [ 0 ] for _ , setup : = range statements [ : len ( statements ) - 1 ] { if setup . Pos ( ) > first . Pos ( ) { d : = report ( c , setup , EK9209 ) note ( d , \"Move it above {0}: setup runs once, before the members exist.\" , scanner . GetTextOfNode ( first . Name ( ) ) ) } } }"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/wire.go",
+      "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+      "normalizedSha256": "1487563d1a674b315a940737c2e942d52557b72533dc215ddcdac13cfb64fdb4",
+      "beforeSourceSha256": "d1bbe81edf4ef740207fed17f5d94e38d737e061b95cee4dfc2c9e787dc1fd63",
+      "afterSourceSha256": "e4902322f89f262ffac3a0b507142b762f62d219f7184ae836cd3096ec795445",
+      "segments": [
+        {
+          "before": "const layerTypeID = \"~effect/Layer\" func init ( ) { fileChecks = append ( fileChecks , checkWires , checkRunners ) } var ( anyProgram = EK3201 . With ( \"{0} has type any, so the services it needs are unknown.\" ) anyMain = EK3205 . With ( \"{0} has type any, so the services it needs are unknown.\" ) ) type wireArgument struct { node * ast . Node index int",
+          "after": "const layerTypeID = \"~effect/Layer\" func init ( ) { fileChecks = append ( fileChecks , checkWires , checkRunners ) } var ( anyProgram = EK9211 . With ( \"{0} has type any, so the services it needs are unknown.\" ) anyMain = EK3205 . With ( \"{0} has type any, so the services it needs are unknown.\" ) ) type wireArgument struct { node * ast . Node index int"
+        },
+        {
+          "before": "type runnerSite int const ( runnerCall runnerSite = iota runnerTest runnerEntry )",
+          "after": "type runnerSite int const ( runnerCall runnerSite = iota runnerTest runnerEntry )"
+        },
+        {
+          "before": "for i , program : = range call . Arguments ( ) { if accepted : = runnerRequirements ( c , c . GetTypeAtPosition ( signature , i ) ) ; accepted ! = nil { checkProgram ( c , program , accepted , runnerTest ) return } } } func checkProgram ( c * checker . Checker , program * ast . Node , accepted * checker . Type , site runnerSite ) * ast . Diagnostic { needed : = runnerRequirements ( c , c . GetTypeAtLocation ( program ) ) if needed = = nil { return nil } if needed . Flags ( ) & checker . TypeFlagsAny ! = 0 {",
+          "after": "for i , program : = range call . Arguments ( ) { if accepted : = runnerRequirements ( c , c . GetTypeAtPosition ( signature , i ) ) ; accepted ! = nil { checkProgram ( c , program , accepted , runnerTest ) return } } } func checkProgram ( c * checker . Checker , program * ast . Node , accepted * checker . Type , site runnerSite ) * ast . Diagnostic { needed : = runnerRequirements ( c , c . GetTypeAtLocation ( program ) ) if needed = = nil { return nil } if needed . Flags ( ) & checker . TypeFlagsAny ! = 0 {"
+        },
+        {
+          "before": "missing = append ( missing , service ) for _ , needer : = range servicesFor ( c ) . wireNeeders ( service ) { paths = append ( paths , scanner . GetTextOfNode ( needer ) + \" needs \" + c . TypeToString ( service ) ) } } if len ( names ) = = 0 { return nil } code : = EK3201 if site = = runnerEntry { code = EK3205 } namesText : = strings . Join ( names , \", \" ) if site = = runnerEntry { namesText = diagnosticListText ( names , \", \" ) } d : = report ( c , program , code , namesText )",
+          "after": "missing = append ( missing , service ) for _ , needer : = range servicesFor ( c ) . wireNeeders ( service ) { paths = append ( paths , scanner . GetTextOfNode ( needer ) + \" needs \" + c . TypeToString ( service ) ) } } if len ( names ) = = 0 { return nil } code : = EK9211 if site = = runnerEntry { code = EK3205 } namesText : = strings . Join ( names , \", \" ) if site = = runnerEntry { namesText = diagnosticListText ( names , \", \" ) } d : = report ( c , program , code , namesText )"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/service_key_calls.go",
+      "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+      "normalizedSha256": "d81715b92abb06cf2be5bada54fac8f51972d63bd898daac78df28fc09fedf99",
+      "beforeSourceSha256": "7423b02048028724684e77fe7d5434dc97ac1a9c234ed7941afc22e13013427c",
+      "afterSourceSha256": "2eb3d18dca74e57e3c865c9b938b34aef4b630373321cc2691a19707f4834eee",
+      "segments": [
+        {
+          "before": "\"context\" \"github.com/microsoft/TypeScript/tsc/internal/ast\" \"github.com/microsoft/TypeScript/tsc/internal/checker\" \"github.com/microsoft/TypeScript/tsc/internal/ls\" \"github.com/microsoft/TypeScript/tsc/internal/scanner\" ) var EK3007 = message ( 3007 , errorCategory , \"{0} is a service key, which takes no arguments: try {0} gets its implementation.\" ) func init ( ) { registry [ EK3007 . Code ] = EK3007 fileChecks = append ( fileChecks , checkServiceKeyCalls ) ls . RegisterCodeFixProvider ( serviceKeyCallFix ) } func checkServiceKeyCalls ( c * checker . Checker , file * ast . SourceFile ) { var visit func ( node * ast . Node ) bool visit = func ( node * ast . Node ) bool { if isTypeScriptModule ( node ) | | isHatchArgument ( node ) { return false } if ast . IsCallExpression ( node ) & & len ( node . Arguments ( ) ) > 0 { if service : = serviceNamedBy ( c , node . Expression ( ) ) ; service ! = nil & & classKindOf ( service ) = = serviceClass { name : = scanner . GetTextOfNode ( node . Expression ( ) ) d : = report ( c , node , EK3007 , name ) if serviceCallable ( c , service ) { note ( d , \"Get the service, then call it: (try {0})(…).\" , name ) } else { note ( d , \"Get the service, then use a member: (try {0}).member(…).\" , name ) } coverCodes ( c , node , 2348 , 2349 , 2554 ) } } return node . ForEachChild ( visit ) } file . AsNode ( ) . ForEachChild ( visit ) } var serviceKeyCallFix = & ls . CodeFixProvider { Source : diagnosticSource , ErrorCodes : [ ] int32 { EK3007 . Code } , GetCodeActions : func ( ctx context . Context , fix * ls . CodeFixContext ) ( [ ] * ls . CodeAction , error ) { if fix . Diagnostic = = nil | | fix . LS = = nil | | fix . Program = = nil { return nil , nil } call : = callStartingAt ( fix . SourceFile , fix . Span . Pos ( ) ) if call = = nil | | ! inEffectCode ( call ) { return nil , nil }",
+          "after": "\"context\" \"github.com/microsoft/TypeScript/tsc/internal/ast\" \"github.com/microsoft/TypeScript/tsc/internal/checker\" \"github.com/microsoft/TypeScript/tsc/internal/ls\" \"github.com/microsoft/TypeScript/tsc/internal/scanner\" ) var EK9214 = message ( 9214 , errorCategory , \"{0} is a service key, which takes no arguments: try {0} gets its implementation.\" ) func init ( ) { registry [ EK9214 . Code ] = EK9214 fileChecks = append ( fileChecks , checkServiceKeyCalls ) ls . RegisterCodeFixProvider ( serviceKeyCallFix ) } func checkServiceKeyCalls ( c * checker . Checker , file * ast . SourceFile ) { var visit func ( node * ast . Node ) bool visit = func ( node * ast . Node ) bool { if isTypeScriptModule ( node ) | | isHatchArgument ( node ) { return false } if ast . IsCallExpression ( node ) & & len ( node . Arguments ( ) ) > 0 { if service : = serviceNamedBy ( c , node . Expression ( ) ) ; service ! = nil & & classKindOf ( service ) = = serviceClass { name : = scanner . GetTextOfNode ( node . Expression ( ) ) d : = report ( c , node , EK9214 , name ) if serviceCallable ( c , service ) { note ( d , \"Get the service, then call it: (try {0})(…).\" , name ) } else { note ( d , \"Get the service, then use a member: (try {0}).member(…).\" , name ) } coverCodes ( c , node , 2348 , 2349 , 2554 ) } } return node . ForEachChild ( visit ) } file . AsNode ( ) . ForEachChild ( visit ) } var serviceKeyCallFix = & ls . CodeFixProvider { Source : diagnosticSource , ErrorCodes : [ ] int32 { EK9214 . Code } , GetCodeActions : func ( ctx context . Context , fix * ls . CodeFixContext ) ( [ ] * ls . CodeAction , error ) { if fix . Diagnostic = = nil | | fix . LS = = nil | | fix . Program = = nil { return nil , nil } call : = callStartingAt ( fix . SourceFile , fix . Span . Pos ( ) ) if call = = nil | | ! inEffectCode ( call ) { return nil , nil }"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/for_try.go",
+      "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+      "normalizedSha256": "29793d95d26abc6f3157179a9ab5d7a5474fbd4e0bccf288bb96c47fb88b0be9",
+      "beforeSourceSha256": "c808bee03483996cbe3dac6086ddcfd2f7f692e3a46527fef36d3375605b7a69",
+      "afterSourceSha256": "c1c68703616232ef010fb1f11178c92ab93a66a35cb3e53c03328a1243c63b64",
+      "segments": [
+        {
+          "before": "func isForTry ( n * ast . Node ) bool { return n ! = nil & & n . Kind = = ast . KindForOfStatement & & n . Flags & ast . NodeFlagsVibeLang ! = 0 } func init ( ) { for _ , m : = range [ ] * Message { EK2001 , EK2002 , EK2003 , EK2004 } { registry [ m . Code ] = m } if registry [ forTryHead . Code ] = = nil { registry [ forTryHead . Code ] = forTryHead } fileChecks = append ( fileChecks , checkForTry ) } func checkForTry ( c * checker . Checker , file * ast . SourceFile ) { var visit func ( * ast . Node ) bool visit = func ( n * ast . Node ) bool { if isForTry ( n ) { if ! inEffectCode ( n ) {",
+          "after": "func isForTry ( n * ast . Node ) bool { return n ! = nil & & n . Kind = = ast . KindForOfStatement & & n . Flags & ast . NodeFlagsVibeLang ! = 0 } func init ( ) { for _ , m : = range [ ] * Message { EK2001 , EK2002 , EK2003 , EK2004 } { registry [ m . Code ] = m } registry [ forTryHead . Code ] = forTryHead fileChecks = append ( fileChecks , checkForTry ) } func checkForTry ( c * checker . Checker , file * ast . SourceFile ) { var visit func ( * ast . Node ) bool visit = func ( n * ast . Node ) bool { if isForTry ( n ) { if ! inEffectCode ( n ) {"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelang/effect_pin.go",
+      "base": "a4ded3fe8ac31cc46d82d64686b6fe29286ae650",
+      "normalizedSha256": "f7ce3040e2ba99f7c8694f12d4f70ef40ad055d156ec7f5171a9a52c9b5a9107",
+      "beforeSourceSha256": "97da8879160661f21d269dca1c91ac64ccf92c2dc992ef298639b6d24718b53d",
+      "afterSourceSha256": "5a923c8c4fa8b38f47ec9e95b8d515c57c245d6db951762273c6a3740aa641b6",
+      "segments": [
+        {
+          "before": "\"github.com/microsoft/TypeScript/tsc/internal/tspath\" stdmaps \"maps\" \"path\" \"slices\" \"strings\" ) var effectPinDiagnostic = EK3201 . With ( \"The resolved effect is {0}; VibeLang {1} pins {2}: upgrade both together.\" ) var platformPinDiagnostic = EK3201 . With ( \"The resolved {0} is {1}; VibeLang {2} pins {3}: upgrade both together.\" ) func init ( ) { compiler . RegisterProgramDiagnosticsHook ( effectPinDiagnostics ) } func effectPinDiagnostics ( p * compiler . Program ) [ ] * ast . Diagnostic { var anchor * ast . SourceFile",
+          "after": "\"github.com/microsoft/TypeScript/tsc/internal/tspath\" stdmaps \"maps\" \"path\" \"slices\" \"strings\" ) var EK3201 = message ( 3201 , errorCategory , \"The resolved effect is {0}; VibeLang {1} pins {2}: upgrade both together.\" ) var effectPinDiagnostic = EK3201 func init ( ) { registry [ EK3201 . Code ] = EK3201 } var platformPinDiagnostic = EK3201 . With ( \"The resolved {0} is {1}; VibeLang {2} pins {3}: upgrade both together.\" ) func init ( ) { compiler . RegisterProgramDiagnosticsHook ( effectPinDiagnostics ) } func effectPinDiagnostics ( p * compiler . Program ) [ ] * ast . Diagnostic { var anchor * ast . SourceFile"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/project.go",
+      "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+      "normalizedSha256": "4f85248a184d02d782de932826db2314261c331b75c63346169a2330b9317ecb",
+      "beforeSourceSha256": "a076efac49ac76a3b60418197c712cdf46370142613b2b4b83f499a967a243ea",
+      "afterSourceSha256": "9071fdcc8012ef2a02622a85f524c24dff4531e2aa4af3a51264935d850d75cc",
+      "segments": [
+        {
+          "before": "const PreludeModule = \"vibelang-ts-mapper/prelude\" const inlineModuleProjectionMessage = \"The TypeScript mapper cannot project inline modules with their ECMAScript module semantics; build with vibelang.\" const ( CodePlainContractEffect = 2003 CodeUnprojectedForm = 9001 CodeVersionMismatch = 9004",
+          "after": "const PreludeModule = \"vibelang-ts-mapper/prelude\" const inlineModuleProjectionMessage = \"The TypeScript mapper cannot project inline modules with their ECMAScript module semantics; build with vibelang.\" const ( CodePlainContractEffect = 9203 CodeUnprojectedForm = 9001 CodeVersionMismatch = 9004"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/forms_resolve.go",
+      "base": "12d130c5435a34319bdb6702839336671b827acd",
+      "normalizedSha256": "6ff0c379dff17798ea4eaf93aca7da1668099211360364bf6bb5c241ddb98382",
+      "beforeSourceSha256": "1a3f02f004977797d86894e549ff8e809eb3fe05fb29b4f8bd1396c6e830852c",
+      "afterSourceSha256": "c317807c3b2ca9a2f16e3a5e2d105fac6cf88d3f188f35829214fd139828414e",
+      "segments": [
+        {
+          "before": "Choice * Choice } const CodeFormChoice = 9100 type Choice struct {",
+          "after": "Choice * Choice } const CodeFormChoice = 9005 type Choice struct {"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/data_methods.go",
+      "base": "795b3206b36ced308ba305a3a8ab424a9d6e1286",
+      "normalizedSha256": "58df427a33af380354f9f9e68f4ee7b50756d65fa653681254562510d5914a06",
+      "beforeSourceSha256": "983f526e8b466dc13fca664ac1731c32a5f1d65932a58a28e34560d1f8d017a5",
+      "afterSourceSha256": "21cd742505b84958d44b61e8224a7679470fabb063914e08c253ed52df91a1f5",
+      "segments": [
+        {
+          "before": "\"strconv\" \"strings\" \"github.com/microsoft/TypeScript/tsc/internal/ast\" \"github.com/microsoft/TypeScript/tsc/internal/scanner\" ) const CodeDataMethod = 9101 func ( p * projector ) dataReceiver ( expr * ast . Node , depth int ) string { if expr = = nil | | depth > 24 { return \"\" }",
+          "after": "\"strconv\" \"strings\" \"github.com/microsoft/TypeScript/tsc/internal/ast\" \"github.com/microsoft/TypeScript/tsc/internal/scanner\" ) const CodeDataMethod = 9006 func ( p * projector ) dataReceiver ( expr * ast . Node , depth int ) string { if expr = = nil | | depth > 24 { return \"\" }"
+        }
+      ]
+    },
+    {
+      "path": "typescript/tsc/internal/vibelangmapper/syntax_diagnostics.go",
+      "base": "12d130c5435a34319bdb6702839336671b827acd",
+      "normalizedSha256": "bd28165a5e274aa3e53c89de7984f019a4cf2fbd8b888b051830449c32b6b920",
+      "beforeSourceSha256": "419fa21e9a1e6d3ae15ed15b37a2e25920a3b5741a2fe7cae4ca54d6c15e3793",
+      "afterSourceSha256": "6f837318a0e05cd9365f2ac480ff0f2f716bbea4112922028ea6c2dab4b25832",
+      "segments": [
+        {
+          "before": "func ( p * projector ) syntaxToken ( node * ast . Node , code int32 , message string ) { r : = scanner . GetRangeOfTokenAtPosition ( p . file , node . Pos ( ) ) p . diagnostics = append ( p . diagnostics , Diagnostic { Start : r . Pos ( ) , Length : r . Len ( ) , Code : code , Message : message } ) } func ( p * projector ) checkSyntaxDiagnostics ( ) { var visit func ( * ast . Node ) bool visit = func ( n * ast . Node ) bool { if p . isHatchCall ( n ) {",
+          "after": "func ( p * projector ) syntaxToken ( node * ast . Node , code int32 , message string ) { r : = scanner . GetRangeOfTokenAtPosition ( p . file , node . Pos ( ) ) p . diagnostics = append ( p . diagnostics , Diagnostic { Start : r . Pos ( ) , Length : r . Len ( ) , Code : code , Message : message } ) } func ( p * projector ) checkSyntaxDiagnostics ( ) { var visit func ( * ast . Node ) bool visit = func ( n * ast . Node ) bool { if p . isHatchCall ( n ) {"
+        },
+        {
+          "before": "if ast . IsFunctionLike ( parent ) | | ast . IsClassLike ( parent ) | | parent . Kind = = ast . KindClassStaticBlockDeclaration { return n = = parent . Body ( ) & & syntaxLowerable ( parent ) } n = parent } return false } func ( p * projector ) checkServiceContracts ( class * ast . Node ) { for _ , member : = range class . Members ( ) { if member . Kind ! = ast . KindMethodDeclaration | | ast . IsStatic ( member ) | | member . Name ( ) = = nil | | ! ast . IsIdentifier ( member . Name ( ) ) { continue } if ! isControlClass ( class ) { if member . Type ( ) = = nil { p . syntaxDiagnostic ( member . Name ( ) , 2101 , class . Name ( ) . Text ( ) + \".\" + member . Name ( ) . Text ( ) + \" has no body to infer from. Write its return type.\" ) } continue } annotation : = member . Type ( ) incomplete : = annotation = = nil if annotation ! = nil { switch annotation . Kind { case ast . KindStringKeyword , ast . KindNumberKeyword , ast . KindBooleanKeyword , ast . KindVoidKeyword , ast . KindNeverKeyword , ast . KindUnknownKeyword , ast . KindAnyKeyword , ast . KindObjectKeyword , ast . KindUndefinedKeyword , ast . KindNullKeyword , ast . KindBigIntKeyword , ast . KindSymbolKeyword : incomplete = true } } if incomplete { at : = annotation if at = = nil { at = member . Name ( ) } p . syntaxDiagnostic ( at , 2101 , class . Name ( ) . Text ( ) + \".\" + member . Name ( ) . Text ( ) + \" has no body to infer from, so its contract must be written as an Effect type.\" ) } } } func ( p * projector ) checkLayerSetup ( n * ast . Node ) { call : = n . AsVariableStatement ( ) . DeclarationList . AsVariableDeclarationList ( ) . Declarations . Nodes [ 0 ] . Initializer ( ) args : = call . Arguments ( ) if len ( args ) ! = 2 | | ! ast . IsArrowFunction ( args [ 1 ] ) | | args [ 1 ] . Body ( ) = = nil | | ! ast . IsBlock ( args [ 1 ] . Body ( ) ) { return } statements : = args [ 1 ] . Body ( ) . Statements ( ) if len ( statements ) = = 0 {",
+          "after": "if ast . IsFunctionLike ( parent ) | | ast . IsClassLike ( parent ) | | parent . Kind = = ast . KindClassStaticBlockDeclaration { return n = = parent . Body ( ) & & syntaxLowerable ( parent ) } n = parent } return false } func ( p * projector ) checkServiceContracts ( class * ast . Node ) { for _ , member : = range class . Members ( ) { if member . Kind ! = ast . KindMethodDeclaration | | ast . IsStatic ( member ) | | member . Name ( ) = = nil | | ! ast . IsIdentifier ( member . Name ( ) ) { continue } if ! isControlClass ( class ) { continue } annotation : = member . Type ( ) incomplete : = annotation = = nil if annotation ! = nil { switch annotation . Kind { case ast . KindStringKeyword , ast . KindNumberKeyword , ast . KindBooleanKeyword , ast . KindVoidKeyword , ast . KindNeverKeyword , ast . KindUnknownKeyword , ast . KindAnyKeyword , ast . KindObjectKeyword , ast . KindUndefinedKeyword , ast . KindNullKeyword , ast . KindBigIntKeyword , ast . KindSymbolKeyword : incomplete = true } } if incomplete { at : = annotation if at = = nil { at = member . Name ( ) } p . syntaxDiagnostic ( at , CodeUnprojectedForm , class . Name ( ) . Text ( ) + \".\" + member . Name ( ) . Text ( ) + \" has no body to infer from, so its contract must be written as an Effect type.\" ) } } } func ( p * projector ) checkLayerSetup ( n * ast . Node ) { call : = n . AsVariableStatement ( ) . DeclarationList . AsVariableDeclarationList ( ) . Declarations . Nodes [ 0 ] . Initializer ( ) args : = call . Arguments ( ) if len ( args ) ! = 2 | | ! ast . IsArrowFunction ( args [ 1 ] ) | | args [ 1 ] . Body ( ) = = nil | | ! ast . IsBlock ( args [ 1 ] . Body ( ) ) { return } statements : = args [ 1 ] . Body ( ) . Statements ( ) if len ( statements ) = = 0 {"
+        },
+        {
+          "before": "return } members : = returned . Expression ( ) . AsObjectLiteralExpression ( ) . Properties . Nodes if len ( members ) = = 0 { return } for _ , setup : = range statements [ : len ( statements ) - 1 ] { if setup . Pos ( ) > members [ 0 ] . Pos ( ) { p . syntaxDiagnostic ( setup , 2104 , \"This statement follows the layer's members, but a layer's setup statements come first.\" ) } } } func ( p * projector ) checkFinallyExits ( block * ast . Node ) { f : = & frame { region : & region { } } var visit func ( * ast . Node ) bool",
+          "after": "return } members : = returned . Expression ( ) . AsObjectLiteralExpression ( ) . Properties . Nodes if len ( members ) = = 0 { return } for _ , setup : = range statements [ : len ( statements ) - 1 ] { if setup . Pos ( ) > members [ 0 ] . Pos ( ) { p . syntaxDiagnostic ( setup , 9209 , \"This statement follows the layer's members, but a layer's setup statements come first.\" ) } } } func ( p * projector ) checkFinallyExits ( block * ast . Node ) { f : = & frame { region : & region { } } var visit func ( * ast . Node ) bool"
+        }
+      ]
+    }
+  ]
+}

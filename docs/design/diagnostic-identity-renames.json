@@ -45,5 +45,7 @@
       "normalizedSha256": "bd28165a5e274aa3e53c89de7984f019a4cf2fbd8b888b051830449c32b6b920",
       "base": "12d130c5435a34319bdb6702839336671b827acd"
     }
-  ]
+  ],
+  "allocation": "db1440a657d21fdfcdca52556d295530fea2ca8e",
+  "allocationSnapshotSha256": "cea432dac088c7b0e5bb94ad734af9f197e1c2611cb22fc03d3d2319e56bec11"
 }

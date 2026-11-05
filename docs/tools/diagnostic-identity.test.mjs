@@ -10,6 +10,8 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
+import {createHash} from "node:crypto"
+import {allocationPreservesChecker} from "./diagnostic-identity-allocation.mjs"
 import fc from "fast-check"
 import {identityHash} from "./diagnostic-identity-renames.mjs"
 import {executableDigest,digest} from "./diagnostic-identity-authorization.mjs"
@@ -314,9 +316,14 @@ test("a report-site category override cannot hide behind its primary declaration
 // Chapter 900: EK9210 diagnostic - spec-rule: docs/design/src/900-appendices.md#463ccca02b740422
 test("identity-only allocations preserve the independently captured prior checker bodies",()=>{
  const proof=JSON.parse(readFileSync(new URL("../design/diagnostic-identity-renames.json",import.meta.url),"utf8"))
+ const bytes=readFileSync(new URL("../design/diagnostic-identity-allocation.json",import.meta.url),"utf8")
+ assert.equal(createHash("sha256").update(bytes).digest("hex"),proof.allocationSnapshotSha256)
+ const capture=JSON.parse(bytes)
+ assert.equal(capture.allocation,proof.allocation)
+ assert.deepEqual(capture.files.map(record=>record.path).sort(),proof.files.map(record=>record.path).sort())
  for(const record of proof.files) {
-  const current=readFileSync(new URL("../../"+record.path,import.meta.url),"utf8")
-  assert.equal(identityHash(current,record.path),record.normalizedSha256,record.path+": allocation changed its checker")
+  const archived=capture.files.find(item=>item.path===record.path)
+  assert.ok(allocationPreservesChecker(archived,{...record,base:record.base??proof.base}),record.path+": allocation changed its checker")
  }
  const manifest=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
  for(const code of ["EK9209","EK9210","EK9211","EK9214","EK9005","EK9006"]) {
@@ -371,4 +378,22 @@ test("retired variant-pattern identity stays absent from active rows and replay"
    const documents=[{path:"docs/design/src/900-appendices.md",text:retirement}]
    assert.deepEqual(auditIdentity(registered,rows,documents).map(f=>f.kind),["retired-registered","retired-row"])
   }),{seed:4707,numRuns:200})
+})
+
+test("allocation checkpoints reject added predicates and mismatched prior authority",()=>{
+ const proof=JSON.parse(readFileSync(new URL("../design/diagnostic-identity-renames.json",import.meta.url),"utf8"))
+ const capture=JSON.parse(readFileSync(new URL("../design/diagnostic-identity-allocation.json",import.meta.url),"utf8"))
+ fc.assert(fc.property(fc.integer({min:0,max:capture.files.length-1}),fc.integer({min:1,max:999999}),(index,salt)=>{
+  const archived=capture.files[index]
+  const record=proof.files.find(item=>item.path===archived.path)
+  const reference={...record,base:record.base??proof.base}
+  assert.equal(allocationPreservesChecker(archived,reference),true)
+  const changed=structuredClone(archived)
+  changed.segments[0].after+=" if deny_"+salt+"() { return }"
+  assert.equal(allocationPreservesChecker(changed,reference),false,"new predicate "+archived.path)
+  assert.equal(allocationPreservesChecker({...archived,path:archived.path+".other"},reference),false)
+  assert.equal(allocationPreservesChecker({...archived,base:"0".repeat(40)},reference),false)
+  assert.equal(allocationPreservesChecker({...archived,normalizedSha256:"0".repeat(64)},reference),false)
+  assert.equal(allocationPreservesChecker({...archived,segments:[]},reference),false)
+ }),{seed:342005,numRuns:512})
 })
