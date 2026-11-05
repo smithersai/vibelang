@@ -7,13 +7,15 @@ import (
 )
 
 func TestResultGenRepairQuoted(t *testing.T) {
+	chapterSays(t, "../vips/0021-producers.md", "A plain `function*` stays a JavaScript generator.")
 	if !strings.Contains(SpecText("007-tooling.md"), migrationDeclarationFixQuote) {
 		t.Fatalf("chapter 007 no longer says %q", migrationDeclarationFixQuote)
 	}
 }
 
 // resultGenBodies pairs each key with a generator body and whether plain code
-// can say the same thing. A body that stays a generator keeps its EK1002.
+// can say the same thing. An explicit producer used as a native generator
+// keeps EK1002 when its body cannot be repaired.
 var resultGenBodies = map[string]struct {
 	body  string
 	fixed bool
@@ -51,6 +53,17 @@ func FuzzResultGenRepair(f *testing.F) {
 			value = "Result.fail<string, number>(\"e\")"
 		}
 		source := fmt.Sprintf("export const f = (xs: Iterable<number>, n: number): Result.Result<number, string> => Result.gen(function* () { %s });", strings.ReplaceAll(rule.body, "VALUE", value))
+		native, err := w.Compile(t.Context(), Single(source))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer native.Remove()
+		for _, diagnostic := range native.Diagnostics {
+			if diagnostic.Source() == "EK" && diagnostic.Code() == 1002 {
+				Gap(t, "FuzzResultGenRepair", key+":native", "VIP-21: a plain function* stays a JavaScript generator")
+			}
+		}
+		source = strings.Replace(source, "Result.gen(function*", "Result.gen(effect function*", 1)
 		r, err := w.Compile(t.Context(), Single(source))
 		if err != nil {
 			t.Fatal(err)
@@ -66,7 +79,7 @@ func FuzzResultGenRepair(f *testing.F) {
 			}
 		}
 		if !found {
-			Gap(t, "FuzzResultGenRepair", key+":diagnostic", "Result.gen fixture must reach EK1002")
+			Gap(t, "FuzzResultGenRepair", key+":diagnostic", "explicit producer passed to Result.gen must reach EK1002")
 		}
 	})
 }
