@@ -36,7 +36,7 @@ func init() {
 func helpOptions() []*tsoptions.CommandLineOption {
 	var options []*tsoptions.CommandLineOption
 	for _, flag := range []struct{ name, description string }{
-		{"fix", "Apply safe quick fixes to the project before compiling; incompatible with --build and --watch."},
+		{"fix", "Apply safe quick fixes before compiling, or to each project in --build order; incompatible with --watch."},
 		{"lsp", "Start the language server (use --lsp --stdio)."},
 		{"stdio", "Use standard input and output for the language server (after --lsp)."},
 		{"estree", "Parse a .vibe file from stdin and print its ESTree JSON: --estree <file>."},

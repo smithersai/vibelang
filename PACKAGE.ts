@@ -1231,6 +1231,13 @@ const targets = {
     [go, node],
     "20m"
   ),
+  "build-repair-cli-contracts": check(
+    "Build repairs follow project order while watch invocations remain rejected",
+    "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test packages/compiler/test/fix-build-mode.property.test.mjs && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test --test-name-pattern='--fix refuses every watch alias' packages/compiler/test/fix.test.mjs && cd typescript/tsc && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run '^TestFixBuild' ./internal/vibelang",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"]],
+    [go, node, bun],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

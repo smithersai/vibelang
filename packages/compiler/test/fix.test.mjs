@@ -142,9 +142,9 @@ test("--fix composes unused Effect import cleanup with a rewrite", { skip }, (t)
 
 
 
-test("--fix refuses --watch and --build", { skip }, (t) => {
+test("--fix refuses every watch alias without changing sources", { skip }, (t) => {
   const root = project(t, source)
-  for (const flag of ["--watch", "--build"]) {
+  for (const flag of ["--watch", "-w", "--w", "-watch"]) {
     const result = vibelang(root, "--fix", flag)
     assert.notEqual(result.status, 0)
     assert.match(result.stderr, new RegExp(`vibelang --fix: ${flag} cannot be combined with --fix`))

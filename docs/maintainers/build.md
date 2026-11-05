@@ -2126,3 +2126,5 @@ The error registration projection check preserves authored native static blocks 
 The layer repair check preserves `LF` and `CRLF` comments while using explicit service lookup; keyed service-call inputs cover `try`, `catch`, pipes, and nested handlers with the same member name.
 
 The grouped schema boundary check retains exactly one inheritance error after a field-only repair, then compiles full migrations across parent, child, nested-array, namespace, and Unicode field variants.
+
+The `//:build-repair-cli-contracts` target checks build aliases, repair flag order, repeated runs and source line endings against VIP-34. It also retains watch refusal controls and the dependency-order, cycle, ownership and cancellation tests for project builds.

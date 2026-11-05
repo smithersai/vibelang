@@ -1,0 +1,9 @@
+{
+  "property": "build-repair-argument-order",
+  "rule": "docs/design/vips/0034-compiler-and-tooling.md: builds repair each owned project in dependency order",
+  "input": {
+    "flag": "--build",
+    "fixFirst": true,
+    "crlf": true
+  }
+}
