@@ -28,6 +28,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Preserving migrations retain source comments, named parameter types and explicit generator return contracts.
 
+- JSDoc-link API checks loaded native libraries their declarations did not use. They now load only the required libraries while preserving comment and type errors.
+
 - A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
 
 - API provenance checks loaded unrelated browser declarations. They now use fewer libraries while retaining selected dependencies and native type errors.

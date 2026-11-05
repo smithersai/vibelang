@@ -2045,3 +2045,12 @@ The `//:native-identity-receipt-inputs` target validates frozen source and confi
 The `//:parser-error-registration-members` target checks the complete parser suite and generated matcher blocks across error forms and authored member variations.
 
 The `//:migration-source-twins` target checks complete source equality and declaration identity for implicit-run and imported generator migrations, including their evidence comments.
+
+
+JSDoc-link API fixtures select `lib.es5.d.ts` for independent native validation
+and every comparison program. The loaded-library guard requires ES5 and permits
+only its decorator libraries; it asserts outside comparison failure handling.
+The original comment-kind, export/member/tag, label and reverse-direction
+matrix and all 24 generated samples remain enabled. Structural type mutations
+must still differ independently of unchanged comments, and missing `BigInt`
+must retain native `TS2583` and make comparison unavailable.

@@ -1,16 +1,18 @@
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { basename, join } from "node:path"
+import { join } from "node:path"
 import { test } from "node:test"
 import { createRequire } from "node:module"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
+import { createEs5FixtureGuard } from "./testing/fixture-libraries.mjs"
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/foldkit-private-jsdoc-link.json", import.meta.url)))
-const ts = loadTypeScript()
-const options = { lib: ["lib.esnext.d.ts"], strict: true, noEmit: true, types: [] }
+const libraries = createEs5FixtureGuard(loadTypeScript(), "JSDoc link fixtures")
+const ts = libraries.ts
+const options = { lib: ["lib.es5.d.ts"], strict: true, noEmit: true, types: [] }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
-function compare(before, after) {
+function compare(before, after, expectedDiagnostics = []) {
   const root = mkdtempSync(join(tmpdir(), "api-link-"))
   try {
     for (const [side, text] of Object.entries({ before, after })) {
@@ -19,12 +21,14 @@ function compare(before, after) {
       const file = join(dir, "index.d.ts")
       writeFileSync(file, "export {};\n" + text)
       const program = ts.createProgram([file], options)
-      assert.ok(!program.getSourceFiles().some(source => basename(source.fileName).startsWith("lib.dom.")),
-        "JSDoc link fixtures must not load browser libraries")
+      libraries.assertLibraries()
       const diagnostics = ts.getPreEmitDiagnostics(program)
-      assert.equal(diagnostics.length, 0, JSON.stringify(diagnostics.map(d => ts.flattenDiagnosticMessageText(d.messageText,"\n"))))
+      assert.deepEqual(diagnostics.map(d => d.code), expectedDiagnostics,
+        JSON.stringify(diagnostics.map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n"))))
     }
-    return compareApiIdentity(ts,join(root,"before"),join(root,"after"), { compilerOptions: options })
+    const result = compareApiIdentity(ts,join(root,"before"),join(root,"after"), { compilerOptions: options })
+    libraries.assertLibraries()
+    return result
   } finally { rmSync(root, {recursive:true,force:true}) }
 }
 const declaration = (kind, target="Ref", label="", place="export") => {
@@ -71,4 +75,24 @@ test("link labels and rendering kinds remain part of exported documentation", ()
     assert.equal(result.identical, false, JSON.stringify(result))
     assert.ok(result.docDifferences.length, JSON.stringify(result))
   }
+})
+
+
+test("linked declarations retain native structural type mutations", () => {
+  for (const place of ["export", "member", "tag"]) {
+    const before = declaration("link", "Ref", "same label", place)
+    const result = compare(before, before.replace("value: string", "value: number").replace("value:string", "value:number"))
+    assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+    assert.equal(result.identical, false, JSON.stringify(result))
+    assert.ok(result.typeDifferences.length, JSON.stringify(result))
+    assert.deepEqual(result.docDifferences, [])
+  }
+})
+
+test("link fixtures keep missing native libraries invalid", () => {
+  const source = declaration("link") + "\nexport declare const unavailable: BigInt;"
+  const result = compare(source, source, [2583])
+  assert.equal(result.comparisonComplete, false, JSON.stringify(result))
+  assert.equal(result.identical, false, JSON.stringify(result))
+  assert.ok(result.environmentDiagnostics.some(d => d.blocking && /TS2583/.test(d.diagnostic)), JSON.stringify(result))
 })
