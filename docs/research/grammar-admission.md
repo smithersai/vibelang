@@ -62,6 +62,14 @@ every pipe body, is the early error of VIP-23's TC39 topic grammar and counts
 as syntax rejection. Warnings
 and suggestions do not.
 Operand and name/type errors do not.
+
+Modifiers on an export declaration (`export export {};`, `TS1193`) are
+another native grammar rejection. The compiler already rejects this form;
+the admission classifier recognizes its existing error. Warnings,
+suggestions, messages and diagnostics from another source with the same
+number remain non-rejections; ordinary exports with name or module-resolution
+errors retain their TypeScript derivation.
+
 `EK2109` is a schema type/value error, including a missing Schema value or
 incompatible decoded-key flags. It does not reject syntax: a schema field
 with an unadmitted `effect` modifier remains an admission mismatch when its
