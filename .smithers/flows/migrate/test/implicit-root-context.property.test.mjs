@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path"
 import { tmpdir } from "node:os"
 import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 import { compareDeclarations, recordDeclarationSurface } from "../lib/declarations.mjs"
 import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
@@ -43,7 +44,7 @@ function witness({ layout = "native", depth = 0, extension = ".ts", prefix = "."
         onUnRecoverableConfigFileDiagnostic: d => { throw Error(String(d.code)) } })
       assert.deepEqual(parsed.errors.map(d => d.code), [])
       if (native) {
-        const binary = resolve(process.env.VIBELANG_BINARY ?? "packages/compiler/native/vibelang")
+        const binary = resolve(process.env.VIBELANG_BINARY ?? fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url)))
         const emitted = spawnSync(binary, ["--singleThreaded", "-p", config, "--noEmit", "false", "--declaration",
           "--emitDeclarationOnly", "--composite", "false", "--incremental", "false", "--noEmitOnError", "false",
           "--pretty", "false", "--outDir", join(snapshot, prefix)], { cwd: pkg, encoding: "utf8" })
@@ -113,4 +114,13 @@ test("ambiguous inferred layouts refuse to assign a declaration to the wrong sib
     assert.throws(() => recordDeclarationSurface(ts, snapshot, pkg, [{ tsconfig: "tsconfig.json", prefix: "." }]),
       /ambiguous declaration output layout.*tsconfig.json/)
   } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("native declaration context properties work from the migration suite directory", async () => {
+  await checkProperty(fc, { name: corpus.key + ":native-cwd", rule: corpus.quote,
+    command: "cd .smithers/flows && node --test migrate/test/implicit-root-context.property.test.mjs",
+    numRuns: 8,
+    arbitrary: fc.record({ depth: fc.integer({ min: 0, max: 2 }), nestedConfig: fc.boolean(),
+      prefix: fc.constantFrom(".", "esm"), mutation: fc.constantFrom("same", "type", "docs", "missingAmbient") }),
+    check: input => witness({ ...input, native: true }) })
 })

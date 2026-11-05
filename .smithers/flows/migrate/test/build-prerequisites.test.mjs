@@ -5,6 +5,7 @@ import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { upgradeEffect } from "../lib/steps.mjs"
+import { bindCompilerArtifact } from "../lib/toolchain.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must } from "../lib/util.mjs"
 const corpus=JSON.parse(readFileSync(new URL("./corpus/foldkit-mcp-build-prerequisites.json",import.meta.url)))
@@ -68,7 +69,7 @@ test("candidate builds refresh stale distributions and retain exact source and d
     assert.ok(candidate.steps.every(s=>s.code===0 && s.signal===null))
   } finally {rmSync(root,{recursive:true,force:true})}
 })
-test("verify refuses an old failing baseline without build provenance instead of hiding it behind a clean candidate",async()=>{
+async function checkUnpreparedBaseline(producer = 0) {
   const {makeConfig,paths,verify}=await import("../lib/steps.mjs")
   const require=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))
   const root=mkdtempSync(join(tmpdir(),"migrate-unprepared-baseline-"))
@@ -77,13 +78,14 @@ test("verify refuses an old failing baseline without build provenance instead of
     const put=(file,text)=>{mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text)}
     mkdirSync(join(options.target,"node_modules"))
     symlinkSync(dirname(require.resolve("typescript/package.json")),join(options.target,"node_modules/typescript"))
-    put(join(options.toolchain,"native/vibelang"),"#!/bin/sh\nexit 0\n")
+    put(join(options.toolchain,"native/vibelang"),"#!/bin/sh\n# producer " + producer + "\nexit 0\n")
     const {chmodSync}=await import("node:fs");chmodSync(join(options.toolchain,"native/vibelang"),0o755)
     put(join(options.target,"packages/mcp/src/main.vibe"),"export const native=1")
     put(join(options.target,"packages/mcp/tsconfig.json"),'{"files":["src/main.vibe"]}')
     const manifest=JSON.parse(readFileSync(join(options.target,"packages/mcp/package.json")));manifest.private=true
     put(join(options.target,"packages/mcp/package.json"),JSON.stringify(manifest))
     put(p.config,JSON.stringify(config))
+    bindCompilerArtifact(config,p)
     put(p.plan,JSON.stringify({batches:[{files:["packages/mcp/src/main.ts"]}]}))
     put(join(p.baseline,"compile-packages__mcp.json"),"[]")
     put(join(p.baseline,"tests.json"),JSON.stringify({code:1,tests:{"original stdio distribution is prepared":"failed"}}))
@@ -92,7 +94,8 @@ test("verify refuses an old failing baseline without build provenance instead of
     assert.equal(result.checks.baselinePrepared,false)
     assert.equal(result.ok,false)
   } finally {rmSync(root,{recursive:true,force:true})}
-})
+}
+test("verify refuses an old failing baseline without build provenance instead of hiding it behind a clean candidate",()=>checkUnpreparedBaseline())
 
 const fc=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))("fast-check")
 const {runMeasurementJob}=await import("../lib/measurement.mjs")
@@ -129,4 +132,8 @@ test("a failed measurement-side build cannot produce test receipts",async()=>{
   assert.equal(existsSync(join(root,"receipts.json")),false)
   assert.equal(JSON.parse(readFileSync(join(root,"candidate-build.json"))).state,"failed")
  }finally{rmSync(root,{recursive:true,force:true})}
+})
+
+test("generated staged producers reach and retain the missing build-provenance refusal", async () => {
+ await fc.assert(fc.asyncProperty(fc.nat(1000), checkUnpreparedBaseline), { seed: 551110, numRuns: 6 })
 })

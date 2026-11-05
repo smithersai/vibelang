@@ -1066,3 +1066,7 @@ Revert removes each selected sidecar using the compiling project’s TypeScript 
 
 
 Self-contained declaration reference fixtures set `types: []` and choose their libraries explicitly, so unrelated installed ambient packages do not enter their TypeScript program. Diagnostics retain the source file, code and message; errors in the fixture itself still fail. Package API verification continues to use the package’s recorded compiler context.
+
+Verification fixtures pin their selected compiler before simulating conversion. This lets missing build provenance and missing distribution checks reach their own refusal conditions while compiler identity checks stay active.
+
+Native declaration-context tests locate the repository compiler relative to their module. They run from either the repository root or the flow directory; `VIBELANG_BINARY` still selects an explicit compiler.

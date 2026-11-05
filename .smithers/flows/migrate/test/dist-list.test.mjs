@@ -1,3 +1,4 @@
+import { bindCompilerArtifact } from "../lib/toolchain.mjs"
 // The dist-list diff (migrate-flow:paths-to-converted-files): a build that
 // selects sources by `.ts` drops a renamed module from dist and exits 0.
 import assert from "node:assert/strict"
@@ -177,7 +178,7 @@ test("compareDistLists property: each lost file is refused or paired, and a kept
 })
 
 // verify writes the diff into the batch's receipt and fails the batch on it.
-test("verify: a file the baseline build shipped and the batch's build does not fails checks.distList, named in verify.json", async () => {
+async function checkMissingDistribution(stem = "Gone") {
   const root = mkdtempSync(join(tmpdir(), "dist-list-verify-"))
   try {
     const { t, logs } = await repo(root, vibeAware)
@@ -194,16 +195,22 @@ test("verify: a file the baseline build shipped and the batch's build does not f
     const config = makeConfig({ target: t, run, packages: ["packages/a"], test: "true", testReport: "^(?<status>PASS) (?<name>.+)$", install: "true", toolchain })
     const p = paths(run)
     put(p.config, JSON.stringify(config))
+    bindCompilerArtifact(config, p)
     put(p.plan, JSON.stringify({ batches: [{ files: ["packages/a/src/Local.ts"] }] }))
     put(join(p.baseline, "compile-packages__a.json"), "[]")
     put(join(p.baseline, "tests.json"), JSON.stringify({ code: 0, tests: {} }))
-    put(join(p.baseline, "logs/baseline-dist.json"), JSON.stringify({ state: "complete", files: ["packages/a/dist/Gone.js", "packages/a/dist/Local.js", "packages/a/dist/index.js"] }))
+    put(join(p.baseline, "logs/baseline-dist.json"), JSON.stringify({ state: "complete", files: ["packages/a/dist/" + stem + ".js", "packages/a/dist/Local.js", "packages/a/dist/index.js"] }))
     const result = await verify({ run, batch: "01" })
     assert.equal(result.distList.state, "complete")
-    assert.deepEqual(result.distList.refusals.map(r => r.file), ["packages/a/dist/Gone.js"])
+    assert.deepEqual(result.distList.refusals.map(r => r.file), ["packages/a/dist/" + stem + ".js"])
     assert.equal(result.checks.distList, false)
     assert.equal(result.ok, false)
     const receipt = JSON.parse(readFileSync(p.verify("01"), "utf8"))
     assert.equal(receipt.distList.refusals[0].kind, "dist-missing")
   } finally { rmSync(root, { recursive: true, force: true }) }
+}
+test("verify: a file the baseline build shipped and the batch's build does not fails checks.distList, named in verify.json", () => checkMissingDistribution())
+
+test("generated missing distributions remain refused with pinned compiler provenance", async () => {
+ await fc.assert(fc.asyncProperty(fc.nat(1000), n => checkMissingDistribution("Gone" + n)), { seed: 551111, numRuns: 6 })
 })
