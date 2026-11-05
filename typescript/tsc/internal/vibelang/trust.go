@@ -83,12 +83,20 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	if failures, ok := trustedValueFailures(c, ast.GetInvokedExpression(call)); ok {
 		return &trust{kind: trustTagged, failures: failures, value: true}
 	}
-	if isParameterCall(c, call) {
-		return &trust{kind: trustES}
-	}
 	decl := signatureDeclaration(c, call)
 	if decl == nil {
+		if sig := c.GetResolvedSignature(call); sig != nil {
+			result := c.GetReturnTypeOfSignature(sig)
+			if result.Flags()&checker.TypeFlagsAny != 0 && result.AsIntrinsicType().IntrinsicName() == "error" {
+				return &trust{kind: trustES} // TypeScript owns the invalid call.
+			}
+		}
+		// Erased callable types have no signature contract. Even a VibeLang
+		// parameter of type any or Function throws unknown (VIP-4).
 		return &trust{kind: trustUnknown}
+	}
+	if isParameterCall(c, call) {
+		return &trust{kind: trustES}
 	}
 	file := ast.GetSourceFileOfNode(decl)
 	if isVibeLangFile(file) {
@@ -688,7 +696,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 			names = append(names, failure.name)
 		}
 		report(c, callee, foreignThrowingCall, name, strings.Join(names, " | "))
-	case t.kind == trustForeign:
+	case t.kind == trustForeign || t.kind == trustUnknown:
 		// VIP-4: unknown is a thrown contract. Keep the legacy trust
 		// diagnostics for Promise and unreachable-class contracts.
 		d := report(c, callee, EK0403)

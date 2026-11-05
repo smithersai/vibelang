@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -163,5 +164,43 @@ func TestForeignThrowsGateFixUnreachableContract(t *testing.T) {
 				t.Fatalf("not idempotent: files %v, refused %v", again.Order, again.Refused)
 			}
 		})
+	}
+}
+
+// Erasing a callable signature must not erase the preserving defect bridge.
+func TestForeignDynamicCallFix(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, typ := range []string{"any", "Function"} {
+		for _, call := range []string{"read()", "read?.()"} {
+			t.Run(typ+call, func(t *testing.T) {
+				dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/foreign-throws-gate.fail"), root)
+				source := fmt.Sprintf("export effect function probe(read: %s) { return %s }\n", typ, call)
+				if err := os.WriteFile(filepath.Join(dir, "main.vibe"), []byte(source), 0600); err != nil {
+					t.Fatal(err)
+				}
+				result := fixCase(t, dir)
+				if result.Err != nil || len(result.Refused) != 0 {
+					t.Fatalf("fix: %v; refused %v", result.Err, result.Refused)
+				}
+				var text string
+				for name, fixed := range result.Files {
+					if filepath.Base(name.AsString()) == "main.vibe" {
+						text = fixed.Text
+						if err := os.WriteFile(name.AsString(), []byte(text), 0600); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+				if !strings.Contains(text, "Effect.orDie(Effect.try(") || !strings.Contains(text, call) {
+					t.Fatalf("missing preserving dynamic-call bridge:\n%s", text)
+				}
+				if again := fixCase(t, dir); again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
+					t.Fatalf("not idempotent: %v files %v refused %v", again.Err, again.Order, again.Refused)
+				}
+			})
+		}
 	}
 }

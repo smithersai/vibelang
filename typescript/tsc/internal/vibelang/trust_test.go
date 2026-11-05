@@ -329,3 +329,54 @@ export effect function probe(s: string) {
 		})
 	}
 }
+
+// VIP-4: erased callable types retain an unknown thrown contract.
+func TestForeignDynamicCallGate(t *testing.T) {
+	for _, typ := range []string{"any", "Function"} {
+		for _, shape := range []string{
+			"export effect function probe(read: %s) { return read() }",
+			"declare const read: %s; export effect function probe() { return read() }",
+			"export effect function probe(read: %s) { return read?.() }",
+		} {
+			source := fmt.Sprintf(shape, typ)
+			files := map[string]string{
+				"/main.vibe":     source,
+				"/tsconfig.json": `{"compilerOptions":{"strict":true,"types":[]},"files":["main.vibe"]}`,
+			}
+			if got := untrustedCalls(t, files, "/tsconfig.json", "/main.vibe"); got[0] != 1 {
+				t.Errorf("%s: got %v; want one EK0403", source, got)
+			}
+		}
+	}
+}
+
+// Invalid calls keep their native TypeScript diagnostic, without a bridge cascade.
+func TestForeignDynamicCallNativeErrors(t *testing.T) {
+	for _, tc := range []struct {
+		source string
+		code   int32
+	}{
+		{"export effect function probe() { return missing() }", 2304},
+		{"export effect function probe(read: number) { return read() }", 2349},
+		{"export effect function probe(read: unknown) { return read() }", 18046},
+	} {
+		p, file, _, _ := editorProgram(t, tc.source)
+		ds := p.GetSemanticDiagnostics(t.Context(), file)
+		if len(ds) != 1 || ds[0].Code() != tc.code {
+			t.Errorf("native call diagnostic: %v; want only TS%d", ds, tc.code)
+		}
+	}
+}
+
+// Synthesized default constructor signatures return objects, not intrinsic types.
+func TestForeignDynamicSignaturelessConstructor(t *testing.T) {
+	for _, source := range []string{
+		"class Item {} export effect function probe() { return new Item() }",
+		"export effect function probe() { return new class { value = 1 }() }",
+	} {
+		p, file, _, _ := editorProgram(t, source)
+		if ds := p.GetSemanticDiagnostics(t.Context(), file); len(ds) != 0 {
+			t.Errorf("constructor: %v", ds)
+		}
+	}
+}

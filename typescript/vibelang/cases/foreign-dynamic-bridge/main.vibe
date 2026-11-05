@@ -1,0 +1,9 @@
+export effect function erased(read: any) {
+  return try Effect.orDie(Effect.try({ try: () => read(), catch: (e) => e }))
+}
+export effect function untyped(read: Function) {
+  return try Effect.orDie(Effect.try({ try: () => read(), catch: (e) => e }))
+}
+export effect function optional(read: any) {
+  return try Effect.orDie(Effect.try({ try: () => read?.(), catch: (e) => e }))
+}

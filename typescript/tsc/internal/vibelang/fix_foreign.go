@@ -333,7 +333,7 @@ func needsBoundary(c *checker.Checker, file *ast.SourceFile, call *ast.Node) boo
 	switch {
 	case t.promise, returnsEffectful(c, call):
 		return false
-	case t.kind == trustForeign:
+	case t.kind == trustForeign || t.kind == trustUnknown:
 		return true
 	case t.kind != trustTagged:
 		return false

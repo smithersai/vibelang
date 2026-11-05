@@ -245,6 +245,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The error inheritance example now records every forbidden declaration and retains the independent native property-type error.
 - A rejected producer `yield*` could hide native iterator errors inside its operand. Those errors now remain visible beside `EK2103`.
 - Platform misuse reports keep callback contract errors alongside the platform diagnostic, so each invalid argument remains visible.
+- Calls through `any` or `Function` could bypass the foreign-call check in effect code; they now require an explicit bridge, and `vibelang --fix` preserves thrown exceptions as defects.
 
 - Concurrent operators could hide a literal's `satisfies` error or add an unrelated array error. They now preserve the literal's own TypeScript errors beside `EK1801`.
 - Error-class custom matchers could lose their tag when saved or called with a subclass receiver. Plain errors now own their matcher, and both error forms return the original subject in either matching mode regardless of the caller's receiver.

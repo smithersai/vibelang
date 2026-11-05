@@ -49,6 +49,22 @@ func failuresForeignGateCases() []*failCase {
 			cases = append(cases, &failCase{Name: key + "-wrapped", Quote: quote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Lib: lib, Body: "const value = try Effect.try(() => read(s))"})
 		}
 	}
+
+	const dynamicQuote = "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives."
+	for _, typ := range []string{"any", "Function"} {
+		for _, shape := range []struct{ name, decls, call string }{
+			{"binding", "declare const read: " + typ, "read(s)"},
+			{"optional", "declare const read: " + typ, "read?.(s)"},
+			{"alias", "declare const original: " + typ + "\nconst read = original", "read(s)"},
+			{"member", "declare const holder: { read: " + typ + " }", "holder.read(s)"},
+		} {
+			key := "foreign-gate-dynamic-" + strings.ToLower(typ) + "-" + shape.name
+			cases = append(cases, &failCase{Name: key, Quote: dynamicQuote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Code: 403, Decls: shape.decls, Body: "⟦" + shape.call + "⟧"})
+			cases = append(cases, &failCase{Name: key + "-wrapped", Quote: dynamicQuote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Decls: shape.decls, Body: "const value = try Effect.try(() => " + shape.call + ")"})
+		}
+		key := "foreign-gate-dynamic-" + strings.ToLower(typ) + "-parameter"
+		cases = append(cases, &failCase{Name: key, Quote: dynamicQuote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Code: 403, Host: "none", Body: "export effect function probe(read: " + typ + ") { return ⟦read()⟧ }"})
+	}
 	return cases
 }
 

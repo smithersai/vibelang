@@ -9,16 +9,12 @@ FuzzFailuresSpec  feature:effect-decode-sync  compiler  VIP-4: 003-failures.md r
 FuzzFailuresSpec  feature:function-type-opts-in  compiler  VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws no error; lane nothrow-impl
 FuzzFailuresSpec  feature:new-tracked  compiler  VIP-4: 003-failures.md rejects the marked call for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
-FuzzFailuresSpec feature:dynamic-any compiler VIP-4: 003-failures.md contract dynamic-any disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
-FuzzFailuresSpec feature:dynamic-function compiler VIP-4: 003-failures.md contract dynamic-function disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:tagged-template-throw compiler VIP-4: 003-failures.md contract tagged-template-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:callable-union-throw compiler VIP-4: 003-failures.md contract callable-union-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec corpus:effect-decode-sync compiler VIP-4: minimized reproduction of feature:effect-decode-sync; lane w2-throw
 FuzzFailuresSpec corpus:function-type-opts-in compiler VIP-4: minimized reproduction of feature:function-type-opts-in; lane w2-throw
 FuzzFailuresSpec corpus:new-tracked compiler VIP-4: minimized reproduction of feature:new-tracked; lane w2-throw
 FuzzFailuresSpec corpus:effect-decoder-call compiler VIP-4: minimized reproduction of feature:effect-decoder-call; lane w2-throw
-FuzzFailuresSpec corpus:dynamic-any compiler VIP-4: minimized reproduction of feature:dynamic-any; lane w2-throw
-FuzzFailuresSpec corpus:dynamic-function compiler VIP-4: minimized reproduction of feature:dynamic-function; lane w2-throw
 FuzzFailuresSpec corpus:tagged-template-throw compiler VIP-4: minimized reproduction of feature:tagged-template-throw; lane w2-throw
 FuzzFailuresSpec corpus:callable-union-throw compiler VIP-4: minimized reproduction of feature:callable-union-throw; lane w2-throw
 FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail 66): current 003-failures.md contract effect-decoder-sync-call cannot be checked before the effect marker parses (TS1434); lane vip-core2
