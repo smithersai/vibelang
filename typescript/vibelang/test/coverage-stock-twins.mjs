@@ -1,3 +1,4 @@
+// run-seconds: 120 (the sum of its stage deadlines)
 // Rebuild concurrency coverage references with TypeScript 5.9.3 / Effect 4.1.0.
 // COVERAGE_REFERENCE_NODE_MODULES must hold exactly those packages.
 // COVERAGE_REFERENCE_SCRATCH selects the on-disk staging directory.

@@ -113,6 +113,34 @@ test("a custom runner's run-seconds line sets its deadline", (t) => {
   assert.equal(run.timedOut, true)
 })
 
+test("a runner takes the largest run-seconds among the helpers it imports", (t) => {
+  const { root, harness } = fixture(t)
+  const cases = path.join(root, "vibelang/cases")
+  fs.writeFileSync(path.join(cases, "_one.mjs"), "// run-seconds: 1\nexport const one = 1\n")
+  fs.writeFileSync(path.join(cases, "_five.mjs"), "// run-seconds: 5 (a pipeline)\nexport const five = 5\n")
+  fs.writeFileSync(path.join(cases, "_plain.mjs"), "export const plain = 0\n")
+  const wait = 'await new Promise((resolve) => setTimeout(resolve, 2500))\nconsole.log("expected")\n'
+  const runners = {
+    "takes-helper": `import { one } from "../_one.mjs"\n${wait}`,
+    "takes-largest": `import { one } from "../_one.mjs"\nimport { five } from "../_five.mjs"\n${wait}`,
+    "own-line-wins": `// run-seconds: 5\nimport { one } from "../_one.mjs"\n${wait}`,
+    "plain-helper": `import { plain } from "../_plain.mjs"\n${wait}`,
+  }
+  for (const [name, runner] of Object.entries(runners)) {
+    const at = path.join(cases, name)
+    fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+    fs.writeFileSync(path.join(at, "scenario"), "runtime")
+    fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+    fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
+    fs.writeFileSync(path.join(at, "run.mjs"), runner)
+  }
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const result = spawnSync(process.execPath, [harness, "--verbose", "--jobs", "4", ...Object.keys(runners)], { env, encoding: "utf8", timeout: 30_000 })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^FAIL\s+takes-helper: run.mjs printed printed no result \(exit killed by SIGKILL\)/m, result.stdout)
+  for (const name of ["takes-largest", "own-line-wins", "plain-helper"]) assert.match(result.stdout, new RegExp(`^ok\\s+${name}`, "m"), result.stdout)
+})
+
 test("command evidence records deadline kills, spawn errors, and bounded tails", async () => {
   const { CaseCommands } = await import("./harness-command.mjs")
   const commands = new CaseCommands()

@@ -21,7 +21,9 @@
 //     what it prints with expected/stdout.txt. A run.mjs has 60 s unless one
 //     of its lines says `// run-seconds: N`. A runner that is a pipeline of
 //     bounded stages sets N to the sum of its stage deadlines, so a slow stage
-//     trips its own deadline, which names the stage, before the runner's.
+//     trips its own deadline, which names the stage, before the runner's. A
+//     shared helper that is such a pipeline carries the line, and a runner
+//     without its own takes the largest N among the helpers it imports.
 //
 // --jobs must be a positive safe integer. At most one worker per selected
 // case starts; invalid counts exit 2 before reading or modifying cases.
@@ -74,7 +76,7 @@
 // case's node_modules links it under that name, so the compiler and Node
 // resolve the package there, as they would an installed one.
 import { createHash } from "node:crypto"
-import { CaseCommands } from "./harness-command.mjs"
+import { CaseCommands, runnerSeconds } from "./harness-command.mjs"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -327,12 +329,6 @@ function readHeaders(dir) {
     }
   }
   return headers
-}
-
-// A custom runner's deadline: 60 s, or the N of a `// run-seconds: N` line.
-function runnerSeconds(file) {
-  const line = /^\/\/ run-seconds: (\d+)\b/m.exec(fs.readFileSync(file, "utf8"))
-  return line ? Number(line[1]) : 60
 }
 
 // resultMarker starts the line on which out/run.mjs prints main()'s result.

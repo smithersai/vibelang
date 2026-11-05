@@ -1,3 +1,4 @@
+// run-seconds: 240
 import {checkSyntaxTwin} from "../../test/census-vibex.mjs"
 checkSyntaxTwin(import.meta.url)
 import assert from "node:assert/strict"

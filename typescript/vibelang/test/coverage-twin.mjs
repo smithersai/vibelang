@@ -1,3 +1,4 @@
+// run-seconds: 120 (the sum of its stage deadlines)
 // Stock TypeScript 5.9.3 checks both APIs; historical oracle uses Effect 4.1.0.
 // Normal smoke runs use the checkout pin. Missing dependencies fail, never skip.
 import assert from "node:assert/strict"

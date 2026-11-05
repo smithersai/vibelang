@@ -1,6 +1,6 @@
 import { assertReferenceTypes } from "../../test/cov-ch004-twin.mjs"
 import { ensurePinnedReference } from "../../test/vip7-reference.mjs"
-// run-seconds: 300
+// run-seconds: 360
 import assert from "node:assert/strict"
 import { copyFileSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { resolve, dirname } from "node:path"

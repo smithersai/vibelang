@@ -1,4 +1,4 @@
-// run-seconds: 180
+// run-seconds: 630
 import assert from "node:assert/strict"
 import { mkdtempSync, writeFileSync, readFileSync, symlinkSync, rmSync, mkdirSync, copyFileSync, readdirSync } from "node:fs"
 import { tmpdir } from "node:os"

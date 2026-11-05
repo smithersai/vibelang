@@ -1,3 +1,4 @@
+// run-seconds: 90
 import { stripInternalOutput } from "../_schema-stripinternal.mjs"
 import assert from "node:assert/strict"
 import fs from "node:fs"

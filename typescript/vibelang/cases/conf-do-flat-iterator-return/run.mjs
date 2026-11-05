@@ -1,3 +1,4 @@
+// run-seconds: 120
 import { ensurePinnedReference } from "../../test/vip7-reference.mjs"
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"

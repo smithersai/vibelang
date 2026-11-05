@@ -1,4 +1,31 @@
 import { spawn } from "node:child_process"
+import fs from "node:fs"
+import path from "node:path"
+
+const runSecondsLine = /^\/\/ run-seconds: (\d+)\b/m
+
+// The relative .mjs modules a runner imports, compiled output aside.
+export function runnerHelpers(file, text = fs.readFileSync(file, "utf8")) {
+  return [...text.matchAll(/\bfrom\s+"(\.{1,2}\/[^"]+\.mjs)"/g)]
+    .map((match) => path.resolve(path.dirname(file), match[1]))
+    .filter((helper) => fs.existsSync(helper) && !helper.split(path.sep).includes("out"))
+}
+
+// A custom runner's deadline: the N of its own `// run-seconds: N` line, or
+// else the largest N among its helpers, or else 60 s.
+export function runnerSeconds(file) {
+  const text = fs.readFileSync(file, "utf8")
+  const own = runSecondsLine.exec(text)
+  if (own) return Number(own[1])
+  const inherited = runnerHelpers(file, text).flatMap((helper) => runSecondsLine.exec(fs.readFileSync(helper, "utf8"))?.[1] ?? [])
+  return inherited.length ? Math.max(...inherited.map(Number)) : 60
+}
+
+// The stage deadlines written in a file, in seconds.
+export function stageSeconds(text) {
+  const written = [...text.matchAll(/\btimeout:\s*([0-9_]+)/g)].map((match) => Number(match[1].replaceAll("_", "")))
+  return written.reduce((sum, ms) => sum + ms, 0) / 1000
+}
 
 // A case owns its command history, so concurrent workers never mix evidence.
 export class CaseCommands {

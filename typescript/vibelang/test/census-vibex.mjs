@@ -1,3 +1,4 @@
+// run-seconds: 180 (a stock compile, a twin compile and a twin run, 60 s each)
 // VIP-39: grammar-only witnesses are also compiled by stock TypeScript 5.9.3.
 // Semantic/Effect witnesses use checked, runnable twins in separate cases.
 import assert from "node:assert/strict"

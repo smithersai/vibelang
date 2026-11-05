@@ -1,4 +1,4 @@
-// run-seconds: 150
+// run-seconds: 240
 // rule-evidence: docs/design/vips/0004-throw.md#9ce36360397b53a9
 // VIP-4 rejects source throw contracts; VIP-34 preserves authored documentation.
 import assert from "node:assert/strict"

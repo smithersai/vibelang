@@ -1,3 +1,4 @@
+// run-seconds: 180 (a reference install, then three stock TypeScript programs in this process)
 // Chapter 004: independent TypeScript 5.9.3 / Effect 4.1.0 type and Exit control.
 import assert from "node:assert/strict"
 import fs from "node:fs"

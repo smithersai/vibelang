@@ -1,3 +1,4 @@
+// run-seconds: 90
 // Chapter 007 / all project errors and warnings: docs/design/src/007-tooling.md#15266554647f83d7
 // Chapter 007 / public backend contract survives private narrowing: docs/design/src/007-tooling.md#8cb12d2692cf3a47
 // Chapter 007 / unrelated in-root native TypeScript diagnostics: docs/design/src/007-tooling.md#885c1b87f3457a45

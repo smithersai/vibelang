@@ -783,6 +783,14 @@ being killed as a whole. Under the 60-second default, post-merge killed healthy
 runs after four compiles on loaded hosts (medians of 13 to 20 seconds, maxima of
 86 to 115 seconds over 214 runs).
 
+A shared helper that is such a pipeline carries the line itself, and a runner
+without its own takes the largest `N` among the helpers it imports, so a new
+case on `cov-ch004-twin.mjs` or `census-vibex.mjs` needs no line.
+`//:harness-deadlines` fails when a runner's deadline is shorter than the
+deadlines written in the runner and its helpers. It reads files only, so a
+runner that would be killed as a whole without naming a stage fails in the gate
+in under a second, before it lands.
+
 The Chapter 15 failure case uses `TestClock.layer()` and advances virtual time
 with `TestClock.adjust` before joining its scenario. This checks timeout,
 uninterruptible debit/credit and cleanup ordering without racing host timers.
