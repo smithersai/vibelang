@@ -8,7 +8,14 @@ import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-self-namespace-alias.json", import.meta.url)))
-const ts = loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Self-namespace fixtures must not load unrelated browser libraries")
+  return program
+} }
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 function verify({ namespace = "ToolRuntime", primitive = "string", changed, self = false }) {
   const root = mkdtempSync(join(tmpdir(), "api-self-namespace-"))
@@ -25,13 +32,13 @@ function verify({ namespace = "ToolRuntime", primitive = "string", changed, self
       if (next === "name") declarations = declarations.replace("export type Description = { label: string };", "")
       writeFileSync(join(dir, "index.d.ts"), declarations)
       const program = ts.createProgram([join(dir, "index.d.ts")], {
-        noEmit: true, strict: true, types: [], module: ts.ModuleKind.Preserve,
+        ...compilerOptions, noEmit: true, strict: true, types: [], module: ts.ModuleKind.Preserve,
         moduleResolution: ts.ModuleResolutionKind.Bundler,
       })
       assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [], "stock tsc accepts the input")
     }
     const before = join(root, "before"), after = self ? before : join(root, "after")
-    const result = compareApiIdentity(ts, before, after)
+    const result = compareApiIdentity(ts, before, after, { compilerOptions })
     assert.equal(result.comparisonComplete, true, JSON.stringify(result))
     assert.equal(result.identical, !changed, JSON.stringify(result))
     if (changed) {

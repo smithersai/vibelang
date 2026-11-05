@@ -87,6 +87,11 @@ fail. VIP-27 permits one difference in twin-to-emitted order: adding the generat
 overload may gain its own tag. Authored throw tags, prose and every other
 JSDoc tag remain observable; a changed or removed authored tag, duplicate
 generated tags, a tag description or a tag on non-callable data fails.
+Merged self-namespace fixtures select `lib.es5.d.ts` in native validation
+and API comparison, and reject unrelated browser libraries. Native module
+options, self comparisons, type, value, name and documentation mutations,
+and four generated samples remain required.
+
 Callable parameter and return signatures keep their own documentation in the comparison, including inline function types. The compiler’s migration-fixture Go test uses this same gate while retaining its unannotated stock-twin goldens.
 This implements Will’s 2026-11-04 answer: “Yes this is normal that it doesn't
 exactly match”. Inline `{@link ...}`, `{@linkcode ...}` and `{@linkplain ...}` comments
