@@ -523,3 +523,11 @@ func releaseSeverity(options *core.CompilerOptions, m *Message) (string, string)
 	}
 	return "", ""
 }
+
+// coverExactErrorCodes follows the node's diagnostic anchor, such as the
+// keyword of satisfies, while retaining independent errors within its source.
+func coverExactErrorCodes(c *checker.Checker, node *ast.Node, codes ...int32) {
+	file := ast.GetSourceFileOfNode(node)
+	state := diagnosticsStateOf(c)
+	state.codes[file] = append(state.codes[file], coveredCodes{loc: scanner.GetErrorRangeForNode(file, node), codes: codes, exact: true})
+}

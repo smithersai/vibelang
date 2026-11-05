@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Contributor checks mistook the compiler’s sharded tests for a missing target. They now verify the runtime build dependency of every shard.
 - Contributor diagnostics checks could compile a second set of packages with workspace paths. They now use the compiler’s `-trimpath` settings.
 
+- A `for try` loop with a possibly missing Stream could show duplicate nullability errors. It now reports `EK2004` once and preserves independent errors in the operand and loop body.
+
 - A rejected `join` operand could hide errors inside its arguments. Those TypeScript errors now remain visible beside `EK1704`.
 
 - Rejected `try.all`, `try.race`, `try.any` and `try.allSettled` operands could hide errors inside calls, assertions and literals. Those TypeScript errors now remain visible beside `EK1801`.

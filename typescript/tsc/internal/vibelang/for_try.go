@@ -37,6 +37,7 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 			}
 			if !forTryOperandType(c, c.GetTypeAtLocation(n.Expression())) {
 				report(c, n.Expression(), EK2004)
+				coverExactErrorCodes(c, n.Expression(), 18047, 18048, 18049)
 				coverCodes(c, n.Expression(), 2488, 2504)
 			}
 			var body func(*ast.Node) bool

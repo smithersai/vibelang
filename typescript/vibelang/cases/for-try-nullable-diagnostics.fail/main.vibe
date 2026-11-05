@@ -1,0 +1,6 @@
+// expect: EK2004 TS2345 TS2322
+declare const rows: Stream.Stream<number> | undefined
+declare function take(n:number): Stream.Stream<number> | undefined
+export effect function nullable() { for try(const value of rows){void value} }
+export effect function argument() { for try(const value of take("bad")){void value} }
+export effect function body() { for try(const value of rows){const n:number="bad";void n} }
