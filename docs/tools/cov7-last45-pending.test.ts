@@ -48,8 +48,6 @@ test.todo("rule-evidence: docs/design/src/900-appendices.md#27cb4815189792bb | C
 // Chapter 900: EK4817 Schema instanceof warning.
 test.todo("rule-evidence: docs/design/src/900-appendices.md#5fea487a123560c6 | Chapter 900: EK4817 Schema instanceof warning - The existing linked case currently has an aggregate diagnostic mismatch; keep this witness pending until the assertion is isolated.")
 
-// Chapter 900: Schema.is migration advice.
-test.todo("rule-evidence: docs/design/src/900-appendices.md#f0bd0463c7375449 | Chapter 900: Schema.is migration advice - The existing linked case currently has an aggregate diagnostic mismatch; keep this witness pending until the assertion is isolated.")
 
 // Chapter 900: EK4604 await in legacy non-async hatch diagnostic.
 test.todo("rule-evidence: docs/design/src/900-appendices.md#04961d07f271f19d | Chapter 900: EK4604 await in legacy non-async hatch diagnostic - The existing linked case currently has an aggregate diagnostic mismatch; keep this witness pending until the assertion is isolated.")

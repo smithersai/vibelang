@@ -2334,3 +2334,7 @@ typescript/vibelang/cases/fork-arrow-body/main.vibe:14:10 lambda: choice fallbac
 typescript/vibelang/cases/fork-named-region/main.vibe:15:10 lambda: choice fallback -> program keyword # The explicit effect block is a program under VIP-2 and retains the cleanup callback's native behavior.
 typescript/vibelang/cases/fork-named-region/main.vibe:71:10 lambda: choice fallback -> program keyword # The explicit effect block is a program under VIP-2 and retains the finalizer's native behavior.
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda: effectFn table -> program keyword # The written effect block is a program under VIP-2, independently of the surrounding service-call inference.
+typescript/vibelang/cases/fork-arrow-body/main.vibe:14:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
+typescript/vibelang/cases/fork-named-region/main.vibe:15:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
+typescript/vibelang/cases/fork-named-region/main.vibe:71:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
+typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda: effectFn table -> program keyword # The nested catch operand is a written effect block, an Effect program under VIP-2.

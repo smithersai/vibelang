@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { readFileSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs"
+import { readFileSync, readdirSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { join } from "node:path"
 import fc from "fast-check"
@@ -309,4 +309,16 @@ test("only complete authentic generated grammar frames in the declared output re
     expect(totals(rows).covered).toBe(0)
     expect(rows.flatMap(r => r.evidence).some(e => e.kind === "cited")).toBe(false)
   }
+})
+
+test("schema membership advice has executable evidence without a duplicate pending obligation", async () => {
+  const appendix = "docs/design/src/900-appendices.md"
+  const oracle = "typescript/tsc/internal/vibelang/schema_membership_advice_test.go"
+  const sources: Sources = new Map([appendix, oracle].map(path => [path, readFileSync(new URL("../../" + path, import.meta.url), "utf8")]))
+  for (const file of readdirSync(import.meta.dir).filter(name => name.endsWith("-pending.test.ts")))
+    sources.set("docs/tools/" + file, readFileSync(new URL(file, import.meta.url), "utf8"))
+  const row = (await census(sources)).find(row => row.text.startsWith("Use `Schema.is`;"))
+  expect(row).toBeDefined()
+  expect(row!.evidence.some(item => item.test.startsWith(oracle + ":") && item.status === "passing" && !item.low)).toBe(true)
+  expect(row!.evidence.filter(item => item.status === "pending")).toEqual([])
 })
