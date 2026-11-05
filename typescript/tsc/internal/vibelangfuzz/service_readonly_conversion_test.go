@@ -13,11 +13,27 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
+const serviceReadonlyWholeShapeQuote = "This form adds no shape helper and no namespace"
+
+func TestServiceReadonlyConversionQuoted(t *testing.T) {
+	serviceReadonlyConversionQuoted(t)
+}
+
+func serviceReadonlyConversionQuoted(t testing.TB) {
+	t.Helper()
+	if !strings.Contains(SpecText("005-services.md"), serviceReadonlyWholeShapeQuote) {
+		t.Fatalf("005-services.md no longer says %q", serviceReadonlyWholeShapeQuote)
+	}
+}
+
 // Generate each member independently, so fuzzing explores combinations rather
 // than selecting from a fixed list. The oracle is stock tsc's original .ts API.
 func FuzzServiceReadonlyConversion(f *testing.F) {
 	startShortBudget(f)
-	for _, mode := range []uint16{0, 1, 2, 3, 15, 31, 63, 127, 255, 511, 1023} {
+	registerDeclarationIdentityScope(f)
+	serviceReadonlyConversionQuoted(f)
+	// Keyed corpora already cover 0, 511 and 1023.
+	for _, mode := range []uint16{1, 2, 3, 15, 31, 63, 127, 255} {
 		f.Add(mode)
 	}
 	tsc := StockTypeScript(f)
@@ -47,13 +63,9 @@ func FuzzServiceReadonlyConversion(f *testing.F) {
 		if mode&512 != 0 {
 			source = prefix + "export interface API " + shape + "\nexport class Store extends Context.Service<Store, API>()(\"test/Store\") {}\n"
 		}
-		// Body services publish Store.Shape; the idiomatic twin spells the
-		// companion explicitly (005-services). Named shapes pass through.
-		twin := source
-		if mode&512 == 0 {
-			twin = prefix + "type Store_shape = " + shape + ";\nexport class Store extends Context.Service<Store, Store_shape>()(\"test/Store\") {}\nexport declare namespace Store { type Shape = Store_shape }\n"
-		}
-		stock := emitDeclarationIdentityStock(t, w, tsc, Project{Files: map[string]string{"main.ts": twin, "package.json": "{\"type\":\"module\"}"}})
+		// The whole-shape conversion preserves the original native class API;
+		// its TypeScript twin must not invent a Shape namespace.
+		stock := emitDeclarationIdentityStock(t, w, tsc, Project{Files: map[string]string{"main.ts": source, "package.json": "{\"type\":\"module\"}"}})
 		defer os.RemoveAll(stock)
 		files := map[string]string{"main.vibe": source, "package.json": "{\"type\":\"module\"}"}
 		before := toolsCompile(t, w, "FuzzServiceReadonlyConversion", files)
@@ -66,8 +78,8 @@ func FuzzServiceReadonlyConversion(f *testing.F) {
 		for name, file := range fixed.Files {
 			files[strings.TrimPrefix(name.AsString(), filepath.ToSlash(before.Dir)+"/")] = file.Text
 		}
-		if !strings.Contains(files["main.vibe"], "service Store") {
-			t.Fatalf("mode %d was not converted:\n%s", mode, files["main.vibe"])
+		if !strings.Contains(files["main.vibe"], "service Store: ") {
+			t.Fatalf("mode %d was not converted to a whole shape:\n%s", mode, files["main.vibe"])
 		}
 		after := toolsCompile(t, w, "FuzzServiceReadonlyConversion", files)
 		defer after.Remove()
@@ -84,7 +96,7 @@ func FuzzServiceReadonlyConversion(f *testing.F) {
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 		defer cancel()
-		diff, err := compareIdentityDeclarations(ctx, api, filepath.Join(stock, "out"), current)
+		diff, err := declarationIdentityProbeFor(t, api)(ctx, api, filepath.Join(stock, "out"), current)
 		if err != nil {
 			t.Fatal(err)
 		}
