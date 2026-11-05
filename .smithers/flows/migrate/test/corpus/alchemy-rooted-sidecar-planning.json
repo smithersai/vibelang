@@ -1,0 +1,11 @@
+{
+  "issue": "rooted-sidecar-path-planning",
+  "quote": "an explicit `rootDir` supplies the source root, a composite project defaults to its config directory, and otherwise the root is the common source directory.",
+  "seed": 514141,
+  "input": {
+    "source": ".",
+    "output": ".vibe/declarations",
+    "module": "main",
+    "composite": false
+  }
+}

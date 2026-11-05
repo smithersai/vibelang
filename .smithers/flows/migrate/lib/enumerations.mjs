@@ -7,7 +7,7 @@
 // *.ts files no longer selects x.vibe (decided detail 268).
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, posix, relative } from "node:path"
-import { sidecarSettings, sidecarProjectLayout } from "./sidecar-config.mjs"
+import { sidecarSettings, sidecarRootLayout } from "./sidecar-config.mjs"
 export { removeSupersededSidecars, sidecarSettings } from "./sidecar-config.mjs"
 
 /** The directory setup names in vibe.sidecarDir and adds to rootDirs. */
@@ -181,12 +181,12 @@ export function addSidecarDir(text, ts, directory = sidecarDirectory, fileName) 
   }
   const vibe = find(root, "vibe")
   const own = vibe && ts.isObjectLiteralExpression(vibe.initializer) ? find(vibe.initializer, "sidecarDir") : undefined
-  const effective = fileName ? sidecarSettings(fileName, ts, text) : undefined
+  const effective = fileName ? sidecarSettings(fileName, ts, text, { sourceRootOnly: true }) : undefined
   const inherited = effective !== undefined && !own
   if (effective) directory = relative(dirname(fileName), effective.directory).replaceAll("\\", "/") || "."
   else if (own && ts.isStringLiteral(own.initializer)) directory = own.initializer.text || "."
   directory = posix.normalize(directory)
-  const sourceRoot = fileName ? relative(dirname(fileName), sidecarProjectLayout(fileName, ts, text).sourceRoot).replaceAll("\\", "/") || "." : "."
+  const sourceRoot = fileName ? relative(dirname(fileName), (effective ?? sidecarRootLayout(fileName, ts, text)).sourceRoot).replaceAll("\\", "/") || "." : "."
   const compiler = find(root, "compilerOptions")
   const rootDirs = compiler && ts.isObjectLiteralExpression(compiler.initializer) ? find(compiler.initializer, "rootDirs") : undefined
   if (rootDirs && ts.isArrayLiteralExpression(rootDirs.initializer)) {

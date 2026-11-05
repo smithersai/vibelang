@@ -6,7 +6,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 export function sidecarConfigIn(directory) {
   return ["vibe.config.json", "tsconfig.json", "jsconfig.json"].map(name => join(directory, name)).find(existsSync)
 }
-export function sidecarSettings(file, ts, text) {
+export function sidecarSettings(file, ts, text, { sourceRootOnly = false, directoryOnly = false } = {}) {
   file = resolve(file)
   const home = dirname(file)
   const visit = (path, stack) => {
@@ -37,15 +37,13 @@ export function sidecarSettings(file, ts, text) {
     return undefined
   }
   const settings = visit(file, new Set())
-  return settings && { ...settings, ...sidecarProjectLayout(file, ts, text) }
+  return settings && (directoryOnly ? settings : { ...settings, ...(sourceRootOnly ? sidecarRootLayout(file, ts, text) : sidecarProjectLayout(file, ts, text)) })
 }
 const within = (home, file) => {
   const path = relative(home, file).replaceAll("\\", "/")
   return path !== ".." && !path.startsWith("../") && !isAbsolute(path)
 }
-// Read the compiling graph, rather than the nearest config of each imported
-// source. TypeScript 5.9 declarationDir uses this graph's common source root.
-export function sidecarProjectLayout(file, ts, text) {
+const sidecarProject = (file, ts, text) => {
   file = resolve(file)
   const home = dirname(file)
   const read = text === undefined ? ts.readConfigFile(file, ts.sys.readFile) : ts.parseConfigFileTextToJson(file, text)
@@ -54,6 +52,27 @@ export function sidecarProjectLayout(file, ts, text) {
     { extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred },
     { extension: ".vibex", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }
   ])
+  return { file, home, parsed }
+}
+const referenceRootsOf = (references, ts) => (references ?? []).map(ref => {
+  const path = ts.resolveProjectReferencePath(ref)
+  const config = ts.readConfigFile(path, ts.sys.readFile)
+  const project = ts.parseJsonConfigFileContent(config.config ?? {}, ts.sys, dirname(path), undefined, path)
+  return project.options.rootDir ?? dirname(path)
+})
+// Only inferred common roots need a program. Path-only consumers do not need
+// to load imports of explicit-root, composite or empty solution projects.
+export function sidecarRootLayout(file, ts, text) {
+  const project = sidecarProject(file, ts, text), { home, parsed } = project
+  const sourceRoot = parsed.options.rootDir ?? (parsed.options.composite || !parsed.fileNames.length ? home : undefined)
+  return sourceRoot === undefined ? sidecarProjectLayout(file, ts, text) : {
+    sourceRoot, rootFiles: parsed.fileNames, projectReferences: parsed.projectReferences
+  }
+}
+// Read the compiling graph, rather than the nearest config of each imported
+// source. TypeScript 5.9 declarationDir uses this graph's common source root.
+export function sidecarProjectLayout(file, ts, text) {
+  const { home, parsed } = sidecarProject(file, ts, text)
   const options = { ...parsed.options, allowNonTsExtensions: true, noLib: true, types: [] }
   const host = ts.createCompilerHost(options)
   const original = host.getSourceFile
@@ -74,12 +93,7 @@ export function sidecarProjectLayout(file, ts, text) {
     }
     return resolved
   })
-  const referenceRoots = (parsed.projectReferences ?? []).map(ref => {
-    const path = ts.resolveProjectReferencePath(ref)
-    const config = ts.readConfigFile(path, ts.sys.readFile)
-    const project = ts.parseJsonConfigFileContent(config.config ?? {}, ts.sys, dirname(path), undefined, path)
-    return project.options.rootDir ?? dirname(path)
-  })
+  const referenceRoots = referenceRootsOf(parsed.projectReferences, ts)
   const program = ts.createProgram(parsed.fileNames, options, host)
   const sources = program.getSourceFiles().filter(source => !source.isDeclarationFile &&
     !source.fileName.replaceAll("\\", "/").includes("/node_modules/") &&
@@ -102,7 +116,7 @@ export function sidecarPath(source, settings) {
   return settings && within(settings.sourceRoot ?? settings.home, source) ? resolve(settings.directory, relative(settings.sourceRoot ?? settings.home, beside)) : beside
 }
 // Like emit, setup protects the complete selected output set before cleanup.
-export function removeSupersededSidecars(root, tracked, configs, ts) {
+function removeSupersededByGraph(root, tracked, configs, ts) {
   const key = path => ts.sys.useCaseSensitiveFileNames ? path : path.toLowerCase()
   const plans = [], selected = new Set()
   const trackedSources = new Set(tracked.filter(file => file.endsWith(".vibe")).map(file => resolve(root, file)))
@@ -120,6 +134,42 @@ export function removeSupersededSidecars(root, tracked, configs, ts) {
   const removed = []
   for (const { stale, output } of plans) {
     if (key(stale) === key(output) || selected.has(key(stale)) || !existsSync(stale) || lstatSync(stale).isDirectory()) continue
+    rmSync(stale)
+    removed.push(relative(root, stale).replaceAll("\\", "/"))
+  }
+  return [...new Set(removed)].sort()
+}
+
+// Known root files already belong to their compiling project. Load a complete
+// graph only for an inferred boundary or a tracked import-only candidate.
+// Overlapping output directories keep the complete selected-output oracle.
+export function removeSupersededSidecars(root, tracked, configs, ts) {
+  const candidates = [...new Map(tracked.filter(file => file.endsWith(".vibe")).map(file => [resolve(root, file), {
+    source: resolve(root, file), stale: resolve(root, file.replace(/\.vibe$/, ".d.vibe.ts"))
+  }])).values()].filter(({ stale }) => existsSync(stale) && !lstatSync(stale).isDirectory())
+  const projects = [...configs].map(config => {
+    const file = resolve(root, config), settings = sidecarSettings(file, ts, undefined, { sourceRootOnly: true })
+    return settings && { file, settings }
+  }).filter(Boolean)
+  const key = path => ts.sys.useCaseSensitiveFileNames ? path : path.toLowerCase()
+  if (projects.some(({ settings }) => candidates.some(({ stale }) => within(key(settings.directory), key(stale)))))
+    return removeSupersededByGraph(root, tracked, configs, ts)
+  const eligible = new Set()
+  const add = (sources, settings, references = []) => {
+    for (const source of sources) if (source.endsWith(".vibe") && within(settings.sourceRoot, source) &&
+        !references.some(home => within(home, source)) && ts.sys.readFile(source) !== undefined) eligible.add(resolve(source))
+  }
+  for (const { settings } of projects) {
+    if (settings.sources) add(settings.sources, settings)
+    else add(settings.rootFiles, settings, referenceRootsOf(settings.projectReferences, ts))
+  }
+  for (const { file, settings } of projects) {
+    if (settings.sources || !candidates.some(({ source }) => !eligible.has(source) && within(settings.sourceRoot, source))) continue
+    const complete = sidecarSettings(file, ts)
+    add(complete.sources, complete)
+  }
+  const removed = []
+  for (const { source, stale } of candidates) if (eligible.has(source)) {
     rmSync(stale)
     removed.push(relative(root, stale).replaceAll("\\", "/"))
   }

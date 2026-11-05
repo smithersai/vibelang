@@ -38,7 +38,7 @@ export function planSourceDeclarationImports({root,packages,ts,compiler,restore=
    if(!settings) {
     const primary=pkg.tsconfig??(sidecarConfigIn(join(root,dir))?posix.basename(sidecarConfigIn(join(root,dir))):undefined)
     const configs=primary?projectsOf(ts,join(root,dir),primary).map(file=>resolve(root,dir,file)):[]
-    settings=configs.map(file=>sidecarSettings(file,ts))
+    settings=configs.map(file=>sidecarSettings(file,ts,undefined,{sourceRootOnly:true}))
     if(!settings.length)settings=[undefined]
    }
    return [...new Set(settings.map(setting=>posix.normalize(relative(root,sidecarPath(resolve(root,source),setting)).replaceAll("\\","/"))))]

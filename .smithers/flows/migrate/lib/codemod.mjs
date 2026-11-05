@@ -204,7 +204,7 @@ export function sidecarOf(root, dir) {
   const config = sidecarConfigIn(home)
   if (!config) return besideSidecar
   const ts = loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url))])
-  const settings = sidecarSettings(config, ts)
+  const settings = sidecarSettings(config, ts, undefined, { sourceRootOnly: true })
   if (!settings) return besideSidecar
   return stem => {
     const path = relative(home, sidecarPath(resolve(home, stem + ".vibe"), settings)).replaceAll("\\", "/")

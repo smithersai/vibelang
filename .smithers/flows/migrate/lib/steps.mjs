@@ -926,8 +926,8 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
       // Retired style settings cannot select declaration spelling.
       const native = Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
       const next = Wire.addVibeIncludes(native, ts)
-      const outside = sidecarProjectLayout(file, ts, next).outside
-      writeIfChanged(file, text, enumerations.length || outside || Enumerations.sidecarSettings(file, ts, next) ? Enumerations.addSidecarDir(next, ts, Enumerations.sidecarDirectory, file) : next)
+      const relocate = enumerations.length || Enumerations.sidecarSettings(file, ts, next, { directoryOnly: true }) || sidecarProjectLayout(file, ts, next).outside
+      writeIfChanged(file, text, relocate ? Enumerations.addSidecarDir(next, ts, Enumerations.sidecarDirectory, file) : next)
       wiredTsconfigs.add(posix.join(pkg.dir, tsconfig))
     }
   }
@@ -936,7 +936,7 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
 function finishSidecarLayout({ t, ts, layout, changed, warnings, log }) {
   const { tracked, enumerations, wiredTsconfigs } = layout
   const sidecarProjects = [...wiredTsconfigs].map(file => {
-    const settings = Enumerations.sidecarSettings(join(t, file), ts)
+    const settings = Enumerations.sidecarSettings(join(t, file), ts, undefined, { directoryOnly: true })
     return settings && {
       config: file,
       directory: relative(dirname(join(t, file)), settings.directory).replaceAll("\\", "/") || ".",
@@ -1878,7 +1878,7 @@ export async function revertMany(options) {
     const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
     const project = owner && join(config.target, owner.dir, owner.tsconfig)
     const api = loadTypeScript([config.target, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))])
-    const settings = project && existsSync(project) ? Enumerations.sidecarSettings(project, api) : null
+    const settings = project && existsSync(project) ? Enumerations.sidecarSettings(project, api, undefined, { sourceRootOnly: true }) : null
     const bodyDeclarations = moduleDeclarationFiles(api, join(config.target, vibe), readFileSync(join(config.target, vibe), "utf8"),
       settings ? sidecarPath(join(config.target, vibe), settings) : undefined)
     prepared.push({ ts, vibe, reason, source, original, bodyDeclarations })
@@ -1907,7 +1907,7 @@ export async function revertMany(options) {
     const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
     const file = owner && join(config.target, owner.dir, owner.tsconfig)
     if (file && existsSync(file)) {
-      const settings = Enumerations.sidecarSettings(file, loadTypeScript([config.target, fileURLToPath(new URL("../../../", import.meta.url))]))
+      const settings = Enumerations.sidecarSettings(file, loadTypeScript([config.target, fileURLToPath(new URL("../../../", import.meta.url))]), undefined, { sourceRootOnly: true })
       if (settings) rmSync(sidecarPath(join(config.target, vibe), settings), { force: true })
     }
   }

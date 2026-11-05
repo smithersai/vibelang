@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Preparing declaration sidecars for large migrations could exhaust memory. Explicit `rootDir` settings and `composite` boundaries now let setup plan paths without loading unrelated source programs.
 
 - Diagnostic identity updates preserve authored source and project configuration without depending on generated declarations.
 
