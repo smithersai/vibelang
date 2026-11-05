@@ -44,11 +44,17 @@ func serviceReservedMemberError(member *ast.Node) *Message {
 func checkReservedServiceMembers(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsClassDeclaration(node) && declarationWord(node) == "service" && serviceShape(node) == nil {
+		if ast.IsClassDeclaration(node) && declarationWord(node) == "service" {
 			for _, member := range node.Members() {
 				if message := serviceReservedMemberError(member); message != nil {
 					report(c, member, message)
 					cover(c, member)
+					if member.Name().Text() == serviceKeyName {
+						// The source header is rejected above. Its private,
+						// protected or optional key can also invalidate the
+						// generated Context.Service base's static side.
+						coverExactCodes(c, node.Name(), 2417)
+					}
 				}
 			}
 		}

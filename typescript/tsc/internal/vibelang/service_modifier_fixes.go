@@ -21,8 +21,20 @@ var serviceContractModifierFix = &ls.CodeFixProvider{
 		member := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
 			return ast.IsPropertyDeclaration(node) || ast.IsMethodDeclaration(node)
 		})
-		if member == nil || !serviceContractClassSyntax(member) ||
-			member.Name() == nil || ast.IsPrivateIdentifier(member.Name()) {
+		if member == nil || member.Name() == nil || ast.IsPrivateIdentifier(member.Name()) {
+			return nil, nil
+		}
+		class := member.Parent
+		reserved := class != nil && ast.IsClassDeclaration(class) &&
+			declarationWord(class) == "service" && serviceReservedMemberError(member) != nil
+		if !reserved && !serviceContractClassSyntax(member) {
+			return nil, nil
+		}
+		// A missing factory cannot be inferred from the shape. Header-only
+		// repairs keep the existing initializer, comments and written type.
+		// Adding readonly to an old accepted default would change a Service
+		// into a Reference and introduce a fallback; leave that choice explicit.
+		if reserved && (member.Initializer() == nil || !ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly)) {
 			return nil, nil
 		}
 		var edits []*lsproto.TextEdit
@@ -48,9 +60,10 @@ var serviceContractModifierFix = &ls.CodeFixProvider{
 			}
 			s.Scan()
 		}
-		if token := member.PostfixToken(); token != nil && token.Kind == ast.KindExclamationToken {
+		if token := member.PostfixToken(); token != nil && (reserved || token.Kind == ast.KindExclamationToken) {
 			edits = append(edits, replaceRange(fix, nodeStart(fix.SourceFile, token), token.End(), "")...)
 		}
+
 		if len(edits) == 0 {
 			return nil, nil
 		}

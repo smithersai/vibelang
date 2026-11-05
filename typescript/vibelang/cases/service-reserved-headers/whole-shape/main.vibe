@@ -1,0 +1,13 @@
+service KeyPrivate: {n: number} { private static readonly key = "private" }
+service KeyProtected: {n: number} { protected static readonly key = "protected" }
+service KeyPublic: {n: number} { public static readonly key = "public" }
+service KeyOptional: {n: number} { static readonly key? = "optional" }
+service KeyDefinite: {n: number} { static readonly key! = "definite" }
+service KeyDeclared: {n: number} { declare static readonly key = "declared" }
+service DefaultMutable: {n: number} { static defaultValue = () => ({n: 1}) }
+service DefaultMissing: {n: number} { static readonly defaultValue: () => {n: number} }
+service DefaultPrivate: {n: number} { private static readonly defaultValue = () => ({n: 1}) }
+service DefaultProtected: {n: number} { protected static readonly defaultValue = () => ({n: 1}) }
+service DefaultOptional: {n: number} { static readonly defaultValue? = () => ({n: 1}) }
+service DefaultDefinite: {n: number} { static readonly defaultValue! = () => ({n: 1}) }
+service DefaultDeclared: {n: number} { declare static readonly defaultValue = () => ({n: 1}) }

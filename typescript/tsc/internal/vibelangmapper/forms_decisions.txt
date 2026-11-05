@@ -6720,6 +6720,12 @@ typescript/vibelang/cases/service-reserved-headers/input/main.vibe:7:48 lambda p
 typescript/vibelang/cases/service-reserved-headers/input/main.vibe:9:65 lambda plain fallback
 typescript/vibelang/cases/service-reserved-headers/main.vibe:2:91 lambda plain fallback
 typescript/vibelang/cases/service-reserved-headers/main.vibe:5:25 lambda plain annotation
+typescript/vibelang/cases/service-reserved-headers/whole-shape/main.vibe:10:82 lambda plain fallback
+typescript/vibelang/cases/service-reserved-headers/whole-shape/main.vibe:11:72 lambda plain fallback
+typescript/vibelang/cases/service-reserved-headers/whole-shape/main.vibe:12:72 lambda plain fallback
+typescript/vibelang/cases/service-reserved-headers/whole-shape/main.vibe:13:79 lambda plain fallback
+typescript/vibelang/cases/service-reserved-headers/whole-shape/main.vibe:7:61 lambda plain fallback
+typescript/vibelang/cases/service-reserved-headers/whole-shape/main.vibe:9:78 lambda plain fallback
 typescript/vibelang/cases/service-reserved-static-shape-names/main.vibe:13:33 lambda plain fallback
 typescript/vibelang/cases/service-reserved-static-shape-names/main.vibe:20:33 lambda plain fallback
 typescript/vibelang/cases/service-reserved-static-shape-names/main.vibe:8:33 lambda plain fallback
