@@ -96,6 +96,11 @@ compiler admission or lab/spec coverage before it is made pending. The
 subset keeps ECMAScript's `ExpressionStatement` lookahead exactly, including
 `async [no LineTerminator here] function`; Appendix A's contextual keywords are
 same-line, so `effect` before a line break is an identifier statement.
+A line break after an unfinished expression does not create a declaration
+position: `const b =\nschema is 1 + 1` uses the identifier `schema`.
+Such a witness retains the existing `is` precedence key instead of a
+missing-schema-body key. Actual `schema` and `error` declaration positions keep
+their separate classifications.
 The keyword table's member-position alternatives apply only in member
 positions: `effect[a]` is an element access, though `[` follows `effect` on an
 `interface` member.

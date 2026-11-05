@@ -214,6 +214,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-jsdoc-postfix-type", "schema C { id: string? }"},
 	{"schema-jsdoc-field-type", "schema C { id: ?? string }"},
 	{"schema-error-jsdoc-field-type", "schema error E { id: ?? string }"},
+	{"is-contextual-schema", "const b =\nschema is 1 + 1 ;"},
+	{"is-contextual-error", "const b =\nerror is 1 + 1 ;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -545,6 +547,11 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 				return "admission:fork-block"
 			}
 		case "schema", "error":
+			// A line break after an unfinished expression does not create a
+			// declaration position: const b = newline schema still reads a name.
+			if grammarDeclarationExpressionPrefix(ts, i) {
+				break
+			}
 			if i > 0 && !tok.nl && ts[i-1].text != ";" && ts[i-1].text != "}" && ts[i-1].text != "{" {
 				break
 			}
@@ -578,6 +585,30 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 		}
 	}
 	return ""
+}
+
+// grammarDeclarationExpressionPrefix recognizes tokens that still require
+// an operand across a line break. These positions cannot start a declaration.
+// Return and postfix ! are deliberately absent: their line breaks can end the
+// preceding statement.
+func grammarDeclarationExpressionPrefix(ts []grammarToken, i int) bool {
+	if i == 0 {
+		return false
+	}
+	// A reserved word after member access is a property name, not an
+	// operator that needs an operand on the next line.
+	if i > 1 && ts[i-1].kind == 'w' && (ts[i-2].text == "." || ts[i-2].text == "?.") {
+		return false
+	}
+	switch ts[i-1].text {
+	case "=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=",
+		"&=", "|=", "^=", "&&=", "||=", "??=", "=>",
+		"(", "[", ",", ".", "?.", "?", ":",
+		"+", "-", "*", "/", "%", "**", "&", "|", "^", "&&", "||", "??", "|>",
+		"typeof", "void", "delete", "new", "in", "instanceof":
+		return true
+	}
+	return false
 }
 
 // grammarInTypeAlias reports whether ts[i] is in the type of a `type Name =`

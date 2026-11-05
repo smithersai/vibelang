@@ -126,6 +126,8 @@ const specTests = [
   "TestGrammarAdmissionImportRelationalRegression",
   "TestGrammarAdmissionBitwise",
   "TestGrammarAdmissionIsPrefixPrecedenceKeys",
+  "TestGrammarAdmissionContextualDeclarationKeys",
+  "TestGrammarAdmissionContextualDeclarationRegression",
   "TestGrammarAdmissionIsPrefixPrecedenceRegression",
   "TestGrammarAdmissionIsPrefixCorpusReplay",
   "TestGrammarAdmissionSchemaJSDocKeys",
