@@ -258,6 +258,8 @@ A bare `return` in an `Effect.fn` generator must satisfy its written `Effect.fn.
 
 Async conversion requires every `await` operand to be statically `PromiseLike`. JavaScript also permits `await` on a scalar, an unknown value or a mixed union. Normalize those operands explicitly, for example with `await Promise.resolve(value)`, before requesting the refactor.
 
+A legacy service's cached `static readonly default` remains a cached value during migration. An exported key that cannot be changed safely is left with an explained refusal; a safe local key can become an equivalent native service class. Field reads, type reads and unrelated shadowed utility types remain intact. Adopting a `defaultValue` fallback is a separate semantic change.
+
 A synchronous call of a plain TypeScript function whose exceptions nothing lists, `EK0403` in effect code, becomes `try Effect.orDie(Effect.try({ try: () => f(x), catch: (e) => e }))`: the inline mapper cannot throw, an exception stays the defect it was in `Effect.gen`, and the function's type doesn't change. To make it a typed failure, return an `error` declaration's instance from `catch` and remove `Effect.orDie`. In a function that runs no Effect, `--fix` writes `: infer _`, which keeps the function plain.
 
 Apply every fix in a project, then compile as the rest of the command says:
