@@ -1,0 +1,4 @@
+go test fuzz v1
+[]byte("effect-this")
+byte(3)
+bool(false)

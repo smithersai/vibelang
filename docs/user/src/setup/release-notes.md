@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Effect parameter defaults could report duplicate no-throw errors; each disallowed call now reports once with parameter-specific guidance.
 - Migration verification tests could mistake retained warnings for blocking errors; severity checks now cover warnings, promoted errors, refusal notes and module provenance together.
 - Vite coverage examples could fail to load service modules; the examples now use explicit service lookups and cover both successful and failing calls.
+- The TypeScript mapper reported `EK2109` for valid computed schema keys. It now preserves native key expressions and reports `EK9001` when a key needs VibeLang operations the mapper cannot lower.
 
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 

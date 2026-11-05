@@ -4,6 +4,9 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // isSchemaDeclaration recognizes the parser's D133 struct initializer, so
@@ -97,9 +100,80 @@ func (p *projector) schemaPropertyKey(name *ast.Node) string {
 		}
 	}
 	if name.Flags&ast.NodeFlagsReparsed == 0 {
-		return p.text[p.tokenStart(name):name.End()]
+		key := p.text[p.tokenStart(name):name.End()]
+		if name.Kind == ast.KindComputedPropertyName && p.schemaKeyNeedsCompiler(name, key) {
+			p.syntaxDiagnostic(name, CodeUnprojectedForm, "The TypeScript mapper cannot preserve this computed schema key's execution context; build with vibelang.")
+		}
+		return key
 	}
 	return "\"\""
+}
+
+// Schema field names are runtime object keys. Copy ordinary TypeScript
+// expressions, but do not silently erase operations the projector cannot
+// lower inside the schema replacement.
+func (p *projector) schemaKeyNeedsCompiler(name *ast.Node, key string) bool {
+	for _, word := range p.keywords {
+		if word.at >= name.Pos() && word.at < name.End() {
+			return true
+		}
+	}
+	native := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: tspath.RootedFilePathFromAbsolute("/computed-schema-key.ts"),
+	}, "async function* __schemaKey() { const __field = { "+key+": 0 }; }", core.ScriptKindTS)
+	if len(native.Diagnostics()) != 0 {
+		return true
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		switch node.Kind {
+		case ast.KindYieldExpression, ast.KindAwaitExpression:
+			if schemaKeyEffectFrame(node, false) != nil {
+				return true
+			}
+		case ast.KindThisKeyword:
+			if frame := schemaKeyEffectFrame(node, true); frame != nil && (frame.Body() == nil || selfArg(frame.Body()) == "") {
+				return true
+			}
+		case ast.KindSuperKeyword, ast.KindMetaProperty:
+			if node.Kind != ast.KindMetaProperty || strings.HasPrefix(p.text[p.tokenStart(node):node.End()], "new") {
+				if schemaKeyEffectFrame(node, true) != nil {
+					return true
+				}
+			}
+		case ast.KindIdentifier:
+			if node.Text() == "arguments" && (node.Parent == nil || node.Parent.Name() != node || node.Parent.Kind == ast.KindShorthandPropertyAssignment) &&
+				schemaKeyEffectFrame(node, true) != nil {
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	return visit(name.Expression())
+}
+
+func schemaKeyEffectFrame(node *ast.Node, lexical bool) *ast.Node {
+	child := node
+	for parent := node.Parent; parent != nil; child, parent = parent, parent.Parent {
+		// A class member's computed name is evaluated outside its method.
+		if ast.IsFunctionLike(parent) {
+			if child == parent.Name() {
+				continue
+			}
+			if parent.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+				return parent
+			}
+			if !lexical || parent.Kind != ast.KindArrowFunction {
+				return nil
+			}
+		}
+		// Native field initializers and static blocks bind their own this.
+		if lexical && (parent.Kind == ast.KindClassStaticBlockDeclaration ||
+			parent.Kind == ast.KindPropertyDeclaration && child == parent.Initializer()) {
+			return nil
+		}
+	}
+	return nil
 }
 
 // schemaExpression serializes only expressions the schema parser creates.
@@ -137,9 +211,6 @@ func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 		var fields []string
 		for _, field := range node.AsObjectLiteralExpression().Properties.Nodes {
 			name := field.Name()
-			if name.Kind == ast.KindComputedPropertyName && name.Flags&ast.NodeFlagsVibeLang == 0 {
-				p.schemaDiagnostic(name, "A computed schema key requires an explicit Schema value.")
-			}
 			key := p.schemaPropertyKey(name)
 			fields = append(fields, key+": "+p.schemaExpression(field.Initializer(), schema))
 		}

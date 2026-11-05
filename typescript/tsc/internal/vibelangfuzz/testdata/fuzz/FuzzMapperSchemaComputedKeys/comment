@@ -1,0 +1,4 @@
+go test fuzz v1
+[]byte("comment")
+byte(3)
+bool(true)
