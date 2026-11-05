@@ -70,6 +70,45 @@ func TestResultGenQuickFix(t *testing.T) {
 	}
 }
 
+// A plain function* is checked natively (VIP-21), so Result.gen has a type of
+// its own, and the plain function writes it when no annotation does. The
+// export keeps that type.
+func TestResultGenWritesItsInferredType(t *testing.T) {
+	source := "export const f = (a: Result.Result<number, string>) => Result.gen(function* () { const x = yield* a; return x + 1 })"
+	rewrite := planOfResultGen(t, source)
+	if !rewrite.fixable() {
+		t.Fatalf("no quick fix: %s", rewrite.why)
+	}
+	fixed := applyEdits(source, rewrite.edits)
+	if !strings.Contains(fixed, "((): Result<number, string> => {") {
+		t.Fatal(fixed)
+	}
+	exported := func(source string) string {
+		program, file, _, _ := editorProgram(t, source)
+		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+			if d.Category() == diagnostics.CategoryError {
+				t.Fatalf("source reports %s\n%s", d.String(), source)
+			}
+		}
+		c, done := program.GetTypeCheckerForFile(t.Context(), file)
+		defer done()
+		var text string
+		var visit func(*ast.Node) bool
+		visit = func(n *ast.Node) bool {
+			if ast.IsVariableDeclaration(n) && n.Name().Text() == "f" {
+				text = c.TypeToString(c.GetTypeAtLocation(n.Name()))
+				return true
+			}
+			return n.ForEachChild(visit)
+		}
+		file.AsNode().ForEachChild(visit)
+		return text
+	}
+	if before, after := exported(source), exported(fixed); before == "" || before != after {
+		t.Fatalf("export type changed: %q, then %q\n%s", before, after, fixed)
+	}
+}
+
 // The plain function says the Result type the call has, so a literal the
 // annotation asks for stays one, and returns don't infer a union.
 func TestResultGenKeepsItsType(t *testing.T) {
@@ -94,7 +133,7 @@ func TestResultGenKeepsItsType(t *testing.T) {
 // its note says why.
 func TestResultGenRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
-		{"no annotation", "export const f = (a: Result.Result<number, string>) => Result.gen(function* () { const x = yield* a; return x + 1 })", "annotate"},
+		{"no readable success", "export const f = (a: Result.Result<any, string>) => Result.gen(function* () { const x = yield* a; return x })", "annotate"},
 		{"this", "export const f = () => Result.gen(function* () { return this })", "this"},
 		{"this in a callback", "export const f = (xs: number[]) => Result.gen(function* () { return xs.map(() => this) })", "this"},
 		{"arguments in a callback", "export const f = (xs: number[]) => Result.gen(function* () { return xs.map(() => arguments.length) })", "arguments"},
