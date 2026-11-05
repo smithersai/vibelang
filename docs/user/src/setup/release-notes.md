@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Invalid Stream loop heads now have regression coverage for the single owning diagnostic, without obsolete parser cascades.
+
+
 - The object runner example now retains Promise values through explicit synchronous boundaries, without running stored work or changing call order.
 
 
