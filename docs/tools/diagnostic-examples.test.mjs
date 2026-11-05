@@ -73,6 +73,17 @@ test("current fixtures resolve and every host witness runs in the Appendix host 
  for(const fixture of fixtures)if(fixture.host)assert.match(fixture.testName,new RegExp(selected[1]),fixture.code)
 })
 
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:21:12](../../../typescript/vibelang/cases/match-patterns.fail/main.vibe).
+
+test("EK4704 replays the computed key the parser still refuses, not an adopted optional binding",()=>{
+ const chapter=readCaptureFixtures(join(repository,"docs/design/src/900-appendices.md"),"utf8")
+ const appendix=appendixCodes(chapter)
+ const [example]=archiveExamples(new Map([["EK4704",appendix.get("EK4704")]]),repository)
+ assert.ok(example)
+ const line=readCaptureFixtures(join(example.project,"main.vibe"),"utf8").split("\n")[example.at.line-1]
+ assert.ok(line.slice(example.at.column-1).startsWith("[key()]"),line)
+})
+
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:13:10; error; also EK0403](../../../typescript/vibelang/cases/any-call-error-recovery.fail/main.vibe).
 
 test("the legacy any-call witness retains every co-located native throw diagnostic",()=>{
