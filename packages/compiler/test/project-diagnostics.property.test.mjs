@@ -10,6 +10,7 @@ import { loaderScope } from "../loader-scope.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
+const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const rule = "ordinary module emission, host rules and incompatible-option diagnostics still apply."
 
 test("project diagnostics oracle quotes the language specification", () => {
@@ -21,7 +22,7 @@ async function check({ count, nested, async, record, bad = true, warning = false
   let backend
   try {
     mkdirSync(join(root, "node_modules"))
-    symlinkSync(join(process.env.EFFECT_NODE_MODULES, "effect"), join(root, "node_modules/effect"))
+    symlinkSync(effect, join(root, "node_modules/effect"))
     symlinkSync(join(repo, "packages/runtime"), join(root, "node_modules/vibelang-runtime"))
     writeFileSync(join(root, "package.json"), '{"type":"module"}')
     writeFileSync(join(root, "main.vibe"), "export const answer = 42\n")
@@ -32,7 +33,9 @@ async function check({ count, nested, async, record, bad = true, warning = false
       `export const n: number = ${bad ? '"bad"' : '42'}\n` +
       (warning ? 'import { Effect } from "effect"\nexport const pause = () => Effect.sleep(0)\n' : ''))
     const project = join(root, "tsconfig.json")
-    writeFileSync(project, JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, types: [], skipLibCheck: true }, files: ["main.vibe", ...files], vibe: { effectGlobals: false, effectModules: false, severities: { EK3833: "warning" } } }))
+    // VIP-38: the plugin activates EK3833, and without the ignore option its
+    // warning fails the build, so no warning-only compile could reach the cache.
+    writeFileSync(project, JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, types: [], skipLibCheck: true, plugins: [{ name: "@effect/language-service", ignoreEffectWarningsInTscExitCode: true }] }, files: ["main.vibe", ...files], vibe: { effectGlobals: false, effectModules: false, severities: { EK3833: "warning" } } }))
     // A clean loader result, whether cached or recorded, must never hide the
     // native errors from a subsequent public project check.
     const trace = []
