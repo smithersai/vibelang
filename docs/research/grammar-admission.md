@@ -337,3 +337,11 @@ looking for arithmetic after the complete `is` test. A later relational, bitwise
 logical continuation ends that scan; `x is > -1`, `x is > 1 < 2 + 3` and
 `(x is > 1) + 1` remain separate valid controls. The keyed
 `is-relational-operand-precedence` corpus retains the accepted invalid form.
+
+
+The inherited expression subset includes bitwise AND (`&`), XOR (`^`) and
+OR (`|`) at their TypeScript precedence levels. Equality binds above them;
+logical operators and nullish coalescing bind below them. The `is` test remains
+a relational expression, so `x is > 1 & 2 + 3` has a grammar derivation and
+stays outside the pending tighter-arithmetic family. Native and `is` bitwise
+seeds have keyed corpus controls and no pending exemption.

@@ -524,7 +524,9 @@ CoalesceExpression = CoalesceExpressionHead "??" BitwiseORExpression
 CoalesceExpressionHead = CoalesceExpression | BitwiseORExpression
 LogicalORExpression = LogicalANDExpression | LogicalORExpression "||" LogicalANDExpression
 LogicalANDExpression = BitwiseORExpression | LogicalANDExpression "&&" BitwiseORExpression
-BitwiseORExpression = EqualityExpression | BitwiseORExpression "|" EqualityExpression
+BitwiseORExpression = BitwiseXORExpression | BitwiseORExpression "|" BitwiseXORExpression
+BitwiseXORExpression = BitwiseANDExpression | BitwiseXORExpression "^" BitwiseANDExpression
+BitwiseANDExpression = EqualityExpression | BitwiseANDExpression "&" EqualityExpression
 EqualityExpression = RelationalExpression | EqualityExpression EqualityOperator RelationalExpression
 EqualityOperator = "===" | "!==" | "==" | "!="
 RelationalExpression = AdditiveExpression | RelationalExpression RelationalOperator AdditiveExpression

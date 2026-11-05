@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:is-bitwise-continuation\nconst b = x is > 1 & 2 + 3;")

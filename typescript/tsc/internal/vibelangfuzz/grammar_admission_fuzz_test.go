@@ -68,6 +68,8 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
 	{"native-optional-tuple", "type T = [string?, number?];"},
+	{"native-bitwise", "const n = a | b ^ c & d;"},
+	{"is-bitwise-continuation", "const b = x is > 1 & 2 + 3;"},
 	{"native-import-meta", "const url = import.meta.url;"},
 	{"native-new-target", "function f() { return new.target; }"},
 	{"import-meta-property", "import.x;"},
