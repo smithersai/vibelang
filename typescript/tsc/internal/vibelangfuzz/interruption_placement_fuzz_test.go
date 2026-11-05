@@ -56,6 +56,8 @@ func FuzzInterruptionPlacement(f *testing.F) {
 		controls := []string{
 			"effect function valid() { uninterruptible { " + body + " } }",
 			"effect function computed() { const o = { [do { uninterruptible { }; \"m\" }]() {} }; class C { [do { interruptible { }; \"n\" }]() {} }; class D extends do { uninterruptible { }; (class {}) } {} }",
+			"effect function result() { uninterruptible { restore { return 7 } } }",
+			"effect function nestedResult() { const nested = effect { uninterruptible { restore { return 3 } } }; return try nested }",
 			"function names() { const " + word + " = 1; " + word + "\n{ }; return " + word + " }",
 		}
 		for j, input := range append([]string{source}, controls...) {

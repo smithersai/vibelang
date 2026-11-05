@@ -1,18 +1,17 @@
 // expect-result: {"restored":"Failure","value":3}
 
-// A restore block inside an uninterruptible block written as an expression,
-// `return uninterruptible { … }`, restores the interruptibility the region
-// began with, as it does inside the statement form (D180).
+// A restore block uses the lexical mask in its source activation.
+// The region retains outward returns and the original interruption state.
 effect function restored() {
   const started = try Deferred.make<string>()
   const fiber = fork effect {
-    return try uninterruptible(effect {
+    uninterruptible {
       restore {
         try Deferred.succeed(started, "started")
         try sleep("1 second")
       }
       return "finished"
-    })
+    }
   }
   try started.await()
   try fiber.interrupt()
@@ -22,12 +21,12 @@ effect function restored() {
 // The restore block runs where it stands, inside the region.
 effect function value(): number!! {
   let ran = 0
-  return try uninterruptible(effect {
+  uninterruptible {
     restore {
       ran = 1
     }
     return ran + 2
-  })
+  }
 }
 
 export effect function main() {

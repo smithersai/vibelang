@@ -1860,3 +1860,5 @@ The `//:service-member-controls` check preserves all eight invalid service-membe
 The `//:plain-runner-promise-data` check preserves eager Promise creation, the original result and page observations, and retained, discarded and parenthesized boundary mutations.
 
 The `//:option-direct-consumption` check covers direct and parenthesized `try` operands alongside assigned, returned, passed and stored generic Effect results.
+
+The `//:lexical-restore-regressions` check retains nested mask entry state, restored interruption, outward returns and rejection of masks in plain activations.
