@@ -204,6 +204,14 @@ Each Go test invocation passes `-trimpath` explicitly, including every
 invocation in an `&&` chain. This keeps portable workers on the same
 package-cache key convention as local builds.
 
+The build flag audit checks each target's shell declaration independently.
+An inline `GOFLAGS` assignment cannot supply flags to another target in the
+same file.
+A shell script can export `GOFLAGS` before running its commands; a later
+assignment or `unset GOFLAGS` ends that allowance. Regression mutations remove
+`-trimpath` from the actual native build declarations and insert independent
+build and test commands before and after them.
+
 A `node_modules` symlink in any of these directories, including `.smithers`,
 is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never
 runs `bun install` through it. The link owner must keep that install current.
