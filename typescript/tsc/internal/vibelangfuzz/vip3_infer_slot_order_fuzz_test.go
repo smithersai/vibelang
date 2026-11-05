@@ -61,6 +61,10 @@ func FuzzVIP3InferSlotMigrationOrder(f *testing.F) {
 		options := vibelang.FixOptions{VIPOnly: true}
 		fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), options)
 		if fixed.Err != nil || len(fixed.Refused) != 0 || len(fixed.Files) != 1 {
+			for _, file := range fixed.Files {
+				t.Logf("accepted migration state: diagnostic counts %v, rewrites %v\n%s", file.Counts, file.Rewrites, file.Text)
+			}
+
 			Gap(t, target, "migration:"+key, "%s; error %v, refused %+v, files %d\n%s",
 				legacyEffectAliasQuote, fixed.Err, fixed.Refused, len(fixed.Files), source)
 			return

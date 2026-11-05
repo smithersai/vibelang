@@ -1296,6 +1296,12 @@ const targets = {
     [],
     "15m"
   ),
+  "legacy-inferred-service-receiver-order": goVibelang(
+    "New effect markers and legacy service receivers migrate before inferred channels are frozen",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^TestFixVIPLegacyRunPositions$/service-receiver-statement$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=8m -run '^(TestVIP3InferSlotMigrationOrderQuoted|FuzzVIP3InferSlotMigrationOrder)$' ./internal/vibelangfuzz",
+    [],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
