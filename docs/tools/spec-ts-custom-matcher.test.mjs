@@ -4,8 +4,7 @@ import { test } from "node:test"
 import fc from "fast-check"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { loadTypeScript } from "../../scripts/api-identity.mjs"
-import { assertReferenceTypes } from "../../typescript/vibelang/test/cov-ch004-twin.mjs"
+import { compareApiIdentity, formatResult, loadTypeScript } from "../../scripts/api-identity.mjs"
 import { chapter } from "./spec-witness.mjs"
 
 // Stock TypeScript libraries lack Symbol.customMatcher. Complete counterparts
@@ -51,7 +50,14 @@ test("generated class matcher metadata cannot change the native class API", () =
         writeFileSync(join(root, "typescript/out/main.d.ts"), native)
         const compare = text => {
           writeFileSync(join(root, "out/main.d.ts"), text)
-          return assertReferenceTypes(ts, root)
+          // These declarations use only scalars and a unique symbol. Loading
+          // browser libraries for every mutation dominated this property.
+          const result = compareApiIdentity(ts, join(root, "typescript/out"), join(root, "out"), {
+            compilerOptions: { lib: ["lib.es2022.d.ts"] }
+          })
+          const detail = name + "<" + payload + ">: " + formatResult(result)
+          assert.equal(result.comparisonComplete, true, detail)
+          assert.equal(result.identical, true, detail)
         }
         compare(native)
         assert.throws(() => compare(native.replace("; }", "; static [customMatcher](value: unknown): boolean; }")), /differences/)
