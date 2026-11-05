@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -207,10 +206,27 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 		t.Skipf("stock tsc failed to run: %v\n%s", runErr, out)
 	}
 
+	var sourceNames []string
+	for name := range project.Files {
+		if isTypeScript(name) && fork.SourceFile(name) != nil {
+			sourceNames = append(sourceNames, name)
+		}
+	}
+	slices.Sort(sourceNames)
+	spans, sourceOnly, spanErr := stockSpans(ctx, tsc, fork.Dir, sourceNames...)
+	if spanErr != nil {
+		t.Fatalf("cannot compare D266 diagnostic ends: %v", spanErr)
+	}
+	written := readParityOutputs(fork.Dir, project.Files)
+	spans, written, anonymousCycle := recursiveParityBaseline(t, w, project, fork, spans, written)
+
 	// D266: the same diagnostics, by file, position, category and code.
 	var stock, ours []string
 	for line := range strings.SplitSeq(string(out), "\n") {
 		if m := stockDiagnostic.FindStringSubmatch(line); m != nil {
+			if anonymousCycle && m[5] == "5088" {
+				continue
+			}
 			stock = append(stock, formatParity(m[1], m[2], m[3], m[4], m[5]))
 		}
 	}
@@ -235,17 +251,6 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 	// D266 preserves diagnostic ends too. The CLI prints only starts; the
 	// installed stock compiler's API supplies complete UTF-16 spans, into the
 	// text Node decoded from the file's bytes.
-	var sourceNames []string
-	for name := range project.Files {
-		if isTypeScript(name) && fork.SourceFile(name) != nil {
-			sourceNames = append(sourceNames, name)
-		}
-	}
-	slices.Sort(sourceNames)
-	spans, sourceOnly, spanErr := stockSpans(ctx, tsc, fork.Dir, sourceNames...)
-	if spanErr != nil {
-		t.Fatalf("cannot compare D266 diagnostic ends: %v", spanErr)
-	}
 	var forkSpans []stockSpan
 	for _, d := range compiler.SortAndDeduplicateDiagnostics(fork.Diagnostics) {
 		span := stockSpan{Code: d.Code(), Category: d.Category().Name()}
@@ -278,21 +283,6 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 
 	// D266 and Chapter 27: ordinary TypeScript keeps the same JavaScript,
 	// declarations and maps, including declaration maps when requested.
-	written := map[string]string{}
-	_ = filepath.WalkDir(fork.Dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		rel := filepath.ToSlash(strings.TrimPrefix(p, fork.Dir+string(filepath.Separator)))
-		if _, input := project.Files[rel]; input || rel == "tsconfig.json" || !parityOutput(rel) {
-			return nil
-		}
-		data, err := os.ReadFile(p)
-		if err == nil {
-			written[rel] = string(data)
-		}
-		return nil
-	})
 	emitted := map[string]string{}
 	for name, text := range fork.Outputs {
 		if parityOutput(name) {

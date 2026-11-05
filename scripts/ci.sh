@@ -27,9 +27,11 @@ node scripts/share-effect.mjs
 
 # The parity tests compare with the stock TypeScript the mapper pins.
 ts7_version=$(node -p 'require("./packages/ts-mapper/package.json").devDependencies.typescript')
-ts7_cache="packages/ts-mapper/test/.cache/typescript-$ts7_version"
-[ -x "$ts7_cache/node_modules/.bin/tsc" ] ||
-	npm install --prefix "$ts7_cache" --no-audit --no-fund --silent "typescript@$ts7_version"
+for stock_version in "$ts7_version" 7.0.2; do
+ ts7_cache="packages/ts-mapper/test/.cache/typescript-$stock_version"
+ [ -x "$ts7_cache/node_modules/.bin/tsc" ] ||
+  npm install --prefix "$ts7_cache" --no-audit --no-fund --silent "typescript@$stock_version"
+done
 
 [ $# -gt 0 ] || set -- //... --jobs 8
 # A supplied empty paths file is meaningful; a failed lookup must stop the gate.

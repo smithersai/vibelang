@@ -2086,3 +2086,5 @@ The `//:diagnostic-example-source-locations` target replays located JSON and pro
 The `//:error-constructor-diagnostic-retirement` target checks the retired subclass-constructor identity and the current inheritance rejection across native constructor signatures.
 
 The `//:filtered-bundler-entry-cleanup` check runs the entry module with an empty name selection, verifying that teardown does not require setup to have run.
+
+The `//:anonymous-cycle-parity` check compares recursive declaration bytes with stock TypeScript `7.0.2` under VIP-27, retaining current native diagnostics, spans, JavaScript and unrelated outputs.

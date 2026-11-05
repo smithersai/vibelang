@@ -1160,6 +1160,12 @@ const targets = {
     [node],
     "1m"
   ),
+  "anonymous-cycle-parity": goVibelang(
+    "Anonymous recursive declarations match the approved stock baseline and preserve all other native checks.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestRecursiveInferredDeclarationsQuoted|TestCycleBaselineControls|FuzzRecursiveDeclarationParity)$'`,
+    [Tsc["vibelangfuzz-files"]],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
