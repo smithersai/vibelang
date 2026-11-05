@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Factory examples could fail with `EK0402` when a TypeScript validation callback was passed through a non-throwing parameter. Their explicit exception bridge now preserves the original defect and cold evaluation without relaxing that callback contract.
 - Declaration-order checks could report false differences around adjacent `@throws` comments. They now compare each function with its own comments and return type.
 - The grammar admission audit stopped on a bare `import` used as a comparison operand; it now records that native recovery gap while keeping dynamic imports as valid controls.
+- The expected-errors guide cited obsolete draft labels for throw-expression restrictions. It now describes the rejected operator position directly.
 - Reading a function constructor through a `Function` intersection, inherited interface or generic constraint could miss `EK0107`. Those reads now report the same restriction as a direct `Function` receiver.
 
 - A label inside a `for concurrent` body could repeat an enclosing label without an error. It now reports `TS1114`, matching TypeScript.
