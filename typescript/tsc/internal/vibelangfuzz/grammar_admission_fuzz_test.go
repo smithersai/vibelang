@@ -68,6 +68,8 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
 	{"native-export-modifiers", "export export { } ;"},
+	{"native-export-assignment-modifiers", "export export default { value: 1 };"},
+	{"native-import-modifiers", "export import value from \"missing\";"},
 	{"native-type-exports", "type Value = number; export type { Value };"},
 	{"native-export-names", "type Value = number; export { try };"},
 	{"native-default-object-export", "export default { value: 1 };"},
@@ -1680,7 +1682,7 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// such as TS1064, TS1192, TS2304 and TS2322 deliberately remain outside.
 	switch d.Code() {
 	case 1024, 1028, 1029, 1030, 1031, 1038, 1040, 1042, 1044,
-		1070, 1071, 1079, 1089, 1090, 1123, 1184, 1187, 1193, 1242, 1243, 1248,
+		1070, 1071, 1079, 1089, 1090, 1120, 1123, 1184, 1187, 1191, 1193, 1242, 1243, 1248,
 		1273, 1274, 1275, 1277, 1317, 1433, 1491, 1495, 18010, 18019:
 		return true
 	// checkGrammarModuleElementContext (checker/grammarchecks.go): an import,
@@ -1811,6 +1813,18 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"recovery-warning", "EK", diagnostics.CategoryWarning, 103, false},
 		{"recovery-suggestion", "EK", diagnostics.CategorySuggestion, 103, false},
 		{"native-code-collision", "", diagnostics.CategoryError, 501, false},
+		{"native-export-assignment-modifiers-error", "", diagnostics.CategoryError, 1120, true},
+		{"native-export-assignment-modifiers-warning", "", diagnostics.CategoryWarning, 1120, false},
+		{"native-export-assignment-modifiers-message", "", diagnostics.CategoryMessage, 1120, false},
+		{"native-export-assignment-modifiers-suggestion", "", diagnostics.CategorySuggestion, 1120, false},
+		{"native-export-assignment-modifiers-foreign", "other", diagnostics.CategoryError, 1120, false},
+		{"native-export-assignment-modifiers-ek-collision", "EK", diagnostics.CategoryError, 1120, false},
+		{"native-import-declaration-modifiers-error", "", diagnostics.CategoryError, 1191, true},
+		{"native-import-declaration-modifiers-warning", "", diagnostics.CategoryWarning, 1191, false},
+		{"native-import-declaration-modifiers-message", "", diagnostics.CategoryMessage, 1191, false},
+		{"native-import-declaration-modifiers-suggestion", "", diagnostics.CategorySuggestion, 1191, false},
+		{"native-import-declaration-modifiers-foreign", "other", diagnostics.CategoryError, 1191, false},
+		{"native-import-declaration-modifiers-ek-collision", "EK", diagnostics.CategoryError, 1191, false},
 		{"native-export-modifiers-error", "", diagnostics.CategoryError, 1193, true},
 		{"native-export-modifiers-warning", "", diagnostics.CategoryWarning, 1193, false},
 		{"native-export-modifiers-suggestion", "", diagnostics.CategorySuggestion, 1193, false},

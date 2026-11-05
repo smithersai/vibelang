@@ -419,3 +419,10 @@ after `static`, as native class modifiers allow. The modifier scan keeps
 `async` and `readonly` line restrictions and separates a field named
 `static`, methods and schema-error members. The exact multiline witness is
 a pending corpus case in that same diagnostic gap.
+
+Native structural modifier rejection also includes an export assignment
+with modifiers (`export export default {};`, `TS1120`) and a modified
+import declaration (`export import value from "pkg";`, `TS1191`).
+Only native errors count; source collisions and other diagnostic categories
+retain their existing classification. These already rejected forms remain
+nonpending corpus controls.
