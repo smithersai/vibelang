@@ -375,3 +375,9 @@ The concurrent array-operation inventory includes `coverTryOperationOperand`
 under `TryAll`. That diagnostic helper preserves native errors inside a
 rejected operand while covering its outer mismatch; it adds no syntax.
 The source census and row-order fuzz property enforce its coverage.
+
+The repaired `join` for-of head retains native `TS2487` beside operand
+diagnostics, as the corresponding `await` head does in TypeScript. Both
+same-line and multiline witnesses remain nonpending corpus controls.
+Their old `admission:join-for-head` pending entries are removed after XPASS;
+the inventory marks the path as recovery rather than language admission.
