@@ -1,0 +1,7 @@
+import { ev } from "vip-events"
+import { Effect } from "effect"
+import { holes } from "./native-default-iterator.js"
+
+function f(log:string[]){const [x=match(true){default:do{return 9};}]=holes(log);log.push("after");return x}
+function witness0(){const log:string[]=[];return [f(log),log]}
+export function main() { return Effect.succeed(witness0()) }
