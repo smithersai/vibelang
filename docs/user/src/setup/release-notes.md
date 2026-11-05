@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Pipeline repairs could reject canonical HTTP setters or change custom stage construction order; safe request setters now keep their data-first form while custom stages retain their receiver, argument order and coldness.
+- Whole-shape service examples omitted required bodies and failed with `EK0906`; the runtime and declaration examples now include empty bodies for primitive and callable shapes.
+
 
 - Formatting an Effect type assertion before `<` could fail with a missing `>` error; comparisons now retain their operator and type boundary.
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.

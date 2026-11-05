@@ -61,7 +61,7 @@ Construct signatures directly in a service body, such as `new(): T!!` and `new<T
 
 A call signature directly in a service body, such as `(value: string): string`, is `EK0902`: declare a named method, or a property whose type is a function, such as `format: (value: string) => string`.
 
-A service needs its body, even an empty one: `service Users` alone is `EK0906`. A service creates a run-time key, so it cannot be ambient: `declare service Users { … }`, or a service inside a `declare namespace` or `declare module`, is `EK0907`. Two members on one line need a separator, `;` or a line break: `a: number b: string` is `EK0908`, and its quick fix inserts `;`.
+A service needs its body, even an empty one: `service Users` alone is `EK0906`. A whole-shape declaration also needs braces: write `service Prefix: string {}` or `service Format: (value: string) => string!! {}` in a named package. A service creates a run-time key, so it cannot be ambient: `declare service Users { … }`, or a service inside a `declare namespace` or `declare module`, is `EK0907`. Two members on one line need a separator, `;` or a line break: `a: number b: string` is `EK0908`, and its quick fix inserts `;`.
 
 The `EK0908` repair inserts `;` before the following member's comments and JSDoc, retaining its `@throws` contract.
 
