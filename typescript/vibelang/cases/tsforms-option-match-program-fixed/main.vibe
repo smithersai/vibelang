@@ -1,19 +1,19 @@
 // expect-result: [7,7,-1,8,"failed","after"]
-export function choose(value: Option<number>) {
+export function choose(value: Option.Option<number>) {
   return do { const $optionSubject = value; const $optionHandlers: { onNone: () => import("effect/Effect").Effect<never, string, never>; onSome: (n: number) => import("effect/Effect").Effect<number, never, never>; } = {
     onNone: () => Effect.fail("missing"),
     onSome: (n) => Effect.succeed(n),
   }; const { onNone: $optionNone, onSome: $optionSome } = $optionHandlers; match ($optionSubject) { when Option.Some(let $optionValue): $optionSome($optionValue); default: $optionNone(); }; }
 }
 
-export effect function chooseRun(value: Option<number>) {
+export effect function chooseRun(value: Option.Option<number>) {
   return do { const $optionSubject = value; const $optionHandlers: { onNone: () => import("effect/Effect").Effect<number, never, never>; onSome: (n: number) => import("effect/Effect").Effect<number, never, never>; } = {
     onNone: () => Effect.succeed(0),
     onSome: (n) => Effect.succeed(n + 1),
   }; const { onNone: $optionNone, onSome: $optionSome } = $optionHandlers; match ($optionSubject) { when Option.Some(let $optionValue): try $optionSome($optionValue); default: try $optionNone(); }; }
 }
 
-export effect function chooseStatement(value: Option<number>) {
+export effect function chooseStatement(value: Option.Option<number>) {
   { const $optionSubject = value; const $optionHandlers: { onNone: () => import("effect/Effect").Effect<void, never, never>; onSome: (n: number) => import("effect/Effect").Effect<never, string, never>; } = {
     onNone: () => Effect.void,
     onSome: (n) => Effect.fail(`boom ${n}`),
