@@ -1,5 +1,15 @@
 [
   {
+    "code": "EK3005",
+    "case": "typescript/vibelang/cases/service-predicate-outer-capture.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks and its outer generic capture amendment require a resolved written Shape contract to be independent of free type parameters from enclosing scopes. This records existing published authority, not a new language decision."
+    },
+    "reason": "A type predicate or assertion result is part of the callable's written contract. Its boolean or void return type does not erase that result contract. Choosing a concrete predicate or a member-local generic operation requires author intent; no preserving mechanical contract change is available."
+  },
+  {
     "code": "EK9211",
     "case": "typescript/vibelang/cases/ref2-missing-provider.fail",
     "vip": "VIP-10",

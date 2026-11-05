@@ -19,6 +19,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A completed migration could still report a refusal from an earlier repair attempt. It now reports the remaining refused changes after resolving inferred requirement types.
 
+- A service could capture an enclosing generic type through a type guard or assertion result. These contracts now report `EK3005`; concrete predicates and member-local generic operations remain valid.
+
 - The service cheat sheet could direct readers to an unavailable external `Name.Shape` alias. It now explains the alias's scope and shows how to name the implementation outside the service body.
 
 - Pure ambient API validation loaded unrelated browser declarations. It now uses ES5 while browser augmentations retain native `Request` and `Window` types.
@@ -157,6 +159,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| A service type guard or assertion result captures an enclosing generic type | `EK3005`: choose a concrete predicate result or a member-local generic operation independent of the enclosing type; this contract choice requires a manual repair. |
 | A callable service contract whose explicit `this` parameter captures an enclosing generic type | `EK3005`: use a concrete receiver or a member-local generic operation independent of the enclosing type. Choosing that contract needs a manual repair. |
 | A `private` or `protected` constructor in `error` or `schema error` | Run `vibelang --fix` to retain it in an Effect TypeScript class, preserving constructor visibility and tag matching. |
 | Throwing callbacks passed through optional or nullable `@rethrows` parameters, including `sort` | Run `vibelang --fix` to keep the original defect with `Effect.orDie(Effect.try(...))`. |

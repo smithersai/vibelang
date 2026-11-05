@@ -1,0 +1,15 @@
+export function bad0<T>() { service S { static readonly key = "predicate/0"; check: (value: unknown) => value is T } }
+export function bad1<T>() { service S { static readonly key = "predicate/1"; check: (value: unknown) => asserts value is T } }
+export function bad2<T>() { service S { static readonly key = "predicate/2"; check: { (value: unknown): value is T } } }
+export function bad3<T>() { service S { static readonly key = "predicate/3"; check: { check(value: unknown): value is T } } }
+export function bad4<T>() { type Guard = (value: unknown) => value is T; service S { static readonly key = "predicate/4"; check: Guard } }
+export function bad5<T>() { type Guard<U> = (value: unknown) => value is U; service S { static readonly key = "predicate/5"; check: Guard<T> } }
+export function bad6<T>() { interface Guard<U> { (value: unknown): value is U }; service S { static readonly key = "predicate/6"; check: Guard<T> } }
+export function bad7<T>() { service S { static readonly key = "predicate/7"; check: { nested: { check(value: unknown): value is T } } } }
+export function bad8<T>() { type Guard = (value: unknown) => asserts value is T; service S { static readonly key = "predicate/8"; check: Guard } }
+export function direct<T>() { service S { static readonly key = "predicate/Direct"; check(value: unknown): value is T } }
+export function assertion<T>() { service S { static readonly key = "predicate/Assertion"; check(value: unknown): asserts value is T } }
+export function fixed<T>() { service S { static readonly key = "predicate/Fixed"; check(value: unknown): value is number } }
+export function local<T>() { service S { static readonly key = "predicate/Local"; check<U>(value: unknown): value is U } }
+export function native<T>() { class Native { check(value: unknown): value is T { return true } } }
+export const invalid: number = "wrong"

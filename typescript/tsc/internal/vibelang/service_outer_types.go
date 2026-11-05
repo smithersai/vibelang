@@ -71,6 +71,11 @@ func checkServiceOuterTypeParameters(c *checker.Checker, class *ast.Node) bool {
 		}
 		written = append(written, serviceThrownTypeNodes(member)...)
 		for _, node := range written {
+			// A predicate's result type is separate from its boolean or void
+			// return type and remains part of the written contract.
+			if node != nil && ast.IsTypePredicateNode(node) {
+				node = node.AsTypePredicateNode().Type
+			}
 			if node == nil {
 				continue
 			}
@@ -281,6 +286,11 @@ func (w *outerTypeWalk) find(t *checker.Type) (captured *checker.Type) {
 				}
 				for _, parameter := range signature.Parameters() {
 					if found := w.find(c.GetTypeOfSymbol(parameter)); found != nil {
+						return found
+					}
+				}
+				if predicate := c.GetTypePredicateOfSignature(signature); predicate != nil {
+					if found := w.find(predicate.Type()); found != nil {
 						return found
 					}
 				}

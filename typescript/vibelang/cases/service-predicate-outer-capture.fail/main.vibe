@@ -1,0 +1,8 @@
+// expect: EK3005
+// VIP-9: a written service contract cannot capture an enclosing type parameter.
+export function outer<T>() {
+  service S {
+    static readonly key = "predicate/OuterCapture"
+    check(value: unknown): value is T
+  }
+}
