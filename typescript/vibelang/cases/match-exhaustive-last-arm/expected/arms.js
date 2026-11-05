@@ -6,17 +6,17 @@ import * as runtime from "vibelang-runtime";
 import * as Option_1 from "effect/Option";
 export class NotFound extends TaggedError("NotFound") {
     static {
-        $schemaErrorMatcher(this, "NotFound");
+        $schemaErrorMatcher(this, "NotFound", true);
     }
 }
 export class Timeout extends TaggedError("Timeout") {
     static {
-        $schemaErrorMatcher(this, "Timeout");
+        $schemaErrorMatcher(this, "Timeout", true);
     }
 }
 export class Denied extends TaggedError("Denied") {
     static {
-        $schemaErrorMatcher(this, "Denied");
+        $schemaErrorMatcher(this, "Denied", true);
     }
 }
 // After return.
@@ -103,19 +103,19 @@ export function describe(failure) {
     {
         const $match10 = failure;
         {
-            const $extracted11 = $extract(NotFound, $match10);
+            const $extracted11 = runtime.$extract(NotFound, $match10, null, true);
             if ($extracted11 !== false && $extracted11.length === 1) {
                 let found = $extracted11[0];
                 return `no user ${found.id}`;
             }
         }
         {
-            if ($is(Timeout, $match10)) {
+            if (runtime.$is(Timeout, $match10, null, true)) {
                 return "retry";
             }
         }
         {
-            const $extracted12 = $extract(Denied, $match10);
+            const $extracted12 = runtime.$extract(Denied, $match10, null, true);
             {
                 runtime.$assertMatch($extracted12 !== false && $extracted12.length === 1, $match10);
                 let denied = $extracted12[0];
