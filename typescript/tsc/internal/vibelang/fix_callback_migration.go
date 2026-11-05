@@ -12,6 +12,45 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
+// A satisfies constraint is erased at runtime. Retain its structural check
+// with a local foreign call signature that admits the original thrown type.
+func callbackSatisfiesFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
+	p := proposal{file: file}
+	ds := program.GetSemanticDiagnostics(ctx, file)
+	for _, d := range ds {
+		if d.Source() != diagnosticSource || d.Code() != EK0402.Code {
+			continue
+		}
+		value := reportedNode(file, core.NewTextRange(d.Pos(), d.End()), func(n *ast.Node) bool {
+			return ast.IsIdentifier(n) || ast.IsPropertyAccessExpression(n) || ast.IsElementAccessExpression(n) || ast.IsSatisfiesExpression(n)
+		})
+		if value != nil {
+			node := value
+			for ast.IsParenthesizedExpression(node.Parent) {
+				node = node.Parent
+			}
+			if parent := node.Parent; ast.IsSatisfiesExpression(parent) && parent.Expression() == node {
+				operand := ast.SkipParentheses(parent.Expression())
+				key := fmt.Sprintf("callback-satisfies:%d", nodeStart(file, parent))
+				if !refused[key] && (ast.IsIdentifier(operand) || ast.IsPropertyAccessExpression(operand) || ast.IsElementAccessExpression(operand)) &&
+					!hasComment(file.Text()[parent.Expression().End():parent.End()]) {
+					constraint := parent.Type()
+					for constraint.Kind == ast.KindParenthesizedType {
+						constraint = constraint.Type()
+					}
+					if ast.IsFunctionTypeNode(constraint) && len(constraint.TypeParameters()) == 0 {
+						if edits, ok := callbackMigrationTypeEdits(file, constraint); ok {
+							p.fixes = append(p.fixes, fileFix{code: EK0402.Code, key: key, edits: edits, siteStart: d.Pos(), siteEnd: d.End(), sited: true})
+							return p
+						}
+					}
+				}
+			}
+		}
+	}
+	return p
+}
+
 // A TypeScript callback can throw. A private migrated callback parameter that
 // receives a foreign thrower retains that contract in a VIP-40 type-only body.
 // Bridge all its direct calls in the same proposal: changing the type alone
@@ -58,7 +97,7 @@ func callbackMigrationFixes(ctx context.Context, program *compiler.Program, file
 	return p
 }
 
-func callbackMigrationEdits(c *checker.Checker, file *ast.SourceFile, decl *ast.Node) ([]sourceEdit, bool) {
+func callbackMigrationTypeEdits(file *ast.SourceFile, decl *ast.Node) ([]sourceEdit, bool) {
 	start, end := nodeStart(file, decl), decl.End()
 	module, alias := freshName(file, "$callback$ts"), freshName(file, "$Callback")
 	typeBase := freshName(file, "$Type")
@@ -105,10 +144,20 @@ func callbackMigrationEdits(c *checker.Checker, file *ast.SourceFile, decl *ast.
 	}
 	header := "\nmodule " + module + " {\nexport type Callback" + typeParams + " = {\n/** @throws {unknown} */\n" + signature + ";\n};\n}\nimport type { Callback as " + alias + " } from " + module + ";\n"
 	edits := []sourceEdit{{start, end, alias + typeArgs}, {len(file.Text()), len(file.Text()), header}}
+	return edits, true
+}
+
+func callbackMigrationEdits(c *checker.Checker, file *ast.SourceFile, decl *ast.Node) ([]sourceEdit, bool) {
+	edits, ok := callbackMigrationTypeEdits(file, decl)
+	if !ok {
+		return nil, false
+	}
+
 	symbol := c.GetSymbolOfDeclaration(decl.Parent)
 	if symbol == nil {
 		return nil, false
 	}
+	bad := false
 	calls := 0
 	maps := map[*ast.Node]bool{}
 	var visit func(*ast.Node) bool

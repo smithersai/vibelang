@@ -18,7 +18,8 @@ import (
 // one call signature against another. This check covers the sites that give
 // a .vibe value a contextual function type: an argument, an object member (a
 // JSX attribute is one, VIP-39), a spread member, an initializer or
-// assignment, an array element and a return against a written type.
+// assignment, an array element, a satisfies constraint and a return against
+// a written type.
 //
 //	// handlers.ts
 //	/** @throws {Error} */ export function risky(): void { … }
@@ -46,6 +47,10 @@ func checkCallbackThrows(c *checker.Checker, file *ast.SourceFile) {
 		if isTypeScriptModule(node) || isHatchArgument(node) {
 			return false
 		}
+		if ast.IsSatisfiesExpression(node) {
+			checkSatisfiesCallbackOperands(c, node.Expression())
+			checkCallbackValue(c, node)
+		}
 		if (ast.IsIdentifier(node) || ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node)) && isContextualValue(node) {
 			checkCallbackValue(c, node)
 		}
@@ -72,6 +77,8 @@ func isContextualValue(expr *ast.Node) bool {
 	switch p.Kind {
 	case ast.KindCallExpression, ast.KindNewExpression:
 		return p.Arguments() != nil && slices.Contains(p.Arguments(), node)
+	case ast.KindSatisfiesExpression:
+		return p.Expression() == node
 	case ast.KindShorthandPropertyAssignment:
 		return p.Name() == node && !ast.IsAssignmentTarget(node)
 	case ast.KindPropertyAssignment, ast.KindVariableDeclaration, ast.KindPropertyDeclaration, ast.KindParameter:
@@ -85,6 +92,30 @@ func isContextualValue(expr *ast.Node) bool {
 		return p.Body() == node
 	}
 	return false
+}
+
+// References are checked by the ordinary value visitor. Other operands
+// still participate in the satisfies relation, including asserted values.
+func checkSatisfiesCallbackOperands(c *checker.Checker, node *ast.Node) {
+	node = ast.SkipParentheses(node)
+	switch {
+	case ast.IsIdentifier(node), ast.IsPropertyAccessExpression(node), ast.IsElementAccessExpression(node), ast.IsSatisfiesExpression(node):
+		return
+	case ast.IsConditionalExpression(node):
+		conditional := node.AsConditionalExpression()
+		checkSatisfiesCallbackOperands(c, conditional.WhenTrue)
+		checkSatisfiesCallbackOperands(c, conditional.WhenFalse)
+	default:
+		checkCallbackValue(c, node)
+	}
+}
+
+func isSatisfiesCallbackOperand(node *ast.Node) bool {
+	for node.Parent != nil && (ast.IsParenthesizedExpression(node.Parent) ||
+		ast.IsConditionalExpression(node.Parent) && node != node.Parent.AsConditionalExpression().Condition) {
+		node = node.Parent
+	}
+	return ast.IsSatisfiesExpression(node.Parent) && node.Parent.Expression() == node
 }
 
 // throwContract is what a function type's @throws tags say: whether it has
@@ -152,6 +183,12 @@ func (dst throwContract) admits(c *checker.Checker, src throwContract) bool {
 // reports false when expr names no foreign value, when a declaration of it
 // writes no @throws, or when its @throws names only never.
 func foreignThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool) {
+	if ast.IsSatisfiesExpression(expr) {
+		if contract, known := foreignThrows(c, ast.SkipParentheses(expr.Expression())); known {
+			return contract, true
+		}
+		return foreignAliasThrows(c, expr)
+	}
 	// Effectful returns intrinsically throw never, regardless of a foreign
 	// annotation. Classify the original signature before substitution.
 	if signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(expr), checker.SignatureKindCall); len(signatures) == 1 {
@@ -185,6 +222,14 @@ func foreignThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool) {
 	}
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol == nil && isSatisfiesCallbackOperand(expr) {
+		return foreignAliasThrows(c, expr)
+	}
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAccessor != 0 && isSatisfiesCallbackOperand(expr) {
+		// The returned callable keeps its written signature; the getter's
+		// own evaluation is not a tracked call.
+		return foreignAliasThrows(c, expr)
 	}
 	if symbol == nil || symbol.Flags()&(ast.SymbolFlagsFunction|ast.SymbolFlagsMethod|ast.SymbolFlagsVariable|ast.SymbolFlagsProperty) == 0 || len(symbol.Declarations()) == 0 {
 		return throwContract{}, false

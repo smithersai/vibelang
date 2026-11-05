@@ -1,0 +1,6 @@
+// expect: EK0402
+import {risky,generic,holder} from "./lib.js"
+export const direct=risky satisfies ((n:number)=>number)
+export const grouped=(risky) satisfies ((n:number)=>number)
+export const property=holder.read satisfies ((n:number)=>number)
+export const instantiated=generic satisfies ((n:number)=>number)

@@ -709,6 +709,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 					p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 				}
 			}
+			p = p.withFixes(callbackSatisfiesFixes(ctx, program, file, g.refused))
 			if options.MigrationOnly || options.VIPOnly {
 				p = p.withFixes(callbackMigrationFixes(ctx, program, file, g.refused))
 			}

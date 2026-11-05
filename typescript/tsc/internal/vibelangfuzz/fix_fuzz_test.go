@@ -102,6 +102,13 @@ func FuzzFix(f *testing.F) {
 			f.Add(mutableRelicFixKey + key + "\n" + choices)
 		}
 	}
+	for _, source := range []string{"identifier", "property", "element", "generic", "alias"} {
+		for _, layout := range []string{"direct", "parenthesized"} {
+			for _, names := range []string{"plain", "shadow"} {
+				f.Add(callbackSatisfiesFixKey + source + ":" + layout + ":" + names)
+			}
+		}
+	}
 	fuzzFixProjects(f, "FuzzFix")
 }
 
@@ -124,6 +131,11 @@ func fuzzFixProjects(f *testing.F, target string) {
 				source, reference := trailingWhitespaceFixSources(archive)
 				trailingReference = reference
 				archive = Archive(map[string]string{"main.vibe": source})
+			}
+			directSatisfies := strings.HasPrefix(archive, callbackSatisfiesFixKey)
+			if directSatisfies {
+				TestCallbackSatisfiesFixQuoted(t)
+				archive = callbackSatisfiesFixArchive(archive)
 			}
 			directErrorMember := strings.HasPrefix(archive, errorMemberFixKey)
 			schemaNonPublicConstructor := strings.HasPrefix(archive, errorMemberFixKey+"schema-constructor:")
@@ -228,6 +240,9 @@ func fuzzFixProjects(f *testing.F, target string) {
 					Gap(t, target, "fix:direct-option-match:diagnostic", "Chapter 7 requires EK4839 on a direct Option.match: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 				}
 			}
+			if directSatisfies && !callbackSatisfiesFixRunnable(r) {
+				Gap(t, target, "fix:callback-satisfies:original", "expected exactly the incompatible constraint: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			}
 			if directErrorMember && !errorMemberFixRunnable(r) {
 				Gap(t, "FuzzFix", "fix:error-member:original", "expected only the migrated error-member diagnostic: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 			}
@@ -264,6 +279,9 @@ func fuzzFixProjects(f *testing.F, target string) {
 			}
 			if mutableRelic && (!toolsErrorFree(r) || len(result.Files) == 0) {
 				Gap(t, "FuzzFix", "fix:mutable-relic:missing", "ordinary mutable marker must have a preserving fix: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			}
+			if directSatisfies && len(result.Files) == 0 {
+				Gap(t, target, "fix:callback-satisfies:missing", "expected a preserving constraint repair (error %v, refused %+v, remaining %+v):\n%s", result.Err, result.Refused, result.Remaining, archive)
 			}
 			if result.Err != nil {
 				Gap(t, target, "fix:converge", "--fix did not reach a fixed point (%v):\n%s", result.Err, archive)
@@ -397,7 +415,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 			// write; a declaration may print it differently after a fix (an
 			// error class becomes an error declaration, D284-D290), so the
 			// contracts are compared by assignability in both directions.
-			if (toolsTrailingBlockRunnable(runtimeBefore) || directErrorMember && errorMemberFixRunnable(runtimeBefore)) && toolsErrorFree(after) {
+			if (toolsTrailingBlockRunnable(runtimeBefore) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore)) && toolsErrorFree(after) {
 				if mismatch := toolsContractMismatch(t, w, runtimeBefore, after, false); mismatch != "" {
 					key := "fix:types"
 					if toolsContractMismatch(t, w, runtimeBefore, after, true) == "" {
@@ -408,8 +426,8 @@ func fuzzFixProjects(f *testing.F, target string) {
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
 			// marked with expect-result. Chapter 26 requires the same exit.
-			originalRunnable := toolsTrailingBlockRunnable(runtimeBefore) || toolsMemberRepairRuntime(r) || directErrorMember && errorMemberFixRunnable(runtimeBefore)
-			if (directLayer || directServiceClass || directErrorMember) && (!originalRunnable || !toolsErrorFree(after)) {
+			originalRunnable := toolsTrailingBlockRunnable(runtimeBefore) || toolsMemberRepairRuntime(r) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore)
+			if (directLayer || directServiceClass || directErrorMember || directSatisfies) && (!originalRunnable || !toolsErrorFree(after)) {
 				Gap(t, "FuzzFix", "fix:"+declarationKind+":not-runnable", "generated original and fixed declarations must run for Exit comparison")
 			}
 			// Keep the published rejected-member runtime oracle alongside

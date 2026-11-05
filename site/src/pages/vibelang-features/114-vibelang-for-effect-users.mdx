@@ -341,6 +341,8 @@ Promise-producing native invocations in effect code require an explicit boundary
 
 A foreign function value keeps its written `@throws` contract when passed as a callback, including imports from `.d.ts` files. An untagged callback type such as `() => void` admits only `never`: passing a foreign function declared `@throws {Error}` reports `EK0402` as an argument, object member, spread member or initializer. Handle the throw in a wrapper or use a callback type whose `@throws` admits it. A foreign function declared `@throws {never}` fits the untagged type.
 
+A `satisfies` constraint checks the same thrown contract, including a callable read from a getter. It preserves the callback's own type, so an incompatible outer argument, initializer or return still reports `EK0402` even when the `satisfies` constraint admits the throw. For a simple reference checked against an inline function type, `vibelang --fix` keeps the structural constraint in a local type-only `module` with a compatible thrown contract. This keeps the original callable and inferred public type; constraints with comments, named constraints and incompatible outer destinations need an explicit compatible callback type or a wrapper that handles the exception.
+
 Generic instantiation substitutes within the declaration's existing thrown contract; it does not erase it when the result becomes an Effect. A rethrowing synchronous callable's default callback contributes to its conservative own bound even when a safe callback is supplied, so declaration output cannot lose that default's throws.
 
 ## Trace and debug calls

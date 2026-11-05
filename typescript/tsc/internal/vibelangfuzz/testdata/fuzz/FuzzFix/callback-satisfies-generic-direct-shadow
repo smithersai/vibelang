@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:callback-satisfies-fix\ngeneric:direct:shadow")
