@@ -425,8 +425,8 @@ For an inherited child whose cancellation must return without waiting for exit,
 `ExperimentalBunChildProcess.layer`. Ordinary commands, pipes and stdio streams
 use Effect's `ChildProcessSpawner`.
 
-For a native mutable copy of Web headers, `Experimental.Headers.Headers.copy` preserves duplicate-cookie behavior; provide `ExperimentalNodeHeaders.layer`, `ExperimentalBunHeaders.layer` or `ExperimentalBrowserHeaders.layer`.
+For a native mutable copy of Web headers, `try (try Experimental.Headers.Headers).copy(input)` preserves duplicate-cookie behavior; provide `ExperimentalNodeHeaders.layer`, `ExperimentalBunHeaders.layer` or `ExperimentalBrowserHeaders.layer`.
 
-For a Web response body that must become a Node readable, `Experimental.NodeStream.NodeStream.fromWeb(body, { response, signal })` takes ownership eagerly and cancels the reader when the response closes. Provide the Node or Bun layer.
+For a Web response body that must become a Node readable, `try (try Experimental.NodeStream.NodeStream).fromWeb(body, { response, signal })` takes ownership eagerly and cancels the reader when the response closes. Provide the Node or Bun layer.
 
-To construct a native `Request` at a different URL while retaining its body, headers and signal, use `Experimental.Request.Request.atUrl(url, request)` with the Node, Bun or browser layer.
+To construct a native `Request` at a different URL while retaining its body, headers and signal, use `try (try Experimental.Request.Request).atUrl(url, request)` with the Node, Bun or browser layer.

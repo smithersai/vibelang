@@ -580,7 +580,7 @@ parser or stream implementation.
 
 ## Headers
 
-`Experimental.Headers.copy(input)` constructs a native mutable `Headers` object when the Effect runs. It preserves the native constructor's handling of duplicate `Set-Cookie` values and returns an independent copy. Provide `ExperimentalNodeHeaders.layer`, `ExperimentalBunHeaders.layer` or `ExperimentalBrowserHeaders.layer`; their service bundles include the corresponding layer.
+`try (try Experimental.Headers.Headers).copy(input)` constructs a native mutable `Headers` object when the Effect runs. It preserves the native constructor's handling of duplicate `Set-Cookie` values and returns an independent copy. Provide `ExperimentalNodeHeaders.layer`, `ExperimentalBunHeaders.layer` or `ExperimentalBrowserHeaders.layer`; their service bundles include the corresponding layer.
 
 ```vibe
 effect function copyHeaders(input: Headers) {
@@ -591,11 +591,11 @@ effect function copyHeaders(input: Headers) {
 
 ## NodeStream
 
-`Experimental.NodeStream.fromWeb(body, { response, signal })` eagerly takes ownership of a Web response body when the Effect runs and returns a Node-compatible readable. A response `close` destroys that readable, which cancels the underlying reader even if no Node consumer has started reading. Its close listener is removed when the readable closes. Provide `ExperimentalNodeStream.layer` or `ExperimentalBunNodeStream.layer`; both service bundles include it.
+`try (try Experimental.NodeStream.NodeStream).fromWeb(body, { response, signal })` eagerly takes ownership of a Web response body when the Effect runs and returns a Node-compatible readable. A response `close` destroys that readable, which cancels the underlying reader even if no Node consumer has started reading. Its close listener is removed when the readable closes. Provide `ExperimentalNodeStream.layer` or `ExperimentalBunNodeStream.layer`; both service bundles include it.
 
 ## Request
 
-`Experimental.Request.atUrl(url, existingRequest)` constructs a native `Request` at a replacement URL while preserving the existing request's native initialization, including its body, headers and signal. Construction happens when the Effect runs, so native constructor errors remain defects. Provide `ExperimentalNodeRequest.layer`, `ExperimentalBunRequest.layer` or `ExperimentalBrowserRequest.layer`; the service bundles include them.
+`try (try Experimental.Request.Request).atUrl(url, existingRequest)` constructs a native `Request` at a replacement URL while preserving the existing request's native initialization, including its body, headers and signal. Construction happens when the Effect runs, so native constructor errors remain defects. Provide `ExperimentalNodeRequest.layer`, `ExperimentalBunRequest.layer` or `ExperimentalBrowserRequest.layer`; the service bundles include them.
 
 ## When Effect ships them
 

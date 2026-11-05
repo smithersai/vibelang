@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The grammar admission audit could miss invalid `async` schema fields when an unresolved type hid their syntax diagnostic; it now records that gap explicitly.
 - The producer guide left mixed files unclear; it now explains that nearby Effect code preserves plain generators’ native calls and `yield*` delegation.
 - Effect type examples could fail on a missing non-null assertion group or a discarded Effect value. They now use `(value as number!!)!` and retain the asserted value.
+
+- `Experimental` service references called operations on module namespaces or service keys and failed with missing-property errors. They now look up the implementation before calling it.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.
@@ -39,11 +41,11 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The `data` guide left multiline assertions ambiguous; it now explains how parentheses preserve an assertion whose type continues on another line.
 
 - Migration-only fixes could leave foreign calls unwrapped in effect code or reject a private callback that accepted the original throwing function. They now preserve those exceptions as defects and retain supported private callback contracts through a TypeScript module body.
-- Cancelling an inherited child process waited for its exit; `Experimental.ChildProcess.runInherited` now sends one signal and returns immediately while the child is still active.
-- Copying native `Headers` could normalize duplicate `Set-Cookie` values; `Experimental.Headers.copy` now uses the native constructor and returns an independent mutable copy.
+- Cancelling an inherited child process waited for its exit; `try (try Experimental.ChildProcess.ChildProcess).runInherited(command, args, options)` now sends one signal and returns immediately while the child is still active.
+- Copying native `Headers` could normalize duplicate `Set-Cookie` values; `try (try Experimental.Headers.Headers).copy(input)` now uses the native constructor and returns an independent mutable copy.
 - Checking a scoped IPv6 address could reject Node-accepted zone names; `Experimental.NetAddress.isIPv6` now preserves the ASCII zone syntax accepted by Node.
-- An unread Web response body could stay uncancelled after response close; `Experimental.NodeStream.fromWeb` now owns the body eagerly and destroys it when the response closes.
-- Replacing a native `Request` URL required TypeScript; `Experimental.Request.atUrl` now preserves request options, body, headers and signal.
+- An unread Web response body could stay uncancelled after response close; `try (try Experimental.NodeStream.NodeStream).fromWeb(body, options)` now owns the body eagerly and destroys it when the response closes.
+- Replacing a native `Request` URL required TypeScript; `try (try Experimental.Request.Request).atUrl(url, request)` now preserves request options, body, headers and signal.
 
 - The matching guide repeated conflicting rules for `is` binding homes. It now describes the current scopes, temporal dead zone and native redeclaration errors together.
 - Converting sequential catch pipelines could leave recovery combinators behind, and a grouped `try` could leave part of its operand outside recovery. The converter now keeps intermediate programs cold and recovers the complete grouped operand.
@@ -1177,7 +1179,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Public `vibelang/project` results omitted errors and warnings in native TypeScript files. Sync and async project checks now report diagnostics from every input, with a separate cache from loader compiles.
 - `vibelang --fix` left legacy Effect data extension calls such as `Option.some(1).map(f)` unchanged. It now writes namespace calls such as `Option.map(Option.some(1), f)`, preserving evaluation order, comments, public declarations and module initialization order, and explains unsafe rewrites.
 
-- Liveness checks rejected PID `0` even though the native signal-zero query can inspect the current process group. `Experimental.Process.isRunning(0)` now preserves that query; actual signal delivery still requires a positive PID.
+- Liveness checks rejected PID `0` even though the native signal-zero query can inspect the current process group. `try (try Experimental.Process.Process).isRunning(0)` now preserves that query; actual signal delivery still requires a positive PID.
 
 - Returning an explicit service key widened its literal type to `string`; inferred function results now retain the key literal, as the native `Context.Service` counterpart does.
 - A method's custom `bind` property could reject calls with a `do` argument or give them incorrect declaration types; calls and template tags now keep the original method's signatures.
@@ -1904,7 +1906,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Formatting service members or class-form `error` fields separated by commas could fail with an internal parse error; the formatter now accepts their separators and keeps nested type commas and comments intact.
 - Checking an incomplete service in the editor, or with `noUnusedLocals` enabled, could panic; unsupported call and construct signatures now report `EK0902` while unused private implementation members are still checked.
 - A resize observer could remain allocated when the browser rejected its first target; `Experimental.ResizeObserver` now disconnects it when the scope closes, including after setup fails.
-- Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
+- Waiting for a pending browser commit or animation frame required a plain host callback; `try (try Experimental.Animations.Animations).nextFrameUnless(register)` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
 - A valid severity override could still fail compilation because an overridden base entry was invalid; only effective severity entries now report `EK3006`, and valid overrides allow emission again.
 - With a repeated configuration key, an invalid-value error could underline the earlier valid value; it now points at the last value that the config uses.

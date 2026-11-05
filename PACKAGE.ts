@@ -665,6 +665,12 @@ const targets = {
     sandbox: "none",
     timeout: "5m"
   }),
+  "docs-experimental-service-calls": check(
+    "Experimental service operations are called on looked-up implementations.",
+    "node docs/tools/experimental-service-calls.mjs && bun test docs/tools/experimental-service-calls.test.ts",
+    [],
+    [bun, node]
+  ),
   "docs-table-rows": check(
     "User documentation table rows follow their header, delimiter and cell count.",
     "node docs/tools/table-rows.mjs && bun test docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
