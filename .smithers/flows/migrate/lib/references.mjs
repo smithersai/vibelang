@@ -10,6 +10,19 @@ const eligible = /\.(?:ts|tsx|mts|cts|js|mjs|cjs|json|jsonc|ya?ml|toml|sh|nix|vi
 const strings = /(["'`])([^"'\`\s]*?)\.(ts|js|vibe)\1/g
 const code = /\.(?:[cm]?[jt]sx?|vibe)$/
 const literal = /(["'`])(?:\\.|(?!\1)[^\\])*?\1/g
+// Ranges arrive in source order from commentRanges or matchAll. Build the
+// masked text once so documentation-heavy generated modules take linear work.
+function maskRanges(source, ranges) {
+  const parts = []
+  let cursor = 0
+  for (const [start, end] of ranges) {
+    parts.push(source.slice(cursor, start), " ".repeat(end - start))
+    cursor = end
+  }
+  parts.push(source.slice(cursor))
+  return parts.join("")
+}
+
 function commentsOf(file,source) {
   const comments = commentRanges(source)
   if (/\.(?:sh|ya?ml|toml|nix)$/.test(file)) {
@@ -52,11 +65,9 @@ function readsText(source, at) {
 // migration can otherwise move that native input into the emitted graph.
 // This is a scope restriction, not a rewrite of the test or the runtime graph.
 function observesBundleInputs(source, comments) {
-  let masked = source
-  for (const [start, end] of comments.slice().sort((a,b)=>b[0]-a[0])) masked = masked.slice(0,start) + " ".repeat(end-start) + masked.slice(end)
+  const masked = maskRanges(source, comments)
   const quoted = [...masked.matchAll(literal)]
-  let code = masked
-  for (const m of quoted.slice().reverse()) code = code.slice(0,m.index) + " ".repeat(m[0].length) + code.slice(m.index+m[0].length)
+  const code = maskRanges(masked, quoted.map(m => [m.index, m.index + m[0].length]))
   const names = new Set(code.match(/\b(?:metafile|inputs)\b/g) ?? [])
   for (const m of quoted) {
     const name = m[0].slice(1,-1)
@@ -69,8 +80,7 @@ function observesBundleInputs(source, comments) {
 // directory and extension. Renaming or relocating any source changes that
 // enumeration, even when a disconnected native export keeps its path.
 function observesRuntimeEnumeration(source, comments) {
-  let masked = source
-  for (const [start, end] of comments.slice().sort((a,b)=>b[0]-a[0])) masked = masked.slice(0,start) + " ".repeat(end-start) + masked.slice(end)
+  let masked = maskRanges(source, comments)
   const names = new Set()
   masked = masked.replace(literal, text => {
     names.add(text.slice(1,-1))

@@ -72,6 +72,8 @@ Test result titles that enumerate a renamed source path retain that source's bas
 
 ## Test and fixture identity
 
+Source-path inspection masks comments and quoted examples in one pass, retaining character offsets for its diagnostics. Generated modules with many documentation comments keep the same runtime module enumeration and test bundle protections.
+
 Decided detail 272 keeps tests and fixtures as the migration's oracle. Each batch's `verify` compares pinned jj trees from before setup through the current batch, using the flow's test-file detection and fixture directories. Adding, deleting or renaming a test or fixture fails. Changed TypeScript files are parsed with the TypeScript AST; every byte outside the permitted literal or selector must stay unchanged, including embedded configs and setup. Source-text assertions remain protected.
 
 Exactly five edits are permitted:

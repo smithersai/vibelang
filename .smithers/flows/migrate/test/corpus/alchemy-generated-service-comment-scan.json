@@ -1,0 +1,10 @@
+{
+  "repo": "alchemy",
+  "pattern": "generated service modules contain thousands of documentation comments; source-path guards must inspect code without repeatedly copying the whole module",
+  "repeat": 25000,
+  "comment": "/** Generated service documentation. require.resolve('sample'); readdir('src'); extname('entry'); metafile.inputs; */",
+  "padding": "Generated declarations retain documentation and descriptions for every request and response field. ",
+  "code": "export interface Request { readonly value: string }",
+  "runtime": "const entry = require.resolve('sample'); const files = readdirSync('src'); const extension = extname(entry);",
+  "bundle": "const output = metafile.inputs['src/entry.ts'];"
+}
