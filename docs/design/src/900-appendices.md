@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (999 records)</summary>
+<summary>Parser and lowering hooks (1000 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1259,6 +1259,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/try_operations.go:checkTryOperations ` | ` admission:try ` | ` 900-appendices.md#TryAll `, ` 002-running.md ` | ` support ` | VIP-18 TryAll: EK1801 rejects an operand that is not an array of Effects (Appendix B); introduces no syntax |
 | ` vibelang/try_operations.go:coverTryOperationOperand ` | ` admission:try ` | ` 900-appendices.md#TryAll `, ` 002-running.md ` | ` support ` | VIP-18 `TryAll`: covers only the rejected array operand mismatch while preserving independent native errors; introduces no syntax |
 | ` vibelang/try_operations.go:tryOperationArrayType ` | ` admission:try ` | ` 900-appendices.md#TryAll `, ` 002-running.md ` | ` support ` | VIP-18 TryAll: EK1801 operand assignability to ReadonlyArray<Effect>; introduces no syntax |
+| ` vibelang/try_operations.go:filterRejectedTryOperationArgumentDiagnostics ` | ` admission:try ` | ` 900-appendices.md#TryAll `, ` 002-running.md `, ` 007-tooling.md ` | ` support ` | VIP-18 and VIP-34: `EK1801` replaces only the generated operand mismatch; written native errors remain; introduces no syntax |
 | ` vibelang/try_operations.go:tryOperationEffectType ` | ` admission:try ` | ` 900-appendices.md#TryAll `, ` 002-running.md ` | ` support ` | VIP-18 TryAll: EK1801 element assignability to Effect; introduces no syntax |
 | ` vibelang/try_operations.go:tryOperationImportPosition ` | ` admission:try ` | ` 900-appendices.md#TryAll `, ` 002-running.md ` | ` support ` | VIP-18: import placement for the EK1801 object quick fix; introduces no syntax |
 | ` vibelang/try_operations.go:trySettledLiteral ` | ` admission:try ` | ` 900-appendices.md#TryAll `, ` 002-running.md ` | ` support ` | VIP-18 TryAll: selects a no-spread array literal operand of try.allSettled for direct lowering (5c1a266c); introduces no syntax |

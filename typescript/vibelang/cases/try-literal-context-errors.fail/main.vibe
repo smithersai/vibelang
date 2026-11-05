@@ -1,0 +1,9 @@
+// expect: EK1801 TS2322 TS2353
+effect function objects() {
+  try.all ({ value: "bad" } satisfies { value: number })
+  try.any ({ extra: 1 } satisfies { value: number })
+}
+effect function arrays() {
+  try.race (["bad"] satisfies number[])
+  try.allSettled ([{ value: "bad" }] satisfies { value: number }[])
+}
