@@ -191,6 +191,34 @@ func foreignInvocationOwners(c *checker.Checker, call *ast.Node) []*checker.Type
 		}
 		seen[symbol] = true
 		for _, declaration := range symbol.Declarations() {
+			if ast.IsBindingElement(declaration) {
+				root := ast.GetRootDeclaration(declaration)
+				if ast.IsVariableDeclaration(root) && ast.IsVarConst(root) {
+					safe := true
+					for element := declaration; ast.IsBindingElement(element); element = element.Parent.Parent {
+						if element.Initializer() != nil {
+							safe = false
+							break
+						}
+					}
+					if safe {
+						// A binding pattern has no variable symbol; use its resolved container.
+						containerNode := declaration.Parent.Parent
+						var container *checker.Type
+						if ast.IsVariableDeclaration(containerNode) {
+							if containerNode.Type() != nil {
+								container = c.GetTypeFromTypeNode(containerNode.Type())
+							} else if containerNode.Initializer() != nil {
+								container = c.GetTypeAtLocation(containerNode.Initializer())
+							}
+						} else {
+							container = c.GetTypeAtLocation(containerNode)
+						}
+						owners = append(owners, defaultForeignCallbackOwners(c, []*checker.Type{container})...)
+					}
+				}
+				continue
+			}
 			if !ast.IsVariableDeclaration(declaration) || !ast.IsVarConst(declaration) || declaration.Type() != nil || declaration.Initializer() == nil {
 				continue
 			}

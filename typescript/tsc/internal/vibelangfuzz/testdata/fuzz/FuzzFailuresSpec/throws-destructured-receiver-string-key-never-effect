@@ -1,0 +1,3 @@
+go test fuzz v1
+string("throws-destructured-receiver-string-key-never-effect")
+byte(8)

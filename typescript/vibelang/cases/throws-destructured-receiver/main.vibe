@@ -1,0 +1,8 @@
+// expect-result: [7,[1,1]]
+import {nested,count} from "./lib.js"
+export effect function main() {
+ const {reader:{read}}=nested
+ const value=read("input")
+ return [value,count()]
+}
+export const parked=main()
