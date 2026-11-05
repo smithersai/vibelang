@@ -800,6 +800,22 @@ func (m *legacyModel) blockText(file *ast.SourceFile, block *ast.Node) string {
 			edits = append(edits, sourceEdit{at - start, node.End() - start, m.blockText(file, node)})
 			return false
 		}
+		// A held legacy program must retire service-value calls in the same
+		// replacement that writes its runs, including a receiver such as
+		// (Service()).read(), which is not itself a run. Inserting try alone
+		// would leave the non-callable service invocation unresolved.
+		if valueAt, open, rest, _, ok := effectValueCallEditsInOwner(m.a, file, node, true); ok {
+			if open != "" {
+				insert(valueAt-start, open)
+			}
+			for _, edit := range rest {
+				edits = append(edits, sourceEdit{edit.start - start, edit.end - start, edit.text})
+			}
+			if inner := ast.SkipParentheses(node.Expression()); isInvocation(inner) {
+				return inner.ForEachChild(visit)
+			}
+			return node.ForEachChild(visit)
+		}
 		if runs[node] {
 			if tryNeedsParentheses(node) {
 				insert(at-start, "(try ")

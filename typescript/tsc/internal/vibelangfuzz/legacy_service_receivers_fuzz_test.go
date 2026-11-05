@@ -71,6 +71,10 @@ func FuzzVIPLegacyServiceReceivers(f *testing.F) {
 // declaration and an object method, each written as an Effect function whose
 // errors are inferred (the methods can fail with PlatformError).
 var legacyReceiverOwners = map[string]string{
+	"parenthesized-arrow": "export const g = ((path: string): RET!infer E!FileSystem.FileSystem => {\nBODY\n})\n",
+	"named-expression":    "export const g = function read(path: string): RET!infer E!FileSystem.FileSystem {\nBODY\n}\n",
+	"class-method":        "export class Api { g(path: string): RET!infer E!FileSystem.FileSystem {\nBODY\n} }\n",
+
 	"annotated-arrow": "export const g = (path: string): RET!infer E!FileSystem.FileSystem => {\nBODY\n}\n",
 	"declaration":     "export function g(path: string): RET!infer E!FileSystem.FileSystem {\nBODY\n}\n",
 	"field-arrow":     "export const api = {\n  g: (path: string): RET!infer E!FileSystem.FileSystem => {\nBODY\n  },\n}\n",
