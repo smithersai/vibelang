@@ -39,6 +39,8 @@ func promiseResultGateCases() []*failCase {
 		{"resolve", "", "Promise.resolve(7)"},
 		{"constructor", "", "new Promise<number>((resolve) => resolve(7))"},
 		{"thenable", "function read(): PromiseLike<number> { return Promise.resolve(7) }", "read()"},
+		{"object-method", "const object = { read(): Promise<number> { return Promise.resolve(7) } }", "object.read()"},
+		{"arrow-property", "const object = { read: (): Promise<number> => Promise.resolve(7) }", "object.read()"},
 	} {
 		cases = append(cases, &failCase{Name: "promise-gate-sync-data-" + data.key, Chapter: "002-running.md", Quote: promiseDataBridgeQuote, VIP: 4, Owner: "compiler", Decls: data.declaration, Body: "const held = try Effect.orDie(Effect.try({ try: () => " + data.expression + ", catch: (e) => e }))"})
 	}
@@ -66,8 +68,8 @@ func TestPromiseDataBridgeForms(t *testing.T) {
 			})
 		}
 	}
-	if seen != 3 {
-		t.Fatalf("expected three synchronous bridge forms, got %d", seen)
+	if seen != 5 {
+		t.Fatalf("expected five synchronous bridge forms, got %d", seen)
 	}
 }
 

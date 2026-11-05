@@ -23,6 +23,6 @@ export const arrowProperty = effect (run: Run) => ({
 // The same body as an unannotated method.
 export const unannotated = effect (run: Run) => ({
   effect go() {
-    return run(work())
+    return try Effect.orDie(Effect.try({ try: () => run(work()), catch: (error) => error }))
   }
 })

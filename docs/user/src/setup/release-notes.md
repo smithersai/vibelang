@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The object runner example now retains Promise values through explicit synchronous boundaries, without running stored work or changing call order.
+
+
 - The process identity example now reads its native comparison through an explicit boundary, retaining native values and unexpected defects.
 
 

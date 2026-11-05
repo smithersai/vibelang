@@ -1864,3 +1864,5 @@ The `//:option-direct-consumption` check covers direct and parenthesized `try` o
 The `//:lexical-restore-regressions` check retains nested mask entry state, restored interruption, outward returns and rejection of masks in plain activations.
 
 The `//:native-value-boundaries` check retains native process comparison, missing identity, root identity and failure classification, with tagged and untagged foreign boundary mutations.
+
+The `//:object-runner-promise-data` check retains method, arrow-property and Effect-method runner results as Promise data, including the original cold-work counter and all prior bridge forms.
