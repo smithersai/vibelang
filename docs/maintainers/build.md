@@ -1964,3 +1964,5 @@ The `//:option-generator-iterator-refusals` gate distinguishes native generators
 The `//:error-tag-inheritance-identities` check retains all inheritance rejections and the native property error, with literal and union reserved-tag mutations in both error forms.
 
 The `//:automatic-catch-data-preservation` target checks returned data, native contracts, advisories and editor actions across catch handler variations.
+
+The `//:native-repair-argument-thunks` target checks method-argument repairs across calls, defaults, receivers, native narrowing and declaration identity.

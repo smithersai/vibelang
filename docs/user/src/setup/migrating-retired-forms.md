@@ -130,3 +130,5 @@ The VIP-1 migration writes `try` before each call that ran where it stood before
 Schema-error class upgrades preserve the declaration's own tag matcher. A legacy schema-error family with a child tagged `"Child"` does not match the base pattern `when E:`; the class upgrade keeps that result as well as declaration output.
 
 A plain catch handler returns its result as data, including an error or an `Effect` value. Automatic `--fix` preserves this behavior and its `EK0508` advisory. Select the editor action to run the returned `Effect` only when that is the intended behavior.
+
+Preserving call repairs use ordinary native arrow functions to defer method arguments until after receiver access. Their inferred return types retain the original argument's type without a legacy `infer _` annotation.

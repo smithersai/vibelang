@@ -191,7 +191,7 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 	edits = append(edits, sourceEdit{target.End(), open + 1, separator})
 	if method != "" {
 		for _, arg := range args {
-			edits = append(edits, sourceEdit{nodeStart(file, arg), nodeStart(file, arg), "(): infer _ => ("}, sourceEdit{arg.End(), arg.End(), ")"})
+			edits = append(edits, sourceEdit{nodeStart(file, arg), nodeStart(file, arg), "() => ("}, sourceEdit{arg.End(), arg.End(), ")"})
 		}
 	}
 	return fileFix{code: EK0401.Code, edits: edits, key: key, siteStart: site.Pos(), siteEnd: site.End(), sited: true}, true

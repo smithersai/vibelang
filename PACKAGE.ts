@@ -954,6 +954,12 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "10m"
   ),
+  "native-repair-argument-thunks": goVibelang(
+    "Preserving call repairs emit current native argument thunks and retain narrowing and public declarations.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelang ./internal/vibelangfuzz -run '^(TestFixNothrowCalls|FuzzNativeRepairArgumentThunks)$'`,
+    [Tsc["vibelangfuzz-files"]],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
