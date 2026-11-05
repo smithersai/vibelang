@@ -181,7 +181,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | EK3007 belongs only to configuration keys and values.
 // Executable diagnostic examples use the published row as the expected identity.
 // A runner failure or an incomplete fixture cannot count as a successful probe.
-import { spawnSync } from "node:child_process"
+import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync, existsSync, cpSync } from "node:fs"
 import { join, resolve, basename, dirname, sep } from "node:path"
@@ -214,9 +214,9 @@ export function checkExample(example, appendix, result) {
     return [{kind:"example-meaning-mismatch",code:example.code,name:example.name,expected:example.messageIncludes,actual:output}]
   return same?[]:[{kind:"example-code-mismatch",code:example.code,name:example.name,expected,actual}]
 }
-export function probeExamples(examples, appendix, compiler, root=repository) {
+export async function probeExamples(examples, appendix, compiler, root=repository) {
   const base=mkdtempSync(join(root,".cache/diagnostic-examples-"))
-  const findings=[], receipts=[],createdLinks=[]
+  const receipts=[],createdLinks=[]
   const link=(target,path)=>{if(!existsSync(path)){symlinkSync(target,path);createdLinks.push(path)}}
   // The implicit prelude resolves Effect from the runtime package's real path.
   // Link that peer too on an isolated worker; never substitute another package.
@@ -229,12 +229,12 @@ export function probeExamples(examples, appendix, compiler, root=repository) {
   // the normal harness, and compiler sidecars cannot mutate its source cases.
   const native=examples.some(e=>e.project)?nativeProjectHost(root,join(base,"native")):undefined
   try {
-    for (const [i,example] of examples.entries()) {
+    const runExample=async ([i,example])=> {
       let dir
       try {dir=example.project?native.prepare(example.project):join(base,String(i))}
       catch(error) {
         const finding={kind:"example-host-failure",code:example.code,name:example.name,reason:error.message}
-        findings.push(finding);receipts.push({...finding});console.error("diagnostic-example:host-failure "+JSON.stringify(finding));continue
+        receipts[i]={...finding,findings:[finding]};console.error("diagnostic-example:host-failure "+JSON.stringify(finding));return
       }
       if(!example.project) {
         mkdirSync(dir);mkdirSync(join(dir,"node_modules"))
@@ -260,15 +260,36 @@ export function probeExamples(examples, appendix, compiler, root=repository) {
       const buildInfo=/"(?:composite|incremental)"\s*:\s*true/.test(configText)?["--tsBuildInfoFile",join(base,String(i)+".tsbuildinfo")]:[]
       const started=Date.now()
       console.error("diagnostic-example:start "+example.code+" "+example.name)
-      const result=spawnSync(compiler,["--singleThreaded","--pretty","false","--noEmit","--emitDeclarationOnly","false",...buildInfo,"-p",join(dir,example.configName??"tsconfig.json")],{cwd:dir,encoding:"utf8",timeout:60000,maxBuffer:2*1024*1024})
+      const result=await new Promise(done=>execFile(compiler,["--singleThreaded","--pretty","false","--noEmit","--emitDeclarationOnly","false",...buildInfo,"-p",join(dir,example.configName??"tsconfig.json")],{cwd:dir,encoding:"utf8",timeout:60000,maxBuffer:2*1024*1024},(error,stdout,stderr)=>done({
+        stdout,stderr,status:error?(typeof error.code==="number"?error.code:null):0,signal:error?.signal,
+        ...(error&&typeof error.code!=="number"?{error}:{})
+      })))
       const output=(result.stdout??"")+"\n"+(result.stderr??"")
-      const errors=checkExample(example,appendix,result);findings.push(...errors)
+      const errors=checkExample(example,appendix,result)
       if(errors.length) console.error("diagnostic-example:mismatch "+JSON.stringify(errors))
       const receipt={code:example.code,name:example.name,sourceSha256:createHash("sha256").update(example.source).digest("hex"),configSha256:createHash("sha256").update(configText).digest("hex"),...(example.project?{project:example.project}:{}),milliseconds:Date.now()-started,status:result.status,diagnostics:printedDiagnostics((result.stdout??"")+"\n"+(result.stderr??"")),findings:errors,...(errors.length?{failureOutput:output.slice(0,16000)}:{})}
-      receipts.push(receipt);console.error("diagnostic-example:done "+example.name+" "+(errors.length?"FAIL":"PASS")+" "+receipt.milliseconds+"ms")
+      receipts[i]=receipt;console.error("diagnostic-example:done "+example.name+" "+(errors.length?"FAIL":"PASS")+" "+receipt.milliseconds+"ms")
     }
+    // Keep a native project's witnesses sequential: its compiler may create
+    // sidecars. Independent projects use at most four single-threaded compilers.
+    const byProject=new Map()
+    for(const indexed of examples.entries()) {
+      const key=indexed[1].project?resolve(root,indexed[1].project):indexed[0]
+      if(!byProject.has(key))byProject.set(key,[])
+      byProject.get(key).push(indexed)
+    }
+    const groups=[...byProject.values()]
+    let next=0
+    const worker=async ()=>{
+      while(next<groups.length)for(const indexed of groups[next++])await runExample(indexed)
+    }
+    // Drain every active compiler before removing the shared isolated host,
+    // including when one execution fails without usable diagnostics.
+    const workers=await Promise.allSettled(Array.from({length:Math.min(4,groups.length)},worker))
+    const failure=workers.find(result=>result.status==="rejected")
+    if(failure)throw failure.reason
   } finally {for(const path of createdLinks.reverse()) rmSync(path);rmSync(base,{recursive:true,force:true})}
-  return {findings,receipts}
+  return {findings:receipts.flatMap(receipt=>receipt.findings),receipts}
 }
 export function resolveExamples(fixtures,appendix,root=repository) {
   const archives=archiveExamples(appendix,root),seen=new Set(),examples=[]
@@ -305,7 +326,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   mkdirSync(join(repository,".cache"),{recursive:true})
   const fixtures=JSON.parse(readFileSync(join(repository,"typescript/vibelang/cases/appendix-diagnostic-identities/examples.json"),"utf8"))
   const appendix=appendixCodes(readFileSync(join(repository,"docs/design/src/900-appendices.md"),"utf8"))
-  const result=probeExamples(resolveExamples(fixtures,appendix),appendix,resolve(process.env.VIBELANG_COMPILER??join(repository,"packages/compiler/native/vibelang")))
+  const result=await probeExamples(resolveExamples(fixtures,appendix),appendix,resolve(process.env.VIBELANG_COMPILER??join(repository,"packages/compiler/native/vibelang")))
   console.log(JSON.stringify(result,null,2));process.exitCode=result.findings.length?1:0
 }
 // rule-evidence: docs/design/src/900-appendices.md | The old `EK4403` is retired and will never be reassigned: VIP-33 reports host clock and randomness reads as `EK4402` by resolved host origin.
