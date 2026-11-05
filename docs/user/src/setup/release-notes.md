@@ -43,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration verification coverage stopped before checking missing builds and distribution files. Its simulated conversions now retain compiler provenance and exercise both refusals.
 - Migrating a published wildcard package moved generated source-child helpers into a private sibling and edited `package.json`. They now stay in the documented private `module` body with no manifest change.
 
+- Migrated nested-catch examples could acquire possible `undefined` returns and lose literal types; their explicit catch expressions now keep `undefined` out of the declaration, keep the literal types, and preserve the runtime result.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.

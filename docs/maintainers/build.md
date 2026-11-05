@@ -2204,3 +2204,5 @@ The `//:legacy-directive-category-controls` target retains the original spliced 
 Optional object-property bindings initialize their lexical cell only after a successful presence check and value read. Missing properties leave the cell uninitialized; present `undefined` initializes it. `match-object-optional-cells` covers plain, Effect, `is` and nested forms, while keyed VIP-7 witnesses cover `let`, `const`, inherited properties and receiver-preserving getter reads.
 
 `//:mapper-effect-block-source-ownership` checks explicit program blocks, blocks run directly by `try`, nested plain callback boundaries, resolver controls and keyed native-to-mapper diagnostic comparisons.
+
+`//:catch-completion-declaration-surface` checks nested catch runtime results, the exact declaration goldens, and keyed literal-return and normal-completion controls.
