@@ -181,7 +181,6 @@ const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
     "cd ../../.smithers/flows && node --test " +
-    "--test-reporter=spec --test-reporter-destination=stdout " +
     "--test-reporter=../../scripts/testing/migrate-progress.mjs --test-reporter-destination=stderr " +
     "migrate/test/*.test.mjs convert/*.test.mjs",
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
