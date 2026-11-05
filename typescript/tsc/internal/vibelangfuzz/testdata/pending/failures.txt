@@ -41,3 +41,7 @@ FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter 
 FuzzFailuresSpec corpus:rethrows-reduce-no-initial compiler VIP-4: minimized reproduction of feature:rethrows-reduce-no-initial; lane w2-throw
 
 # Extensible native bases witness the inheritance ban independently of tag compatibility.
+FuzzFailuresSpec feature:throws-generic-constructor-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.
+FuzzFailuresSpec corpus:throws-generic-constructor-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.
+FuzzFailuresSpec feature:throws-generic-tag-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.
+FuzzFailuresSpec corpus:throws-generic-tag-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.

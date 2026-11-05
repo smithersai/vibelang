@@ -1,0 +1,5 @@
+// expect-result: [1,2,3,4,5]
+import {read,defaultRead,reader,tag,Box} from "./lib.js"
+export effect function main() {
+ return [read<never>(),defaultRead(),reader.read(),tag<never>`value`,(new Box<never>()).value]
+}

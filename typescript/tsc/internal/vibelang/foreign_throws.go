@@ -51,8 +51,15 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 						bounds = append(bounds, "unknown")
 						continue
 					}
-					if c.GetTypeFromTypeNode(t).Flags()&checker.TypeFlagsNever == 0 {
-						bounds = append(bounds, strings.TrimSpace(nodeText(source, t)))
+					declared := c.GetTypeFromTypeNode(t)
+					owners := append(defaultForeignValueOwners(c, ast.GetInvokedExpression(call)), c.GetTypeAtLocation(call))
+					resolved := c.InstantiateWrittenSignatureType(c.GetResolvedSignature(call), declared, owners)
+					if resolved.Flags()&checker.TypeFlagsNever == 0 {
+						bound := strings.TrimSpace(nodeText(source, t))
+						if resolved != declared {
+							bound = c.TypeToString(resolved)
+						}
+						bounds = append(bounds, bound)
 					}
 				}
 			}

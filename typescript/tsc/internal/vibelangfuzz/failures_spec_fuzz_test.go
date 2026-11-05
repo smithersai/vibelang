@@ -716,6 +716,57 @@ func failuresCases() []*failCase {
 			}
 		}
 	}
+
+	// Generic throws metadata uses the selected signature and receiver substitutions.
+	for _, bound := range []struct {
+		key, text string
+		throwing  bool
+	}{{"never", "never", false}, {"range", "RangeError", true}} {
+		for _, shape := range []struct{ key, lib, call string }{
+			{"function", "/** @throws {T} */\nexport declare function read<T>():number", "read<%s>()"},
+			{"default", "/** @throws {T} */\nexport declare function read<T=never>():number", "read<%s>()"},
+			{"conditional", "/** @throws {T extends string ? never : RangeError} */\nexport declare function read<T>():number", "read<%s>()"},
+			{"callable", "export interface Reader<T>{\n/** @throws {T} */\n():number}\nexport declare const read:Reader<%s>", "read()"},
+			{"method", "export interface Reader<T>{\n/** @throws {T} */\nread():number}\nexport declare const read:Reader<%s>", "read.read()"},
+			{"inherited", "export interface Base<T>{\n/** @throws {T} */\nread():number}\nexport interface Reader<U> extends Base<U>{}\nexport declare const read:Reader<%s>", "read.read()"},
+			{"constructor", "export declare class read<T>{\n/** @throws {T} */\nconstructor()}", "new read<%s>()"},
+			{"tag", "/** @throws {T} */\nexport declare function read<T>(parts:TemplateStringsArray):number", "read<%s>`value`"},
+		} {
+			for _, context := range []string{"effect", "plain", "wrapped"} {
+				name := "throws-generic-" + shape.key + "-" + bound.key + "-" + context
+				host, body, code := "effect", strings.ReplaceAll(shape.call, "%s", bound.text), 0
+				if context == "plain" {
+					host = "plain"
+				}
+				if context == "wrapped" {
+					body = "try Effect.try(()=>" + body + ")"
+				} else if bound.throwing {
+					body = "⟦" + body + "⟧"
+					code = 403
+					if host == "plain" {
+						code = 401
+					}
+				}
+				quote := q.inferred
+				if code == 403 {
+					quote = q.directCall
+				} else if code == 401 {
+					quote = q.plainPropagates
+				}
+				add(&failCase{Name: name, Quote: quote, Host: host, Lib: strings.ReplaceAll(shape.lib, "%s", bound.text), Body: body, Code: code, OneDiagnostic: code != 0})
+			}
+		}
+	}
+	for _, context := range []string{"effect", "plain", "wrapped"} {
+		host, body := "effect", "read()"
+		if context == "plain" {
+			host = "plain"
+		}
+		if context == "wrapped" {
+			body = "try Effect.try(()=>read())"
+		}
+		add(&failCase{Name: "throws-generic-default-omitted-" + context, Quote: q.inferred, Host: host, Lib: "/** @throws {T} */\nexport declare function read<T=never>():number", Body: body})
+	}
 	add(&failCase{Name: "foreign-own-throw-over-type", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦read(s)⟧", Lib: "type Reader = (s: string) => string\n/** @throws {Error} */\nexport declare const read: Reader"})
 	add(&failCase{Name: "foreign-returned-signature", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const read = make()\n⟦read(s)⟧", Lib: "/** @throws {never} */\nexport declare function make(): {\n /** @throws {Error} */\n (s: string): string\n}"})
 	add(&failCase{Name: "foreign-overload-number", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const text = choose(s)\n⟦choose(1)⟧", Lib: "/** @throws {never} */\nexport declare function choose(s: string): string\n/** @throws {RangeError} */\nexport declare function choose(n: number): number"})

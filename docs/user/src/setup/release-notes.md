@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The Effect-parameter inventory check rejected the valid pair of diagnostics for nested Promise-returning root runners. It now requires both rules at the same call while continuing to reject unrelated Promise errors and accidental Effect-as-data warnings.
 - Compiler emission checks retained output from before the coverage and native tail-delegation repairs. Their snapshots now match those repairs while retaining exact JavaScript, declarations and runtime results.
 - Services with a written whole shape could accept malformed `key` and `defaultValue` headers. They now report `EK0902`, with header repairs available through the editor and `vibelang --fix`.
+- Generic foreign calls still required a throw bridge when their thrown type became `never`. They now use the selected type arguments, and throwing-call diagnostics show the substituted type.
 
 - Comparing declaration APIs could falsely report a missing `NodeJS` namespace in packages with configured ambient types. The comparison now keeps the package's `types` and `typeRoots` settings.
 - The generator guide could imply that plain generator bodies may throw. It now states their `EK0401` restriction and distinguishes `async` generators from Effect producers.
