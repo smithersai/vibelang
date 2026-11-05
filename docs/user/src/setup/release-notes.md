@@ -34,6 +34,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Native compiler builds ignored module, build tag and linker settings supplied through `GOFLAGS`; those settings now survive while package compilation remains capped at eight.
 
+- Playwright could parse imported `.vibe` source as JavaScript even with the Node preload enabled. The loader now identifies native modules before transformation, so configs and test workers load them.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.

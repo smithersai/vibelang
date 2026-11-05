@@ -1,0 +1,6 @@
+error Refused { reason: string }
+export const answer = effect { return 42 }
+export function boom(): number {
+  const broken: any = undefined
+  return broken.length
+}

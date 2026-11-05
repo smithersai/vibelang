@@ -179,6 +179,20 @@ node -e 'import("vibelang/project").then(p => console.log(p.writeLoaderRecord({ 
 
 A project with a type error gets no record.
 
+## Run Playwright with .vibe modules
+
+```sh
+NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx playwright test
+```
+
+The preload serves native imports from Playwright configurations and test
+workers. Select a native configuration explicitly
+with `--config playwright.config.vibe`. Keep Playwright's discoverable
+`.spec.ts` test entries and import `.vibe` modules from them.
+
+The same `NODE_OPTIONS` setting supports `node src/main.vibe` and Node child
+processes that inherit the environment. The preload must run before the entry.
+
 ## Run .vibe modules in Bun
 
 ```sh

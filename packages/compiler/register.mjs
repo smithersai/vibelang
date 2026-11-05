@@ -156,11 +156,16 @@ function toSource(result, context, nextResolve) {
   }
 }
 
+// A later JavaScript transformer must delegate native source to this load hook.
+// Node permits a custom resolve-format hint; load supplies the final JS format.
+// This also covers virtual module-declaration outputs, which are not on disk.
+const nativeFormat = result => compiled(result.url) ? { ...result, format: "vibelang" } : result
+
 registerHooks({
   resolve(specifier, context, nextResolve) {
     const started = performance.now()
     try {
-      return toSource(nextResolve(specifier, context), context, nextResolve)
+      return nativeFormat(toSource(nextResolve(specifier, context), context, nextResolve))
     } catch (error) {
       const parent = context.parentURL
       const missing = ["ERR_MODULE_NOT_FOUND", "ERR_UNSUPPORTED_DIR_IMPORT", "MODULE_NOT_FOUND"].includes(error?.code)
@@ -169,7 +174,7 @@ registerHooks({
       const resolved = (result) => {
         spent.imports++
         spent.resolve += since(started)
-        return result
+        return nativeFormat(result)
       }
       // TypeScript resolves an extensionless import, ./archive, to
       // archive.vibe after archive.ts and archive.tsx; Node's own resolution
