@@ -36,7 +36,7 @@ function npmInstall(prefix) {
 }
 // VIP-27 permits an emitted @throws {never} contract absent from the stock
 // twin. The shared comparison still checks every exported type and authored doc.
-export function assertReferenceTypes(ts, dir, modules) {
+export function assertReferenceTypes(ts, dir, modules, sources = { before: "typescript/out", after: "out" }) {
   // Both declaration trees are checked in the reference toolchain. Resolving
   // one against the runtime pin and the other against the stock pin would
   // compare different ambient environments. The case harness separately
@@ -45,11 +45,18 @@ export function assertReferenceTypes(ts, dir, modules) {
   try {
     fs.writeFileSync(path.join(layout, "package.json"), '{"type":"module"}')
     if (modules) fs.symlinkSync(modules, path.join(layout, "node_modules"), "dir")
-    for (const [side, source] of [["before", "typescript/out"], ["after", "out"]]) {
-      fs.cpSync(path.join(dir, source), path.join(layout, side), {
-        recursive: true,
-        filter: file => fs.statSync(file).isDirectory() || /\.d\.[cm]?ts$/.test(file)
-      })
+    for (const [side, source] of Object.entries(sources)) {
+      assert.ok(side === "before" || side === "after", "unknown declaration side")
+      const input = path.join(dir, source)
+      if (fs.statSync(input).isFile()) {
+        fs.mkdirSync(path.join(layout, side), { recursive: true })
+        fs.copyFileSync(input, path.join(layout, side, "main.d.ts"))
+      } else {
+        fs.cpSync(input, path.join(layout, side), {
+          recursive: true,
+          filter: file => fs.statSync(file).isDirectory() || /\.d\.[cm]?ts$/.test(file)
+        })
+      }
     }
     const result = compareApiIdentity(ts, path.join(layout, "before"), path.join(layout, "after"),
       modules ? { moduleRoots: [modules] } : {})

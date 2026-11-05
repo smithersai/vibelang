@@ -138,3 +138,28 @@ test("negation union declarations preserve types and authored comments", t => {
     }
   ), { seed: 270007, numRuns: 12 })
 })
+
+test("generated nested callable contracts preserve callbacks, methods and constructor types", t => {
+  const ts = loadTypeScript()
+  const fc = createRequire(new URL("../../docs/tools/package.json", import.meta.url))("fast-check")
+  const shapes = [
+    ["export declare function each(f: () => number): Promise<void>;",
+     "/** @throws {never} */\nexport declare function each(f: /** @throws {never} */ () => number): Promise<void>;"],
+    ["export declare class Box { read(): number; }",
+     "export declare class Box {\n/** @throws {never} */ read(): number; }"],
+    ["export interface Handlers { onClick?: () => number; }",
+     "export interface Handlers {\n/** @throws {never} */ onClick?: () => number; }"],
+    ["export declare const Default: { new(): { value: number } };",
+     "export declare const Default: {\n/** @throws {never} */ new(): { value: number } };"],
+  ]
+  fc.assert(fc.property(fc.constantFrom(...shapes), fc.boolean(), (shape, singleFile) => {
+    const [before, after] = shape.map(text => text.replaceAll("\\n", "\n"))
+    const root = declarations(t, before, after)
+    const sources = singleFile ? { before: "typescript/out/main.d.ts", after: "out/main.d.ts" } : undefined
+    assertReferenceTypes(ts, root, undefined, sources)
+    fs.writeFileSync(path.join(root, "out/main.d.ts"), after.replaceAll("number", "string"))
+    assert.throws(() => assertReferenceTypes(ts, root, undefined, sources), /Type differences/)
+    fs.writeFileSync(path.join(root, "out/main.d.ts"), after.replaceAll("@throws {never}", "@throws {unknown}"))
+    assert.throws(() => assertReferenceTypes(ts, root, undefined, sources), /Doc-comment differences/)
+  }), { seed: 27192, numRuns: 12, examples: shapes.map(shape => [shape, true]) })
+})

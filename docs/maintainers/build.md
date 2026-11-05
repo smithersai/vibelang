@@ -1824,3 +1824,5 @@ The `//:native-inferred-declarations` target covers inferred native consumer imp
 The `//:pipe-topic-regressions` target executes the implemented direct and nested missing-topic cases without pending markers. Its keyed corpus covers ordinary and Effect callables, with explicit positive controls that supply the correct outer topic.
 
 The `//:build-contracts` target runs six bounded declaration checks: Bun deadlines, compiler shard prerequisites, Go build flags, shared cache warmup, shared-package test selection and uncached Go test replay. It declares both Node and Go because cache replay verifies a real Go test against a changed external oracle.
+
+The `//:declaration-contract-twins` check compares ordinary, unmodified stock declaration twins with emitted declarations and sidecars. Generated never-throw contracts are the only documentation exception; exported types and authored comments remain checked. It includes function signatures, callbacks, constructors and JSX containers.

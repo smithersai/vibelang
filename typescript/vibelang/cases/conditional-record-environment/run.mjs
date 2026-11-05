@@ -1,4 +1,8 @@
 import assert from "node:assert/strict"
+import { dirname } from "node:path"
+import { fileURLToPath } from "node:url"
+import { loadTypeScript } from "../../../../scripts/api-identity.mjs"
+import { assertReferenceTypes } from "../../test/cov-ch004-twin.mjs"
 import { readFileSync } from "node:fs"
 import * as vibe from "./out/a.js"
 import * as ts from "./out/reference.js"
@@ -19,5 +23,5 @@ for (const { consume, repositoryCheckEnvironment } of [vibe, ts]) {
   assert.equal(repositoryCheckEnvironment({ checkEnvironment: environment, cacheEnvironment: {} }), environment)
   assert.deepEqual(repositoryCheckEnvironment({ checkEnvironment: environment, cacheEnvironment: { TOKEN: "read" } }), { PATH: "/bin", TOKEN: "read" })
 }
-assert.equal(readFileSync(new URL("./out/a.d.ts", import.meta.url), "utf8"), readFileSync(new URL("./out/reference.d.ts", import.meta.url), "utf8"))
+assertReferenceTypes(loadTypeScript(), dirname(fileURLToPath(import.meta.url)), undefined, { before: "out/reference.d.ts", after: "out/a.d.ts" })
 console.log("ok")

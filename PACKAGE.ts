@@ -900,6 +900,15 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "10m"
   ),
+  "declaration-contract-twins": check(
+    "Stock declaration twins preserve types and authored documentation under generated never contracts.",
+    "node --test typescript/vibelang/cov-ch004-twin.test.mjs && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose conditional-record-environment declaration-output-async-contracts declaration-throws-contract vibex-census-containers",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [node, bun],
+    "10m",
+    {},
+    [Vibelang.tree, S.Filegroup({srcs: [...S.glob(["scripts/api-identity*.mjs", "docs/design/src/001-functions.md", "docs/design/vips/0027-declaration-output.md"])]})]
+  ),
   "emission-snapshots": check(
     "Coverage-preserving and native tail delegation emitters keep their exact JavaScript, declarations and runtime observations.",
     "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose module-declaration-emit data-match-emit vibelang-lower vibelang-infer vibelang-concise-comments match-exhaustive-last-arm rerun-parameter-readonly try-tail-unchecked-message try-tail-native-delegation match-vip7-negation-types",

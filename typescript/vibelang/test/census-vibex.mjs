@@ -1,6 +1,8 @@
 // VIP-39: grammar-only witnesses are also compiled by stock TypeScript 5.9.3.
 // Semantic/Effect witnesses use checked, runnable twins in separate cases.
 import assert from "node:assert/strict"
+import { loadTypeScript } from "../../../scripts/api-identity.mjs"
+import { assertReferenceTypes } from "./cov-ch004-twin.mjs"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
@@ -42,9 +44,7 @@ export function checkEffectTwin(url, expected) {
   const run = spawnSync(process.execPath, ["--input-type=module", "-e", code], {cwd: reference, encoding: "utf8", timeout: 60000})
   assert.equal(run.status, 0, run.stdout + run.stderr)
   assert.deepEqual(JSON.parse(run.stdout.trim()), expected)
-  const actualDts = readFileSync(join(dir, "out/main.d.ts"), "utf8")
-  const referenceDts = readFileSync(join(reference, "out/main.d.ts"), "utf8")
-  assert.equal(actualDts, referenceDts, "stock TypeScript declaration identity")
+  assertReferenceTypes(loadTypeScript(), dir, modules, { before: "reference/out", after: "out" })
 }
 
 

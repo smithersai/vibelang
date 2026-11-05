@@ -24,6 +24,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The `Experimental` namespace documentation described every addition as a service; it now makes clear that pure modules need no service key or layer.
 - Contributor pipeline checks stopped on empty markers before checking implemented missing-topic diagnostics. Both direct and nested cases now run, with positive topic controls.
 - Contributor build checks could miss tool declarations, cache prerequisites and omitted regressions. A bounded check now verifies these contracts before compiler jobs run.
+- Contributor declaration checks rejected generated no-throw metadata or added it to the TypeScript reference. They now compare unmodified references while preserving exported types and authored comments.
 - Contributor cache warmup omitted the Effect lint package and recompiled it during validation. The warmup now includes it.
 - Contributor validation omitted stale-manifest preservation checks. It now runs both disk and editor regression cases.
 - Contributor API checks failed after a comparison helper moved into another file. Their fixtures now include local helper dependencies transitively.

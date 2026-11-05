@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { assertReferenceTypes } from "../test/cov-ch004-twin.mjs"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from "node:fs"
 import { join, dirname } from "node:path"
@@ -149,7 +150,12 @@ export function nativeContract(mode) {
     put("main.vibe","export async function each(f: () => void) { f() }\n")
     config({files:["main.vibe"]});const r=invoke("-p",".","--pretty","false");assert.equal(r.status,0,r.text)
     const text=readFileSync(join(dir,"out/main.d.ts"),"utf8")
-    assert.match(text,/@throws \{never\}/);assert.match(text,/f: \(\) => void/,"bare callback types retain their written form");assert.doesNotMatch(text,/@throws \{unknown\}|@rethrows/)
+    assert.match(text,/@throws \{never\}/);assert.doesNotMatch(text,/@throws \{unknown\}|@rethrows/)
+    put("main.ts", "export async function each(f: () => void) { f() }\n")
+    const twin = ts.createProgram([join(dir, "main.ts")], { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.NodeNext, strict: true, types: [], declaration: true, emitDeclarationOnly: true, outDir: join(dir, "stock") })
+    assert.deepEqual(ts.getPreEmitDiagnostics(twin).map(d => d.code), [])
+    assert.equal(twin.emit().emitSkipped, false)
+    assertReferenceTypes(ts, dir, undefined, { before: "stock/main.d.ts", after: "out/main.d.ts" })
     const native=ts.createProgram([join(dir,"out/main.d.ts")],{noEmit:true,types:[],skipLibCheck:true})
     assert.deepEqual(ts.getPreEmitDiagnostics(native).map(d=>d.code),[])
     })
