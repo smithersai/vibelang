@@ -851,7 +851,7 @@ const targets = {
   ),
   "emission-snapshots": check(
     "Coverage-preserving and native tail delegation emitters keep their exact JavaScript, declarations and runtime observations.",
-    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose module-declaration-emit data-match-emit vibelang-lower vibelang-infer vibelang-concise-comments match-exhaustive-last-arm rerun-parameter-readonly try-tail-unchecked-message try-tail-native-delegation",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose module-declaration-emit data-match-emit vibelang-lower vibelang-infer vibelang-concise-comments match-exhaustive-last-arm rerun-parameter-readonly try-tail-unchecked-message try-tail-native-delegation match-vip7-negation-types",
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [node, bun],
     "5m",

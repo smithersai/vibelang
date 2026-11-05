@@ -1775,3 +1775,5 @@ The `//packages:runtime-kernel-contracts` target replays retained interruption/y
 The `//packages:runtime-readme-exports` target checks every package export against the runtime README. Mutation controls remove documented names or replace them with child paths, so a prefix cannot hide an omitted export. This check is also a dependency of `//packages:runtime-package`.
 
 The `//:go-interim-severities` target replays the saved compatibility-warning inputs with their legacy severity maps. Its synthetic controls keep those warnings outside modern configurable keys and require unconfigured default-off warnings and unrelated category violations to remain rejected.
+
+The `//:emission-snapshots` target includes the pinned negation-pattern declaration and Exit comparison. It uses the shared VIP-27 API identity comparator, retains the unmodified TypeScript twin and rejects changed native union types or authored documentation. The release target runs generated union and metadata mutation controls.

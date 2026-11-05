@@ -1,3 +1,4 @@
+import { assertReferenceTypes } from "../../test/cov-ch004-twin.mjs"
 import { ensurePinnedReference } from "../../test/vip7-reference.mjs"
 // run-seconds: 300
 import assert from "node:assert/strict"
@@ -20,10 +21,10 @@ mkdirSync(resolve(here, "typescript/node_modules"), { recursive: true })
 rmSync(resolve(here, "typescript/node_modules/effect"), { recursive: true, force: true })
 symlinkSync(resolve(cache, "node_modules/effect"), resolve(here, "typescript/node_modules/effect"), "dir")
 run(process.execPath, [resolve(cache, "node_modules/typescript/bin/tsc"), "-p", "typescript/tsconfig.json"])
-assert.equal(readFileSync(resolve(here, "typescript/out/main.d.ts"), "utf8"), readFileSync(resolve(here, "out/main.d.ts"), "utf8"))
+const requireReference = createRequire(resolve(cache, "package.json"))
+assertReferenceTypes(requireReference("typescript"), here, resolve(cache, "node_modules"))
 const actual = await import("./out/main.js")
 const reference = await import("./typescript/out/main.js")
-const requireReference = createRequire(resolve(cache, "package.json"))
 const referenceEffect = await import(pathToFileURL(requireReference.resolve("effect/Effect")))
 const serial = value => JSON.parse(JSON.stringify(value, (_key, item) => {
   if (item instanceof Error) return { name: item.name, message: item.message, ...(item instanceof AggregateError ? { errors: item.errors } : {}) }

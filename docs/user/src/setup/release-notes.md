@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.
+- The declaration guide now distinguishes generated no-throw metadata from authored documentation when comparing TypeScript APIs.
 - Generated error-family matchers could fail through the normal Node or Bun runtime import because matcher registration was missing from the guarded entry. That entry now exports the same registration helper as the runtime ABI, with a build check preventing export drift.
 - The migration planner could keep a module in TypeScript after `Bun.build` excluded its package from the bundle. It now follows proven `packages: "external"` boundaries while retaining local source dependencies.
 - The runtime interop guide now shows Effect's interruption and yielding values alongside the runtime's masking and finalization helpers.

@@ -114,3 +114,27 @@ test("reference declaration comparison uses one pinned dependency environment", 
   dependency(path.join(dir, "typescript/node_modules"), "1.0.0", "stock")
   assert.doesNotThrow(() => assertReferenceTypes(ts, dir, modules))
 })
+
+
+// VIP-27 permits only the generated never tag; negation keeps native union types.
+test("negation union declarations preserve types and authored comments", t => {
+  const ts = loadTypeScript()
+  const require = createRequire(new URL("../../docs/tools/package.json", import.meta.url))
+  const fc = require("fast-check")
+  fc.assert(fc.property(
+    fc.constantFrom("Date | { kind: string }", "string | number", '"a" | "b" | null | undefined'),
+    fc.boolean(),
+    (type, documented) => {
+      const description = documented ? "Returns the narrowed value." : ""
+      const signature = "export declare function narrow(value: " + type + "): " + type + ";"
+      const before = (description ? "/** " + description + " */\n" : "") + signature
+      const after = "/** " + description + "\n * @throws {never} */\n" + signature
+      assertReferenceTypes(ts, declarations(t, before, after))
+      for (const changed of [
+        after.replace("@throws {never}", "@throws {unknown}"),
+        after.replace(": " + type + ";", ": unknown;"),
+        after.replace("@throws {never}", "@throws {never}\n * @deprecated changed"),
+      ]) assert.throws(() => assertReferenceTypes(ts, declarations(t, before, changed)), /differences/)
+    }
+  ), { seed: 270007, numRuns: 12 })
+})
