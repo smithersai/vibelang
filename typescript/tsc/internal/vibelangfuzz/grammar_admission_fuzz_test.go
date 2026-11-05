@@ -221,6 +221,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"is-contextual-schema", "const b =\nschema is 1 + 1 ;"},
 	{"is-contextual-error", "const b =\nerror is 1 + 1 ;"},
 	{"effect-type-parenthesized-trailing-bang", "{ type T = (\nnumber ! string ! )\nboolean }"},
+	{"native-regexp-literal", "n = / 2 /\n2\n;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -769,6 +770,9 @@ func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
 	if grammarParenthesizedEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
+	}
+	if grammarSimpleRegExpLabGap(source) {
+		return "admission:native-regexp-literal"
 	}
 	if grammarSchemaAsyncField(ts) {
 		return "admission:schema-async-field"
