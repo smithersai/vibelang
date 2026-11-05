@@ -41,6 +41,7 @@ func FuzzMatchBindingHomes(f *testing.F) {
 func TestMatchBindingHomesQuoted(t *testing.T) { bindingHomeChapters(t) }
 
 var bindingHomeQuotes = []string{
+	"| regex `/(\\d+)/(let m)` | none | `m`: `RegExpMatchArray` (non-global); `RegExpExecArray` elements for a global regex |",
 	"Patterns type as the TypeScript counterpart this chapter shows for them, under the project's compiler options; the table below illustrates `tsc --strict`",
 	"A `let` binding has the type TypeScript gives the value it is bound to in the counterpart.",
 	"| fixed `Option.Some(let v)` | `Option.isOption(s) && Option.isSome(s)` | `v`: `A` for `Option<A>`; `unknown` for an `unknown` subject |",
@@ -74,7 +75,7 @@ type bindingHomePattern struct {
 	tsDecls string // the same declarations in the counterpart
 }
 
-var bindingHomePatterns = []bindingHomePattern{
+var bindingHomePatterns = append([]bindingHomePattern{
 	{name: "exit-success", subject: "Exit.Exit<A, E>", result: "A",
 		arm: "when Exit.Success(let value): value;", ts: "Exit.isSuccess(s) ? s.value : fallback"},
 	{name: "exit-failure", subject: "Exit.Exit<A, E>", result: "Cause.Cause<E>",
@@ -97,6 +98,27 @@ var bindingHomePatterns = []bindingHomePattern{
 		arm: "when Option.Some(Exit.Success(let value)): value;", ts: "Option.isSome(s) && Exit.isSuccess(s.value) ? s.value.value : fallback"},
 	{name: "cause-error", subject: "Cause.TimeoutError | Cause.NoSuchElementError", result: "\"TimeoutError\"",
 		arm: "when Cause.TimeoutError(let timeout): timeout._tag;", ts: "Cause.isTimeoutError(s) ? s._tag : fallback"},
+}, regexBindingHomePatterns()...)
+
+// Both the argument and result of the identity call check the binding against
+// its native counterpart type. This detects widening and narrowing, including
+// the required global index and optional non-global index.
+func regexBindingHomePatterns() []bindingHomePattern {
+	var patterns []bindingHomePattern
+	for _, c := range []struct{ name, matcher, result, native, declaration string }{
+		{"regex-global", "/(a)/g", "RegExpExecArray", "(() => { const iterator = s.matchAll(/(a)/g); const first = iterator.next(); if (first.done || !iterator.next().done) return fallback; const value = first.value; return ((candidate: typeof value) => candidate)(fallback); })()", ""},
+		{"regex-nonglobal", "/(a)/", "RegExpMatchArray", "(() => { const found = s.match(/(a)/); if (found === null) return fallback; const value = found; return ((candidate: typeof value) => candidate)(fallback); })()", ""},
+		{"regex-value", "regexp", "RegExpMatchArray", "(() => { const found = s.match(regexp); if (found === null) return fallback; const value = found; return ((candidate: typeof value) => candidate)(fallback); })()", "const regexp = /(a)/;\n"},
+	} {
+		for _, binding := range []string{"let", "const"} {
+			patterns = append(patterns, bindingHomePattern{
+				name: c.name + "-" + binding, subject: "string", result: c.result,
+				arm: fmt.Sprintf("when %s(%s value): ((candidate: typeof value) => candidate)(fallback);", c.matcher, binding),
+				ts:  c.native, decls: c.declaration, tsDecls: c.declaration,
+			})
+		}
+	}
+	return patterns
 }
 
 // bindingHomeHomes are where the match expression stands.

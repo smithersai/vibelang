@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Optional schema fields and tuple elements with an explicit `undefined` union could expose a different codec type from `Schema.optional(S)`. They now retain the underlying codec type while accepting omission and present `undefined`; repairs keep an explicit union codec when rewriting it would change its type.
 - The platform guide mapped `os.tmpdir` to creating a new directory. Its replacement now reads the system temporary-directory path without creating anything.
+- The matching guide left regex capture types under strict indexed-access and optional-property checks implicit. It now explains the native types of global literals, other literals and named expressions.
 - Primitive patterns such as `String(let value)` rejected boxed values. They now accept the corresponding native wrapper and bind its primitive value.
 - Factory examples could fail with `EK0402` when a TypeScript validation callback was passed through a non-throwing parameter. Their explicit exception bridge now preserves the original defect and cold evaluation without relaxing that callback contract.
 - Declaration-order checks could report false differences around adjacent `@throws` comments. They now compare each function with its own comments and return type.
