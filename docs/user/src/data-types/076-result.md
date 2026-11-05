@@ -161,4 +161,4 @@ function combinedData() {
 {"title":"Weekly","count":6}
 ```
 
-`Result.gen` sequences with JavaScript generators: the first yielded failure skips the rest. A plain `function*` keeps its JavaScript meaning in `.vibe`, so the same generator API works there. In VibeLang, use `flatMap` and `all` for the same computation, as above.
+`Result.gen` sequences with JavaScript generators: the first yielded failure skips the rest. A plain `function*` keeps its JavaScript meaning in `.vibe`, so the same generator API works there without `EK1002`. An explicit `effect function*` is an Effect producer and cannot serve as a `Result.gen` callback; the producer repair remains available only for supported body shapes. In VibeLang, use `flatMap` and `all` for the same computation, as above.
