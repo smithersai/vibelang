@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrating an unmarked function with a legacy service call could freeze inferred channels too early and refuse the repair; its marker, receiver and dependent calls now migrate together before channel inference is written.
 
 - Bun rename checks incorrectly expected an explicit `.ts` import to load a renamed `.vibe` module; cache coverage now uses a stable `.js` import and separately verifies the required `TS2307` rejection.
+
+- Fork migration examples compared VIP-only repairs with broader ordinary cleanup; they now repeat each selection separately while preserving the fork options.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 
