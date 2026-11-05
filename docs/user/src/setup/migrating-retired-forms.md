@@ -132,3 +132,5 @@ Schema-error class upgrades preserve the declaration's own tag matcher. A legacy
 A plain catch handler returns its result as data, including an error or an `Effect` value. Automatic `--fix` preserves this behavior and its `EK0508` advisory. Select the editor action to run the returned `Effect` only when that is the intended behavior.
 
 Preserving call repairs use ordinary native arrow functions to defer method arguments until after receiver access. Their inferred return types retain the original argument's type without a legacy `infer _` annotation.
+
+An implicit prelude `Effect.gen` repair preserves the native generator's synchronous exceptions as defects. Unknown foreign calls use an explicit defect bridge; a proven `@throws {never}` call needs none.

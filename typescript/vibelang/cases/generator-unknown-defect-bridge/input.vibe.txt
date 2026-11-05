@@ -1,0 +1,3 @@
+import {Effect} from "effect"
+import {log} from "./foreign.js"
+export const work=(x:string|undefined)=>Effect.gen(effect function*(){if(x)log.info(x);return 1})

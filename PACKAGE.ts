@@ -1016,6 +1016,12 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "10m"
   ),
+  "implicit-generator-defect-bridges": goVibelang(
+    "Implicit generator API migrations preserve native defects, contracts and imports.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=6m ./internal/vibelang ./internal/vibelangfuzz -run '^(TestDefectBridgeMapperIsNonthrowing|FuzzImplicitGeneratorDefectBridge|FuzzGeneratedDefectBridgeFixTwin)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose generator-unknown-defect-bridge`,
+    [Tsc["vibelangfuzz-files"],Packages["compiler-native"],Vibelang.tree],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

@@ -1251,7 +1251,7 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				s.why = why
 				return true
 			}
-			if own && throwing == nil && ast.IsCallExpression(node) && throwsTrackedFailure(c, node) {
+			if own && throwing == nil && isInvocation(node) && needsGeneratorDefectBridge(c, node) {
 				if holdsYield(node) {
 					s.why = shortText(expressionText(file, node), "a call") + " can throw, and a yield* stands in its arguments, where the function that keeps its exception a defect could not run it"
 					return true
@@ -1277,13 +1277,27 @@ func readsBinding(node *ast.Node) bool {
 	return ast.IsExpressionNode(node) && !ast.IsRightSideOfPropertyAccess(node)
 }
 
-// throwsTrackedFailure reports whether call is one whose exception a generator
-// meets as a defect, adding nothing to E, but whose thrown class effect code
-// tracks (Chapter 3): JSON.parse, or a .ts function tagged @throws. Written bare
-// in the block it would fail with that class, and its Effect's type would say so.
-func throwsTrackedFailure(c *checker.Checker, call *ast.Node) bool {
+// A native generator observes synchronous call exceptions as defects. The
+// migrated Effect body needs the same bridge for unknown contracts as for
+// named failures. Proven never contracts and effectful factories need none.
+func needsGeneratorDefectBridge(c *checker.Checker, call *ast.Node) bool {
+	if ast.IsSuperCall(call) || ast.IsImportCall(call) {
+		return false
+	}
 	t := callTrust(c, call)
-	return (t.kind == trustBuiltin || t.kind == trustTagged && !t.value) && len(t.failures) > 0 && !t.promise && !returnsEffectful(c, call)
+	if t.promise || returnsEffectful(c, call) {
+		return false
+	}
+	switch t.kind {
+	case trustForeign, trustUnknown:
+		return true
+	case trustBuiltin:
+		return len(t.failures) > 0 || t.unknown
+	case trustTagged:
+		return !t.value && (len(t.failures) > 0 || t.unknown || t.unreachable != "")
+	default:
+		return false
+	}
 }
 
 // holdsYield reports whether a yield runs in node's own code.

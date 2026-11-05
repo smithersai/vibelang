@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Schema alias repair checks now use explicit `readonly` properties and ordinary writable properties, preserving the original `Schema.Struct` type.
+- Migrating an implicit generator API could refuse an unannotated foreign call; the repair now preserves synchronous exceptions as defects.
 
 - Ambient-declaration API checks loaded unrelated browser declarations. They now use fewer libraries while preserving isolated global and augmentation checks.
 
