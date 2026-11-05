@@ -9,15 +9,21 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const defaultLiteralDeclarationsTarget = "FuzzServiceDefaultLiteralDeclarations"
 const defaultLiteralDeclarationsQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
 
+const defaultLiteralNativeClassQuote = "Use an equivalent native `Context.Service` class, retaining its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure; otherwise refuse (VIP-9)."
+
 func TestServiceDefaultLiteralDeclarationsQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), defaultLiteralDeclarationsQuote) {
 		t.Fatalf("chapter 7 no longer says %q; update the oracle", defaultLiteralDeclarationsQuote)
+	}
+	if !strings.Contains(SpecText("007-tooling.md"), defaultLiteralNativeClassQuote) {
+		t.Fatalf("chapter 7 no longer says %q; update the reference", defaultLiteralNativeClassQuote)
 	}
 	TestServiceDefaultReadsQuoted(t)
 }
@@ -84,6 +90,30 @@ func defaultLiteralProject(key string, choice uint8) map[string]string {
 	return map[string]string{"main.vibe": strings.Replace(declaration, "export service Flags:", "service Flags:", 1) + statement}
 }
 
+// VIP-9 gives the native class as the preserving reference. The retired
+// declaration can report EK0902 while remaining an EK4855 migration input;
+// its erroneous checker type is not a declaration-output oracle.
+func defaultLiteralNativeProject(t *testing.T, files map[string]string) map[string]string {
+	t.Helper()
+	native := maps.Clone(files)
+	for name, source := range files {
+		if !strings.Contains(source, "service Flags: ") {
+			continue
+		}
+		prefix, body, ok := strings.Cut(source, "service Flags: ")
+		if !ok {
+			t.Fatal("missing legacy service")
+		}
+		shape, members, ok := strings.Cut(body, " { static readonly key = \"literal/Flags\"; ")
+		if !ok {
+			t.Fatal("missing legacy key")
+		}
+		native[name] = "import * as Context from \"effect/Context\"\n" + prefix +
+			"class Flags extends Context.Service<Flags, " + shape + ">()(\"literal/Flags\") { " + members
+	}
+	return native
+}
+
 // The same type-only client reads each actual emitted package declaration.
 // Chapter 7 promises that a repair preserves this surface, not only the
 // producer checker's view of a static field. No declaration text is guessed.
@@ -111,17 +141,31 @@ func checkDefaultLiteralDeclaration(t *testing.T, w *Workspace, key string, choi
 		files := defaultLiteralProject(key, choice)
 		before := toolsCompile(t, w, defaultLiteralDeclarationsTarget, files)
 		defer before.Remove()
-		if !toolsErrorFree(before) {
-			Gap(t, defaultLiteralDeclarationsTarget, "original:"+key, "invalid control: %v\n%s", SortedKeys(Keys(before.Dir, before.Diagnostics)), Archive(files))
+		// Admit only the retired member diagnostic, never unrelated source
+		// errors, and require the migration warning to remain observable.
+		for _, d := range before.Diagnostics {
+			if d.Category() == diagnostics.CategoryError && (!IsEK(d) || d.Code() != 902) {
+				Gap(t, defaultLiteralDeclarationsTarget, "original:"+key, "unexpected migration input errors: %v\n%s", SortedKeys(Keys(before.Dir, before.Diagnostics)), Archive(files))
+				return
+			}
+		}
+		if serviceDefaultReadCodes(before, 902) > 1 || serviceDefaultReadCodes(before, 4855) != 1 {
+			Gap(t, defaultLiteralDeclarationsTarget, "warning:"+key, "expected one cached-default warning and at most its retired-member error: %v", SortedKeys(Keys(before.Dir, before.Diagnostics)))
 			return
 		}
-		want := serviceDefaultReadType(t, before)
-		publishedBefore, ok := defaultLiteralPublishedType(t, w, before, key)
+		reference := toolsCompile(t, w, defaultLiteralDeclarationsTarget, defaultLiteralNativeProject(t, files))
+		defer reference.Remove()
+		if !toolsErrorFree(reference) {
+			Gap(t, defaultLiteralDeclarationsTarget, "reference:"+key, "invalid native class reference: %v\n%s", SortedKeys(Keys(reference.Dir, reference.Diagnostics)), Archive(defaultLiteralNativeProject(t, files)))
+			return
+		}
+		want := serviceDefaultReadType(t, reference)
+		publishedBefore, ok := defaultLiteralPublishedType(t, w, reference, key)
 		if !ok {
 			return
 		}
 		if publishedBefore != want {
-			Gap(t, defaultLiteralDeclarationsTarget, "original-declaration:"+key, "original source type %s differs from its declaration %s\n%s", want, publishedBefore, Archive(files))
+			Gap(t, defaultLiteralDeclarationsTarget, "original-declaration:"+key, "native reference type %s differs from its declaration %s\n%s", want, publishedBefore, Archive(files))
 			return
 		}
 		options := vibelang.FixOptions{MigrationOnly: choice&32 != 0, CheckEachFix: choice&64 != 0}
