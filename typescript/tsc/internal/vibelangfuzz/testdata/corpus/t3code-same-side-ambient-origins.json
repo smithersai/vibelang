@@ -1,0 +1,8 @@
+{
+  "repository": "t3code",
+  "pattern": "a ProcessEnv declaration consumer has two byte-identical installed Node type origins on one side",
+  "native": "export const env: NodeJS.ProcessEnv = {};\n",
+  "declaration": "export declare const env: NodeJS.ProcessEnv;\n",
+  "ambient": "declare namespace NodeJS { interface ProcessEnv { [key: string]: string | undefined } }\n",
+  "manifest": { "name": "@types/node", "version": "24.12.4", "types": "index.d.ts" }
+}

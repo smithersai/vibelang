@@ -1,0 +1,6 @@
+import * as Effect from "effect/Effect"
+export const make = (valid: boolean) => {
+  if (valid) { return effect { return 1 } }
+  const error = "bad"
+  return effect { throw error }
+}
