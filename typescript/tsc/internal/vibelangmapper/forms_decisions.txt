@@ -4646,7 +4646,7 @@ typescript/vibelang/cases/is-home-arm-and-field/main.vibe:22:17 lambda plain fal
 typescript/vibelang/cases/is-home-arm-and-field/main.vibe:23:11 lambda plain fallback
 typescript/vibelang/cases/is-home-arm-scope.fail/main.vibe:13:7 lambda plain fallback
 typescript/vibelang/cases/is-home-arm-scope.fail/main.vibe:6:19 lambda plain fallback
-typescript/vibelang/cases/is-home-catch-do/main.vibe:4:46 lambda dual fallback
+typescript/vibelang/cases/is-home-catch-do/main.vibe:6:43 lambda dual fallback
 typescript/vibelang/cases/is-home-concurrent-limit/main.vibe:8:99 lambda effectFn table
 typescript/vibelang/cases/is-home-do-while/main.vibe:11:28 lambda plain fallback
 typescript/vibelang/cases/is-home-do-while/main.vibe:21:19 lambda plain fallback
