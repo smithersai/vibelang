@@ -178,6 +178,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-async-field", "schema S { async id: Missing }"},
 	{"schema-async-duplicate-modifier", "schema S { async async id: Missing }"},
 	{"schema-static-async-field", "schema S { static async async id : Missing }"},
+	{"schema-static-field", "schema S { static id : Missing }"},
+	{"schema-static-field-alias", "schema S = { static id: Missing };"},
 	{"schema-effect-field", "schema S { effect id : string }"},
 	{"schema-effect-unsupported-field", "schema S { effect id : Missing }"},
 	{"export-assignment", "export = 1 ;"},
@@ -715,6 +717,9 @@ func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
 	if grammarSchemaAsyncField(ts) {
 		return "admission:schema-async-field"
+	}
+	if grammarSchemaStaticField(ts) {
+		return "admission:schema-static-field"
 	}
 	if grammarInvalidImportMeta(ts) {
 		return "admission:import-meta-property"

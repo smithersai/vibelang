@@ -20,6 +20,14 @@ func TestGrammarAdmissionSchemaAsyncQuoted(t *testing.T) {
 // the async modifier only before a direct property with a written type.
 // A property named async, computed-name expression or method is separate.
 func grammarSchemaAsyncField(ts []grammarToken) bool {
+	return grammarSchemaModifiedField(ts, "async")
+}
+
+func grammarSchemaStaticField(ts []grammarToken) bool {
+	return grammarSchemaModifiedField(ts, "static")
+}
+
+func grammarSchemaModifiedField(ts []grammarToken, modifier string) bool {
 	for i, tok := range ts {
 		if tok.kind != 'w' || tok.text != "schema" || i+2 >= len(ts) ||
 			ts[i+1].kind != 'w' || ts[i+1].nl ||
@@ -31,6 +39,12 @@ func grammarSchemaAsyncField(ts []grammarToken) bool {
 			continue // Schema-error members retain their separate static rejection.
 		}
 		open := name + 1
+		if open < len(ts) && ts[open].text == "=" {
+			open++
+			for open < len(ts) && ts[open].text == "(" {
+				open++
+			}
+		}
 		if open >= len(ts) || ts[open].text != "{" {
 			continue
 		}
@@ -39,7 +53,7 @@ func grammarSchemaAsyncField(ts []grammarToken) bool {
 			at := k
 			start := k == open+1 || ts[k].nl || ts[k-1].text == ";" || ts[k-1].text == ","
 			if depth == 1 && start {
-				hasAsync := false
+				hasModifier := false
 			modifiers:
 				for at+1 < len(ts) && !ts[at+1].nl && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static") {
 					// The last keyword may itself be the property name.
@@ -47,10 +61,10 @@ func grammarSchemaAsyncField(ts []grammarToken) bool {
 					case ":", "?", "(", "<":
 						break modifiers
 					}
-					hasAsync = hasAsync || ts[at].text == "async"
+					hasModifier = hasModifier || ts[at].text == modifier
 					at++
 				}
-				if hasAsync {
+				if hasModifier {
 					if ts[at].text == "[" {
 						brackets := 1
 						for at++; at < len(ts) && brackets > 0; at++ {

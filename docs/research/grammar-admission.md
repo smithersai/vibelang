@@ -361,3 +361,12 @@ The `schema-async-field` pending family includes a leading or interleaved
 `async` modifiers. A field named `async`, a static method and a schema-error
 member remain separate controls. The classifier still requires an actual
 `async` modifier; a static property alone does not enter this family.
+
+
+A static schema field without an `async` modifier has its own
+`admission:schema-static-field` key. `SchemaDeclaration` contains only
+`Field` members, whose sole admitted modifier is `readonly`. An unresolved
+field type can cover the independent static-modifier rejection with
+`EK2109`. Named bodies and object-type aliases retain separate keyed
+witnesses. Fields named `static`, static methods, schema-error bodies and
+async-modified fields remain controls or their existing families.

@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The error guide now explains why a reserved tag payload and an inheritance clause each report an error, and how a native class retains their contract.
 - The error guide now explains how bodyless, empty and payload-bearing ambient schema errors convert to erased native classes.
 
+- The grammar admission audit could stop on a static schema field with an unresolved type. It now tracks that separate diagnostic gap without treating keyword-named fields or methods as the same form.
+
 - The grammar admission audit could stop on an async schema field with a `static` prefix. It now records the existing modifier-diagnostic gap while preserving static properties, methods and keyword-named fields as controls.
 - Extracting a generic foreign method into a local `const` lost its thrown type and could require an unnecessary bridge. Aliases now keep the receiver’s substituted contract.
 - Long Go checks could omit compiler and test subprocesses from their progress records when Go started them on another thread. Progress sampling now includes those thread-owned subprocesses.
