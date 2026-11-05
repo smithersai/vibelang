@@ -80,6 +80,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-division", "const n = 8 / 2 / 2;"},
 	{"native-exponentiation", "const n = 2 ** 3 ** 2;"},
 	{"asserted-is-expression", "is is is as join\n[ ]"},
+	{"effect-optional-class-member", "class C { effect *g?() { yield 1; } }"},
 	{"is-bitwise-continuation", "const b = x is > 1 & 2 + 3;"},
 	{"native-import-meta", "const url = import.meta.url;"},
 	{"native-new-target", "function f() { return new.target; }"},
@@ -925,6 +926,9 @@ func grammarAdmissionForm(source string) string {
 	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
 		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
 	}, source)
+	if grammarOptionalEffectClassMember(file, source) {
+		return "admission:effect-optional-class-member"
+	}
 	if grammarForOfAsyncModule(file, source) {
 		return "admission:for-of-async-module"
 	}

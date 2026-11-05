@@ -473,3 +473,14 @@ The bounded lab retains those continuations, repeated assertions and array
 type suffixes across line breaks. They do not extend the pattern member
 chain; incomplete assertions and a line break before the assertion operator
 remain separate rejection controls. The keyed witness is nonpending.
+
+Optional Effect class members, such as `effect *g?() { yield 1; }`,
+follow VIP-1 and VIP-21 native `async` class positions. Appendix A currently
+omits `?` in `EffectClassMethod` and `ProducerMethod`, so the oracle records
+this specification gap as `admission:effect-optional-class-member` with
+pending and corpus XPASS coverage. The inventory cites the accepted rule;
+it grants no object-literal exception. The pending key requires that removing
+only the header markers restores a derivation, so unrelated body gaps keep
+their own keys. Native optional generator and `async`
+class methods derive independently; their object-literal twins report
+`TS1162` and stay outside that class-only branch.
