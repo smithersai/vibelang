@@ -3,6 +3,8 @@ package vibelang
 import (
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
 func TestFixT3CodeGeneratorReduction(t *testing.T) {
@@ -64,18 +66,33 @@ export const migrate = Effect.fn("migrate")(function* (records: readonly string[
 	}
 }
 
-// A migration refusal must name its semantic obstruction, rather than repeat
-// EK1002's generic rewrite advice and hide the planner's explanation.
-func TestT3CodeGeneratorRefusalReason(t *testing.T) {
+// Native generator exception handling remains JavaScript. The optional teaching
+// planner still explains why it cannot safely turn that body into effect code.
+func TestT3CodeNativeGeneratorExceptionBoundary(t *testing.T) {
 	source := "export const make = Effect.gen(function* () { try { return yield* Effect.succeed(1) } catch { return 0 } })\n"
-	_, result := fixedPipe(t, source)
-	for _, site := range result.Sites {
-		if site.Code == "EK1002" {
-			if !strings.Contains(site.Reason, "a try statement in a generator catches JavaScript exceptions") {
-				t.Fatalf("missing semantic refusal reason: %+v", site)
-			}
-			return
-		}
+	got, result := fixedPipe(t, source)
+	if got != source || len(result.Sites) != 0 || len(result.Refused) != 0 {
+		t.Fatalf("native generator changed: %s; sites %+v; refusals %+v", got, result.Sites, result.Refused)
 	}
-	t.Fatal("no refused EK1002 site")
+	p, file, _, _ := editorProgram(t, source)
+	c, done := p.GetTypeCheckerForFile(t.Context(), file)
+	defer done()
+	found := false
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if ast.IsCallExpression(n) {
+			plan := planEffectGen(c, file, n)
+			if plan != nil && strings.Contains(plan.why, "a try statement in a generator catches JavaScript exceptions") {
+				if plan.fixable() {
+					t.Fatal("unsafe native exception rewrite offered")
+				}
+				found = true
+			}
+		}
+		return n.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	if !found {
+		t.Fatal("planner lost its semantic explanation")
+	}
 }
