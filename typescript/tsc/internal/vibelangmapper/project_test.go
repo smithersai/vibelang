@@ -591,6 +591,10 @@ func TestCatchExpressionHatch(t *testing.T) {
 		assertValidMap(t, projection, source)
 	}
 	source := "function f() { function sync(f: () => number!!) { return f() }; return sync(() => a() catch 1) }"
+	invalid := Project(source, testContext)
+	assert.Equal(t, len(invalid.Diagnostics), 1, "%v", invalid.Diagnostics)
+	assert.Equal(t, invalid.Diagnostics[0].Code, int32(504))
+	source = strings.Replace(source, "sync(() => a() catch 1)", "sync(effect () => a() catch () => 1)", 1)
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
 	assertParses(t, projection.Text)
@@ -635,7 +639,7 @@ func TestPipeTopicChoices(t *testing.T) {
 	for _, source := range []string{
 		"import { opaque } from './other'; function f() { return pipe(() => a(), opaque) }",
 		"function f() { return a() |> retry(%, Schedule.recurs(2)) + % }",
-		"import { opaque } from './other'; function f() { return a() |> opaque(%) catch 1 }",
+		"import { opaque } from './other'; effect function f() { return a() |> opaque(%) catch () => 1 }",
 	} {
 		projection := Project(source, testContext)
 		assert.Assert(t, len(projection.Diagnostics) > 0, "%s", source)

@@ -214,7 +214,7 @@ var emitCases = []struct {
 	},
 	{
 		name:   "catch expressions run operands inside lazy generators",
-		source: "function f() { return a() catch e => recover(e) }",
+		source: "effect function f() { return a() catch e => recover(e) }",
 		contains: []string{
 			`import { $catch, $done, $isRun, $settle } from "vibelang-runtime";`,
 			"$catch($gen(function* () { return (($t = $value(a)()), $isRun($t) ? (yield* $t) : $t); }), e => $gen(function* () { return (($t = recover(e)), $isRun($t) ? (yield* $t) : $t); }))",
@@ -223,7 +223,7 @@ var emitCases = []struct {
 	},
 	{
 		name:   "a catch fallback in a pipe keeps the evaluated topic",
-		source: "declare function input(): string!!; declare function find(id: string): string!!; declare function backup(id: string): string!!; function f() { return input() |> find(%) catch backup(%) }",
+		source: "declare function input(): string!!; declare function find(id: string): string!!; declare function backup(id: string): string!!; effect function f() { return input() |> find(%) catch backup(%) }",
 		contains: []string{
 			"const $topic = (($t = input()), $isRun($t) ? (yield* $t) : $t);",
 			"$catch($gen(function* () { return (($t = find($topic)), $isRun($t) ? (yield* $t) : $t); }), () => $gen(function* () { return (($t = backup($topic)), $isRun($t) ? (yield* $t) : $t); }))",
