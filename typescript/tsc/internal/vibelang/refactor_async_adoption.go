@@ -41,15 +41,15 @@ func asyncNeedsReturnAdoption(body *ast.Node) bool {
 	return visit(body)
 }
 
-func (rc *refactorContext) asyncBridgeModuleVisible(fn *ast.Node) bool {
-	symbol := rc.c.ResolveName("Effect", fn.Body(), ast.SymbolFlagsValue, false)
+func (rc *refactorContext) asyncBridgeModuleVisible(location *ast.Node) bool {
+	symbol := rc.c.ResolveName("Effect", location, ast.SymbolFlagsValue, false)
 	prelude := preludeSymbol(rc.c, preludeStateOf(rc.c), rc.file, "Effect")
 	if symbol == nil && prelude == nil {
 		// A file with no Effect references need not load its implicit module
 		// before this rewrite. The new effect/tryPromise syntax will load it.
 		// An actual source binding (including a type-only import) still
 		// prevents that fallback; disabled implicit modules need a value import.
-		return !implicitEffectModuleDisabled(rc.c, rc.file, "Effect") && !shadowedByValue(fn.Body(), "Effect")
+		return !implicitEffectModuleDisabled(rc.c, rc.file, "Effect") && !shadowedByValue(location, "Effect")
 	}
 	if symbol == nil || prelude == nil || resolvedAlias(rc.c, symbol) != resolvedAlias(rc.c, prelude) {
 		return false

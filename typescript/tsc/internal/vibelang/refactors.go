@@ -215,7 +215,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		return nil // JavaScript completion/disposal and nested awaits need a separate rewrite.
 	}
 	adoptReturn := asyncNeedsReturnAdoption(fn.Body())
-	if (adoptReturn || len(awaits) > 0) && !rc.asyncBridgeModuleVisible(fn) {
+	if (adoptReturn || len(awaits) > 0) && !rc.asyncBridgeModuleVisible(fn.Body()) {
 		return nil // a source binding shadows the module a Promise bridge needs
 	}
 	text := rc.file.Text()
@@ -263,6 +263,10 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		}
 	}
 	for _, await := range awaits {
+		// A nested lexical scope can hide the module visible at the body.
+		if !rc.asyncBridgeModuleVisible(await) {
+			return nil
+		}
 		promise := await.Expression()
 		plain = append(plain, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "")))
 		name := uniqueName(failureName(promise), takenNames)

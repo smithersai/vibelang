@@ -45,6 +45,8 @@ Converting an `async` function writes a qualified `Effect.tryPromise(() => promi
 
 The conversion is withheld when the function refers to its own callable binding, including recursive methods, captured aliases and parameter defaults. Those references still expect a `Promise`, so migrate the recursion and its callers together. Shadowed names, unrelated properties and type-only references keep the conversion available.
 
+Async conversion checks the `Effect` binding at each `Promise` bridge. If a block, loop or switch scope shadows the module at an `await`, the editor withholds the conversion. Rename the local binding before converting; unrelated sibling scopes and nested callable bodies do not prevent conversion.
+
 The async conversion edits the selected function. It leaves containing variable and callback signatures, inherited member contracts and other overload signatures in place. When those require a `Promise`, the editor withholds the conversion; migrate the function and its contracts together. Inferred functions and contexts that accept any result remain eligible.
 
 `fork` and `join` become reserved in an `effect` function's parameters and body. Async conversion is withheld when it would turn a binding or reference into a reserved name or fiber operation. Rename those bindings before converting. Property names and nested plain callable bodies keep their usual rules.

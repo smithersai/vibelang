@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Bun scripts and tests could not load a migrated source through a `tsconfig.paths` alias ending in `.ts`; the preload now follows its `.vibe` sibling while preserving existing native files.
 
 - Migration setup could leave rewritten files unformatted because a formatter plugin was not installed yet. Setup now installs the selected dependencies before formatting, including when adding workspace packages.
+- Converting an `async` function could produce invalid code when a nested scope shadowed `Effect`; the editor now withholds the conversion until that binding is renamed.
 - Migration could stall after emitting JavaScript while a loader cache compilation kept running; each optional record now has a deadline, reports the affected project and elapsed time, and lets later projects continue.
 
 - Quoted, numeric and template `data` variant names reported a generic identifier error. They now report `EK1606` while retaining the following variants and declarations.
