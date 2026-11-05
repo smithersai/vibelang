@@ -19,7 +19,7 @@ test.todo('rule-evidence: docs/design/src/900-appendices.md#bda755bd1c4349fd | C
 test.todo('rule-evidence: docs/design/src/900-appendices.md#92880f15baa127b9 | Chapter 900: pending witness for EK4601 diagnostic | present | | interim `EK4601` | error: legacy compiler compatibility — `await` before a call returning an Effect in plain code.')
 
 // Chapter 900: pending witness for ordinary return types retain typescript s - spec-rule: docs/design/src/900-appendices.md#0b5f327a4e2bf482
-test.todo("rule-evidence: docs/design/src/900-appendices.md#0b5f327a4e2bf482 | Chapter 900: pending witness for ordinary return types retain typescript s | present | Ordinary return types retain TypeScript's treatment of `any`; explicitly run an Effect to get its success value.")
+test.todo("rule-evidence: docs/design/src/900-appendices.md#0b5f327a4e2bf482 | Chapter 900: pending witness for ordinary return types retain typescript s | present | Ordinary return types retain TypeScript's treatment of `any`; use `try` to obtain an Effect's success value.")
 
 // Chapter 900: pending witness for read the implementation with try service - spec-rule: docs/design/src/900-appendices.md#1a8e3f92dcfc8c49
 test.todo('rule-evidence: docs/design/src/900-appendices.md#1a8e3f92dcfc8c49 | Chapter 900: pending witness for read the implementation with try service | present | Read the implementation with `try Service`, then select its member.')

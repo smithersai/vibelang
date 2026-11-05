@@ -172,7 +172,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | The platform-global inventory governs allowed reads; ordinary `Date.now()` and `Math.random()` remain allowed by the accepted rule.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:17:10](../../../typescript/vibelang/cases/ek4403-clock.fail/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4409` | warning: legacy compiler compatibility — a legacy Effect function returns a call of a value typed `any`.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Ordinary return types retain TypeScript's treatment of `any`; explicitly run an Effect to get its success value.
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Ordinary return types retain TypeScript's treatment of `any`; use `try` to obtain an Effect's success value.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4838` | error: legacy compiler compatibility — legacy ownership analysis sees a `Fiber` leave its fork region.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4819` | error: legacy compiler compatibility — an editor requests the historical missing-star repair for `yield effect`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Example: `function* g() { yield Effect.succeed(1) }`; [editor example: yield-star](../../../typescript/tsc/internal/vibelang/diagnostic_appendix_hosts_test.go).

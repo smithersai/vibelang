@@ -1,0 +1,10 @@
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Throw the intended error value or use `try` to execute the Effect; imported lint has its own identity.
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Ordinary return types retain TypeScript's treatment of `any`; use `try` to obtain an Effect's success value.
+import { Effect } from "effect"
+export function ordinary(value: any): string { return value }
+export effect function main(value = 7, reason = "intended") {
+  const result = try Effect.succeed(value)
+  const intended = try Effect.succeed(ordinary(reason))
+  if (result < 0) throw intended
+  return result
+}

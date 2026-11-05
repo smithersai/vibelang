@@ -59,7 +59,11 @@ function violations(key, source) {
   if (key === "ASTRA-5" && text("src/001-functions.md").includes("**API identity.**")) {
     for (const file of ["src/001-functions.md", "vips/0027-declaration-output.md"]) {
       require(text(file).includes("same doc comment on each export"), `${file}: lost comment identity`)
-      require(text(file).includes("2026-11-04") && text(file).includes("generated") && text(file).includes("authored"), `${file}: missing Will’s generated-contract exception`)
+      const exception = file.startsWith("src/")
+        ? "the emitted declaration may add VIP-27’s generated `@throws {never}` contract where the twin has no authored throw contract"
+        : "The emitted declaration may add exactly the generated `@throws {never}` contract where the twin has no authored throw contract."
+      require(text(file).includes(exception), `${file}: missing generated-contract exception`)
+      require(text(file).includes(file.startsWith("src/") ? "an authored `@throws` must remain unchanged" : "Changing or removing an authored `@throws`"), `${file}: missing authored-contract preservation`)
     }
   }
   return problems
@@ -71,6 +75,16 @@ for (const key of keys) {
     assert.deepEqual(violations(key, published()), [])
   })
 }
+
+test("API identity guards reject a lost exception or authored contract independently", () => {
+  const current = published()
+  for (const file of ["src/001-functions.md", "vips/0027-declaration-output.md"]) {
+    for (const phrase of ["where the twin has no authored throw contract", "an authored `@throws`"]) {
+      const changed = { ...current, [file]: current[file].replace(phrase, "changed contract") }
+      assert.ok(violations("ASTRA-5", changed).length > 0, file + ": " + phrase)
+    }
+  }
+})
 
 // Minimized exact claims from 188ab3d6, rather than a second language oracle.
 const frozen = {
