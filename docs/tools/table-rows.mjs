@@ -110,6 +110,15 @@ export function tableRowProblems(text, file, { checkWidths = true, checkPlatform
         }
       }
 
+      if (/^(?:globalThis\.)?process\.version$/.test(call ?? "")) {
+        const fragments = (row[1] ?? "").split(String.fromCharCode(96))
+        const expression = fragments[1]?.replace(/\s/g, "")
+        if (fragments.length === 3 && !fragments[0].trim() && !fragments[2].trim() &&
+            /^(?:try\(tryExperimental\.Process\.Process\)\.versions|\(try\(tryExperimental\.Process\.Process\)\.versions\)\.node)$/.test(expression ?? "")) {
+          problems.push(file + ":" + (i + 1) + ": process.version is a prefixed string; the Process versions map and its unprefixed node entry are different values")
+        }
+      }
+
     }
   }
   return problems

@@ -264,3 +264,46 @@ test("generated clock mappings separate arbitrary counters from elapsed interval
     }
   ), { numRuns: 200, seed: 34034 })
 })
+
+test("native runtime version mapping retains a string with its prefix", () => {
+  const text = readFileSync(new URL("../user/src/platform/platform-globals.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Global|Use instead")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const row = table.rows.find(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "process.version")
+  expect(row?.[1].text).toContain('"v" +')
+  expect(row?.[1].text).toContain(".versions).node")
+  expect(text).toContain("component versions")
+})
+
+test("generated runtime version mappings preserve the native string", () => {
+  const tick = String.fromCharCode(96)
+  const table = (source: string, replacement: string) => [
+    "| Global | Use instead |", "| --- | --- |",
+    "| " + tick + source + tick + " | " + replacement + " |"
+  ].join("\n")
+  fc.assert(fc.property(
+    fc.tuple(fc.integer({ min: 0, max: 999 }), fc.integer({ min: 0, max: 999 }), fc.integer({ min: 0, max: 999 })),
+    fc.constantFrom("", "-rc.1", "-preview.2"), fc.constantFrom("", " ", "  "),
+    fc.constantFrom("process.version", "globalThis.process.version"),
+    (parts, suffix, space, source) => {
+      const node = parts.join(".") + suffix
+      const components = { node, v8: "example", uv: "example" }
+      const native = "v" + node
+      expect(components).not.toEqual(native)
+      expect(components.node).not.toEqual(native)
+      expect("v" + components.node).toBe(native)
+      const lookup = "(try" + space + " Experimental.Process.Process)"
+      const map = "try " + lookup + space + "." + space + "versions"
+      const nodeOnly = "(try " + lookup + ".versions).node"
+      const options = { checkPlatformReplacements: true }
+      expect(tableRowProblems(table(source, tick + map + tick), "generated", options)).toHaveLength(1)
+      expect(tableRowProblems(table(source, tick + nodeOnly + tick), "generated", options)).toHaveLength(1)
+      expect(tableRowProblems(table(source, tick + '"v" + ' + nodeOnly + tick), "generated", options)).toEqual([])
+      expect(tableRowProblems(table("process.versions", tick + map + tick), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(source, "The component versions are " + tick + map + tick + "; retain a native string in a TypeScript adapter."), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(source, tick + map + tick), "spec")).toEqual([])
+      expect(tableRowProblems(tick.repeat(3) + "md\n" + table(source, tick + map + tick) + "\n" + tick.repeat(3), "generated", options)).toEqual([])
+    }
+  ), { numRuns: 200, seed: 35035 })
+})
