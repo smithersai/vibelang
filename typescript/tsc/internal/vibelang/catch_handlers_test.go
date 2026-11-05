@@ -50,6 +50,23 @@ func TestCatchHandlerEK0509QuickFix(t *testing.T) {
 	}
 }
 
+// VIP-5 gives missing-arrow handlers EK0509 during parsing. Exercise the
+// editor repair across parameter forms and trivia, preserving each source byte
+// except the explicit effect modifier and arrow insertions.
+func TestCatchHandlerMissingArrowEditorRepair(t *testing.T) {
+	const prefix = "import * as Effect from \"effect/Effect\"\nexport effect function f() { return Effect.fail(\"x\") catch "
+	for _, head := range []string{"(e)", "()", "(e: string)"} {
+		for _, gap := range []string{" ", " /* keep */ ", "\n", "\r\n"} {
+			t.Run(head+gap, func(t *testing.T) {
+				const body = "{ return 7 }"
+				handler := head + gap + body
+				want := prefix + "effect " + head + " =>" + gap + body + " }\n"
+				checkCatchHandlerFix(t, prefix+handler+" }\n", handler, want, true)
+			})
+		}
+	}
+}
+
 // A repaired arrow would take in what follows the catch expression, so the
 // whole expression is parenthesized: a chain, a conditional's test.
 func TestCatchHandlerEK0509QuickFixParenthesizes(t *testing.T) {
@@ -62,8 +79,11 @@ func checkCatchHandlerFix(t *testing.T, source, handler, want string, clean bool
 	t.Helper()
 	program, file, service, converters := editorProgram(t, source)
 	var found *lsproto.Diagnostic
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 		if d.Source() == "EK" && d.Code() == EK0509.Code {
+			if found != nil {
+				t.Fatal("duplicate EK0509 for one handler")
+			}
 			if d.Pos() != strings.LastIndex(source, handler) || d.Len() != len(handler) {
 				t.Fatalf("EK0509 must cover the handler %q: %v", handler, d)
 			}
@@ -96,7 +116,7 @@ func checkCatchHandlerFix(t *testing.T, source, handler, want string, clean bool
 		return
 	}
 	checked, edited, _, _ := editorProgram(t, got)
-	for _, after := range checked.GetSemanticDiagnostics(t.Context(), edited) {
+	for _, after := range append(checked.GetSyntacticDiagnostics(t.Context(), edited), checked.GetSemanticDiagnostics(t.Context(), edited)...) {
 		if after.Category() == diagnostics.CategoryError {
 			t.Errorf("quick fix left error: %s", after.String())
 		}

@@ -149,8 +149,10 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 			return nil, ""
 		}
 		at := scanner.SkipTrivia(text, inner.Pos())
-		open := scanner.SkipTrivia(text, inner.Body().Pos())
-		edits := []core.TextChange{{TextRange: core.NewTextRange(at, at), NewText: "effect "}, {TextRange: core.NewTextRange(open, open), NewText: "=> "}}
+		// Put the arrow before the body trivia: a line break before =>
+		// is forbidden, and comments and line endings belong to the source.
+		open := inner.Body().Pos()
+		edits := []core.TextChange{{TextRange: core.NewTextRange(at, at), NewText: "effect "}, {TextRange: core.NewTextRange(open, open), NewText: " =>"}}
 		return edits, applyTextChanges(text, edits)[start : handler.End()+len("effect ")+len("=> ")]
 	}
 	if isAsyncOrGenerator(inner) {

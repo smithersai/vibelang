@@ -32,6 +32,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Bare `forkIn` used the old scope-first wrapper, and disabling Effect globals left some functions available. It now exposes the native function, and the option disables all implicit Effect functions.
 - Declaration sidecar tests repeatedly loaded unrelated browser libraries. They now select ES5 while retaining project discovery, saved migration examples and changed-export checks.
+- A `catch` handler missing `=>` could receive an editor repair that still failed to parse when its body began on a new line. The repair now keeps comments and line breaks after the inserted arrow.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.

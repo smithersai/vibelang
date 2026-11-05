@@ -33,3 +33,10 @@ test("the two explicit repaired handlers both have the checked Success counterpa
   const result = run(witness + "\nfor (const p of [repairedCatchHandler(), repairedPlainCatchHandler()]) { const ex = Effect.runSyncExit(p); if (ex._tag !== 'Success' || ex.value !== 0) throw ex }\n")
   assert.equal(result.status, 0, result.stderr)
 })
+
+test("the fallback guide identifies the missing-arrow syntax diagnostic and preserving repair", () => {
+  const guide = read("docs/user/src/error-management/016-fallback.md")
+  assert.ok(guide.includes("It reports the `EK0509` syntax diagnostic while retaining the file's independent errors."))
+  assert.ok(guide.includes("Comments and line breaks before the body remain after the inserted arrow."))
+  assert.ok(!guide.includes("It reports `EK0509`, not a syntax error"))
+})
