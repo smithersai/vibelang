@@ -1850,3 +1850,5 @@ The `//:optional-callback-identities` check retains both missing channels and op
 The `//:native-setup-exit-behavior` check executes stock TypeScript and VibeLang on the same native source. Unpatched defaults retain successful exit and emission while the lint error still prints; explicit false flags keep the error blocking, and explicit true flags remain unchanged.
 
 The `//:interim-severity-probes` check retains the eight original compatibility keys, covers the complete current inventory and runs every supported severity through the actual compiler.
+
+The `//:join-message-regressions` check retains all awaited-value diagnostics and Deferred guidance, with direct and nested Deferred operands, parentheses and independent native type errors.

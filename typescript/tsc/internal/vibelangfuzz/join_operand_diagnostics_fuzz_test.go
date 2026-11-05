@@ -22,6 +22,8 @@ func FuzzJoinOperandDiagnostics(f *testing.F) {
 		{"property", "declare function take(n:{value:number}):Fiber.Fiber<number>|undefined;", "take({value:\"bad\"})", "TS2322", false},
 		{"constraint", "declare function take<T extends number>(n:T):Fiber.Fiber<number>|undefined;", "take<string>(\"bad\")", "TS2344", false},
 		{"satisfaction", "declare function take(n:number):Fiber.Fiber<number>|undefined;", "(take(1) satisfies string)", "TS1360", false},
+		{"deferred", "import type * as Deferred from \"effect/Deferred\";declare const deferred:Deferred.Deferred<number>;", "deferred", "", false},
+		{"deferred-object", "import type * as Deferred from \"effect/Deferred\";declare const deferred:Deferred.Deferred<number>;", "({value:deferred})", "", false},
 		{"literal", "", "[1]", "", false},
 		{"literal-argument", "declare function take(n:number):number;", "[take(\"bad\")]", "TS2345", false},
 		{"literal-body", "", "[(()=>{const n:number=\"bad\";return n})()]", "TS2322", false},
