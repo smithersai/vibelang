@@ -96,6 +96,7 @@ func adviceCounterpart(example, imports string) (string, error) {
 	for i, name := range adviceFreeNames {
 		declared[i] = "declare const " + name + ": any"
 	}
+	declared = append(declared, "declare const address: string")
 	if named["Effect"] == "" {
 		lines = append([]string{"import * as Effect from \"effect/Effect\""}, lines...)
 	}

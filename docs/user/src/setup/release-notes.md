@@ -208,6 +208,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Schema-error repair checks stopped at a separate retired inheritance clause. They now migrate that clause independently and still verify family encoding, decoding and child identity.
 
 - Joining a value typed `any` or `never` incorrectly reported `EK1704`. Those types now follow TypeScript's operand assignability, while `unknown` still needs narrowing.
+
+- Contributor checks rejected the scoped IPv6 diagnostic example because its sample address was missing. The example now has a typed string input in the check.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.
