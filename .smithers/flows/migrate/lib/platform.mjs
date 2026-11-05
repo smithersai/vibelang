@@ -134,7 +134,7 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   if (!declarations) return meta
   // Both repairs share the fresh companion. Moved declarations call its local
   // resolver instead of importing the companion from itself.
-  return { ...declarations, importMeta: true,
+  return { ...declarations, importMeta: meta.importMeta,
     platform: meta.platform + "\n" + declarations.platform.replace(meta.importText + "\n", ""),
     moved: [...meta.moved, ...declarations.moved] }
 }

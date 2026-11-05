@@ -64,6 +64,17 @@ test("property: generated names, source runtime and shadowed local spellings kee
     }finally{f.dispose()}
   }),{seed:561173,numRuns:48})
 })
+test("an authored resolver beside a generated helper keeps its private sibling and null export",()=>{
+ fc.assert(fc.property(fc.constantFrom("node","bun"),fc.constantFrom("./a.js","./nested/b.js"),(runtime,specifier)=>{
+  const f=fixture({runtime,suffix:'\nexport const located = () => import.meta.resolve("'+specifier+'")\n'})
+  try{
+   const state=f.plan()
+   assert.ok(state.writes.some(w=>w.file==="src/Trace.platform.ts"))
+   assert.equal(JSON.parse(state.writes.find(w=>w.file==="package.json").after).exports["./Trace.platform"],null)
+   assert.deepEqual(state.sourceChildModules.converted,[])
+  }finally{f.dispose()}
+ }),{seed:561174,numRuns:8})
+})
 test("a trailing comma in an owned call remains valid",()=>{
  const f=fixture()
  try{
