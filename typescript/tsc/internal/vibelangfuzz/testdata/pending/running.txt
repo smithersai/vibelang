@@ -13,10 +13,6 @@ FuzzDoDeclarationBytes bytes:inferred-return:depth-3 compiler VIP-1, VIP-27: una
 FuzzDoDeclarationBytes bytes:inferred-return:depth-4 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
 
 # Adjacent to unchecked-try-success-type: direct any calls already preserve success; E/R is a separate gap.
-FuzzUncheckedTryDeclarations call:0 compiler VIP-5/VIP-27: direct any-valued try calls infer never error/environment channels instead of native yield-star unknown channels; lane conf-auto-effect-bodyless-admission
-FuzzUncheckedTryDeclarations corpus:call-0 compiler VIP-5/VIP-27: direct any-valued try calls infer never error/environment channels instead of native yield-star unknown channels; lane conf-auto-effect-bodyless-admission
-FuzzUncheckedTryDeclarations call:1 compiler VIP-5/VIP-27: direct any-valued try calls infer never error/environment channels instead of native yield-star unknown channels; lane conf-auto-effect-bodyless-admission
-FuzzUncheckedTryDeclarations corpus:call-1 compiler VIP-5/VIP-27: direct any-valued try calls infer never error/environment channels instead of native yield-star unknown channels; lane conf-auto-effect-bodyless-admission
 FuzzConcurrentOperandDiagnostics compile:union-arrays compiler VIP-19: valid Iterable union retains preexisting TS2345 helper inference error; the separate classification key must never be EK1901; lane core-fortry
 FuzzConcurrentOperandDiagnostics corpus:union-arrays compiler VIP-19: minimized Iterable-union inference witness; lane core-fortry
 FuzzConcurrentOperandDiagnostics compile:union-containers compiler VIP-19: valid Iterable union retains preexisting TS2345 helper inference error; the separate classification key must never be EK1901; lane core-fortry
