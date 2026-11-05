@@ -2151,6 +2151,8 @@ Computed schema keys in TypeScript projections keep their native expressions, in
 
 The `//:http-request-pipe-rollback-controls` target retains canonical HTTP setter repairs, observable argument refusal and exact declaration controls across namespace and named imports, aliases, reexports, Unicode and stage order. The complete pipeline-order preservation controls also run in `//:pure-request-pipe-receiver-controls`.
 
+The `//:sync-builtin-call-bridge-controls` target retains exact sync wrapper checks and compares generated call bridges with native TypeScript. Keyed inputs cover JSON values and parse failures, property reads, Unicode and helper name collisions; runtime traces include construction, repeated runs, receivers, arguments and defect details.
+
 The mapper prelude helper check type-checks generated iterable projections with both native and stock TypeScript, preserves runtime helper types, and runs iterator cleanup controls.
 
 The `//:mapper-explicit-catch-owner-controls` target retains lazy catch and pipe-topic projection assertions under explicit effect owners. It also checks native and mapped `EK0504` spans for ordinary functions, arrows and shadowed callbacks, while marked owners remain valid. Legacy hatch and value-handler projection controls keep their existing coverage.
