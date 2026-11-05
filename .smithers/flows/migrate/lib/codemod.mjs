@@ -635,8 +635,11 @@ const specifierExtensions = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts
 
 export const importerFile = /\.(?:ts|tsx|mts|cts|vibe|vibex|js|jsx|mjs|cjs)$/
 
-// VIP-40 bodies retain TypeScript import spelling. Parse their ranges so
-// comments, strings, regexps and templates cannot impersonate a boundary.
+// A VIP-40 body is a TypeScript file: its JavaScript, extensionless and alias
+// names stay as written, and a name of a source file follows that file's
+// rename as it does in a sibling .ts file. Parse the body ranges so comments,
+// strings, regexps and templates cannot impersonate a boundary.
+const sourceFileName = /\.(?:[cm]?tsx?|vibex?)$/
 let importTypeScript
 const importParser = root => importTypeScript ??= loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
 function nativeImportRanges(text, root, jsx = false) {
@@ -692,8 +695,8 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
     const changes = []
     const nativeBodies = /\.vibex?$/.test(file) ? nativeImportRanges(text, root, file.endsWith(".vibex")) : []
     for (const i of editableImports(() => importParser(root), file, text)) {
-      if (nativeBodies.some(([start, end]) => start <= i.start && i.start < end)) continue
       const { path: modulePath, suffix } = splitSpecifier(i.specifier)
+      if (!sourceFileName.test(modulePath) && nativeBodies.some(([start, end]) => start <= i.start && i.start < end)) continue
       if (javascript && !/\.(?:[cm]?tsx?|vibex?)$/.test(modulePath)) continue
       if (kept.get(file)?.has(i.specifier)) continue
       // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).

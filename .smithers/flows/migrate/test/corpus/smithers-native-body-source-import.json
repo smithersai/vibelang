@@ -1,0 +1,8 @@
+{
+  "key": "smithers:native-body-source-import",
+  "description": "A throwing helper body names a sibling by its .ts file; the sibling then becomes a .vibe module",
+  "importer": "src/Action/make.vibe",
+  "moved": "src/RetryPolicy.vibe",
+  "before": "module throwing {\nimport type * as RetryPolicy from \"../RetryPolicy.ts\"\nexport type Policy = RetryPolicy.RetryPolicy\n}\n",
+  "after": "module throwing {\nimport type * as RetryPolicy from \"../RetryPolicy.vibe\"\nexport type Policy = RetryPolicy.RetryPolicy\n}\n"
+}

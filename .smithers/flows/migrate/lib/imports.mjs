@@ -4,8 +4,8 @@
 import { posix } from "node:path"
 import { isTestMockCall, isTestMockLoader } from "./test-mock-loaders.mjs"
 
-const fromClause = /(?<=^|[;\n}])[ \t]*(import|export)\s+(type\s+)?((?:(?!\b(?:import|export)\b)[^'";=])*?)\s*from\s*(['"])([^'"\n]+)\4/dg
-const bare = /(?<=^|[;\n}])[ \t]*import\s*(['"])([^'"\n]+)\1/dg
+const fromClause = /(?<=^|[;\n{}])[ \t]*(import|export)\s+(type\s+)?((?:(?!\b(?:import|export)\b)[^'";=])*?)\s*from\s*(['"])([^'"\n]+)\4/dg
+const bare = /(?<=^|[;\n{}])[ \t]*import\s*(['"])([^'"\n]+)\1/dg
 const dynamic = /\bimport\(\s*(['"])([^'"\n]+)\1\s*\)/dg
 const mocked = /\bmock\.module\(\s*(['"])([^'"\n]+)\1/dg
 // Vitest's and Jest's module mocks name a module by a path as an import does:

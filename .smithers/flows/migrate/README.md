@@ -22,7 +22,7 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 The fix loop writes the batch's physical source paths to a temporary `@batch.txt`, preserving spaces and commas in filenames, and removes it after success or interruption. An empty selection starts no compiler. Selected repairs are partial: the normal post-fix checks still verify the project. A defensive snapshot continues to restore unrelated source files if a compiler writes outside its selection.
 
 
-Imports and re-exports inside VIP-40 native `module` bodies keep their original TypeScript spelling when dependencies migrate, so `./leaf.js` does not become `./leaf.vibe` and introduce `TS5097`. The containing file's top-level imports retain the existing extension policy.
+Imports and re-exports inside VIP-40 native `module` bodies keep their JavaScript, extensionless and alias spelling when dependencies migrate, so `./leaf.js` does not become `./leaf.vibe` and introduce `TS5097`. A name of a source file, `./leaf.ts`, follows the rename as it does in a sibling `.ts` file. The containing file's top-level imports retain the existing extension policy.
 
 An exact `paths` alias keeps its configuration key. When its target becomes `.vibe`, imports use a relative name of that same source, following the project's extension policy. The import journal restores the original alias on revert. Wildcard aliases continue to follow their existing configuration and native extension policy.
 

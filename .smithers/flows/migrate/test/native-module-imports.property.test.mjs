@@ -13,6 +13,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check"), ts = require("typescript")
 const compiler = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
 const fixture = JSON.parse(readFileSync(new URL("./corpus/opencode-native-module-import.json", import.meta.url), "utf8"))
+const saved = JSON.parse(readFileSync(new URL("./corpus/smithers-native-body-source-import.json", import.meta.url), "utf8"))
 const vip = readFileSync(new URL("../../../../docs/design/vips/0040-module-declarations.md", import.meta.url), "utf8")
 const quote = "A body is a TypeScript file stored inside a `.vibe` file."
 
@@ -87,8 +88,8 @@ test("native boundaries keep comments, strings, nested braces and neighbouring t
   assert.equal(rewrite(`// module fake {\n` + top), `// module fake {\n` + top.replace("./leaf.js", "./leaf.vibe"))
 })
 
-test("native bodies retain source extensions, extensionless names and aliases under project rewrite policy", () => {
-  for (const specifier of ["./leaf.js", "./leaf.ts", "./leaf", "@/leaf"]) {
+test("native bodies retain JavaScript extensions, extensionless names and aliases under project rewrite policy", () => {
+  for (const specifier of ["./leaf.js", "./leaf", "@/leaf"]) {
     for (const module of ["module local", "module/* boundary */local"]) {
       const source = module + " {\nimport { value } from " + JSON.stringify(specifier) + ";\nexport const result = value;\n}\n"
       const files = new Map([["main.vibe", source], ["leaf.vibe", fixture.leaf]])
@@ -101,6 +102,55 @@ test("native bodies retain source extensions, extensionless names and aliases un
       assert.equal(files.get("main.vibe"), source)
     }
   }
+})
+
+// A body is a TypeScript file, so a name of the moved source file follows the rename as it does in a sibling .ts file.
+function compileBody({ allow = true, kind, spelled }) {
+  const root = mkdtempSync(join(tmpdir(), "native-import-"))
+  const options = { strict: true, target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], noEmit: true, allowArbitraryExtensions: true, allowImportingTsExtensions: allow }
+  try {
+    writeFileSync(join(root, "package.json"), "{\"type\":\"module\"}")
+    writeFileSync(join(root, "leaf.vibe"), fixture.leaf)
+    writeFileSync(join(root, "main.vibe"), "module local {\n" + kinds[kind](spelled) + "\n}\n")
+    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: options, vibe: { effectModules: false }, files: ["main.vibe", "leaf.vibe"] }))
+    const compiled = spawnSync(compiler, ["-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8" })
+    assert.ifError(compiled.error)
+    return compiled
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}
+
+test("a body's name of a renamed source file follows the rename and compiles", () => {
+  for (const kind of Object.keys(kinds)) {
+    const before = "module local {\n" + kinds[kind]("./leaf.ts") + "\n}\n", after = rewrite(before)
+    assert.equal(after, before.replace("./leaf.ts", "./leaf.vibe"))
+    assert.match(compileBody({ kind, spelled: "./leaf.ts" }).stdout, /TS2307/, kind)
+    const compiled = compileBody({ kind, spelled: "./leaf.vibe" })
+    assert.equal(compiled.status, 0, kind + compiled.stdout + compiled.stderr)
+  }
+})
+
+test(saved.key, () => {
+  const files = new Map([[saved.importer, saved.before], [saved.moved, fixture.leaf]])
+  rewriteImports("/virtual", [...files.keys()], [saved.moved], undefined, { read: file => files.get(file), write: (file, text) => files.set(file, text) })
+  assert.equal(files.get(saved.importer), saved.after)
+})
+
+test("a revert returns a body's source name, and a module that stayed TypeScript keeps it", () => {
+  const body = spec => "module local {\nimport { value } from " + JSON.stringify(spec) + ";\nexport const result = value;\n}\n"
+  const files = new Map([["main.vibe", body("./leaf.vibe")], ["leaf.ts", fixture.leaf], ["other.ts", fixture.leaf]])
+  const io = { read: file => files.get(file), write: (file, text) => files.set(file, text) }
+  rewriteImports("/virtual", [...files.keys()], ["leaf.ts"], undefined, io)
+  assert.equal(files.get("main.vibe"), body("./leaf.ts"))
+  files.set("main.vibe", body("./other.ts"))
+  assert.deepEqual(rewriteImports("/virtual", [...files.keys()], ["leaf.ts"], undefined, io), [])
+})
+
+test("a body's source names change only in the body's own import forms", () => {
+  fc.assert(fc.property(fc.constantFrom(...Object.keys(kinds)), fc.constantFrom("\"", "\u0027"), fc.boolean(), fc.constantFrom("", "// ./leaf.ts\n", "const text = \"./leaf.ts\";\n"), (kind, q, inline, noise) => {
+    const form = kinds[kind]("./leaf.ts").replaceAll("\"", q)
+    const source = "module local {" + (inline ? " " : "\n") + noise + form + "\n}\n"
+    assert.equal(rewrite(source), "module local {" + (inline ? " " : "\n") + noise + form.replace("./leaf.ts", "./leaf.vibe") + "\n}\n")
+  }), { seed: 405099, numRuns: 120, endOnFailure: true })
 })
 
 test("native boundaries survive surrounding VibeLang forms and misleading literal tokens", () => {
