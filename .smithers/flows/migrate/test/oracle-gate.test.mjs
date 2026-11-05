@@ -13,7 +13,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const packCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-verify-pack-prerequisites.json", import.meta.url), "utf8"))
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-stock-oracle-builders.json", import.meta.url), "utf8"))
 
-async function fixture(action, { identical = false, stock = true, stockExit = 0, privatePackage = false, mixed = false, custom = false, includePrivate = false } = {}) {
+async function fixture(action, { identical = false, stock = true, stockExit = 0, privatePackage = false, mixed = false, custom = false, includePrivate = false, publishDeclarations = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), "alchemy-stock-gate-"))
   const target = join(root, "repo"), run = join(root, "run")
   const put = (name, text) => {
@@ -39,7 +39,7 @@ async function fixture(action, { identical = false, stock = true, stockExit = 0,
     chmodSync(join(target, "node_modules/.bin/" + name), 0o755)
   }
   try {
-    put("package.json", JSON.stringify({ ...packCorpus.publicManifest, scripts: { build: "node build.mjs", types: "tsrs --emitDeclarationOnly" }, types: "./lib/Ok.d.ts", ...(privatePackage ? { private: true } : {}) }))
+    put("package.json", JSON.stringify({ ...packCorpus.publicManifest, files: publishDeclarations ? corpus.publishedFiles : corpus.sourceOnlyFiles, scripts: { build: "node build.mjs", types: "tsrs --emitDeclarationOnly" }, types: "./lib/Ok.d.ts", ...(privatePackage ? { private: true } : {}) }))
     // Product preparation must succeed independently of the oracle under test.
     // Missing/failed stock compilers should reach the declaration gate.
     put("build.mjs", 'import {writeFileSync} from "node:fs"; writeFileSync("build-ready.txt", "ready")\n')
@@ -139,4 +139,27 @@ test("t3code: opted-in private packages record a stock API oracle; changed or un
       assert.equal(result.checks.packs, true, "the declaration oracle is tested with a valid upstream pack receipt")
     }, { ...options, privatePackage: true, includePrivate: true })
   }), { seed: 31103, numRuns: 6, examples: t3code.variants.map(x => [x]) })
+})
+
+test("stock declarations excluded from the published package do not create an API difference", async () => {
+  await fixture(async ({ run, p, baseline }) => {
+    const result = await verify({ run, batch: "01" })
+    assert.equal(result.ok, true)
+    assert.equal(result.checks.declarationOracle, true)
+    assert.equal(baseline.declarationOracle["."].unproven, 0)
+    assert.deepEqual(JSON.parse(readFileSync(join(p.baseline, "declaration-oracle.json")))["."].files, [])
+  }, { publishDeclarations: false })
+})
+
+test("generated stock-oracle gates distinguish shipped declarations from source-only packages", async () => {
+  await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), async (publishDeclarations, identical) => {
+    await fixture(async ({ run, p }) => {
+      const result = await verify({ run, batch: "01" })
+      const unproven = publishDeclarations && !identical
+      assert.equal(result.ok, !unproven)
+      assert.equal(result.checks.declarationOracle, !unproven)
+      assert.deepEqual(JSON.parse(readFileSync(join(p.baseline, "declaration-oracle.json")))["."].missing, unproven ? ["Pipes/builders.d.ts"] : [])
+      assert.deepEqual(result.declarationOracle.unproven.map(x => x.file), unproven ? ["src/Pipes/builders.vibe"] : [])
+    }, { publishDeclarations, identical })
+  }), { seed: 551109, numRuns: 12 })
 })
