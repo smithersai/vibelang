@@ -166,7 +166,7 @@ func FuzzSchemaErrorEffectKeyChannels(f *testing.F) {
 	var rules []rule
 	for _, shape := range shapes {
 		for _, channel := range channels {
-			source := "error KeyError\nservice Keys { key: string }\ndeclare const key: " + channel.typ +
+			source := "error KeyError\nservice Keys { static readonly key = \"schema-key/Keys\"; key: string }\ndeclare const key: " + channel.typ +
 				"\neffect function test(): " + channel.result + " {\nschema error E { " + shape.field + " }\nreturn 1\n}\n"
 			rules = append(rules, rule{shape.key + "/" + channel.key, source, channel.errors})
 		}
