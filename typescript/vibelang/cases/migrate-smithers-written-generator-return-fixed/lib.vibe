@@ -8,7 +8,6 @@ export const event = (bad: boolean) => (effect (): Outcome!string!never => {
   return { kind: "ok", value: 7 }
 })()
 
-export const clock = () => Effect.gen(function* (): Generator<unknown!!, Outcome, never> {
-  yield* Effect.void
+export const clock = () => (effect (): Outcome!never!never => {
   return { kind: "ok", value: 9 }
-})
+})()

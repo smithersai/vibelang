@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `private` or `protected` constructor in `error` or `schema error` could add a spurious argument error from generated code. It now reports the constructor restriction once; `--fix` preserves constructor visibility and tag matching, while authored type errors remain visible.
 
+- Preserving migrations retain source comments, named parameter types and explicit generator return contracts.
+
 - A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
 
 - API provenance checks loaded unrelated browser declarations. They now use fewer libraries while retaining selected dependencies and native type errors.

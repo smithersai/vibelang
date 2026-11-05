@@ -2129,3 +2129,4 @@ typescript/vibelang/cases/match-ordinary-extractor.fail/main.vibe:9:42 lambda: e
 
 typescript/vibelang/cases/decl-layer-blocks/main.vibe:66:5 lambda: effectFn keyword -> program table # Native try migration moves an explicit resource Effect block to this coordinate; the former method is unchanged at its new location.
 typescript/vibelang/cases/failures-mixed-causes/main.vibe:213:22 lambda: effectFn table -> plain table # Native try migration shifts this coordinate to a plain synchronous callback; cleanup handlers retain their explicit Effect markers.
+typescript/vibelang/cases/migrate-smithers-written-generator-return-fixed/lib.vibe:11:22 lambda: dual fallback -> choice fallback # VIP-1: the plain outer arrow builds a cold Effect; its explicit effect body owns execution.

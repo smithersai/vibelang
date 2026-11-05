@@ -5,7 +5,7 @@ export type Path = typeof Path.Type
 export const cleanup = effect (files: readonly string[]) => try withSpan(effect {
   return files.length
 }, "cleanup")
-export const canonical = effect (input: string & import("effect/Brand").Brand<"Path">) => try withSpan(effect {
+export const canonical = effect (input: Path) => try withSpan(effect {
   return input
 }, "canonical")
 export const explicit = effect (files: readonly string[]) => {

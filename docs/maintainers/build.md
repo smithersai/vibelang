@@ -2043,3 +2043,5 @@ The `//:abstract-error-family-membership` target compares legacy abstract roots 
 The `//:native-identity-receipt-inputs` target validates frozen source and configuration inputs on clean source trees. Generated declaration sidecars are compiler output, not additional authored inputs.
 
 The `//:parser-error-registration-members` target checks the complete parser suite and generated matcher blocks across error forms and authored member variations.
+
+The `//:migration-source-twins` target checks complete source equality and declaration identity for implicit-run and imported generator migrations, including their evidence comments.
