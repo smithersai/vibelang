@@ -1117,6 +1117,8 @@ The `//packages:migrate-lost-wrapper` gate runs the wrapper-loss suite when migr
 
 The [specification contracts](#specification-contracts) run in `//:spec-lint`. A new class of inconsistency gets a rule and a failing-defect test in the commit that fixes it.
 
+The release documentation check, `node docs/tools/release-docs.mjs --check`, rejects unresolved merge-conflict boundaries in its Markdown and MDX inputs, including historical release notes and generated site copies. It reports the first marker's file and line. The `--write` mode also rejects these pages and leaves their text intact for manual resolution; regeneration cannot discard a conflict inside a generated compatibility box. Markdown heading underlines and inline marker examples remain valid. `node --test docs/tools/release-conflicts.test.mjs` checks real jj conflicts in `diff`, `snapshot` and `git` marker styles, resolved notes retaining both fixes, and generated marker widths, line endings and page locations.
+
 The `//:docs-tools` target runs its test files with `bun test --timeout 60000 --parallel=3 --no-isolate`.
 Three worker processes run files in parallel; tests within each file retain their normal order.
 Each worker reuses its module registry between files, as the serial runner does.

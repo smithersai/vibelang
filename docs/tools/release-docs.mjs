@@ -88,6 +88,14 @@ export function releaseDocsProblems(repository = root, write = false) {
   for (const path of releasePaths(repository)) {
     const file = join(repository, path)
     const current = readFileSync(file, "utf8")
+    // Historical pages and generated boxes still need source-conflict checks.
+    // A run of equals signs alone is a valid Markdown heading underline.
+    const marker = /^(?:<{7,}|>{7,}|\|{7,})(?:[ \t].*)?\r?$/m.exec(current)
+    if (marker) {
+      const line = current.slice(0, marker.index).split("\n").length
+      problems.push(path + ":" + line + ": unresolved merge conflict marker; resolve it before regenerating docs")
+      continue
+    }
     const generated = renderReleasePage(path, current, version, effect)
     if (effect && ["docs/user/src/setup/existing-project.md", "docs/user/src/getting-started/004-installation.md"].includes(path) && !generated.includes('"@effect/platform-node-shared": "' + effect + '"')) problems.push(path + ": missing @effect/platform-node-shared override for effect " + effect)
     if (current === generated) continue
@@ -106,7 +114,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const problems = releaseDocsProblems(root, mode === "--write")
     for (const problem of problems) console.error(problem)
     if (problems.length) {
-      console.error("Run (cd .smithers && bun run docs:generate) to regenerate release docs and site copies.")
+      console.error("Resolve the reported source problems, then run (cd .smithers && bun run docs:generate) to regenerate release docs and site copies.")
       process.exitCode = 1
     } else console.log("release-docs: current-release references match the compiler manifest")
   }

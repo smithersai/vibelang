@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A rejected error inheritance clause could expose an argument error from a generated superclass call; only the inheritance error is reported there, while errors in authored methods remain visible.
 
+- Unresolved merge markers could survive in release notes and generated documentation. The documentation check now reports the file and line and preserves the conflicting text for resolution.
+
 - The service cheat sheet could direct readers to an unavailable external `Name.Shape` alias. It now explains the alias's scope and shows how to name the implementation outside the service body.
 
 - Pure ambient API validation loaded unrelated browser declarations. It now uses ES5 while browser augmentations retain native `Request` and `Window` types.
