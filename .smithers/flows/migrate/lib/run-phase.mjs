@@ -34,6 +34,12 @@ function callbackPath(path, callee, index, ordinals) {
   ordinals.set(key, ordinal + 1)
   return [key + (ordinal ? "#" + ordinal : "")]
 }
+const returnedPath = (path, ordinals) => {
+  const key = path.join(".") + "/return"
+  const ordinal = ordinals.get(key) ?? 0
+  ordinals.set(key, ordinal + 1)
+  return [key + (ordinal ? "#" + ordinal : "")]
+}
 const estreeUnwrap = node => {
   while (node && ["TSAsExpression", "TSSatisfiesExpression", "TSNonNullExpression", "TSTypeAssertion", "ChainExpression"].includes(node.type)) node = node.expression
   return node
@@ -68,6 +74,15 @@ export function effectFunctions(ast, text = "") {
     if (!node || typeof node !== "object") return
     if (Array.isArray(node)) { for (const child of node) visit(child, path, parent); return }
     if (typeof node.type !== "string") return
+    if (node.type === "ReturnStatement" && estreeFunctions.has(estreeUnwrap(node.argument)?.type)) {
+      visit(node.argument, returnedPath(path, ordinals), node)
+      return
+    }
+    if (node.type === "VibeCatchExpression") {
+      visit(node.expression, path, node)
+      visit(node.handler, callbackPath(path, "catch", 0, ordinals), node)
+      return
+    }
     if (node.type === "CallExpression") {
       // ESTree represents an effect block as an intrinsic builder holding a
       // lexical arrow. That arrow is the program body, not a changed function.
@@ -92,24 +107,57 @@ export function effectFunctions(ast, text = "") {
       const method = parent && (parent.type === "Property" || parent.type === "MethodDefinition") && parent.value === node && marked(parent.range[0], parent.key.range[0])
       if (own || method) found.push({ name: next.join("."), line: lineAt(node.range[0]), node })
     }
-    for (const [key, value] of Object.entries(node)) if (!["tokens", "comments", "range", "loc", "parent"].includes(key)) visit(value, next, node)
+    for (const [key, value] of Object.entries(node)) if (!["tokens", "comments", "range", "loc", "parent"].includes(key)) {
+      const returned = key === "body" && estreeFunctions.has(node.type) && estreeFunctions.has(estreeUnwrap(value)?.type)
+      visit(value, returned ? returnedPath(next, ordinals) : next, node)
+    }
   }
   visit(ast, [], null)
   return found
 }
 
+const nativeCatchPaths = new WeakMap()
+const originalAt = (functions, path) => {
+  const aliases = nativeCatchPaths.get(functions)
+  for (let remaining = (aliases?.size ?? 0) + 1; remaining; remaining--) {
+    const found = functions.get(path)
+    if (found) return found
+    let selected
+    for (const pair of aliases ?? []) {
+      if ((path === pair[0] || path.startsWith(pair[0] + ".") || path.startsWith(pair[0] + "/")) &&
+          (!selected || pair[0].length > selected[0].length)) selected = pair
+    }
+    if (!selected) return
+    path = selected[1] + path.slice(selected[0].length)
+  }
+}
+
 /** The function-valued names of a TypeScript module, by the same name paths. */
 export function originalFunctions(ts, text, file = "original.ts") {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
-  const found = new Map(), ordinals = new Map()
+  const found = new Map(), ordinals = new Map(), catchPaths = new Map(), catchCalls = new Map()
+  nativeCatchPaths.set(found, catchPaths)
   const nameOf = name => name && (ts.isIdentifier(name) || ts.isPrivateIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) ? name.text : null
+  const visitReturned = (value, path) => {
+    const shape = value && functionShape(ts, value)
+    if (!shape) return false
+    const next = returnedPath(path, ordinals)
+    found.set(next.join("."), shape)
+    visit(value, next)
+    return true
+  }
   const visit = (node, path) => {
+    if (ts.isReturnStatement(node) && visitReturned(node.expression, path)) return
     if (ts.isCallExpression(node)) {
       visit(node.expression, path)
       // Effect.gen's generator belongs to the surrounding callback or named
       // function; Effect.fn already establishes that named function's kind.
       const program = coldGen(ts, node)
       const factory = effectFactory(ts, node)
+      const member = effectMember(ts, node.expression)
+      const catcher = member?.module === "Effect" && member.name === "catch" &&
+        (node.arguments.length === 1 || node.arguments.length === 2)
+      if (catcher) catchCalls.set(node, { path, original: null })
       node.arguments.forEach((argument, index) => {
         const value = unwrap(ts, argument)
         const shape = functionShape(ts, value)
@@ -117,6 +165,8 @@ export function originalFunctions(ts, text, file = "original.ts") {
           visit(shape?.node?.body ?? value, path)
         } else if (shape) {
           const next = callbackPath(path, tsCallee(ts, node.expression), index, ordinals)
+          if (catcher && index === node.arguments.length - 1)
+            catchCalls.get(node).original = next.join(".")
           found.set(next.join("."), shape)
           visit(value, next)
         } else visit(argument, path)
@@ -131,9 +181,39 @@ export function originalFunctions(ts, text, file = "original.ts") {
       const shape = value && functionShape(ts, value)
       if (shape && !found.has(next.join("."))) found.set(next.join("."), shape)
     }
-    ts.forEachChild(node, child => visit(child, next))
+    ts.forEachChild(node, child => {
+      if (child !== node.body || !visitReturned(child, next)) visit(child, next)
+    })
   }
   visit(source, [])
+  // Native catch syntax visits its source before its handler. Keep written
+  // callback paths intact, and order only the native aliases separately.
+  const nativeOrdinals = new Map()
+  const nativeOrder = node => {
+    if (ts.isCallExpression(node)) {
+      const callee = unwrap(ts, node.expression)
+      if (ts.isCallExpression(callee) && catchCalls.has(callee) &&
+          callee.arguments.length === 1 && node.arguments.length === 1) {
+        nativeOrder(node.arguments[0])
+        nativeOrder(node.expression)
+        return
+      }
+      const pair = catchCalls.get(node)
+      if (pair) {
+        nativeOrder(node.expression)
+        node.arguments.forEach((argument, index) => {
+          if (index === node.arguments.length - 1) {
+            const native = callbackPath(pair.path, "catch", 0, nativeOrdinals).join(".")
+            if (pair.original) catchPaths.set(native, pair.original)
+          }
+          nativeOrder(argument)
+        })
+        return
+      }
+    }
+    ts.forEachChild(node, nativeOrder)
+  }
+  nativeOrder(source)
   return found
 }
 
@@ -369,7 +449,7 @@ export function runPhaseChanges({ ts, original, originalPath, vibe, vibeText = "
   const functions = originalFunctions(ts, original, originalPath)
   const changes = []
   for (const fn of effectFunctions(vibe, vibeText)) {
-    const before = functions.get(fn.name)
+    const before = originalAt(functions, fn.name)
     if (!before || before.kind !== "plain") continue
     let phase = runPhaseOf(ts, before.node)
     if (phase.verdict === "ok" && dropsProgramValue(ts, before.node, fn.node)) phase = { verdict: "value", detail: "drops the original program's returned value" }

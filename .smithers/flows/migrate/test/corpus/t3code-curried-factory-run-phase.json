@@ -1,0 +1,117 @@
+{
+  "key": "t3code-curried-factory-run-phase",
+  "chapter": "001-functions.md",
+  "quote": "A function's kind is decided by a keyword on the function, never by its body or by a type.",
+  "samples": [
+    {
+      "key": "curried-die",
+      "before": "import { Effect } from \"effect\"; export const make = (kind: string) => () => Effect.die(kind);",
+      "after": "import { Effect } from \"effect\"; export const make = (kind: string): infer _ => effect () => try Effect.die(kind);",
+      "expected": [],
+      "blockingOnly": true
+    },
+    {
+      "key": "returned-value-becomes-program",
+      "before": "export const make = () => () => 42;",
+      "after": "export const make = () => effect () => 42;",
+      "expected": [
+        {
+          "name": "make/return",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "outer-value-becomes-program",
+      "before": "import { Effect } from \"effect\"; export const make = (kind: string) => () => Effect.die(kind);",
+      "after": "import { Effect } from \"effect\"; export const make = effect (kind: string) => () => Effect.die(kind);",
+      "expected": [
+        {
+          "name": "make",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "explicit-return",
+      "before": "import { Effect } from \"effect\"; export function make(kind: string) { return function () { return Effect.die(kind); }; }",
+      "after": "import { Effect } from \"effect\"; export function make(kind: string) { return effect function () { return try Effect.die(kind); }; }",
+      "expected": [],
+      "blockingOnly": true
+    },
+    {
+      "key": "schemaJson-eager-outer-map-error",
+      "before": "import { Effect } from \"effect\"; export const parse = SchemaGetter.transformEffect((input: string) => { const stripped = input.trim(); return decode(stripped).pipe(Effect.mapError((error) => error.issue)); });",
+      "after": "export const parse = SchemaGetter.transformEffect((input: string) => { const stripped = input.trim(); return effect { return decode(stripped) catch effect (error) => { throw error.issue; }; }; });",
+      "expected": []
+    },
+    {
+      "key": "catch-handler-success-value-drop",
+      "before": "import { Effect } from \"effect\"; export const recover = () => Effect.catch(source, () => Effect.gen(function* () { return 42; }));",
+      "after": "export const recover = () => effect { return source catch effect () => {}; };",
+      "expected": [
+        {
+          "name": "recover/catch(0)",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "catch-handler-eager-work",
+      "before": "import { Effect } from \"effect\"; export const recover = () => Effect.catch(source, () => { read(); return Effect.gen(function* () {}); });",
+      "after": "export const recover = () => effect { return source catch effect () => { read(); }; };",
+      "expected": [
+        {
+          "name": "recover/catch(0)",
+          "verdict": "eager"
+        }
+      ]
+    },
+    {
+      "key": "written-catch-retains-callback-check",
+      "before": "import { Effect } from \"effect\"; export const recover = () => Effect.catch(source, () => Effect.gen(function* () { return 42; }));",
+      "after": "import { Effect } from \"effect\"; export const recover = () => Effect.catch(source, effect () => {});",
+      "expected": [
+        {
+          "name": "recover/Effect.catch(1)",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "shadowed-catch-keeps-ordinary-callback",
+      "before": "export function recover(Effect) { return Effect.catch(source, () => 42); }",
+      "after": "export function recover(Effect) { return Effect.catch(source, effect () => 42); }",
+      "expected": [
+        {
+          "name": "recover/Effect.catch(1)",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "nested-applied-curried-catches",
+      "before": "import { Effect } from \"effect\"; export const recover = () => Effect.catch(() => Effect.gen(function* () { return 42; }))(Effect.catch(source, () => Effect.gen(function* () {})));",
+      "after": "export const recover = () => effect { return (source catch effect () => {}) catch effect () => {}; };",
+      "expected": [
+        {
+          "name": "recover/catch(0)#1",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "nonliteral-handler-retains-later-ordinal",
+      "before": "import { Effect } from \"effect\"; export const recover = () => { Effect.catch(source, handler); return Effect.catch(source, () => Effect.gen(function* () { return 42; })); };",
+      "after": "export const recover = () => { source catch 0; return effect { return source catch effect () => {}; }; };",
+      "expected": [
+        {
+          "name": "recover/catch(0)#1",
+          "verdict": "value"
+        }
+      ]
+    }
+  ],
+  "equivalenceQuote": "| `effect (p) => { B }` | `(p) => Effect.gen(function* () { B })` |",
+  "catchQuote": "const recovered = Effect.catch(source, (e) => Effect.try(() => parse(e)))"
+}

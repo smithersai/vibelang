@@ -472,6 +472,8 @@ Claude Fable then reviewed the result. It confirmed the race fix: each transform
 
 Left on purpose: ESTree token parity with `typescript-estree` (not installed in the repository, and dependency changes need approval); the installation, scaffold, loader, Vite and editor-extension packages, which are TypeScript, not the compiler (fuzz them with fast-check); the "exactly once" reading of a rule's report, which the specification implies but does not state.
 
+Returned-callable migration coverage uses the minimized T3 Code curried-factory corpus and a keyed property over nesting depth, expression and block returns, casts and multiple return sites. Independent value-loss and outer timing controls keep unsafe conversions visible.
+
 ## FuzzVIPDifferential: the VIPs' differential test
 
 Computed object member keys use the `vip01.object-member-key` construct in `FuzzVIPDifferential`. Its keyed corpus covers ordinary methods, getters, setters, written Effect methods and property controls, with string, symbol and coercing keys in direct and nested Effect bodies. The shared worker compares the canonical `Exit`, call-time snapshots and ordered events. `FuzzObjectMemberKeyContext` separately checks static context diagnostics; it runs no runtime comparator.
