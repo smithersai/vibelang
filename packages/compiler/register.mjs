@@ -164,6 +164,11 @@ const nativeFormat = result => compiled(result.url) ? { ...result, format: "vibe
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    // Migrated packages expose source before their default JavaScript is built.
+    // Preserve Node's import/require and user conditions when selecting it.
+    if (!context.conditions.includes("vibelang-source")) {
+      context = { ...context, conditions: [...context.conditions, "vibelang-source"] }
+    }
     const started = performance.now()
     try {
       return nativeFormat(toSource(nextResolve(specifier, context), context, nextResolve))

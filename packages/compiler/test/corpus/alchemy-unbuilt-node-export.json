@@ -1,0 +1,4 @@
+{
+  "description": "A Playwright dependency exposes native source before its default JavaScript has been emitted.",
+  "case": { "name": "Playwright", "consumer": "import", "mode": "exact", "condition": "node", "built": false }
+}

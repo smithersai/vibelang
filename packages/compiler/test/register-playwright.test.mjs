@@ -196,3 +196,23 @@ console.log("custom-mapped")
   assert.equal(result.status, 0, result.stdout + result.stderr)
   assert.equal(result.stdout, "custom-mapped\n")
 })
+
+test("Playwright loads an unbuilt package source export in its worker", { skip }, t => {
+  const { root, run } = fixture(t, {
+    "package.json": JSON.stringify({ name: "@probe/native", type: "module", exports: {
+      "./answer": { "vibelang-source": "./src/answer.vibe", default: "./.vibelang/js/src/answer.js" }
+    } }),
+    "playwright.config.ts": 'export default { testDir: "./tests", workers: 1, reporter: "line" }\n',
+    "tests/entry.spec.ts": `import { test, expect } from "playwright/test"
+import { Effect } from "effect"
+import { answer } from "@probe/native/answer"
+import { answer as direct } from "../src/answer.vibe"
+test("unbuilt package", () => { expect(answer).toBe(direct); expect(Effect.runSync(answer)).toBe(42) })
+`
+  })
+  const playwright = dirname(tooling.resolve("playwright/package.json"))
+  symlinkSync(playwright, join(root, "node_modules/playwright"))
+  const result = run([join(playwright, "cli.js"), "test"], { NODE_OPTIONS: "--import=vibelang/register" })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.match(result.stdout, /1 passed/)
+})

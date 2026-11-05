@@ -62,6 +62,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Catch declaration checks could reject equivalent generated Effect imports; they now compare the same exact success, failure and requirement types through the resolved namespace alias.
 
 - Repair twin tests could reject correctly retained coverage comments; fixed witnesses now keep their source metadata, with comment association and repeat-run controls.
+- Node and Playwright could fail to import a migrated workspace package before its JavaScript was built; the Node preload now selects its `vibelang-source` target while retaining existing package conditions.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 

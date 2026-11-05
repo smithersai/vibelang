@@ -185,6 +185,8 @@ A project with a type error gets no record.
 NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx playwright test
 ```
 
+The preload enables `vibelang-source` package exports and imports, preserving Node’s existing conditions. A workspace dependency can load its source before its default JavaScript is built.
+
 The preload serves native imports from Playwright configurations and test
 workers. Native stack frames keep their source locations even when the runner installs a custom stack formatter. Select a native configuration explicitly
 with `--config playwright.config.vibe`. Keep Playwright's discoverable

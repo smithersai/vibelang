@@ -343,6 +343,8 @@ In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitra
 
 TypeScript then resolves `import { greet } from "./greet.vibe"` to `greet.d.vibe.ts`, as it resolves `./styles.css` to `styles.d.css.ts`. Without the option it reports `TS6263`. Without custom `moduleSuffixes`, TypeScript does not map `./greet.js` or `./greet` to a sidecar, so a `.ts` file that such a checker reads names the `.vibe` module by its source. `vibelang` reads `greet.vibe` when its source is available, and a project's `include` leaves out a sidecar whose source is beside it. When only `greet.d.vibe.ts` is available, an explicit `./greet.vibe` import resolves to that compatibility declaration. This also covers a declaration's self-namespace re-export, such as `export * as Greet from "./greet.vibe"`, so callbacks accessed through the namespace retain their contextual parameter types.
 
+The `vibelang/register` Node preload enables the `vibelang-source` condition for package exports and private `#` imports. It retains Node’s existing conditions, including custom conditions, so unbuilt workspace packages load from their declared source target.
+
 A workspace package can expose a module through its `x.d.vibe.ts` declaration under `types` and its `x.vibe` source under `vibelang-source`. Inferred declarations in consumers keep the package export name, such as `import("lib/x").Provider<number>`, including exact and wildcard export entries.
 
 This source preference also applies when `moduleSuffixes` places a paired `.d.vibe` fallback after its original suffix. Stock TypeScript keeps its own suffix order, which can select the sidecar before a `.tsx` sibling.
