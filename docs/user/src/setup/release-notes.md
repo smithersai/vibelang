@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- The contributor release target could time out on a four-CPU machine because it ran eight test files at once. It now runs four.
 - ESLint could treat a generated concurrency-limit cache as a source variable; the tree now marks that temporary while retaining user-written names and the original limit expression.
 - Editor form suggestions could panic on a property access inside a `for` statement; they now read the loop as the compiler does.
 - Migration regressions for compiler provenance and preserved error channels stopped at missing repository setup. Their fixtures now initialize repositories and reach the intended checks.
