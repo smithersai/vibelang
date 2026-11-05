@@ -11,6 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -215,17 +216,59 @@ func withImportRemovals(c *checker.Checker, file *ast.SourceFile, r *formRewrite
 	return r
 }
 
-// The conservative check also treats comment-looking text in literals as
-// comments. It may refuse an ambiguous edit, but never discards documentation.
+// The common path compares comment-shaped text without parsing. When literal
+// contents make it ambiguous, compare actual comments in complete fragments.
 var rewriteComments = regexp.MustCompile(`(?s)/\*.*?\*/|//[^\r\n]*`)
 
 func editsPreserveComments(text string, edits []sourceEdit) bool {
 	for _, edit := range edits {
-		if !slices.Equal(rewriteComments.FindAllString(text[edit.start:edit.end], -1), rewriteComments.FindAllString(edit.text, -1)) {
-			return false
+		before := text[edit.start:edit.end]
+		if !slices.Equal(rewriteComments.FindAllString(before, -1), rewriteComments.FindAllString(edit.text, -1)) {
+			beforeComments, beforeOK := rewriteFragmentComments(before)
+			afterComments, afterOK := rewriteFragmentComments(edit.text)
+			if !beforeOK || !afterOK || !slices.Equal(beforeComments, afterComments) {
+				return false
+			}
 		}
 	}
 	return true
+}
+
+// rewriteFragmentComments masks literal tokens, leaving template substitutions
+// and their comments visible. Incomplete or malformed fragments retain the
+// conservative refusal: recovery nodes cannot prove where comments occur.
+func rewriteFragmentComments(text string) ([]string, bool) {
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/rewrite.vibe", PathKey: "/rewrite.vibe"}, text, core.ScriptKindTS)
+	if len(file.Diagnostics()) != 0 {
+		return nil, false
+	}
+	masked := []byte(text)
+	valid := true
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		switch node.Kind {
+		case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral,
+			ast.KindRegularExpressionLiteral, ast.KindTemplateHead,
+			ast.KindTemplateMiddle, ast.KindTemplateTail:
+			start, end := scanner.SkipTrivia(text, node.Pos()), node.End()
+			if start < 0 || end < start || end > len(masked) {
+				valid = false
+				return false
+			}
+			for i := start; i < end; i++ {
+				masked[i] = ' '
+			}
+			return false
+		}
+		node.ForEachChild(visit)
+		return false
+	}
+	file.ForEachChild(visit)
+	var comments []string
+	for _, span := range rewriteComments.FindAllIndex(masked, -1) {
+		comments = append(comments, text[span[0]:span[1]])
+	}
+	return comments, valid
 }
 
 func preserveRewriteComments(file *ast.SourceFile, rewrite *formRewrite) *formRewrite {
