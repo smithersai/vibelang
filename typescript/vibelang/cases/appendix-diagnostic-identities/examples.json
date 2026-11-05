@@ -780,10 +780,10 @@
     }
   },
   {
-    "name": "throw-comma-warning",
+    "name": "throw-comma-error",
     "code": "EK1010",
     "source": "declare const e: unknown; export const xs = [throw e, 1]",
-    "categoryVariant": "warning",
+    "categoryVariant": "error",
     "at": {
       "file": "main.vibe",
       "line": 1,

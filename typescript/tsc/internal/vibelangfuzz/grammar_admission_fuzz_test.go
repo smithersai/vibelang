@@ -970,9 +970,6 @@ func grammarAdmissionForm(source string) string {
 	if grammarSchemaEffectField(ts) {
 		return "admission:schema-effect-field"
 	}
-	if grammarThrowCommaWarning(ts) {
-		return "admission:throw-comma-warning"
-	}
 	return ""
 }
 
@@ -2004,9 +2001,8 @@ func TestGrammarAdmissionEffectIdentifierStaysPlain(t *testing.T) {
 
 // grammarThrowCommaWarning reports a throw expression whose unary operand is
 // followed directly by a comma: an array element, call argument or object
-// property such as [throw e, 1]. VIP-41's migration policy makes that case
-// the warning EK1010 until its parenthesizing fix ships, while Appendix A's
-// ThrowExpressionInvalidPunctuator still excludes the comma.
+// property such as [throw e, 1]. This identifies the historical migration
+// neighborhood; the current parser rejects it under VIP-41.
 func grammarThrowCommaWarning(ts []grammarToken) bool {
 	for i, tok := range ts {
 		if tok.kind != 'w' || tok.text != "throw" || i == 0 {

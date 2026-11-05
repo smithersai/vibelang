@@ -93,14 +93,15 @@ test("internal authority prose stays rejected across spec chapters and punctuati
 })
 
 
-test("throw punctuator policy preserves the migration prerequisite without private attribution", () => {
+test("throw punctuator policy includes its preserving migration without private attribution", () => {
   for (const chapter of ["003-failures", "900-appendices"]) {
     const file = "docs/design/src/" + chapter + ".md"
     const text = readFileSync(resolve(root, file), "utf8")
     assert.deepEqual(publicHygiene(file, text), [])
-    assert.match(text, /punctuator-only comma case.*warning/)
-    assert.match(text, /the preserving codemod ships before the new error/)
-    assert.match(text, /operator-left.*remain errors/)
+    assert.match(text, /EK1010/)
+    assert.match(text, /[Ee]very invalid (?:following )?punctuator reports.*error/)
+    assert.match(text, /legacy.*comma|before a comma/)
+    assert.match(text, /parenthesiz|groups a legacy throw expression/)
   }
 })
 

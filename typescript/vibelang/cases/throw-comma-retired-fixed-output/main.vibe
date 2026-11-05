@@ -1,0 +1,8 @@
+// expect: EK1010
+function first(a: number, b: number) { return a }
+export effect function array(e: string) { return [(throw e), 1] }
+export effect function object(e: string) { return { value: (throw e), next: 1 } }
+export effect function argument(e: string) { return first((throw e), 1) }
+export effect function sequence(e: string) { return ((throw e), 1) }
+
+// rule-evidence: docs/design/src/003-failures.md#throw-expressions docs/design/src/900-appendices.md#throwexpression docs/design/src/900-appendices.md#appendix-b-diagnostics docs/design/vips/0041-throw-expressions.md#decision

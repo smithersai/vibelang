@@ -68,15 +68,6 @@ test.todo("Chapter 001: Reject generated output tags authored in VibeLang with E
 // rule-evidence: docs/design/src/002-running.md#953bdcc875340d8b — Chapter 002: Only direct try consumption exempts generic composition, including callbacks.
 test.todo("Chapter 002: Only direct try consumption exempts generic composition, including callbacks [docs/design/src/002-running.md#953bdcc875340d8b]")
 
-// rule-evidence: docs/design/src/003-failures.md#2dd5b6ac452be0f0 — Chapter 003: Throw expression restrictions report EK1010 with the staged comma exception.
-test.todo("Chapter 003: Throw expression restrictions report EK1010 with the staged comma exception [docs/design/src/003-failures.md#2dd5b6ac452be0f0]")
-
-// rule-evidence: docs/design/src/003-failures.md#96a408206068819c — Chapter 003: Invalid punctuators after throw operands report EK1010.
-test.todo("Chapter 003: Invalid punctuators after throw operands report EK1010 [docs/design/src/003-failures.md#96a408206068819c]")
-
-// rule-evidence: docs/design/src/003-failures.md#95906113b20dc585 — Chapter 003: Unparenthesized call comma warns and retains behavior; parentheses remove warning.
-test.todo("Chapter 003: Unparenthesized call comma warns and retains behavior; parentheses remove warning [docs/design/src/003-failures.md#95906113b20dc585]")
-
 // rule-evidence: docs/design/src/007-tooling.md#9840ae842f687026 — Chapter 007: Effect-valued callbacks stay cold and try runs only the selected arm.
 test.todo("Chapter 007: Effect-valued callbacks stay cold and try runs only the selected arm [docs/design/src/007-tooling.md#9840ae842f687026]")
 
@@ -134,22 +125,9 @@ test("VIP-27: Retain the generated never exception after the published matcher a
 // rule-evidence: docs/design/vips/0027-declaration-output.md#1114cddd3de867a6 — VIP-27: Published error constructor typing and own matcher dispatch work across copies.
 test.todo("VIP-27: Published error constructor typing and own matcher dispatch work across copies [docs/design/vips/0027-declaration-output.md#1114cddd3de867a6]")
 
-// rule-evidence: docs/design/vips/0041-throw-expressions.md#04cb1f91bb37f212 — VIP-41: Comma-invalid throws require parentheses except a last array element.
-test.todo("VIP-41: Comma-invalid throws require parentheses except a last array element [docs/design/vips/0041-throw-expressions.md#04cb1f91bb37f212]")
-
-// rule-evidence: docs/design/vips/0041-throw-expressions.md#cde53b2dedee2cbb — VIP-41: Ship the preserving parenthesizing fix before promoting a new error.
-test.todo("VIP-41: Ship the preserving parenthesizing fix before promoting a new error [docs/design/vips/0041-throw-expressions.md#cde53b2dedee2cbb]")
-
-// rule-evidence: docs/design/vips/0041-throw-expressions.md#8934d769042b5d61 — VIP-41: Promote the comma warning only in the commit shipping its parenthesizing fix.
-test.todo("VIP-41: Promote the comma warning only in the commit shipping its parenthesizing fix [docs/design/vips/0041-throw-expressions.md#8934d769042b5d61]")
-
 // rule-evidence: docs/design/src/002-running.md#a504880b23f48fb9 — Chapter 002: Annotated Effect arguments still warn in bare generic or plain container positions.
 // Activation: confirm typescript/tsc/internal/vibelang/effect_generic_argument_test.go:TestEffectIntoPlainGeneric; cfbox Go dependency resolution currently prevents execution.
 test.todo("Chapter 002: Annotated Effect arguments still warn in bare generic or plain container positions [docs/design/src/002-running.md#a504880b23f48fb9]")
-
-// rule-evidence: docs/design/src/003-failures.md#16e15a3d7b7cfa66 — Chapter 003: Comma-only EK1010 stays a warning until the preserving fix ships.
-// Activation: confirm typescript/tsc/internal/vibelangfuzz/grammar_admission_throw_comma_test.go:TestGrammarAdmissionThrowCommaWarning; cfbox Go dependency resolution currently prevents execution.
-test.todo("Chapter 003: Comma-only EK1010 stays a warning until the preserving fix ships [docs/design/src/003-failures.md#16e15a3d7b7cfa66]")
 
 // rule-evidence: docs/design/src/005-services.md#a67dc13dcc9ae35f — Chapter 005: Service members preserve written readonly and native writable defaults.
 // Activation: confirm typescript/tsc/internal/vibelang/service_readonly_migration_test.go:TestServiceReadonlyMigrationModes; cfbox Go dependency resolution currently prevents execution.
@@ -159,14 +137,6 @@ test.todo("Chapter 005: Service members preserve written readonly and native wri
 // Activation: confirm typescript/tsc/internal/vibelang/service_readonly_conversion_test.go:TestServiceReadonlyConversion; cfbox Go dependency resolution currently prevents execution.
 test.todo("Chapter 005: Service conversion and fix printing preserve optional and nested readonly modifiers [docs/design/src/005-services.md#e3b20b93374e010d]")
 
-// rule-evidence: docs/design/src/900-appendices.md#6a834d0b220b0f0e — Chapter 900: Comma-only EK1010 stays a warning until the preserving fix ships.
-// Activation: confirm typescript/tsc/internal/vibelangfuzz/grammar_admission_throw_comma_test.go:TestGrammarAdmissionThrowCommaWarning; cfbox Go dependency resolution currently prevents execution.
-test.todo("Chapter 900: Comma-only EK1010 stays a warning until the preserving fix ships [docs/design/src/900-appendices.md#6a834d0b220b0f0e]")
-
 // rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#a504880b23f48fb9 — VIP-1: Annotated Effect arguments still warn in bare generic or plain container positions.
 // Activation: confirm typescript/tsc/internal/vibelang/effect_generic_argument_test.go:TestEffectIntoPlainGeneric; cfbox Go dependency resolution currently prevents execution.
 test.todo("VIP-1: Annotated Effect arguments still warn in bare generic or plain container positions [docs/design/vips/0001-effect-and-async-functions.md#a504880b23f48fb9]")
-
-// rule-evidence: docs/design/vips/0041-throw-expressions.md#305033e99da512cd — VIP-41: Comma-only EK1010 keeps the earlier compiled behavior until its fix ships.
-// Activation: confirm typescript/tsc/internal/vibelangfuzz/grammar_admission_throw_comma_test.go:TestGrammarAdmissionThrowCommaWarning; cfbox Go dependency resolution currently prevents execution.
-test.todo("VIP-41: Comma-only EK1010 keeps the earlier compiled behavior until its fix ships [docs/design/vips/0041-throw-expressions.md#305033e99da512cd]")

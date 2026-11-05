@@ -12,7 +12,7 @@ import (
 )
 
 const estreeWarningQuote = "A warning does not itself rewrite code, and a warning-only run exits zero."
-const estreeThrowWarningQuote = "Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships"
+const estreeThrowWarningQuote = "The invalid-punctuator lookahead also applies to comma separators."
 
 func estreeWarningsQuoted(t testing.TB) {
 	t.Helper()
@@ -29,9 +29,9 @@ var t3codeCryptoThrowComma string
 
 func TestT3CodeCryptoWarningESTree(t *testing.T) {
 	estreeWarningsQuoted(t)
-	tree, failure := vibelangestree.Parse("crypto.vibe", t3codeCryptoThrowComma)
+	tree, failure := vibelangestree.Parse("crypto.vibe", strings.ReplaceAll(t3codeCryptoThrowComma, "throw badArgument()", "(throw badArgument())"))
 	if failure != nil {
-		t.Fatalf("warning-only minimized source: %v", failure)
+		t.Fatalf("parenthesized minimized source: %v", failure)
 	}
 	var program map[string]any
 	if err := json.Unmarshal([]byte(tree), &program); err != nil || program["type"] != "Program" {
@@ -39,13 +39,13 @@ func TestT3CodeCryptoWarningESTree(t *testing.T) {
 	}
 }
 
-// The admitted migration spelling warns; it remains parseable. An actual
-// syntax error after that warning still fails at its own UTF-16 location.
+// Grouping admits the throw expression; ungrouped commas and unrelated
+// syntax failures keep their own UTF-16 diagnostic locations.
 func FuzzESTreeWarningSeverity(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"t3code-crypto-property", "array-element", "call-argument", "object-property", "join-operand"}
 	for _, key := range keys {
-		for mode := uint8(0); mode < 8; mode++ {
+		for mode := uint8(0); mode < 16; mode++ {
 			f.Add(key, mode)
 		}
 	}
@@ -71,6 +71,12 @@ func FuzzESTreeWarningSeverity(f *testing.F) {
 		if key == "t3code-crypto-property" {
 			source = t3codeCryptoThrowComma
 		}
+		grouped := mode&8 != 0
+		if grouped {
+			source = strings.ReplaceAll(source, "throw badArgument()", "(throw badArgument())")
+			source = strings.ReplaceAll(source, "throw e", "(throw e)")
+		}
+
 		if mode&1 != 0 {
 			source = "const symbol = \"😀\";\r\n" + strings.ReplaceAll(source, "\n", "\r\n")
 		}
@@ -87,10 +93,16 @@ func FuzzESTreeWarningSeverity(f *testing.F) {
 			file = "main.vibex"
 		}
 		tree, failure := vibelangestree.Parse(file, source)
-		gapKey := fmt.Sprintf("%s/%d", key, mode&7)
-		if suffix == "" {
+		gapKey := fmt.Sprintf("%s/%d", key, mode&15)
+		if !grouped {
+			offset := strings.Index(source, "throw ")
+			want := len(utf16.Encode([]rune(source[:offset])))
+			if failure == nil || failure.Index != want || !strings.Contains(failure.Message, "can't be followed by ,") {
+				Gap(t, "FuzzESTreeWarningSeverity", gapKey, "want throw-comma rejection at %d, got %v", want, failure)
+			}
+		} else if suffix == "" {
 			if failure != nil {
-				Gap(t, "FuzzESTreeWarningSeverity", gapKey, "warning-only source must produce an AST: %v", failure)
+				Gap(t, "FuzzESTreeWarningSeverity", gapKey, "parenthesized source must produce an AST: %v", failure)
 				return
 			}
 			var program map[string]any

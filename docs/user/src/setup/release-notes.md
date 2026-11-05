@@ -278,6 +278,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `--fix` could leave annotated `Effect.fn` generators with later pipeline stages unchanged. It now converts them while preserving the generator's return contract before applying those stages.
 
+- Legacy throw expressions before commas had no automatic migration. The editor and `vibelang --fix` now parenthesize the whole throw, including VIP-only upgrades, and the compiler reports the retired spelling as an error.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

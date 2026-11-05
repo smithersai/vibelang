@@ -2,17 +2,17 @@
 error Missing { id: string }
 effect function objectShape(cond: boolean) {
   const obj = {
-    value: cond ? 7 : throw new Missing({ id: "object" }),
+    value: cond ? 7 : (throw new Missing({ id: "object" })),
   }
   return obj.value
 }
 effect function arrayShape(cond: boolean) {
-  const xs = [cond ? 7 : throw new Missing({ id: "array" }), 9]
+  const xs = [cond ? 7 : (throw new Missing({ id: "array" })), 9]
   return xs[0]
 }
 function first(x: number, y: number) { return x }
 effect function callShape(cond: boolean) {
-  return first(cond ? 7 : throw new Missing({ id: "call" }), 9)
+  return first(cond ? 7 : (throw new Missing({ id: "call" })), 9)
 }
 export effect function main() {
   const obj = objectShape(false) catch (e) => e.id
@@ -22,7 +22,7 @@ export effect function main() {
 }
 
 // rule-evidence: docs/design/src/003-failures.md#throw-expressions docs/design/src/900-appendices.md#throwexpression docs/design/src/900-appendices.md#appendix-b-diagnostics
-// Nested object/array delimiters keep the same warning and preserve both exits.
+// Nested object/array delimiters keep the same failure value and preserve both exits.
 effect function nestedShape(cond: boolean) {
-  return [{ value: cond ? 7 : throw new Missing({ id: "nested" }), }][0].value
+  return [{ value: cond ? 7 : (throw new Missing({ id: "nested" })), }][0].value
 }

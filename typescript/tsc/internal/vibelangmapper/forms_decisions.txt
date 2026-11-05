@@ -3086,8 +3086,8 @@ typescript/vibelang/cases/ek1005-runners.fail/main.vibe:68:22 lambda effectFn ke
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:69:34 lambda effectFn keyword
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:71:36 lambda plain fallback
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:72:22 lambda effectFn keyword
-typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:10:26 lambda dual fallback
-typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:15:27 lambda dual fallback
+typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:10:27 lambda dual fallback
+typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:15:28 lambda dual fallback
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:18:15 lambda effectFn table
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:18:40 lambda effectFn table
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:19:15 lambda effectFn table
@@ -3096,8 +3096,8 @@ typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:20:15 lambda effec
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:20:38 lambda effectFn table
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:21:116 lambda effectFn table
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:21:141 lambda effectFn table
-typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:27:31 lambda dual fallback
-typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:5:23 lambda dual fallback
+typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:27:32 lambda dual fallback
+typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:5:24 lambda dual fallback
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:12:11 lambda effectFn keyword
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:21:11 lambda effectFn keyword
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:28:11 lambda effectFn keyword
@@ -6907,6 +6907,14 @@ typescript/vibelang/cases/throw-cause/main.vibe:50:30 byname program table
 typescript/vibelang/cases/throw-cause/main.vibe:51:32 byname program table
 typescript/vibelang/cases/throw-cause/main.vibe:52:31 byname program table
 typescript/vibelang/cases/throw-coalesce-do-block/main.vibe:43:15 lambda effectFn keyword
+typescript/vibelang/cases/throw-comma-retired-fixed-output/main.vibe:3:52 lambda dual fallback
+typescript/vibelang/cases/throw-comma-retired-fixed-output/main.vibe:4:61 lambda dual fallback
+typescript/vibelang/cases/throw-comma-retired-fixed-output/main.vibe:5:60 lambda dual fallback
+typescript/vibelang/cases/throw-comma-retired-fixed-output/main.vibe:6:55 lambda dual fallback
+typescript/vibelang/cases/throw-comma-retired.fail/main.vibe:3:51 lambda dual fallback
+typescript/vibelang/cases/throw-comma-retired.fail/main.vibe:4:60 lambda dual fallback
+typescript/vibelang/cases/throw-comma-retired.fail/main.vibe:5:59 lambda dual fallback
+typescript/vibelang/cases/throw-comma-retired.fail/main.vibe:6:54 lambda dual fallback
 typescript/vibelang/cases/throw-conditional-precedence/main.vibe:10:13 lambda effectFn table
 typescript/vibelang/cases/throw-conditional-precedence/main.vibe:10:35 lambda effectFn table
 typescript/vibelang/cases/throw-conditional-precedence/main.vibe:11:13 lambda effectFn table

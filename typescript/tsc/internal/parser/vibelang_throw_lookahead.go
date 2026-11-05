@@ -24,29 +24,11 @@ import (
 // the throw's operand and {1} the token that follows it.
 const VibeLangThrowLookaheadCode int32 = 1010
 
-// Will (effectscript-11, 23:05Z): codemod first, then the error. Restore
-// CategoryError in the same commit as the parenthesizing --fix. Operator-left
-// violations (D186, S10-12) already had an error and keep it.
-const VibeLangThrowPunctuatorSeverity = diagnostics.CategoryWarning
 const VibeLangThrowLookaheadMessage = "A throw expression can't be followed by {1}: write throw (…) to throw the whole expression, or (throw {0}) to throw only {0}."
 
 // ThrowLookaheadMessage formats VibeLangThrowLookaheadMessage.
 func ThrowLookaheadMessage(operand, token string) string {
-	message := strings.NewReplacer("{0}", operand, "{1}", token).Replace(VibeLangThrowLookaheadMessage)
-	if token == "," {
-		message += " This becomes an error once vibelang --fix can parenthesize it."
-	}
-	return message
-}
-
-// throwLookaheadSeverity preserves the pre-VIP-41 operator-left errors.
-// Comma is the invalid punctuator that separates expressions rather than
-// applying an operator to the throw, so only that new restriction is deferred.
-func throwLookaheadSeverity(token string) diagnostics.Category {
-	if token == "," {
-		return VibeLangThrowPunctuatorSeverity
-	}
-	return diagnostics.CategoryError
+	return strings.NewReplacer("{0}", operand, "{1}", token).Replace(VibeLangThrowLookaheadMessage)
 }
 
 // isThrowExpressionInvalidPunctuator reports whether kind starts a
@@ -113,8 +95,8 @@ func (p *Parser) checkVibeLangThrowLookahead(span core.TextRange, operand *ast.N
 	}
 	if !p.hasPrecedingLineBreak() || !throwInvalidPunctuatorCanFollowASI(p.token) {
 		text := strings.TrimSpace(p.sourceText[scanner.SkipTrivia(p.sourceText, operand.Pos()):operand.End()])
-		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, span, "EK", throwLookaheadSeverity(p.scanner.TokenText()), VibeLangThrowLookaheadCode, ThrowLookaheadMessage(text, p.scanner.TokenText())))
-		p.hasParseError = p.hasParseError || throwLookaheadSeverity(p.scanner.TokenText()) == diagnostics.CategoryError
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, span, "EK", diagnostics.CategoryError, VibeLangThrowLookaheadCode, ThrowLookaheadMessage(text, p.scanner.TokenText())))
+		p.hasParseError = true
 		return
 	}
 	p.vibelangThrowStop = &throwStop{
@@ -138,7 +120,7 @@ func (p *Parser) reportVibeLangThrowStop(pos int) bool {
 		return false
 	}
 	if !stop.reported {
-		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, stop.span, "EK", throwLookaheadSeverity(stop.token), VibeLangThrowLookaheadCode, ThrowLookaheadMessage(stop.operand, stop.token)))
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, stop.span, "EK", diagnostics.CategoryError, VibeLangThrowLookaheadCode, ThrowLookaheadMessage(stop.operand, stop.token)))
 		p.vibelangThrowStop = &throwStop{pos: stop.pos, reported: true} // later errors at the same token stay quiet
 	}
 	p.hasParseError = true

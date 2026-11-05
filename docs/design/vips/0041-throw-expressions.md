@@ -16,7 +16,7 @@ A throw expression takes a unary operand and is itself a unary expression. Paren
 
 Throw expressions remain supported; no migration to `do { throw (operand); }` is required. Existing `do` blocks remain valid.
 
-The existing `EK1010` identifies a throw-expression lookahead violation. Will's rule (effectscript-11, 23:05Z): codemod first, then the error; a new error never lands ahead of its `--fix`. The new punctuator-only case (a following comma in an object property, array element or call argument) is temporarily a warning, with its previous compiled behavior, until `vibelang --fix` can parenthesize it. All existing operator-left cases (D186, S10-12) remain errors. Lane migfix-t3code-decl must re-raise the warning in the same commit as its parenthesizing `--fix`. Native ECMAScript syntax restrictions keep their existing diagnostics. No new code is allocated outside the EK registry.
+The existing `EK1010` identifies a throw-expression lookahead violation as an error. The editor and `vibelang --fix` preserve the meaning of a legacy throw expression before a comma by parenthesizing the whole throw. This repair also runs with `--fix-migration-only` and `--fix-vip-only`. Other forbidden punctuators retain the diagnostic when choosing the intended operand requires intent. Native ECMAScript syntax restrictions keep their existing diagnostics. No new code is allocated outside the EK registry.
 
 ## Existing placement and match-arm rules
 

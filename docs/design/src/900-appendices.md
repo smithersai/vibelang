@@ -959,7 +959,7 @@ ExpressionStatement[Yield, Await] =
                  "class", "let [", "throw" }] Expression[+In, ?Yield, ?Await] ";"
 ```
 
-The operand and parent positions follow `UnaryExpression`; `throw` in statement position is `ThrowStatement`. The expression production has no no-line-terminator restriction after `throw`. The invalid-punctuator lookahead also applies to comma separators. Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships: the preserving codemod ships before the new error. Existing operator-left `EK1010` violations (D186, S10-12) remain errors. Parenthesize the operand or the throw to place an operator inside or outside it. ECMAScript automatic semicolon insertion applies. ASI can end a class field before the `*` of a following generator method. Rules about generators and where a throw is permitted remain separate. Where throwing is permitted is separately VIP-4's 2026-10-31 no-throw ruling (`EK0401`).
+The operand and parent positions follow `UnaryExpression`; `throw` in statement position is `ThrowStatement`. The expression production has no no-line-terminator restriction after `throw`. The invalid-punctuator lookahead also applies to comma separators. Every invalid punctuator reports `EK1010` as an error; `vibelang --fix` groups a legacy throw expression before a comma without changing its unary operand. Parenthesize the operand or the throw to place an operator inside or outside it. ECMAScript automatic semicolon insertion applies. ASI can end a class field before the `*` of a following generator method. Rules about generators and where a throw is permitted remain separate. Where throwing is permitted is separately VIP-4's 2026-10-31 no-throw ruling (`EK0401`).
 
 
 <!-- grammar-admission:start -->
@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (993 records)</summary>
+<summary>Parser and lowering hooks (992 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1887,9 +1887,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_throw_lookahead.go:ThrowLookaheadMessage ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
 | ` parser/vibelang_throw_lookahead.go:isThrowExpressionInvalidPunctuator ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
 | ` parser/vibelang_throw_lookahead.go:throwInvalidPunctuatorCanFollowASI ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
-| ` parser/vibelang_throw_lookahead.go:Parser.checkVibeLangThrowLookahead ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
+| ` parser/vibelang_throw_lookahead.go:Parser.checkVibeLangThrowLookahead ` | ` admission:throw-expression ` | ` 900-appendices.md `, ` 003-failures.md ` | ` support ` | VIP-41 rejects every invalid punctuator, including comma separators; the preserving quick fix groups the whole throw expression. |
 | ` parser/vibelang_throw_lookahead.go:Parser.atVibeLangThrowStop ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
-| ` parser/vibelang_throw_lookahead.go:throwLookaheadSeverity ` | ` admission:throw-expression ` | ` 900-appendices.md `, ` 003-failures.md ` | ` support ` | VIP-41 migration policy: the punctuator-only comma case warns (EK1010) until the parenthesizing fix ships; operator-left cases stay errors; the oracle keys the accepted comma form as pending admission:throw-comma-warning (93ab8469) |
 | ` parser/vibelang_throw_lookahead.go:Parser.reportVibeLangThrowStop ` | ` admission:throw-expression ` | ` 900-appendices.md ` | ` support ` | VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support |
 | ` parser/vibelang_match.go:Parser.parseMatchRelationOperand ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0 |
 | ` parser/vibelang_match.go:Parser.relationTest ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0 |
@@ -2048,7 +2047,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0906` | a recognized service declaration missing its required body | 9 | [Services](005-services.md#static-rules) |
 | `EK0907` | a custom `service` declaration in a native ambient source context, explicit or inherited; includes `declare service`, ahead of the same missing-body recovery | 9 | [Services](005-services.md#static-rules) |
 | `EK0908` | two `service` members with no separator between them, such as `a: number b: string` on one line; write `;` or a line break between them (quick fix: insert `;`) Replay [example: main.vibe:4:74](../../../typescript/vibelang/cases/cov2-900b-cite-service-member-separator.fail/main.vibe). | 9 | [Services](005-services.md#static-rules) |
-| `EK1010` | warning for the new punctuator-only comma case until its parenthesizing `vibelang --fix` ships (the preserving codemod ships before the new error); existing operator-left violations (D186, S10-12) remain errors; parenthesize the operand or the throw Category variants: `error`, `warning`. The warning is restricted to the new comma case; operator-left violations remain errors. | 41 | [Failures](003-failures.md#throw-expressions) |
+| `EK1010` | a forbidden punctuator follows a throw expression; parenthesize the operand or the whole throw; `--fix` groups the whole throw before a legacy comma separator | 41 | [Failures](003-failures.md#throw-expressions) |
 | `EK1101` | a trailing block: a `{` on the same line after a name, a property access or a call, `f(x) { … }` or `f { … }`, outside a heritage clause and a `provide` block's providers, where no TypeScript or VibeLang production admits the `{` (so `effect { … }`, `match (x) { … }`, `namespace A.B { … }` and declaration heads such as `service S { … }` are not trailing blocks); quick fix: pass the block as the call's last argument, `f(x, effect { … })` where it ran as a program, `f(x, effect () => { … })` where it ran as an Effect function, `f(x, () => { … })` otherwise Replay [example: main.vibe:9:45](../../../typescript/vibelang/cases/trailing-block-denied.fail/main.vibe). | 11 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK1201` | `provide` outside effect code | 12 | [Services](005-services.md#provide-blocks) |
 | `EK1202` | a line break immediately before or after a top-level provider-separating `,` | 12 | [Services](005-services.md#provide-blocks) |
