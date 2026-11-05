@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - Generated error-family matchers could fail through the normal Node or Bun runtime import because matcher registration was missing from the guarded entry. That entry now exports the same registration helper as the runtime ABI, with a build check preventing export drift.
+- The migration planner could keep a module in TypeScript after `Bun.build` excluded its package from the bundle. It now follows proven `packages: "external"` boundaries while retaining local source dependencies.
 - The HTTP example now adapts Node's server callback in a TypeScript module, so it compiles with foreign callback checks while opening the server only when its layer is acquired.
 - The Effect-parameter inventory check rejected the valid pair of diagnostics for nested Promise-returning root runners. It now requires both rules at the same call while continuing to reject unrelated Promise errors and accidental Effect-as-data warnings.
 - Compiler emission checks retained output from before the coverage and native tail-delegation repairs. Their snapshots now match those repairs while retaining exact JavaScript, declarations and runtime results.
