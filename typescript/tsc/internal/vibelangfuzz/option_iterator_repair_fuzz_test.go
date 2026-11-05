@@ -16,8 +16,9 @@ func TestOptionIteratorRepairQuoted(t *testing.T) {
 func FuzzOptionIteratorRepair(f *testing.F) {
 	startShortBudget(f)
 	for _, key := range []string{"binding", "discard", "return", "nested"} {
-		f.Add(key, uint8(0))
-		f.Add(key, uint8(1))
+		for variant := uint8(0); variant < 4; variant++ {
+			f.Add(key, variant)
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
@@ -41,6 +42,17 @@ func FuzzOptionIteratorRepair(f *testing.F) {
 			body = "for (const inner of xs) { " + body + " }"
 		}
 		source := imports + fmt.Sprintf("export const f = (xs: Iterable<number>) => %s.gen(function* () { for (const x of xs) { %s } return 1; });", option, body)
+		native, err := w.Compile(t.Context(), Single(source))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if HasError(native.Diagnostics) {
+			t.Fatalf("native Option.gen control must compile: %v", SortedKeys(Keys(native.Dir, native.Diagnostics)))
+		}
+		native.Remove()
+		// VIP-21: only an explicit producer is incompatible with a native
+		// generator API. Keep the iterator-refusal oracle on that input.
+		source = strings.Replace(source, ".gen(function* ()", ".gen(effect function* ()", 1)
 		r, err := w.Compile(t.Context(), Single(source))
 		if err != nil {
 			t.Fatal(err)

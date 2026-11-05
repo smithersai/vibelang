@@ -1958,3 +1958,5 @@ The `//:native-import-preference-twins` gate retains byte-exact unchanged-import
 The `//:legacy-schema-key-defect-repairs` gate checks both input diagnostics, zero-error fixed output, defect identity bridges, and idempotence across class heritage and four nested schema layouts.
 
 The `//:throw-repair-native-twins` gate retains every repair and idempotence invocation. It batches the native twin and declaration comparisons into one TypeScript program each, snapshots every declaration before the next repair, and records fixture/stage timing without source payloads. The runner keeps its existing deadline and adds deterministic input variations.
+
+The `//:option-generator-iterator-refusals` gate distinguishes native generators from explicit producers and retains every active-iterator refusal across binding, discard, return, nested-loop, alias, and option-state variations.
