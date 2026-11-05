@@ -5695,6 +5695,9 @@ typescript/vibelang/cases/plain-catch-function-results/main.vibe:12:13 lambda ef
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:12:34 lambda effectFn table
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:13:13 lambda effectFn table
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:13:37 lambda effectFn table
+typescript/vibelang/cases/plain-catch-function-results/main.vibe:5:42 byname program table
+typescript/vibelang/cases/plain-catch-function-results/main.vibe:5:60 lambda plain table
+typescript/vibelang/cases/plain-catch-function-results/main.vibe:5:93 lambda plain table
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:6:23 lambda choice fallback
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:9:13 lambda effectFn table
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:9:34 lambda effectFn table

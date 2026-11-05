@@ -12,6 +12,8 @@ import (
 const promiseGateQuote = "`EK0404` uses the Promise test of [Result tests](002-running.md#result-tests): `never`, `any` and `unknown` never trigger it; any union with at least one `PromiseLike` member does."
 const promiseGateFormsQuote = "| In effect code, a call (runtime `import()` included), `new` expression, tagged template or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |"
 
+const promiseDataBridgeQuote = "Within the Effect, a successful `try` gives the immediate success value unchanged: it neither recursively runs an inner Effect nor assimilates a Promise or thenable stored in that value."
+
 func promiseResultGateCases() []*failCase {
 	var cases []*failCase
 	for _, result := range []struct{ key, decl, expression string }{
@@ -33,7 +35,40 @@ func promiseResultGateCases() []*failCase {
 		cases = append(cases, &failCase{Name: "promise-gate-excluded-" + key, Chapter: failuresChapter, Quote: promiseGateQuote, VIP: 4, Owner: "conf-auto-promise-result-call-gate", Decls: "export declare function read(): " + kind, Body: "const held = read()"})
 	}
 	cases = append(cases, &failCase{Name: "promise-gate-effect-success-data", Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Owner: "conf-auto-promise-result-call-gate", Decls: "declare const p: Promise<number>", Body: "const held = try Effect.succeed(p)"})
+	for _, data := range []struct{ key, declaration, expression string }{
+		{"resolve", "", "Promise.resolve(7)"},
+		{"constructor", "", "new Promise<number>((resolve) => resolve(7))"},
+		{"thenable", "function read(): PromiseLike<number> { return Promise.resolve(7) }", "read()"},
+	} {
+		cases = append(cases, &failCase{Name: "promise-gate-sync-data-" + data.key, Chapter: "002-running.md", Quote: promiseDataBridgeQuote, VIP: 4, Owner: "compiler", Decls: data.declaration, Body: "const held = try Effect.orDie(Effect.try({ try: () => " + data.expression + ", catch: (e) => e }))"})
+	}
 	return cases
+}
+
+func TestPromiseDataBridgeQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("002-running.md"), promiseDataBridgeQuote) {
+		t.Fatalf("chapter 2 no longer quotes %q", promiseDataBridgeQuote)
+	}
+}
+
+func TestPromiseDataBridgeForms(t *testing.T) {
+	TestPromiseDataBridgeQuoted(t)
+	w := NewWorkspace(t)
+	seen := 0
+	for _, c := range promiseResultGateCases() {
+		if !strings.HasPrefix(c.Name, "promise-gate-sync-data-") {
+			continue
+		}
+		seen++
+		for _, variation := range []byte{0, 1, 6} {
+			t.Run(fmt.Sprintf("%s/%d", c.Name, variation), func(t *testing.T) {
+				checkPromiseResultGate(t, w, c, variation)
+			})
+		}
+	}
+	if seen != 3 {
+		t.Fatalf("expected three synchronous bridge forms, got %d", seen)
+	}
 }
 
 func TestPromiseResultGateQuoted(t *testing.T) {
@@ -56,6 +91,7 @@ func FuzzPromiseResultGate(f *testing.F) {
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, variation uint8) {
 		TestPromiseResultGateQuoted(t)
+		TestPromiseDataBridgeQuoted(t)
 		i := slices.IndexFunc(cases, func(c *failCase) bool { return c.Name == key })
 		if i < 0 {
 			i = len(key) % len(cases)

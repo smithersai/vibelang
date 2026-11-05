@@ -1812,3 +1812,5 @@ The bounded project-service target runs both manifest invalidation and stale-man
 The `//:api-inputs-cache` target replays actual SDK caching with transitive local comparator helpers. It checks successful reuse, unrelated Go edits, changed comparator source, changed declaration types and restored bytes. Dependency fixtures include static and dynamic imports, file URLs and cycles; command stage records identify a stalled SDK invocation without printing workspace paths or environment values. The larger whole-repository key mutation check remains in the release suite.
 
 Configuration validation selects the retired declaration-import option regression as well as VibeLang-prefixed tests. Deprecated spellings must retain warning severity and diagnostic code while being omitted from parsed configuration and serialization.
+
+The `//:promise-data-bridge` check keeps Promise construction inside an explicit synchronous Effect boundary when testing data retention. It compares catch-result identity and thenable laziness with the ordinary TypeScript counterpart, and compiles keyed Promise, constructor and thenable neighborhoods without awaiting the retained value.
