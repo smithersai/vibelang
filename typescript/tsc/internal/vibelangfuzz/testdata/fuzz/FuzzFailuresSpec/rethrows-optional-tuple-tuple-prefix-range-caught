@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-optional-tuple-tuple-prefix-range-caught")
+byte(0)

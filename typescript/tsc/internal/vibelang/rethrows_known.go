@@ -437,7 +437,8 @@ type knownRethrowsArgument struct {
 // signatures carry contracts independently of the tuple container's metadata.
 func knownRethrowsArguments(c *checker.Checker, call *ast.Node) []knownRethrowsArgument {
 	var result []knownRethrowsArgument
-	for _, argument := range rethrowsCallArguments(call) {
+	arguments := rethrowsCallArguments(call)
+	for index, argument := range arguments {
 		if argument == nil {
 			result = append(result, knownRethrowsArgument{})
 			continue
@@ -447,6 +448,9 @@ func knownRethrowsArguments(c *checker.Checker, call *ast.Node) []knownRethrowsA
 			continue
 		}
 		elements, fixed := fixedRethrowsSpreadTypes(c, argument)
+		if !fixed && index == len(arguments)-1 {
+			elements, fixed = trailingOptionalRethrowsSpreadTypes(c, argument)
+		}
 		if !fixed {
 			result = append(result, knownRethrowsArgument{})
 			continue
@@ -483,6 +487,30 @@ func fixedRethrowsSpreadTypes(c *checker.Checker, argument *ast.Node) ([]*checke
 		if flag&checker.ElementFlagsRequired == 0 {
 			return nil, false
 		}
+	}
+	return c.GetTypeArguments(spread), true
+}
+
+// Optional entries in a final tuple spread keep their parameter positions
+// whenever present. A later written argument can shift when entries are
+// absent, so that case retains the existing unknown-position treatment.
+func trailingOptionalRethrowsSpreadTypes(c *checker.Checker, argument *ast.Node) ([]*checker.Type, bool) {
+	if argument == nil || !ast.IsSpreadElement(argument) {
+		return nil, false
+	}
+	spread := c.GetTypeAtLocation(argument.Expression())
+	if !checker.IsTupleType(spread) {
+		return nil, false
+	}
+	optional := false
+	for _, flag := range spread.TargetTupleType().ElementFlags() {
+		if flag&checker.ElementFlagsFixed == 0 {
+			return nil, false
+		}
+		optional = optional || flag&checker.ElementFlagsOptional != 0
+	}
+	if !optional {
+		return nil, false
 	}
 	return c.GetTypeArguments(spread), true
 }

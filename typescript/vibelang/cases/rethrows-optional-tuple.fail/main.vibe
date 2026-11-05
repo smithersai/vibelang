@@ -1,0 +1,6 @@
+// expect: EK0403
+import {invoke,prefixed,args,readonlyArgs,prefixArgs} from "./lib.js"
+export effect function mutable(){return invoke(...args)}
+export effect function readOnly(){return invoke(...readonlyArgs)}
+export effect function separatePrefix(){return prefixed(1,...args)}
+export effect function tuplePrefix(){return prefixed(...prefixArgs)}

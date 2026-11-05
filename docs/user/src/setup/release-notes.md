@@ -206,6 +206,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Vitest coverage could list generated declarations for inline TypeScript module bodies as source files. Migration setup now excludes those declarations while preserving implementation coverage and thresholds.
 
+- A throwing callback supplied through an optional tuple spread could bypass throw checking. A final tuple spread now retains that callback's contract, including readonly tuples; `--fix` preserves synchronous defects with an explicit bridge.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
@@ -433,6 +435,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | A service type guard or assertion result captures an enclosing generic type | `EK3005`: choose a concrete predicate result or a member-local generic operation independent of the enclosing type; this contract choice requires a manual repair. |
 | A callable service contract whose explicit `this` parameter captures an enclosing generic type | `EK3005`: use a concrete receiver or a member-local generic operation independent of the enclosing type. Choosing that contract needs a manual repair. |
 | A throwing callback checked with an inline function type using `satisfies` | Run `vibelang --fix` to retain the structural constraint in a local type-only `module` that admits the callback's thrown type. The callable and inferred public type stay the same. Named constraints, comments and incompatible outer callback contracts need an explicit compatible type or exception-handling wrapper. |
+| A throwing callback supplied through a final optional tuple spread | Run `vibelang --fix` to keep the original defect with `Effect.orDie(Effect.try(...))`. Readonly tuples and optional callbacks after fixed prefixes follow the same rule. |
 | A `private` or `protected` constructor in `error` or `schema error` | Run `vibelang --fix` to retain it in an Effect TypeScript class, preserving constructor visibility and tag matching. |
 | Throwing callbacks passed through optional or nullable `@rethrows` parameters, including `sort` | Run `vibelang --fix` to keep the original defect with `Effect.orDie(Effect.try(...))`. |
 | RHS closures in `for concurrent` that formerly captured an outer name with an incompatible type | `--fix` renames the item binding and its uses, keeping the RHS closure on the original outer binding |

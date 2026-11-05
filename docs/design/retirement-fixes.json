@@ -61,6 +61,10 @@
       {
         "input": "typescript/vibelang/cases/rethrows-conditional-callback.fail",
         "output": "typescript/vibelang/cases/rethrows-conditional-callback-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/rethrows-optional-tuple.fail",
+        "output": "typescript/vibelang/cases/rethrows-optional-tuple-fixed-output"
       }
     ]
   },

@@ -359,6 +359,8 @@ A `satisfies` constraint checks the same thrown contract, including a callable r
 
 Generic instantiation substitutes within the declaration's existing thrown contract; it does not erase it when the result becomes an Effect. A rethrowing synchronous callable's default callback contributes to its conservative own bound even when a safe callback is supplied, so declaration output cannot lose that default's throws.
 
+A final tuple spread retains each optional callback's written thrown contract when that callback can be present. This includes readonly tuples and optional callback slots after fixed prefixes. An empty tuple supplies no callback, and a supplied nonthrowing callback remains valid. A known throwing callback still needs its exception bridge in Effect code (`EK0403`), or a native `try/catch` in plain code (`EK0401`).
+
 ## Trace and debug calls
 
 Run emitted JavaScript with `node --enable-source-maps dist/main.js` and enable `"sourceMap": true` in `compilerOptions`. Source maps preserve `.vibe` locations. VibeLang adds no spans of its own, so defects can show only one stack frame.
