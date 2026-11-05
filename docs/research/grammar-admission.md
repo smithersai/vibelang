@@ -522,3 +522,13 @@ one of those names and a field with an `effect` modifier retains the existing
 `admission:schema-effect-field` gap. The full grammar and diagnostics still
 decide whether the source is an admission mismatch; a recorded form selects
 only its pending key.
+
+The keyword lab derives the `provide` head from the current
+`ProvideStatement` production, replacing only the final `Block` with its
+opening `{`. The resulting prefix must derive before a statement-start
+`provide` becomes a keyword. Otherwise it remains an identifier, including
+as the subject of an `is` expression followed by an erased TypeScript
+assertion. Provider expressions, commas, nested object literals and
+line-break restrictions keep their original production rules. The probe
+disables keyword marking to avoid recursively classifying its own prefix;
+the complete program still derives with all prose restrictions.

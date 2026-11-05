@@ -1109,8 +1109,29 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		g.unresolved = append(g.unresolved, n)
 	}
 	sort.Strings(g.unresolved)
+	g.provideKeywordHead()
 	g.effectDeclarationNames()
 	return g.parameterize()
+}
+
+// provideKeywordHead derives keyword lookahead from the current appendix rule.
+// Replace only its final Block with the opening brace; provider productions,
+// parameters and line-break restrictions retain their original authority.
+func (g *grammarCfg) provideKeywordHead() {
+	for _, r := range slices.Clone(g.rules) {
+		if g.names[r.lhs] != "ProvideStatement" || len(r.rhs) == 0 {
+			continue
+		}
+		last := r.rhs[len(r.rhs)-1]
+		if last.kind != grammarSymNT || last.text != "Block" {
+			continue
+		}
+		nt := g.nt("ProvideKeywordHead")
+		g.helper[nt], g.vibe[nt] = true, true
+		rhs := slices.Clone(r.rhs)
+		rhs[len(rhs)-1] = grammarGsym{kind: grammarSymTok, text: "{"}
+		g.add(nt, rhs, r.src, r.vibe)
+	}
 }
 
 // effectDeclarationNames splits the declaration placement of a shared Appendix A

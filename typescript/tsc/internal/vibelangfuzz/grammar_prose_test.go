@@ -346,6 +346,15 @@ func (s *grammarProseSet) mark(toks []grammarToken, effect bool, g *grammarCfg) 
 		if i > 0 && grammarNamePosition[toks[i-1].text] {
 			continue
 		}
+		// A provider head is a complete cover production, not merely a token
+		// that can start an expression. Without it, provide is an identifier.
+		if t.text == "provide" {
+			kw[i] = grammarKwNo
+			if grammarStatementStart(toks, i) && grammarProvideKeywordHeadAt(g, toks, i) {
+				kw[i] = grammarKwYes
+			}
+			continue
+		}
 		state := grammarKwNo
 		for _, k := range s.keywords {
 			if !grammarContainsWord(k.Words, t.text) {
