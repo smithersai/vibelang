@@ -48,7 +48,7 @@ const isModuleName = (ts, node) => {
 /**
  * The indexes of source's statements that are private type aliases nothing
  * else names: in a module, a top-level `type X = …` without `export`, which
- * no type reference, heritage clause, `export { X }` or `export default X` in
+ * no type reference, type heritage clause, `export { X }` or `export default X` in
  * another statement names, nor one that names it in turn. Such an alias is
  * no part of the module's contract, but TypeScript prints one beside a value
  * of its name: a schema declaration, `schema State { … }`, is a constant and
@@ -64,7 +64,11 @@ export function privateUnusedTypes(ts, source) {
   const names = (statement) => {
     const found = new Set()
     const visit = (node) => {
-      if (ts.isTypeReferenceNode(node) || ts.isExpressionWithTypeArguments(node)) {
+      const classBase = ts.isExpressionWithTypeArguments(node) &&
+        ts.isHeritageClause(node.parent) && node.parent.token === ts.SyntaxKind.ExtendsKeyword &&
+        (ts.isClassDeclaration(node.parent.parent) || ts.isClassExpression(node.parent.parent))
+      // A class extends a value; its type arguments are visited independently.
+      if (ts.isTypeReferenceNode(node) || (ts.isExpressionWithTypeArguments(node) && !classBase)) {
         const id = leftmost(ts.isTypeReferenceNode(node) ? node.typeName : node.expression)
         if (ts.isIdentifier(id)) found.add(id.text)
       } else if (ts.isExportSpecifier(node)) {

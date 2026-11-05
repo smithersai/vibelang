@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Renaming or reverting a source could leave dependent projects reading stale build outputs; migration now rebuilds affected projects and their dependents before checking them.
 
+- Declaration text comparison could report a difference when a class extended a value whose name also had an unused private type alias. It now distinguishes class base values from type references while preserving observable aliases.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

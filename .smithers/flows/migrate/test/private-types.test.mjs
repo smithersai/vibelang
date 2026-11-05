@@ -97,3 +97,45 @@ test("property: any order of a module's imports and re-exports canonicalizes the
     assert.equal(canonicalize(ts, text(chosen)), canonicalize(ts, text(reversed)))
   }), { numRuns: 200 })
 })
+
+
+// Class heritage reads its base as a runtime value; its type arguments still
+// name types. Interface heritage and implements clauses read the type namespace.
+test("corpus: a class base value does not retain its same-named private type alias", t => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-private-alias-class-heritage.json", import.meta.url), "utf8"))
+  assert.ok(same(corpus.before, corpus.after), corpus.key)
+  const source = ts.createSourceFile("state.d.ts", corpus.after, ts.ScriptTarget.Latest, true)
+  assert.deepEqual([...privateUnusedTypes(ts, source)], [1])
+  const root = mkdtempSync(join(tmpdir(), "migrate-class-heritage-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  for (const side of ["before", "after"]) {
+    const file = join(root, side + ".d.ts")
+    writeFileSync(file, corpus[side])
+    const program = ts.createProgram([file], { strict: true, noEmit: true, lib: ["lib.es5.d.ts"] })
+    assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [], "stock TypeScript accepts " + side)
+  }
+})
+
+test("property: class value heritage drops only unused aliases and preserves type heritage", () => {
+  const name = fc.stringMatching(/^[A-Z][a-z]{1,6}$/).filter(n => n !== "Shape" && n !== "Value")
+  fc.assert(fc.property(name, fc.constantFrom("", ".Base"), fc.boolean(), (name, suffix, generic) => {
+    const value = suffix
+      ? `declare namespace ${name} { const Base: { new<T>(): { readonly value: T } }; }\n`
+      : `declare const ${name}: { new<T>(): { readonly value: T } };\n`
+    const alias = `type ${name} = { readonly retained: true };\n`
+    const argument = generic ? "<Shape>" : ""
+    const extra = generic ? "type Shape = string;\n" : ""
+    const before = value + extra + `export declare class Value extends ${name}${suffix}${argument} {}\nexport {};\n`
+    assert.ok(same(before, value + alias + before.slice(value.length)), "a class base is a value")
+    if (generic) {
+      assert.ok(!same(before, before.replace("type Shape = string;", "type Shape = number;")), "base type arguments remain observable")
+    }
+    for (const heritage of [`export interface Value extends ${name} {}`, `export declare class Value implements ${name} {}`]) {
+      const used = value + alias + heritage + "\nexport {};\n"
+      assert.equal(privateUnusedTypes(ts, ts.createSourceFile("state.d.ts", used, ts.ScriptTarget.Latest, true)).size, 0, heritage)
+    }
+    for (const exported of [`export { ${name} };`, `export { type ${name} };`, `export type Public = ${name};`]) {
+      assert.ok(!same(value + "export {};\n", value + alias + exported + "\n"), "observable aliases stay")
+    }
+  }), { seed: 102, numRuns: 200 })
+})

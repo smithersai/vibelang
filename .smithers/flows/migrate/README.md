@@ -1037,3 +1037,10 @@ One-pass conversion banks are scoped to their baseline, compiler producer, compi
 The fix report retains modern refused-site receipts with their byte offsets, line and column ranges, diagnostic code, reason and optional new-site marker. Independent safe fixes in the same file still count as applied. A `refused site changed` report fails the step even when the compiler also prints ordinary diagnostics; it cannot be treated as a completed conversion. Legacy refusal messages remain readable.
 
 Reverting a source removes declaration outputs owned by its parsed `module` bodies, beside the source and its configured sidecar. Declarations for unrelated names remain. Generated module-body declarations retain source-module import identities, so a relocated sidecar is never introduced as another native source input.
+
+
+The declaration text canonicalizer omits an unused private type alias even when
+a class extends a value with the same name. Class base expressions read the
+value namespace; their type arguments, interface bases, `implements` clauses
+and exported aliases still retain the types they reference. This text utility
+does not replace the exported-name, type and documentation identity proof.

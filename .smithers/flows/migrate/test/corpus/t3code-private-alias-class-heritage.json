@@ -1,0 +1,7 @@
+{
+  "key": "declaration-gate:class-heritage-value-reference",
+  "repo": "t3code",
+  "pattern": "A private schema adds a same-named type alias beside a value used by another declaration.",
+  "before": "declare const State: { new(): { readonly active: boolean }; readonly Type: { readonly active: boolean } };\nexport declare class StateValue extends State {}\nexport {};\n",
+  "after": "declare const State: { new(): { readonly active: boolean }; readonly Type: { readonly active: boolean } };\ntype State = typeof State.Type;\nexport declare class StateValue extends State {}\nexport {};\n"
+}
