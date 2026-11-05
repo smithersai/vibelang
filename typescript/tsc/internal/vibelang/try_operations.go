@@ -8,6 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // EK1801: VIP-18 accepts only arrays of Effects.
@@ -50,7 +51,7 @@ func checkTryOperations(c *checker.Checker, file *ast.SourceFile) {
 			valid := tryOperationArrayType(c, t)
 			if t != nil && !valid {
 				report(c, operand, EK1801, name)
-				cover(c, node)
+				coverTryOperationOperand(c, file, operand)
 			}
 		}
 		return node.ForEachChild(visit)
@@ -172,3 +173,32 @@ func (tx *lowering) visitTrySettledLiteral(node *ast.Node) *ast.Node {
 	return call
 }
 
+// Only the helper's contextual operand mismatch is owned by EK1801.
+// Authored argument, constraint, satisfaction and body errors remain native.
+func coverTryOperationOperand(c *checker.Checker, file *ast.SourceFile, operand *ast.Node) {
+	state := diagnosticsStateOf(c)
+	for {
+		coverArgument(c, operand)
+		loc := scanner.GetErrorRangeForNode(file, operand)
+		state.codes[file] = append(state.codes[file], coveredCodes{loc: loc, codes: []int32{2322, 2345, 2739, 2740, 2769}, exact: true})
+		switch operand.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression:
+			operand = operand.Expression()
+			continue
+		}
+		break
+	}
+	if ast.IsArrayLiteralExpression(operand) {
+		for _, element := range operand.AsArrayLiteralExpression().Elements.Nodes {
+			loc := scanner.GetErrorRangeForNode(file, element)
+			state.codes[file] = append(state.codes[file], coveredCodes{loc: loc, codes: []int32{2322, 2739, 2740}, exact: true})
+		}
+	}
+	if ast.IsObjectLiteralExpression(operand) {
+		for _, property := range operand.AsObjectLiteralExpression().Properties.Nodes {
+			if property.Name() != nil {
+				coverExactCodes(c, property.Name(), 2322, 2353, 2739, 2740)
+			}
+		}
+	}
+}

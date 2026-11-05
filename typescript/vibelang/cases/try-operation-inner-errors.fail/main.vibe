@@ -1,0 +1,8 @@
+// expect: EK1801 TS2345 TS2322
+declare function take(n:number): ReadonlyArray<number!!> | undefined
+declare function object(n:{value:number}): ReadonlyArray<number!!> | undefined
+export effect function all() { return try.all take("bad") }
+export effect function race() { return try.race take("bad") }
+export effect function any() { return try.any take("bad") }
+export effect function settled() { return try.allSettled take("bad") }
+export effect function property() { return try.all object({value:"bad"}) }
