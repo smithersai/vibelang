@@ -64,6 +64,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Platform extraction could leave a generated `module` body importing a renamed dependency through its old `.ts` path. Generated bodies now use the dependency’s resolved migrated path.
 
+- Migration could crash or leave source selectors stale in JavaScript tools. It now binds their local references before proving filename-selector rewrites.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

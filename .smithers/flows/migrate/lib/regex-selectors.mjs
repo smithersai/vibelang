@@ -71,7 +71,8 @@ export function onlyTested(ts, source, node) {
 const referenceIndices = new WeakMap()
 function referenceIndex(ts, source) {
   if (referenceIndices.has(source)) return referenceIndices.get(source)
-  const program = ts.createProgram([source.fileName], { noLib: true, noResolve: true }, {
+  // JavaScript roots must be admitted before querying their local bindings.
+  const program = ts.createProgram([source.fileName], { noLib: true, noResolve: true, allowJs: true }, {
     getSourceFile: name => name === source.fileName ? source : undefined,
     getDefaultLibFileName: () => "", writeFile: () => {}, getCurrentDirectory: () => "",
     getDirectories: () => [], fileExists: name => name === source.fileName,
@@ -89,7 +90,8 @@ function referenceIndex(ts, source) {
     }
     ts.forEachChild(n, visit)
   }
-  visit(source)
+  try { visit(source) }
+  catch (cause) { throw new Error("Source selector reference analysis failed for " + source.fileName, { cause }) }
   const result = { symbol, refs }
   referenceIndices.set(source, result)
   return result

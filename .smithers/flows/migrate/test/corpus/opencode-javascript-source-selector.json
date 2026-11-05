@@ -1,0 +1,15 @@
+{
+  "rule": "RD-022 / detail 272: widen a named source selector only when every resolved use preserves the selected module set. JavaScript tooling needs the same local binding proof as TypeScript.",
+  "source": "import { readdirSync } from \"node:fs\";\nconst extension = /\\.ts$/;\nconst files = readdirSync(\".\").filter(file => extension.test(file));\nconst consume = fn => fn();\nconsume(() => ({ value: 1 })).value;\n",
+  "renames": [
+    {
+      "from": "a.ts",
+      "to": "a.vibe"
+    }
+  ],
+  "inventory": [
+    "a.ts"
+  ],
+  "spec": "docs/design/vips/0034-compiler-and-tooling.md",
+  "quote": "Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`. Every tool is tested against the dogfood repositories."
+}

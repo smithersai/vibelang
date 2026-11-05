@@ -603,6 +603,8 @@ Rerunning migration setup removes the exact `moduleSuffixes: ["", ".d.vibe"]` li
 
 Migration setup adapts release helpers that map source paths to JavaScript and declarations, including `const` arrow mappers in nested package `imports` conditions. The helper keeps its authored `dist` and declaration layout. Tests, fixtures and helpers used only by tests stay unchanged.
 
+Named source-selection regexes in `.js`, `.mjs` and `.jsx` tooling use the same local binding and selected-file proof as TypeScript. A selector that escapes to another consumer stays unchanged; an unexpected reference-analysis failure reports the source filename.
+
 When a package `files` or `publishConfig.files` allowlist selected a source before conversion but misses its renamed `.vibe` path, the migrate flow adds that exact path. Existing directory selectors, unrelated sources and explicit exclusions stay intact. The durable `exportEdits` receipt records each `fileEntry`; reverting one module removes only its recorded additions. Published types still use ordinary `.d.ts` files, and compatibility sidecars remain excluded.
 
 The migrate flow keeps packed runtime exports reachable: when `default` names `.vibelang/js/`, an existing package `files` list gains that directory, including its loader records. Packing ignore exceptions cover only this generated runtime tree and preserve other exclusions. Reverting the last migrated module removes the flow's additions and keeps authored packing entries.
@@ -643,3 +645,4 @@ A configuration with an assigned `EK38xx` entry in `vibe.severities` and no reso
 The readonly source upgrade interprets existing members using their pre-flip defaults before establishing the diagnostic baseline. A pre-existing invalid schema codec can expose downstream diagnostics when its former readonly API is restored; those diagnostics remain visible. The report counts the fields upgraded. Codec expansions and all other repairs still use the project-wide no-new-errors gate.
 
 For an imported `EK3801` diagnostic in a `.vibe` file, ordinary `--fix` writes `void (expression)`. The expression is still evaluated once and the Effect remains unrun; use `try` explicitly when execution is intended.
+

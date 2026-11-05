@@ -844,6 +844,8 @@ An extension regex that filters a listed directory, such as t3code's `/\.tsx?$/.
 
 Glob selected-set proofs also check source directories and workspace package directories as possible execution roots, using the complete tracked source catalog. A match that would add an unrelated native source from another package is refused.
 
+Named source-selection regexes in `.js`, `.mjs` and `.jsx` tooling use the same local binding and selected-file proof as TypeScript. A selector that escapes to another consumer stays unchanged; an unexpected reference-analysis failure reports the source filename.
+
 Detail 272 still keeps source-text assertion modules in TypeScript. Literal path and exact-set selector rewrites preserve filesystem identities; they do not authorize rewriting source scans or assertions. The Foldkit corpus retains the refused source-text witness alongside the supported filesystem identity test.
 
 Native config proof and rename/revert also recognize explicit `node --import vibelang/register ./node_modules/vite/bin/vite.js` launchers. Existing native loader flags and preload spelling are preserved.
@@ -1061,3 +1063,4 @@ and exported aliases still retain the types they reference. This text utility
 does not replace the exported-name, type and documentation identity proof.
 
 Revert removes each selected sidecar using the compiling project’s TypeScript declaration layout: explicit `rootDir`, composite config root, or inferred common source root. Other files in the sidecar directory remain unchanged.
+
