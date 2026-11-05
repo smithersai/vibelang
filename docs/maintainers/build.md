@@ -1799,6 +1799,14 @@ generated shared/owned-error samples. Native controls require the actual
 Four additional generated `Map` mutations vary comparison direction and
 unrelated shared diagnostics.
 
+Reserved export-alias fixtures select `lib.es5.d.ts` for comparison and
+independent stock-TypeScript validation of both declaration trees. A native
+consumer checks assignments in both directions through each namespace depth:
+renamed local bindings remain compatible, while changed return types produce
+two `TS2322` diagnostics. All 24 generated aliases retain the original fixed
+seed. Guards run outside comparison failure handling, and missing `BigInt`
+must retain native `TS2583` diagnostics and an unavailable comparison.
+
 The five fixed variance forms use guarded ES5 programs for native TypeScript
 validation and API comparison. Their original target and strictness settings
 remain in force. The `in`, `out` and `in out` forms, class/interface/type

@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- API checks for reserved export aliases loaded unrelated browser declarations. They now use fewer libraries while retaining native alias and return-type checks.
+
 - API checks for unrelated diagnostics loaded browser declarations they did not use. They now retain native `Map` types with fewer library inputs.
 
 - Legacy JavaScript errors now offer an editor repair for closed native files that keeps their scope in a TypeScript `module`, preserving `var` hoisting and direct `eval`.
