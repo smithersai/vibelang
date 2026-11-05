@@ -1,0 +1,14 @@
+{
+  "key": "t3code-node-ambient-process-env",
+  "declaration": "export type Environment = NodeJS.ProcessEnv;\n",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "oracle": "A configured stock TypeScript program compiles this declaration; its unchanged public type must compare completely in the same environment.",
+  "dependency": "Use the real pinned @types/node package; do not invent an ambient namespace."
+}

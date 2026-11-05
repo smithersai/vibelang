@@ -505,7 +505,9 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     text += JSON.stringify(ambientImports)
     for (const ref of source.referencedFiles) deps.push(resolve(dirname(file), ref.fileName))
     for (const ref of source.typeReferenceDirectives)
-      deps.push(ts.resolveTypeReferenceDirective(ref.fileName, file, program.getCompilerOptions(), host).resolvedTypeReferenceDirective?.resolvedFileName)
+      deps.push(host.identityResolveTypeReferenceDirective
+        ? host.identityResolveTypeReferenceDirective(ref, file)?.resolvedFileName
+        : ts.resolveTypeReferenceDirective(ref.fileName, file, program.getCompilerOptions(), host).resolvedTypeReferenceDirective?.resolvedFileName)
     const value = { text, deps }
     normalized.set(file, value)
     return value
@@ -832,7 +834,26 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
       /\.d\.[cm]?ts$/.test(key) && !virtual.has(key) && typeof text === "string"
       ? options.dependencyDocuments.read(file, compilerOptions, languageVersion, text, host) : undefined
     const source = shared ?? getSource(file, languageVersion, onError, fresh)
-    if (source) sourceCache.set(key, source)
+    if (source) {
+      // Implicit type packages belong to the input's project, as they do in
+      // its stock TypeScript program. Source text and diagnostic offsets stay
+      // unchanged; only the compiler's reference metadata gains the context.
+      const owned = [before, after].some(base => key === base || key.startsWith(base + "/")) &&
+        !key.includes("/node_modules/")
+      const context = owned && project(file)
+      if (context?.root) {
+        const configured = { ...compilerOptions, ...context.options, ...options.compilerOptions }
+        if (!Object.hasOwn(context.options ?? {}, "types") &&
+            !Object.hasOwn(options.compilerOptions ?? {}, "types")) delete configured.types
+        const names = ts.getAutomaticTypeDirectiveNames(configured,
+          { ...host, getCurrentDirectory: () => context.root })
+        const written = new Set(source.typeReferenceDirectives.map(reference => reference.fileName))
+        const implicit = names.filter(name => !written.has(name))
+        if (implicit.length) source.typeReferenceDirectives = [...source.typeReferenceDirectives,
+          ...implicit.map(fileName => ({ fileName, pos: 0, end: 0 }))]
+      }
+      sourceCache.set(key, source)
+    }
     return source
   }
   // Fuzz/case snapshots live outside their original package. Resolve their
@@ -850,6 +871,25 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
     }
   }
   const externalGroups = new Map()
+  const resolveTypeReference = (reference, containingFile, redirected) => {
+    const name = typeof reference === "string" ? reference : reference.fileName
+    const mode = typeof reference === "string" ? undefined : reference.resolutionMode
+    const resolutionOptions = { ...compilerOptions, ...project(containingFile).options, ...options.compilerOptions }
+    const result = ts.resolveTypeReferenceDirective(name, project.physicalFile(containingFile),
+      resolutionOptions, host, redirected, undefined, mode)
+    const resolved = result.resolvedTypeReferenceDirective
+    if (resolved?.packageId) {
+      const id = JSON.stringify(resolved.packageId)
+      if (!externalGroups.has(id)) externalGroups.set(id, new Set())
+      externalGroups.get(id).add(resolved.resolvedFileName)
+    }
+    return { ...result, resolvedTypeReferenceDirective: resolved && { ...resolved, packageId: undefined } }
+  }
+  host.resolveTypeReferenceDirectiveReferences = (references, file, redirected) =>
+    references.map(reference => resolveTypeReference(reference, file, redirected))
+  // Closure proofs must use the same project environment as the checker.
+  host.identityResolveTypeReferenceDirective = (reference, file) =>
+    resolveTypeReference(reference, file).resolvedTypeReferenceDirective
   host.resolveModuleNames = (names, containingFile, modes = []) => names.map((name, index) => {
     const mode = modes[index]
     const frozen = frozenResolutions.get(resolve(containingFile) + "\0" + name)

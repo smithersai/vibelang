@@ -53,7 +53,9 @@ function equivalentEnvironment(ts, left, right, before, after, host) {
     const edges = resolved.map(item => key(item?.resolvedFileName, base))
     for (const reference of source.referencedFiles) edges.push(key(resolve(source.fileName, '..', reference.fileName), base))
     for (const reference of source.typeReferenceDirectives) {
-      const target = ts.resolveTypeReferenceDirective(reference.fileName, source.fileName, program.getCompilerOptions(), host).resolvedTypeReferenceDirective
+      const target = host.identityResolveTypeReferenceDirective
+        ? host.identityResolveTypeReferenceDirective(reference, source.fileName)
+        : ts.resolveTypeReferenceDirective(reference.fileName, source.fileName, program.getCompilerOptions(), host).resolvedTypeReferenceDirective
       edges.push(key(target?.resolvedFileName, base))
     }
     return [key(source.fileName, base), source, JSON.stringify(edges)]
