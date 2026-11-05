@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An indexed generic type could hide a service key from construction, inheritance and class-pattern checks. Indexed constraints now retain the key's identity and report the usual misuse diagnostics.
 - Migration's API check could report conflicting snapshot paths for native `module` declarations after an import rename. It now records those declarations as compiler outputs, while preserving handwritten declarations and detecting real API changes.
 - Computed alias imports can fail before Bun calls a loader; the Bun guides now show literal aliases or computed relative and absolute source paths.
+- Migration API checks refused any project that loaded two byte-identical copies of a package such as `@types/node`. Copies now count as one ambient origin when their bytes, dependency closures and load order prove it; differing copies and contributors loaded between them still refuse.
+- A migration API comparison that exhausted its 2 GiB worker heap failed the package. It now retries at 4 and 8 GiB where the machine has the memory, and reports the failure if the last size also fails.
 - Build command checks reran after unrelated source or documentation edits; they now reuse successful results while still checking changed commands, timeouts and test inventories.
 - Bun scripts and tests could not load a migrated source through a `tsconfig.paths` alias ending in `.ts`; the preload now follows its `.vibe` sibling while preserving existing native files.
 

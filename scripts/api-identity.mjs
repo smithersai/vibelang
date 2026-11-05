@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
+import { totalmem } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { dependencyDiagnosticsPlan, saveDependencyDiagnostics } from "./api-identity-diagnostics-cache.mjs"
@@ -532,6 +533,12 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     if (a === b) return node
     if (externalOrigin(a) !== externalOrigin(b)) { node.good = false; return node }
     const x = syntax(a), y = syntax(b)
+    // A package's JavaScript outside the program declares no types. The same
+    // package file with the same bytes is the same module on both sides.
+    if (!x && !y && externalOrigin(a) !== undefined && host.readFile(a) !== undefined && host.readFile(a) === host.readFile(b)) {
+      node.outside = true
+      return node
+    }
     if (!x || !y || x.text !== y.text || x.deps.length !== y.deps.length || documentation && !documentation(a, b)) { node.good = false; return node }
     for (let i = 0; i < x.deps.length; i++) {
       if (!x.deps[i] || !y.deps[i]) { node.good = false; continue }
@@ -576,7 +583,8 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
   for (let i = 0; i < bad.length; i++) for (const parent of bad[i].parents) {
     if (parent.good) { parent.good = false; bad.push(parent) }
   }
-  const equivalent = new Map(candidates.filter(n => n.good).map(n => [n.b, n.a]))
+  // A file outside the program proves its parents but has nothing to intern.
+  const equivalent = new Map(candidates.filter(n => n.good && !n.outside).map(n => [n.b, n.a]))
   // Syntax identity alone ignores comments. Reuse the same closure proof for
   // documentation only when every attached JSDoc in that closure also agrees.
   const comments = new Map()
@@ -596,12 +604,12 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     comments.set(file, text)
     return text
   }
-  const docBad = [...nodes.values()].filter(n => !n.good || n.a !== n.b && documentationFingerprint(n.a) !== documentationFingerprint(n.b))
+  const docBad = [...nodes.values()].filter(n => !n.good || n.a !== n.b && !n.outside && documentationFingerprint(n.a) !== documentationFingerprint(n.b))
   const invalidDocs = new Set(docBad)
   for (let i = 0; i < docBad.length; i++) for (const parent of docBad[i].parents) {
     if (!invalidDocs.has(parent)) { invalidDocs.add(parent); docBad.push(parent) }
   }
-  equivalent.documentation = new Map(candidates.filter(n => n.good && !invalidDocs.has(n)).map(n => [n.b, n.a]))
+  equivalent.documentation = new Map(candidates.filter(n => n.good && !n.outside && !invalidDocs.has(n)).map(n => [n.b, n.a]))
   equivalent.normalization = { selfNamespaceImportRuns }
   return equivalent
 }
@@ -1085,7 +1093,7 @@ function prepareComparison(ts, before, after, options, progress) {
     return contributes
   }
   if (program.getSourceFiles().some(contributesAmbient)) {
-    const ambientDocumentation = new Map(), documentationInputs = new Map()
+    const ambientDocumentation = new Map(), documentationInputs = new Map(), documentationTexts = new Map()
     const describeAmbientDocumentation = (source, docChecker) => {
       const comments = new Map()
       const inspect = (node, path) => {
@@ -1112,6 +1120,11 @@ function prepareComparison(ts, before, after, options, progress) {
       return value
     }
     const documentation = (beforeFile, afterFile) => {
+      // Equal bytes carry equal comments. Symbol tags read every merged
+      // declaration, so a duplicate copy would double them; the other files
+      // of a merged symbol are proved as their own pairs.
+      const text = documentationTexts.get(beforeFile)
+      if (text !== undefined && text === documentationTexts.get(afterFile)) return true
       const before = documentationFor(beforeFile), after = documentationFor(afterFile)
       if (!before || !after) return false
       return [...new Set([...before.keys(), ...after.keys()])].every(key => {
@@ -1121,10 +1134,11 @@ function prepareComparison(ts, before, after, options, progress) {
     }
     const ambient = (roots, base) => {
       const isolated = ts.createProgram(Object.values(roots), compilerOptions, host)
-      const sources = new Map()
+      const sources = new Map(), texts = new Map(), order = [], copies = []
       const docChecker = options.lazyAmbientDocumentation ? undefined : isolated.getTypeChecker()
       for (const source of isolated.getSourceFiles()) {
         if (source.hasNoDefaultLib) continue
+        documentationTexts.set(source.fileName, source.text)
         if (options.lazyAmbientDocumentation) documentationInputs.set(source.fileName, { source, program: isolated })
         else ambientDocumentation.set(source.fileName, describeAmbientDocumentation(source, docChecker))
         if (!contributesAmbient(source)) continue
@@ -1140,18 +1154,26 @@ function prepareComparison(ts, before, after, options, progress) {
           key = "package:" + JSON.stringify([manifest.name ?? tail.slice(0, count).join("/"), manifest.version, relative(root, file), ...peerInstallation(root, manifest)])
         } else if (file === base || file.startsWith(base + "/")) key = "owned:" + relative(base, file)
         else key = "shared:" + file
-        if (sources.has(key) && sources.get(key) !== file) {
-          result.environmentDiagnostics.push({ blocking: true, file, diagnostic: "Ambiguous ambient declaration origin: " + key })
-        }
-        sources.set(key, file)
+        order.push(key)
+        // Two installed copies of one package are one origin only when their
+        // bytes match here and their closures match in the proof below.
+        if (!sources.has(key)) { sources.set(key, file); texts.set(key, source.text) }
+        else if (texts.get(key) === source.text) copies.push([sources.get(key), file])
+        else result.environmentDiagnostics.push({ blocking: true, file, diagnostic: "Ambiguous ambient declaration origin: " + key })
       }
-      return sources
+      return { sources, order, copies }
     }
-    const ambientLeft = ambient(left, before), ambientRight = ambient(right, after)
+    const { sources: ambientLeft, order: leftOrder, copies: leftCopies } = ambient(left, before)
+    const { sources: ambientRight, order: rightOrder, copies: rightCopies } = ambient(right, after)
     // Global overload precedence follows source-file binding order.
     // Equal per-file closures cannot prove a reordered ambient environment.
-    if (JSON.stringify([...ambientLeft.keys()]) !== JSON.stringify([...ambientRight.keys()])) {
-      const beforeOrder = [...ambientLeft.keys()], afterOrder = [...ambientRight.keys()]
+    // A duplicate copy adds declarations at both ends of the merge order, so
+    // the first and the last load of every origin must both agree.
+    const loadOrders = order => [[...new Set(order)], [...new Set([...order].reverse())].reverse()]
+    const leftOrders = loadOrders(leftOrder), rightOrders = loadOrders(rightOrder)
+    const orderDifference = [0, 1].find(end => JSON.stringify(leftOrders[end]) !== JSON.stringify(rightOrders[end]))
+    if (orderDifference !== undefined) {
+      const beforeOrder = leftOrders[orderDifference], afterOrder = rightOrders[orderDifference]
       let firstDifference = 0
       while (firstDifference < Math.min(beforeOrder.length, afterOrder.length) &&
         beforeOrder[firstDifference] === afterOrder[firstDifference]) firstDifference++
@@ -1166,6 +1188,13 @@ function prepareComparison(ts, before, after, options, progress) {
       const a = ambientLeft.get(key), b = ambientRight.get(key)
       if (a && b && (a === b || ambientProof.get(b) === a)) continue
       result.environmentDiagnostics.push({ blocking: true, file: b ?? a, diagnostic: "Ambient declaration closures differ; shared-program comparison is unavailable: " + key })
+    }
+    const copies = [...leftCopies, ...rightCopies]
+    const copyProof = equivalentModules(ts, program, host, Object.fromEntries(copies.map(([first], index) => [index, first])),
+      Object.fromEntries(copies.map(([, copy], index) => [index, copy])), externalGroups, documentation)
+    for (const [first, copy] of copies) {
+      if (copyProof.get(copy) !== first) result.environmentDiagnostics.push({ blocking: true, file: copy,
+        diagnostic: "Ambiguous ambient declaration origin: closure of " + copy + " differs from " + first })
     }
     // Export-scoped records leave the shared program comparable.
     if (result.environmentDiagnostics.some(d => d.blocking && d.scope !== "export")) {
@@ -1810,11 +1839,14 @@ function checkComparison(ts, plan, progress) {
 
 
 // Run heavy comparisons in a bounded child so a fatal V8 allocation failure or
-// signal is still an explicit invalid receipt in the caller.
+// signal is still an explicit invalid receipt in the caller. A killed child
+// retries at the next heap size; the machine's memory bounds the last one.
+const workerHeaps = () => [2048, 4096, 8192].filter((size, index) => !index || size * 1024 * 1024 <= totalmem() * 0.75)
+
 export function compareApiIdentityInWorker(ts, before, after, options = {}) {
   const started = performance.now()
   let child
-  try {
+  for (const heap of options.workerHeaps ?? workerHeaps()) try {
     const preload = []
     if (!process.versions.bun) for (let i = 0; i < process.execArgv.length; i++) {
       const arg = process.execArgv[i]
@@ -1823,7 +1855,7 @@ export function compareApiIdentityInWorker(ts, before, after, options = {}) {
     }
     const compilerOptions = options.compilerOptions && { ...options.compilerOptions, configFile: undefined }
     child = spawnSync(process.versions.bun ? "node" : process.execPath,
-      [...preload, "--max-old-space-size=2048", fileURLToPath(import.meta.url), "--api-identity-worker"], {
+      [...preload, "--max-old-space-size=" + heap, fileURLToPath(import.meta.url), "--api-identity-worker"], {
         input: JSON.stringify({ compiler: ts.sys.getExecutingFilePath(), before, after,
           options: { ...options, compilerOptions } }),
         encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
@@ -1838,7 +1870,8 @@ export function compareApiIdentityInWorker(ts, before, after, options = {}) {
           !result.nameDifferences.length && !result.typeDifferences.length && !result.docDifferences.length &&
           !result.environmentDiagnostics.some(d => d.blocking))) return result
     }
-  } catch {}
+    if (!child.signal) break
+  } catch { break }
   return { identical: false, comparisonComplete: false, nameDifferences: [], typeDifferences: [], docDifferences: [],
     failure: { stage: "worker", elapsedMs: Math.round(performance.now() - started),
       exitCode: child?.status ?? null, signal: child?.signal ?? null, error: child?.error?.code,
