@@ -12,7 +12,7 @@ function targets(env = {}) {
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
     createApiIdentityInputs,
-    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]], ["migration", ["FuzzMigrationFormatterFixedPoint"]]]),
+    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]], ["migration", ["FuzzMigrationFormatterFixedPoint", "FuzzMigrationJSXRoutes"]]]),
     vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
     process: { env },
     migrationSources: { migrationSources: true },
@@ -109,5 +109,13 @@ for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending", "go-vibelangfu
     assert.ok(graph[name].data.includes("packages.compiler-native"),
       "the process formatter needs the compiler package binary and plugin manifest")
     assert.ok(graph[name].tools.includes("node"))
+  })
+}
+
+for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending", "go-vibelangfuzz-topic-migration"]) {
+  test(name + " tracks canonical migration sources for route oracles", () => {
+    const graph = targets()
+    assert.ok(graph[name].data.some(input => input?.migrationSources === true),
+      "a route oracle must invalidate when its canonical migration implementation changes")
   })
 }

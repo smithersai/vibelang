@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,6 +12,8 @@ import (
 
 // VIP-5, chapter 2: "a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code."
 const nativeTryQuote = "a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code."
+
+const nativeTryScaffoldQuote = "`e catch h` runs `e`."
 
 func TestNativeTryPlacementQuoted(t *testing.T) {
 	chapter, err := os.ReadFile(SpecPath("002-running.md"))
@@ -22,6 +25,9 @@ func TestNativeTryPlacementQuoted(t *testing.T) {
 	}
 	if !strings.Contains(string(chapter), nativeTryQuote) {
 		t.Fatalf("chapter 2 no longer says %q", nativeTryQuote)
+	}
+	if !strings.Contains(string(chapter), nativeTryScaffoldQuote) {
+		t.Fatalf("chapter 2 no longer says %q", nativeTryScaffoldQuote)
 	}
 }
 
@@ -89,16 +95,26 @@ func FuzzNativeTryPlacement(f *testing.F) {
 		if variantBinding {
 			body = "throw { n: undefined as number | undefined }"
 		}
+		variantScaffold := (strings.HasSuffix(string(data), ":foldkit-scaffold") || strings.HasSuffix(string(data), ":foldkit-scaffold-fixed")) && (boundary == "function" || boundary == "block" || boundary == "arrow" || boundary == "method")
+		scaffoldFixed := variantScaffold && strings.HasSuffix(string(data), "-fixed")
+		if variantScaffold {
+			body, handler = "return try Effect.fail(\"x\")", "return try Effect.die(error)"
+		}
 		statement := "try\n{ " + body + " }"
 		if form != "finally" {
 			if variantBinding {
 				statement += " catch ({ n = try Effect.succeed(1) }) { n += 1; return n }"
+			} else if variantScaffold {
+				statement += " catch (error) { " + handler + " }"
 			} else {
 				statement += " catch { " + handler + " }"
 			}
 		}
 		if form != "catch" {
 			statement += " finally { const n = 3 }"
+		}
+		if scaffoldFixed {
+			statement = "return Effect.fail(\"x\") catch effect (error) => { return try Effect.die(error) }"
 		}
 		source := ""
 		forbidden := true
@@ -149,6 +165,20 @@ func FuzzNativeTryPlacement(f *testing.F) {
 			source = "async function f() { " + statement + " }"
 			forbidden = false
 		}
+		if variantScaffold && boundary == "function" {
+			name := "foldkit-scaffold-native-try.vibe"
+			if scaffoldFixed {
+				name = "foldkit-scaffold-catch-expression.vibe"
+			}
+			raw, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			source = string(raw)
+		}
+		if scaffoldFixed {
+			forbidden = false
+		}
 		if strings.HasSuffix(string(data), ":pipeline") {
 			source = "effect function* readings() { try { for (const value of [1]) { yield value } } finally { try Effect.void } }"
 			forbidden = true
@@ -164,6 +194,12 @@ func FuzzNativeTryPlacement(f *testing.F) {
 		}
 		if variantBinding {
 			label += ":binding"
+		}
+		if variantScaffold {
+			label += ":foldkit-scaffold"
+			if scaffoldFixed {
+				label += "-fixed"
+			}
 		}
 		found := false
 		for _, d := range r.Diagnostics {

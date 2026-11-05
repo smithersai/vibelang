@@ -1,0 +1,7 @@
+{
+  "issue": "migrate-plan-tsx-rejected",
+  "file": "Card.tsx",
+  "source": "export const Card = () => <div />\n",
+  "expected": "Card.vibex",
+  "quote": "Renaming `x.tsx` to `x.vibex` changes nothing in its JSX"
+}

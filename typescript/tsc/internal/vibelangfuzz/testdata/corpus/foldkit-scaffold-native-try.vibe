@@ -1,0 +1,1 @@
+effect function f() { try { return try Effect.fail("x") } catch (error) { return try Effect.die(error) } }

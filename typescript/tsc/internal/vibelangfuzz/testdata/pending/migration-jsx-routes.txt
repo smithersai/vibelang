@@ -1,0 +1,5 @@
+FuzzMigrationJSXRoutes reject:jsx-basic compiler VIP-39: the canonical migration rejects TSX before preserving its JSX file kind; lane drive-foldkit-web
+FuzzMigrationJSXRoutes reject:jsx-nested compiler VIP-39: the canonical migration rejects TSX before preserving its JSX file kind; lane drive-foldkit-web
+FuzzMigrationJSXRoutes reject:jsx-dotted compiler VIP-39: the canonical migration rejects TSX before preserving its JSX file kind; lane drive-foldkit-web
+FuzzMigrationJSXRoutes reject:jsx-unicode compiler VIP-39: the canonical migration rejects TSX before preserving its JSX file kind; lane drive-foldkit-web
+FuzzMigrationJSXRoutes corpus:opencode-card-tsx-route compiler VIP-39: the canonical migration rejects TSX before preserving its JSX file kind; lane drive-foldkit-web
