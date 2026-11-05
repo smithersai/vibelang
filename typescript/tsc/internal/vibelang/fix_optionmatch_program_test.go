@@ -143,19 +143,39 @@ func FuzzOptionMatchGeneratorHandler(f *testing.F) {
 }
 
 // Chapter 7 keeps generator migration ahead of Option.match's preserving fix.
-// This is the executable witness for generator-match-advice.fail and the
-// public advice sentence, independent of the compatibility diagnostic number.
+// generator-match-advice.fail passes explicit producers, which stay EK1002's
+// error with no rewrite (VIP-21), so the match repair keeps waiting for them.
+// The same source with native generators migrates both, then the match.
 func TestPublicGeneratorMatchAdviceWitness(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
 		t.Fatal(err)
 	}
 	fixture := filepath.Join(root, "typescript/vibelang/cases/generator-match-advice.fail")
+
+	producers := fixCase(t, copyCompilerFixture(t, fixture, root))
+	for _, file := range producers.Files {
+		if file.Counts[EK1002.Code] != 0 || file.Counts[EK4839.Code] != 0 ||
+			strings.Count(file.Text, "effect function*") != 2 || !strings.Contains(file.Text, "Option.match(") {
+			t.Fatalf("expected explicit producers and their match unchanged; got %+v", file)
+		}
+	}
+
 	dir := copyCompilerFixture(t, fixture, root)
+	main := filepath.Join(dir, "main.vibe")
+	source, err := os.ReadFile(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.ReplaceAll(string(source), "effect function*", "function*")
+	text = strings.ReplaceAll(text, "yield try ", "return yield* ")
+	if err := os.WriteFile(main, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	result := fixCase(t, dir)
 	for _, file := range result.Files {
 		if file.Counts[EK1002.Code] != 2 || file.Counts[EK4839.Code] != 1 ||
-			strings.Contains(file.Text, "function*") || strings.Contains(file.Text, "Option.match(") {
+			strings.Contains(file.Text, "function* (") || strings.Contains(file.Text, "Option.match(") {
 			t.Fatalf("expected both generators before the match repair; got %+v", file)
 		}
 	}
