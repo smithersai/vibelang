@@ -1911,3 +1911,5 @@ The `//:setup-lint-exit-policy` check retains modern severities and authored plu
 Setup follows TypeScript’s resolved `extends` chain when preserving an unpatched compiler’s Effect exit policy. It updates owned shared bases even without a `tsconfig` filename; protected and foreign bases remain unchanged and receive a diagnostic when their missing exit options require attention.
 
 The `//:catch-value-identities` check preserves invalid handler errors, independent native diagnostics and source parentheses/comments, and rejects generic-call advisories on catch execution syntax.
+
+The `//:throws-documentation-preservation` gate runs located-refusal tests and generated comment variations, then compiles each manually migrated source.

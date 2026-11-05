@@ -1,1 +1,1 @@
-effectful annotation repair removes tags and preserves prose
+throw-tag migration preserves documentation and reports manual edits
