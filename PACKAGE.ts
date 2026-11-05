@@ -708,6 +708,13 @@ const targets = {
     [go, node, bun],
     "10m"
   ),
+  "native-setup-exit-behavior": check(
+    "Setup retains actual TypeScript build/emit behavior and explicit author overrides.",
+    "node --test .smithers/flows/migrate/test/native-lint-exit-policy.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [node, bun],
+    "5m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

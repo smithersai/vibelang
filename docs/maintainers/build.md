@@ -1846,3 +1846,5 @@ The `//:legacy-provider-identities` target keeps missing-provider and version-pi
 The `//:legacy-json-advisory` check replays the JSON advisory registry witness through legacy project configuration and checks each interim severity independently.
 
 The `//:optional-callback-identities` check retains both missing channels and optional-operand admission, plus guarded and unguarded call, method, receiver and computed-access controls.
+
+The `//:native-setup-exit-behavior` check executes stock TypeScript and VibeLang on the same native source. Unpatched defaults retain successful exit and emission while the lint error still prints; explicit false flags keep the error blocking, and explicit true flags remain unchanged.
