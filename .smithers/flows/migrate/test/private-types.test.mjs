@@ -11,6 +11,8 @@ const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const same = (a, b) => canonicalize(ts, a) === canonicalize(ts, b)
+const stockOptions = { strict: true, noEmit: true, lib: ["lib.es5.d.ts"], types: [] }
+const diagnosticDetails = diagnostics => diagnostics.map(d => ({ code: d.code, file: d.file?.fileName, message: ts.flattenDiagnosticMessageText(d.messageText, "\n") }))
 
 // t3code chatAttachment.ts: `const State = Schema.Struct(…)`, private, became
 // `schema State { … }`, whose declaration adds `type State = typeof State.Type`.
@@ -111,8 +113,8 @@ test("corpus: a class base value does not retain its same-named private type ali
   for (const side of ["before", "after"]) {
     const file = join(root, side + ".d.ts")
     writeFileSync(file, corpus[side])
-    const program = ts.createProgram([file], { strict: true, noEmit: true, lib: ["lib.es5.d.ts"] })
-    assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [], "stock TypeScript accepts " + side)
+    const program = ts.createProgram([file], stockOptions)
+    assert.deepEqual(diagnosticDetails(ts.getPreEmitDiagnostics(program)), [], "stock TypeScript accepts " + side)
   }
 })
 
@@ -138,4 +140,22 @@ test("property: class value heritage drops only unused aliases and preserves typ
       assert.ok(!same(value + "export {};\n", value + alias + exported + "\n"), "observable aliases stay")
     }
   }), { seed: 102, numRuns: 200 })
+})
+
+test("generated ambient packages cannot pollute a self-contained declaration oracle", t => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-private-alias-class-heritage.json", import.meta.url), "utf8"))
+  const root = mkdtempSync(join(tmpdir(), "migrate-isolated-declaration-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const ambient = join(root, "node_modules/@types/incidental"), file = join(root, "schema.d.ts")
+  mkdirSync(ambient, { recursive: true })
+  fc.assert(fc.property(fc.integer({ min: 0, max: 10000 }), fc.constantFrom("before", "after"), (suffix, side) => {
+    writeFileSync(join(ambient, "index.d.ts"), "declare const incidental: Unavailable" + suffix + ".Type;\n")
+    writeFileSync(file, corpus[side])
+    const options = { ...stockOptions, typeRoots: [join(root, "node_modules/@types")] }
+    const polluted = { ...options }; delete polluted.types
+    assert.ok(ts.getPreEmitDiagnostics(ts.createProgram([file], polluted)).some(d => d.code === 2503))
+    assert.deepEqual(diagnosticDetails(ts.getPreEmitDiagnostics(ts.createProgram([file], options))), [])
+    writeFileSync(file, corpus[side] + "\nexport type Invalid = MissingSourceType;\n")
+    assert.ok(ts.getPreEmitDiagnostics(ts.createProgram([file], options)).some(d => d.code === 2304), "source errors remain visible")
+  }), { seed: 551108, numRuns: 12 })
 })
