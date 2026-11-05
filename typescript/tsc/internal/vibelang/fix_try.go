@@ -75,7 +75,13 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			edits = append(edits, sourceEdit{nodeStart(file, node.Expression()), node.Expression().End(), legacyFork})
 			kinds["native Effect globals"]++
 		}
-		if at, open, rest, label, ok := effectValueCallEditsLabeled(a, file, node); ok {
+		legacyEffectOwner := false
+		if ast.IsCallExpression(node) {
+			if owner := effectCodeOwner(node); owner != nil {
+				legacyEffectOwner = m.marked(owner)
+			}
+		}
+		if at, open, rest, label, ok := effectValueCallEditsInOwner(a, file, node, legacyEffectOwner); ok {
 			if label != "" {
 				kinds[label]++
 			}

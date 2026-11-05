@@ -2151,6 +2151,8 @@ Computed schema keys in TypeScript projections keep their native expressions, in
 
 The `//:http-request-pipe-rollback-controls` target retains canonical HTTP setter repairs, observable argument refusal and exact declaration controls across namespace and named imports, aliases, reexports, Unicode and stage order. The complete pipeline-order preservation controls also run in `//:pure-request-pipe-receiver-controls`.
 
+`//:legacy-inferred-service-receiver-order` checks the original service migration and a keyed matrix of marked and unmarked inferred-channel annotations against native TypeScript declarations.
+
 `//:native-generator-refusal-site-controls` checks unchanged native generator returns, original source coordinates after earlier repairs, refused-only files and protected prelude edits, including the keyed inside/outside edit matrix.
 
 The corrected pipeline repair check retains all original factory-order, mutable-stage, receiver, callback, runner and accessor-option cases. Canonical HTTP setters additionally keep their proven-safe data-first form and exact declaration output across import layouts and stage order.

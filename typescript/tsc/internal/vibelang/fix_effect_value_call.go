@@ -27,6 +27,13 @@ func effectValueCallEdits(a *analyzer, file *ast.SourceFile, call *ast.Node) (at
 
 // effectValueCallEditsLabeled also attributes the rewrite in --fix receipts.
 func effectValueCallEditsLabeled(a *analyzer, file *ast.SourceFile, call *ast.Node) (at int, open string, edits []sourceEdit, label string, ok bool) {
+	return effectValueCallEditsInOwner(a, file, call, false)
+}
+
+// A legacy owner whose effect marker is written in this same pass already
+// supplies the execution context. Its service receiver must migrate together
+// with the marker and the dependent calls, before inferred channels are fixed.
+func effectValueCallEditsInOwner(a *analyzer, file *ast.SourceFile, call *ast.Node, legacyEffect bool) (at int, open string, edits []sourceEdit, label string, ok bool) {
 	if !ast.IsCallExpression(call) || len(call.Arguments()) != 0 || call.TypeArguments() != nil || call.QuestionDotToken() != nil {
 		return 0, "", nil, "", false
 	}
@@ -37,8 +44,8 @@ func effectValueCallEditsLabeled(a *analyzer, file *ast.SourceFile, call *ast.No
 	// The parser's catch-left function holds the Effect for catch to run.
 	// It is plain until something inside it runs with try, so checking only
 	// a.isEffect(fn) misses Port() as the complete catch head (foldkit MCP).
-	catchHead := fn != nil && isCatchLeftFunction(fn) && inEffectCode(fn) && ast.SkipParentheses(fn.Body()) == call
-	if !catchHead && (!inLowerableBody(call) || fn == nil || !a.isEffect(fn)) {
+	catchHead := fn != nil && isCatchLeftFunction(fn) && (inEffectCode(fn) || legacyEffect) && ast.SkipParentheses(fn.Body()) == call
+	if !catchHead && (!inLowerableBody(call) || fn == nil || !a.isEffect(fn) && !legacyEffect) {
 		return 0, "", nil, "", false
 	}
 	c := a.checker
