@@ -315,6 +315,9 @@ The reviewed map is `scripts/fuzz-gate/map.json`. Formatter changes select
 `FuzzFormat`; VibeLang parser changes select `FuzzParse`, `FuzzSplice` and
 `TestSpliceMutation`; mapped specification chapters select their quote,
 coverage and static-rule checks; editor changes select editor fuzz seeds.
+Concurrent loop head, label and lowering changes select the `concurrent-heads`
+family: quoted rules and saved seeds for RHS bindings, labels and jumps in
+`do` expressions in loop heads.
 The map deliberately does not claim coverage of every compiler change.
 Changing the map or selector selects every mapped family.
 

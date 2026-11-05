@@ -1,0 +1,22 @@
+export effect function main() {
+  const seen: string[] = []
+  source: {
+    const marker = 1
+    for concurrent (const item of do {
+      seen.push("head")
+      if (marker === 1) break source
+      [1]
+    }) {
+      seen.push(`unexpected:${item}`)
+    }
+  }
+  seen.push("after")
+  {
+    const limit = 1
+    items: for concurrent(limit) (const item of [1, 2]) {
+      if (item === 1) continue items
+      seen.push(`item:${item}`)
+    }
+  }
+  return seen
+}

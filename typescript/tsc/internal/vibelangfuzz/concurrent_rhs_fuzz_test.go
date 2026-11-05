@@ -92,6 +92,7 @@ func FuzzConcurrentRHSBindings(f *testing.F) {
 func FuzzConcurrentHeadContinues(f *testing.F) {
 	startShortBudget(f)
 	concurrentRHSChapter(f)
+	chapterSays(f, "002-running.md", concurrentHeadDoReturnQuote)
 	shapes := []struct {
 		key, outer, inner, body string
 		code                    int32
@@ -106,6 +107,14 @@ func FuzzConcurrentHeadContinues(f *testing.F) {
 		{"native-local", "(1)", "(1)", "local: for (const y of [1]) { continue local }", 0},
 		{"do-value", "(1)", "(1)", "const value = do { 1 }; void value", 0},
 		{"do-array", "(1)", "(1)", "const value = do { [1] }; void value", 0},
+		{"source-block-const", "(1)", "(1)", "source: { const value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"source-block-let", "(1)", "(1)", "source: { let value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"source-block-pattern", "(1)", "(1)", "source: { const { value } = { value: 1 }; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"source-block-tempname", "(1)", "(1)", "source: { const $concurrentLimit1 = 1; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"source-block-bounded", "(1)", "(1)", "source: { const value = 1; for concurrent(1) (const n of [1]) { continue source } }", 1107},
+		{"source-block-head-break", "(1)", "(1)", "source: { const value = 1; for concurrent (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
+		{"source-block-head-break-bounded", "(1)", "(1)", "source: { const value = 1; for concurrent(1) (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
+		{"source-block-self-loop", "(1)", "(1)", "source: { const limit = 1; items: for concurrent(limit) (const n of [1]) { continue items } }", 0},
 	}
 	keys := make([]string, len(shapes))
 	for i, shape := range shapes {

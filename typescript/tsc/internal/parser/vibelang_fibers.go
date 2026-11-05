@@ -824,7 +824,21 @@ func VibeLangConcurrentCall(statement *ast.Node) *ast.Node {
 			statements := statement.Statements()
 			if len(statements) == 2 && ast.IsVariableStatement(statements[0]) &&
 				ast.IsLabeledStatement(statements[1]) && statements[1].Label().Flags&ast.NodeFlagsReparsed != 0 {
-				statement = statements[1]
+				// A hoisted written limit has a generated binding referenced
+				// by the call. A source declaration leaves its block opaque.
+				declarations := statements[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+				if len(declarations) != 1 {
+					return nil
+				}
+				name := declarations[0].Name()
+				if !ast.IsIdentifier(name) || name.Flags&ast.NodeFlagsReparsed == 0 {
+					return nil
+				}
+				call := VibeLangConcurrentCall(statements[1])
+				if call != nil && ast.IsIdentifier(call.Arguments()[1]) && call.Arguments()[1].Text() == name.Text() {
+					return call
+				}
+				return nil
 			} else if len(statements) >= 2 && ast.IsExpressionStatement(statements[0]) &&
 				ast.IsCallExpression(statements[0].Expression()) && isIntrinsicCall(statements[0].Expression()) == "$forConcurrent" &&
 				statements[1].Kind == ast.KindBreakStatement && statements[1].Label() != nil &&

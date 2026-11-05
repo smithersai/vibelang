@@ -53,3 +53,36 @@ func TestConcurrentHeadDoJumpErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestConcurrentSourceBlockLabels(t *testing.T) {
+	for _, c := range []struct {
+		name, source string
+		code         int32
+	}{
+		{"const-prefix", "source: { const value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"let-prefix", "source: { let value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"pattern-prefix", "source: { const { value } = { value: 1 }; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"generated-spelling", "source: { const $concurrentLimit1 = 1; for concurrent (const n of [1]) { continue source } }", 1107},
+		{"without-prefix", "source: { for concurrent (const n of [1]) { continue source } }", 1107},
+		{"bounded-prefix", "source: { const value = 1; for concurrent(1) (const n of [1]) { continue source } }", 1107},
+		{"head-break", "source: { const value = 1; for concurrent (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
+		{"bounded-head-break", "source: { const value = 1; for concurrent(1) (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
+		{"self-label", "source: { const limit = 1; items: for concurrent(limit) (const n of [1]) { continue items } }", 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			program, file, _, _ := editorProgram(t, "export effect function f() { "+c.source+" }")
+			all := append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...)
+			errors := 0
+			var code int32
+			for _, d := range all {
+				if d.Category() == diagnostics.CategoryError {
+					errors++
+					code = d.Code()
+				}
+			}
+			if c.code == 0 && errors != 0 || c.code != 0 && (errors != 1 || code != c.code) {
+				t.Fatalf("want diagnostic %d, got %v", c.code, all)
+			}
+		})
+	}
+}

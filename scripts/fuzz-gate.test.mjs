@@ -15,6 +15,20 @@ test("changed paths select the regression neighbourhood and no unrelated suite",
   const controls = [
     ["typescript/tsc/internal/vibelangfmt/format.go", ["format"]],
     ["typescript/tsc/internal/parser/vibelang_match.go", ["syntax"]],
+    ["typescript/tsc/internal/parser/vibelang_fibers.go", ["concurrent-heads", "syntax"]],
+    ["typescript/tsc/internal/parser/vibelang_do.go", ["concurrent-heads", "syntax"]],
+    ["typescript/tsc/internal/vibelang/fibers.go", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelang/do_head.go", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelang/lower.go", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelangfuzz/concurrent_rhs_fuzz_test.go", ["concurrent-heads"]],
+    ["typescript/vibelang/cases/concurrent-self-continue/main.vibe", ["concurrent-heads"]],
+    ["typescript/vibelang/cases/concurrent-source-block-labels/main.vibe", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzConcurrentHeadContinues/self-label", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelang/fix_do_concurrent.go", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelang/concurrent_limit_comma_fix.go", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelangfuzz/concurrent_head_do_return_fuzz_test.go", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzConcurrentHeadDoReturn/reject-limit-continue", ["concurrent-heads"]],
+    ["typescript/tsc/internal/vibelang/fibers.go.backup", []],
     ["docs/design/src/003-failures.md", ["failures"]],
     ["docs/design/src/001-functions.md", ["functions"]],
     ["docs/design/src/002-running.md", ["running"]],
@@ -32,7 +46,7 @@ test("changed paths select the regression neighbourhood and no unrelated suite",
 })
 
 test("selection is a stable union under path order, duplicates and slash spelling", () => {
-  const paths = ["docs/design/src/003-failures.md", "typescript/tsc/internal/vibelangfmt/format.go", "README.md"]
+  const paths = ["docs/design/src/003-failures.md", "typescript/tsc/internal/vibelangfmt/format.go", "typescript/tsc/internal/parser/vibelang_fibers.go", "README.md"]
   for (let seed = 0; seed < 128; seed++) {
     let state = seed + 1
     const next = () => (state = (Math.imul(state, 1664525) + 1013904223) >>> 0)
@@ -42,7 +56,7 @@ test("selection is a stable union under path order, duplicates and slash spellin
       const j = next() % (i + 1)
       ;[varied[i], varied[j]] = [varied[j], varied[i]]
     }
-    assert.deepEqual(select(varied), ["failures", "format"].map(label))
+    assert.deepEqual(select(varied), ["concurrent-heads", "failures", "format", "syntax"].map(label))
   }
   assert.deepEqual(select(["scripts/fuzz-gate/map.json"]), Object.keys(families).map(label).sort())
 })

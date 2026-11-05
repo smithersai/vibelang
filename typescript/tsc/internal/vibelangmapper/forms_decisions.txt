@@ -1116,6 +1116,8 @@ typescript/vibelang/cases/concurrent-self-continue/main.vibe:22:31 lambda effect
 typescript/vibelang/cases/concurrent-self-continue/main.vibe:28:36 lambda effectFn table
 typescript/vibelang/cases/concurrent-self-continue/main.vibe:4:29 lambda effectFn table
 typescript/vibelang/cases/concurrent-self-continue/main.vibe:7:41 lambda effectFn table
+typescript/vibelang/cases/concurrent-source-block-labels/main.vibe:16:41 lambda effectFn table
+typescript/vibelang/cases/concurrent-source-block-labels/main.vibe:5:27 lambda effectFn table
 typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:10:38 lambda effectFn table
 typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:5:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-used-labels/main.vibe:12:34 lambda effectFn table
