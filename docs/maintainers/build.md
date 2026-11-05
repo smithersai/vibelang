@@ -1944,3 +1944,5 @@ The `//:catch-error-data-advisories` gate checks tagged-error migration twins, t
 The `//:plain-unknown-contracts` gate checks unannotated foreign calls in plain and effect code, with known-throwing and caught-call controls.
 
 The `//:producer-native-annotations` gate checks every reviewed producer contract and runs stock TypeScript 5.9.3 comparisons across nested declarations, aliases, and incompatible return types.
+
+The `//:stream-loop-body-identities` gate checks every Stream-loop body restriction alongside aliased imports and valid local-break controls.
