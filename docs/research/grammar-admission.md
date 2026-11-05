@@ -442,3 +442,5 @@ semicolons, nonempty computed members and non-member patterns stay separate.
 `EK0702` is a class-pattern type error and does not reject syntax.
 
 Combined patterns retain the same computed-member continuation: `and`, `or` and `not` can end with a member followed by a new-line access. The pending classifier follows top-level pattern operators while retaining parenthesized, extractor, binding, array and object tails as separate controls. These witnesses share `admission:pattern-member-line-break`; no new language form is admitted.
+
+A bare `async` identifier in a native `for … of` head already reports `TS1106`. The oracle counts that native error as syntax rejection, while preserving warning, suggestion, message and diagnostic-source boundaries. A declaration named `async`, a property target and a native `for … in` head remain separate deriving controls.

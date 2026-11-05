@@ -181,6 +181,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
 	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
+	{"native-for-of-async", "async\nfunction f ( xs ) { for ( async of xs ) effect { } }"},
 	{"native-for-await", "async function f(xs) { for await (const x of xs) { x; } }"},
 	{"native-for-await-placement", "async\nfunction f ( xs ) { for await ( const of xs ) effect { x ; } }"},
 	{"reserved-expression-name", "throw effect function join(p) { return try p; }"},
@@ -1760,6 +1761,9 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// missing lab derivation is already rejected by this native grammar rule.
 	case 1103:
 		return true
+	// Native for-of heads exclude a bare async identifier (TS1106).
+	case 1106:
+		return true
 	case 1099: // An empty type argument list.
 		return true
 	case 1264: // A definite assignment assertion with no type annotation.
@@ -1795,6 +1799,12 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-import-spread-source-collision", "other", diagnostics.CategoryError, 1325, false},
 		{"native-import-spread-ek-collision", "EK", diagnostics.CategoryError, 1325, false},
 		{"native-import-specifier-type-error", "", diagnostics.CategoryError, 7036, false},
+		{"native-for-of-async-error", "", diagnostics.CategoryError, 1106, true},
+		{"native-for-of-async-warning", "", diagnostics.CategoryWarning, 1106, false},
+		{"native-for-of-async-suggestion", "", diagnostics.CategorySuggestion, 1106, false},
+		{"native-for-of-async-message", "", diagnostics.CategoryMessage, 1106, false},
+		{"native-for-of-async-foreign", "other", diagnostics.CategoryError, 1106, false},
+		{"native-for-of-async-ek-collision", "EK", diagnostics.CategoryError, 1106, false},
 		{"native-meta-name-error", "", diagnostics.CategoryError, 17012, true},
 		{"native-meta-context-error", "", diagnostics.CategoryError, 17013, true},
 		{"native-meta-name-warning", "", diagnostics.CategoryWarning, 17012, false},
