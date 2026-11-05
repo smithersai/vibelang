@@ -17,6 +17,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Contributor checks omitted the retired declaration-import option regression and expected its old warning text. They now verify the native TypeScript wording and unchanged nonfatal behavior.
 - Peer-context declaration tests repeatedly loaded unrelated browser libraries. Their native validation and API comparison now select ES5 while retaining distinct peer resolutions and changed-peer checks.
 - Merged namespace declaration tests repeatedly loaded unrelated browser libraries. Their native validation and API comparison now select ES5 while retaining type, value, name and documentation changes.
+- Migration sidecar checks could reject valid declaration routes after TypeScript inferred a source root. They now qualify explicit, inferred and composite layouts against TypeScript's declaration output.
 - Contributor checks mistook the compiler’s sharded tests for a missing target. They now verify the runtime build dependency of every shard.
 - Contributor diagnostics checks could compile a second set of packages with workspace paths. They now use the compiler’s `-trimpath` settings.
 

@@ -18,7 +18,7 @@ test('opencode: full setup resyncs existing sidecar exports before native consum
  const root=mkdtempSync(join(tmpdir(),'sidecar-export-upgrade-'));t.after(()=>rmSync(root,{recursive:true,force:true}))
  put(root,'package.json',JSON.stringify({name:'sidecar-export-upgrade',private:true,type:'module',workspaces:['packages/*']}))
  put(root,'packages/a/package.json',JSON.stringify(corpus.manifest))
- put(root,'packages/a/tsconfig.json',JSON.stringify({compilerOptions:{target:'ESNext',module:'ESNext',moduleResolution:'Bundler',strict:true,skipLibCheck:false,types:[]},vibe:{effectGlobals:false,effectModules:false},include:['src']}))
+ put(root,'packages/a/tsconfig.json',JSON.stringify({compilerOptions:{target:'ESNext',module:'ESNext',moduleResolution:'Bundler',rootDir:'.',strict:true,skipLibCheck:false,types:[]},vibe:{effectGlobals:false,effectModules:false},include:['src']}))
  put(root,'tsconfig.json',JSON.stringify({compilerOptions:{target:'ESNext',module:'ESNext',moduleResolution:'Bundler',strict:true,skipLibCheck:false,types:[]},include:['consumer.ts']}))
  put(root,'packages/a/src/index.vibe',corpus.source);put(root,'consumer.ts',corpus.consumer);put(root,'scan.ts',corpus.enumerator)
  mkdirSync(join(root,'node_modules/@probe'),{recursive:true})
@@ -47,17 +47,37 @@ test('opencode: full setup resyncs existing sidecar exports before native consum
  assert.equal(JSON.parse(readFileSync(join(root,'packages/a/package.json'),'utf8')).exports['.'].types,moved)
 })
 
-function layoutCase({nested,stem,output,inherited,configDir,bare,oldExists,pattern}) {
+// VIP-27: "explicit `rootDir`, the config directory for a composite project, or
+// the common source directory otherwise." Stock TypeScript declaration emit is
+// the independent layout oracle.
+function typescriptHeader(root,owner,stem,output,compilerOptions) {
+ const ownerDir=join(root,owner),input=join(ownerDir,stem+'.ts'),written=[]
+ put(root,join(owner,stem+'.ts'),'export const value = 1\n')
+ try {
+  const parsed=ts.parseJsonConfigFileContent({compilerOptions:{...compilerOptions,declaration:true,emitDeclarationOnly:true,declarationDir:output,noLib:true,types:[]},files:[stem+'.ts']},ts.sys,ownerDir,undefined,join(ownerDir,'tsconfig.json'))
+  assert.deepEqual(parsed.errors,[])
+  const program=ts.createProgram(parsed.fileNames,parsed.options)
+  const emitted=program.emit(undefined,file=>written.push(file))
+  assert.equal(emitted.emitSkipped,false);assert.deepEqual(emitted.diagnostics,[])
+  const declarations=written.filter(file=>file.endsWith('.d.ts'))
+  assert.equal(declarations.length,1)
+  return './'+require('node:path').relative(ownerDir,declarations[0]).replaceAll('\\','/').replace(/\.d\.ts$/,'.d.vibe.ts')
+ } finally {rmSync(input)}
+}
+
+function layoutCase({nested,stem,output,inherited,configDir,bare,oldExists,pattern,rootKind='explicit'}) {
  const root=mkdtempSync(join(tmpdir(),'sidecar-export-property-'))
  try {
   const owner=nested?'packages/a':'.',path=file=>owner==='.'?file:owner+'/'+file
-  const old='./'+stem+'.d.vibe.ts',next='./'+output+'/'+stem+'.d.vibe.ts',top=bare?old.slice(2):old,topNext=bare?next.slice(2):next
+  const compilerOptions=rootKind==='explicit'?{rootDir:'.'}:rootKind==='composite'?{composite:true}:{}
+  const next=typescriptHeader(root,owner,stem,output,compilerOptions)
+  const old='./'+stem+'.d.vibe.ts',top=bare?old.slice(2):old,topNext=bare?next.slice(2):next
   const pkg={name:'fixture-a',types:top,typings:old,typesVersions:{'*':{feature:[top,'./native.d.ts']}},exports:{'.':{types:{import:old,default:[old,null]},'vibelang-source':'./'+stem+'.vibe',default:'./dist/index.js'},'./asset':'./asset.json','./authored':{types:'./authored.d.ts',default:'./authored.js'}},imports:{'#leaf':{types:old,default:'./dist/index.js'}},description:old,custom:{types:old}}
   if(pattern)pkg.exports['./*']={types:'./src/*.d.vibe.ts',default:'./dist/*.js'}
   if(nested)put(root,'package.json','{"name":"root","private":true}')
   put(root,path('package.json'),JSON.stringify(pkg))
   const value=configDir?'${configDir}/'+output:inherited?'../'+output:output
-  const cfg={compilerOptions:{},include:['src']}
+  const cfg={compilerOptions,include:['src']}
   if(inherited||configDir){cfg.extends='./config/base.json';put(root,path('config/base.json'),JSON.stringify({vibe:{sidecarDir:value}}))}else cfg.vibe={sidecarDir:value}
   put(root,path('tsconfig.json'),JSON.stringify(cfg));put(root,path(stem+'.vibe'),'export const value = 1\n')
   const tracked=[path('package.json'),path('tsconfig.json'),path(stem+'.vibe')]
@@ -80,7 +100,7 @@ function layoutCase({nested,stem,output,inherited,configDir,bare,oldExists,patte
   assert.deepEqual(after.imports['#leaf'],{types:next,default:'./dist/index.js'})
   assert.equal(after.description,old);assert.deepEqual(after.custom,{types:old})
   if(pattern)assert.deepEqual(after.exports['./*'],{types:'./'+output+'/src/*.d.vibe.ts',default:'./dist/*.js'})
-  assert.equal(JSON.parse(readFileSync(join(root,bridge),'utf8')).types,require('node:path').posix.relative('packages/bridge',path(output+'/'+stem+'.d.vibe.ts')))
+  assert.equal(JSON.parse(readFileSync(join(root,bridge),'utf8')).types,require('node:path').posix.relative('packages/bridge',path(next.slice(2))))
   assert.equal(readFileSync(join(root,unrelated),'utf8'),unrelatedText)
   assert.equal(existsSync(join(root,path(stem+'.d.vibe.ts'))),oldExists,'metadata refresh itself does not delete output')
   assert.ok(edits.some(e=>e.manifest===bridge));assert.deepEqual(C.refreshSidecarExports(root,tracked,new Set([path('tsconfig.json')])),[])
@@ -88,6 +108,9 @@ function layoutCase({nested,stem,output,inherited,configDir,bare,oldExists,patte
 }
 test('property: existing declaration targets follow the effective layout without changing runtime or authored metadata',()=>{
  fc.assert(fc.property(fc.record({nested:fc.boolean(),stem:fc.constantFrom('src/index','src/deep/item','src/a.b','src/space name','src/雪'),output:fc.constantFrom('.vibe/declarations','types','generated declarations/雪'),inherited:fc.boolean(),configDir:fc.boolean(),bare:fc.boolean(),oldExists:fc.boolean(),pattern:fc.boolean()}),layoutCase),{seed:870051,numRuns:200})
+})
+test('property: sidecar metadata matches TypeScript declaration roots',()=>{
+ fc.assert(fc.property(fc.record({nested:fc.boolean(),stem:fc.constantFrom('src/index','src/deep/item','src/a.b','src/space name','src/雪'),output:fc.constantFrom('.vibe/declarations','types','generated declarations/雪'),inherited:fc.boolean(),configDir:fc.boolean(),bare:fc.boolean(),oldExists:fc.boolean(),rootKind:fc.constantFrom('explicit','inferred','composite')}),input=>layoutCase({...input,pattern:false})),{seed:362364,numRuns:120})
 })
 test('mixed-layout sidecar wildcards are retained with an explicit warning',()=>{
  const root=mkdtempSync(join(tmpdir(),'sidecar-export-mixed-'))

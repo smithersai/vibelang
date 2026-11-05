@@ -22,7 +22,7 @@ function fixture({folder=".vibe/declarations",nested="schema",basename="options"
  const json=(file,value)=>put(file,JSON.stringify(value,null,2)+"\n")
  json("package.json",{type:"module",private:true})
  json("ai/package.json",{name:"probe-ai",type:"module"})
- json("ai/tsconfig.json",{...config,vibe:{sidecarDir:folder},compilerOptions:{...config.compilerOptions,rootDirs:[".",folder]}})
+ json("ai/tsconfig.json",{...config,vibe:{sidecarDir:folder},compilerOptions:{...config.compilerOptions,rootDir:".",rootDirs:[".",folder]}})
  json("consumer/tsconfig.json",{...config,include:["index.ts"]})
  json("consumer/package.json",{name:"probe-consumer",type:"module"})
  const target=nested+"/"+basename
