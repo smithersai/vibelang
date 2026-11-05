@@ -904,3 +904,68 @@ func TestEmitNativeGeneratorCleanup(t *testing.T) {
 	assert.Assert(t, strings.Contains(js, "finally"), js)
 	assert.Assert(t, !strings.Contains(js, "$produce("), js)
 }
+
+// The checking witness narrows native property paths; only execution caches
+// observations across arms. Inline is patterns and shared nested objects use
+// the same cache, and a subsequent evaluation starts again.
+func TestMatchPropertyCache(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs("../../../..")
+	assert.NilError(t, err)
+	scope := mapperTestScope(t, root)
+	node, err := exec.LookPath("node")
+	assert.NilError(t, err)
+	source := `export function scenario(): unknown[] {
+ const trace: string[] = []
+ const key = "value"
+ const child = new Proxy({get value(){trace.push("get");return 1}}, {
+  has(target, key): boolean {trace.push("has");return Reflect.has(target, key)}
+ })
+ const subject = {left: child, right: child}
+ const first = match(subject){when {left:{[key]:0}}:false;when {right:{[key]:1}}:true;default:false;}
+ const second = child is ({value:0} or {value:1})
+ const bound = match(child){when ({value:1} and {let value}):value;default:-1;}
+ return [first,second,bound,trace]
+}`
+	checking := Project(source, testContext)
+	assert.Equal(t, len(checking.Diagnostics), 0, "%v\n%s", checking.Diagnostics, checking.Text)
+	assert.Assert(t, strings.Contains(checking.Text, ".value === 1"), "%s", checking.Text)
+	js, _, diagnostics := Emit(source, testContext)
+	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
+	cmd := exec.Command(node, "--no-warnings", "--input-type=module")
+	cmd.Dir = scope
+	cmd.Stdin = strings.NewReader(js + "\nconsole.log(JSON.stringify(scenario()))")
+	out, err := cmd.CombinedOutput()
+	assert.NilError(t, err, "%s\n%s", out, js)
+	assert.Equal(t, strings.TrimSpace(string(out)), "[true,true,1,[\"has\",\"get\",\"has\",\"get\",\"has\",\"get\"]]")
+}
+
+func TestProjectedPrimitiveWrappers(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs("../../../..")
+	assert.NilError(t, err)
+	scope := mapperTestScope(t, root)
+	node, err := exec.LookPath("node")
+	assert.NilError(t, err)
+	source := `export function scenario(): unknown[] {
+ const xs: unknown[] = [new String("x"),new Number(2),new Boolean(false),Object(3n),Object(Symbol.for("x"))]
+ return xs.map(s => match(s) {
+  when String(let x): ["string",x];
+  when Number(let x): ["number",x];
+  when Boolean(let x): ["boolean",x];
+  when BigInt(let x): ["bigint",String(x)];
+  when Symbol(let x): ["symbol",String(x)];
+  default: "miss";
+ })
+}`
+	projected := Project(source, testContext)
+	assert.Equal(t, len(projected.Diagnostics), 0, "%v", projected.Diagnostics)
+	js, _, diagnostics := Emit(source, testContext)
+	assert.Equal(t, len(diagnostics), 0, "%v", diagnostics)
+	cmd := exec.Command(node, "--no-warnings", "--input-type=module")
+	cmd.Dir = scope
+	cmd.Stdin = strings.NewReader(js + "\nconsole.log(JSON.stringify(scenario()))")
+	out, err := cmd.CombinedOutput()
+	assert.NilError(t, err, "%s\n%s", out, js)
+	assert.Equal(t, strings.TrimSpace(string(out)), "[[\"string\",\"x\"],[\"number\",2],[\"boolean\",false],[\"bigint\",\"3\"],[\"symbol\",\"Symbol(x)\"]]")
+}

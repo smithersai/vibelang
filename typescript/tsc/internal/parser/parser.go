@@ -108,39 +108,40 @@ type Parser struct {
 	setParentFromContext ast.Visitor
 	reparsedClones       []*ast.Node
 
-	vibelangServiceMembers   bool                        // service member signatures use interface separators
-	vibelangMutableMember    bool                        // the type member being parsed was written with mutable (vibelang.go)
-	vibelangImplicitReadonly bool                        // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
-	vibelangSchemaBody       bool                        // declaration body (including nested object types) reports non-fields as EK1505
-	vibelangControlMembers   bool                        // legacy control properties keep their readonly default (vibelang.go)
-	vibelangAbstractMembers  bool                        // bodiless class members become abstract: a service or control body (vibelang.go)
-	vibelangFieldBody        bool                        // an error, service, or control body supports recoverable field commas (vibelang_errors.go)
-	vibelangFieldComma       bool                        // a comma follows the field just parsed in such a body (vibelang_errors.go)
-	vibelangNoSeparator      bool                        // a member follows the one just parsed in such a body on its line, with no separator (vibelang_errors.go)
-	vibelangSelects          int                         // select statements parsed so far, which number their labels (vibelang_fibers.go)
-	vibelangNoBlockParams    bool                        // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
-	vibelangMatchTemps       int                         // names written for match and is, numbered per file (vibelang_match.go)
-	vibelangTemps            []*ast.Node                 // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
-	vibelangSourceReturns    map[*ast.Node]bool          // source return statements or match blocks before do lowering
-	vibelangAsyncMatches     []*ast.Node                 // async match source boundaries
-	vibelangMatches          map[*ast.Node]*matchInfo    // match expressions as written, by their call or statement (vibelang_match.go)
+	vibelangServiceMembers   bool                           // service member signatures use interface separators
+	vibelangMutableMember    bool                           // the type member being parsed was written with mutable (vibelang.go)
+	vibelangImplicitReadonly bool                           // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
+	vibelangSchemaBody       bool                           // declaration body (including nested object types) reports non-fields as EK1505
+	vibelangControlMembers   bool                           // legacy control properties keep their readonly default (vibelang.go)
+	vibelangAbstractMembers  bool                           // bodiless class members become abstract: a service or control body (vibelang.go)
+	vibelangFieldBody        bool                           // an error, service, or control body supports recoverable field commas (vibelang_errors.go)
+	vibelangFieldComma       bool                           // a comma follows the field just parsed in such a body (vibelang_errors.go)
+	vibelangNoSeparator      bool                           // a member follows the one just parsed in such a body on its line, with no separator (vibelang_errors.go)
+	vibelangSelects          int                            // select statements parsed so far, which number their labels (vibelang_fibers.go)
+	vibelangNoBlockParams    bool                           // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
+	vibelangMatchTemps       int                            // names written for match and is, numbered per file (vibelang_match.go)
+	vibelangTemps            []*ast.Node                    // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
+	vibelangSourceReturns    map[*ast.Node]bool             // source return statements or match blocks before do lowering
+	vibelangAsyncMatches     []*ast.Node                    // async match source boundaries
+	vibelangMatches          map[*ast.Node]*matchInfo       // match expressions as written, by their call or statement (vibelang_match.go)
 	vibelangMatchMemberArms  map[*ast.Node][]MatchMemberArm // normalized tagged-member coverage
-	vibelangIsBindings       map[*ast.Node]*isInfo       // is expressions whose patterns bind names, by their markers (vibelang_match.go)
-	vibelangIsHolders        map[*ast.Node]*ast.Node     // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
-	vibelangSchemaTypes      map[*ast.Node]bool          // synthesized ordinary-schema companions, distinct from data aliases
-	vibelangHoists           map[*ast.Node]bool          // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
-	vibelangSyntax           *[]VibeSyntax               // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
-	vibelangFiberContext     bool                        // fork/join reservation inherited by source grammar
-	vibelangNamespaceContext bool                        // native namespace syntax, independent of suspension permission
-	vibelangTypeScript       bool                        // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
-	vibelangDos              map[*ast.Node]*doExpression // do expressions as written, by their call (vibelang_do.go)
-	vibelangDoOrder          []*doExpression             // the same, in source order
-	vibelangHeadCells        map[*ast.Node]*ast.Node     // never-initialized RHS cells -> item bindings
-	vibelangDoSites          map[*ast.Node]*ast.Node     // each do completion temporary's declaration to the reference at the do's site (vibelang_do.go)
+	vibelangIsBindings       map[*ast.Node]*isInfo          // is expressions whose patterns bind names, by their markers (vibelang_match.go)
+	vibelangIsHolders        map[*ast.Node]*ast.Node        // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
+	vibelangSchemaTypes      map[*ast.Node]bool             // synthesized ordinary-schema companions, distinct from data aliases
+	vibelangHoists           map[*ast.Node]bool             // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
+	vibelangSyntax           *[]VibeSyntax                  // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
+	vibelangFiberContext     bool                           // fork/join reservation inherited by source grammar
+	vibelangNamespaceContext bool                           // native namespace syntax, independent of suspension permission
+	vibelangTypeScript       bool                           // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
+	vibelangDos              map[*ast.Node]*doExpression    // do expressions as written, by their call (vibelang_do.go)
+	vibelangDoOrder          []*doExpression                // the same, in source order
+	vibelangHeadCells        map[*ast.Node]*ast.Node        // never-initialized RHS cells -> item bindings
+	vibelangDoSites          map[*ast.Node]*ast.Node        // each do completion temporary's declaration to the reference at the do's site (vibelang_do.go)
+	vibelangPropertyCaches   map[*ast.Node]*ast.Node
 	vibelangSchemaGenerics   []ast.SchemaGenericReference
 
-	vibelangForEachHomes map[*ast.Node]*forEachIsHome // lexical homes in for-in/of heads (vibelang_match.go)
-	vibelangSchemaOptionals  []ast.SchemaOptionalReference
+	vibelangForEachHomes    map[*ast.Node]*forEachIsHome // lexical homes in for-in/of heads (vibelang_match.go)
+	vibelangSchemaOptionals []ast.SchemaOptionalReference
 
 	// VIP-11 diagnostic marker, separate from syntax-extension state.
 	vibelangDeniedTrailingBlock bool // request migration diagnostics; never consume its block
@@ -553,8 +554,9 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 	}
 	if p.isVibeLangFile() {
 		p.checkVibeLangAsyncMatchJumps(result)
-		p.parseVibeLangDos(result)      // do expressions, lowered to statements (vibelang_do.go)
-		p.freshenVibeLangTemps(result)  // the names written for match, is and do (vibelang_match.go)
+		p.parseVibeLangDos(result)     // do expressions, lowered to statements (vibelang_do.go)
+		p.freshenVibeLangTemps(result) // the names written for match, is and do (vibelang_match.go)
+		result.GetOrComputeData(matchPropertyCachesKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return p.vibelangPropertyCaches })
 		p.attachVibeLangModules(result) // module declarations' bodies (vibelang_modules.go)
 		p.attachMatchMemberArms(result)
 		p.checkVibeLangEffectChannels(result)

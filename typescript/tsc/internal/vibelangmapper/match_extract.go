@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // errorExtractorFlow preserves D215 for stock TypeScript: an error extractor
@@ -129,4 +130,42 @@ func (w *printer) patternText(n *ast.Node, e env) string {
 		}
 	}
 	return text.String()
+}
+
+// Native TypeScript checks the ordinary path; executable projection shares
+// the cache that the native emitter uses, without rereading a getter for flow.
+func (w *printer) cachedPropertyFlow(n *ast.Node, e env) bool {
+	if !w.propertyCachesLoaded {
+		w.propertyCaches = parser.MatchPropertyCaches(w.p.file)
+		w.propertyCachesLoaded = true
+	}
+	cache := w.propertyCaches[n]
+	if cache == nil {
+		return false
+	}
+	oldRaw := w.rawPropertyCache
+	w.rawPropertyCache = true
+	checking := w.patternText(n, e)
+	w.rawPropertyCache = oldRaw
+	method := "get"
+	var subject *ast.Node
+	var key string
+	oldRuntime := w.runtimeText
+	w.runtimeText = true
+	switch n.Kind {
+	case ast.KindBinaryExpression:
+		method = "propertyHas"
+		b := n.AsBinaryExpression()
+		subject, key = b.Right, w.patternText(b.Left, e)
+	case ast.KindPropertyAccessExpression:
+		subject = n.Expression()
+		key = strconv.Quote(n.Name().Text())
+	case ast.KindElementAccessExpression:
+		subject = n.Expression()
+		key = w.patternText(n.AsElementAccessExpression().ArgumentExpression, e)
+	}
+	runtime := w.identifier(cache) + "." + method + "(" + w.patternText(subject, e) + ", " + key + ")"
+	w.runtimeText = oldRuntime
+	w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{checking, runtime}})
+	return true
 }

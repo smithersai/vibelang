@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // Captures. A match reads its subject once (D214): the parser captures the
@@ -51,7 +52,11 @@ func (w *printer) captureDeclaration(n *ast.Node, e env) bool {
 // subject when checking, so the subject still counts as read.
 func (w *printer) isFunction(n *ast.Node) bool {
 	arrow := ast.SkipParentheses(n.Expression())
-	if !ast.IsArrowFunction(arrow) || len(n.Arguments()) != 1 || len(arrow.Parameters()) != 1 || ast.IsBlock(arrow.Body()) {
+	if !ast.IsArrowFunction(arrow) || len(n.Arguments()) != 1 || len(arrow.Parameters()) != 1 {
+		return false
+	}
+	body := parser.MatchIsTest(arrow)
+	if body == nil {
 		return false
 	}
 	name, subject := arrow.Parameters()[0].Name(), n.Arguments()[0]
@@ -60,12 +65,17 @@ func (w *printer) isFunction(n *ast.Node) bool {
 	}
 	w.capture(name, subject)
 	checking := "("
-	if !readsName(arrow.Body(), name.Text()) {
+	if !readsName(body, name.Text()) {
 		checking = "(void " + w.patternText(subject, env{}) + ", "
 	}
-	w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{checking, "((" + w.identifier(name) + ") => "}})
-	w.node(arrow.Body(), env{})
-	w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{")", ")(" + w.patternText(subject, env{}) + ")"}})
+	opening, closing := "(("+w.identifier(name)+") => ", ")("+w.patternText(subject, env{})+")"
+	if ast.IsBlock(arrow.Body()) {
+		opening += "{ " + w.patternText(arrow.Body().Statements()[0], env{}) + "return "
+		closing = "; }" + closing
+	}
+	w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{checking, opening}})
+	w.node(body, env{})
+	w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{")", closing}})
 	return true
 }
 

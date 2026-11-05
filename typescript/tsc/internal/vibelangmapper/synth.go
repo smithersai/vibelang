@@ -2,10 +2,12 @@ package vibelangmapper
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	tsprinter "github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -33,8 +35,11 @@ type chunk struct {
 
 // printer collects a synthesized form's chunks.
 type printer struct {
-	p      *projector
-	chunks []chunk
+	propertyCaches       map[*ast.Node]*ast.Node
+	propertyCachesLoaded bool
+	rawPropertyCache     bool
+	p                    *projector
+	chunks               []chunk
 	// names maps the parser's temporaries ($match1, $is2) to fresh names.
 	names         map[string]string
 	rawExtraction bool // printing the executable side of an extractor witness
@@ -125,6 +130,9 @@ func (w *printer) node(n *ast.Node, e env) {
 		w.write(")")
 		return
 	}
+	if !w.rawPropertyCache && w.cachedPropertyFlow(n, e) {
+		return
+	}
 	if !w.rawExtraction && w.errorExtractorFlow(n, e) {
 		return
 	}
@@ -153,6 +161,17 @@ func (w *printer) node(n *ast.Node, e env) {
 		w.write(n.Text())
 	case ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword, ast.KindThisKeyword, ast.KindUndefinedKeyword:
 		w.write(scanner.TokenToString(n.Kind))
+	case ast.KindAsExpression:
+		if n.Type().Flags&ast.NodeFlagsReparsed == 0 {
+			w.chunks = append(w.chunks, chunk{node: n, env: e})
+			return
+		}
+		// Pattern assertions retain static types only in the checking view.
+		w.write("(")
+		w.node(n.Expression(), e)
+		printed := tsprinter.NewPrinter(tsprinter.PrinterOptions{RemoveComments: true}, tsprinter.PrintHandlers{}, nil).Emit(n.Type(), p.file)
+		w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{" as " + strings.TrimSpace(printed), ""}})
+		w.write(")")
 	case ast.KindPropertyAccessExpression:
 		w.node(n.Expression(), e)
 		if n.QuestionDotToken() != nil {
@@ -300,6 +319,11 @@ func (w *printer) statement(n *ast.Node, e env) {
 				w.write(", ")
 			}
 			w.node(declaration.Name(), e)
+			if typ := declaration.Type(); typ != nil && ast.IsIdentifier(declaration.Name()) &&
+				declaration.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 && strings.HasPrefix(declaration.Name().Text(), "$matchKey") {
+				printed := tsprinter.NewPrinter(tsprinter.PrinterOptions{RemoveComments: true}, tsprinter.PrintHandlers{}, nil).Emit(typ, p.file)
+				w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{": " + strings.TrimSpace(printed), ""}})
+			}
 			if init := declaration.Initializer(); init != nil {
 				w.write(" = ")
 				w.node(init, e)
@@ -458,9 +482,14 @@ func (w *printer) builtinTest(n *ast.Node, e env) bool {
 		return true
 	}
 	if builtin.TypeOf != "" {
-		w.write("typeof ")
-		w.node(n.Arguments()[1], e)
-		w.write(" === \"" + builtin.TypeOf + "\"")
+		// Retain the existing primitive checking witness. Execution uses
+		// the shared adapter, accepting boxes and evaluating the subject once.
+		checking := "typeof " + w.patternText(n.Arguments()[1], e) + " === " + strconv.Quote(builtin.TypeOf)
+		oldRuntime := w.runtimeText
+		w.runtimeText = true
+		runtime := helperRef("$is") + "(" + w.patternText(n.Arguments()[0], e) + ", " + w.patternText(n.Arguments()[1], e) + ")"
+		w.runtimeText = oldRuntime
+		w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{checking, runtime}})
 		return true
 	}
 	module := builtin.Module
@@ -481,7 +510,7 @@ func (w *printer) builtinTest(n *ast.Node, e env) bool {
 func (w *printer) identifier(n *ast.Node) string {
 	name := n.Text()
 	switch {
-	case name == "$matchCache" || name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$patternError":
+	case name == "$propertyKey" || name == "$matchCache" || name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$patternError":
 		return helperRef(name)
 	case strings.HasPrefix(name, "$match") || strings.HasPrefix(name, "$is"):
 		return w.temporary(name)

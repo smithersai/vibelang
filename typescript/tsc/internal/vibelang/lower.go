@@ -29,7 +29,8 @@ import (
 //	  }).apply(this, arguments)
 //	}
 type lowering struct {
-	bindingSentinel *ast.IdentifierNode // private lexical-pattern TDZ identity, created once per module
+	matchPropertyCaches map[*ast.Node]*ast.Node
+	bindingSentinel     *ast.IdentifierNode // private lexical-pattern TDZ identity, created once per module
 
 	jsx core.JsxEmit // native .tsx output names follow the project JSX mode
 	transformers.Transformer
@@ -84,16 +85,20 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 		return nil
 	}
 	tx := &lowering{
-		plan:     planFile(opts.EmitResolver, file),
-		jsx:      opts.CompilerOptions.Jsx,
-		frames:   findFrameReferences(file),
-		fresh:    freshNames{file: file},
-		commonJS: opts.GetEmitModuleFormatOfFile != nil && opts.GetEmitModuleFormatOfFile(file) == core.ModuleKindCommonJS,
+		matchPropertyCaches: parser.MatchPropertyCaches(file),
+		plan:                planFile(opts.EmitResolver, file),
+		jsx:                 opts.CompilerOptions.Jsx,
+		frames:              findFrameReferences(file),
+		fresh:               freshNames{file: file},
+		commonJS:            opts.GetEmitModuleFormatOfFile != nil && opts.GetEmitModuleFormatOfFile(file) == core.ModuleKindCommonJS,
 	}
 	return tx.NewTransformer(tx.visit, opts.Context)
 }
 
 func (tx *lowering) visit(node *ast.Node) *ast.Node {
+	if cache := tx.matchPropertyCaches[node]; cache != nil {
+		return tx.visitCachedPatternRead(node, cache)
+	}
 	if replacement := tx.plan.schemaGenerics[node]; replacement != nil {
 		return tx.visit(replacement)
 	}

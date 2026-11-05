@@ -11,10 +11,16 @@ func (tx *lowering) visitMatchCacheBlock(node *ast.Node, names []*ast.Node) *ast
 	f := tx.Factory()
 	var declarations, body []*ast.Node
 	for _, statement := range node.Statements() {
+		value := tx.visit(statement)
+		// Lowering erases checked no-match assertions and TypeScript-only
+		// declarations. An executable statement list cannot retain nil entries.
+		if value == nil {
+			continue
+		}
 		if parser.VibeLangMatchCacheDeclaration(statement) != nil {
-			declarations = append(declarations, tx.visit(statement))
+			declarations = append(declarations, value)
 		} else {
-			body = append(body, tx.visit(statement))
+			body = append(body, value)
 		}
 	}
 	for i := len(names) - 1; i >= 0; i-- {

@@ -992,3 +992,9 @@ parser/vibelang_match.go:Parser.restructureVibeLangDo	admission:is-binding-tdz	0
 vibelang/is_binding_tdz.go:lowering.resetIsBindingIteration	admission:is-binding-tdz	004-match.md	support	VIP-7: reset `test` and `update` bindings after native environment copying
 parser/vibelang_fibers.go:Parser.concurrentHeadEnvironment	admission:for-concurrent	002-running.md,900-appendices.md#ForConcurrent	support	VIP-19: retain uninitialized RHS head cells and evaluate a written limit before their environment; introduces no additional syntax
 parser/vibelang_fibers.go:VibeLangConcurrentCall	admission:for-concurrent	002-running.md,900-appendices.md#ForConcurrent	support	VIP-19: recognize a source loop through generated head environments without treating ordinary source blocks as loops
+parser/vibelang_match_cache.go:MatchPropertyCaches	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
+parser/vibelang_match_cache.go:Parser.cachePatternRead	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
+parser/vibelang_match_cache.go:patternUsesPropertyCache	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
+parser/vibelang_match_cache.go:patternUsesCache	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
+parser/vibelang_match_cache.go:MatchIsTest	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
+vibelang/match_lower.go:lowering.visitCachedPatternRead	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths

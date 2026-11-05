@@ -1,9 +1,5 @@
 # Chapter-backed match/data/schema gaps. Delete feature and corpus lines when XPASS.
 FuzzVIPDifferential exit:value/vip07.error-matcher-property-plain compiler VIP-7: vip07.error-matcher-property-plain disagrees with its cited rule (exit:value); lane vip-decls
 FuzzVIPDifferential corpus:data-vip07-error-matcher-property-plain compiler VIP-7: minimized vip07.error-matcher-property-plain witness; lane vip-decls
-FuzzVIPDifferential exit:value/vip07.property-cache-reset-plain compiler VIP-7: property existence and value reads repeat across arms instead of using the match cache; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-property-cache-reset-plain compiler VIP-7: minimized vip07.property-cache-reset-plain witness; lane vip-match
 FuzzVIPDifferential compile:EK0204/vip07.parameter-default-return-plain compiler VIP-2: a do return inside a match in a parameter default is EK0204, because that match still compiles to a function (was TS1108 before the do lowering); lane core-block
 FuzzVIPDifferential corpus:data-vip07-parameter-default-return-plain compiler VIP-7: minimized vip07.parameter-default-return-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.object-property-order-plain compiler VIP-7: a cached property is read again by a later arm; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-object-property-order-plain compiler VIP-7: minimized vip07.object-property-order-plain witness; lane vip-match

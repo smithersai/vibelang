@@ -1,0 +1,18 @@
+// expect-result: ["hit",["first","second"]]
+import { Effect } from "effect"
+
+function witness() {
+  const trace: string[] = []
+  const subject = {
+    get first() { trace.push("first"); return 1 },
+    get second() { trace.push("second"); return 2 }
+  }
+  const value = match (subject) {
+    when { first: 0, second: 2 }: "bad";
+    when { first: 1, second: 2 }: "hit";
+    default: "miss";
+  }
+  return [value, trace]
+}
+
+export function main() { return Effect.succeed(witness()) }

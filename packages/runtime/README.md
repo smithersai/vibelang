@@ -227,7 +227,7 @@ or runtime references valid in first-release `.vibe` source.
 | `$forOf` | Pull a Stream, a producer included, or iterate a JavaScript iterable with IteratorClose, and lower loop completion records | D18, D26 |
 | `$bindingIterators` | Internal compiler state for statement-lowered array binding defaults; preserves native jumps and closes unfinished iterators in order | VIP-2 |
 | `$iteratorFrame` | Legacy compiler adapter retained for previously compiled programs; current compilers abandon failed generators without resuming them | VIP-31 |
-| `$matchCache` | Internal compiler helper: cache iterable pattern pulls and close unfinished iterators on JavaScript completion; an Effect failure abandons them | VIP-7, VIP-31 |
+| `$matchCache` | Internal compiler helper: cache pattern property presence, property reads and iterable pulls, and close unfinished iterators on JavaScript completion; an Effect failure abandons them | VIP-7, VIP-31 |
 | `$forStream`, `$toStream` | Kept for the prototype compiler's output: `$forOf`, and the identity | D26 |
 | `trusted` | Wrap a synchronous implementation as one plain function that carries its expected-failure classes | D249, D514 |
 | `$trusted` | Run a trusted call: an instance of a listed class is an expected failure, any other exception a defect | D5, D23 |

@@ -1252,6 +1252,17 @@ func formsBodyFacts(fn *ast.Node) formsBody {
 		}
 		switch {
 		case ast.IsCallExpression(n):
+			// A match cache is compiler bookkeeping, not a source call
+			// that can pause this lambda or change its callback form.
+			if callee := n.Expression(); ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && callee.Text() == "$matchCache" {
+				return false
+			}
+			if callee := n.Expression(); ast.IsPropertyAccessExpression(callee) {
+				base := callee.Expression()
+				if ast.IsIdentifier(base) && base.Flags&ast.NodeFlagsVibeLangTemporary != 0 && strings.HasPrefix(base.Text(), "$matchCache") {
+					return false
+				}
+			}
 			f.anyCall = true
 			if n != tail {
 				f.pauses = true

@@ -1200,3 +1200,44 @@ func init() {
 		Cite:    vip7Cite("return"),
 	})
 }
+
+// The finite reference reads one presence test and one value per evaluation.
+var propertyCacheOrder = Citation{
+	VIP:      matchOrder.VIP,
+	Template: "if (‹present›) { const cached = ‹value›; ‹result› }",
+	Quote:    matchOrder.Quote,
+	Reading:  "Chapter 004's match cache retains presence and values across arms. This finite reference reads each observed property once per evaluation.",
+}
+
+// VIP-7 incorporates HasPropertyCached/GetCached from the pinned spec.emu:
+// "If _hasCache_ is *true*, return ! Call(<emu-xref href=\"#sec-map.prototype.has\">%Map.prototype.get%</emu-xref>, _cache_, « _propertyName_ »)."
+// Both observations are lazy, keyed by subject identity and property key, and
+// reset with CreateMatchCache on every match/is evaluation. The reference
+// reads once per evaluation directly, without using the compiler or its cache.
+func init() {
+	Register(&Construct{
+		Key: "vip07.property-cache-neighborhood-plain", VIP: 7, Plain: true,
+		Citations: []Citation{propertyCacheOrder},
+		Focus: func(g *Gen, _ *Scope) []Stmt {
+			name := g.Name("witness")
+			key := []string{"\"value\"", "\"__proto__\"", "\"0\"", "Symbol(\"field\")"}[g.Intn(4)]
+			value, repeats, form := g.Intn(5)+1, g.Intn(4)+1, g.Intn(4)
+			present := !g.Chance(4)
+			pre := fmt.Sprintf("const key=%s;const trace: string[]=[];let reads=0;const child=new Proxy({get [key](){trace.push(\"get\");reads++;return %d}},{has(target,k){trace.push(\"has\");return %t&&Reflect.has(target,k)}});const subject={left:child,right:child};const results:unknown[]=[];", key, value, present)
+			pattern := fmt.Sprintf("match(subject){when {left:{[key]:0}}:false;when {right:{[key]:%d}}:true;default:false;}", value)
+			switch form {
+			case 1:
+				pattern = fmt.Sprintf("child is ({[key]:0} or {[key]:%d})", value)
+			case 2:
+				pattern = fmt.Sprintf("child is ((not {[key]:0}) and {[key]:%d})", value)
+			case 3:
+				pattern = fmt.Sprintf("child is ({[key]:%d} and {[key]:%d})", value, value)
+			}
+			source := fmt.Sprintf("function %s(){%s for(let i=0;i<%d;i++){results.push(%s)}return [results,reads,trace]}", name, pre, repeats, pattern)
+			referencePre := strings.ReplaceAll(strings.ReplaceAll(pre, ": string[]", ""), ":unknown[]", "")
+			reference := fmt.Sprintf("function %s(){%s for(let i=0;i<%d;i++){let result=false;if(key in child){const cached=child[key];result=cached===%d}results.push(result)}return [results,reads,trace]}", name, referencePre, repeats, value)
+			g.AddDecl(&FixedPair{Source: source, Reference: reference})
+			return []Stmt{&Return{Value: &Call{Name: name}, Succeed: true}}
+		},
+	})
+}

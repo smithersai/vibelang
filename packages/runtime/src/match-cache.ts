@@ -1,4 +1,14 @@
-// Private Iterator Records for VIP-7's per-evaluation match cache.
+// Cache operations use captured intrinsics: changing Map.prototype in a guard
+// must not make an internal cache operation call user code (VIP-7).
+const PropertyCacheMap = Map
+const mapHas = Function.prototype.call.bind(Map.prototype.has) as (map: Map<any, any>, key: unknown) => boolean
+const mapGet = Function.prototype.call.bind(Map.prototype.get) as (map: Map<any, any>, key: unknown) => any
+const mapSet = Function.prototype.call.bind(Map.prototype.set) as (map: Map<any, any>, key: unknown, value: unknown) => unknown
+const propertyKeyString = String
+
+const propertyMapClear = Function.prototype.call.bind(Map.prototype.clear) as (map: Map<any, any>) => void
+
+// Private property observations and Iterator Records for VIP-7's match cache.
 type Item<S> = S extends ReadonlyArray<infer T> ? T : any
 interface RecordState {
   iterator: object
@@ -12,6 +22,21 @@ const object = (value: unknown): value is object =>
 /** Compiler ABI: one instance per match expression or is test. */
 export function $matchCache() {
   const records = new Map<unknown, RecordState | false>()
+  const presence = new PropertyCacheMap<object, Map<PropertyKey, boolean>>()
+  const values = new PropertyCacheMap<object, Map<PropertyKey, unknown>>()
+  const observe = <T>(groups: Map<object, Map<PropertyKey, T>>, subject: object, key: PropertyKey, read: () => T): T => {
+    const name = typeof key === "symbol" ? key : propertyKeyString(key)
+    let cache = mapGet(groups, subject) as Map<PropertyKey, T> | undefined
+    if (cache !== undefined && mapHas(cache, name)) return mapGet(cache, name) as T
+    const value = read()
+    if (cache === undefined) {
+      cache = new PropertyCacheMap<PropertyKey, T>()
+      mapSet(groups, subject, cache)
+    }
+    mapSet(cache, name, value)
+    return value
+  }
+
   let failed = false
   let failure: unknown
   const record = (subject: unknown): RecordState => {
@@ -35,7 +60,13 @@ export function $matchCache() {
     return index < entry.values.length
   }
   return {
-    start(): true { records.clear(); failed = false; failure = undefined; return true },
+    start(): true { propertyMapClear(presence); propertyMapClear(values); records.clear(); failed = false; failure = undefined; return true },
+    propertyHas(subject: object, key: PropertyKey): boolean {
+      return observe(presence, subject, key, () => key in subject)
+    },
+    get(subject: object, key: PropertyKey): unknown {
+      return observe(values, subject, key, () => (subject as any)[key])
+    },
     iterable<S>(subject: S): subject is S & Iterable<Item<S>> {
       if (records.has(subject)) return records.get(subject) !== false
       if (subject === null || subject === undefined) { records.set(subject, false); return false }

@@ -117,3 +117,65 @@ func VibeLangMatchCacheFinish(node *ast.Node) *ast.Node {
 	}
 	return name
 }
+
+// MatchPropertyCaches preserves native checking paths while emitters replace
+// only the pattern-owned observations with VIP-7 HasPropertyCached/GetCached.
+// Source reads in guards, arm values and object rest remain ordinary reads.
+var matchPropertyCachesKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
+
+func MatchPropertyCaches(file *ast.SourceFile) map[*ast.Node]*ast.Node {
+	return file.GetOrComputeData(matchPropertyCachesKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })
+}
+
+func (p *Parser) cachePatternRead(read *ast.Node, ctx *matchCompile) *ast.Node {
+	if ctx.cache != "" {
+		if p.vibelangPropertyCaches == nil {
+			p.vibelangPropertyCaches = map[*ast.Node]*ast.Node{}
+		}
+		p.vibelangPropertyCaches[read] = p.mTemp(ctx.cache, read.Loc)
+	}
+	return read
+}
+
+func patternUsesPropertyCache(pat *pattern) bool {
+	if pat == nil {
+		return false
+	}
+	if len(pat.clauses) != 0 {
+		return true
+	}
+	for _, item := range pat.items {
+		if patternUsesPropertyCache(item) {
+			return true
+		}
+	}
+	return patternUsesPropertyCache(pat.rest)
+}
+
+func patternUsesCache(pat *pattern) bool {
+	return patternUsesIterator(pat) || patternUsesPropertyCache(pat)
+}
+
+// MatchIsTest returns an is wrapper's checking predicate. A property cache
+// adds a declaration before the return, without changing the predicate or
+// the relationship between its parameter and the captured subject.
+func MatchIsTest(arrow *ast.Node) *ast.Node {
+	body := arrow.Body()
+	if !ast.IsBlock(body) {
+		return body
+	}
+	statements := body.Statements()
+	if len(statements) != 2 || !ast.IsVariableStatement(statements[0]) || !ast.IsReturnStatement(statements[1]) {
+		return nil
+	}
+	declarations := statements[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+	if len(declarations) != 1 {
+		return nil
+	}
+	name, init := declarations[0].Name(), declarations[0].Initializer()
+	if !ast.IsIdentifier(name) || name.Flags&ast.NodeFlagsReparsed == 0 || !strings.HasPrefix(name.Text(), "$matchCache") ||
+		init == nil || !ast.IsCallExpression(init) || !ast.IsIdentifier(init.Expression()) || init.Expression().Text() != "$matchCache" {
+		return nil
+	}
+	return statements[1].Expression()
+}

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.property-cache-neighborhood-plain\x00\x02\x09\x1a\xfd\x01\x02")

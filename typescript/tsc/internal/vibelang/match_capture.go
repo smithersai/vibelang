@@ -289,10 +289,10 @@ func isFunction(call *ast.Node) (body *ast.Node, subject *ast.Node) {
 		return nil, nil
 	}
 	name := parameters[0].Name()
-	if !ast.IsIdentifier(name) || name.Flags&ast.NodeFlagsReparsed == 0 || !isCaptureName(name.Text()) || ast.IsBlock(arrow.Body()) {
+	if !ast.IsIdentifier(name) || name.Flags&ast.NodeFlagsReparsed == 0 || !isCaptureName(name.Text()) {
 		return nil, nil
 	}
-	return arrow.Body(), call.Arguments()[0]
+	return parser.MatchIsTest(arrow), call.Arguments()[0]
 }
 
 // declaredSubject returns the expression whose symbol gives the declared

@@ -777,7 +777,7 @@ func (p *Parser) hoistVibeLangIs(expression *ast.Node) *ast.Node {
 		path, decl := p.subjectPath(info.subject, info.anchor, "$is")
 		steps = append(steps, matchStep{decl: decl})
 		cache := ""
-		if patternUsesIterator(info.pattern) {
+		if patternUsesCache(info.pattern) {
 			cache = p.newMatchCacheName()
 		}
 		p.compilePattern(info.pattern, path, &steps, &matchCompile{anchor: info.anchor, cache: cache})
@@ -801,9 +801,12 @@ func (p *Parser) hoistVibeLangIs(expression *ast.Node) *ast.Node {
 			finish := func(value ast.Kind) *ast.Node {
 				return p.mParens(p.mBinary(p.matchCacheCall(&matchCompile{cache: cache}, "finish", info.anchor), ast.KindCommaToken, p.mKeyword(value, info.anchor), info.anchor), info.anchor)
 			}
+			// Keep every source-bearing test inside its cache wrappers. The
+			// subject assignment can precede the is token; bindings follow it.
+			span := testsSpan(info.anchor, result)
 			result = p.mParens(p.mBinary(
-				p.mParens(p.mBinary(start, ast.KindAmpersandAmpersandToken, result, info.anchor), info.anchor),
-				ast.KindAmpersandAmpersandToken, finish(ast.KindTrueKeyword), info.anchor), info.anchor)
+				p.mParens(p.mBinary(start, ast.KindAmpersandAmpersandToken, result, span), span),
+				ast.KindAmpersandAmpersandToken, finish(ast.KindTrueKeyword), span), span)
 		}
 		holder.AsParenthesizedExpression().Expression = result
 		p.overrideParentInImmediateChildren(holder)
@@ -1224,8 +1227,12 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 		names[id.Text()] = true
 	}
 	spelled := map[string]bool{}
+	propertyCaches := map[*ast.Node]*ast.Node{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if cache := p.vibelangPropertyCaches[node]; cache != nil {
+			propertyCaches[node] = cache
+		}
 		if ast.IsIdentifier(node) && !temps[node] {
 			spelled[node.Text()] = true
 		}
@@ -1233,6 +1240,7 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 		return false
 	}
 	file.AsNode().ForEachChild(visit)
+	p.vibelangPropertyCaches = propertyCaches
 	renamed := map[string]string{}
 	for _, id := range p.vibelangTemps {
 		name := id.Text()
@@ -1407,18 +1415,18 @@ func (p *Parser) subjectPath(subject *ast.Node, anchor core.TextRange, prefix st
 }
 
 // propertyPath returns the path of the property key of base's subject.
-func (p *Parser) propertyPath(base matchPath, clause objectClause) matchPath {
+func (p *Parser) propertyPath(base matchPath, clause objectClause, ctx *matchCompile) matchPath {
 	key := clause.key
 	return func() *ast.Node {
 		switch {
 		case !clause.computed && key.Kind == ast.KindIdentifier:
-			return p.mPatternRead(p.mProperty(base(), key.Text(), key.Loc))
+			return p.cachePatternRead(p.mPatternRead(p.mProperty(base(), key.Text(), key.Loc)), ctx)
 		case !clause.computed && key.Kind == ast.KindStringLiteral:
-			return p.mPatternRead(p.mElement(base(), p.mString(key.Text(), key.Loc), key.Loc))
+			return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.mString(key.Text(), key.Loc), key.Loc)), ctx)
 		case !clause.computed && key.Kind == ast.KindNumericLiteral:
-			return p.mPatternRead(p.mElement(base(), p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc), key.Loc))
+			return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc), key.Loc)), ctx)
 		}
-		return p.mPatternRead(p.mElement(base(), p.cloneIdentExpression(key), key.Loc))
+		return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.cloneIdentExpression(key), key.Loc)), ctx)
 	}
 }
 
@@ -1489,7 +1497,7 @@ func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx 
 }
 
 // propertyKeyTest writes "key" in path(), or key in path() for a computed key.
-func (p *Parser) propertyKeyTest(path matchPath, clause objectClause, at core.TextRange) *ast.Node {
+func (p *Parser) propertyKeyTest(path matchPath, clause objectClause, at core.TextRange, ctx *matchCompile) *ast.Node {
 	key := clause.key
 	var left *ast.Node
 	switch {
@@ -1500,7 +1508,7 @@ func (p *Parser) propertyKeyTest(path matchPath, clause objectClause, at core.Te
 	default:
 		left = p.cloneIdentExpression(key)
 	}
-	return p.mBinary(left, ast.KindInKeyword, path(), at)
+	return p.cachePatternRead(p.mBinary(left, ast.KindInKeyword, path(), at), ctx)
 }
 
 // BuiltinMatcher is a matcher that a pattern names without a declaration of
@@ -1692,7 +1700,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		for _, clause := range pat.clauses {
 			clause = p.capturePatternKey(clause, steps, ctx)
 			if !clause.optional && (pat.kind == patternObject || clause.pattern == nil) {
-				test(p.propertyKeyTest(path, clause, at))
+				test(p.propertyKeyTest(path, clause, at, ctx))
 			}
 			key := clause.key
 			if clause.computed {
@@ -1708,14 +1716,14 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 					// this lowering's const cannot express.
 					test(p.patternErrorCall(4704, "Optional binding", clause.pattern.anchor))
 				default:
-					absent := p.vibelangSpanning(p.factory.NewPrefixUnaryExpression(ast.KindExclamationToken, p.mParens(p.propertyKeyTest(path, clause, at), at)), at)
-					matches := p.mParens(p.inlinePattern(clause.pattern, p.propertyPath(path, clause), ctx), at)
+					absent := p.vibelangSpanning(p.factory.NewPrefixUnaryExpression(ast.KindExclamationToken, p.mParens(p.propertyKeyTest(path, clause, at, ctx), at)), at)
+					matches := p.mParens(p.inlinePattern(clause.pattern, p.propertyPath(path, clause, ctx), ctx), at)
 					test(p.mParens(p.joinTests([]*ast.Node{absent, matches}, ast.KindBarBarToken, at), at))
 				}
 				continue
 			}
 			if clause.pattern != nil {
-				p.compilePattern(clause.pattern, p.enterSubject(p.propertyPath(path, clause), clause.pattern, steps, ctx), steps, ctx)
+				p.compilePattern(clause.pattern, p.enterSubject(p.propertyPath(path, clause, ctx), clause.pattern, steps, ctx), steps, ctx)
 			}
 		}
 		for _, item := range pat.items {
@@ -2258,7 +2266,7 @@ func (p *Parser) emitSteps(steps []matchStep, success []*ast.Node, at core.TextR
 // (match_subject.go in package vibelang).
 func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 	ctx := &matchCompile{anchor: info.anchor, inline: true}
-	if patternUsesIterator(info.pattern) {
+	if patternUsesCache(info.pattern) {
 		ctx.cache = p.newMatchCacheName()
 	}
 	inner := ast.SkipParentheses(info.subject)
@@ -2277,11 +2285,16 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 	path := func() *ast.Node { return p.mTemp(name, info.anchor) }
 	body := p.inlinePattern(info.pattern, path, ctx)
 	if ctx.cache != "" {
-		body = p.mBlock(p.matchCacheStatements([]*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(body), info.anchor)}, ctx.cache, info.anchor), info.anchor)
+		// Parameters precede the body in native TypeScript. Anchoring this
+		// block at is would place its parameter inside the body's range,
+		// making name resolution treat it as a temporary moved into the body.
+		span := body.Loc
+		cacheAt := info.anchor
+		body = p.mBlock(p.matchCacheStatements([]*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(body), span)}, ctx.cache, cacheAt), span)
 	}
 	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, p.mTemp(name, info.anchor), nil, nil, nil), info.anchor)
 	arrow := p.vibelangProgramArrow([]*ast.Node{parameter}, body, info.anchor)
-	callee := p.mParens(arrow, info.anchor)
+	callee := p.mParens(arrow, arrow.Loc)
 	call := p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(info.subject.Loc, []*ast.Node{info.subject}), ast.NodeFlagsNone), core.NewTextRange(pos, p.nodePos()))
 	return p.finishNode(call, pos)
 }
@@ -2293,7 +2306,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 	path, decl := p.subjectPath(info.subject, info.anchor, "$match")
 	cache := ""
 	for _, arm := range info.arms {
-		if patternUsesIterator(arm.pattern) {
+		if patternUsesCache(arm.pattern) {
 			cache = p.newMatchCacheName()
 			break
 		}
@@ -2461,7 +2474,7 @@ func (p *Parser) conditionSteps(condition *ast.Node) []matchStep {
 			continue
 		}
 		cache := ""
-		if patternUsesIterator(info.pattern) {
+		if patternUsesCache(info.pattern) {
 			cache = p.newMatchCacheName()
 			steps = append(steps, matchStep{decl: p.matchCacheStatements(nil, cache, info.anchor)[0]})
 		}

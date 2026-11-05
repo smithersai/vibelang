@@ -1,0 +1,132 @@
+// expect-result: [[1,2,true,3,["has:value","get","has:value","get","has:value","get"]],["miss",["missing"]],["hit",1,["has:value","get"]],["hit",["value"]],[true,true,true,["value","value","value"]],[true,1,["value"]],[true,["value"]],[2,2],[[1,2],2],[true,true,["has:0","get:0"]],[true,["has:key"]],[true,["get"]],[true,1],[[1,2],3],["hit",2],[1,1],[1,2]]
+import { Effect } from "effect"
+import { poisonedSubject, capturedHelper } from "./native.js"
+
+function resets() {
+  const trace: string[] = []; let reads = 0
+  const subject = new Proxy({get value(){ trace.push("get"); return ++reads }}, {
+    has(target, key) { trace.push("has:" + String(key)); return Reflect.has(target, key) }
+  })
+  const a = match (subject) { when {value: 0}: 0; when {let value}: value; default: -1; }
+  const b = match (subject) { when {value: 0}: 0; when {let value}: value; default: -1; }
+  const c = subject is ({value: 3} and {value: 3})
+  return [a, b, c, reads, trace]
+}
+function absent() {
+  const trace: string[] = []
+  const subject = new Proxy({missing: 1}, {has(){ trace.push("missing"); return trace.length > 1 }})
+  const result = match (subject) { when {missing}: "first"; when {missing}: "second"; default: "miss"; }
+  return [result, trace]
+}
+function undefinedValue() {
+  const trace: string[] = []
+  const subject = new Proxy({get value(){ trace.push("get"); return undefined }}, {
+    has(target, key) { trace.push("has:" + String(key)); return Reflect.has(target, key) }
+  })
+  const result = match (subject) { when {value: 0}: "bad"; when {value: undefined}: "hit"; default: "miss"; }
+  return [result, trace.filter(x => x === "get").length, trace]
+}
+function aliases() {
+  const trace: string[] = []
+  const shared = {get value(){ trace.push("value"); return 1 }}
+  const subject = {left: shared, right: shared}
+  const result = match (subject) { when {left: {value: 0}}: "bad"; when {right: {value: 1}}: "hit"; default: "miss"; }
+  return [result, trace]
+}
+function combinators() {
+  const trace: string[] = []
+  const subject = {get value(){ trace.push("value"); return 1 }}
+  const a = subject is ({value: 0} or {value: 1})
+  const b = subject is ({value: 1} and {value: 1})
+  const c = subject is ((not {value: 0}) and {value: 1})
+  return [a, b, c, trace]
+}
+function bindings() {
+  const trace: string[] = []
+  const subject = {get value(){ trace.push("value"); return 1 }}
+  let found = false; let result = -1
+  if (subject is ({value: 1} and {let value})) { found = true; result = value }
+  return [found, result, trace]
+}
+function guardReads() {
+  const trace: string[] = []
+  const subject = {get value(){ trace.push("value"); return 1 }}
+  const result = match (subject) {
+    when {value: 1} and if (false): false;
+    when {value: 1}: true;
+    default: false;
+  }
+  return [result, trace]
+}
+function mutation() {
+  let value = 1
+  const subject = {get value(){ return value }}
+  const result = match (subject) {
+    when {value: 1} and if ((value = 2, false)): -1;
+    when {value: 1}: subject.value;
+    default: 0;
+  }
+  return [result, value]
+}
+function rest() {
+  let reads = 0
+  const subject = {get value(){ return ++reads }}
+  const a = match (subject) { when {value: 0}: 0; when {...let rest}: rest.value; default: -1; }
+  return [[1, a], reads]
+}
+function numeric() {
+  const trace: string[] = []
+  const subject = new Proxy({0: 1}, {
+    has(target, key){trace.push("has:" + String(key)); return Reflect.has(target, key)},
+    get(target, key){trace.push("get:" + String(key)); return Reflect.get(target, key)}
+  })
+  const zero = 0
+  const result = subject is ({0: 1} and {[zero]: 1})
+  return [result, result, trace]
+}
+function bare() {
+  const trace: string[] = []
+  const subject = poisonedSubject(trace)
+  return [subject is ({key} and {key}), trace]
+}
+function hygiene() {
+  const $matchCache1 = 42; const $matchCache = capturedHelper
+  const Map = null; const trace: string[] = []
+  const subject = {get value(){trace.push("get");return 1}}
+  return [subject is ({value: 1} and {value: 1}), trace]
+}
+function symbolic() {
+  const key = Symbol("field"); let reads = 0
+  const subject = {get [key](){ return ++reads }}
+  return [subject is ({[key]: 1} and {[key]: 1}), reads]
+}
+function loopBindings() {
+  let reads = 0; const values: number[] = []
+  const subject = {get value(){ return ++reads }}
+  while (subject is ({value: not 0} and {let value}) && value < 3) { values.push(value) }
+  return [values, reads]
+}
+function nestedCaches() {
+  let reads = 0
+  const subject = {get value(){ return ++reads }}
+  const value = match (subject) {
+    when {value: 1} and if ((match(subject){when {value: 2}: true; default: false;}, false)): "bad";
+    when {value: 1}: "hit";
+    default: "miss";
+  }
+  return [value, reads]
+}
+function nestedBinding() {
+  let reads = 0
+  const subject = {get child(){ return {value: ++reads} }}
+  const value = match (subject) {
+    when {child: ({value: 1} and let child)}: child.value;
+    default: 0;
+  }
+  return [value, reads]
+}
+type Tagged = { kind: "a" } | { kind: "b" }
+function exhaustive(subject: Tagged): number {
+  return match (subject) { when {kind: "a"}: 1; when {kind: "b"}: 2; }
+}
+export function main() { return Effect.succeed([resets(), absent(), undefinedValue(), aliases(), combinators(), bindings(), guardReads(), mutation(), rest(), numeric(), bare(), hygiene(), symbolic(), loopBindings(), nestedCaches(), nestedBinding(), [exhaustive({kind:"a"}), exhaustive({kind:"b"})]]) }

@@ -109,3 +109,28 @@ func (tx *lowering) visitCheckedArm(test *ast.Node, subject *ast.Node) *ast.Node
 	block.Loc = statement.ThenStatement.Loc
 	return block
 }
+
+// Keep the original property/in tests for TypeScript flow, and cache their
+// observations only in executable output. Each match/is evaluation owns cache.
+func (tx *lowering) visitCachedPatternRead(node, cache *ast.Node) *ast.Node {
+	f := tx.Factory()
+	method := "get"
+	var subject, key *ast.Node
+	switch node.Kind {
+	case ast.KindBinaryExpression:
+		method = "propertyHas"
+		b := node.AsBinaryExpression()
+		subject, key = b.Right, b.Left
+	case ast.KindPropertyAccessExpression:
+		subject = node.Expression()
+		key = f.NewStringLiteral(node.Name().Text(), ast.TokenFlagsNone)
+	case ast.KindElementAccessExpression:
+		subject = node.Expression()
+		key = node.AsElementAccessExpression().ArgumentExpression
+	}
+	callee := f.NewPropertyAccessExpression(f.NewIdentifier(cache.Text()), nil, f.NewIdentifier(method), ast.NodeFlagsNone)
+	result := f.NewCallExpression(callee, nil, nil, f.NewNodeList([]*ast.Node{tx.visit(subject), tx.visit(key)}), ast.NodeFlagsNone)
+	tx.EmitContext().SetOriginal(result, node)
+	result.Loc = node.Loc
+	return result
+}

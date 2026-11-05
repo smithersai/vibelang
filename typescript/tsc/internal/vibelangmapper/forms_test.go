@@ -929,3 +929,25 @@ g<number>((resume) => resume(Effect.succeed(7)));
 		t.Fatalf("direct compatibility lambda lost its plain table form: %+v", d)
 	}
 }
+
+// The per-evaluation cache is not a source call or a suspension point.
+func TestResolverMatchCacheDoesNotPause(t *testing.T) {
+	r := resolve(t, "const test = (x: unknown) => x is { value: 1 };")
+	if d := r.lambda(t, "(x: unknown) =>"); d.Form != FormPlain || d.Provenance != FromFallback || d.Choice != nil {
+		t.Errorf("cached is = %+v, want a plain fallback without a choice", d)
+	}
+}
+
+func TestResolverBoundMatchCacheDoesNotPause(t *testing.T) {
+	sources := []string{
+		"const test = (x: unknown) => { if (x is {let value}) return value; return undefined; };",
+		"const test = (x: unknown) => { x is {let value}; return value; };",
+		"const test = (x: unknown) => { { x is {let value}; return value; } };",
+	}
+	for _, source := range sources {
+		r := resolve(t, source)
+		if d := r.lambda(t, "(x: unknown) =>"); d.Form != FormPlain || d.Provenance != FromFallback || d.Choice != nil {
+			t.Errorf("%s: cached binding = %+v, want plain fallback", source, d)
+		}
+	}
+}
