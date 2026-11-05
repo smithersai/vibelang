@@ -40,7 +40,17 @@ export const globalWordings = ["is platform code", "reads a host global", "reach
 // EK0107 also covers legacy JavaScript. Only this explicit platform escape
 // names a host global for the preserving TypeScript split.
 const globalThisEscapeMessage = "Use globalThis only as the object of a statically named member access; move this use to a .ts file."
-const platformGlobalCause = (code, message) => code === "EK4402" || code === "EK0107" && message === globalThisEscapeMessage
+// Prelude collisions retain a TypeScript diagnostic code. Only the compiler's
+// explicit platform note names a host value; the generic type error does not.
+const preludePlatformNote = /^The global ([A-Za-z_$][\w$]*)(?: is| has \1\.[A-Za-z_$][\w$]*, and it is) platform code, which lives in a \.ts file\.$/
+const platformGlobalCause = (code, message) => code === "EK4402" || code === "EK0107" && message === globalThisEscapeMessage ||
+  /^TS\d+$/.test(code) && preludePlatformNote.test(message)
+const diagnosticNotes = notes => Array.isArray(notes)
+  ? notes.filter(note => typeof note === "string").map(note => note.trim())
+  // Legacy receipts join diagnostic notes into one string. The compiler's
+  // host-value explanation is its final sentence; retain that boundary.
+  : typeof notes === "string" ? [notes.trim().split(/(?<=\.)\s+|\r?\n/).at(-1)] : []
+
 const globalMessage = new RegExp(String.raw`^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* (?:${globalWordings.join("|")})`)
 
 /**
@@ -52,6 +62,7 @@ const globalMessage = new RegExp(String.raw`^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|
  * AbortSignal. A builtin import ("createHash from node:crypto is platform
  * code") is split without being named, and a message about anything else
  * names nothing. The explicit EK0107 globalThis escape names globalThis too.
+ * A prelude-collision note names the host value the compiler identifies.
  * The diagnostic carries only its text, so these are the
  * wordings of the compiler's message table (globalWordings).
  */
@@ -60,6 +71,8 @@ export function platformGlobalsOf(messages) {
   for (const message of messages) {
     const text = String(message).replace(/^\s*(?:error\s+)?EK4402:\s*/, "")
     if (text.replace(/^\s*(?:error\s+)?EK0107:\s*/, "") === globalThisEscapeMessage) { names.add("globalThis"); continue }
+    const prelude = preludePlatformNote.exec(text)
+    if (prelude) { names.add(prelude[1]); continue }
     if (/^\S+ from \S+ is platform code/.test(text)) continue
     const m = globalMessage.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
@@ -73,7 +86,8 @@ export function platformGlobalsOf(messages) {
  * or reverted.json ([{ file, reason: "compile error: EK4402 ..." }]). A
  * receipt names a module by its .vibe or .ts path; file is the TypeScript
  * path the split reads. EK4402 messages and the explicit EK0107
- * globalThis platform escape count; unrelated legacy JavaScript does not.
+ * globalThis platform escape count, as do exact platform notes attached to
+ * TypeScript diagnostics. Unrelated type errors and legacy JavaScript do not.
  */
 export function platformGlobalsFromCauses(receipts) {
   const messages = new Map()
@@ -86,12 +100,18 @@ export function platformGlobalsFromCauses(receipts) {
   for (const receipt of receipts) {
     if (Array.isArray(receipt)) {
       for (const r of receipt) {
-        const m = /\b(EK4402|EK0107):?\s+(.*)$/s.exec(String(r?.reason ?? ""))
-        if (m && platformGlobalCause(m[1], m[2])) add(r.file, m[2])
+        const m = /\b(EK4402|EK0107|TS\d+):?\s+(.*)$/s.exec(String(r?.reason ?? ""))
+        if (m) for (const message of [m[2], ...diagnosticNotes(r.notes)]) {
+          if (platformGlobalCause(m[1], message)) add(r.file, message)
+        }
       }
     } else if (receipt && typeof receipt === "object") {
       for (const [file, cause] of Object.entries(receipt)) {
-        for (const d of cause?.diagnostics ?? []) if (platformGlobalCause(d?.code, d?.message)) add(file, d.message)
+        for (const d of cause?.diagnostics ?? []) {
+          for (const message of [d?.message, ...diagnosticNotes(d?.notes)]) {
+            if (platformGlobalCause(d?.code, message)) add(file, message)
+          }
+        }
       }
     }
   }

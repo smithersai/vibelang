@@ -1,0 +1,19 @@
+{
+  "finding": "smithers:platform-prelude-collision",
+  "file": "src/Reply.ts",
+  "source": "export const reply = (body: string) => new Response(body, { status: 200 });\nexport const label = 1;\n",
+  "diagnostic": {
+    "code": "TS2351",
+    "message": "This expression is not constructable.",
+    "notes": [
+      "Response is Effect's Response module (effect/ai/Response), in scope without an import. To use your own Response, declare or import it.",
+      "The global Response is platform code, which lives in a .ts file."
+    ]
+  },
+  "moved": [
+    "reply"
+  ],
+  "retained": [
+    "label"
+  ]
+}
