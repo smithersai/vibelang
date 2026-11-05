@@ -1,0 +1,2 @@
+export service Valid { static readonly key = "constraint/Valid"; value: number }
+export function native<Key extends Valid & {new():object}>(key:Key,value:unknown){return value instanceof key}

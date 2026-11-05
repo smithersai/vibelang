@@ -236,6 +236,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A throwing callback supplied through an optional tuple spread could bypass throw checking. A final tuple spread now retains that callback's contract, including readonly tuples; `--fix` preserves synchronous defects with an explicit bridge.
 
+- A service key passed through a constrained generic parameter could bypass misuse checks. These parameters now report the same service diagnostics as the original key.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
@@ -430,6 +432,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| A generic parameter constrained to a service key's value type, such as `Key extends typeof Users` | `EK3002`, `EK3003` and `EK3004` apply through the constraint. Obtain the implementation with `try ServiceName`, implement its shape or inspect its members; choosing that behavior requires a manual repair. |
 | Constructing, extending or matching a service key through an intersection-typed alias | `EK3003`, `EK3002` or `EK3004` applies as for the original service. Obtain the implementation with `try ServiceName`; implement its shape or inspect its members. Choosing the implementation or test requires a manual repair. |
 
 ## 0.0.11

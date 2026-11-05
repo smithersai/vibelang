@@ -1778,5 +1778,15 @@
       "reference": "docs/design/vips/0004-throw.md: accepted VIP-4; A call through any or Function throws unknown. The Decision rejects an unwrapped throwing call with EK0403."
     },
     "reason": "The parent compiler already rejects these unchanged call expressions under VIP-4. This fixture update records the existing EK0403 in the diagnostic header and exact snapshot; it introduces no new rejected form or compiler restriction."
+  },
+  {
+    "code": "EK3004",
+    "case": "typescript/vibelang/cases/service-constraint-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "A generic constraint on the key's value type retains service-key identity. Selecting an implementation, a shape test or a different constructor requires application intent; there is no general preserving mechanical rewrite."
   }
 ]

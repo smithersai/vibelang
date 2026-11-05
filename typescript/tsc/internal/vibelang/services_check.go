@@ -329,6 +329,17 @@ func serviceNamedByType(c *checker.Checker, t *checker.Type) *ast.Node {
 	if t == nil {
 		return nil
 	}
+	if t.Flags()&checker.TypeFlagsTypeParameter != 0 {
+		bound := c.GetBaseConstraintOfType(t)
+		if bound == nil || bound == t {
+			return nil
+		}
+		if symbol := bound.Symbol(); symbol != nil && classKindOf(symbol.ValueDeclaration()) != ordinaryClass &&
+			bound != c.GetTypeOfSymbol(symbol) {
+			return nil // the identifier type in R is not the key value
+		}
+		return serviceNamedByType(c, bound)
+	}
 	if symbol := t.Symbol(); symbol != nil && classKindOf(symbol.ValueDeclaration()) != ordinaryClass {
 		return symbol.ValueDeclaration()
 	}
