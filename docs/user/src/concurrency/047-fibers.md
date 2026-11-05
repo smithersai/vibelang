@@ -124,7 +124,7 @@ The opening `{` must be on the same line as `uninterruptible`, `restore` or `int
 
 An `uninterruptible` block protects a child after it enters the block. If another fiber must wait for that point before interrupting it, signal with a `Deferred` from inside the block; a sleep does not prove the child has started.
 
-Statements in these blocks stay code of the enclosing function, so `return` returns from it. Run Effects inside each block with `try`. To pass an Effect value instead, use `Effect.uninterruptible(saveRows())` or `Effect.interruptible(program)`.
+Statements in these blocks stay code of the enclosing function, so `return` returns from it. Run Effects inside each block with `try`. To pass an Effect value instead, use `Effect.uninterruptible(saveRows())` or `Effect.interruptible(program)`. The bare names are reserved for blocks, so calls and stored function values use the `Effect.` qualifier.
 
 ## Combining results
 

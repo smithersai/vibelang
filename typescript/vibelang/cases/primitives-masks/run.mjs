@@ -1,5 +1,7 @@
+import assert from "node:assert/strict"
+import { createRequire } from "node:module"
 import { Effect } from "effect"
-import { main } from "./out/main.js"
+import { main, callValue } from "./out/main.js"
 
 // Keep tasks in priority/FIFO order, but delay the child's first dispatch.
 // Interrupting after a sleep cannot prove the child has entered its mask.
@@ -38,3 +40,14 @@ try {
 } finally {
   clearTimeout(timeout)
 }
+
+// VIP-22: "Under VIP-6, the keywords remove the globals of the same name"
+// Qualified native functions preserve their programs' success values.
+const require = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))
+const fc = require("fast-check")
+fc.assert(fc.property(fc.integer(), (value) => {
+  assert.deepEqual(
+    Effect.runSyncExit(callValue(value)),
+    Effect.runSyncExit(Effect.uninterruptible(Effect.succeed(value))),
+  )
+}), { seed: 2206, numRuns: 100 })

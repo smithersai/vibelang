@@ -61,9 +61,13 @@ function work() {
 
 // The call form runs a program the same way.
 effect function call() {
-  return try uninterruptible(Effect.sync(work)) // work is plain (VIP-1)
+  return try Effect.uninterruptible(Effect.sync(work)) // work is plain (VIP-1)
 }
 
 export effect function main() {
   return { masked: try masked(), restored: try restored(), forced: try forced(), returned: try returned(), call: try call() }
+}
+
+export effect function callValue(value: number) {
+  return try Effect.uninterruptible(Effect.succeed(value))
 }
