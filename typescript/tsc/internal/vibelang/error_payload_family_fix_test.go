@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
@@ -25,6 +26,12 @@ func TestErrorReservedPayloadTagSelectedActionKeepsFamily(t *testing.T) {
 				t.Run(fmt.Sprintf("%s/%s/%d", abstract, member, code), func(t *testing.T) {
 					source := "export " + abstract + "schema error E { _tag: string; id: string; " + member + " }\nexport schema error Child extends E { n: number }\n"
 					fixed := applyQuickFixOf(t, source, code, diagnostics.CategoryError)
+					if !strings.Contains(fixed, "$schemaErrorFamily as ") {
+						t.Fatalf("selected root repair dropped schema family registration:\n%s", fixed)
+					}
+					// The independently retired inheritance clause still needs its
+					// own native-class repair before compiling and running the family.
+					fixed = applyQuickFixOf(t, fixed, 2117, diagnostics.CategoryError)
 					_, file, _, _ := editorProgram(t, fixed)
 					dir := filepath.Dir(file.FileName().AsString())
 					configPath := filepath.Join(dir, "tsconfig.json")
