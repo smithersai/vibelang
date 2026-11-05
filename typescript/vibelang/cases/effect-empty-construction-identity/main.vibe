@@ -1,0 +1,12 @@
+// expect-result: [false,false,false,false,false,true,true]
+// docs/design/src/001-functions.md#meaning; docs/design/src/008-runtime.md: compare primitive Boolean Exits.
+effect function empty() {}
+effect function bare() { return }
+const arrow = effect () => {}
+const expression = effect function () {}
+const block = () => effect {}
+const shared = empty()
+const constant = () => Effect.void
+export effect function main() {
+  return [empty() === empty(), bare() === bare(), arrow() === arrow(), expression() === expression(), block() === block(), shared === shared, constant() === constant()]
+}

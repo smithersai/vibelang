@@ -2756,6 +2756,11 @@ typescript/vibelang/cases/effect-contextual-assertions/main.vibe:6:15 lambda pla
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:10:13 lambda effectFn keyword
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:11:13 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:8:18 lambda effectFn keyword
+typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:5:15 lambda effectFn keyword
+typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:6:20 lambda effectFn keyword
+typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:7:15 lambda plain fallback
+typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:7:21 lambda plain fallback
+typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:9:18 lambda plain fallback
 typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:4:15 lambda effectFn keyword
 typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:6:18 lambda effectFn keyword
 typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:7:17 lambda plain fallback

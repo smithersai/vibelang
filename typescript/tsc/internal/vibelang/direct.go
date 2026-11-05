@@ -41,7 +41,9 @@ func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole)
 	f := tx.Factory()
 	statements := body.Statements()
 	if len(statements) == 0 || len(statements) == 1 && statements[0].Kind == ast.KindReturnStatement && statements[0].Expression() == nil {
-		return f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("void"), ast.NodeFlagsNone)
+		// Even an empty source builder constructs its own unrun Effect.
+		// Reusing Effect.void changes explicit identity comparisons.
+		return nil
 	}
 	if len(statements) != 1 || statements[0].Kind != ast.KindReturnStatement {
 		return nil
