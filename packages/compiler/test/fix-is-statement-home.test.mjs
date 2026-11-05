@@ -57,7 +57,9 @@ for (const keyword of ["let", "const"]) {
     const twin = project(t, "main.ts", source.replace(`for (const x of xs) if (x is { id: ${keyword} id }) out.push(() => id)`, `for (const x of xs) { if (typeof x === "object" && x !== null && "id" in x) { ${keyword} id = x.id; out.push(() => id) } }`))
     const checked = compile(twin)
     assert.equal(checked.status, 0, checked.stdout + checked.stderr)
-    assert.equal(readFileSync(join(root, "out/main.d.ts"), "utf8"), readFileSync(join(twin, "out/main.d.ts"), "utf8"))
+    // VIP-27, amended 2026-11-04: the stock twin stays as written; the emitted
+    // declaration adds exactly the generated @throws {never} output contract.
+    assert.equal(readFileSync(join(root, "out/main.d.ts"), "utf8"), `/** @throws {never} */\n${readFileSync(join(twin, "out/main.d.ts"), "utf8")}`)
     for (const dir of [root, twin]) {
       const run = spawnSync(process.execPath, ["--input-type=module", "-e", `const m = await import(${JSON.stringify(pathToFileURL(join(dir, "out/main.js")).href)}); console.log(JSON.stringify(m.ids()))`], { cwd: dir, encoding: "utf8", timeout: 60000 })
       assert.equal(run.status, 0, run.stderr)
