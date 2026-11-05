@@ -1,0 +1,6 @@
+{
+  "repository": "alchemy",
+  "pattern": "a plain entry tuple holds a converted Effect function",
+  "original": "import * as Effect from \"effect/Effect\";\ntype Calls=Readonly<Record<string,()=>Effect.Effect<number>>>;\nexport const make=(impl:Calls)=>Object.fromEntries(Object.entries(impl).map(([key,call])=>[key,Effect.fn(function*(){return yield* call()})]));\n",
+  "native": "import * as Effect from \"effect/Effect\";\ntype Calls=Readonly<Record<string,()=>Effect.Effect<number>>>;\nexport const make=(impl:Calls)=>Object.fromEntries(Object.entries(impl).map(([key,call])=>[key,effect()=>{return try call()}]));\n"
+}

@@ -1,0 +1,6 @@
+{
+  "repository": "alchemy",
+  "pattern": "a generator's returned typed failure becomes a native throw",
+  "original": "import * as Effect from \"effect/Effect\";\nexport const make=()=>Effect.gen(function*(){return yield* Effect.fail(\"bad\")});\n",
+  "native": "import * as Effect from \"effect/Effect\";\nexport const make=effect()=>{throw \"bad\"}\n"
+}
