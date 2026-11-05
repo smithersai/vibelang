@@ -31,3 +31,5 @@ FuzzConcurrentOperandDiagnostics compile:union-containers compiler VIP-19: valid
 FuzzConcurrentOperandDiagnostics corpus:union-containers compiler VIP-19: minimized Iterable-union inference witness; lane core-fortry
 
 FuzzConcurrentDuplicateLabel scope:head-default compiler VIP-2: a retained do initializer still hides an enclosing source label
+FuzzConcurrentDuplicateLabel scope:head-default-contextual compiler VIP-19: native for-of accepts defaulted fresh object rows while for concurrent reports TS2339
+FuzzConcurrentDuplicateLabel corpus:head-default-contextual compiler VIP-19: native for-of accepts defaulted fresh object rows while for concurrent reports TS2339
