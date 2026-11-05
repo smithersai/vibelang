@@ -57,6 +57,15 @@ func afterCheckSourceFile(ctx context.Context, program checker.Program, c *check
 	}
 }
 
+// Active reports whether this project selected the imported lint path.
+// Explicitly disabled imported diagnostics must not revive the legacy rule.
+func Active(options *core.CompilerOptions) bool {
+	return options != nil && (options.Effect != nil || core.VibeNeedsLintPlugin(options) ||
+		slices.ContainsFunc(options.Plugins, func(plugin core.PluginImport) bool {
+			return plugin.Name == etscore.EffectPluginName
+		}))
+}
+
 // run reports the rules options enables for sf, leaving out on a .vibe file
 // the rules whose pattern VibeLang's syntax gives another meaning (vibeRules).
 func run(ctx context.Context, program checker.Program, c *checker.Checker, sf *ast.SourceFile, options *etscore.EffectPluginOptions) []*ast.Diagnostic {

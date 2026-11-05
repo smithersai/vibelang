@@ -41,8 +41,8 @@ try {
   symlinkSync(process.env.VIBELANG_RUNTIME, join(dir, "node_modules/vibelang-runtime"))
   writeFileSync(join(dir, "package.json"), '{"type":"module"}')
   const sources = {
-    "native.ts": 'import { Effect } from "effect"; export function example() { return Effect.gen(function* () { Effect.succeed(1); Effect.gen(function* () { return 99 }); return 2 }) }',
-    "main.vibe": 'import { Effect } from "effect"; export effect function example() { Effect.succeed(1); effect { return 99 }; return 2 }'
+    "native.ts": 'import { Effect } from "effect"; export function example(_input: number) { return Effect.gen(function* () { Effect.succeed(1); Effect.gen(function* () { return 99 }); return 2 }) }',
+    "main.vibe": 'import { Effect } from "effect"; export effect function example(_input: number) { Effect.succeed(1); effect { return 99 }; return 2 }'
   }
   for (const [name, source] of Object.entries(sources)) writeFileSync(join(dir, name), source)
   const plugin = diagnosticSeverity => ({ name: "@effect/language-service", diagnosticSeverity })
@@ -62,7 +62,7 @@ try {
     const r = spawnSync(process.env.VIBELANG_BINARY, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: dir, encoding: "utf8", timeout: 15000 })
     assert.equal(r.error, undefined, String(r.error))
     const output = r.stdout + r.stderr
-    assert.equal(r.status === 0, category !== "error", name + "\n" + output)
+    assert.equal(r.status === 0, category !== "error" && category !== "warning", name + "\n" + output)
     const observed = [...output.matchAll(/(native\.ts|main\.vibe)\(\d+,\d+\): (error|warning|suggestion) EK3801: floatingEffect:/g)].map(([, file, severity]) => [file, severity])
     // CLI may omit suggestion presentation, as ordinary TypeScript does; the
     // API oracle separately checks the stored category. Error/warning/off must

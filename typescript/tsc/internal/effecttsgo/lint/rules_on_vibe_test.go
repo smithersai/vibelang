@@ -175,7 +175,10 @@ func TestLintDoesNotRunPortedRulesTwice(t *testing.T) {
 
 // A build keeps its rule set: only the lint command takes the wider one.
 func TestBuildRulesAreUnchanged(t *testing.T) {
-	for _, name := range []string{"effectSucceedWithVoid", "globalConsole", "floatingEffect"} {
+	if !slices.Contains(vibeRuleNames, "floatingEffect") {
+		t.Error("VIP-38 requires imported floatingEffect on selected .vibe files")
+	}
+	for _, name := range []string{"effectSucceedWithVoid", "globalConsole"} {
 		if slices.Contains(vibeRuleNames, name) {
 			t.Errorf("a build runs %s on .vibe files", name)
 		}

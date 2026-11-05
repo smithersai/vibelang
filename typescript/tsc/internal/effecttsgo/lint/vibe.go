@@ -28,7 +28,6 @@ type vibeAnswer struct {
 var vibeAnswers = map[string]vibeAnswer{
 	"anyUnknownInErrorContext":      {ek: "EK4811"},
 	"duplicatePackage":              {ek: "EK4803"},
-	"floatingEffect":                {ek: "EK4801"},
 	"outdatedApi":                   {ek: "EK4813"},
 	"overriddenSchemaConstructor":   {ek: "EK4814"},
 	"effectInFailure":               {ek: "EK4815"},

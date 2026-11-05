@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 const dir = mkdtempSync(join(tmpdir(), "vip38-mixed-"))
@@ -28,7 +28,7 @@ try {
     const r = spawnSync(process.env.VIBELANG_BINARY, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: dir, encoding: "utf8", timeout: 15000 })
     assert.equal(r.error, undefined, String(r.error))
     const output = r.stdout + r.stderr
-    assert.equal(r.status === 0, category !== "error", name + "\n" + output)
+    assert.equal(r.status === 0, category !== "error" && category !== "warning", name + "\n" + output)
     const observed = [...output.matchAll(/(native\.ts|main\.vibe)\(\d+,\d+\): (error|warning|suggestion) EK3801: floatingEffect:/g)].map(([, file, severity]) => [file, severity])
     // CLI may omit suggestion presentation, as ordinary TypeScript does; the
     // API oracle separately checks the stored category. Error/warning/off must
@@ -45,6 +45,38 @@ try {
   assert.equal(absent.error, undefined)
   assert.equal(absent.status, 0, absent.stdout + absent.stderr)
   assert.doesNotMatch(absent.stdout + absent.stderr, /EK38\d+/)
+  // Ordinary --fix preserves the discarded Effect's construction and coldness.
+  writeFileSync(join(dir, "main.vibe"), `import { Effect } from "effect";
+export let made = 0;
+export let ran = 0;
+export function build() { made++; return Effect.sync(() => { ran++ }); }
+build();
+(effect { return 99 });
+export effect function work() { Effect.succeed(2); effect { return 3 }; return 4 }
+`)
+  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: {
+    strict: true, types: [], skipLibCheck: true, target: "ES2022", module: "NodeNext", outDir: "out"
+  }, files: ["main.vibe"], vibe: { effectGlobals: false, effectModules: false, severities: { EK3801: "error" } } }))
+  const invoke = args => spawnSync(process.env.VIBELANG_BINARY, [...args, "-p", "tsconfig.json", "--pretty", "false"], { cwd: dir, encoding: "utf8", timeout: 30000 })
+  const before = invoke([])
+  assert.notEqual(before.status, 0, before.stdout + before.stderr)
+  assert.equal((before.stdout + before.stderr).match(/error EK3801:/g)?.length, 4)
+  const fixed = invoke(["--fix"])
+  assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
+  const repaired = readFileSync(join(dir, "main.vibe"), "utf8")
+  assert.equal((repaired.match(/void \(/g) || []).length, 4, repaired)
+  const second = invoke(["--fix"])
+  assert.equal(second.status, 0, second.stdout + second.stderr)
+  assert.equal(readFileSync(join(dir, "main.vibe"), "utf8"), repaired)
+  const checked = invoke([])
+  assert.equal(checked.status, 0, checked.stdout + checked.stderr)
+  const probe = spawnSync(process.execPath, ["--input-type=module", "-e", 'const m = await import("./out/main.js"); if(m.made !== 1 || m.ran !== 0) throw new Error(JSON.stringify([m.made,m.ran]));'], { cwd: dir, encoding: "utf8" })
+  assert.equal(probe.status, 0, probe.stdout + probe.stderr)
+  const completion = 'import { Effect } from "effect"; export const task = do { Effect.succeed(1) };'
+  writeFileSync(join(dir, "main.vibe"), completion)
+  const refused = invoke(["--fix"])
+  assert.equal(refused.status, 0, refused.stdout + refused.stderr)
+  assert.equal(readFileSync(join(dir, "main.vibe"), "utf8"), completion, "a do completion must retain its Effect value")
   if (issues.length) throw new AggregateError(issues, "VIP-38 mixed-input matrix")
 } finally { rmSync(dir, { recursive: true, force: true }) }
 console.log("mixed lint inputs")

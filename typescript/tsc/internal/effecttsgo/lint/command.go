@@ -46,8 +46,8 @@ With no Oxlint configuration and none of its flags, vibelang lint takes the
 compiler's options and reports the compiler's diagnostics, without emitting.
 
 A rule the configuration turns on reports a .vibe file under its EK38xx code.
-A rule VibeLang ports reports under the port's code instead, once: floating-effect
-reports EK4801. An Oxlint rule outside effecttsgo/* does not run here; vibelang
+A rule VibeLang ports reports under its port code once. Imported floating-effect
+reports EK3801 on selected .ts and .vibe inputs. An Oxlint rule outside effecttsgo/* does not run here; vibelang
 lint reads only the effecttsgo/* rules of the configuration.
 
 The rules read the program's types, and vibelang lint does not print the

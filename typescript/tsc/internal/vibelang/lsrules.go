@@ -8,6 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/lint"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -135,6 +136,9 @@ func checkEffectRules(c *checker.Checker, file *ast.SourceFile) {
 // EK1001's. A constructor, an accessor and a class static block are plain
 // JavaScript (VIP-1), so a call there that gives an Effect discards it.
 func (r *ruleCheck) checkFloating(statement *ast.Node) {
+	if lint.Active(optionsFor(r.c, ast.GetSourceFileOfNode(statement))) {
+		return // VIP-38: the imported rule owns selected inputs, including off.
+	}
 	expression := statement.Expression()
 	if isProvideLayer(statement) || isDiscardingForm(expression) || isHelperCall(expression) {
 		return

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("directive")
+string("file-off")
+byte(0)

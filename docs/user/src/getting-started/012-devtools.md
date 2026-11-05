@@ -339,7 +339,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Correctness | `classSelfMismatch` | Not needed: a `service` has no `Self` parameter | `service Users { find(id: string): User!NotFound }` |
 | Correctness | `duplicatePackage` | EK4803, warning | two versions of `effect` in one program |
 | Correctness | `effectFnImplicitAny` | Not needed: parameters are TypeScript's, so `strict` reports TS7006 | `effect function load(id) { … }` |
-| Correctness | `floatingEffect` | `EK4801`, error; no automatic execution repair | `program` alone on a line leaves an Effect unrun; choose `try program` explicitly when execution is intended |
+| Correctness | `floatingEffect` | `EK3801`, error on selected inputs | A discarded Effect value or `effect { … }` block; `vibelang --fix` writes `void (expression)` to preserve the deliberate discard |
 | Correctness | `genericEffectServices` | Covered: EK3005 | `service Repo<T> { … }` |
 | Correctness | `missingEffectContext` | Covered: `EK9202` (interim) at a contract, `EK9211` at a runner | `effect function f(): User!NotFound { return try (try Users).find(id) }` is `EK9202` |
 | Correctness | `missingEffectError` | Covered: `EK9201` (interim) | `effect function f(): User!! { return try (try Users).find(id) }` |
@@ -656,3 +656,5 @@ An `EK4813` rename that changes a callback or result contract has no automatic f
 For `either`, `async` and `withFiberRuntime`, review the diagnostic's migration note and update callers explicitly.
 
 Migration-only fixes also apply the foreign-call defect bridge. A supported private callback parameter or object member can retain an explicit foreign `@throws {unknown}` signature in a type-only `module` body. Calls remain defects through `Effect.orDie(Effect.try(...))`; a synchronous `Effect.map` callback becomes an `Effect.flatMap` callback returning that Effect. Unsupported or declaration-changing shapes retain their diagnostic for an explicit repair.
+
+Selected imported `floatingEffect` checks use the same file eligibility, exclusions, severity and `@effect-diagnostics` directives for `.ts` and `.vibe` inputs. The legacy `EK4801` check does not also run when that imported path is selected, even when the rule is configured `off`.
