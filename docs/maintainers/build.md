@@ -1801,3 +1801,5 @@ The `//:build-contracts` target checks explicit Bun test deadlines before graph 
 Compiler test prerequisite checks read the package’s TypeScript syntax, including the shared shard factory. Every compiler shard must declare `runtime-dist` before reading its output; each registration must call the checked factory with its own shard index. A direct target, a factory or a returned target keeps the same prerequisite rule.
 
 Appendix Go checks use `-trimpath` to share compiled packages with the compiler and `-count=1` to reread their test inputs. Put the flags before the selector and package paths so the command’s build settings and cache policy are visible together.
+
+The Go warmup includes `./internal/effecttsgo/lint`, which the lint configuration checks execute alongside the compiler packages. The warmup inventory checks that every declared package is covered without broadening exact package patterns to siblings.
