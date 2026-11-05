@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The grammar admission audit could mistake an identifier after a line break for a `schema` or `error` declaration. It now retains the expression's existing grammar finding.
 
+- Interrupted migrations could repeat completed declaration-layout scans. Drivers can now checkpoint package layouts and reuse them after verifying the original source and configuration inputs.
 - Diagnostic identity migrations retain a single authorization for each source fixture, including its existing source and configuration protections.
 - Retired continuation forms now consistently report `EK3501`; the obsolete provider-contract diagnostic is retired.
 - Generator migrations explain when destructured parameter bindings must stay inside the generator to preserve their evaluation timing.

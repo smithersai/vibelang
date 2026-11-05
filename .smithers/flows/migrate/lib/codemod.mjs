@@ -194,22 +194,39 @@ function pointAt(value, source, { condition, entry = false, bare = false, sideca
 
 const besideSidecar = (stem) => stem + ".d.vibe.ts"
 
+/** A portable layout for a driver that has validated its source and configuration snapshot. */
+export function sidecarPlanOf(root, dir) {
+  const home = resolve(root, dir)
+  const config = sidecarConfigIn(home)
+  if (!config) return null
+  const ts = loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url))])
+  const settings = sidecarSettings(config, ts, undefined, { sourceRootOnly: true })
+  return settings ? {
+    owner: posix.normalize(dir),
+    sourceRoot: relative(home, settings.sourceRoot).replaceAll("\\", "/") || ".",
+    directory: relative(home, settings.directory).replaceAll("\\", "/") || "."
+  } : null
+}
+
+function sidecarFromPlan(root, dir, plan) {
+  if (plan === null) return besideSidecar
+  if (plan?.owner !== posix.normalize(dir) || typeof plan.sourceRoot !== "string" || typeof plan.directory !== "string")
+    throw new Error("saved sidecar layout has an invalid owner or path")
+  const home = resolve(root, dir)
+  const settings = { home, sourceRoot: resolve(home, plan.sourceRoot), directory: resolve(home, plan.directory) }
+  return stem => {
+    const path = relative(home, sidecarPath(resolve(home, stem + ".vibe"), settings)).replaceAll("\\", "/")
+    return path.startsWith("./") || path.startsWith("../") ? path : "./" + path
+  }
+}
+
 /**
  * The sidecar path of a package-relative module stem, ./src/x: beside it,
  * ./src/x.d.vibe.ts, or under the vibe.sidecarDir the package's tsconfig.json
  * names, ./.vibe/declarations/src/x.d.vibe.ts (decided detail 268).
  */
 export function sidecarOf(root, dir) {
-  const home = resolve(root, dir)
-  const config = sidecarConfigIn(home)
-  if (!config) return besideSidecar
-  const ts = loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url))])
-  const settings = sidecarSettings(config, ts, undefined, { sourceRootOnly: true })
-  if (!settings) return besideSidecar
-  return stem => {
-    const path = relative(home, sidecarPath(resolve(home, stem + ".vibe"), settings)).replaceAll("\\", "/")
-    return path.startsWith("./") || path.startsWith("../") ? path : "./" + path
-  }
+  return sidecarFromPlan(root, dir, sidecarPlanOf(root, dir))
 }
 
 /**
@@ -330,9 +347,14 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
   return edits
 }
 
-/** Refresh an existing module's declaration targets after setup moves its sidecars. */
+/**
+ * Refresh declaration targets as one complete selection. A driver may restore
+ * plans only for the same validated source/configuration snapshot. onPlan runs
+ * after a new owner is planned and before any manifest is written.
+ */
 export function refreshSidecarExports(root, tracked, configs, {
-  write = (file, text) => writeFileSync(join(root, file), text), onWarning = () => {}
+  write = (file, text) => writeFileSync(join(root, file), text), onWarning = () => {},
+  plans = new Map(), onPlan = () => {}
 } = {}) {
   const owners = new Set([...configs].map(file => packageDirOf(root, file)))
   const callbacks = new Map(), moved = new Map(), beside = new Set()
@@ -343,7 +365,12 @@ export function refreshSidecarExports(root, tracked, configs, {
     beside.add(posix.normalize(old))
     const dir = packageDirOf(root, file)
     if (!owners.has(dir)) continue
-    if (!callbacks.has(dir)) callbacks.set(dir, sidecarOf(root, dir))
+    if (!callbacks.has(dir)) {
+      const saved = plans.has(dir)
+      const plan = saved ? plans.get(dir) : sidecarPlanOf(root, dir)
+      callbacks.set(dir, sidecarFromPlan(root, dir, plan))
+      if (!saved) onPlan(dir, plan)
+    }
     const sidecar = callbacks.get(dir), stem = "./" + posix.relative(dir, file).slice(0, -5)
     const next = posix.normalize(posix.join(dir, sidecar(stem)))
     if (posix.normalize(old) !== next) moved.set(posix.normalize(old), { next, dir, sidecar })

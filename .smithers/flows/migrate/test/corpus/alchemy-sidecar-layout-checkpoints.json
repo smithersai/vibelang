@@ -1,0 +1,11 @@
+{
+  "issue": "sidecar-export-layout-checkpoints",
+  "quote": "an explicit `rootDir` supplies the source root, a composite project defaults to its config directory, and otherwise the root is the common source directory.",
+  "seed": 514142,
+  "input": {
+    "inherited": false,
+    "inferred": true,
+    "source": "src",
+    "directory": "types"
+  }
+}

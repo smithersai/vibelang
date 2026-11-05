@@ -362,6 +362,8 @@ Turning the setting on removes the sidecars beside the sources; turning it off r
 
 The migrate flow also handles a native `.ts` module checked through another package. A consumer's `rootDirs` does not supply the imported package's hidden directory. Setup gives that native import a package-private `types` target naming its physical compatibility declaration. The loader follows its source, emitted consumers use the compiler's actual JavaScript output, and the package's normal publication mapper selects its built JavaScript and declarations. The chosen checker command stays in place. Missing declarations, ambiguous output locations and direct imports across package boundaries receive a located review reason.
 
+Migration drivers can save each completed package declaration layout before planning the next package. Before restoring a saved layout, the driver validates that the original sources and configuration inputs are unchanged. Restoring layouts preserves the full declaration-route selection, including wildcards and imports across packages.
+
 For stock TypeScript consumers, choose a separate directory such as `.vibe/declarations`. When a source is inside the chosen directory, native `rootDirs` longest-prefix resolution can shadow or miss its mirrored declaration. The compiler still emits each source at its mirrored path and preserves every selected output during cleanup.
 
 These checkers read only the sidecars: they do not type-check the `.vibe` files themselves. Run `vibelang` before them, in the same script, so a sidecar is current and a type error in a `.vibe` file fails the check:
