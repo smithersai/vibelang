@@ -226,6 +226,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Following the platform table could turn file bytes into decoded strings. It now preserves the default read as bytes and explains the UTF-8 text alternative.
 - Conditional-import declaration tests repeatedly loaded unrelated browser libraries. Their native validation and API comparison now select ES5 while retaining `import` and `require` branch checks and changed-dependency errors.
 - Setup now preserves unpatched compiler lint exit behavior when plugin settings are inherited from an owned shared configuration, while retaining explicit author overrides.
+- The invalid catch-value example now shows its syntax error without an unrelated generic-call advisory, while retaining independent native errors.
 - Empty Effect functions and blocks could share one Effect value across separate constructions, changing explicit equality results. They now follow their `Effect.gen` construction counterpart; reusing a saved Effect still shares that value.
 
 - The legacy JSON advisory example now enables its warning through the supported project configuration and retains the disabled default.

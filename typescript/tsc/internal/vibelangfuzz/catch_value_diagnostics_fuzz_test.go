@@ -18,6 +18,7 @@ func TestCatchValueDiagnosticsQuoted(t *testing.T) {
 		{"002-running.md", catchValueDiagnosticQuote},
 		{"002-running.md", catchInvalidGeneratorQuote},
 		{"007-tooling.md", catchSourceDiagnosticQuote},
+		{"002-running.md", "Only ordinary call expressions are inspected, not the execution syntax nodes"},
 	} {
 		if !strings.Contains(SpecText(rule.chapter), rule.quote) {
 			t.Fatalf("%s no longer says %q", rule.chapter, rule.quote)
@@ -89,6 +90,10 @@ func FuzzCatchValueDiagnostics(f *testing.F) {
 		var actual, reference []string
 		admission := 0
 		for _, d := range r.Diagnostics {
+			if inFile(d, "main.vibe") && d.Source() == "EK" && d.Code() == 4802 {
+				Gap(t, "FuzzCatchValueDiagnostics", domain.key+"|"+suffix, "VIP-1 excludes catch execution syntax from inferred-argument advisories: %s", d.String())
+			}
+
 			if d.Category() != diagnostics.CategoryError {
 				continue
 			}
