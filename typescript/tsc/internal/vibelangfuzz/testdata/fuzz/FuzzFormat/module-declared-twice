@@ -1,0 +1,2 @@
+go test fuzz v1
+string("module twice { export const a = 1 }\nmodule twice { export const b = 2 }\n\nexport const kept = 1\n")
