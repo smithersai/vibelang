@@ -604,7 +604,9 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 			return c.node(n, "ThisExpression")
 		}
 		identifier := identifierShape(c.node(n, "Identifier"), n.Text())
-		if c.synthesized(n) {
+		// A hoisted concurrency limit keeps its source location for checking,
+		// but its temporary name still belongs to the compiler.
+		if c.synthesized(n) || c.vibe && n.Flags&ast.NodeFlagsVibeLangTemporary != 0 {
 			identifier.set("synthesized", true) // a name the parser wrote, which eslint.mjs keeps out of scope analysis
 		}
 		return identifier

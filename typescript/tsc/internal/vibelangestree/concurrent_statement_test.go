@@ -76,3 +76,31 @@ func TestConcurrentHeadHasNoGeneratedExit(t *testing.T) {
 		}
 	}
 }
+
+// Written dollar-prefixed names remain source identifiers; only generated
+// cache references are excluded from scope analysis.
+func TestConcurrentLimitIdentifiersKeepTheirOrigin(t *testing.T) {
+	for _, limit := range []string{"2", "limit(1)", "$concurrentLimit1", "$concurrentLimit1 + limit(1)"} {
+		for _, gap := range []string{" ", "\n", "/* 😀 */"} {
+			source := "effect function f($concurrentLimit1: number) { for concurrent" + gap + "(" + limit + ") (const item of items()) { use(item, $concurrentLimit1) } }"
+			authored := 0
+			for _, node := range nodes(parse(t, "main.vibe", source)) {
+				if node["type"] != "Identifier" {
+					continue
+				}
+				name := node["name"].(string)
+				if name == "$concurrentLimit1" {
+					if node["synthesized"] == true {
+						t.Fatalf("written name marked synthetic: %s", source)
+					}
+					authored++
+				} else if len(name) >= len("$concurrentLimit") && name[:len("$concurrentLimit")] == "$concurrentLimit" && node["synthesized"] != true {
+					t.Fatalf("generated name %s marked authored: %s", name, source)
+				}
+			}
+			if authored < 2 {
+				t.Fatalf("lost written parameter or body read: %s", source)
+			}
+		}
+	}
+}
