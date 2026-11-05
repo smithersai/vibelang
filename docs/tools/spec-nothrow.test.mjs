@@ -245,6 +245,28 @@ test("the release notes describe a plain function's throw one way", () => {
   assert.match(notes, /a `throw` in a plain VibeLang function/)
 })
 
+// VIP-4's plain-code change shipped in 0.0.11; later releases retain its notice.
+function assertPublishedNoThrowNote(notes) {
+  const section = notes.split(/^## 0\.0\.11\s*$/m)[1]?.split(/^## /m)[0]
+  assert.ok(section, "the published 0.0.11 section must remain")
+  assert.match(section, /\*\*Language change:\*\* a `throw` in a plain VibeLang function/)
+}
+
+test("later release sections retain the published plain-code language-change notice", () => {
+  const published = read("docs/user/src/setup/release-notes.md")
+  assertPublishedNoThrowNote(published)
+  fc.assert(fc.property(
+    fc.integer({ min: 12, max: 999 }), fc.boolean(),
+    (patch, repeatNotice) => {
+      const notice = "**Language change:** a `throw` in a plain VibeLang function"
+      const prefix = "\n## 0.0." + patch + " (unreleased)\n\n" + (repeatNotice ? notice : "New fixes") + "\n"
+      assertPublishedNoThrowNote(prefix + published)
+      assert.throws(() => assertPublishedNoThrowNote(prefix + published.replaceAll(notice, "[removed]")))
+      assert.throws(() => assertPublishedNoThrowNote(prefix + published.replace("## 0.0.11\n", "## Archived\n")))
+    }
+  ), { seed: 41112, numRuns: 80 })
+})
+
 test("user docs, the cheat sheet and SKILL.md say plain VibeLang code never throws", () => {
   const skill = read("packages/compiler/skills/vibelang/SKILL.md")
   assert.doesNotMatch(skill, /In a plain function, `throw` is JavaScript's/)
@@ -256,7 +278,7 @@ test("user docs, the cheat sheet and SKILL.md say plain VibeLang code never thro
   assert.match(expected, /A plain function can't throw: a `throw` there is `EK0401`/)
   assert.match(read("docs/user/src/vibelang-features/115-cheat-sheet.md"), /In a plain function it is `EK0401`: make the function `effect`, or move the code to a `\.ts` file\. In an `async` function it rejects the Promise\./)
   assert.doesNotMatch(read("docs/user/src/getting-started/005-creating-effects.md"), /VibeLang infers throws from non-effectful plain `\.vibe` functions/)
-  assert.match(read("docs/user/src/setup/release-notes.md").split("\n## ")[1], /\*\*Language change:\*\* a `throw` in a plain VibeLang function/)
+  assertPublishedNoThrowNote(read("docs/user/src/setup/release-notes.md"))
 })
 
 test("plainThrows recognizes effect only as a modifier (PREVIEW-18)", () => {
