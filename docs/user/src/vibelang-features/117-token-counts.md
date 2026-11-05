@@ -111,9 +111,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,900 |
 | [Known limitations](../setup/known-limitations.md) | 550 |
-| **Start a project** | **8,000** |
+| **Start a project** | **8,100** |
 | [New project](../setup/new-project.md) | 540 |
-| [Existing project](../setup/existing-project.md) | 3,500 |
+| [Existing project](../setup/existing-project.md) | 3,600 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,000 |
 | **Build and test** | **19,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 16,000 |
@@ -273,7 +273,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 11,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 8 pages** | **52,000** |
+| **All 8 pages** | **53,000** |
 
 ### Specification
 
