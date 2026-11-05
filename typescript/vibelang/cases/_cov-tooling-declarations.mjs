@@ -56,9 +56,12 @@ export function nativeContract(mode) {
       const nativeOptions = { ...ts.convertCompilerOptionsFromJson(options, dir).options, outDir: join(dir,"stock") }
       const native = ts.createProgram([join(dir,"main"+twin)], nativeOptions)
       native.emit()
-      const expected = readFileSync(join(dir,"stock/main.d.ts"),"utf8").replaceAll("./producer"+twin, "./producer"+suffix)
-      check([suffix,rewrite,allow].join("/"), () => {
+      // Public output follows the native twin; source spellings belong to sidecars.
+      const expected = readFileSync(join(dir,"stock/main.d.ts"),"utf8")
+      check("public/" + [suffix,rewrite,allow].join("/"), () => {
         assert.equal(readFileSync(join(dir,"out/main.d.ts"),"utf8"), expected, fork.text)
+      })
+      check("sidecar/" + [suffix,rewrite,allow].join("/"), () => {
         const adjacent = join(dir,"main.d"+suffix+".ts")
         assert.ok(existsSync(adjacent), "missing compatibility declaration")
         assert.ok(readFileSync(adjacent,"utf8").includes("./producer"+suffix), "adjacent compatibility output must keep the source suffix")

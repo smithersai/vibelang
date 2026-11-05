@@ -85,6 +85,8 @@ An import a declaration file adds, such as `import { Effect } from 'effect'` for
 
 Inferred declaration imports use the TypeScript twin's module choice, including in a retained `.ts` or `.tsx` file that imports a `.vibe` module. Migrating a dependency does not introduce an import of a re-exporting package index and its unrelated declarations.
 
+For `export { value } from "./producer.vibe"`, public `.d.ts` output writes `./producer.ts` and the adjacent `.d.vibe.ts` writes `./producer.vibe`. A written `.vibex` specifier similarly uses `.tsx` in public output. The declaration spellings stay the same with either value of `rewriteRelativeImportExtensions`; that option rewrites JavaScript output.
+
 ## 2. Replace tsc in the scripts
 
 In `package.json`, replace `tsc` with `vibelang` in every script. `vibelang` runs the rules of the tsconfig's `@effect/language-service` entry, which plain `tsc` ignores. If nothing in the project runs `effect-tsgo patch` or `effect-language-service patch`, set `ignoreEffectWarningsInTscExitCode` and `ignoreEffectErrorsInTscExitCode` to `true` in that entry so Effect diagnostics print without failing a build `tsc` passed ([Lint Effect code](#lint-effect-code)). If the project has no build script, add these:
