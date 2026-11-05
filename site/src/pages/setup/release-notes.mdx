@@ -14,7 +14,17 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
+
+- TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
+
 - Bundlers could write relocated declarations under an incorrect nested path; loader compilation now preserves the configured declaration root and source maps.
+- The TypeScript mapper could reject ordinary error declarations because it treated generated matcher registration as authored syntax; valid error members now project normally.
+- Layer repair examples used unsupported static service calls; they now look up the service before invoking its member.
+- ESLint reported valid `for concurrent` bindings as unreachable code. It now preserves their scope without false `no-unreachable` errors, while still reporting unreachable statements in the source.
+- Adding the Vite plugin could make Node bundles crash on missing optional CommonJS dependencies. Delegated imports now preserve the resolver context that keeps those dependencies optional.
+- A throwing TypeScript callback could bypass its function-type contract through `satisfies`. Incompatible contracts now report `EK0402`; `--fix` preserves a simple inline constraint without changing the callback or its inferred type.
+- The Appendix diagnostic replay could time out before checking every example. It now checks independent projects concurrently while preserving every code, category and source-location assertion.
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
 - Tagged match migration examples included an unnecessary fallback after covering every tag; their output now reflects the current coverage rule.
@@ -218,6 +228,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | A direct `try f()` with `f(): any` inferred no errors or requirements | Its channels are `unknown`, as for native `yield*`. Declare the actual `Effect.Effect<A, E, R>` return type when known. |
 | A service type guard or assertion result captures an enclosing generic type | `EK3005`: choose a concrete predicate result or a member-local generic operation independent of the enclosing type; this contract choice requires a manual repair. |
 | A callable service contract whose explicit `this` parameter captures an enclosing generic type | `EK3005`: use a concrete receiver or a member-local generic operation independent of the enclosing type. Choosing that contract needs a manual repair. |
+| A throwing callback checked with an inline function type using `satisfies` | Run `vibelang --fix` to retain the structural constraint in a local type-only `module` that admits the callback's thrown type. The callable and inferred public type stay the same. Named constraints, comments and incompatible outer callback contracts need an explicit compatible type or exception-handling wrapper. |
 | A `private` or `protected` constructor in `error` or `schema error` | Run `vibelang --fix` to retain it in an Effect TypeScript class, preserving constructor visibility and tag matching. |
 | Throwing callbacks passed through optional or nullable `@rethrows` parameters, including `sort` | Run `vibelang --fix` to keep the original defect with `Effect.orDie(Effect.try(...))`. |
 | RHS closures in `for concurrent` that formerly captured an outer name with an incompatible type | `--fix` renames the item binding and its uses, keeping the RHS closure on the original outer binding |
