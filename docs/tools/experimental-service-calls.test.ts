@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import fc from "fast-check"
 import ts from "typescript"
 import { fileURLToPath } from "node:url"
+import { readFileSync } from "node:fs"
 import { documentedExperimentalServiceCallProblems, experimentalServiceCallProblems, experimentalServiceMethods } from "./experimental-service-calls.mjs"
 
 const services = experimentalServiceMethods()
@@ -16,6 +17,9 @@ test("experimental operation checks read the runtime declarations", () => {
     expect(service?.namespaceMethods).toContain(method)
     expect(service?.keyMethods).toContain(method)
   }
+  const processService = services.find(service => service.module === "Process")
+  expect(processService?.effectValues).toContain("hostname")
+  expect(processService?.effectValues).not.toContain("isRunning")
 })
 
 test("service lookup, pure functions and native key operations remain valid", () => {
@@ -66,6 +70,11 @@ declare const options: Experimental.NodeStream.Options
     const program = ts.createProgram([file], options, host)
     return program.getSemanticDiagnostics(program.getSourceFile(file)).map(diagnostic => diagnostic.code)
   }
+  const guide = readFileSync(new URL("../user/src/getting-started/012-devtools.md", import.meta.url), "utf8")
+  const row = guide.split("\n").find(line => line.startsWith("| TS2304, TS2552") && line.includes(".hostname"))
+  const advice = row?.match(/try \(try Experimental\.Process\.Process\)\.hostname(?:\(\))?/)?.[0]
+  expect(advice).toBeDefined()
+  expect(diagnostics("export const repaired = Effect.gen(function*() { return " + advice!.replace(/\btry\b/g, "yield*") + " })")).toEqual([])
   expect(diagnostics(`export const a = Experimental.Headers.copy(input)
 export const b = Experimental.NodeStream.fromWeb(body, options)
 export const c = Experimental.Request.atUrl("https://example.test", request)
@@ -84,4 +93,18 @@ export const e = Effect.gen(function*() { const service = yield* Experimental.Pr
 export const f = Effect.gen(function*() { const service = yield* Experimental.Animations.Animations; return yield* service.nextFrameUnless(() => undefined) })
 export const pure = Experimental.NetAddress.isIPv6("::1")
 `)).toEqual([])
+})
+
+
+test("generated Effect-valued facts are run without being called", () => {
+  const source = readFileSync(new URL("../../packages/runtime/src/experimental/Process.ts", import.meta.url), "utf8")
+  const facts = [...source.matchAll(/readonly\s+([A-Za-z_$][\w$]*)\s*:\s*Effect\.Effect</g)].map(match => match[1])
+  expect(facts).toContain("hostname")
+  fc.assert(fc.property(fc.constantFrom(...facts), fc.constantFrom("", " ", "\n", "\t"), (fact, spacing) => {
+    const read = "(try Experimental.Process.Process)." + fact
+    expect(experimentalServiceCallProblems("try " + read + spacing + "()", "generated.md", services)).toHaveLength(1)
+    expect(experimentalServiceCallProblems("try " + read, "generated.md", services)).toEqual([])
+    expect(experimentalServiceCallProblems("const program = " + read, "generated.md", services)).toEqual([])
+    expect(experimentalServiceCallProblems("try (try Experimental.Process.Process).isRunning(0)", "generated.md", services)).toEqual([])
+  }), { numRuns: 200, seed: 31031 })
 })

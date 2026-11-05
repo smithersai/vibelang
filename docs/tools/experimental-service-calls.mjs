@@ -35,12 +35,18 @@ export function experimentalServiceMethods(repo = root) {
         if ((key.flags | shape.flags) & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
           throw new Error("Cannot resolve " + relative(repo, file) + "; install docs/tools and packages/runtime dependencies")
         }
-        const methods = checker.getPropertiesOfType(shape).filter(item =>
-          /^[A-Za-z_$][\w$]*$/.test(item.name) && checker.getTypeOfSymbolAtLocation(item, declaration).getCallSignatures().length
-        ).map(item => item.name)
+        const members = checker.getPropertiesOfType(shape).filter(item => /^[A-Za-z_$][\w$]*$/.test(item.name))
+        const memberType = item => checker.getTypeOfSymbolAtLocation(item, declaration)
+        const methods = members.filter(item => memberType(item).getCallSignatures().length).map(item => item.name)
+        const effectValues = members.filter(item => {
+          const value = memberType(item)
+          return value.getCallSignatures().length === 0 &&
+            (value.symbol?.name === "Effect" || value.aliasSymbol?.name === "Effect")
+        }).map(item => item.name)
         const properties = new Set(checker.getPropertiesOfType(key).map(item => item.name))
         services.push({
           module: basename(file, ".ts"), key: declaration.name.text,
+          effectValues,
           namespaceMethods: methods.filter(name => !exports.has(name)),
           keyMethods: methods.filter(name => !properties.has(name))
         })
@@ -65,6 +71,14 @@ export function experimentalServiceCallProblems(text, file, services = experimen
       const line = text.slice(0, match.index).split("\n").length
       problems.push(file + ":" + line + ": look up Experimental." + service.module + "." + service.key + " before calling " + method)
     }
+  }
+  // An Effect-valued member is already a program; running it needs no call.
+  const valueCalls = /\(\s*try\s+Experimental\.([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\s*\)\s*\.\s*([A-Za-z_$][\w$]*)\s*(?=\()/g
+  for (const match of text.matchAll(valueCalls)) {
+    const service = byModule.get(match[1])
+    if (!service || match[2] !== service.key || !service.effectValues.includes(match[3])) continue
+    const line = text.slice(0, match.index).split("\n").length
+    problems.push(file + ":" + line + ": " + match[3] + " is an Effect value; run the member with try instead of calling it")
   }
   return problems
 }

@@ -678,7 +678,7 @@ const targets = {
     timeout: "5m"
   }),
   "docs-experimental-service-calls": check(
-    "Experimental service operations are called on looked-up implementations.",
+    "Experimental service references use implementations and run Effect-valued members directly.",
     "node docs/tools/experimental-service-calls.mjs && bun test docs/tools/experimental-service-calls.test.ts",
     [],
     [bun, node]
