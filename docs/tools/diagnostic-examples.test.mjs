@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import {readFileSync as readCaptureFixtures} from "node:fs"
 import { checkExample, resolveExamples } from "./diagnostic-examples.mjs"
+import {join} from "node:path"
+import {archiveExamples} from "./diagnostic-archive-examples.mjs"
+import {appendixCodes,repository} from "./diagnostic-identity.mjs"
+import fc from "fast-check"
 
 const example={name:"release-0011-pipe",code:"EK2301",source:"export const noTopic = 1 |> 2"}
 const appendix=new Map([["EK2301","a pipe body without a topic | 23 | Running Effects |"]])
@@ -58,4 +62,22 @@ test("retired lexical-capture and clock diagnostics require no live Appendix exa
  assert.deepEqual(resolveExamples([fixture],new Map()),[])
  assert.throws(()=>resolveExamples([fixture],new Map([[code,"error"]])),/retired fixture still has a row or registration/)
  }
+})
+
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:13:10; error; also EK0403](../../../typescript/vibelang/cases/any-call-error-recovery.fail/main.vibe).
+
+test("the legacy any-call witness retains every co-located native throw diagnostic",()=>{
+ const chapter=readCaptureFixtures(join(repository,"docs/design/src/900-appendices.md"),"utf8")
+ assert.ok(chapter.includes("Replay [example: main.vibe:13:10; error; also EK0403](../../../typescript/vibelang/cases/any-call-error-recovery.fail/main.vibe)."))
+ const appendix=appendixCodes(chapter)
+ const [example]=archiveExamples(new Map([["EK4409",appendix.get("EK4409")]]),repository)
+ assert.ok(example)
+ fc.assert(fc.property(fc.boolean(),fc.boolean(),fc.integer({min:1,max:4}),(reverse,coLocated,copies)=>{
+  const at=example.at
+  const primary=at.file+"("+at.line+","+at.column+"): error EK4409: the legacy any-call result is not run"
+  const native=at.file+"("+at.line+","+(at.column+(coLocated?0:1))+"): error EK0403: this call may throw"
+  const lines=[primary,...Array(copies).fill(native)]
+  if(reverse)lines.reverse()
+  assert.equal(checkExample(example,appendix,{status:2,stdout:lines.join("\n")}).length===0,coLocated)
+ }),{seed:4409,numRuns:100})
 })

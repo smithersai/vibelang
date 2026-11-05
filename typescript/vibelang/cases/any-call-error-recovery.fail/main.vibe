@@ -1,4 +1,4 @@
-// expect: EK0403 TS2339 TS2304 EK4409
+// expect: EK0403 TS2339 TS2304 EK0403 EK4409
 import * as Effect from "effect/Effect"
 export effect function missingMember(value: { present: number }) {
   try Effect.yieldNow
