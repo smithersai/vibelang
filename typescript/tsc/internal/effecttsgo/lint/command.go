@@ -37,7 +37,8 @@ root and .git/info/exclude ignore, the --ignore-path file (.eslintignore by
 default, read beside each .gitignore) and each --ignore-pattern glob;
 --no-ignore turns off the last two. Each file is checked in the nearest
 project that includes it. Each directory prefers vibe.config.json, then
-tsconfig.json, then jsconfig.json; -p selects a file or directory.
+tsconfig.json, then jsconfig.json, following references to the project that
+includes the selected file; -p selects a file or directory and its references.
 The status is 1 when an error is reported or a .vibe file has no project.
 Warnings never fail CI; promote their codes in vibe.severities to error. Invalid
 project settings return status 2.
@@ -164,17 +165,23 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 	}
 
 	var unchecked int
+	discovery := projectDiscovery{fs: sys.FS()}
 	byProject := map[string][]string{}
 	var projects []string
 	for _, file := range files {
 		p := project
 		if p == "" {
-			p = nearestProject(file)
+			p = discovery.nearest(file)
 		} else if !filepath.IsAbs(p) {
 			p = filepath.Join(cwd, p)
 		}
 		if info, err := os.Stat(p); err == nil && info.IsDir() {
 			p = projectInDirectory(p)
+		}
+		if project != "" && p != "" {
+			if owner := discovery.owner(p, file, map[string]bool{}); owner != "" {
+				p = owner
+			}
 		}
 		if p == "" {
 			fmt.Fprintf(errOut, "vibelang lint: %s: no project config above it includes it; not linted.\n", relative(cwd, file))
@@ -314,19 +321,6 @@ func vibeFiles(cwd string, paths []string, config *Config, ignore *ignorer) ([]s
 	}
 	slices.Sort(files)
 	return slices.Compact(files), nil
-}
-
-// nearestProject uses the same per-directory config precedence as the compiler.
-func nearestProject(file string) string {
-	for dir := filepath.Dir(file); ; dir = filepath.Dir(dir) {
-		candidate := projectInDirectory(dir)
-		if _, err := os.Stat(candidate); err == nil && includes(candidate, file) {
-			return candidate
-		}
-		if parent := filepath.Dir(dir); parent == dir {
-			return ""
-		}
-	}
 }
 
 func projectInDirectory(dir string) string {

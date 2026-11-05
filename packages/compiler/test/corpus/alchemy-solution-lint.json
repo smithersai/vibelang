@@ -1,0 +1,9 @@
+{
+  "depth": 0,
+  "rootConfig": "tsconfig.json",
+  "leafConfig": "tsconfig.node.json",
+  "directory": "runtime",
+  "count": 1,
+  "explicitFiles": false,
+  "jsonc": false
+}
