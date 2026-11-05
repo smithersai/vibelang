@@ -496,3 +496,11 @@ target-version availability, type/name errors, non-error categories and
 foreign diagnostic sources retain their separate meaning. The original
 malformed-literal mutation is a nonpending rejection corpus, with native
 TypeScript controls and category/source collision coverage.
+
+The lab connects ordinary `export` declarations to Appendix A's service,
+error, schema-error, schema and data productions. This bridge uses only
+productions the appendix defines; it adds neither custom default exports
+nor syntax to the native TypeScript grammar. Service name/key errors such
+as `EK0903` and implicit-any member errors such as `TS7008` remain
+non-syntax errors. An untyped property signature and a contextual name
+therefore do not turn an admitted export into a grammar gap.

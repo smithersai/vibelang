@@ -223,6 +223,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-parenthesized-trailing-bang", "{ type T = (\nnumber ! string ! )\nboolean }"},
 	{"native-regexp-literal", "n = / 2 /\n2\n;"},
 	{"native-regexp-unmatched-paren", "n = / ) 2 /\n2\n;"},
+	{"custom-declaration-export", "type Value = number ; export service type { Value } ;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

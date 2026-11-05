@@ -689,6 +689,7 @@ var grammarQuotedToken = regexp.MustCompile(`"[^"\s]+"`)
 // PrimaryExpression)" or "(where ECMAScript has AwaitExpression)" overrides
 // the table.
 var grammarSubsetHooks = []struct{ at, name string }{
+	{"ExportDeclaration", "VibeExportDeclaration"},
 	{"PrimaryExpression", "PipeTopic"},
 	{"PrimaryExpression", "DoExpression"},
 	{"PrimaryExpression", "MatchExpression"},
@@ -963,6 +964,23 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		d.source = a.file
 		defs = append(defs, d)
 		defined["AssertedIsTest"] = true
+	}
+	// Appendix A admits ordinary exports of its custom declarations through
+	// ECMAScript's ExportDeclaration. Keep default exports on their native
+	// alternatives and do not install this bridge in the TypeScript-only lab.
+	if strings.Contains(a.text, grammarDeclarationExportQuote) {
+		var exports []string
+		for _, name := range []string{"ServiceDeclaration", "ErrorDeclaration", "SchemaErrorDeclaration", "SchemaDeclaration", "DataDeclaration"} {
+			if defined[name] {
+				exports = append(exports, `"export" `+name)
+			}
+		}
+		if len(exports) > 0 {
+			d := grammarParseDef("VibeExportDeclaration", strings.Join(exports, " | "), 0)
+			d.vibe, d.source = true, a.file
+			defs = append(defs, d)
+			defined["VibeExportDeclaration"] = true
+		}
 	}
 	// VIP-41 imports the pinned throw-expression draft: one UnaryExpression
 	// alternative whose lookahead is Appendix A's ThrowExpressionInvalidPunctuator.
