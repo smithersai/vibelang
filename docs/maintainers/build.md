@@ -1952,3 +1952,5 @@ The `//:missing-data-method-diagnostics` gate retains all native lookup errors a
 The `//:tagged-pattern-binding-renames` gate exercises reference and rename operations across tagged variants, binding keywords, Unicode names, trivia, and explicit-key controls.
 
 The `//:nothrow-rethrow-escape-controls` gate retains every escape shape and adds plain-call and deeper-return controls for each independently admitted array callback.
+
+The `//:native-import-preference-twins` gate retains byte-exact unchanged-importer controls and compares explicit source imports with independent native twins and stock TypeScript 5.9.3.

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 )
@@ -16,12 +17,9 @@ func TestUnrelatedDeclarationSpecifierQuoted(t *testing.T) {
 	}
 }
 
-// T3code's migration changes bridge.ts alone. The untouched native importer
-// infers a type from a different TSX module. Neither the unrelated import nor
-// the project containing one VibeLang source may respell that inferred type.
-// Compare raw declarations from the native project and its one-file migration;
-// this tests the selected native spelling, which is stricter than general
-// API identity (VIP-27 permits equivalent import extension spellings).
+// Migrating the bridge without changing its native importer preserves its
+// declaration bytes. An explicit source import additionally follows the
+// corresponding native .ts input's import-ending preference (VIP-27).
 func unrelatedDeclarationSeed(ext, prefix, quote string, conditional bool) string {
 	result := "item()"
 	if conditional {
@@ -118,31 +116,45 @@ func FuzzUnrelatedDeclarationSpecifier(f *testing.F) {
 			// Mutations must still describe an admitted native program.
 			t.Skipf("inadmissible native reference: %v", SortedKeys(Keys(before.Dir, before.Diagnostics)))
 		}
-		files["bridge.vibe"] = files["bridge.ts"]
-		delete(files, "bridge.ts")
-		files[main] = strings.ReplaceAll(strings.ReplaceAll(text, `"./bridge"`, `"./bridge.vibe"`), `'./bridge'`, `'./bridge.vibe'`)
-		after, err := w.Compile(t.Context(), Project{Files: files, Config: cfg})
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer after.Remove()
-		if HasError(after.Diagnostics) {
-			t.Fatalf("unrelated one-file migration rejected: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
-		}
 		output := "out/main.d.ts"
-		want, ok := before.Outputs[output]
-		if !ok || want == "" {
-			t.Fatalf("missing native declaration: %v", before.Outputs)
+		original, ok := before.Outputs[output]
+		if !ok || original == "" {
+			t.Fatal("missing native declaration")
 		}
-		got, ok := after.Outputs[output]
-		if !ok || got == "" {
-			t.Fatalf("missing migrated declaration: %v", after.Outputs)
+		for _, explicit := range []bool{false, true} {
+			migrated := maps.Clone(files)
+			migrated["bridge.vibe"] = migrated["bridge.ts"]
+			delete(migrated, "bridge.ts")
+			want := original
+			if explicit {
+				migrated[main] = strings.ReplaceAll(strings.ReplaceAll(text, `"./bridge"`, `"./bridge.vibe"`), "'./bridge'", "'./bridge.vibe'")
+				nativeFiles := maps.Clone(files)
+				nativeFiles[main] = strings.ReplaceAll(strings.ReplaceAll(text, `"./bridge"`, `"./bridge.ts"`), "'./bridge'", "'./bridge.ts'")
+				twin, err := w.Compile(t.Context(), Project{Files: nativeFiles, Config: cfg})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if HasError(twin.Diagnostics) {
+					t.Fatalf("native source-import twin: %v", SortedKeys(Keys(twin.Dir, twin.Diagnostics)))
+				}
+				want = twin.Outputs[output]
+				twin.Remove()
+			}
+			after, err := w.Compile(t.Context(), Project{Files: migrated, Config: cfg})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if HasError(after.Diagnostics) {
+				t.Fatalf("one-file migration: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
+			}
+			got := after.Outputs[output]
+			after.Remove()
+			key := fmt.Sprintf("raw:%x", sha256.Sum256([]byte(archive)))
+			if got == "" || got != want {
+				Gap(t, "FuzzUnrelatedDeclarationSpecifier", key, "%s: explicit=%t; native:\n%s\nmigrated:\n%s\n%s", unrelatedDeclarationQuote, explicit, want, got, archive)
+			}
 		}
-		key := fmt.Sprintf("raw:%x", sha256.Sum256([]byte(archive)))
-		if got != want {
-			Gap(t, "FuzzUnrelatedDeclarationSpecifier", key, "VIP-27 %q\nnative:\n%s\none unrelated migration:\n%s\n%s", unrelatedDeclarationQuote, want, got, archive)
-		}
-		ExpectPending(t, "FuzzUnrelatedDeclarationSpecifier", key)
+		ExpectPending(t, "FuzzUnrelatedDeclarationSpecifier", fmt.Sprintf("raw:%x", sha256.Sum256([]byte(archive))))
 		ExpectPending(t, "FuzzUnrelatedDeclarationSpecifier", specCorpusKey(t))
 	})
 }
