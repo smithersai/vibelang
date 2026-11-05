@@ -74,14 +74,45 @@ type moduleOccurrence struct {
 // moduleDeclarationOccurrences returns the written name at position and every
 // written occurrence of it, when position is on a module declared in the file.
 func (l *LanguageService) moduleDeclarationOccurrences(uri lsproto.DocumentUri, position lsproto.Position) (string, lsproto.Range, []moduleOccurrence, bool) {
+	occurrences := l.moduleDeclarationFileOccurrences(uri)
+	name := ""
+	var trigger lsproto.Range
+	for _, item := range occurrences {
+		if lsproto.ComparePositions(item.span.Start, position) <= 0 && lsproto.ComparePositions(position, item.span.End) <= 0 {
+			name, trigger = item.name, item.span
+			break
+		}
+	}
+	if name == "" {
+		return "", lsproto.Range{}, nil, false
+	}
+	declared := false
+	var named []moduleOccurrence
+	for _, item := range occurrences {
+		if item.name == name {
+			named = append(named, item)
+			declared = declared || item.declaration
+		}
+	}
+	if !declared {
+		return "", lsproto.Range{}, nil, false
+	}
+	return name, trigger, named, true
+}
+
+// moduleDeclarationFileOccurrences collects a file's written module names
+// once, independent of the number of references a native symbol returned.
+func (l *LanguageService) moduleDeclarationFileOccurrences(uri lsproto.DocumentUri) []moduleOccurrence {
 	// TypeScript's answers can name a file outside the program, such as a
 	// library source a declaration map points to; it declares no module.
 	_, file := l.tryGetProgramAndFile(uri.FileName())
-	if file == nil {
-		return "", lsproto.Range{}, nil, false
+	// Reference answers may contain thousands of library occurrences. Those
+	// files cannot contribute a written embedded-module binding; walking
+	// their syntax tree once per returned reference makes this quadratic.
+	if file == nil || len(file.EmbeddedModules()) == 0 {
+		return nil
 	}
-	type occurrence = moduleOccurrence
-	var occurrences []occurrence
+	var occurrences []moduleOccurrence
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		declaration := parser.IsVibeLangModuleDeclaration(node)
@@ -105,36 +136,14 @@ func (l *LanguageService) moduleDeclarationOccurrences(uri lsproto.DocumentUri, 
 						name = module.EmbeddedModule().Name
 					}
 				}
-				occurrences = append(occurrences, occurrence{name, span, declaration})
+				occurrences = append(occurrences, moduleOccurrence{name, span, declaration})
 			}
 			return false
 		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-	name := ""
-	var trigger lsproto.Range
-	for _, item := range occurrences {
-		if lsproto.ComparePositions(item.span.Start, position) <= 0 && lsproto.ComparePositions(position, item.span.End) <= 0 {
-			name, trigger = item.name, item.span
-			break
-		}
-	}
-	if name == "" {
-		return "", lsproto.Range{}, nil, false
-	}
-	declared := false
-	var named []occurrence
-	for _, item := range occurrences {
-		if item.name == name {
-			named = append(named, item)
-			declared = declared || item.declaration
-		}
-	}
-	if !declared {
-		return "", lsproto.Range{}, nil, false
-	}
-	return name, trigger, named, true
+	return occurrences
 }
 
 // moduleDeclarationFollowers extends a rename or references answer from the
@@ -144,28 +153,25 @@ func (l *LanguageService) moduleDeclarationOccurrences(uri lsproto.DocumentUri, 
 // module that no longer exists (VIP-40). It returns, for each document, the
 // other written occurrences of each module declaration name among ranges.
 func (l *LanguageService) moduleDeclarationFollowers(uri lsproto.DocumentUri, ranges []lsproto.Range) []moduleOccurrence {
-	var followers []moduleOccurrence
+	occurrences := l.moduleDeclarationFileOccurrences(uri)
+	if len(occurrences) == 0 {
+		return nil
+	}
 	seen := map[lsproto.Range]bool{}
 	for _, r := range ranges {
 		seen[r] = true
 	}
-	for _, r := range ranges {
-		_, trigger, occurrences, ok := l.moduleDeclarationOccurrences(uri, r.Start)
-		if !ok || trigger != r {
-			continue
+	names := map[string]bool{}
+	for _, item := range occurrences {
+		if item.declaration && seen[item.span] {
+			names[item.name] = true
 		}
-		declaration := false
-		for _, item := range occurrences {
-			declaration = declaration || item.declaration && item.span == r
-		}
-		if !declaration {
-			continue
-		}
-		for _, item := range occurrences {
-			if !seen[item.span] {
-				seen[item.span] = true
-				followers = append(followers, item)
-			}
+	}
+	var followers []moduleOccurrence
+	for _, item := range occurrences {
+		if names[item.name] && !seen[item.span] {
+			seen[item.span] = true
+			followers = append(followers, item)
 		}
 	}
 	return followers
@@ -265,27 +271,33 @@ func (l *LanguageService) followModuleDeclarationHighlights(response lsproto.Mul
 
 // referenceCanMergeModule limits alias closure to identifiers whose spelling
 // is also a module declaration of their file. Other symbols keep native queries.
-func (l *LanguageService) referenceCanMergeModule(location lsproto.Location) bool {
+func (l *LanguageService) referenceCanMergeModule(location lsproto.Location, namesByURI map[lsproto.DocumentUri]map[string]bool) bool {
 	_, file := l.tryGetProgramAndFile(location.Uri.FileName())
-	if file == nil {
+	if file == nil || len(file.EmbeddedModules()) == 0 {
 		return false
 	}
-	if _, _, _, module := l.moduleDeclarationOccurrences(location.Uri, location.Range.Start); module {
-		return false
+	names, indexed := namesByURI[location.Uri]
+	if !indexed {
+		names = map[string]bool{}
+		for _, statement := range file.Statements.Nodes {
+			if parser.IsVibeLangModuleDeclaration(statement) && !ast.NodeIsMissing(statement.Name()) {
+				names[statement.Name().Text()] = true
+			}
+		}
+		namesByURI[location.Uri] = names
 	}
 	for _, mapped := range l.converters.FromLSPPositionForSourceFile(file, location.Range.Start, spanmap.FeatureReferences) {
 		if !mapped.Fidelity.IsSingleSegment() {
 			continue
 		}
 		node := astnav.GetTouchingPropertyName(mapped.Script, int(mapped.Position))
-		if node == nil || !ast.IsIdentifier(node) {
+		if node == nil || !ast.IsIdentifier(node) || !names[node.Text()] {
 			continue
 		}
-		if slices.ContainsFunc(file.Statements.Nodes, func(statement *ast.Node) bool {
-			return parser.IsVibeLangModuleDeclaration(statement) && statement.Name().Text() == node.Text()
-		}) {
-			return true
+		if _, _, _, module := l.moduleDeclarationOccurrences(location.Uri, location.Range.Start); module {
+			return false
 		}
+		return true
 	}
 	return false
 }
@@ -308,9 +320,12 @@ func (l *LanguageService) expandModuleReferenceAliases(ctx context.Context, para
 			*response.Locations = append(*response.Locations, location)
 		}
 	}
+	// Index declaration spellings once per document before considering native
+	// occurrences; an unrelated symbol must not trigger a module-tree scan.
+	namesByURI := map[lsproto.DocumentUri]map[string]bool{}
 	for index := 0; index < len(*response.Locations); index++ {
 		location := (*response.Locations)[index]
-		if !l.referenceCanMergeModule(location) {
+		if !l.referenceCanMergeModule(location, namesByURI) {
 			continue
 		}
 		at := *params

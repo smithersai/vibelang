@@ -97,7 +97,17 @@ func moduleEditorServiceFiles(t *testing.T, source string, extra map[string]stri
 		t.Fatal(errors)
 	}
 	p := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+	// These fixture documents are immutable. Cache their line maps as the
+	// editor host does, so a large reference answer does not spend quadratic
+	// time repeatedly scanning the same source in the test adapter.
+	lineMaps := map[tspath.RootedFilePath]*lsconv.LSPLineMap{}
+	for name, text := range files {
+		lineMaps[tspath.RootedFilePath(name)] = lsconv.ComputeLSPLineStarts(text)
+	}
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
+		if lines := lineMaps[name]; lines != nil {
+			return lines
+		}
 		return lsconv.ComputeLSPLineStarts(files[string(name)])
 	})
 	return ls.NewLanguageService(nil, p, retiredModulesHost{trustedFixHost: trustedFixHost{converters: converters}, files: files}, "/project/main.vibe"), p, converters

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -332,6 +333,9 @@ func toolsRequest[T any](e *toolsEditor, what string, fn func(*ls.LanguageServic
 // session, since it may hold the session's locks.
 func (e *toolsEditor) run(stage string, fn func()) {
 	e.t.Helper()
+	if os.Getenv("VIBELANG_FUZZ_TRACE") == "1" {
+		fmt.Fprintf(os.Stderr, "fuzz-editor: test=%s stage=%s position=%s\n", e.t.Name(), stage, e.where)
+	}
 	toolsRun(e.t, "FuzzEditor", stage, e.archive+"\nat "+e.where, e.sessions.poison, fn)
 }
 

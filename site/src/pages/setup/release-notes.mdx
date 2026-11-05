@@ -41,6 +41,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The TypeScript mapper could mistake an explicit `effect` block for an unclassified callback and reject a valid `catch`; blocks now retain their program form and execution boundary after reparsing. `try effect { … }` also failed there with a syntax error; it now runs the block where it stands.
 
+- Finding references could stall when a project loaded large native libraries; module aliases now use one lookup per document and return the complete reference list promptly.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.
