@@ -120,7 +120,11 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 					if !compatible {
 						continue
 					}
-					thrown = append(thrown, knownCallbackSignatureThrows(c, given, part)...)
+					owners := []*checker.Type{part}
+					if callbackReceiverIsWritten(c, argument, map[*ast.Symbol]bool{}) {
+						owners = append(foreignReferenceOwners(c, argument), part)
+					}
+					thrown = append(thrown, knownCallbackSignatureThrows(c, given, owners...)...)
 				}
 			}
 		}
@@ -128,12 +132,12 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 	return thrown
 }
 
-func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signature, owner *checker.Type) []*checker.Type {
+func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signature, owners ...*checker.Type) []*checker.Type {
 	root := signature
 	for root.Target() != nil {
 		root = root.Target()
 	}
-	if isEffectfulType(c, c.InstantiateWrittenSignatureType(nil, c.GetReturnTypeOfSignature(root), []*checker.Type{owner})) {
+	if isEffectfulType(c, c.InstantiateWrittenSignatureType(nil, c.GetReturnTypeOfSignature(root), owners)) {
 		return nil
 	}
 	decl := root.Declaration()
@@ -193,7 +197,7 @@ func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signatu
 				if node == nil {
 					continue
 				}
-				value := c.InstantiateWrittenSignatureType(signature, c.GetTypeFromTypeNode(node), []*checker.Type{owner})
+				value := c.InstantiateWrittenSignatureType(signature, c.GetTypeFromTypeNode(node), owners)
 				if value != nil && value.Flags()&checker.TypeFlagsNever == 0 {
 					thrown = append(thrown, value)
 				}
@@ -347,4 +351,60 @@ func rethrowsCallArguments(call *ast.Node) []*ast.Node {
 		}
 	}
 	return arguments
+}
+
+// Extra receiver owners are valid only when a written type or constant
+// reference establishes them. Native inference can merge distinct throws
+// contracts, so do not recover a receiver from a conditional or mutable value.
+func callbackReceiverIsWritten(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol]bool) bool {
+	node = ast.SkipParentheses(node)
+	if node == nil {
+		return false
+	}
+	if ast.IsAsExpression(node) || ast.IsTypeAssertion(node) || node.Kind == ast.KindThisKeyword {
+		return true
+	}
+	property := ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node)
+	if property && !callbackReceiverIsWritten(c, node.Expression(), seen) {
+		return false
+	}
+	if !property && !ast.IsIdentifier(node) {
+		return false
+	}
+	symbol := c.GetSymbolAtLocation(node)
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol == nil || seen[symbol] {
+		return false
+	}
+	seen[symbol] = true
+	for _, declaration := range symbol.Declarations() {
+		switch {
+		case ast.IsVariableDeclaration(declaration):
+			if declaration.Type() != nil {
+				return true
+			}
+			return ast.IsVarConst(declaration) && declaration.Initializer() != nil &&
+				callbackReceiverIsWritten(c, declaration.Initializer(), seen)
+		case ast.IsBindingElement(declaration):
+			root := ast.GetRootDeclaration(declaration)
+			if !ast.IsVariableDeclaration(root) || !ast.IsVarConst(root) {
+				return false
+			}
+			for element := declaration; ast.IsBindingElement(element); element = element.Parent.Parent {
+				if element.Initializer() != nil {
+					return false
+				}
+			}
+			return root.Type() != nil || root.Initializer() != nil && callbackReceiverIsWritten(c, root.Initializer(), seen)
+		case ast.IsPropertyDeclaration(declaration), ast.IsParameterDeclaration(declaration), ast.IsGetAccessorDeclaration(declaration):
+			return declaration.Type() != nil
+		case ast.IsPropertyAssignment(declaration), ast.IsShorthandPropertyAssignment(declaration):
+			return false
+		default:
+			return true
+		}
+	}
+	return false
 }

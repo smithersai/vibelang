@@ -847,6 +847,106 @@ func failuresCases() []*failCase {
 			}
 		}
 	}
+
+	// Written callback contracts retain their receiver substitutions at rethrowing calls.
+	for _, bound := range []struct {
+		key, text string
+		throwing  bool
+	}{{"never", "never", false}, {"range", "RangeError", true}} {
+		for _, binding := range []struct{ key, prefix, arg string }{
+			{"direct", "", "reader.read"},
+			{"alias", "const read=reader.read;", "read"},
+			{"chain", "const first=reader.read;const read=first;", "read"},
+			{"object", "const {read}=reader;", "read"},
+			{"nested", "const {reader:{read}}=nested;", "read"},
+		} {
+			for _, invoke := range []string{"array", "foreign", "constructor", "tag"} {
+				for _, context := range []string{"effect", "plain", "wrapped"} {
+					name := "rethrows-receiver-" + invoke + "-" + binding.key + "-" + bound.key + "-" + context
+					host, body, code := "effect", "[1].map("+binding.arg+")", 0
+					switch invoke {
+					case "foreign":
+						body = "run(" + binding.arg + ")"
+					case "constructor":
+						body = "new Invoke(" + binding.arg + ")"
+					case "tag":
+						body = "tag" + string(rune(96)) + "${" + binding.arg + "}" + string(rune(96))
+					}
+					if context == "plain" {
+						host = "plain"
+					}
+					if context == "wrapped" {
+						body = "try Effect.try(()=>" + body + ")"
+					} else if bound.throwing {
+						body = "⟦" + body + "⟧"
+						code = 403
+						if host == "plain" {
+							code = 401
+						}
+					}
+					quote := q.rethrows
+					if code == 403 {
+						quote = q.directCall
+					} else if code == 401 {
+						quote = q.plainPropagates
+					}
+					lib := "export interface Reader<T>{\n/** @throws {T} */\nread(s:number):number\n}\nexport declare const reader:Reader<" + bound.text + ">\nexport declare const nested:{reader:Reader<" + bound.text + ">}\n" +
+						"/** @throws {never}\n * @rethrows cb\n */\nexport declare function run(cb:(s:number)=>number):number\n" +
+						"export declare class Invoke{\n/** @throws {never}\n * @rethrows cb\n */\nconstructor(cb:(s:number)=>number)}\n" +
+						"/** @throws {never}\n * @rethrows cb\n */\nexport declare function tag(parts:TemplateStringsArray,cb:(s:number)=>number):number"
+					add(&failCase{Name: name, Quote: quote, Host: host, Lib: lib, Body: binding.prefix + body, Code: code, OneDiagnostic: code != 0})
+				}
+			}
+		}
+	}
+
+	// Inferred receiver alternatives must not borrow only the never branch's owner.
+	for _, reverse := range []bool{false, true} {
+		left, right, order := "safe", "risky", "safe-first"
+		if reverse {
+			left, right, order = right, left, "risky-first"
+		}
+		for _, alias := range []bool{false, true} {
+			reference, prefix, arg := "direct", "const selected=xs.length>0?"+left+":"+right+";", "selected.read"
+			if alias {
+				reference = "alias"
+				prefix += "const read=selected.read;"
+				arg = "read"
+			}
+			for _, invoke := range []string{"array", "foreign", "constructor", "tag"} {
+				for _, context := range []string{"effect", "plain", "wrapped"} {
+					name := "rethrows-inferred-receiver-" + order + "-" + reference + "-" + invoke + "-" + context
+					host, body, code := "effect", "[1].map("+arg+")", 403
+					switch invoke {
+					case "foreign":
+						body = "run(" + arg + ")"
+					case "constructor":
+						body = "new Invoke(" + arg + ")"
+					case "tag":
+						body = "tag" + string(rune(96)) + "${" + arg + "}" + string(rune(96))
+					}
+					quote := q.directCall
+					if context == "plain" {
+						host = "plain"
+						code = 401
+						quote = q.plainPropagates
+					}
+					if context == "wrapped" {
+						body = "try Effect.try(()=>" + body + ")"
+						code = 0
+						quote = q.rethrows
+					} else {
+						body = "⟦" + body + "⟧"
+					}
+					lib := "export interface Reader<T>{\n/** @throws {T} */\nread(n:number):number\n}\nexport declare const safe:Reader<never>\nexport declare const risky:Reader<RangeError>\n" +
+						"/** @throws {never}\n * @rethrows cb\n */\nexport declare function run(cb:(n:number)=>number):number\n" +
+						"export declare class Invoke{\n/** @throws {never}\n * @rethrows cb\n */\nconstructor(cb:(n:number)=>number)}\n" +
+						"/** @throws {never}\n * @rethrows cb\n */\nexport declare function tag(parts:TemplateStringsArray,cb:(n:number)=>number):number"
+					add(&failCase{Name: name, Quote: quote, Host: host, Lib: lib, Body: prefix + body, Code: code, OneDiagnostic: code != 0})
+				}
+			}
+		}
+	}
 	add(&failCase{Name: "foreign-own-throw-over-type", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦read(s)⟧", Lib: "type Reader = (s: string) => string\n/** @throws {Error} */\nexport declare const read: Reader"})
 	add(&failCase{Name: "foreign-returned-signature", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const read = make()\n⟦read(s)⟧", Lib: "/** @throws {never} */\nexport declare function make(): {\n /** @throws {Error} */\n (s: string): string\n}"})
 	add(&failCase{Name: "foreign-overload-number", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const text = choose(s)\n⟦choose(1)⟧", Lib: "/** @throws {never} */\nexport declare function choose(s: string): string\n/** @throws {RangeError} */\nexport declare function choose(n: number): number"})

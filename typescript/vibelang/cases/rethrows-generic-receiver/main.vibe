@@ -1,0 +1,17 @@
+// expect-result: [[2,4],["Die",true,3]]
+import {reader,brokenReader,inspect} from "./lib.js"
+export effect function success() {
+ const first=reader.read
+ const read=(first)
+ return [1,2].map(read)
+}
+export effect function broken() {
+ const {read}=brokenReader
+ return [1].map(read)
+}
+export effect function main() {
+ const values=try success()
+ const verdict=try inspect(broken())
+ return [values,verdict]
+}
+export const parked=success()

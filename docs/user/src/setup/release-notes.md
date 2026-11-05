@@ -264,6 +264,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration declaration snapshots could lose project types such as `NodeJS.ProcessEnv` and reject an unchanged API. They now retain the original project’s type selection and module-resolution context.
 
 - Compound extractor patterns could repeat matcher calls and reject regex bindings with spurious TypeScript errors. They now capture each extraction once and preserve the binding types.
+- Passing a generic foreign method to a rethrowing helper could require a bridge even when its selected thrown type was `never`. Callback checks now retain the receiver’s type arguments.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.

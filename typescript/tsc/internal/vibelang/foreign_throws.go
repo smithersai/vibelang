@@ -170,6 +170,10 @@ func needsExplicitThrowsBridge(c *checker.Checker, call *ast.Node) bool {
 // foreignInvocationOwners retains receiver substitutions through inferred
 // const references without inspecting a callable body or crossing a type.
 func foreignInvocationOwners(c *checker.Checker, call *ast.Node) []*checker.Type {
+	return append(foreignReferenceOwners(c, ast.GetInvokedExpression(call)), c.GetTypeAtLocation(call))
+}
+
+func foreignReferenceOwners(c *checker.Checker, expression *ast.Node) []*checker.Type {
 	var owners []*checker.Type
 	seen := map[*ast.Symbol]bool{}
 	var visit func(*ast.Node)
@@ -228,6 +232,6 @@ func foreignInvocationOwners(c *checker.Checker, call *ast.Node) []*checker.Type
 			}
 		}
 	}
-	visit(ast.GetInvokedExpression(call))
-	return append(owners, c.GetTypeAtLocation(call))
+	visit(expression)
+	return owners
 }
