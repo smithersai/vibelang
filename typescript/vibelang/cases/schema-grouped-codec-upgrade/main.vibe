@@ -20,7 +20,7 @@ export const Payload = Schema.Struct({
     first: codecs.first, choice: Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]), last: codecs.last,
 });
 export type Payload = typeof Payload.Type;
-const $makeCodec1333_0 = (): infer _ => Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]);
+const $makeCodec1333_0 = () => Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]);
 const $codecs1333 = { get $codec1333_0() { return $makeCodec1333_0(); } };
 
 export schema error Root { value: $codecs1333.$codec1333_0; get label(): string {return "kept"} }

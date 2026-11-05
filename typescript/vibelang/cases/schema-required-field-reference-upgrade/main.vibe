@@ -11,7 +11,7 @@ export const Nested = Schema.Struct({
     }),
 });
 export type Nested = typeof Nested.Type;
-const $makeCodec420_0 = (): infer _ => Schema.Struct({
+const $makeCodec420_0 = () => Schema.Struct({
     value: Optional,
 });
 const $codecs420 = { get $codec420_0() { return $makeCodec420_0(); } };

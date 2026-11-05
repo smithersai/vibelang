@@ -16,7 +16,7 @@ func TestSchemaFactoryMigrationReturnsQuoted(t *testing.T) {
 }
 func FuzzSchemaFactoryMigrationReturns(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"root", "namespace", "extra-payload", "unicode"} {
+	for _, key := range []string{"root", "namespace", "extra-payload", "unicode", "readonly-field", "required-field", "grouped-field", "optional-field"} {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(1))
 	}
@@ -29,6 +29,16 @@ func FuzzSchemaFactoryMigrationReturns(f *testing.F) {
 				field = "値"
 			}
 			payload := field + ":Mutable;count:number"
+			switch key {
+			case "readonly-field":
+				payload = "readonly " + payload
+			case "required-field":
+				payload += ";requiredText:string"
+			case "grouped-field":
+				payload += ";state:(\"a\"|\"b\")|null"
+			case "optional-field":
+				payload = field + "?:Mutable;count:number"
+			}
 			if mode&1 != 0 {
 				payload += ";note?:string"
 			}

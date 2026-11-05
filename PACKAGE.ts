@@ -1089,7 +1089,7 @@ const targets = {
   ),
   "schema-codec-native-return-inference": goVibelang(
     "Schema codec factories retain writable references with native return inference",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestSchemaReadonlyMigrationCodecReferences|FuzzSchemaCodecFactoryNativeReturns|TestSchemaFactoryMigrationReturnsQuoted|FuzzSchemaFactoryMigrationReturns)$\" ./internal/vibelang ./internal/vibelangfuzz",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestFixProjectGroupedSchemaMigration|TestFixProjectSchemaRequiredFieldReference|TestFixProjectSchemaReadonlyFieldReference|TestSchemaReadonlyMigrationCodecReferences|FuzzSchemaCodecFactoryNativeReturns|TestSchemaFactoryMigrationReturnsQuoted|FuzzSchemaFactoryMigrationReturns)$\" ./internal/vibelang ./internal/vibelangfuzz",
     [],
     "15m"
   ),
