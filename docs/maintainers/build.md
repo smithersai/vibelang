@@ -1662,6 +1662,15 @@ samples retain package export conditions, `import` and `require` branch types,
 two uses of one specifier, declaration import attributes, quote and self identity,
 and changed dependencies with the native type difference and `TS2344` checks.
 
+Generated-contract documentation fixtures select `lib.es5.d.ts` for every
+comparison and independently validate both original declarations with stock
+TypeScript. The loaded-library guard requires ES5, allows its decorator libraries
+and checks outside comparison failure handling. Failure diagnostics list each
+library name once. All 29 tests retain callable
+forms, overloads, optional methods, nested signatures, inherited prose and the
+authored, duplicate and extra-tag negative controls. Library scoping belongs to
+these pure declarations; browser-dependent fixtures retain their own environment.
+
 Nested ambient-ownership API fixtures select `lib.es5.d.ts` for both their
 native TypeScript validation and every comparator program. A native source-file
 guard rejects accidental browser-library loading. The fixture still checks

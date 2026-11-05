@@ -228,6 +228,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Setup now preserves unpatched compiler lint exit behavior when plugin settings are inherited from an owned shared configuration, while retaining explicit author overrides.
 - The invalid catch-value example now shows its syntax error without an unrelated generic-call advisory, while retaining independent native errors.
 - An invalid or misplaced `for try` could hide iterator errors inside its operand. Native iteration, spread, destructuring and delegation errors now keep their own diagnostics.
+- Generated-contract declaration tests repeatedly loaded unrelated browser libraries. They now select ES5 and independently validate each declaration while retaining authored documentation and contract checks.
 - Empty Effect functions and blocks could share one Effect value across separate constructions, changing explicit equality results. They now follow their `Effect.gen` construction counterpart; reusing a saved Effect still shares that value.
 
 - The legacy JSON advisory example now enables its warning through the supported project configuration and retains the disabled default.

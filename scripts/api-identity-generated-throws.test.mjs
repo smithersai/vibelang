@@ -1,19 +1,46 @@
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { basename, join } from "node:path"
 import test from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 
-const ts = loadTypeScript()
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const stockTs = loadTypeScript()
+const unexpectedLibraries = new Set()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  const libraries = program.getSourceFiles().map(source => source.fileName)
+    .filter(file => /[/\\]lib\.[^/\\]+\.d\.ts$/.test(file))
+  if (!libraries.some(file => /[/\\]lib\.es5\.d\.ts$/.test(file))) unexpectedLibraries.add("missing ES5")
+  for (const file of libraries) {
+    if (!/[/\\]lib\.(?:es5|decorators(?:\.legacy)?)\.d\.ts$/.test(file)) unexpectedLibraries.add(basename(file))
+  }
+  return program
+} }
+function assertLibraries() {
+  assert.deepEqual([...unexpectedLibraries].sort(), [], "Generated-contract fixtures must load only ES5 and decorator libraries")
+}
+function compareDeclarations(a, b, comparisonOptions = {}) {
+  const result = compareApiIdentity(ts, a, b, { ...comparisonOptions, compilerOptions })
+  assertLibraries()
+  return result
+}
 function compare(before, after) {
  const root = mkdtempSync(join(tmpdir(), "vip27-docs-"))
  try {
   for (const [side, text] of Object.entries({before, after})) {
    mkdirSync(join(root, side))
    writeFileSync(join(root, side, "index.d.ts"), text)
+   const program = ts.createProgram([join(root, side, "index.d.ts")], {
+    ...compilerOptions, strict: true, noEmit: true, types: [],
+    module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
+   })
+   assertLibraries()
+   assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [],
+    "stock TypeScript accepts every documentation fixture")
   }
-  return compareApiIdentity(ts, join(root, "before"), join(root, "after"))
+  return compareDeclarations(join(root, "before"), join(root, "after"))
  } finally { rmSync(root, {recursive:true, force:true}) }
 }
 const forms = [
