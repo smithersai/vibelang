@@ -13,3 +13,17 @@ test("chapter 5 and VIP-9 agree on a local service's Shape", () => {
   assert.ok(vip.includes("Inside that service's own shape, `S.Shape` denotes that alias directly"))
   assert.ok(vip.includes("Outside its own shape, a service declared in a function or block has no `S.Shape`"))
 })
+
+test("written whole shapes expose their Shape alias only inside the declaration", () => {
+  const services = chapter("005-services")
+  assert.ok(services.includes("names that type only inside the declaration's own body"))
+  assert.ok(services.includes("elsewhere " + String.fromCharCode(96) + "Name.Shape" + String.fromCharCode(96) + " is not declared"))
+  assert.ok(services.includes("no shape helper and no namespace"))
+})
+
+test("the whole-shape cheat sheet identifies internal and external implementation types", () => {
+  const sheet = read("docs/user/src/vibelang-features/115-cheat-sheet.md")
+  const advice = sheet.split("**Services of any shape**.")[1].split(String.fromCharCode(96).repeat(3))[0]
+  assert.match(advice, /(?:Within|Inside)[^.!?]*body/)
+  assert.ok(advice.includes("Context.Service.Shape<typeof Name>"))
+})

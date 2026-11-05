@@ -156,7 +156,7 @@ class Users extends Context.Service<Users, {
 
 :::
 
-**Services of any shape**. `service Name: Type { … }` uses the whole written type, including a primitive or an existing interface. The required body admits only `key` and `defaultValue`; `Name.Shape` resolves to that type.
+**Services of any shape**. `service Name: Type { … }` uses the whole written type, including a primitive or an existing interface. The required body admits only `key` and `defaultValue`. Within the declaration's own body, `Name.Shape` denotes `Type`; elsewhere use `Type` or `Context.Service.Shape<typeof Name>`.
 
 :::code-group
 

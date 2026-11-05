@@ -1206,6 +1206,12 @@ const targets = {
     [],
     [bun, node]
   ),
+  "docs-service-shape-scopes": check(
+    "Service advice limits a whole-shape alias to its declaration body and names external implementation types.",
+    "node docs/tools/service-shape-scopes.mjs && bun test --timeout 30000 docs/tools/service-shape-scopes.test.ts docs/tools/spec-local-service-shape.test.mjs",
+    [],
+    [bun, node]
+  ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
