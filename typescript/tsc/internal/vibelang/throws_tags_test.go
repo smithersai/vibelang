@@ -6,15 +6,29 @@ import (
 	"testing"
 )
 
-// Chapter 7 / VIP-34: a refused documentation repair leaves the file intact.
+// Chapter 7 / VIP-34: refused documentation stays intact when the fixture
+// has no independently repairable legacy forms.
 func TestVibeThrowsTagFix(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
 		t.Fatal(err)
 	}
 	result := fixCase(t, copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/throws-tag-effectful.fail"), root))
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
 	if len(result.Files) != 0 {
-		t.Fatalf("refused comment repair wrote files: %+v", result.Files)
+		for name, file := range result.Files {
+			t.Logf("written %s:\n%s", name.AsString(), file.Text)
+		}
+		t.Fatalf("refused comment repair wrote files: %+v; refusals: %+v", result.Files, result.Sites)
+	}
+	refused := false
+	for _, site := range result.Sites {
+		refused = refused || site.Code == "EK0406" && site.StartLine > 0
+	}
+	if !refused {
+		t.Fatalf("missing located documentation refusal: %+v", result.Sites)
 	}
 }
 func TestQuickFixKeepsThrowsComments(t *testing.T) {

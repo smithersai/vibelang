@@ -60,6 +60,7 @@ var declarationThrowsShapes = []declarationThrowsShape{
 }
 
 func TestDeclarationThrowsContractQuoted(t *testing.T) {
+	chapterSays(t, "007-tooling.md", "All three `--fix` scopes select their resolved legacy bindings:")
 	chapterSays(t, "007-tooling.md", "A rewrite that can't preserve types, behavior and declaration output refuses at that site")
 	for _, quote := range []string{declarationThrowsContractQuote, declarationThrowsExceptionsQuote, declarationThrowsDocsQuote} {
 		if !strings.Contains(SpecText("001-functions.md"), quote) {
@@ -75,6 +76,11 @@ func FuzzDeclarationThrowsContract(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
 	f.Add([]byte("smithers-poll-throws-docs|"))
+	for alias := byte(1); alias <= 2; alias++ {
+		for tag := byte(0); tag < 4; tag++ {
+			f.Add(append([]byte("smithers-poll-throws-docs|"), tag, tag, tag%2, alias))
+		}
+	}
 	for tag := byte(0); tag < 4; tag++ {
 		for shape := byte(0); shape < 4; shape++ {
 			f.Add(append([]byte("smithers-poll-throws-docs|"), tag, shape, (tag+shape)%3))
@@ -194,6 +200,20 @@ func fuzzPollThrowsDocumentation(t *testing.T, w *Workspace, data []byte) {
 	case 2:
 		filename = "main.ts"
 	}
+	// A refused documentation site must not prevent a separate preserving
+	// legacy binding repair. Native TypeScript controls have no prelude.
+	aliasBefore, aliasAfter := "", ""
+	if filename != "main.ts" {
+		switch contractDeclarationByte(data, 3) % 3 {
+		case 1:
+			aliasBefore, aliasAfter = "Stream<number>", "Stream.Stream<number>"
+		case 2:
+			aliasBefore, aliasAfter = "Layer<never>", "Layer.Layer<never>"
+		}
+	}
+	if aliasBefore != "" {
+		source += "\ntype Independent = " + aliasBefore + "\n"
+	}
 	config := fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out","jsx":"preserve"},"files":[%q]}`, filename)
 	before, err := w.CompileOrdered(t.Context(), Project{Files: map[string]string{filename: source}, Config: config}, OrderTsc, true)
 	if err != nil {
@@ -209,6 +229,9 @@ func fuzzPollThrowsDocumentation(t *testing.T, w *Workspace, data []byte) {
 		if strings.HasSuffix(name.AsString(), "/"+filename) {
 			after = file.Text
 		}
+	}
+	if aliasAfter != "" && !strings.Contains(after, "type Independent = "+aliasAfter) {
+		Gap(t, "FuzzDeclarationThrowsContract", "alias:smithers-poll-throws-docs", "Chapter 7 selects resolved legacy bindings independently of a refused site; missing %s:\n%s", aliasAfter, after)
 	}
 	if !strings.Contains(after, doc) {
 		Gap(t, "FuzzDeclarationThrowsContract", "docs:smithers-poll-throws-docs", "Chapter 1: %s\n%s", declarationThrowsDocsQuote, after)

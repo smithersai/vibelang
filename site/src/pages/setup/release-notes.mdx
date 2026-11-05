@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- A refused authored `@throws` comment can accompany legacy `Stream<A>` or `Layer<A>` types in the same file. `--fix` preserves the comment and repairs the independent type aliases.
+
 - Optional-schema upgrade checks failed on an invalid inherited native error sample; they now verify the documented unions of errors.
 - Browser-augmentation validation repeatedly parsed the same native declarations. It now reuses parsed library documents while still checking each snapshot independently.
 - A migration could report fixing complete while skipping selected scripts outside its projects. It now names the uncovered modules and keeps the fix pass incomplete until their projects are included.

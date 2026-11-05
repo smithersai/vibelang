@@ -91,3 +91,35 @@ func TestThrowsTagFixKeepsDescriptiveSibling(t *testing.T) {
 		}
 	}
 }
+
+// Chapter 7 refuses an unsafe rewrite at its site; an independent preserving
+// prelude repair still applies while the authored documentation stays intact.
+func TestThrowsTagRefusalAllowsPreludeRepair(t *testing.T) {
+	for _, tag := range []string{"@throws {never}", "@throws {Error} Keep the bounds.", "@rethrows callback"} {
+		for _, alias := range []struct{ before, after string }{
+			{"Stream<number>", "Stream.Stream<number>"},
+			{"Layer<never>", "Layer.Layer<never>"},
+		} {
+			t.Run(tag+"/"+alias.before, func(t *testing.T) {
+				doc := "/** " + tag + " */"
+				source := doc + "\nexport function make(): number { return 1 }\ntype Independent = " + alias.before + "\n"
+				result := fixProjectOf(t, map[string]string{"main.vibe": source})
+				if result.Err != nil {
+					t.Fatal(result.Err)
+				}
+				got := fixedText(result, "main.vibe")
+				want := strings.Replace(source, alias.before, alias.after, 1)
+				if got != want {
+					t.Fatalf("independent repair changed the refused documentation:\nwant:\n%s\ngot:\n%s", want, got)
+				}
+				refused := false
+				for _, site := range result.Sites {
+					refused = refused || site.Code == "EK0406" && site.StartLine > 0
+				}
+				if !refused {
+					t.Fatalf("missing located documentation refusal: %+v", result.Sites)
+				}
+			})
+		}
+	}
+}

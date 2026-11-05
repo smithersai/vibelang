@@ -23,9 +23,9 @@ effect function load(f: () => number): number!! { return f() }
 
 const viaArrow = effect () => 4
 
-function numbers(): Stream<number> { return Stream.make(5, 6) }
+function numbers(): Stream.Stream<number> { return Stream.make(5, 6) }
 
-function live(): Layer<never> { return Layer.empty }
+function live(): Layer.Layer<never> { return Layer.empty }
 
 class Repo {
   effect find(): string!Absent { return "repo" }

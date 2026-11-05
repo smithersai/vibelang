@@ -28,10 +28,10 @@ effect function load(f: () => number): number!! { return f() }
 const viaArrow = effect () => 4
 
 /** @throws {Error} */
-function numbers(): Stream<number> { return Stream.make(5, 6) }
+function numbers(): Stream.Stream<number> { return Stream.make(5, 6) }
 
 /** @throws {Error} */
-function live(): Layer<never> { return Layer.empty }
+function live(): Layer.Layer<never> { return Layer.empty }
 
 class Repo {
   /** @throws {Absent} */
