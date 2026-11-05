@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path"
@@ -269,7 +271,7 @@ func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 			t.Fatal(err)
 		}
 	}
-	diff, err := probe(ctx, api, filepath.Join(dir, "__identity_out"), current)
+	diff, err := declarationIdentityDiff(ctx, probe, api, filepath.Join(dir, "__identity_out"), current)
 	if err != nil {
 		t.Fatalf("declaration fixture %s: %v", SeedName(archive), err)
 	}
@@ -302,6 +304,47 @@ func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 	g.FinishInput(t, key)
 }
 
+// declarationIdentityDiff runs the API comparison only on trees that differ.
+// Identical bytes declare the same names, types and JSDoc, and the comparison
+// spent most of this target's CPU confirming that on about nine inputs in ten.
+func declarationIdentityDiff(ctx context.Context, probe declarationIdentityProbe, api, baseline, current string) (string, error) {
+	same, err := sameDeclarationTrees(baseline, current)
+	if err != nil || same {
+		return "", err
+	}
+	return probe(ctx, api, baseline, current)
+}
+
+// sameDeclarationTrees reports whether two emitted trees hold the same files
+// with the same bytes. Two empty trees are no evidence and report false.
+func sameDeclarationTrees(before, after string) (bool, error) {
+	read := func(root string) (map[string]string, error) {
+		files := map[string]string{}
+		err := filepath.WalkDir(root, func(name string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			rel, err := filepath.Rel(root, name)
+			if err != nil {
+				return err
+			}
+			text, err := os.ReadFile(name)
+			files[filepath.ToSlash(rel)] = string(text)
+			return err
+		})
+		return files, err
+	}
+	left, err := read(before)
+	if err != nil {
+		return false, err
+	}
+	right, err := read(after)
+	if err != nil {
+		return false, err
+	}
+	return len(left) > 0 && maps.Equal(left, right), nil
+}
+
 func emitDeclarationIdentityStock(t *testing.T, w *Workspace, tsc string, stock Project) string {
 	t.Helper()
 	dir, err := w.writeProject(stock)
@@ -317,8 +360,11 @@ func emitDeclarationIdentityStock(t *testing.T, w *Workspace, tsc string, stock 
 	}()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, tsc, "-p", ".", "--pretty", "false")
+	cmd := exec.CommandContext(ctx, tsc, "-p", ".", "--pretty", "false", "--singleThreaded")
 	cmd.Dir = dir
+	// A short compile exits before a collection pays for itself. The limit
+	// bounds each process when a large project does need one.
+	cmd.Env = append(os.Environ(), "GOGC=off", "GOMEMLIMIT=1GiB")
 	out, runErr := cmd.CombinedOutput()
 	if ctx.Err() != nil {
 		t.Fatalf("stock declaration emit did not finish: %v", ctx.Err())
