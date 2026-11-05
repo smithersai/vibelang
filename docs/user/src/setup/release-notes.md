@@ -32,6 +32,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Diagnostic verification could mistake an enabled legacy diagnostic for an unexpected warning; it now honors overrides in source comments and still rejects incorrect categories.
 - The cached-service-default migration example expected a lazy factory; its fixed twin now retains eager initialization, the cached static field and all value and type reads through an equivalent native class.
 
+- A service recovery example applied `try` after `catch` had returned its value. It now consumes that value directly; the error guide explains when an outer `try` is valid.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - The legacy catch diagnostic example for `Cause` linked to code that had already been migrated. It now links to an executable original input that still demonstrates the warning.

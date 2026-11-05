@@ -19,7 +19,7 @@ effect function nameOf(id: string): string!NotFound!Users {
 }
 export effect function main() {
   provide Layer.succeed(Users, { effect name(id) { return "Ada" } }) {
-    return [try nameOf("42"), try (nameOf("7") catch effect (e) => e._tag)]
+    return [try nameOf("42"), (nameOf("7") catch effect (e) => e._tag)]
   }
 }
 export effect function fails(): string!NotFound!Users { return try nameOf("7") }
