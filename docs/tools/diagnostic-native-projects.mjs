@@ -12,10 +12,18 @@ export function nativeProjectHost(root,base) {
    if(!existsSync(at))symlinkSync(resolve(source,entry.name),at)
   }
  }
- cpSync(original,isolated,{recursive:true,filter:path=>basename(path)!=="node_modules"})
+ // Thousands of cases stay links, so sibling imports resolve at no cost, and
+ // prepare copies a project before its compiler can write sidecars there.
+ const notModules=path=>basename(path)!=="node_modules"
+ mkdirSync(isolated,{recursive:true})
+ for(const entry of readdirSync(original,{withFileTypes:true})) {
+  if(entry.name==="node_modules")continue
+  if(entry.isDirectory())symlinkSync(join(original,entry.name),join(isolated,entry.name))
+  else cpSync(join(original,entry.name),join(isolated,entry.name))
+ }
  const modules=resolve(process.env.EFFECT_NODE_MODULES??join(root,"experiments/node_modules"))
  const runtime=resolve(process.env.VIBELANG_RUNTIME??join(root,"packages/runtime"))
- const prepared=new Set()
+ const prepared=new Set(),copied=new Set()
  const project=path=>{
   path=resolve(root,path)
   if(!path.startsWith(original+sep))throw Error("diagnostic project is outside native cases")
@@ -24,6 +32,12 @@ export function nativeProjectHost(root,base) {
  const prepare=path=>{
   const dir=project(path)
   if(prepared.has(dir))return dir
+  const caseName=relative(isolated,dir).split(sep)[0]
+  if(!copied.has(caseName)) {
+   rmSync(join(isolated,caseName),{recursive:true,force:true})
+   cpSync(join(original,caseName),join(isolated,caseName),{recursive:true,filter:notModules})
+   copied.add(caseName)
+  }
   const target=join(dir,"node_modules")
   rmSync(target,{recursive:true,force:true})
   mkdirSync(target,{recursive:true})
