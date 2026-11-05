@@ -433,3 +433,7 @@ For a native mutable copy of Web headers, `try (try Experimental.Headers.Headers
 For a Web response body that must become a Node readable, `try (try Experimental.NodeStream.NodeStream).fromWeb(body, { response, signal })` takes ownership eagerly and cancels the reader when the response closes. Provide the Node or Bun layer.
 
 To construct a native `Request` at a different URL while retaining its body, headers and signal, use `try (try Experimental.Request.Request).atUrl(url, request)` with the Node, Bun or browser layer.
+
+### Scoped IPv6 predicates
+
+Replace `node:net`'s `isIPv6` with the pure `Experimental.NetAddress.isIPv6(address)` when Node's scoped-host syntax must be retained. It needs no layer or `try`. It delegates bare IPv6 parsing to Effect and preserves Node's ASCII zone syntax, including numeric scope strings beyond the unsigned 32-bit range. Effect's own `NetAddress.ipv6FromString` remains the bare-address decoder.
