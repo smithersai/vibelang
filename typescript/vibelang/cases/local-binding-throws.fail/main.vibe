@@ -1,0 +1,15 @@
+// expect: EK0403
+import {read,describeAll} from "./lib.js"
+export effect function probe(text:string) {
+ const first=read
+ const again=(first)
+ return again(text)
+}
+export effect function main() {
+ const parked=probe('"value"')
+ const good=try Effect.exit(probe('"value"'))
+ const listed=try Effect.exit(probe("listed"))
+ const contract=try Effect.exit(probe("contract"))
+ const unexpected=try Effect.exit(probe("defect"))
+ return describeAll([good,listed,contract,unexpected])
+}

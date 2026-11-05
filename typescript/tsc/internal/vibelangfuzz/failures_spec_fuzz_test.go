@@ -602,6 +602,120 @@ func failuresCases() []*failCase {
 			}
 		}
 	}
+
+	for _, builtin := range []struct{ key, signature, call string }{
+		{"parse", "JSON.parse", "again(s)"},
+		{"max", "Math.max", "again(1, 2)"},
+	} {
+		for _, tag := range []struct{ key, bound string }{{"range", "RangeError"}, {"unknown", "unknown"}, {"never", "never"}} {
+			for _, chain := range []bool{false, true} {
+				for _, wrapped := range []bool{false, true} {
+					name := "binding-alias-" + builtin.key + "-" + tag.key
+					binding := "const again = foreign;\n"
+					if chain {
+						name += "-chain"
+						binding = "const first = foreign; const again = (first);\n"
+					}
+					body, code := builtin.call, 0
+					if wrapped {
+						name += "-wrapped"
+						body = "try Effect.try(() => " + body + ")"
+					} else if tag.bound != "never" {
+						body = "⟦" + body + "⟧"
+						code = 403
+					}
+					add(&failCase{Name: name,
+						Quote: "`const g = f` preserves `f`'s contract;",
+						Lib:   "/** @throws {" + tag.bound + "} */\nexport declare const foreign: typeof " + builtin.signature,
+						Body:  binding + "const value = " + body, Code: code, OneDiagnostic: code != 0})
+				}
+			}
+		}
+	}
+
+	for _, row := range []struct{ key, binding string }{
+		{"reassign", "let again = foreign; again = JSON.parse;"},
+		{"const-reassign", "let first = foreign; first = JSON.parse; const again = first;"},
+	} {
+		for _, wrapped := range []bool{false, true} {
+			name, body, code := "binding-alias-mutable-"+row.key, "⟦again(s)⟧", 403
+			if wrapped {
+				name, body, code = name+"-wrapped", "try Effect.try(() => again(s))", 0
+			}
+			add(&failCase{Name: name, Quote: q.directCall,
+				Lib:  "/** @throws {never} */\nexport declare const foreign: typeof JSON.parse",
+				Body: row.binding + "\nconst value = " + body, Code: code, OneDiagnostic: code != 0})
+		}
+	}
+
+	for _, signature := range []struct{ key, prefix, name string }{
+		{"alias", "type Reader=(s:string)=>string\n", "Reader"},
+		{"interface", "interface Reader{(s:string):string}\n", "Reader"},
+		{"signature", "/** @throws {Error} */\nexport declare function base(s:string):string\n", "typeof base"},
+	} {
+		for _, tag := range []struct{ key, bound string }{{"never", "never"}, {"range", "RangeError"}} {
+			for _, wrapped := range []bool{false, true} {
+				name, body, code := "binding-alias-"+signature.key+"-"+tag.key, "again(s)", 0
+				if wrapped {
+					name, body = name+"-wrapped", "try Effect.try(() => "+body+")"
+				} else if tag.bound != "never" {
+					body, code = "⟦"+body+"⟧", 403
+				}
+				add(&failCase{Name: name, Quote: "`const g = f` preserves `f`'s contract;",
+					Lib:  signature.prefix + "/** @throws {" + tag.bound + "} */\nexport declare const foreign:" + signature.name,
+					Body: "const first=foreign; const again=first;\nconst value=" + body, Code: code, OneDiagnostic: code != 0})
+			}
+		}
+	}
+
+	add(&failCase{Name: "binding-alias-plain-never", Quote: q.library, Host: "plain",
+		Lib:  "/** @throws {never} */\nexport declare const foreign:typeof JSON.parse",
+		Body: "const again=foreign; return again(s)"})
+	add(&failCase{Name: "binding-alias-plain-range", Quote: q.plainPropagates, Host: "plain",
+		Lib:  "type Reader=(s:string)=>string\n/** @throws {RangeError} */\nexport declare const foreign:Reader",
+		Body: "const again=foreign; ⟦return again(s)⟧", Code: 401, OneDiagnostic: true})
+
+	for _, chain := range []bool{false, true} {
+		for _, wrapped := range []bool{false, true} {
+			name, binding := "binding-alias-legacy-marker", "const again=foreign;"
+			if chain {
+				name, binding = name+"-chain", "const first=foreign; const again=first;"
+			}
+			body, code := "⟦again(s)⟧", 403
+			if wrapped {
+				name, body, code = name+"-wrapped", "try Effect.try(() => again(s))", 0
+			}
+			add(&failCase{Name: name, Quote: q.directCall,
+				Lib:  "/** @vibelang trusted */\nexport declare const foreign:typeof JSON.parse",
+				Body: binding + "\nconst value=" + body, Code: code, OneDiagnostic: code != 0})
+		}
+	}
+
+	// A const alias retains a foreign type that TypeScript reduces to never.
+	for _, bound := range []struct{ key, text string }{
+		{"alias", "Quiet"}, {"parenthesized", "(Quiet)"}, {"union", "Quiet | never"}, {"conditional", "Extract<string,number>"},
+	} {
+		for _, builtin := range []struct{ key, signature, args string }{
+			{"parse", "JSON.parse", "s"}, {"max", "Math.max", "1,2"},
+		} {
+			for _, chain := range []bool{false, true} {
+				for _, plain := range []bool{false, true} {
+					name := "binding-alias-reduced-never-" + bound.key + "-" + builtin.key
+					binding := "const again=read;"
+					if chain {
+						name += "-chain"
+						binding = "const first=read;const again=first;"
+					}
+					host := "effect"
+					if plain {
+						name += "-plain"
+						host = "plain"
+					}
+					add(&failCase{Name: name, Quote: q.inferred, Host: host, Lib: "type Quiet=never;\n/** @throws {" + bound.text + "} */\nexport declare const read:typeof " + builtin.signature, Body: binding + "again(" + builtin.args + ")"})
+				}
+			}
+		}
+	}
 	add(&failCase{Name: "foreign-own-throw-over-type", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦read(s)⟧", Lib: "type Reader = (s: string) => string\n/** @throws {Error} */\nexport declare const read: Reader"})
 	add(&failCase{Name: "foreign-returned-signature", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const read = make()\n⟦read(s)⟧", Lib: "/** @throws {never} */\nexport declare function make(): {\n /** @throws {Error} */\n (s: string): string\n}"})
 	add(&failCase{Name: "foreign-overload-number", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const text = choose(s)\n⟦choose(1)⟧", Lib: "/** @throws {never} */\nexport declare function choose(s: string): string\n/** @throws {RangeError} */\nexport declare function choose(n: number): number"})

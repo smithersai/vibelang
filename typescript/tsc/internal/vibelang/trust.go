@@ -96,14 +96,7 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	}
 	// A const that re-exports a library function with the tag trusts it (D23),
 	// so the tag on what the callee names wins over the library's declaration.
-	var candidates []*ast.Node
-	if symbol := calleeSymbol(c, call); symbol != nil {
-		for _, d := range symbol.Declarations() {
-			if ast.IsVariableDeclaration(d) || ast.IsPropertyDeclaration(d) || d.Kind == ast.KindPropertySignature {
-				candidates = append(candidates, d)
-			}
-		}
-	}
+	candidates := foreignCallBindingCandidates(c, call, true)
 	switch pkg := packageOf(c, file); {
 	case isLibFile(c, file):
 		return tagged(c, call, candidates, builtinTrust(c, call, decl))

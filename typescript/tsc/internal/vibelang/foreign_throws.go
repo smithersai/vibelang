@@ -20,14 +20,7 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 	if file == nil || isVibeLangFile(file) {
 		return "", false
 	}
-	var candidates []*ast.Node
-	if symbol := calleeSymbol(c, call); symbol != nil {
-		for _, d := range symbol.Declarations() {
-			if ast.IsVariableDeclaration(d) || ast.IsPropertyDeclaration(d) || d.Kind == ast.KindPropertySignature {
-				candidates = append(candidates, d)
-			}
-		}
-	}
+	candidates := foreignCallBindingCandidates(c, call, true)
 	candidates = append(candidates, decl)
 	for _, candidate := range candidates {
 		source := ast.GetSourceFileOfNode(candidate)
@@ -69,6 +62,55 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 	return "", false
 }
 
+// foreignCallBindingCandidates preserves a callable binding through inferred
+// const aliases. A written destination type or an assertion establishes
+// its own signature; no callable body is inspected.
+func foreignCallBindingCandidates(c *checker.Checker, call *ast.Node, aliases bool) []*ast.Node {
+	var candidates []*ast.Node
+	seen := map[*ast.Symbol]bool{}
+	var visit func(*ast.Symbol, bool)
+	visit = func(symbol *ast.Symbol, direct bool) {
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol == nil || seen[symbol] {
+			return
+		}
+		seen[symbol] = true
+		for _, decl := range symbol.Declarations() {
+			if ast.IsVariableDeclaration(decl) || ast.IsPropertyDeclaration(decl) || decl.Kind == ast.KindPropertySignature {
+				// An inferred alias transfers the written foreign throws contract.
+				// Direct bindings retain their existing classification.
+				eligible := direct
+				file := ast.GetSourceFileOfNode(decl)
+				if !direct && file != nil && !isVibeLangFile(file) && !isLibFile(c, file) {
+					for _, host := range jsdocHosts(decl) {
+						if ast.IsTypeAliasDeclaration(host) {
+							break
+						}
+						if hasThrowsTag(host) {
+							eligible = true
+							break
+						}
+					}
+				}
+				if eligible {
+					candidates = append(candidates, decl)
+				}
+			}
+			if !aliases || !ast.IsVariableDeclaration(decl) || !ast.IsVarConst(decl) || decl.Type() != nil || decl.Initializer() == nil {
+				continue
+			}
+			initializer := ast.SkipParentheses(decl.Initializer())
+			if ast.IsIdentifier(initializer) || ast.IsPropertyAccessExpression(initializer) || ast.IsElementAccessExpression(initializer) {
+				visit(c.GetSymbolAtLocation(initializer), false)
+			}
+		}
+	}
+	visit(calleeSymbol(c, call), true)
+	return candidates
+}
+
 var foreignThrowingCall = EK0403.With("'{0}' may throw '{1}'. Wrap the call with 'try Effect.try(() => …)'.")
 
 // legacyForeignCallFailures is only for migration: the former emitter read
@@ -82,7 +124,7 @@ func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
 		return nil
 	}
 	if isLibFile(c, ast.GetSourceFileOfNode(decl)) {
-		return callTrust(c, call).failures
+		return tagged(c, call, foreignCallBindingCandidates(c, call, false), builtinTrust(c, call, decl)).failures
 	}
 	var candidates []*ast.Node
 	if symbol := calleeSymbol(c, call); symbol != nil {
