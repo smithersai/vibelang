@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- API checks for unrelated diagnostics loaded browser declarations they did not use. They now retain native `Map` types with fewer library inputs.
+
 - Legacy JavaScript errors now offer an editor repair for closed native files that keeps their scope in a TypeScript `module`, preserving `var` hoisting and direct `eval`.
 
 - Automatic repairs could run a catch handler's returned error or Effect as a computation; they now preserve that value as data, with an explicit editor action available to run it.

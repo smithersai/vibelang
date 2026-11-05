@@ -10,8 +10,11 @@ import { test } from "node:test"
 import { createRequire } from "node:module"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
+import { createEs2015FixtureGuard } from "./testing/fixture-libraries.mjs"
 
-const ts = loadTypeScript()
+const stockTs = loadTypeScript()
+const compilerOptions = { lib: ["lib.es2015.d.ts"] }
+const { ts, assertLibraries } = createEs2015FixtureGuard(stockTs, "Unrelated-diagnostic fixtures")
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/t3code-unrelated-diagnostic.json", import.meta.url), "utf8"))
 const message = /unresolved or erroneous type/
@@ -29,8 +32,10 @@ function compare(before, after, keys, shared = corpus.shared) {
     write(join(root, "before"), before)
     write(join(root, "after"), after)
     const entries = Object.fromEntries(keys.map(key => [key, key]))
-    return compareApiIdentity(ts, join(root, "before"), join(root, "after"),
-      { beforeEntrypoints: entries, afterEntrypoints: entries, moduleRoots: [join(root, "node_modules")] })
+    const result = compareApiIdentity(ts, join(root, "before"), join(root, "after"),
+      { beforeEntrypoints: entries, afterEntrypoints: entries, moduleRoots: [join(root, "node_modules")], compilerOptions })
+    assertLibraries()
+    return result
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 const flagged = result => [...new Set(result.environmentDiagnostics.filter(d => message.test(d.diagnostic))
@@ -123,7 +128,7 @@ test("property: adding an unrelated diagnostic never changes a verdict", async (
   const verdict = (keys, result) => Object.fromEntries(keys.map(key => [key, flagged(result).includes(key + "#E" + key[1])]))
   await checkProperty(fc, {
     name: "api-identity-unrelated-diagnostic", generatorVersion: 1, numRuns: 12,
-    rule: "t3code agent 20:58Z: the verdict for one export must not depend on unrelated diagnostics elsewhere in the program.",
+    rule: "The verdict for one export must not depend on unrelated diagnostics elsewhere in the program.",
     command: "node --test scripts/api-identity-unrelated-diagnostic.test.mjs",
     arbitrary: fc.record({
       kinds: fc.array(fc.constantFrom("clean", "shared", "owned"), { minLength: 1, maxLength: 3 }),
@@ -138,6 +143,77 @@ test("property: adding an unrelated diagnostic never changes a verdict", async (
       const beside = verdict(keys, compare(crowded, crowded, Object.keys(crowded)))
       assert.deepEqual(beside, alone)
       assert.deepEqual(alone, Object.fromEntries(keys.map((key, index) => [key, kinds[index] === "owned"])))
+    },
+  })
+})
+
+
+function native(source, check) {
+  const root = mkdtempSync(join(tmpdir(), "api-unrelated-native-")), file = join(root, "index.d.ts")
+  try {
+    writeFileSync(file, source)
+    const options = { ...compilerOptions, strict: true, noEmit: true, types: [] }
+    const program = ts.createProgram([file], options)
+    assertLibraries()
+    return check(program, file, options)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}
+const mapSource = value => "export declare const value: Map<string, { value: " + value + " }>;"
+function validMap(source) {
+  native(source, (program, file) => {
+    assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [])
+    const declaration = program.getSourceFile(file).statements[0].declarationList.declarations[0]
+    const symbol = program.getTypeChecker().getSymbolAtLocation(declaration.type.typeName)
+    assert.ok(symbol.declarations.some(node => /[/\\]lib\.es2015\.collection\.d\.ts$/.test(node.getSourceFile().fileName)),
+      "Map must bind to the actual TypeScript collection declaration")
+  })
+}
+
+test("unrelated-diagnostic fixtures retain native Map identity and argument changes", () => {
+  const source = mapSource("string"), files = { "index.d.ts": source }
+  validMap(source)
+  native(source, (program, file, options) => {
+    const missing = ts.createProgram([file], { ...options, lib: ["lib.es5.d.ts"] })
+    assert.ok(ts.getPreEmitDiagnostics(missing).some(d => d.code === 2583), "ES5 alone cannot supply Map")
+    assertLibraries()
+  })
+  pass(compare(files, files, ["index.d.ts"]))
+  const changed = compare(files, { "index.d.ts": mapSource("number") }, ["index.d.ts"])
+  fail(changed, "native Map argument changed")
+  assert.deepEqual(changed.typeDifferences.map(d => d.export), ["value"])
+})
+
+test("ES2015 diagnostic fixtures preserve missing BigInt library errors", () => {
+  const source = "export declare const value: BigInt;"
+  native(source, program => assert.ok(ts.getPreEmitDiagnostics(program).some(d => d.code === 2583)))
+  const files = { "index.d.ts": source }, result = compare(files, files, ["index.d.ts"])
+  assert.equal(result.comparisonComplete, false)
+  assert.equal(result.identical, false)
+  assert.ok(result.environmentDiagnostics.some(d => d.blocking && /TS2583/.test(d.diagnostic)))
+})
+
+test("property: native Map value mutations remain observable beside unrelated diagnostics", async () => {
+  await checkProperty(fc, {
+    name: "api-identity-unrelated-native-map",
+    rule: "An export retains its native Map argument identity beside unrelated shared diagnostics.",
+    command: "node --test scripts/api-identity-unrelated-diagnostic.test.mjs",
+    numRuns: 4,
+    arbitrary: fc.record({
+      value: fc.constantFrom("string", "number", "boolean"),
+      beside: fc.boolean(),
+      reverse: fc.boolean(),
+    }),
+    check: ({ value, beside, reverse }) => {
+      const changed = value === "string" ? "number" : "string"
+      const source = mapSource(value), candidate = mapSource(changed)
+      validMap(source); validMap(candidate)
+      const menu = beside ? { "menu.d.ts": corpus.files["menu.d.ts"] } : {}
+      const before = { ...menu, "index.d.ts": source }, after = { ...menu, "index.d.ts": candidate }
+      const keys = Object.keys(before)
+      pass(compare(before, before, keys))
+      const result = reverse ? compare(after, before, keys) : compare(before, after, keys)
+      fail(result, "Map value mutation")
+      assert.deepEqual(result.typeDifferences.map(d => d.export), ["value"])
     },
   })
 })

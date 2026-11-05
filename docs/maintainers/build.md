@@ -1790,6 +1790,15 @@ with actual roots still requires ES5, including when `noLib` is set.
 All 20 generated absence graphs, per-export availability, emit-evidence,
 reference-mutation, ambient-environment and batching controls remain enabled.
 
+Unrelated-diagnostic API fixtures use `lib.es2015.d.ts` because their owned
+error controls pass arguments through native `Map`. A shared bounded guard
+rejects later and browser libraries after comparison, retaining all 12 original
+generated shared/owned-error samples. Native controls require the actual
+`lib.es2015.collection.d.ts` binding, `TS2583` when `Map` has only ES5 or
+`BigInt` has only ES2015, and changed `Map` arguments to remain observable.
+Four additional generated `Map` mutations vary comparison direction and
+unrelated shared diagnostics.
+
 The five fixed variance forms use guarded ES5 programs for native TypeScript
 validation and API comparison. Their original target and strictness settings
 remain in force. The `in`, `out` and `in out` forms, class/interface/type
