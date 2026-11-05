@@ -661,23 +661,45 @@
   },
   {
     "code": "EK2109",
+    "vip": "VIP-34",
     "case": "typescript/vibelang/cases/decl-schema.fail",
-    "vip": "VIP-15",
     "approval": {
       "by": "Will",
-      "reference": "docs/design/vips/0015-schema-declarations.md: Status accepted by Will (2026-10-28); 2026-10-31 non-field-members amendment explicitly assigns EK1505 under Will's principle in decided detail 247. This cites existing published authority, not a new approval."
+      "reference": "docs/design/vips/0015-schema-declarations.md: Status accepted by Will (2026-10-28); 2026-10-31 non-field-members amendment explicitly assigns EK1505 under Will's principle in decided detail 247. This cites existing published authority, not a new approval. Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
     },
-    "reason": "The program is unchanged apart from expectation comments. The pre-existing EK2109 errors at the Date, Partial and unknown fields are unchanged; only the already-refused method changes owner identity from EK2109 to EK1505."
+    "reason": "The program is unchanged apart from expectation comments. The pre-existing EK2109 errors at the Date, Partial and unknown fields are unchanged; only the already-refused method changes owner identity from EK2109 to EK1505. This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.vibe",
+          "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347"
+        }
+      ],
+      "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347",
+      "configSha256": "29046e9b8a081e65bfbd37550a7e360e0e6312e1c008a5442ecfd8ec7a5ad397"
+    }
   },
   {
     "code": "EK1505",
+    "vip": "VIP-34",
     "case": "typescript/vibelang/cases/decl-schema.fail",
-    "vip": "VIP-15",
     "approval": {
       "by": "Will",
-      "reference": "docs/design/vips/0015-schema-declarations.md: Status accepted by Will (2026-10-28); 2026-10-31 non-field-members amendment explicitly assigns EK1505 under Will's principle in decided detail 247. This cites existing published authority, not a new approval."
+      "reference": "docs/design/vips/0015-schema-declarations.md: Status accepted by Will (2026-10-28); 2026-10-31 non-field-members amendment explicitly assigns EK1505 under Will's principle in decided detail 247. This cites existing published authority, not a new approval. Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
     },
-    "reason": "The existing refused run(): void method is the same program after removing comments. Published VIP-15's non-field amendment assigns EK1505 to this existing refusal, replacing EK2109."
+    "reason": "The existing refused run(): void method is the same program after removing comments. Published VIP-15's non-field amendment assigns EK1505 to this existing refusal, replacing EK2109. This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.vibe",
+          "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347"
+        }
+      ],
+      "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347",
+      "configSha256": "29046e9b8a081e65bfbd37550a7e360e0e6312e1c008a5442ecfd8ec7a5ad397"
+    }
   },
   {
     "code": "EK1505",
@@ -1209,48 +1231,6 @@
       ],
       "tokensSha256": "f4311af6fa8a1656f7e0bc7fefddaf0a519a43cca5adc705b75c89017e7b15b2",
       "configSha256": "84f7958023f7ca68b365f55943db4feb44ce1cd9520e6232d0f840e4ec3ef7f7"
-    }
-  },
-  {
-    "code": "EK2109",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/decl-schema.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347"
-        }
-      ],
-      "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347",
-      "configSha256": "29046e9b8a081e65bfbd37550a7e360e0e6312e1c008a5442ecfd8ec7a5ad397"
-    }
-  },
-  {
-    "code": "EK1505",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/decl-schema.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347"
-        }
-      ],
-      "tokensSha256": "f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347",
-      "configSha256": "29046e9b8a081e65bfbd37550a7e360e0e6312e1c008a5442ecfd8ec7a5ad397"
     }
   },
   {

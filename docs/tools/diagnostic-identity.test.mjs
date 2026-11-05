@@ -397,3 +397,14 @@ test("allocation checkpoints reject added predicates and mismatched prior author
   assert.equal(allocationPreservesChecker({...archived,segments:[]},reference),false)
  }),{seed:342005,numRuns:512})
 })
+
+
+test("retirement authorization keys are unique across approval records", () => {
+  const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"));
+  const seen=new Set();
+  for(const entry of entries) {
+    const key=JSON.stringify([entry.code,entry.case??null,entry.pending??null,entry.path??null]);
+    assert.ok(!seen.has(key),"duplicate retirement authorization: "+key);
+    seen.add(key);
+  }
+});
