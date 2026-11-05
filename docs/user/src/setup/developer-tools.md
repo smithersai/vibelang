@@ -396,6 +396,8 @@ Saved declaration checks also recognize a shipped copy and its identical
 original as the same recorded logical file. Conflicting declarations and
 missing alias targets still fail verification.
 
+Declaration snapshots retain each owning project’s effective `types`, `typeRoots` and module-resolution settings, including inherited options and automatic type-package names selected during setup. Comparison restores those settings against the frozen declaration layout; it does not reread a subsequently edited source configuration. Installed dependency declarations remain pinned resolution inputs. An explicit empty `types` list stays empty, and missing types or changed public declarations still fail verification. Recreate older snapshots from their original setup inputs when the required project context was not recorded.
+
 ## Metro, Babel and the React Compiler
 
 Tools that read one file at a time, such as Metro, Babel and Oxc, cannot parse

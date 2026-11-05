@@ -222,6 +222,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Repairing a throwing call in a class base or a schema error field now preserves defects and produces valid, repeatable source.
 
+- Migration declaration snapshots could lose project types such as `NodeJS.ProcessEnv` and reject an unchanged API. They now retain the original project’s type selection and module-resolution context.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.

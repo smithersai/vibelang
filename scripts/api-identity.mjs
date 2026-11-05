@@ -834,7 +834,17 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
     if (!fileContents.has(key)) fileContents.set(key, originalRead(file))
     return fileContents.get(key)
   }
-  const project = projectSidecarHost(ts, host, virtual)
+  const discoveredProject = projectSidecarHost(ts, host, virtual)
+  const recordedProjects = new Map()
+  for (const context of options.projectContexts ?? []) for (const file of context.files) {
+    const key = resolve(file), previous = recordedProjects.get(key)
+    const value = { root: context.directory, options: context.compilerOptions }
+    if (previous && JSON.stringify(previous) !== JSON.stringify(value))
+      throw new Error("Conflicting recorded declaration project context")
+    recordedProjects.set(key, value)
+  }
+  const project = file => recordedProjects.get(resolve(file)) ?? discoveredProject(file)
+  project.physicalFile = discoveredProject.physicalFile
   // Reuse parsed sources only while their virtual text remains unchanged.
   const sourceCache = new Map()
   const getSource = host.getSourceFile.bind(host)
@@ -850,7 +860,7 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
       // Implicit type packages belong to the input's project, as they do in
       // its stock TypeScript program. Source text and diagnostic offsets stay
       // unchanged; only the compiler's reference metadata gains the context.
-      const owned = [before, after].some(base => key === base || key.startsWith(base + "/")) &&
+      const owned = (recordedProjects.has(key) || [before, after].some(base => key === base || key.startsWith(base + "/"))) &&
         !key.includes("/node_modules/")
       const context = owned && project(file)
       if (context?.root) {

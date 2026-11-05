@@ -1,0 +1,10 @@
+{
+  "key": "t3code-recorded-project-context",
+  "quote": "each export's type identical to `tsc`'s in both directions",
+  "source": "/** Reads the environment. */\nexport const env: NodeJS.ProcessEnv = {};\n",
+  "compilerOptions": {
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "dist"
+  }
+}

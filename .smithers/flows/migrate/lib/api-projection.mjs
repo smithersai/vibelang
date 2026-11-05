@@ -1,7 +1,7 @@
 // Reconstruct a read-only declaration snapshot's original package layout.
 // Every alias forwards to one stored declaration, preserving nominal identity.
 import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
-import { dirname, join, posix, relative, resolve, sep } from "node:path"
+import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path"
 import { tmpdir } from "node:os"
 
 const slash = path => path.split(sep).join("/")
@@ -16,7 +16,7 @@ export function apiProjection(ts, directory, surface, files, { published = true 
   const metadata = surface?.apiMetadata
   const original = resolve(directory)
   const direct = { directory: original, originals: new Map(files.map(file => [file, file])),
-    destinations: new Map(files.map(file => [file, file])), cleanup() {} }
+    destinations: new Map(files.map(file => [file, file])), projectContexts: [], cleanup() {} }
   if (!metadata) return direct
   const temporary = resolve(mkdtempSync(join(tmpdir(), "migrate-api-projection-")))
   const ancestors = []
@@ -97,7 +97,41 @@ export function apiProjection(ts, directory, surface, files, { published = true 
     for (const field of ["exports", "imports", "types", "typings"])
       if (Object.hasOwn(manifest, field)) manifest[field] = sourceConditions(manifest[field])
     put("package.json", JSON.stringify(manifest))
-    return { directory: root, originals, destinations,
+    const projectContexts = []
+    for (const saved of metadata.projectContexts ?? []) {
+      const originalBase = resolve(metadata.packageDir, saved.directory)
+      const compilerOptions = { ...saved.compilerOptions }
+      // Installed type packages remain pinned resolution inputs. Project
+      // paths instead follow the isolated, frozen declaration tree.
+      for (const name of ["typeRoots", "baseUrl", "rootDirs"]) {
+        if (compilerOptions[name] === undefined) continue
+        const installed = value => {
+          const absolute = resolve(originalBase, value)
+          return slash(absolute).includes("/node_modules/") ? absolute : value
+        }
+        compilerOptions[name] = Array.isArray(compilerOptions[name])
+          ? compilerOptions[name].map(installed) : installed(compilerOptions[name])
+      }
+      // Absolute project aliases must not fall back to mutable source files.
+      // Dependency targets remain the installed resolution inputs.
+      if (compilerOptions.paths) compilerOptions.paths = Object.fromEntries(
+        Object.entries(compilerOptions.paths).map(([name, targets]) => [name, targets.map(value =>
+          isAbsolute(value) && !slash(value).includes("/node_modules/")
+            ? path(relative(metadata.packageDir, value)) : value)]))
+      const directory = path(saved.directory)
+      const parsed = ts.convertCompilerOptionsFromJson(compilerOptions, directory, undefined, join(directory, "__snapshot_context__.json"))
+      parsed.options.configFilePath = join(directory, "__snapshot_context__.json")
+      if (compilerOptions.paths && compilerOptions.baseUrl === undefined) {
+        const name = saved.pathsBase ?? saved.directory, absolute = resolve(metadata.packageDir, name)
+        parsed.options.pathsBasePath = slash(absolute).includes("/node_modules/") ? absolute : path(name)
+      }
+      if (parsed.errors.length) throw new Error("Invalid recorded declaration project options: " +
+        parsed.errors.map(error => "TS" + error.code).join(", "))
+      const owners = new Set(saved.files)
+      const projectedFiles = [...originals].filter(([, owner]) => owners.has(owner)).map(([file]) => path(file))
+      if (projectedFiles.length) projectContexts.push({ directory, compilerOptions: parsed.options, files: projectedFiles })
+    }
+    return { directory: root, originals, destinations, projectContexts,
       cleanup() { rmSync(temporary, { recursive: true, force: true }) } }
   } catch (error) { rmSync(temporary, { recursive: true, force: true }); throw error }
 }

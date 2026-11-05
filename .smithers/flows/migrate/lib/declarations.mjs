@@ -270,6 +270,7 @@ export function sidecarChanges(ts, sidecars, outDir) {
       join(projection.directory,projection.destinations.get(pair.file))]))
     const api = compareApiIdentity(ts, left.directory, right.directory, {
       beforeEntrypoints: entries(left), afterEntrypoints: entries(right),
+      projectContexts: [...left.projectContexts, ...right.projectContexts],
       moduleRoots: [dirname(dirname(dirname(ts.sys.getExecutingFilePath())))],
     })
     if (!api.comparisonComplete) return { files: Object.keys(sidecars).length, changed, missing,
@@ -430,7 +431,7 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
 
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten } = {}) {
-  const aliases = {}, logicalPaths = {}, layouts = []
+  const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map()
   const shippedDir = ".migrate-shipped"
   rmSync(join(dir, shippedDir), { recursive: true, force: true })
   for (const { tsconfig, prefix } of projects) {
@@ -443,6 +444,24 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     const configuredOutput = parsed.options.declarationDir ?? parsed.options.outDir ?? parsed.options.rootDir
     if (configuredOutput) layout.directory = rel(packageDir, configuredOutput) || "."
     layouts.push(layout)
+    // Keep only ambient-type and module-resolution settings, not arbitrary
+    // plugin configuration or emit destinations from the source project.
+    const resolutionNames = ["types", "typeRoots", "baseUrl", "paths", "rootDirs",
+      "module", "moduleResolution", "customConditions", "moduleSuffixes",
+      "resolveJsonModule", "allowArbitraryExtensions", "allowImportingTsExtensions",
+      "preserveSymlinks", "noResolve", "resolvePackageJsonExports", "resolvePackageJsonImports"]
+    const resolutionOptions = Object.fromEntries(resolutionNames
+      .filter(name => parsed.options[name] !== undefined).map(name => [name, parsed.options[name]]))
+    // Automatic package selection is part of the setup environment too.
+    parsed.options.configFilePath = path
+    resolutionOptions.types ??= ts.getAutomaticTypeDirectiveNames(parsed.options, ts.sys)
+    const context = { directory: rel(packageDir, dirname(path)) || ".",
+      compilerOptions: Object.fromEntries(ts.serializeCompilerOptions(resolutionOptions,
+        { configFilePath: path, useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames })), files: [] }
+    if (resolutionOptions.paths && resolutionOptions.baseUrl === undefined)
+      context.pathsBase = rel(packageDir, parsed.options.pathsBasePath ?? dirname(path)) || "."
+    projectContexts.push(context)
+    projectDeclarations.set(context, new Set(parsed.fileNames.filter(file => /\.d\.[cm]?ts$/.test(file)).map(file => rel(packageDir, file))))
     const emitted = { ...parsed, options: { ...parsed.options, outDir: resolve(dir, prefix), declarationDir: undefined, composite: false, declaration: true, emitDeclarationOnly: true } }
     for (const source of parsed.fileNames.filter(f => !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
       // Stock TypeScript does not know .vibe; its output layout is that of .ts.
@@ -451,6 +470,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       if (!output) continue
       const declaration = rel(dir, output)
       if (!existsSync(join(dir, declaration))) continue
+      context.files.push(declaration)
       aliases[rel(packageDir, source)] = declaration
       if (/\.(ts|vibe)$/.test(source)) {
         for (const ext of [".ts", ".vibe", ".d.vibe.ts"]) aliases[rel(packageDir, source).replace(/\.(ts|vibe)$/, ext)] = declaration
@@ -477,8 +497,9 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     writeFileSync(join(dir, stored), bytes)
     aliases[file] = stored
     logicalPaths[stored] = file
+    for (const context of projectContexts) if (projectDeclarations.get(context).has(file)) context.files.push(stored)
   }
-  const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, packageDir: resolve(packageDir) } }
+  const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir) } }
   writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
   return surface
 }
@@ -645,7 +666,8 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     const modules = [left.moduleRoots ?? [], right.moduleRoots ?? [],
       [dirname(dirname(dirname(ts.sys.getExecutingFilePath()))) ]].flat()
     api = compareApiIdentity(ts, left.directory, right.directory, {
-      beforeEntrypoints: aEntries, afterEntrypoints: bEntries, moduleRoots: [...new Set(modules)], includeComparedFiles: true,
+      beforeEntrypoints: aEntries, afterEntrypoints: bEntries,
+      projectContexts: [...left.projectContexts, ...right.projectContexts], moduleRoots: [...new Set(modules)], includeComparedFiles: true,
     })
     const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
       [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>
