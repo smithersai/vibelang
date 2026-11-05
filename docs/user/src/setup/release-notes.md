@@ -36,6 +36,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Catch-binding examples used a retired statement catch inside effect functions; they now use plain functions and show how an explicit `do` block scopes a default binding.
 
+- The migrated Effect-function example expected an expanded parameter brand; its declaration check now preserves the written type alias, matching TypeScript.
 - Exhaustive-match examples expected an older error-matcher encoding; their output checks now retain the current matcher calls and verify every arm and extracted payload.
 - Producer cleanup examples still used retired `try` statements; they now register scope finalizers and check disposal order against native Effect streams.
 - The exported-service migration example expected cached defaults to become `Reference` fallbacks; it now checks the documented refusal and preserves every source and shadowed utility type.
