@@ -5,6 +5,8 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import fc from "fast-check"
+import { checkProperty } from "../../../scripts/testing/property.mjs"
 
 // VibeLang always writes x.d.vibe.ts beside each
 // .vibe module, which stock TypeScript reads under allowArbitraryExtensions.
@@ -166,12 +168,12 @@ for (const placement of ["first", "last", "only", "extends", "compilerOptions", 
   })
 }
 
-test("a sidecar's declaration error fails a declaration project, and a no-declaration project only at a .ts importer", { skip }, (t) => {
+function checkLocalServiceDeclaration(t, name = "Local", key = "local") {
   const root = project(t, {
     "package.json": '{"type":"module"}',
     "tsconfig.json": JSON.stringify({ compilerOptions: { ...options, noEmit: true }, files: ["main.vibe"] }),
-    "main.vibe": "export function make() {\n  service Local { value: number }\n  return Local\n}\n",
-    "reference.ts": "import { Context } from \"effect\"\nexport function make() {\n  class Local extends Context.Service<Local, { value: number }>()(\"local\") {}\n  return Local\n}\n"
+    "main.vibe": `export function make() {\n  service ${name} { static readonly key = ${JSON.stringify(key)}; value: number }\n  return ${name}\n}\n`,
+    "reference.ts": `import { Context } from "effect"\nexport function make() {\n  class ${name} extends Context.Service<${name}, { value: number }>()(${JSON.stringify(key)}) {}\n  return ${name}\n}\n`
   })
   const nativeResult = run(native, ["-p", "tsconfig.json", "--pretty", "false"], root)
   const stockResult = run(process.execPath, [stockTsc, "--target", "es2022", "--module", "nodenext", "--strict", "--skipLibCheck", "--declaration", "--emitDeclarationOnly", "--outDir", "types", "reference.ts"], root)
@@ -182,8 +184,7 @@ test("a sidecar's declaration error fails a declaration project, and a no-declar
   assert.equal(stockPlain.status, 0, stockPlain.stdout + stockPlain.stderr)
   // As the same TypeScript under tsc: a project with neither declaration nor
   // composite publishes nothing, so a sidecar's error fails it only where a
-  // .ts file imports the module (foldkit-33 ruling, 2026-10-31T18:55Z; the
-  // Go test TestSidecarReaders covers the importer side).
+  // .ts file imports the module. TestSidecarReaders covers the importer side.
   assert.equal(nativeResult.status, 0, nativeResult.stdout + nativeResult.stderr)
   assert.deepEqual(errors(nativeResult), errors(stockPlain), nativeResult.stdout + nativeResult.stderr)
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { ...options, noEmit: true, declaration: true }, files: ["main.vibe"] }))
@@ -191,4 +192,24 @@ test("a sidecar's declaration error fails a declaration project, and a no-declar
   assert.notEqual(declared.status, 0, declared.stdout + declared.stderr)
   assert.deepEqual(errors(declared), errors(stockResult), declared.stdout + declared.stderr)
   assert.equal(existsSync(join(root, "main.js")), false)
+}
+
+test("a sidecar's declaration error fails a declaration project, and a no-declaration project only at a .ts importer", { skip }, (t) => {
+  checkLocalServiceDeclaration(t)
+})
+
+test("local service declaration errors match TypeScript across explicit keys", { skip }, async (t) => {
+  const rule = "A service in a file outside any package (or in one whose `package.json` has no string `name`), or declared inside a function or block, has no derived key"
+  assert.ok(readFileSync(join(repo, "docs/design/src/005-services.md"), "utf8").includes(rule))
+  await checkProperty(fc, {
+    name: "local-service-sidecar-keys",
+    rule,
+    command: "node --test test/sidecars.test.mjs",
+    numRuns: 8,
+    arbitrary: fc.record({
+      name: fc.constantFrom("Local", "Scoped", "Capability"),
+      key: fc.constantFrom("", "local", "app/local", 'quoted"key')
+    }),
+    check: ({ name, key }) => checkLocalServiceDeclaration(t, name, key)
+  })
 })
