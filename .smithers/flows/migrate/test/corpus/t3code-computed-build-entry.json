@@ -1,0 +1,7 @@
+{
+  "key": "t3code-computed-build-entry",
+  "quote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site.",
+  "module": "src/features/devices/device-stream.browser.ts",
+  "source": "export const value: number = 42\n",
+  "script": "import * as NodePath from \"node:path\";\nimport { build } from \"vite-plus\";\nexport async function generate(feature: string, name: string) {\n  const stem = name.toLowerCase() + \"-stream\";\n  return build({ configFile: false, build: { lib: {\n    entry: NodePath.join(\".\", \"src/features\", feature, `${stem}.browser.ts`),\n    formats: [\"iife\"]\n  } } });\n}\n"
+}

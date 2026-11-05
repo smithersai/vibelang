@@ -1,3 +1,4 @@
+import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
 import { conversionIdentity } from "./conversion-context.mjs"
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
 import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
@@ -479,22 +480,23 @@ export async function onePassStep(step, options) {
   const plan = readJson(p.plan)
   if (plan.mode !== "one-pass") throw new Error("run plan --scope <scope.txt> first")
   if (step === "rename") {
+    const files = plan.batches[0].files
+    const ts = loadTypeScript([
+      ...(config.toolchain.kind === "staged" ? [config.toolchain.dir] : []),
+      config.target, ...config.packages.map(pkg => join(config.target, pkg.dir)),
+      fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
+    ])
+    const catalog = await Jj.trackedFiles(config.target)
+    assertComputedBuildEntrypoints(config.target, catalog, files.map(from => ({from})), ts)
     const existing = readJsonIf(p.codemod("01"))
     if (existing?.renameComplete) return existing
     let state = readJsonIf(p.codemodState("01"))
-    const files = plan.batches[0].files
     assertNoTestBundleRename(config.target, files, { routed: Boolean(config.routeBundledImports) })
     if (!state) {
       if (existing) throw new Error("legacy interrupted rename has no durable journal; restore its recorded renames before retrying")
       const baseline = await checkProjects(config, p, options)
       if (baseline.some(p => p.crash)) throw new Error("baseline compiler did not finish: " + baseline.filter(p => p.crash).map(p => p.file + ": " + p.crash).join("; "))
       writeJson(join(p.run, "onepass-baseline.json"), baseline)
-      const ts = loadTypeScript([
-        ...(config.toolchain.kind === "staged" ? [config.toolchain.dir] : []),
-        config.target, ...config.packages.map(pkg => join(config.target, pkg.dir)),
-        fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
-      ])
-      const catalog = await Jj.trackedFiles(config.target)
       state = prepareState(config.target, files, await importers(config.target), { ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
       saveState(p.codemodState("01"), state)
     }

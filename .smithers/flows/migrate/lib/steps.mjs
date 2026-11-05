@@ -1,4 +1,5 @@
 import { refreshProjectReferences } from "./reference-outputs.mjs"
+import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
 import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
 import { conversionIdentity } from "./conversion-context.mjs"
 import { restorePrivateResolverExports } from "./import-meta-platform.mjs"
@@ -1525,13 +1526,14 @@ export async function codemod(options) {
     return readJson(p.codemod("01"))
   }
   const b = currentBatch(options.run, options.batch)
-  if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
   assertNoTestBundleRename(t, files, { routed: Boolean(config.routeBundledImports) })
   // Include owned tool configuration outside src, preserving the source-only
   // boundary for unrelated text, protected tests, fixtures and dependencies.
   const tracked = await Jj.trackedFiles(t)
+  assertComputedBuildEntrypoints(t, tracked, files.map(from => ({from})), typeScriptOf(config))
+  if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const toolConfigs = ownedToolConfigs(t, tracked)
   const live = file => existsSync(join(t, file)) ? file :
     existsSync(join(t, vibePath(file))) ? vibePath(file) : null

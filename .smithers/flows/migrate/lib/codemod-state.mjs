@@ -11,6 +11,7 @@ import { rewriteSourceLiterals } from "./source-paths.mjs"
 import { packageContext } from "./converted-paths.mjs"
 import { assertModuleBoundary, rewriteExports, rewriteImports, rewriteScripts, vibePath } from "./codemod.mjs"
 import { rewriteBuildEntrypoints } from "./build-entrypoints.mjs"
+import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
 
 function syncDirectory(path) {
   const fd = openSync(path, "r")
@@ -38,6 +39,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   const deferred = pathReadDeferrals(target, files, referenceFiles)
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
   const renames = files.map(from => ({ from, to: vibePath(from) }))
+  assertComputedBuildEntrypoints(target, tracked ?? catalog, renames, ts)
   const originals = renames.map(({ from, to }) => {
     if (!existsSync(join(target, from))) throw new Error(`${from} does not exist`)
     if (existsSync(join(target, to))) throw new Error(`${to} already exists`)

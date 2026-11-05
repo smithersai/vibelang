@@ -30,6 +30,8 @@ Use Effect services for platform, clock and randomness APIs, such as `Console`, 
 
 The migration inventory keeps `.vibex` modules alongside `.vibe`, `.ts` and `.tsx` sources, including their local import and test dependencies. Generated declaration sidecars do not count as source files.
 
+Literal Vite build inputs follow a migrated source to its native extension. A computed template or concatenated TypeScript filename, such as `${stem}.browser.ts`, requires a proven rewrite before its matching source can migrate. The flow refuses that rename with the entry location and source path, leaving the original build command reachable. The same check applies when resuming a prepared batch or a one-pass run. If an older interrupted run already renamed the source, use `revert` to restore it before retrying; the computed entry stays as written.
+
 The migration planner follows the source graph of an unchanged bundling test. With a plain inline `Bun.build({ packages: "external", … })` call, package imports stay outside that graph. Relative imports and TypeScript path aliases still belong to it. Literal resolver plugins whose hooks only throw preserve this boundary. Unclear resolver behavior keeps the files in TypeScript for review.
 
 Migration leaves documentation examples, declaration outputs and JSON test data unchanged when it wires source paths. Source and configuration references still follow the migrated modules.

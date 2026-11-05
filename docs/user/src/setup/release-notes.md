@@ -27,6 +27,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Callback-factory migration coverage rejected valid data-first `Option` namespace calls; it now accepts those rewrites while comparing eager evaluation order and runtime results with TypeScript.
 
+- Migration could rename a source while a computed Vite build entry still named its missing TypeScript path. It now refuses a matching template or concatenated filename before renaming, identifies the entry and source, and preserves the original build command.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.
