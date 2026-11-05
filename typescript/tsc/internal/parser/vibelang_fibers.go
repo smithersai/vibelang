@@ -162,6 +162,14 @@ func (p *Parser) vibelangProgramArrow(params []*ast.Node, body *ast.Node, anchor
 	return p.vibelangSpanning(arrow, core.NewTextRange(start, body.End()))
 }
 
+// vibelangValueArrow reads a captured value without creating an Effect.
+// Program arrows inherit Effect execution; lexical cell readers are native.
+func (p *Parser) vibelangValueArrow(body *ast.Node, anchor core.TextRange) *ast.Node {
+	arrow := p.vibelangProgramArrow(nil, body, anchor)
+	arrow.AsArrowFunction().EqualsGreaterThanToken.Flags &^= ast.NodeFlagsReparsed
+	return arrow
+}
+
 // inNativeAwaitContext selects the native expression grammar, without
 // granting NodeFlagsAwaitContext. Namespace bodies and their plain functions
 // retain TypeScript's syntax errors; effect code keeps its legacy recovery.
@@ -598,7 +606,12 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 
 	ofKeyword := p.tokenRange()
 	p.parseExpected(ast.KindOfKeyword)
+	mark := len(p.reparseList)
+	p.hoistVibeLangIs(binding)
+	defaults := p.takeHoists(mark)
 	items := p.parseAssignmentExpressionOrHigher()
+	p.hoistVibeLangIs(items)
+	headBindings := p.takeHoists(mark)
 	p.parseExpected(ast.KindCloseParenToken)
 	saveContextFlags := p.contextFlags
 	// A concurrent item body keeps its enclosing producer yield context.
@@ -648,20 +661,48 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	if p.opts.VibeLangDoAsFunction {
 		return statement
 	}
-	return p.concurrentHeadEnvironment(statement, binding, parameter, declarationKind)
+	return p.concurrentHeadEnvironment(statement, binding, parameter, declarationKind, &forEachIsHome{head: headBindings, defaults: defaults})
 }
 
 // concurrentHeadEnvironment reuses the native-loop TDZ cells from do
 // lowering (VIP-19). The item callback shadows these never-initialized
 // cells. A written limit runs in the enclosing scope, before entering them.
-func (p *Parser) concurrentHeadEnvironment(statement, binding, parameter *ast.Node, kind ast.NodeFlags) *ast.Node {
+func (p *Parser) concurrentHeadEnvironment(statement, binding, parameter *ast.Node, kind ast.NodeFlags, home *forEachIsHome) *ast.Node {
 	call := statement.Expression()
 	args := call.Arguments()
 	p.vibelangMatchTemps++
 	id := strconv.Itoa(p.vibelangMatchTemps)
 	label := p.mTemp("$concurrentHead"+id, statement.Loc)
 	leave := p.vibelangSpanning(p.factory.NewBreakStatement(p.mTemp(label.Text(), statement.Loc)), statement.Loc)
-	statements := []*ast.Node{statement, leave}
+	var statements, perItem []*ast.Node
+	statements = append(statements, home.head...)
+	if len(home.head) > 0 {
+		items := p.mTemp("$concurrentIsItems"+id, args[0].Loc)
+		statements = append(statements, p.mConst(items, ast.NodeFlagsConst, args[0], args[0].Loc))
+		args[0] = p.mTemp(items.Text(), items.Loc)
+		for i, hoist := range home.head {
+			decl := hoistedDeclarator(hoist)
+			if decl.Flags&ast.NodeFlagsVibeLangIsBinding == 0 {
+				continue
+			}
+			name := decl.Name()
+			reader := p.mTemp("$concurrentIsHead"+id+"_"+strconv.Itoa(i), name.Loc)
+			statements = append(statements, p.mConst(reader, ast.NodeFlagsConst,
+				p.vibelangValueArrow(p.mIdent(name.Text(), name.Loc), name.Loc), name.Loc))
+			copy := p.mConst(p.mIdent(name.Text(), name.Loc), ast.NodeFlagsLet,
+				p.mCall(p.mTemp(reader.Text(), name.Loc), nil, name.Loc), name.Loc)
+			hoistedDeclarator(copy).Flags |= decl.Flags & (ast.NodeFlagsVibeLangConst | ast.NodeFlagsVibeLangIsBinding)
+			perItem = append(perItem, copy)
+		}
+	}
+	perItem = append(perItem, home.defaults...)
+	if len(perItem) > 0 {
+		body := args[2].Body()
+		body.AsBlock().Statements.Nodes = append(perItem, body.AsBlock().Statements.Nodes...)
+		p.overrideParentInImmediateChildren(body)
+	}
+	statements = append(statements, statement, leave)
+	p.overrideParentInImmediateChildren(call)
 	if p.vibelangHeadCells == nil {
 		p.vibelangHeadCells = map[*ast.Node]*ast.Node{}
 	}

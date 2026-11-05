@@ -4981,6 +4981,7 @@ typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:4:123 lambda plai
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:4:145 lambda plain fallback
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:4:174 lambda plain table
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:5:127 lambda effectFn table
+typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:5:143 lambda plain fallback
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:5:165 lambda plain fallback
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:5:194 lambda plain table
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:6:126 lambda plain fallback

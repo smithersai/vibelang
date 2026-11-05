@@ -16,11 +16,12 @@ const reviewIsEnumHomeQuote = "An `enum` member initializer has no lexical home 
 const reviewIsForInitHomeQuote = "In `for (init; test; update)`, a binding from `init` belongs to the loop head, as a name declared by a `let` or `const` declaration in `init` would, whether `init` is a declaration or an expression"
 const reviewIsForHeadHomeQuote = "a binding from the head expression, which runs once in the head's own environment, is copied into each iteration's binding environment; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration's fresh binding environment."
 const reviewIsParameterHomeQuote = "An `is` test in formal-parameter initialization is `EK0705` if a `let` or `const` pattern binding would need the parameter environment as its lexical home. This includes direct defaults, defaults nested in parameter destructuring, and evaluated computed binding keys."
+const reviewIsCatchParameterHomeQuote = "The same holds for a catch clause's parameter, whose environment is distinct from the catch Block"
 const reviewIsParameterBlockQuote = "A binding in an explicit source block within the initializer, including a `do` block or a match arm's scope, belongs to that block/arm and does not escape to other parameters or the body. Nested source callable bodies keep their own scopes and boundaries."
 
 func TestReviewIsBindingHomesQuoted(t *testing.T) {
 	chapter := SpecText("004-match.md")
-	for _, quote := range []string{reviewIsArrowHomeQuote, reviewIsFieldHomeQuote, reviewIsEnumHomeQuote, reviewIsForInitHomeQuote, reviewIsForHeadHomeQuote, reviewIsParameterHomeQuote, reviewIsParameterBlockQuote} {
+	for _, quote := range []string{reviewIsArrowHomeQuote, reviewIsFieldHomeQuote, reviewIsEnumHomeQuote, reviewIsForInitHomeQuote, reviewIsForHeadHomeQuote, reviewIsParameterHomeQuote, reviewIsParameterBlockQuote, reviewIsCatchParameterHomeQuote} {
 		if !strings.Contains(chapter, quote) {
 			t.Fatalf("Chapter 4 no longer says %q; re-read the binding-home table before changing this oracle", quote)
 		}
@@ -48,6 +49,12 @@ func reviewIsBindingHomes() []reviewIsBindingHome {
 		{"for-of-var-head", false},
 		{"for-of-assignment-head", false},
 		{"for-of-array-default", false},
+		{"for-concurrent-head", false},
+		{"for-concurrent-default", false},
+		{"for-try-head", false},
+		{"for-try-default", false},
+		{"catch-typed-default", true},
+		{"catch-typed-computed", true},
 		{"parameter-do-block", false},
 		{"parameter-match-arm", false},
 		{"parameter-nested-arrow", false},
@@ -139,6 +146,37 @@ func reviewIsBindingHomeProgram(home string, leak, native bool) string {
 			body += "void cell;\n"
 		}
 		body += "}\n"
+
+	case "for-concurrent-head", "for-concurrent-default", "for-try-head", "for-try-default":
+		head := "const item of ((a is let cell) && [cell]) || []"
+		uses := "void item; void cell;"
+		if strings.HasSuffix(home, "default") {
+			head = "const {x=(a is let cell)&&cell} of [{}] as {x?:unknown}[]"
+			uses = "void x; void cell;"
+		}
+		prefix := "for concurrent(2)"
+		if strings.HasPrefix(home, "for-try") {
+			parts := strings.SplitN(head, " of ", 2)
+			head = parts[0] + " of Stream.fromIterable(" + parts[1] + ")"
+			prefix = "for try"
+		}
+		loop := prefix + "(" + head + ") { " + uses + " }"
+		modifier := "effect "
+		if native {
+			modifier = ""
+			loop = "for (const item of [a]) { let cell = item; void cell; }"
+		}
+		body = "export " + modifier + "function probe() {\n" + loop + "\n"
+		if leak {
+			body += "void cell;\n"
+		}
+		body += "}\n"
+	case "catch-typed-default", "catch-typed-computed":
+		name := "{code=(a is let cell)}"
+		if home == "catch-typed-computed" {
+			name = "{[(a is let cell)?\"x\":\"y\"]:code}"
+		}
+		body = "export function probe(){try{(null as any).code}catch(" + name + ":any){}}\n"
 	case "for-of-default", "for-of-array-default":
 		loop := "for (const { x = (a is let cell) && cell } of [{}] as { x?: unknown }[]) { void x; void cell; }"
 		if native {

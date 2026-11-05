@@ -1,6 +1,9 @@
 package vibelang
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Details214/240 require the owning diagnostic without moving evaluation.
 func TestUnsettledIsBindingHomes(t *testing.T) {
@@ -132,5 +135,63 @@ func TestForEachIsBindingHomeBoundaries(t *testing.T) {
 				t.Fatalf("missing TS%d: %v", tc.code, ds)
 			}
 		})
+	}
+}
+
+// VIP-7 admits both Effect loop heads and keeps each item's lexical copy.
+func TestEffectForEachIsBindingHomes(t *testing.T) {
+	for _, loop := range []string{"for concurrent(2)", "for try"} {
+		for _, tc := range []struct {
+			name, head, body string
+			code             int32
+		}{
+			{"head", "const item of ((0 is let cell), [1,2])", "void item; void cell;", 0},
+			{"default", "const {x=(1 is let cell)&&cell} of [{}] as {x?:unknown}[]", "void x; void (() => cell);", 0},
+			{"default-tdz", "const {x=(1 is let cell)&&cell} of [{}] as {x?:unknown}[]", "void x; void cell;", 2454},
+			{"shadow", "const item of ((0 is let cell), [1,2])", "const cell = item; void cell;", 0},
+			{"const", "const item of ((0 is const cell), [1,2])", "cell = item;", 2588},
+		} {
+			t.Run(loop+"/"+tc.name, func(t *testing.T) {
+				head := tc.head
+				if loop == "for try" {
+					parts := strings.SplitN(head, " of ", 2)
+					head = parts[0] + " of Stream.fromIterable(" + parts[1] + ")"
+				}
+				source := "export effect function probe(){" + loop + "(" + head + "){" + tc.body + "}}"
+				p, file, _, _ := editorProgram(t, source)
+				ds := p.GetSemanticDiagnostics(t.Context(), file)
+				if tc.code == 0 {
+					if len(ds) != 0 {
+						t.Fatalf("admitted home: %v", ds)
+					}
+					return
+				}
+				found := false
+				for _, d := range ds {
+					if d.Code() == tc.code {
+						found = true
+					}
+					if d.Code() == 4703 {
+						t.Errorf("retired home diagnostic: %v", d)
+					}
+				}
+				if !found {
+					t.Fatalf("missing TS%d: %v", tc.code, ds)
+				}
+			})
+		}
+	}
+}
+func TestNativeTypedCatchIsBindingHome(t *testing.T) {
+	for _, source := range []string{
+		"function f(){try{(null as any).code}catch({code=(1 is let c)}:any){}}",
+		"function f(){try{(null as any).code}catch({inner:{code=(1 is const c)}={}}:any){}}",
+		"function f(){try{(null as any).code}catch({[(1 is let c)?\"x\":\"y\"]:code}:any){}}",
+	} {
+		p, file, _, _ := editorProgram(t, source)
+		ds := p.GetSemanticDiagnostics(t.Context(), file)
+		if len(ds) != 1 || ds[0].Code() != 705 {
+			t.Errorf("native catch home: %v", ds)
+		}
 	}
 }

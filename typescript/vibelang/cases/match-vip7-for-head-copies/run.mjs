@@ -32,8 +32,8 @@ const serial = value => JSON.parse(JSON.stringify(value, (_key, item) => {
   if (typeof item === "number" && !Number.isFinite(item)) return { $number: String(item) }
   return item
 }))
-const actualExit = serial(Effect.runSyncExit(actual.main()))
-const referenceExit = serial(referenceEffect.runSyncExit(reference.main()))
+const actualExit = serial(await Effect.runPromiseExit(actual.main()))
+const referenceExit = serial(await referenceEffect.runPromiseExit(reference.main()))
 assert.deepEqual(actualExit, referenceExit)
-assert.equal(actualExit._tag, "Success")
+assert.equal(actualExit._tag, "Success", JSON.stringify(actualExit))
 console.log("ok pinned TypeScript 5.9.3 / Effect 4.1.0 all five for head environments copy cells types and Exit")

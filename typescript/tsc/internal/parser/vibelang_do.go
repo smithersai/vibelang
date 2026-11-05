@@ -2347,7 +2347,7 @@ func (l *doLowering) forEachIsHome(loop *ast.Node, home *forEachIsHome, pre *[]*
 		// the original cell between items. This reader never copies item
 		// writes back into the head.
 		snapshot := l.temp("$isHead", name.Loc)
-		*pre = append(*pre, p.mConst(snapshot, ast.NodeFlagsConst, p.vibelangProgramArrow(nil, p.mIdent(name.Text(), name.Loc), name.Loc), name.Loc))
+		*pre = append(*pre, p.mConst(snapshot, ast.NodeFlagsConst, p.vibelangValueArrow(p.mIdent(name.Text(), name.Loc), name.Loc), name.Loc))
 		copy := p.mConst(p.mIdent(name.Text(), name.Loc), ast.NodeFlagsLet, p.mCall(l.ref(snapshot, name.Loc), nil, name.Loc), name.Loc)
 		hoistedDeclarator(copy).Flags |= declaration.Flags & (ast.NodeFlagsVibeLangConst | ast.NodeFlagsVibeLangIsBinding)
 		perItem = append(perItem, copy)

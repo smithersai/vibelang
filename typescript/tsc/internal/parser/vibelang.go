@@ -877,10 +877,11 @@ func (p *Parser) parseVibeLangCatchClauses(first *ast.Node) *ast.Node {
 // vibelangCaughtName is the variable of the catch clause that tests typed clauses.
 const vibelangCaughtName = "$caught"
 
-// isTypedCatchClause reports whether clause's variable has a type annotation.
+// isTypedCatchClause recognizes legacy type-filtering catches. Native any and
+// unknown annotations retain TypeScript's ordinary catch parameter environment.
 func isTypedCatchClause(clause *ast.Node) bool {
 	variable := clause.AsCatchClause().VariableDeclaration
-	return variable != nil && variable.Type() != nil
+	return variable != nil && variable.Type() != nil && variable.Type().Kind != ast.KindAnyKeyword && variable.Type().Kind != ast.KindUnknownKeyword
 }
 
 // clauseAnchor returns a source range with width that stands for clause: its
