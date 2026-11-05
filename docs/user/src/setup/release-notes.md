@@ -19,6 +19,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Building from source could intermittently fail with `EEXIST` while linking compiler package tools; concurrent checks now reuse the dependencies installed before execution.
 
+- Runtime validation failures could be hidden behind hundreds of successful checks; failure details now remain visible in the build output.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

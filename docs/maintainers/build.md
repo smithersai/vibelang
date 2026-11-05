@@ -201,6 +201,10 @@ limit package compilation inside one target. `scripts/go-cache.test.mjs` fails w
 compiles a package the script misses, or when the two workflows' cache paths
 differ.
 
+The runtime suite uses Bun's `--only-failures` reporter. Every test still runs,
+and the summary retains pass, skip and failure counts. Omitting individual
+passing lines keeps late failure details inside the graph's bounded output preview.
+
 Each Go test invocation passes `-trimpath` explicitly, including every
 invocation in an `&&` chain. This keeps portable workers on the same
 package-cache key convention as local builds. New loader and migration
