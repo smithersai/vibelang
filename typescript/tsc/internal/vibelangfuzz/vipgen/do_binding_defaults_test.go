@@ -17,7 +17,7 @@ func TestDoBindingDefaultReferenceSyntax(t *testing.T) {
 		for present := range 2 {
 			for closeFails := range 2 {
 				for wrapped := range 2 {
-					g := &Gen{c: chooser{data: []byte{byte(jump), byte(present), byte(closeFails), byte(wrapped), 9}}, files: map[string]string{}, imports: map[string][]string{}}
+					g := &Gen{c: chooser{data: []byte{byte(jump), byte(present), byte(closeFails), byte(wrapped), 9}}, files: map[string]string{}, imports: map[string][]string{}, modules: map[string]bool{}}
 					doBindingDefault(g, &Scope{})
 					code := g.decls[0].(*Code)
 					source.WriteString("{\n" + code.E + "\n}\n")
@@ -45,7 +45,7 @@ func TestDoBindingEffectReferenceSyntax(t *testing.T) {
 		for present := range 2 {
 			for closeFails := range 2 {
 				for wrapped := range 2 {
-					g := &Gen{c: chooser{data: []byte{byte(jump), byte(present), byte(closeFails), byte(wrapped), 9}}, files: map[string]string{}, imports: map[string][]string{}}
+					g := &Gen{c: chooser{data: []byte{byte(jump), byte(present), byte(closeFails), byte(wrapped), 9}}, files: map[string]string{}, imports: map[string][]string{}, modules: map[string]bool{}}
 					doBindingEffectDefault(g, &Scope{})
 					code := g.decls[0].(*Code)
 					source.WriteString("{\n" + code.E + "\n}\n")

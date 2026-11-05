@@ -70,6 +70,7 @@ func doBindingEffectDefault(g *Gen, s *Scope) Stmt {
 	jump, present, closeFails, wrapped := g.Intn(6), g.Intn(2) == 1, g.Intn(2) == 1, g.Intn(2) == 1
 	n := 1 + g.Intn(20)
 	g.UseEffect()
+	g.UseModule("Exit", true)
 	g.AddFile("binding-default-iterator.ts", `/** @throws {never} */
 export function bindingDefaultSource(log:string[],present:boolean,badClose:boolean){return(function*(){try{log.push("open");yield present?4:undefined;log.push("later");yield 2}finally{log.push("close");if(badClose)throw "close"}})()}
 /** @throws {never} */
@@ -99,6 +100,6 @@ func (e *doBindingEffectEvent) Effect(w *Writer) { e.print(w, "yield* ", "") }
 func (*doBindingEffectEvent) Ends() bool         { return false }
 func (e *doBindingEffectEvent) print(w *Writer, run, annotation string) {
 	w.Write("const " + e.Log + annotation + "=[];const " + e.Exit + "=" + run + "Effect.exit(" + e.Name + "(" + e.Log + "));\n")
-	w.Write("const " + e.Result + "=" + e.Exit + "._tag===\"Success\"?[\"Success\"," + e.Exit + ".value]:[\"Failure\"," + e.Exit + ".cause.reasons.map(reason=>[reason._tag,reason._tag===\"Die\"?reason.defect:reason._tag===\"Fail\"?reason.error:\"interrupted\"])];\n")
+	w.Write("const " + e.Result + "=Exit.match(" + e.Exit + ",{onSuccess:value=>[\"Success\",value],onFailure:cause=>[\"Failure\",cause.reasons.map(reason=>[reason._tag,reason._tag===\"Die\"?reason.defect:reason._tag===\"Fail\"?reason.error:\"interrupted\"])]});\n")
 	w.Write("ev(\"binding-effect:\"+JSON.stringify([" + e.Result + "," + e.Log + "]))")
 }

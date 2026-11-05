@@ -19,6 +19,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The fork operand example now distinguishes its assignability rejection from independent native errors inside an operand.
 - The plain catch handler example now uses the catch result directly while retaining throw errors and valid Effect-handler controls.
 
+- Differential tests for destructuring defaults could report TypeScript errors in unreachable result observers. The observers now remain valid after outward jumps.
 - Ambient-declaration API checks loaded unrelated browser declarations. They now use fewer libraries while preserving isolated global and augmentation checks.
 
 - Conditional-export API checks loaded unrelated browser declarations. They now use fewer libraries while retaining export selection, sidecar and native type checks.

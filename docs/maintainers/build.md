@@ -2035,3 +2035,5 @@ The `//:recursive-legacy-slot-diagnostics` check retains recursive legacy call-c
 The `//:fork-object-operands` check proves the seven object operands are legal TypeScript expressions but not assignable to Effect, requires all seven `EK1703` errors and retains embedded native return errors in wrapped and unwrapped controls.
 
 The `//:plain-handler-regressions` check retains direct and internally caught plain throws alongside valid Effect handlers and nested Effect functions, across source placements.
+
+Destructuring-default differential observers normalize an `Exit` with `Exit.match` callbacks so they also type-check after generated outward jumps. `FuzzDoBindingObserverAfterJump` covers reachable observers and observers after `return`, `throw`, `break`, `continue` and a constant-false branch.
