@@ -167,13 +167,14 @@ func implicitRuntimeImport(file *ast.SourceFile) []string {
 	return modules
 }
 
-// declaresService reports whether file declares a service, whose identifier
-// carries the runtime's ServiceBrand (D361). It reads syntax, before binding.
+// declaresService finds custom services whose key types need the native
+// Context declarations. It walks runtime namespaces before binding and leaves
+// ambient modules to their own checks.
 func declaresService(file *ast.SourceFile) bool {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		switch {
-		case node.Kind == ast.KindModuleDeclaration:
+		case ast.IsModuleDeclaration(node) && (node.Flags&ast.NodeFlagsAmbient != 0 || ast.IsAmbientModule(node)):
 			return false
 		case ast.IsClassDeclaration(node) && shapeKindOf(node) == serviceClass:
 			return true

@@ -1,0 +1,19 @@
+export namespace Single {
+  export service S { static readonly key = "namespace/Single"; value: number }
+}
+export namespace Outer {
+  export namespace Inner {
+    export service S { static readonly key = "namespace/Nested"; value: number }
+  }
+}
+export namespace Dotted.Inner {
+  export service S { static readonly key = "namespace/Dotted"; value: number }
+}
+export const observations = [
+  Single.S.of({ value: 1 }).value,
+  Outer.Inner.S.of({ value: 2 }).value,
+  Dotted.Inner.S.of({ value: 3 }).value,
+  Single.S.key,
+  Outer.Inner.S.key,
+  Dotted.Inner.S.key
+]

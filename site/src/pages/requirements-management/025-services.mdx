@@ -56,6 +56,8 @@ A service method may declare a plain return type, such as `lookup(): number`, or
 
 At module or namespace scope, `Users.Shape` names a service's implementation type. A function or block cannot declare that companion namespace: write `Context.Service.Shape<typeof Users>` for a local service instead. The editor offers this replacement, and `vibelang --fix` migrates a local `Users.Shape` annotation. Within the service's own instance member type, `Users.Shape` remains a type-only self-reference. A member-local type parameter named `Users` shadows that service name, as in TypeScript.
 
+Namespace services retain native key helpers such as `Tools.Users.of(implementation)`. Their emitted declarations also keep an explicit `Context` import when they use it.
+
 Copying a service value into a `const` or an object property keeps the same service identity. The restrictions on `new`, `extends` and `instanceof` apply through those aliases and through parentheses too. An intersection type such as `typeof Users & { readonly extra?: number }` retains that identity: construction is `EK3003`, inheritance is `EK3002`, and `instanceof` or a class pattern is `EK3004`. Obtain the implementation with `try Users` and inspect its members instead. The identifier type `Users` in `R` is distinct from `typeof Users`; combining that identifier with an ordinary callable or constructor does not make the value an alias of the key.
 
 A generic parameter constrained to a key's value type, such as `Key extends typeof Users`, retains that key identity. The same misuse diagnostics apply through chained constraints, intersection bounds and object properties. A constraint on the identifier type `Users` in `R` does not turn an ordinary function or constructor into a service key.

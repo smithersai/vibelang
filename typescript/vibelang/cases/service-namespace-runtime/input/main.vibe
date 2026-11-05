@@ -1,0 +1,7 @@
+import * as Context from "effect/Context"
+export namespace Public {
+  export service S { static readonly key = "namespace/Imported"; value: number }
+}
+export namespace Deep.Inner {
+  export service S: { value: number } { static readonly key = "namespace/WholeImported" }
+}
