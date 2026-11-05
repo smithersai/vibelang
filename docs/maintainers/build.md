@@ -1854,3 +1854,5 @@ The `//:interim-severity-probes` check retains the eight original compatibility 
 The `//:join-message-regressions` check retains all awaited-value diagnostics and Deferred guidance, with direct and nested Deferred operands, parentheses and independent native type errors.
 
 The `//:lint-activation-regressions` check covers configured and unconfigured projects, inherited plugin settings, explicit disablement and idempotent legacy plugin migration.
+
+The `//:service-member-controls` check preserves all eight invalid service-member errors and the native service-class advisory, including record shapes with import aliases and retained bodies.

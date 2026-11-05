@@ -6,3 +6,4 @@ main.vibe(15,3): error EK0902
 main.vibe(18,3): error EK0902
 main.vibe(21,3): error EK0902
 main.vibe(24,3): error EK0902
+main.vibe(32,14): warning EK4831

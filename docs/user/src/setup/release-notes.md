@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The service member example now retains the teaching advisory on its valid native service class alongside every invalid-member error.
+
+
 - The optional callback example now shows the possibly undefined operand error alongside its existing failure and service contract errors.
 
 - Setup examples now verify the original TypeScript build and emit outcomes while retaining printed lint diagnostics and explicit author overrides.

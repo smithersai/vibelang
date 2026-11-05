@@ -31,7 +31,7 @@ func TestNamedServiceClassFixQuoted(t *testing.T) {
 
 func FuzzNamedServiceClassFix(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"interface", "alias", "generic", "intersection", "union", "optional", "qualified", "function", "primitive", "query", "unknown", "empty"}
+	keys := []string{"interface", "alias", "generic", "intersection", "union", "optional", "qualified", "function", "primitive", "query", "unknown", "empty", "record"}
 	for _, key := range keys {
 		for _, variant := range []uint8{0, 1, 2, 3} {
 			f.Add(key, variant)
@@ -81,6 +81,8 @@ func FuzzNamedServiceClassFix(f *testing.F) {
 				shape = "Types.Shape"
 			case "function":
 				head = "type Shape = () => number"
+			case "record":
+				shape = "Record<string, unknown>"
 			case "primitive":
 				shape = "number"
 			case "query":
