@@ -184,6 +184,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-async-duplicate-modifier", "schema S { async async id: Missing }"},
 	{"schema-static-async-field", "schema S { static async async id : Missing }"},
 	{"schema-static-field", "schema S { static id : Missing }"},
+	{"schema-static-field-line-break", "schema S { static\nid : Missing } ;"},
 	{"schema-static-field-alias", "schema S = { static id: Missing };"},
 	{"schema-effect-field", "schema S { effect id : string }"},
 	{"schema-effect-unsupported-field", "schema S { effect id : Missing }"},

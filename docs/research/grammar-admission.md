@@ -413,3 +413,9 @@ Default function and class exports also retain their native declaration
 boundary, including anonymous declarations and a following statement on
 the same line. Their dedicated default-export branches have no expression
 statement terminator; ordinary default expressions keep theirs.
+
+The existing `admission:schema-static-field` key includes a line break
+after `static`, as native class modifiers allow. The modifier scan keeps
+`async` and `readonly` line restrictions and separates a field named
+`static`, methods and schema-error members. The exact multiline witness is
+a pending corpus case in that same diagnostic gap.

@@ -55,7 +55,8 @@ func grammarSchemaModifiedField(ts []grammarToken, modifier string) bool {
 			if depth == 1 && start {
 				hasModifier := false
 			modifiers:
-				for at+1 < len(ts) && !ts[at+1].nl && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static") {
+				// Native static modifiers may span a line break; async and readonly may not.
+				for at+1 < len(ts) && (!ts[at+1].nl || ts[at].text == "static") && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static") {
 					// The last keyword may itself be the property name.
 					switch ts[at+1].text {
 					case ":", "?", "(", "<":
