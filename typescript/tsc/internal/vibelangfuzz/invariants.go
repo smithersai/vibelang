@@ -283,13 +283,17 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		adjustable := facts.IsAdjustable(code)
 		// VIP-30 overrides one diagnostic code, never the whole project's
 		// warning policy. The effective map includes inherited settings.
-		if adjustable && len(severities) != 0 {
+		// Interim default-off warnings are not modern configurable keys.
+		// Parsed per-code entries for them come from the supported legacy
+		// map and still control those compatibility diagnostics.
+		legacyInterim := slices.Contains(facts.Interim, code) && facts.Default(code) == DefaultOff
+		if (adjustable || legacyInterim) && len(severities) != 0 {
 			if severity, ok := severities[0][name]; ok {
 				matches := severity == "error" && d.Category() == diagnostics.CategoryError ||
 					severity == "warning" && d.Category() == diagnostics.CategoryWarning ||
 					severity == "suggestion" && d.Category() == diagnostics.CategorySuggestion
 				if !matches {
-					g.Add("ek:"+name, "%s is %s in vibe.severities, but was reported as %s: %s", name, severity, d.Category().Name(), keyOf(dir, d))
+					g.Add("ek:"+name, "%s is configured as %s, but was reported as %s: %s", name, severity, d.Category().Name(), keyOf(dir, d))
 				}
 				continue
 			}

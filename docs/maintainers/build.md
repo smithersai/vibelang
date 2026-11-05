@@ -1773,3 +1773,5 @@ Kernel differential fixtures use Effect's interruption and yielding primitives. 
 The `//packages:runtime-kernel-contracts` target replays retained interruption/yield inputs and generated programs against Effect, preserving complete Exit and trace comparisons. The conditional runtime gate selects it for runtime and property-runner changes.
 
 The `//packages:runtime-readme-exports` target checks every package export against the runtime README. Mutation controls remove documented names or replace them with child paths, so a prefix cannot hide an omitted export. This check is also a dependency of `//packages:runtime-package`.
+
+The `//:go-interim-severities` target replays the saved compatibility-warning inputs with their legacy severity maps. Its synthetic controls keep those warnings outside modern configurable keys and require unconfigured default-off warnings and unrelated category violations to remain rejected.

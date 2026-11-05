@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The runtime interop guide now shows Effect's interruption and yielding values alongside the runtime's masking and finalization helpers.
 - The runtime README omitted the `ChildProcess`, `Headers`, `NodeStream` and `Request` companion paths; all four are now listed.
 - The pattern-matching guide now explains boxed primitive extraction with `String` and `valueOf()`.
+- Diagnostic configuration guidance now explains how supported legacy settings enable compatibility warnings that otherwise default to off.
 - The HTTP example now adapts Node's server callback in a TypeScript module, so it compiles with foreign callback checks while opening the server only when its layer is acquired.
 - The Effect-parameter inventory check rejected the valid pair of diagnostics for nested Promise-returning root runners. It now requires both rules at the same call while continuing to reject unrelated Promise errors and accidental Effect-as-data warnings.
 - Compiler emission checks retained output from before the coverage and native tail-delegation repairs. Their snapshots now match those repairs while retaining exact JavaScript, declarations and runtime results.

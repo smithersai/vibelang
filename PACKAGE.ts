@@ -855,6 +855,12 @@ const targets = {
     {},
     [Vibelang.tree, S.Filegroup({srcs: [...S.glob(["docs/design/src/001-functions.md", "docs/design/src/002-running.md", "docs/design/src/008-testing.md", "packages/runtime/package.json", "experiments/package.json", "experiments/bun.lock"])]})]
   ),
+  "go-interim-severities": goVibelang(
+    "Supported legacy interim overrides retain their categories without enabling modern configuration keys or hiding unrelated defaults.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestInterimLegacySeveritiesQuoted|TestInterimLegacySeverityOverrides|FuzzInterimLegacySeverities|TestCompileLegacyDiagnosticOverrides|TestCompileLegacySeverityMap)$' ./internal/vibelangfuzz/ && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -timeout 5m -trimpath -run '^FuzzCompile$/^registry-EK482[1-5]$' ./internal/vibelangfuzz/`,
+    [Tsc["vibelangfuzz-files"]],
+    "10m"
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,
