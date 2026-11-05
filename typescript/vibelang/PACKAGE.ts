@@ -54,7 +54,12 @@ for (const name of cases) {
     summary: `Compile and run the compiler case ${name}.`,
     shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
       `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --verbose ${name}`,
-    data: [...shared, S.glob(`cases/${name}/**`)],
+    data: [
+      ...shared,
+      ...(name === "error-nominal-literal-key-migration" || name === "error-nominal-fieldless-key-migration"
+        ? [S.file("error-key-migration.mjs")] : []),
+      S.glob(`cases/${name}/**`)
+    ],
     tools: [S.Host.bin("node")],
     sandbox: "none",
     timeout: "5m"
