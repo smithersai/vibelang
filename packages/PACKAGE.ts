@@ -41,12 +41,21 @@ const runtimeKernelContracts = S.Shell.Test({
   timeout: "2m"
 })
 
+const runtimeReadmeExports = S.Shell.Test({
+  summary: "Every runtime package export is documented by its exact specifier.",
+  shell: "cd packages/runtime && bun test tests/readme-exports.test.ts",
+  data: [...install, S.file("runtime/README.md"), S.file("runtime/tests/readme-exports.test.ts"), S.glob("runtime/tests/readme-export-regressions/**")],
+  tools: [S.Host.bin("bun")],
+  sandbox: "none",
+  timeout: "1m"
+})
+
 // A small pre-merge check for package entrypoints, export identity and the Effect pin.
 const runtimePackageTest = S.Shell.Test({
   summary: "Check the runtime package entries, ABI export identity and Effect version guard.",
   shell: "cd packages/runtime && bun test --timeout 30000 tests/package.test.ts tests/package-error-matcher.property.test.ts && cd ../.. && " +
     "node --test --test-name-pattern='runtime export table covers every built JavaScript root export' docs/tools/bugbash4-docs.test.mjs",
-  data: [runtimeDist, ...install, S.glob("runtime/tests/**"), S.file("runtime/README.md"), S.file("//docs/tools/bugbash4-docs.test.mjs")],
+  data: [runtimeDist, runtimeReadmeExports, ...install, S.glob("runtime/tests/**"), S.file("runtime/README.md"), S.file("//docs/tools/bugbash4-docs.test.mjs")],
   tools: [S.Host.bin("bun"), S.Host.bin("node")],
   sandbox: "none",
   timeout: "5m"
@@ -241,6 +250,7 @@ export const Package = S.Package({
     "runtime-test": runtimeTest,
     "runtime-package": runtimePackageTest,
     "runtime-kernel-contracts": runtimeKernelContracts,
+    "runtime-readme-exports": runtimeReadmeExports,
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
     "migrate-toolchain-baseline": migrateToolchainBaseline,

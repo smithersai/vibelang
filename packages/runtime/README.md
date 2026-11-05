@@ -304,6 +304,10 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/FileReader` | Browser file reading |
 | `vibelang-runtime/experimental/ResizeObserver` | Element resize observation |
 | `vibelang-runtime/experimental/Window` | Window operations |
+| `vibelang-runtime/experimental/ChildProcess` | Experimental child-process compatibility helpers |
+| `vibelang-runtime/experimental/Headers` | Experimental header compatibility helpers |
+| `vibelang-runtime/experimental/NodeStream` | Experimental Node stream compatibility helpers |
+| `vibelang-runtime/experimental/Request` | Experimental request compatibility helpers |
 | `vibelang-runtime/experimental/Stdio` | Effect standard I/O plus `awaitInputClosed` |
 | `vibelang-runtime/experimental/Dns` | Typed DNS resolution |
 | `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |

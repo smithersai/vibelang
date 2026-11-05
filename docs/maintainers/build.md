@@ -1771,3 +1771,5 @@ The `//packages:runtime-dist` build runs Node's package-entry export audit after
 Kernel differential fixtures use Effect's interruption and yielding primitives. Their runtime branch still exercises the runtime's catch, masks, restore, service provision and finalization wrappers; compare the full Exit and ordered trace with the independent Effect branch.
 
 The `//packages:runtime-kernel-contracts` target replays retained interruption/yield inputs and generated programs against Effect, preserving complete Exit and trace comparisons. The conditional runtime gate selects it for runtime and property-runner changes.
+
+The `//packages:runtime-readme-exports` target checks every package export against the runtime README. Mutation controls remove documented names or replace them with child paths, so a prefix cannot hide an omitted export. This check is also a dependency of `//packages:runtime-package`.
