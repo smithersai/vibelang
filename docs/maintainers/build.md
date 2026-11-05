@@ -1779,3 +1779,5 @@ The `//:go-interim-severities` target replays the saved compatibility-warning in
 The `//:emission-snapshots` target includes the pinned negation-pattern declaration and Exit comparison. It uses the shared VIP-27 API identity comparator, retains the unmodified TypeScript twin and rejects changed native union types or authored documentation. The release target runs generated union and metadata mutation controls.
 
 The `//:appendix-oracles` target runs the Appendix B probe, quick-fix and stock-TypeScript twin controls. The chapter 4 reference-oracle controls run in `//:release`. Their test-runner catalog entries must match the commands that execute them.
+
+Give services explicit keys in isolated migration fixtures when the service-key repair is outside the assertion being tested. Keep exact source comparisons so an unrelated repair cannot obscure the callback or requirement migration under test.

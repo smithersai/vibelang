@@ -36,7 +36,7 @@ function fixture(source,body,severities={EK4833:"off"}){
 // docs/design/src/900-appendices.md#7e8e64f64b690629 — Chapter 900: trailing blocks preserve plain, Effect program, and Effect callback destinations.
 test("trailing blocks preserve plain, Effect program, and Effect callback destinations",()=>{
 
- const prelude="service Users { find(id: string): string!! }\nfunction test(name: string, body: () => Effect.Effect<number>) { return body() }\nfunction twice(f: () => number) { return f() + f() }\n"
+ const prelude="service Users { static readonly key = \"cov900/Users\"; find(id: string): string!! }\nfunction test(name: string, body: () => Effect.Effect<number>) { return body() }\nfunction twice(f: () => number) { return f() + f() }\n"
  const variants=[
   ["export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }","export const live = Layer.effect(Users, effect { return { effect find(id: string) { return id } } })",true],
   ["export function f() { return Effect.scoped { const r = try Ref.make(1); return try Ref.get(r) } }","export function f() { return Effect.scoped(effect { const r = try Ref.make(1); return try Ref.get(r) }) }",true],
@@ -69,7 +69,7 @@ test("EK4833 excludes interfaces extending Effect",()=>{
 // docs/design/src/900-appendices.md#2cafa3662de1d89b — Chapter 900: omitted requirement migration preserves the inferred service.
 test("omitted requirement migration preserves the inferred service",()=>{
 
- const before="service Input { value: number }\nexport effect function read(): number!never { return (try Input).value }\n"
+ const before="service Input { static readonly key = \"cov900/Input\"; value: number }\nexport effect function read(): number!never { return (try Input).value }\n"
  fixture(before,({run,source})=>{
   assert.match(run().text,/EK4853:/)
   const fixed=run("--fix");assert.equal(fixed.status,0,fixed.text)

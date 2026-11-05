@@ -46,6 +46,8 @@ Every source `.vibe` file has its own module scope, including when `moduleDetect
 
 Top-level `await` is ES top-level await of a Promise, with its module and target requirements, whatever its operand. An unsupported target reports `TS1378`; CommonJS output under `module: "NodeNext"` reports `TS1309`.
 
+A service needs a stable identity during migration. For a standalone source file whose package has no name, write an explicit `static readonly key` before running `--fix`. That keeps an unrelated generated-key repair out of the migration you are inspecting.
+
 For a local service with a cached `static readonly default`, `--fix` writes the native `Context.Service` class while keeping the field, key and reads. It preserves eager initialization and missing-provider failure. Exported keys, commented service bodies and keys that also declare `defaultValue` require a manual native class migration.
 
 ### Inspect or initialize configuration
