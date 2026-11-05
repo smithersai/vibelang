@@ -84,6 +84,8 @@ function quantityOr(text: string, fallback: number): number {
 // Output: 0
 ```
 
+A plain or `async` function's catch binding follows TypeScript, including `any` and `unknown` annotations. Destructured bindings keep TypeScript's property checks; their annotations do not turn the statement into an Effect catch.
+
 To fail with a typed error, make the function `effect`: its `throw` is `Effect.fail`. A plain return annotation does not make a function effectful, so the same body in `function wholeQuantity(text: string): number` is `EK0401`:
 
 ```vibe

@@ -15,8 +15,6 @@ const corpus = JSON.parse(readFileSync(new URL("./property-regressions/sl3-typed
 const quote = "A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript."
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const runtime = process.env.VIBELANG_RUNTIME || join(repo, "packages/runtime")
-const raw = process.env.VIBELANG_PLAIN_CATCH_RAW === "1"
-const observed = new Set()
 
 test("plain catch annotation coverage quotes Chapter 1", () => {
   assert.ok(readFileSync(join(repo, "docs/design/src/001-functions.md"), "utf8").includes(quote))
@@ -70,17 +68,7 @@ function check(input, literal) {
   assert.equal(native.exit === 0, native.codes.length === 0)
   assert.equal(vibe.panic, false, "plain catch must not panic: " + JSON.stringify(input))
   if (literal) return // the historical witness promises no crash, irrespective of function-kind diagnostics
-  if (!raw && JSON.stringify(vibe.codes) !== JSON.stringify(native.codes)) {
-    const extra = vibe.codes.filter(code => !native.codes.includes(code))
-    assert.ok(extra.length > 0)
-    // The compiler still reads a typed plain catch as an Effect catch: EK2105/EK2112
-    // on the annotation and EK9203 on the plain function that holds it.
-    const legacy = new Set(["EK2105", "EK2112", "EK9203"])
-    assert.ok(extra.every(code => legacy.has(code)), JSON.stringify({ input, native, vibe }))
-    assert.deepEqual(vibe.codes.filter(code => !legacy.has(code)), native.codes)
-    assert.notEqual(input.annotation, "none")
-    observed.add(corpus.pending.diagnostics.key)
-  } else assert.deepEqual(vibe.codes, native.codes, "plain catch follows native TypeScript: " + JSON.stringify(input))
+  assert.deepEqual(vibe.codes, native.codes, "plain catch follows native TypeScript: " + JSON.stringify(input))
   assert.equal(vibe.exit === 0, vibe.codes.length === 0)
 }
 
@@ -97,8 +85,4 @@ test("plain catch annotations span binding patterns, callables, return annotatio
     home: fc.constantFrom("function", "arrow", "class", "object", "async"),
     returnType: fc.constantFrom("void", "Void"), nested: fc.boolean(),
   }), input => check(input)), { seed: 3030628, numRuns: 60, endOnFailure: true })
-  if (!raw) {
-    for (const entry of Object.values(corpus.pending))
-      assert.ok(observed.has(entry.key), "XPASS " + entry.key + ": retire the exact pending entry")
-  }
 })
