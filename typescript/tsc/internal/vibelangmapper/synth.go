@@ -305,30 +305,7 @@ func (w *printer) statement(n *ast.Node, e env) {
 		if w.captureDeclaration(n, e) {
 			return
 		}
-		list := n.AsVariableStatement().DeclarationList
-		keyword := "var "
-		switch {
-		case list.Flags&ast.NodeFlagsConst != 0:
-			keyword = "const "
-		case list.Flags&ast.NodeFlagsLet != 0:
-			keyword = "let "
-		}
-		w.write(keyword)
-		for i, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
-			if i > 0 {
-				w.write(", ")
-			}
-			w.node(declaration.Name(), e)
-			if typ := declaration.Type(); typ != nil && ast.IsIdentifier(declaration.Name()) &&
-				declaration.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 && strings.HasPrefix(declaration.Name().Text(), "$matchKey") {
-				printed := tsprinter.NewPrinter(tsprinter.PrinterOptions{RemoveComments: true}, tsprinter.PrintHandlers{}, nil).Emit(typ, p.file)
-				w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{": " + strings.TrimSpace(printed), ""}})
-			}
-			if init := declaration.Initializer(); init != nil {
-				w.write(" = ")
-				w.node(init, e)
-			}
-		}
+		w.variableList(n.AsVariableStatement().DeclarationList, e)
 		w.write("; ")
 	case ast.KindLabeledStatement:
 		s := n.AsLabeledStatement()
@@ -343,6 +320,32 @@ func (w *printer) statement(n *ast.Node, e env) {
 		}
 	case ast.KindBreakStatement, ast.KindContinueStatement:
 		w.jump(n, e)
+	case ast.KindForStatement:
+		loop := n.AsForStatement()
+		w.write("for (")
+		if loop.Initializer != nil {
+			if loop.Initializer.Kind == ast.KindVariableDeclarationList {
+				w.variableList(loop.Initializer, e)
+			} else {
+				w.node(loop.Initializer, e)
+			}
+		}
+		w.write("; ")
+		if loop.Condition != nil {
+			w.node(loop.Condition, e)
+		}
+		w.write("; ")
+		if loop.Incrementor != nil {
+			w.node(loop.Incrementor, e)
+		}
+		w.write(") ")
+		if e.effect {
+			e.frame.targets = append(e.frame.targets, target{loop: true})
+		}
+		w.statement(loop.Statement, e)
+		if e.effect {
+			e.frame.targets = e.frame.targets[:len(e.frame.targets)-1]
+		}
 	case ast.KindWhileStatement:
 		w.write("while (")
 		w.node(n.Expression(), e)
@@ -358,6 +361,35 @@ func (w *printer) statement(n *ast.Node, e env) {
 		w.chunks = append(w.chunks, chunk{node: n, env: e})
 		w.write("; ")
 	}
+}
+
+// variableList prints generated loop bindings together with their initializer.
+func (w *printer) variableList(list *ast.Node, e env) {
+	p := w.p
+	keyword := "var "
+	switch {
+	case list.Flags&ast.NodeFlagsConst != 0:
+		keyword = "const "
+	case list.Flags&ast.NodeFlagsLet != 0:
+		keyword = "let "
+	}
+	w.write(keyword)
+	for i, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
+		if i > 0 {
+			w.write(", ")
+		}
+		w.node(declaration.Name(), e)
+		if typ := declaration.Type(); typ != nil && ast.IsIdentifier(declaration.Name()) &&
+			declaration.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 && strings.HasPrefix(declaration.Name().Text(), "$matchKey") {
+			printed := tsprinter.NewPrinter(tsprinter.PrinterOptions{RemoveComments: true}, tsprinter.PrintHandlers{}, nil).Emit(typ, p.file)
+			w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{": " + strings.TrimSpace(printed), ""}})
+		}
+		if init := declaration.Initializer(); init != nil {
+			w.write(" = ")
+			w.node(init, e)
+		}
+	}
+
 }
 
 // returnStatement prints a return the parser wrote, such as an arm's: in a
@@ -717,6 +749,14 @@ func (p *projector) isMatchForm(node *ast.Node) bool {
 		return !at("{") && !isProvideBlock(node) && maskWord(node) == ""
 	case ast.KindLabeledStatement:
 		return node.AsLabeledStatement().Label.Flags&ast.NodeFlagsReparsed != 0
+	case ast.KindForStatement:
+		// A pattern head adds declarations at the pattern's source position.
+		// Print the complete head once so those declarations cannot overlap
+		// the condition's own lowering edits.
+		loop := node.AsForStatement()
+		return loop.Initializer != nil && !p.isSource(loop.Initializer) ||
+			loop.Condition != nil && !p.isSource(loop.Condition) ||
+			loop.Incrementor != nil && !p.isSource(loop.Incrementor)
 	case ast.KindWhileStatement:
 		return node.Expression().Flags&ast.NodeFlagsReparsed != 0
 	}
