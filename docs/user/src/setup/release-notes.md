@@ -191,6 +191,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Contributor checks could mistake a diagnostic expectation update for newly rejected code. Changing only the first-line expected code list now preserves existing rejections while checking new errors and program changes.
 
 - Adding a platform guide example could make contributor checks report errors against a different example. Checks now follow named example files when their positions change.
+
+- Invalid service keys could hide errors in their expressions and type annotations; those TypeScript errors now remain visible.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.

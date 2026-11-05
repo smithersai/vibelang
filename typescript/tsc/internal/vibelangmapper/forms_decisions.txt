@@ -6763,6 +6763,7 @@ typescript/vibelang/cases/service-implementation-valid/main.vibe:8:38 lambda eff
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:43 lambda effectFn annotation
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:76 lambda effectFn annotation
 typescript/vibelang/cases/service-key-member-reads/main.vibe:64:43 lambda plain table
+typescript/vibelang/cases/service-key-native-errors/input/main.vibe:5:37 lambda plain fallback
 typescript/vibelang/cases/service-key-no-implicit-override/main.vibe:15:34 lambda plain fallback
 typescript/vibelang/cases/service-key-properties-native/main.vibe:17:9 lambda plain annotation
 typescript/vibelang/cases/service-key-properties-native/main.vibe:18:11 lambda plain annotation

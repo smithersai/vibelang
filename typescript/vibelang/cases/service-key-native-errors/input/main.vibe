@@ -1,0 +1,8 @@
+service S0 { static readonly key = Missing }
+service S1 { static key: Missing = "native/S" }
+service S2 { static readonly key: string = 7 }
+service S3 { static readonly key = ({}).missing }
+service S4 { static readonly key = ((n: number) => n)("bad") }
+service S5 { static readonly key = 7 as Missing }
+service S6 { private static readonly key = Missing }
+service S7 { protected static readonly key: string = 7 }
