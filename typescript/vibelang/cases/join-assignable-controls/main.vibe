@@ -1,0 +1,10 @@
+// expect-result: 7
+declare function impossible(): never
+
+effect function unreachable() { return join impossible() }
+
+export effect function main() {
+  const child = fork Effect.succeed(7)
+  const unchecked: any = child
+  return join unchecked
+}

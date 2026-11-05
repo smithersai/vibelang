@@ -206,6 +206,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The platform migration guide and experimental module catalog omitted the pure scoped IPv6 predicate. They now show `Experimental.NetAddress.isIPv6` and explain its Node-compatible zones without a service or layer.
 - Schema-error repair checks stopped at a separate retired inheritance clause. They now migrate that clause independently and still verify family encoding, decoding and child identity.
+
+- Joining a value typed `any` or `never` incorrectly reported `EK1704`. Those types now follow TypeScript's operand assignability, while `unknown` still needs narrowing.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.

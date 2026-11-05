@@ -4286,6 +4286,7 @@ typescript/vibelang/cases/iterator-native-protocol/main.vibe:47:33 lambda plain 
 typescript/vibelang/cases/iterator-native-protocol/main.vibe:77:22 lambda effectFn keyword
 typescript/vibelang/cases/iterator-native-protocol/main.vibe:78:28 lambda program table
 typescript/vibelang/cases/iterator-native-protocol/main.vibe:8:47 lambda plain table
+typescript/vibelang/cases/join-assignable-controls/main.vibe:7:22 byname program table
 typescript/vibelang/cases/join-binding.fail/main.vibe:12:22 byname program table
 typescript/vibelang/cases/join-parenthesized/main.vibe:13:18 byname program table
 typescript/vibelang/cases/join-parenthesized/main.vibe:14:18 byname program table
