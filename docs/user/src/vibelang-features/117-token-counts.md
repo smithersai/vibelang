@@ -182,7 +182,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Caching** | **2,000** |
 | [Caching Effects](../caching/045-caching-effects.md) | 950 |
 | [Cache](../caching/046-cache.md) | 1,100 |
-| **Concurrency** | **9,500** |
+| **Concurrency** | **9,600** |
 | [Fibers](../concurrency/047-fibers.md) | 4,300 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,400 |
@@ -249,9 +249,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Equivalence](../schema/102-equivalence.md) | 770 |
 | [Formatter](../schema/103-formatter.md) | 540 |
 | [Schema Compilers](../schema/104-compilers.md) | 2,200 |
-| **Platform** | **22,000** |
+| **Platform** | **23,000** |
 | [Introduction](../platform/105-introduction.md) | 3,900 |
-| [FileSystem](../platform/106-file-system.md) | 1,300 |
+| [FileSystem](../platform/106-file-system.md) | 1,400 |
 | [Path](../platform/107-path.md) | 950 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
