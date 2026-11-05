@@ -49,6 +49,8 @@ The async conversion edits the selected function. It leaves containing variable 
 
 `fork` and `join` become reserved in an `effect` function's parameters and body. Async conversion is withheld when it would turn a binding or reference into a reserved name or fiber operation. Rename those bindings before converting. Property names and nested plain callable bodies keep their usual rules.
 
+Async conversion also checks inherited contracts on callable class fields and applicable index signatures on classes and contextually typed objects. A field or method whose converted result would violate a `Promise` contract keeps its `async` form until those contracts are migrated. Inferred fields and index signatures that do not apply to the member remain eligible.
+
 The Promise conversion refactors apply to ordinary `async` functions. For an async generator, write an Effect producer and handle its terminal result and Promise yields explicitly.
 
 ## Inspect inferred information
