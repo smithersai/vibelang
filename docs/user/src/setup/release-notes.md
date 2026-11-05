@@ -202,6 +202,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Contributor forms examples still required the retired declaration manifest. They now verify its absence while retaining declaration and runtime checks.
 - A migrated service contract could unexpectedly qualify another requirement beside `FileSystem`. The FileSystem guide now explains why both `FileSystem.FileSystem` and `Path.Path` appear.
+- The editor's receiver-refusal checks assumed a retired finalizer would still produce a suggestion. They now retain the refusal when a client sends a stale suggestion, alongside current valid suggestion sites.
 - Contributor documentation checks rejected the expanded foreign-call repair guidance. They now verify both defect preservation and the conditions for adding a no-throw contract.
 - Two compatibility diagnostics gave undefined execution advice. Their explanations now name `try` as the Effect consumer.
 - The CLI guide incorrectly said published `error` and `schema error` declarations add generated matcher members and a runtime type reference. It now describes their TypeScript declaration surface and runtime matcher behavior.
