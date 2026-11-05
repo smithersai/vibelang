@@ -54,9 +54,9 @@ export function runProbes(directory, probes, announce = true) {
   if (announce) console.log("probes agree")
 }
 
-export const interimSeverityQuote = "An interim `EK92xx` code sits in the separately labelled compatibility inventory and is not one of the language's own rules (detail 189), so an entry for it is the same config error as any other code that may not be configured, `EK3006`, even though the compiler prints it as a warning; the oracle and the compiler already agree."
+export const interimSeverityQuote = "an error code, an interim \x60EK92xx\x60 code (even one printed as a warning) or an unknown code in \x60vibe.severities\x60"
 
-// Chapter 900, interim configuration: mutate each of the eight keys and every
+// Chapter 900, interim configuration: mutate every registered compatibility key and every
 // permitted severity spelling. The oracle is rejection with EK3006 throughout.
 export function runInterimSeverityMutations(directory) {
   const quotedChapter = chapter("900-appendices").replace(/\s+/g, " ")
@@ -69,8 +69,11 @@ export function runInterimSeverityMutations(directory) {
     vibe: { severities: { [code]: severity } },
     status: "error", diagnostic: { code: "EK3006", category: "error" }, errorCodes: ["EK3006"]
   }], false)
-  for (let n = 1; n <= 8; n++) probe("EK920" + n, "off")
-  fc.assert(fc.property(fc.integer({ min: 1, max: 8 }), fc.constantFrom("off", "error", "warning", "suggestion"),
-    (n, severity) => probe("EK920" + n, severity)), { seed: 900342, numRuns: 16 })
+  const codes = [...new Set([...quotedChapter.matchAll(/interim \x60(EK92[0-9]+)\x60/g)].map(match => match[1]))]
+  for (let n = 1; n <= 8; n++) assert.ok(codes.includes("EK920" + n), "retain original compatibility key " + n)
+  const severities = ["off", "error", "warning", "suggestion"]
+  for (const code of codes) for (const severity of severities) probe(code, severity)
+  fc.assert(fc.property(fc.constantFrom(...codes), fc.constantFrom(...severities),
+    (code, severity) => probe(code, severity)), { seed: 900342, numRuns: 32 })
   console.log("probes agree")
 }

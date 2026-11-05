@@ -1848,3 +1848,5 @@ The `//:legacy-json-advisory` check replays the JSON advisory registry witness t
 The `//:optional-callback-identities` check retains both missing channels and optional-operand admission, plus guarded and unguarded call, method, receiver and computed-access controls.
 
 The `//:native-setup-exit-behavior` check executes stock TypeScript and VibeLang on the same native source. Unpatched defaults retain successful exit and emission while the lint error still prints; explicit false flags keep the error blocking, and explicit true flags remain unchanged.
+
+The `//:interim-severity-probes` check retains the eight original compatibility keys, covers the complete current inventory and runs every supported severity through the actual compiler.

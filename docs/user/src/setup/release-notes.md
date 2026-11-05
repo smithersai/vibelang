@@ -187,6 +187,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The optional callback example now shows the possibly undefined operand error alongside its existing failure and service contract errors.
 
 - Setup examples now verify the original TypeScript build and emit outcomes while retaining printed lint diagnostics and explicit author overrides.
+- The compatibility severity example now checks every interim diagnostic against all supported severity spellings and keeps their configuration rejection explicit.
 - Empty Effect functions and blocks could share one Effect value across separate constructions, changing explicit equality results. They now follow their `Effect.gen` construction counterpart; reusing a saved Effect still shares that value.
 
 - The legacy JSON advisory example now enables its warning through the supported project configuration and retains the disabled default.
