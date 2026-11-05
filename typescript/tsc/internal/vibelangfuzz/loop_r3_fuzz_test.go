@@ -326,7 +326,7 @@ func FuzzIsHomePositions(f *testing.F) {
 
 var ownerCodeQuotes = map[string]string{
 	"EK0109": "| `EK0109` | a recognized `effect` arrow head that breaks its required form: a typed or generic bare parameter; parenthesize the parameters | 1 |",
-	"EK0202": "| `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 |",
+	"EK0202": "| `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression Replay [example: main.vibe:4:72](../../../typescript/vibelang/cases/cov2-002a-block-outward-jump.fail/main.vibe). | 2 | [Running Effects](002-running.md#effect-blocks) |",
 	"EK0512": "| `EK0512` | `catch` mixed with `??`, `\\|\\|` or `&&` without parentheses (parenthesize the mixed operands), or a member access or call after any closed handler (a parenthesized handler, a function-expression handler or a block-bodied arrow handler); parenthesize the whole catch expression | 5 |",
 	"EK1505": "| `EK1505` | a member of a `schema` body that is not a `Field` | 15 |",
 	"EK1606": "| `EK1606` | a malformed `data` variant or a payload member that is not a `Field` | 16 |",

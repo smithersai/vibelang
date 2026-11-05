@@ -818,7 +818,7 @@ const targets = {
   }),
   "tooling-citations": S.Shell.Test({
     summary: "Native diagnostic, actionable advice and retired-setting fuzz oracles match the published tooling contracts.",
-    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(Test(NativeServiceKeyNamespaceQuoted|ServiceShapeQualifierFallbackQuoted|PlatformYieldAdviceQuoted|RetiredConfigOptionsQuoted)|FuzzRetiredConfigOptions)$' ./internal/vibelangfuzz/",
+    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(Test(NativeServiceKeyNamespaceQuoted|ServiceShapeQualifierFallbackQuoted|PlatformYieldAdviceQuoted|RetiredConfigOptionsQuoted|OwnerSyntaxCodesQuoted)|FuzzRetiredConfigOptions)$' ./internal/vibelangfuzz/",
     data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",

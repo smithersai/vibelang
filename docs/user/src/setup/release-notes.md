@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Failure-alias examples could still report a resolved declaration-tag assignment gap. They now require the correct `EK0402` rejection and retain the saved examples.
 - The legacy abstract-error migration lacked generated preservation examples. Its error and schema-error forms now exercise field types, optional fields and line-ending trivia through the same API and runtime checks as other repairs.
+- The diagnostic reference’s replay link made syntax checks reject the published effect-block jump rule. Those checks now quote the complete rule and keep its existing diagnostic cases.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
 - Migrating a cached service default delayed and repeated its initializer and changed repeated object reads. The repair now keeps eager initialization, cached identity, the service key and missing-provider behavior.
