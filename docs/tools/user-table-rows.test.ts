@@ -1,3 +1,5 @@
+import * as Effect from "effect/Effect"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import { expect, test } from "bun:test"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -5,6 +7,50 @@ import { join } from "node:path"
 import { lexer } from "marked"
 import fc from "fast-check"
 import { tableRowProblems, userTableProblems } from "./table-rows.mjs"
+
+test("native secure integer mapping excludes its upper bound", () => {
+  const text = readFileSync(new URL("../user/src/platform/platform-globals.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Global|Use instead")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const row = table.rows.find(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "crypto.randomInt")
+  expect(row?.[1].text).toContain("halfOpen: true")
+  expect(text).toContain("const roll = try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })")
+  expect(text).toContain("excludes")
+})
+
+test("generated secure integer replacements retain the half-open range", () => {
+  const tick = String.fromCharCode(96)
+  const table = (source: string, replacement: string) => [
+    "| Global | Use instead |", "| --- | --- |",
+    "| " + tick + source + tick + " | " + tick + replacement + tick + " |"
+  ].join("\n")
+  const random = SecureRandom.make(size => {
+    const bytes = new Uint8Array(size)
+    bytes[0] = 0x10
+    return bytes
+  })
+  fc.assert(fc.property(
+    fc.integer({ min: -1_000_000, max: 1_000_000 }), fc.constantFrom("", " ", "  "),
+    fc.constantFrom("crypto.randomInt", "crypto.randomInt(min, max)"),
+    fc.constantFrom(["min", "max"], ["lower", "upper"]),
+    (min, space, source, bounds) => {
+      const max = min + 1
+      expect(Effect.runSync(random.intBetween(min, max))).toBe(max)
+      expect(Effect.runSync(random.intBetween(min, max, { halfOpen: true }))).toBe(min)
+      const call = "try (try SecureRandom.SecureRandom)." + space + "intBetween(" + bounds.join("," + space)
+      const wrong = call + ")"
+      const options = { checkPlatformReplacements: true }
+      expect(tableRowProblems(table(source, wrong), "generated", options)).toHaveLength(1)
+      expect(tableRowProblems(table(source, call + ", { halfOpen: false })"), "generated", options)).toHaveLength(1)
+      expect(tableRowProblems(table(source, call + ", { halfOpen: true })"), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(source, "try custom.intBetween(min, max)"), "generated", options)).toEqual([])
+      expect(tableRowProblems(table("Crypto.randomIntBetween", wrong), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(source, wrong), "spec")).toEqual([])
+      expect(tableRowProblems(tick.repeat(3) + "md" + "\n" + table(source, wrong) + "\n" + tick.repeat(3), "generated", options)).toEqual([])
+    }
+  ), { numRuns: 200, seed: 36036 })
+})
 
 test("every user-docs table row follows its header, delimiter and width", () => {
   expect(userTableProblems()).toEqual([])

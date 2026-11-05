@@ -744,6 +744,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 
 FileSystem advice gets the implementation with `try FileSystem.FileSystem` before calling a member. Run a returned Effect with `try`, as in `try (try FileSystem.FileSystem).readFileString(path)`. The module `FileSystem` supplies the service key; its methods belong to the retrieved implementation.
 
+`crypto.randomInt(min, max)` excludes `max`. For valid native integer bounds, set `halfOpen: true` on the `SecureRandom.SecureRandom` service’s `intBetween` method to retain that range. The Effect method includes both bounds by default and rounds fractional bounds; keep a native call in a `.ts` adapter when its argument validation is required.
+
 | Global | Use instead |
 | --- | --- |
 | `BroadcastChannel` | escape to TypeScript for now: Effect has no service for messages between browser tabs; a Worker carries messages to a worker. |
@@ -794,7 +796,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 | `crypto.getRandomValues` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
 | `crypto.hash` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` |
 | `crypto.randomBytes` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
-| `crypto.randomInt` | `try (try SecureRandom.SecureRandom).intBetween(min, max)` |
+| `crypto.randomInt` | `try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })` |
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` |
 | `crypto.sign` | `try (try Signature.Signature).sign(privateKey, data)` |
 | `crypto.subtle` | `try (try Mac.Mac).sign(macKey, data)` |

@@ -22,6 +22,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A throw inside `async match` rejects its Promise; ordinary and Effect match expressions retain their surrounding throw rules.
 - Formatting examples retain labeled control-flow targets when adding braces, including concurrent loop bodies.
 - The global replacement table could turn Node's version string into a component object. It now selects the Node version and retains its leading `v`.
+- Following the random-integer replacement could return the excluded upper bound. The guide now uses `halfOpen: true` to preserve the native range.
 
 - The fibers guide omitted labeled `continue` targeting the `for concurrent` loop itself. It now explains that this ends the current item.
 - `vibelang --fix` left ordinary incomplete finite matches unchanged. It now adds a `default` that preserves the implicit empty-message `TypeError`, including an Effect defect or Promise rejection, without widening the function's result or channels.

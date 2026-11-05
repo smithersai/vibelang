@@ -84,6 +84,13 @@ export function tableRowProblems(text, file, { checkWidths = true, checkPlatform
       const row = line.split("|").slice(1, -1).map(cell => cell.trim())
       const sourceCall = row[0]?.replaceAll(String.fromCharCode(96), "")
       const call = sourceCall?.replace(/\s/g, "")
+      // Native randomInt excludes max; intBetween includes it by default.
+      if (/^crypto\.randomInt(?:\([^)]*\))?$/.test(call ?? "") &&
+          /\bSecureRandom\b/.test(row[1] ?? "") &&
+          /\.\s*intBetween\s*\(\s*[$\w]+\s*,\s*[$\w]+\s*(?:\)|,\s*\{\s*halfOpen\s*:\s*false\s*\}\s*\))/.test(row[1] ?? "")) {
+        problems.push(file + ":" + (i + 1) + ": crypto.randomInt excludes its upper bound; use halfOpen: true on the SecureRandom service replacement")
+      }
+
       if (/\bFileSystem\b/.test(row[1] ?? "") && /\.\s*readFileString\s*\(/.test(row[1] ?? "") &&
           nativeFileReadUsesBytes(sourceCall ?? "")) {
         problems.push(file + ":" + (i + 1) + ": the native file read supplies bytes; its replacement must not decode them as text")
