@@ -119,6 +119,7 @@ func effectTryOperandShapes() []effectTryOperandShape {
 		{"identity", "function take<T>(x: T): T { return x }", "take(e)", false},
 		{"array-element", "function first<T>(xs: T[]): T { return xs[0]! }", "first([e])", false},
 		{"callback-result", "function apply<B>(f: () => B): B { return f() }", "apply(() => e)", false},
+		{"option-match", "", "Option.match(Option.some(1), { onNone: () => e, onSome: (_value) => e })", false},
 		{"method", "const box = { take<T>(x: T): T { return x } }", "box.take(e)", false},
 		{"stream-pipe", "", "Stream.make(1, 2).pipe(Stream.runCollect)", false},
 		{"pipe-function", "", "pipe(e, (a) => a)", false},

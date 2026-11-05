@@ -1858,3 +1858,5 @@ The `//:lint-activation-regressions` check covers configured and unconfigured pr
 The `//:service-member-controls` check preserves all eight invalid service-member errors and the native service-class advisory, including record shapes with import aliases and retained bodies.
 
 The `//:plain-runner-promise-data` check preserves eager Promise creation, the original result and page observations, and retained, discarded and parenthesized boundary mutations.
+
+The `//:option-direct-consumption` check covers direct and parenthesized `try` operands alongside assigned, returned, passed and stored generic Effect results.

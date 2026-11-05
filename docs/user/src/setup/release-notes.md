@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The Option match example now checks direct consumption without a spurious generic-argument warning, while retaining its match advisory and runtime results.
+
+
 - The plain runner example now creates its Promise through an explicit synchronous boundary and awaits it at the original later step.
 
 
