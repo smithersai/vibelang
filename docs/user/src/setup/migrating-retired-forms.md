@@ -144,3 +144,5 @@ An implicit prelude `Effect.gen` repair preserves the native generator's synchro
 A declined automatic repair retains its source bytes. Module-export qualification elsewhere in the same file still proceeds, and the refusal report refers to the original source location. Native JavaScript generators retain their return values.
 
 When a legacy migration adds an `effect` marker to a function, it also converts service receiver calls in that body before replacing written `infer` channels. This preserves the service requirement and the failures of dependent method calls.
+
+An alias repair in a class `implements` clause changes only the type spelling. Independent `EK0402` callable throws errors remain, just as they do with a written `Effect.Effect<…>` type.
