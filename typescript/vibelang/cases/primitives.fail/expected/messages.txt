@@ -1,1 +1,2 @@
 This restore block is not inside an uninterruptible block, so it has no interruptibility to restore.
+main.vibe(13,19): warning EK2113: A catch clause no longer catches a whole Cause; match on exit(…) with Exit.Success and Exit.Failure arms.

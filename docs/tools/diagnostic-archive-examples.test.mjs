@@ -1,10 +1,13 @@
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs"
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: `catch (cause: Cause.Cause<E>) { recover(cause) }` in legacy effect code Replay [example: main.vibe:13:19](../../../typescript/vibelang/cases/primitives.fail/main.vibe).
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from "node:fs"
 import {join} from "node:path"
 import {tmpdir} from "node:os"
 import {test} from "node:test"
 import assert from "node:assert/strict"
 import {archiveFiles,archiveExamples} from "./diagnostic-archive-examples.mjs"
 import {checkExample} from "./diagnostic-examples.mjs"
+import {appendixCodes,repository} from "./diagnostic-identity.mjs"
+import fc from "fast-check"
 test("archive examples retain their configuration and reject escaping or duplicate paths",()=>{
  assert.deepEqual(archiveFiles("-- main.vibe --\nconst n=1\n-- tsconfig.json --\n{}\n"),{"main.vibe":"const n=1\n","tsconfig.json":"{}\n"})
  assert.throws(()=>archiveFiles("-- ../escape --\nx"),/unsafe/)
@@ -60,4 +63,19 @@ test("native case links retain project context and enforce documented overrides"
   assert.throws(()=>archiveExamples(new Map([["EK4811",row.replace("; error","")]]),root),/configured severity/)
   assert.throws(()=>archiveExamples(new Map([["EK4811",row.replace("main.vibe:","other.vibe:")]]),root),/located source/)
  } finally {rmSync(root,{recursive:true,force:true})}
+})
+
+test("the published Cause-catch witness keeps its unmigrated annotation at the cited position",()=>{
+ const root=repository
+ const appendix=appendixCodes(readFileSync(join(root,"docs/design/src/900-appendices.md"),"utf8"))
+ const examples=archiveExamples(new Map([["EK2113",appendix.get("EK2113")]]),root)
+ assert.equal(examples.length,1)
+ const example=examples[0],line=example.files[example.at.file].split("\n")[example.at.line-1]
+ assert.match(line.slice(0,example.at.column-1),/catch\s*\(\s*\w+:\s*$/)
+ assert.match(line.slice(example.at.column-1),/^Cause(?:\.Cause)?(?:<[^>]+>)?/)
+ fc.assert(fc.property(fc.integer({min:-1,max:3}),fc.integer({min:-3,max:3}),(row,column)=>{
+  const result={status:0,stdout:example.at.file+"("+example.at.line+","+example.at.column+"): warning EK2113: legacy Cause catch"}
+  const shifted={...example,at:{...example.at,line:example.at.line+row,column:example.at.column+column}}
+  assert.equal(checkExample(shifted,appendix,result).length===0,row===0&&column===0)
+ }),{seed:2113,numRuns:100})
 })
