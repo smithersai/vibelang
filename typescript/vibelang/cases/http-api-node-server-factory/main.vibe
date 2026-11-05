@@ -1,0 +1,12 @@
+import { mark } from "./sdk.js"
+export { events } from "./sdk.js"
+module adapter {
+  import { createServer, layer } from "./sdk.js"
+  export function serverLayer(port: number) {
+    return layer(createServer, port)
+  }
+}
+import { serverLayer } from adapter
+mark("before")
+export const Server = serverLayer(3000)
+mark("after")

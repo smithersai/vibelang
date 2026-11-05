@@ -1,5 +1,4 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
-import { NodeHttpServer } from "@effect/platform-node"
 
 export schema CreateUser { readonly name: string }
 export error NameTaken { name: string }
@@ -39,14 +38,18 @@ export effect function createUser() {
 export const Routes = HttpRouter.add("POST", "/users", createUser())
 export const App = HttpRouter.provideRequest(UsersLive)(Routes)
 
-// NodeHttpServer runs Node's createServer itself. A .vibe file imports no
-// Node.js value directly (D310), so a module block brings it in.
+// Keep the Node factory contract inside the TypeScript adapter. Constructing
+// its layer stays at this call site; acquiring the layer creates the server.
 module node {
-  export { createServer } from "node:http"
+  import { createServer } from "node:http"
+  import { NodeHttpServer } from "@effect/platform-node"
+  export function serverLayer(port: number) {
+    return NodeHttpServer.layer(createServer, { port })
+  }
 }
-import { createServer } from node
+import { serverLayer } from node
 
-const Server = NodeHttpServer.layer(createServer, { port: 3000 })
+const Server = serverLayer(3000)
 const Live = Layer.provide(HttpRouter.serve(App), Server)
 
 export effect function main() {

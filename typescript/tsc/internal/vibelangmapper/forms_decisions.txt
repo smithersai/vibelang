@@ -28,10 +28,10 @@ examples/foldkit-app/src/main.vibe:93:50 lambda plain fallback
 examples/foldkit-app/src/main.vibe:96:32 lambda choice fallback
 examples/http-api/src/main.test.vibe:10:66 lambda effectFn keyword
 examples/http-api/src/main.test.vibe:11:21 lambda program table
-examples/http-api/src/main.vibe:12:46 lambda program table
-examples/http-api/src/main.vibe:16:5 lambda effectFn keyword
-examples/http-api/src/main.vibe:34:16 lambda dual fallback
-examples/http-api/src/main.vibe:39:56 byname program table
+examples/http-api/src/main.vibe:11:46 lambda program table
+examples/http-api/src/main.vibe:15:5 lambda effectFn keyword
+examples/http-api/src/main.vibe:33:16 lambda dual fallback
+examples/http-api/src/main.vibe:38:56 byname program table
 examples/pipeline/src/main.vibe:13:36 lambda plain fallback
 examples/pipeline/src/main.vibe:13:64 lambda plain fallback
 examples/react-vite/src/users.test.vibe:21:45 lambda effectFn keyword

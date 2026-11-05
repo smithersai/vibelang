@@ -20,8 +20,11 @@ build. Assertion stacks point to `.vibe` lines. The test routes requests through
 `HttpRouter.toHttpEffect`, without a socket.
 Importing `main.js` constructs layers and starts nothing; running it with
 `node dist/main.js` starts the server, because the module exports `main`.
-`main.vibe` passes Node's `createServer` to `NodeHttpServer.layer` as a value,
-which runs nothing; a call to a platform API from `.vibe` code is EK4402.
+A TypeScript `module` adapter passes Node's `createServer` to
+`NodeHttpServer.layer`, keeping the foreign callback contract inside that
+boundary. Calling its `serverLayer` factory constructs the cold layer at the
+original call site; acquiring the layer creates the server. A call to a
+platform API from `.vibe` code is `EK4402`.
 The successful request path in Effect TypeScript is:
 ```ts
 const createUser = Effect.fnUntraced(function* () {

@@ -822,6 +822,21 @@ const targets = {
     [Tsc["vibelangfuzz-files"], Vibelang.tree],
     "10m"
   ),
+  "http-api-example": check(
+    "The HTTP example adapts the Node server callback and keeps request handling correct.",
+    "node scripts/check-http-api.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [node, bun],
+    "5m",
+    {},
+    [S.Filegroup({srcs: [...S.glob(["examples/http-api/**", "scripts/check-http-api.mjs", "scripts/prepare-examples.mjs", "packages/vite/**", "packages/compiler/package.json"])]})]
+  ),
+  "go-module-foreign-factories": goVibelang(
+    "TypeScript module factories retain foreign callback contracts without eager acquisition.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestModuleForeignFactoriesQuoted|TestModuleForeignFactoryCase|FuzzModuleForeignFactories)$' ./internal/vibelangfuzz/`,
+    [Tsc["vibelangfuzz-files"], Vibelang.tree],
+    "10m"
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,
