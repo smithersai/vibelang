@@ -1,4 +1,4 @@
-// expect: EK1005
+// expect: EK1005 EK0404
 // D38, VIP-1: a runner may be called only where no fiber runs the code: the
 // module's top level, async and plain functions (VIP-1: a function effect does
 // not mark is plain JavaScript) and the plain callbacks they pass on; elsewhere EK1005.

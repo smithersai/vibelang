@@ -1,4 +1,4 @@
-// expect: EK4402
+// expect: EK4402 EK0404
 // Chapter 10 "Promises". fetch is a platform API, which D5 makes uncallable
 // from .vibe code; D6 points at HttpClient instead. The function that
 // Effect.tryPromise wraps is TypeScript, as the try hatch it replaced was

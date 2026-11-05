@@ -1,4 +1,4 @@
-// expect: EK1005
+// expect: EK1005 EK0404
 // The prelude's runPromise leads back in from TypeScript, such as a hatch's
 // body (D148). Called in code a fiber runs, it starts a second root: EK1005.
 effect function later() {

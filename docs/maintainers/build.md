@@ -1915,3 +1915,5 @@ The `//:catch-value-identities` check preserves invalid handler errors, independ
 The `//:throws-documentation-preservation` gate runs located-refusal tests and generated comment variations, then compiles each manually migrated source.
 
 The `//:trusted-empty-forwarding` gate replays the legacy migration input, checks its fixed point and public API, and compares generated defect bridges with native Effect exits.
+
+The `//:negative-promise-boundaries` check requires exact independent diagnostic sets for native Promise calls, foreign synchronous calls, host fetches and root runners.

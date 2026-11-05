@@ -1488,5 +1488,47 @@
       "tokensSha256": "9002a971c0bf693698c5dd87446181477a95c69c8f62bfe89a108f7c9af17047",
       "configSha256": "2e2f6dda643149c1bc66a9960c9305f847d1aa1ab684d0202caa40c802212b20"
     }
+  },
+  {
+    "code": "EK0404",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/ek1005-runners.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md#calls-in-effect-code: accepted explicit Promise boundary requirement; docs/design/vips/0034-compiler-and-tooling.md#decision: owning diagnostic identity and independent errors."
+    },
+    "reason": "Existing rejected programs remain rejected. Record the owning Promise boundary identity while retaining every independent root-runner and synchronous foreign-call rejection. All executable source tokens and configuration are unchanged.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.vibe",
+          "tokensSha256": "a45a1a749b3900bfeef325d9dc74dfe5e2b5583873d82992e1195722ae1b4bed"
+        }
+      ],
+      "tokensSha256": "a45a1a749b3900bfeef325d9dc74dfe5e2b5583873d82992e1195722ae1b4bed",
+      "configSha256": "682804319c5185c7adaecb812d8f7ab5eea90165249af8afc0272904d528c084"
+    }
+  },
+  {
+    "code": "EK0404",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/ek4401-plain-call.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md#calls-in-effect-code: accepted explicit Promise boundary requirement; docs/design/vips/0034-compiler-and-tooling.md#decision: owning diagnostic identity and independent errors."
+    },
+    "reason": "Existing rejected programs remain rejected. Record the owning Promise boundary identity while retaining every independent root-runner and synchronous foreign-call rejection. All executable source tokens and configuration are unchanged.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.vibe",
+          "tokensSha256": "15b183e5032d325ee9c9e5f6fa0e67dbcb47459e1d30c3319e5e67e770cfbcda"
+        }
+      ],
+      "tokensSha256": "15b183e5032d325ee9c9e5f6fa0e67dbcb47459e1d30c3319e5e67e770cfbcda",
+      "configSha256": "97b7e0e9271e36d81eb459491c86982b84dcbb43f6e6d772c3cdbd23107791ec"
+    }
   }
 ]
