@@ -370,3 +370,8 @@ field type can cover the independent static-modifier rejection with
 `EK2109`. Named bodies and object-type aliases retain separate keyed
 witnesses. Fields named `static`, static methods, schema-error bodies and
 async-modified fields remain controls or their existing families.
+
+The concurrent array-operation inventory includes `coverTryOperationOperand`
+under `TryAll`. That diagnostic helper preserves native errors inside a
+rejected operand while covering its outer mismatch; it adds no syntax.
+The source census and row-order fuzz property enforce its coverage.

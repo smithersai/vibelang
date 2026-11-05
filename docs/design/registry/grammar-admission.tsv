@@ -282,6 +282,7 @@ parser/vibelang_try.go:Parser.parseVibeLangTry	admission:try	900-appendices.md#T
 vibelang/try_operations.go:init	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: registers EK1801, its file check and the object quick fix; introduces no syntax
 vibelang/try_operations.go:tryOperationName	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: names the reparsed try.all, try.race, try.any or try.allSettled call; introduces no syntax
 vibelang/try_operations.go:checkTryOperations	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 rejects an operand that is not an array of Effects (Appendix B); introduces no syntax
+vibelang/try_operations.go:coverTryOperationOperand	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 `TryAll`: covers only the rejected array operand mismatch while preserving independent native errors; introduces no syntax
 vibelang/try_operations.go:tryOperationArrayType	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 operand assignability to ReadonlyArray<Effect>; introduces no syntax
 vibelang/try_operations.go:tryOperationEffectType	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 element assignability to Effect; introduces no syntax
 vibelang/try_operations.go:tryOperationImportPosition	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: import placement for the EK1801 object quick fix; introduces no syntax
