@@ -1467,5 +1467,26 @@
       "tokensSha256": "c991880ad7edc9f4bc40543d364ed1d717ddb204be6374712751163d8d86a2ec",
       "configSha256": "f3209e28c7e29c698ac7186b8c4d608f5bf1f47118f868b7bad3a7be149722d4"
     }
+  },
+  {
+    "code": "EK0502",
+    "vip": "VIP-5",
+    "case": "typescript/vibelang/cases/optional-callback-contract.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md and docs/design/src/002-running.md#result-tests: accepted Effect operand admission rejects a possibly undefined result independently of callback syntax; VIP-34 retains independent diagnostics."
+    },
+    "reason": "The same invalid optional callback programs retain every existing failure/service channel error. Add the accepted operand-admission error without changing executable tokens or configuration.",
+    "identityOnly": {
+      "source": "main.vibe",
+      "sources": [
+        {
+          "source": "main.vibe",
+          "tokensSha256": "9002a971c0bf693698c5dd87446181477a95c69c8f62bfe89a108f7c9af17047"
+        }
+      ],
+      "tokensSha256": "9002a971c0bf693698c5dd87446181477a95c69c8f62bfe89a108f7c9af17047",
+      "configSha256": "2e2f6dda643149c1bc66a9960c9305f847d1aa1ab684d0202caa40c802212b20"
+    }
   }
 ]

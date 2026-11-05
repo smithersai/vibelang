@@ -1844,3 +1844,5 @@ The `//:legacy-provider-identities` target keeps missing-provider and version-pi
 
 
 The `//:legacy-json-advisory` check replays the JSON advisory registry witness through legacy project configuration and checks each interim severity independently.
+
+The `//:optional-callback-identities` check retains both missing channels and optional-operand admission, plus guarded and unguarded call, method, receiver and computed-access controls.
