@@ -45,6 +45,8 @@ Converting an `async` function writes a qualified `Effect.tryPromise(() => promi
 
 The conversion is withheld when the function refers to its own callable binding, including recursive methods, captured aliases and parameter defaults. Those references still expect a `Promise`, so migrate the recursion and its callers together. Shadowed names, unrelated properties and type-only references keep the conversion available.
 
+The async conversion edits the selected function. It leaves containing variable and callback signatures, inherited member contracts and other overload signatures in place. When those require a `Promise`, the editor withholds the conversion; migrate the function and its contracts together. Inferred functions and contexts that accept any result remain eligible.
+
 The Promise conversion refactors apply to ordinary `async` functions. For an async generator, write an Effect producer and handle its terminal result and Promise yields explicitly.
 
 ## Inspect inferred information

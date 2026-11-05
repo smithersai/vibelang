@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Converting an `async` function could leave an incompatible `Promise` contract on a variable, callback, inherited member or overload; the editor now withholds conversions that would leave those contracts invalid.
 - Objects with an incomplete fiber shape could pass `join` checking. They now report `EK1704`, while complete fiber types remain accepted.
 
 - JSON preference and provider requirement examples now point to the source spans where their messages are reported.
