@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import fc from "fast-check"
+import { censusSection, isGeneratedCensusSection } from "../../scripts/grammar-census.mjs"
 import { Cause, Effect, Exit } from "effect"
 import { block, chapter, read, run } from "./spec-witness.mjs"
 
@@ -121,12 +123,39 @@ test("chapter 8's counterparts run", () => {
   }
 })
 
+function normativeProse(name, text) {
+  // Appendix A declares the validated implementation census non-authoritative.
+  // A malformed frame or handwritten addition is still checked as prose.
+  if (name !== "900-appendices") return text
+  return text.replace(/<!-- grammar-admission:start -->[\s\S]*?<!-- grammar-admission:end -->/g,
+    section => isGeneratedCensusSection(section) ? "" : section)
+}
+
+function assertNoRecipe(text) {
+  assert.doesNotMatch(text, /[Ee]xpression[- ]lowering/)
+  assert.doesNotMatch(text, /moved (?:parameter )?default/)
+  assert.doesNotMatch(text, /later parameter in its TDZ/)
+  assert.doesNotMatch(text, /`while \(c\)` becomes/)
+}
+
 test("no recipe is left", () => {
   for (const name of ["000-intro", "001-functions", "002-running", "003-failures", "004-match", "008-runtime", "900-appendices"]) {
-    const text = chapter(name)
-    assert.doesNotMatch(text, /[Ee]xpression[- ]lowering/)
-    assert.doesNotMatch(text, /moved (?:parameter )?default/)
-    assert.doesNotMatch(text, /later parameter in its TDZ/)
-    assert.doesNotMatch(text, /`while \(c\)` becomes/)
+    assertNoRecipe(normativeProse(name, chapter(name)))
   }
+})
+
+test("only validated compiler inventory is metadata beside the default rules", () => {
+  fc.assert(fc.property(fc.nat({ max: 1000000 }), fc.constantFrom(
+    "Expression lowering", "moved parameter default", "later parameter in its TDZ", "`while (c)` becomes"
+  ), (suffix, recipe) => {
+    const frame = censusSection([{
+      hook: "parser/vibelang_do.go:Parser.hook" + suffix, form: "admission:do",
+      authority: "002-running.md", status: "support", reason: "VIP-2: " + recipe + " implementation support"
+    }])
+    assertNoRecipe(normativeProse("900-appendices", frame))
+    assert.throws(() => assertNoRecipe(normativeProse("001-functions", frame)))
+    assert.throws(() => assertNoRecipe(normativeProse("900-appendices", frame + "\n" + recipe)))
+    assert.throws(() => assertNoRecipe(normativeProse("900-appendices", frame.replace("DO NOT EDIT.", "handwritten"))))
+    assert.throws(() => assertNoRecipe(normativeProse("900-appendices", frame.replace("\n\n</details>", "\n\n" + recipe + "\n\n</details>"))))
+  }), { seed: 20261105, numRuns: 120 })
 })
