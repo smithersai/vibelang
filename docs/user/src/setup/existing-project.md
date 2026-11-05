@@ -30,6 +30,8 @@ Literal Vite build inputs follow a migrated source to its native extension. A co
 
 The migration planner follows the source graph of an unchanged bundling test. With a plain inline `Bun.build({ packages: "external", … })` call, package imports stay outside that graph. Relative imports and TypeScript path aliases still belong to it. Literal resolver plugins whose hooks only throw preserve this boundary. Unclear resolver behavior keeps the files in TypeScript for review.
 
+Migration retains a tracked authored source after renaming it to `.vibe`, including under an ignored directory such as `src/lib/`. Returning that module to TypeScript retains its original path too. Only the journaled files are explicitly tracked; unrelated ignored files remain excluded.
+
 Migration leaves documentation examples, declaration outputs and JSON test data unchanged when it wires source paths. Source and configuration references still follow the migrated modules.
 
 ## 1. Check package.json

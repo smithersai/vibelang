@@ -1540,7 +1540,11 @@ export async function codemod(options) {
   // boundary for unrelated text, protected tests, fixtures and dependencies.
   const tracked = await Jj.trackedFiles(t)
   assertComputedBuildEntrypoints(t, tracked, files.map(from => ({from})), typeScriptOf(config))
-  if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
+  if (existsSync(p.codemod(b))) {
+    const result = readJson(p.codemod(b))
+    await Jj.trackFiles(config.target, (result.renames ?? []).map(r => r.to).filter(file => existsSync(join(config.target, file))))
+    return result
+  }
   const toolConfigs = ownedToolConfigs(t, tracked)
   const live = file => existsSync(join(t, file)) ? file :
     existsSync(join(t, vibePath(file))) ? vibePath(file) : null
@@ -1573,6 +1577,7 @@ export async function codemod(options) {
     state.phase = "fixing"
     saveState(p.codemodState(b), state)
   }
+  await Jj.trackFiles(t, state.renames.map(r => r.to).filter(file => existsSync(join(t, file))))
   if (state.referenceVersion !== 1) {
     Object.assign(state, prepareReferences(t, state.renames, typeScriptOf(config), references(), [...new Set([...tracked, ...references()])]))
     state.toolConfigReferences = 1
@@ -1893,6 +1898,7 @@ export async function revertMany(options) {
       if (settings) rmSync(sidecarPath(join(config.target, vibe), settings), { force: true })
     }
   }
+  await Jj.trackFiles(config.target, prepared.map(item => item.ts))
   const results = []
   for (const { ts, reason, source } of prepared) {
     const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}

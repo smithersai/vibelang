@@ -491,7 +491,10 @@ export async function onePassStep(step, options) {
     assertComputedBuildEntrypoints(config.target, catalog, files.map(from => ({from})), ts)
     const existing = readJsonIf(p.codemod("01"))
     bindCompilerArtifact(config, p, { resume: Boolean(existing) || existsSync(p.codemodState("01")) })
-    if (existing?.renameComplete) return existing
+    if (existing?.renameComplete) {
+      await Jj.trackFiles(config.target, existing.renames.map(r => r.to).filter(file => existsSync(join(config.target, file))))
+      return existing
+    }
     let state = readJsonIf(p.codemodState("01"))
     assertNoTestBundleRename(config.target, files, { routed: Boolean(config.routeBundledImports) })
     if (!state) {
@@ -509,6 +512,7 @@ export async function onePassStep(step, options) {
       state.phase = "fixing"
       saveState(p.codemodState("01"), state)
     }
+    await Jj.trackFiles(config.target, state.renames.map(r => r.to).filter(file => existsSync(join(config.target, file))))
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
     const cm = { compilerArtifact: config.compilerArtifact, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")

@@ -1,0 +1,6 @@
+{
+  "key": "alchemy:ignored-authored-native-rename",
+  "rule": "A tracked authored source remains in repository snapshots after conversion or return, even when its directory is ignored; unrelated ignored files stay excluded.",
+  "source": "src/internal/lib/validators.ts",
+  "native": "src/internal/lib/validators.vibe"
+}

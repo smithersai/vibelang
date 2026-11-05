@@ -2,7 +2,7 @@
 // becomes a colocated jj repository, so its Git history stays as it was.
 import { execFile } from "node:child_process"
 import { existsSync } from "node:fs"
-import { join } from "node:path"
+import { join, posix } from "node:path"
 import { promisify } from "node:util"
 import { must, quote, run } from "./util.mjs"
 
@@ -71,6 +71,20 @@ export function parseChangedPaths(summary) {
 export async function trackedFiles(root, revision = "@") {
   const { stdout } = await must(`jj file list -r ${quote(revision)}`, { cwd: root })
   return stdout.split("\n").filter(Boolean)
+}
+
+/** Retain explicitly authored files even when their directory is ignored; paths are literal, never recursive. */
+export async function trackFiles(root, files) {
+  const selected = [...new Set(files)]
+  for (const file of selected) {
+    if (typeof file !== "string" || !file || posix.isAbsolute(file) || file !== posix.normalize(file) || file.split("/").includes("..")) {
+      throw new Error("tracking needs repository-relative file paths")
+    }
+  }
+  for (let i = 0; i < selected.length; i += 100) {
+    await execFileAsync("jj", ["file", "track", "--include-ignored", "--", ...selected.slice(i, i + 100).map(file => "root-file:" + JSON.stringify(file))], { cwd: root })
+  }
+  return selected
 }
 
 const bodyWidth = 72
