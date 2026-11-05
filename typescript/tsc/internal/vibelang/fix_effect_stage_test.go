@@ -55,7 +55,7 @@ func TestEffectStageFixes(t *testing.T) {
 			"export const f = effect (n: number) => {\n  if (n > 0) {\n    return\n  }\n  try p(n)\n}\n"},
 		{"suspend held", "export const v = Effect.suspend(() => p(1))\n", "export const v = effect { return try p(1) }\n"},
 		{"a constructor at a plain member", "export const f = (o: Option<number>) => Option.match(o, { onNone: () => Effect.fail(\"x\"), onSome: Effect.succeed })\n",
-			"export const f = (o: Option<number>) => Option.match(o, { onNone: () => Effect.fail(\"x\"), onSome: (value) => Effect.succeed(value) })\n"},
+			"export const f = (o: Option.Option<number>) => (do { const $optionSubject = o; const $optionHandlers: { readonly onNone: import(\"effect/Function\").LazyArg<import(\"effect/Effect\").Effect<never, string, never>>; readonly onSome: (a: number) => import(\"effect/Effect\").Effect<number, never, never>; } = { onNone: () => Effect.fail(\"x\"), onSome: Effect.succeed }; const { onNone: $optionNone, onSome: $optionSome } = $optionHandlers; match ($optionSubject) { when Option.Some(let $optionValue): $optionSome($optionValue); default: $optionNone(); }; } as import(\"effect/Effect\").Effect<number, never, never> | import(\"effect/Effect\").Effect<never, string, never>)\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source, want := stageHeader+test.source, "const p = effect (n: number): number!string => n\n"+test.want

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:direct-option-match\nprogram-constructor:\u0002\u0007\u0000\u0000\u0000\u0002")

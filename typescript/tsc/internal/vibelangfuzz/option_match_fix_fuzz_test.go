@@ -31,6 +31,11 @@ func optionMatchFixArchive(input string) string {
 	if data, ok := strings.CutPrefix(strings.TrimPrefix(input, optionMatchFixKey), "private-payload:"); ok {
 		return optionMatchPrivatePayloadArchive([]byte(data))
 	}
+	if data, ok := strings.CutPrefix(strings.TrimPrefix(input, optionMatchFixKey), "program-constructor:"); ok {
+		choices := append([]byte(data), make([]byte, 10)...)
+		choices[8], choices[9] = 1, 1
+		return optionMatchProgramFixArchive(choices)
+	}
 	data := []byte(strings.TrimPrefix(input, optionMatchFixKey))
 	if len(data) > 8 && data[8]&1 != 0 {
 		return optionMatchProgramFixArchive(data)
