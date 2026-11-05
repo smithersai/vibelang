@@ -63,7 +63,7 @@ worker w-1
 report.csv
 ```
 
-`let n` binds a property, and a guard, `and if (condition)`, tests the bindings before it. Matching `_tag` tests a tagged union's tag. An `error` class is itself a pattern: `when NotFound:` tests its `_tag` through the class's custom matcher. A [`data` declaration](../data-types/073-data.md) declares a tagged union. Match a variant with an object pattern, such as `when { _tag: "Running", let worker }:`.
+`let n` binds a property, and a guard, `and if (condition)`, tests the bindings before it. Matching `_tag` tests a tagged union's tag. An `error` class is itself a pattern: `when NotFound:` tests its `_tag` through the class's custom matcher. A [`data` declaration](../data-types/073-data.md) declares a tagged union. Match a variant with an object pattern, such as `when { _tag: "Running", let worker }:`. Renaming `worker` must retain the payload key, as `worker: let renamedWorker`; an explicit property name and a binding name serve different purposes.
 
 ## Negating and combining patterns
 

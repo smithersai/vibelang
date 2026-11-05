@@ -42,7 +42,7 @@ func FuzzPatternBindingRename(f *testing.F) {
 		case "variant", "census":
 			prefix = "data D { V { " + binding + ":number } }\n"
 			shape = "D"
-			pattern = "D.V " + pattern
+			pattern = "{_tag:\"V\"," + field + "}"
 		case "nested":
 			shape = "{inner:" + shape + "}"
 			pattern = "{inner:" + pattern + "}"

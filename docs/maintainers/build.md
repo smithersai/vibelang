@@ -1948,3 +1948,5 @@ The `//:producer-native-annotations` gate checks every reviewed producer contrac
 The `//:stream-loop-body-identities` gate checks every Stream-loop body restriction alongside aliased imports and valid local-break controls.
 
 The `//:missing-data-method-diagnostics` gate retains all native lookup errors and checks the corresponding valid receiver controls.
+
+The `//:tagged-pattern-binding-renames` gate exercises reference and rename operations across tagged variants, binding keywords, Unicode names, trivia, and explicit-key controls.
