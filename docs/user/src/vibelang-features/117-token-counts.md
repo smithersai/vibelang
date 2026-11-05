@@ -135,7 +135,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Upgrade** | **150,000** |
 | [Release notes](../setup/release-notes.md) | 150,000 |
-| **All 20 pages** | **200,000** |
+| **All 20 pages** | **210,000** |
 
 ### Guides
 
