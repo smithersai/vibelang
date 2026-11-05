@@ -655,7 +655,7 @@ func (tx *lowering) visitEffectFunctionDeclaration(node *ast.Node) *ast.Node {
 			return tx.effectFunctionDeclaration(node, loweredParameters, body)
 		}
 	}
-	if isMarkedEffect(node) && len(node.Parameters()) > 0 {
+	if isMarkedEffect(node) {
 		parameters, body := tx.callTimeEffectBody(node, loweredParameters, loweredBody)
 		return tx.effectFunctionDeclaration(node, parameters, body)
 	}

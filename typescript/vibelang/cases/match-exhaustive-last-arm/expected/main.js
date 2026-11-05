@@ -27,7 +27,7 @@ function text(value) {
     }
 }
 export function main() {
-    return Effect.fnUntraced(runtime.$joinedFrame(function* main() {
+    return Effect.gen(runtime.$joinedFrame(function* main() {
         const phases = ["draft", "review", "published"];
         const logged = [];
         {
@@ -58,6 +58,6 @@ export function main() {
             announced: yield* announce("published"),
             text: text("hi")
         };
-    })).apply(this, arguments);
+    }));
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

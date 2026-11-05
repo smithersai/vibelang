@@ -15,7 +15,7 @@ export function firstOf(values) {
 }
 // expect-result: {"doubled":4,"size":3,"first":1,"id":5,"twice":8,"isArray":true,"text":"7","local":"local"}
 export function main() {
-    return Effect.fnUntraced(function* main() {
+    return Effect.gen(function* main() {
         yield* Console.log("effect's root is in scope");
         const doubled = Option.map(Option.some(2), (n) => n * 2);
         const values = Chunk.make(1, 2, 3);
@@ -29,6 +29,6 @@ export function main() {
             text: String(7),
             local: Duration.label,
         };
-    }).apply(this, arguments);
+    });
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

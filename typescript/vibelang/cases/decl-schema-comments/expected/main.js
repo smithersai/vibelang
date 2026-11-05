@@ -27,10 +27,10 @@ export const Nothing = Schema.Null;
 export const after = 1;
 // expect-result: {"code":"b","user":{"id":"1","home":{"city":"Paris"}}}
 export function main() {
-    return Effect.fnUntraced(function* main() {
+    return Effect.gen(function* main() {
         const code = yield* Schema.decodeUnknownEffect(Code)("b");
         const user = yield* Schema.decodeUnknownEffect(User)({ id: "1", home: { city: "Paris" } });
         return { code, user };
-    }).apply(this, arguments);
+    });
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

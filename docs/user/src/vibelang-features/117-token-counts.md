@@ -92,7 +92,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 1,900 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
 | **Learning Path** | **14,000** |
-| [The Effect Type](../getting-started/003-the-effect-type.md) | 3,000 |
+| [The Effect Type](../getting-started/003-the-effect-type.md) | 3,100 |
 | [Installation](../getting-started/004-installation.md) | 2,900 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,300 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |

@@ -1,0 +1,19 @@
+// expect-result: [[0,false,0,false,7,7],[0,false,0,false,7,7],[0,false,0,false,7,7]]
+// docs/design/src/001-functions.md#meaning: source calls keep their evaluation.
+import { observe } from "./observe.js"
+effect function statements() { const value = 7; return value }
+effect function delegated() { return try Effect.succeed(7) }
+effect function direct() { return 7 }
+export effect function main() {
+  const a = observe(() => statements(), false)
+  const b = observe(() => statements(), true)
+  const c = observe(() => delegated(), false)
+  const d = observe(() => delegated(), true)
+  const e = observe(() => direct(), false)
+  const f = observe(() => direct(), true)
+  return [
+    [a.reads, a.threw, b.reads, b.threw, try a.program, try b.program],
+    [c.reads, c.threw, d.reads, d.threw, try c.program, try d.program],
+    [e.reads, e.threw, f.reads, f.threw, try e.program, try f.program],
+  ]
+}

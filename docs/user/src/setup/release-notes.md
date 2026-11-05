@@ -212,6 +212,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - Throwing callbacks passed through fixed tuple spreads could bypass throw checks or use the wrong parameter contract. They now keep their thrown contract and argument position, and `vibelang --fix` can preserve their defects with an Effect bridge.
+
+- Calling a parameterless `effect function` declaration could invoke or throw from a replaced `Function.prototype.apply`; it now constructs its unrun Effect without that extra lookup.
 - The grammar admission audit missed an incomplete computed pattern member split across lines. It now records that parser gap while retaining class-pattern type errors as semantic diagnostics.
 - The grammar admission audit could mistake native type-only and mixed import clauses for undefined syntax. It now derives those forms while retaining local binding restrictions.
 - The grammar admission audit could mistake rejected import declarations and default export assignments with modifiers for accepted syntax. It now recognizes their existing native errors.

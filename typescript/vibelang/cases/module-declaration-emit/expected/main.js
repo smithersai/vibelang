@@ -16,7 +16,7 @@ export function describe(shape) {
     return Effect_1.sync({ describe: () => { return `${shape.width}x${shape.height}`; } }.describe);
 }
 export function main() {
-    return Effect_1.fnUntraced(function* main() {
+    return Effect_1.gen(function* main() {
         const counter = yield* Effect_1.sync(() => new Counter());
         const counted = yield* Effect_1.sync(((counter) => counter.increment()).bind(undefined, counter));
         yield* Console.log(JSON.stringify({
@@ -30,6 +30,6 @@ export function main() {
             counted,
             described: yield* describe({ width: 1, height: 2 }),
         }));
-    }).apply(this, arguments);
+    });
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

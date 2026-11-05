@@ -22,7 +22,7 @@ const shout = (text) => {
     return Effect_1.gen(function* shout() { return yield* Console.log(text.toUpperCase()); });
 };
 export function main() {
-    return Effect_1.fnUntraced(runtime.$joinedFrame(function* main() {
+    return Effect_1.gen(runtime.$joinedFrame(function* main() {
         {
             let pending_1 = runtime.$normal;
             try {
@@ -55,6 +55,6 @@ export function main() {
         // findName returns Effect<string>, so the call runs it and name is a string.
         const name = yield* findName(2);
         yield* Console.log(`found ${name.toUpperCase()}`);
-    })).apply(this, arguments);
+    }));
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));
