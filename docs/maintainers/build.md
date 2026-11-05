@@ -1974,3 +1974,5 @@ The `//:qualified-interruption-call-controls` gate retains all running-rule cont
 The `//:native-await-declaration-twins` gate retains byte-exact declaration comparisons against explicitly annotated native twins, all shadowing and generic-domain variations, and runtime operand-evaluation controls.
 
 The `//:async-match-throw-contexts` gate enforces the implemented async-match oracle without pending allowances and retains every ordinary, async, and Effect context and the minimized keyed corpus.
+
+The `//:formatter-written-jump-controls` gate reads original jump tokens after concurrent-loop lowering, covers comments and automatic semicolon insertion, and retains the formatter guard unchanged with explicit program-changing negative controls.

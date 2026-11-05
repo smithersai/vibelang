@@ -136,7 +136,7 @@ func formatGuardRewrite(source string, mask []byte) string {
 			}
 			for _, body := range formatGuardBodies(node) {
 				if body.Kind != ast.KindBlock && body.Kind != ast.KindEmptyStatement && !ast.IsDeclarationStatement(body) && body.Kind != ast.KindVariableStatement && picked() {
-					edits = append(edits, insertion{scanner.SkipTrivia(source, body.Pos()), "{ "}, insertion{body.End(), " }"})
+					edits = append(edits, insertion{scanner.SkipTrivia(source, body.Pos()), "{ "}, insertion{formatGuardWrittenBodyEnd(source, body), " }"})
 				}
 			}
 		}
@@ -174,4 +174,58 @@ func formatGuardBodies(node *ast.Node) []*ast.Node {
 		return []*ast.Node{s.ThenStatement}
 	}
 	return []*ast.Node{node.Statement()}
+}
+
+// Lowered concurrent jumps may no longer carry their written label range.
+// The mutation must consume the original jump tokens, including same-line
+// labels and semicolons, before it closes a formatting-only brace.
+func formatGuardWrittenBodyEnd(source string, body *ast.Node) int {
+	start := scanner.SkipTrivia(source, body.Pos())
+	scan := scanner.NewScanner()
+	scan.SetText(source[start:])
+	kind := scan.Scan()
+	if kind != ast.KindBreakKeyword && kind != ast.KindContinueKeyword {
+		return body.End()
+	}
+	end := scan.TokenEnd()
+	kind = scan.Scan()
+	if !scan.HasPrecedingLineBreak() && kind >= ast.KindIdentifier {
+		end = scan.TokenEnd()
+		kind = scan.Scan()
+	}
+	if kind == ast.KindSemicolonToken {
+		end = scan.TokenEnd()
+	}
+	return start + end
+}
+
+func TestFormatGuardRewriteWrittenJumpLabels(t *testing.T) {
+	for _, label := range []string{"item", "café", "async"} {
+		for _, comment := range []string{" ", " /* label */ "} {
+			source := "export effect function main(){let total=0;" + label + ":for concurrent(1)(const x of [1,2]){if(x===1)continue" + comment + label + ";total+=x}return total}"
+			after := formatGuardRewrite(source, []byte{255, 255, 255, 255})
+			if after == source {
+				t.Fatal("jump was not exercised")
+			}
+			if err := vibelangfmt.SameProgram(source, after); err != nil {
+				t.Fatalf("written label changed: %v\n%s", err, after)
+			}
+			if err := vibelangfmt.SameProgram(source, strings.Replace(after, "total+=x", "total-=x", 1)); err == nil {
+				t.Fatal("guard accepted an actual arithmetic change")
+			}
+		}
+	}
+	for _, jump := range []string{"continue item", "continue /* label */ item", "continue\nitem", "break item", "break /* label */ item", "break\nitem"} {
+		text := jump + ";next()"
+		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "main.ts", PathKey: "main.ts"}, text, core.ScriptKindTS)
+		body := file.Statements.Nodes[0]
+		end := formatGuardWrittenBodyEnd(text, body)
+		want := strings.Index(text, ";") + 1
+		if strings.Contains(jump, "\n") {
+			want = strings.Index(text, "\n")
+		}
+		if end != want {
+			t.Fatalf("jump %q: got boundary %d, want %d", jump, end, want)
+		}
+	}
 }
