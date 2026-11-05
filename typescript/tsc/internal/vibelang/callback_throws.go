@@ -332,6 +332,7 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 	if index < 0 {
 		return false
 	}
+	index = invocationArgumentPosition(c, call, index)
 	if ast.IsCallExpression(call) && isExportOf(c, call, "effect", "Effect", []string{"try_", "try", "tryPromise"}) {
 		return true
 	}

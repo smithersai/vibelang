@@ -49,6 +49,10 @@
       {
         "input": "typescript/vibelang/cases/local-binding-throws.fail",
         "output": "typescript/vibelang/cases/local-binding-throws-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/rethrows-tuple-spread.fail",
+        "output": "typescript/vibelang/cases/rethrows-tuple-spread-fixed-output"
       }
     ]
   },

@@ -1,0 +1,6 @@
+// expect: EK0403
+import { invoke, risky } from "./lib.js"
+export effect function probe() {
+  const callbacks = [risky] as const
+  return try Effect.orDie(Effect.try({ try: () => invoke(...callbacks), catch: (e) => e }))
+}

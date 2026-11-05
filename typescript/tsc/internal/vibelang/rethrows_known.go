@@ -88,7 +88,7 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 	if len(named) == 0 {
 		return nil
 	}
-	arguments := rethrowsCallArguments(call)
+	arguments := knownRethrowsArguments(c, call)
 	var thrown []*checker.Type
 	for index, parameter := range decl.Parameters() {
 		if !named[declarationName(parameter)] {
@@ -100,11 +100,11 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 		}
 		for position := index; position < end && position < len(arguments); position++ {
 			argument := arguments[position]
-			if argument == nil || ast.IsSpreadElement(argument) {
+			source := argument.source
+			if source == nil {
 				continue
 			}
 			target := c.GetTypeAtPosition(signature, position)
-			source := c.GetTypeAtLocation(argument)
 			if target == nil || source == nil || !c.IsTypeAssignableTo(source, target) {
 				continue
 			}
@@ -121,8 +121,8 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 						continue
 					}
 					owners := []*checker.Type{part}
-					if callbackReceiverIsWritten(c, argument, map[*ast.Symbol]bool{}) {
-						owners = append(foreignReferenceOwners(c, argument), part)
+					if argument.expression != nil && callbackReceiverIsWritten(c, argument.expression, map[*ast.Symbol]bool{}) {
+						owners = append(foreignReferenceOwners(c, argument.expression), part)
 					}
 					thrown = append(thrown, knownCallbackSignatureThrows(c, given, owners...)...)
 				}
@@ -275,6 +275,7 @@ func (a *analyzer) rethrowsUnbridgedInEffect(call *ast.Node) bool {
 // for a parameter its callee's @rethrows names, or the shipped annotation of
 // a lib Array method names (Appendix E).
 func rethrowsArgument(c *checker.Checker, call *ast.Node, index int) bool {
+	index = invocationArgumentPosition(c, call, index)
 	signature := c.GetResolvedSignature(call)
 	if signature == nil {
 		return false
@@ -407,4 +408,63 @@ func callbackReceiverIsWritten(c *checker.Checker, node *ast.Node, seen map[*ast
 		}
 	}
 	return false
+}
+
+type knownRethrowsArgument struct {
+	expression *ast.Node
+	source     *checker.Type
+}
+
+// Fixed tuple spreads occupy their native argument positions. Their element
+// signatures carry contracts independently of the tuple container's metadata.
+func knownRethrowsArguments(c *checker.Checker, call *ast.Node) []knownRethrowsArgument {
+	var result []knownRethrowsArgument
+	for _, argument := range rethrowsCallArguments(call) {
+		if argument == nil {
+			result = append(result, knownRethrowsArgument{})
+			continue
+		}
+		if !ast.IsSpreadElement(argument) {
+			result = append(result, knownRethrowsArgument{argument, c.GetTypeAtLocation(argument)})
+			continue
+		}
+		elements, fixed := fixedRethrowsSpreadTypes(c, argument)
+		if !fixed {
+			result = append(result, knownRethrowsArgument{})
+			continue
+		}
+		for _, element := range elements {
+			result = append(result, knownRethrowsArgument{source: element})
+		}
+	}
+	return result
+}
+
+// invocationArgumentPosition maps a written argument index past fixed spreads.
+// Inspect only preceding spreads, avoiding rechecking the current callback.
+func invocationArgumentPosition(c *checker.Checker, call *ast.Node, index int) int {
+	position := index
+	arguments := rethrowsCallArguments(call)
+	for i := 0; i < index && i < len(arguments); i++ {
+		if elements, fixed := fixedRethrowsSpreadTypes(c, arguments[i]); fixed {
+			position += len(elements) - 1
+		}
+	}
+	return position
+}
+
+func fixedRethrowsSpreadTypes(c *checker.Checker, argument *ast.Node) ([]*checker.Type, bool) {
+	if argument == nil || !ast.IsSpreadElement(argument) {
+		return nil, false
+	}
+	spread := c.GetTypeAtLocation(argument.Expression())
+	if !checker.IsTupleType(spread) {
+		return nil, false
+	}
+	for _, flag := range spread.TargetTupleType().ElementFlags() {
+		if flag&checker.ElementFlagsRequired == 0 {
+			return nil, false
+		}
+	}
+	return c.GetTypeArguments(spread), true
 }

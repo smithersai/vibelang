@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-tuple-spread-trailing-range-plain")
+byte(8)

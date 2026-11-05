@@ -848,6 +848,58 @@ func failuresCases() []*failCase {
 		}
 	}
 
+	for _, risky := range []bool{false, true} {
+		cb, bound := "safe", "never"
+		if risky {
+			cb, bound = "risky", "range"
+		}
+		for _, shape := range []struct{ key, prefix, call string }{
+			{"direct", "", "invoke(" + cb + ")"},
+			{"literal", "", "invoke(...[" + cb + "] as const)"},
+			{"stored", "const callbacks=[" + cb + "] as const;", "invoke(...callbacks)"},
+			{"mutable", "const callbacks:[typeof " + cb + "]=[" + cb + "];", "invoke(...callbacks)"},
+			{"rest", "", "many(...[safe," + cb + "] as const)"},
+			{"leading", "", "after(...[1] as const," + cb + ")"},
+			{"leading-two", "", "afterTwo(...[1,2] as const," + cb + ")"},
+			{"trailing", "", "after(...[1," + cb + "] as const)"},
+			{"split", "", "after(...[1] as const,...[" + cb + "] as const)"},
+			{"nested", "", "invoke(...[...[" + cb + "] as const] as const)"},
+			{"constructor", "", "new Invoke(...[" + cb + "] as const)"},
+		} {
+			for _, context := range []string{"effect", "plain", "wrapped"} {
+				host, body, code := "effect", shape.call, 0
+				if context == "plain" {
+					host = "plain"
+				}
+				if context == "wrapped" {
+					body = "try Effect.try(() => " + body + ")"
+				} else if risky {
+					code = 403
+					if host == "plain" {
+						code = 401
+					}
+					body = "⟦" + body + "⟧"
+				}
+				quote := q.rethrows
+				if code == 403 {
+					quote = q.directCall
+				} else if code == 401 {
+					quote = q.plainPropagates
+				}
+				lib := "/** @throws {RangeError} */\nexport declare function risky(n:number):number\n/** @throws {never} */\nexport declare function safe(n:number):number\n" +
+					"/** @throws {never}\n * @rethrows cb\n */\nexport declare function invoke(cb:(n:number)=>number):number\n" +
+					"/** @throws {never}\n * @rethrows cb\n */\nexport declare function after(prefix:number,cb:(n:number)=>number):number\n" +
+					"/** @throws {never}\n * @rethrows cb\n */\nexport declare function afterTwo(first:number,second:number,cb:(n:number)=>number):number\n" +
+					"/** @throws {never}\n * @rethrows callbacks\n */\nexport declare function many(...callbacks:((n:number)=>number)[]):number\n" +
+					"export declare class Invoke {\n/** @throws {never}\n * @rethrows cb\n */\nconstructor(cb:(n:number)=>number)\n}\n"
+				add(&failCase{
+					Name:  "rethrows-tuple-spread-" + shape.key + "-" + bound + "-" + context,
+					Quote: quote, Lib: lib, Host: host, Body: shape.prefix + body, Code: code, OneDiagnostic: code != 0,
+				})
+			}
+		}
+	}
+
 	// Written callback contracts retain their receiver substitutions at rethrowing calls.
 	for _, bound := range []struct {
 		key, text string

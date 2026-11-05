@@ -1,0 +1,12 @@
+// expect-result: [8,["Fail",true,2,["iterate-safe","invoke","safe","iterate-risky","invoke","risky"]]]
+import {invoke,safeTuple,riskyTuple,inspect} from "./lib.js"
+export effect function success(){return invoke(...safeTuple)}
+export effect function rejected(){
+ return try Effect.try({try:()=>invoke(...riskyTuple),catch:(error:unknown)=>error})
+}
+export const parked=success()
+export effect function main(){
+ const value=try success()
+ const verdict=try inspect(rejected())
+ return [value,verdict]
+}

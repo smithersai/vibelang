@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-tuple-spread-nested-never-plain")
+byte(8)

@@ -327,6 +327,9 @@ func needsBoundary(c *checker.Checker, file *ast.SourceFile, call *ast.Node) boo
 	if t.kind == trustBuiltin && len(t.failures) > 0 {
 		return true
 	}
+	if !t.promise && !returnsEffectful(c, call) && len(knownRethrownTypes(c, call)) > 0 {
+		return true
+	}
 	switch {
 	case t.promise, returnsEffectful(c, call):
 		return false

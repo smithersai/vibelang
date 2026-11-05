@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-tuple-spread-leading-two-never-wrapped")
+byte(8)
