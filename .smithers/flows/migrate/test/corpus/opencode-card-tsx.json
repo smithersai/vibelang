@@ -1,0 +1,5 @@
+{
+  "file": "Card.tsx",
+  "quote": "Renaming `x.tsx` to `x.vibex` changes nothing in its JSX",
+  "source": "import { Effect } from \"effect\"\nimport { useMemo, useState, type JSX } from \"react\"\n\nexport const ready = Effect.succeed(\"ready\")\n\nexport function Card<T extends { name: string }>(props: { item: T }): JSX.Element {\n  const [name] = useState(props.item.name)\n  const label = useMemo(() => name + \": ready\", [name])\n  return <button type=\"button\">{label}</button>\n}\n"
+}

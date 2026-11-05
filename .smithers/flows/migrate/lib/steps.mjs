@@ -314,7 +314,7 @@ export function vibeDprintConfig(t, file) {
  */
 export async function formatVibe(config, files, log) {
   const t = config.target
-  const targets = files.filter((file) => file.endsWith(".vibe") && existsSync(join(t, file)))
+  const targets = files.filter((file) => /\.vibex?$/.test(file) && existsSync(join(t, file)))
   if (!targets.length) return { files: [], code: 0 }
   const binary = (name, dirs) => dirs.map((dir) => join(t, dir, "node_modules/.bin", name)).find((path) => existsSync(path))
   const packageDirs = [".", ...config.packages.map((pkg) => pkg.dir)]
@@ -377,7 +377,7 @@ export async function formatVibe(config, files, log) {
  */
 export async function formatExistingVibe(config, log) {
   const owned = Wire.ownedPaths(config.target)
-  const files = (await Jj.trackedFiles(config.target)).filter((file) => file.endsWith(".vibe") && owned(file))
+  const files = (await Jj.trackedFiles(config.target)).filter((file) => /\.vibex?$/.test(file) && owned(file))
   return formatVibe(config, files, log)
 }
 
@@ -449,7 +449,7 @@ export async function earlierDeclarationChanges({ ts, t, revision, pkg, outDir }
   const sidecars = {}
   if (revision) {
     for (const file of await Jj.filesAt(t, revision, pkg.dir)) {
-      if (!file.endsWith(".d.vibe.ts")) continue
+      if (!/\.d\.vibex?\.ts$/.test(file)) continue
       const text = await Jj.fileAt(t, revision, file)
       if (text !== null) sidecars[file] = text
     }
@@ -508,7 +508,7 @@ async function previousCompilerChecks(config, logs) {
   let ts
   for (const pkg of config.packages) {
     const prefix = posix.normalize(pkg.dir) === "." ? "" : posix.normalize(pkg.dir) + "/"
-    if (!tracked.some(file => file.startsWith(prefix) && file.endsWith(".vibe"))) continue
+    if (!tracked.some(file => file.startsWith(prefix) && /\.vibex?$/.test(file))) continue
     let directory = resolve(t, pkg.dir), compiler
     for (;;) {
       const candidate = join(directory, "node_modules/.bin/vibelang")
@@ -679,7 +679,7 @@ export async function upgradeEffect(options) {
  */
 async function applyEarlierVipFixes(config, logs) {
   const t = config.target
-  const vibe = (await Jj.trackedFiles(t)).filter((f) => f.endsWith(".vibe") && !f.split("/").includes("node_modules"))
+  const vibe = (await Jj.trackedFiles(t)).filter((f) => /\.vibex?$/.test(f) && !f.split("/").includes("node_modules"))
   const empty = { changed: [], projects: [], failed: [] }
   if (!vibe.length) return empty
   const plan = earlierVipProjects(t, vibe)
@@ -747,7 +747,7 @@ async function finishVipFixes(config, logs, previous) {
   const projects = [...(previous.projects ?? []), ...sameEraPost]
   if (!projects.length) return result
   const t = config.target, compiler = compilerOf(config)
-  const native = (await Jj.trackedFiles(t)).filter(file => file.endsWith(".vibe") && !file.split("/").includes("node_modules"))
+  const native = (await Jj.trackedFiles(t)).filter(file => /\.vibex?$/.test(file) && !file.split("/").includes("node_modules"))
   const before = new Map(native.map(file => [file, readFileSync(join(t, file), "utf8")]))
   const receipt = join(logs, "vip-finish.json")
   for (const project of projects) {
@@ -1401,7 +1401,7 @@ export async function setup(options) {
   const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths, enumerations: wired?.sidecarDir?.findings ?? [], routedBundles: Boolean(config.routeBundledImports) })
   if (wired) wired.warnings.push(...(inventory.bundleWarnings ?? []))
   // A module a bare runner already loads as .vibe breaks that tool; one still .ts stays .ts, by name in the plan.
-  if (wired) for (const file of inventory.bareRunners.modules.filter(file => file.endsWith(".vibe"))) {
+  if (wired) for (const file of inventory.bareRunners.modules.filter(file => /\.vibex?$/.test(file))) {
     wired.warnings.push(file + ": " + inventory.files.find(f => f.path === file).bareRunReason)
   }
   writeJson(p.inventory, inventory)
@@ -1774,7 +1774,7 @@ export async function compile(options) {
     compilerArtifact: config.compilerArtifact,
     summary: summarize(diagnostics, files),
     style: styleProblems(diagnostics, files),
-    warningExceptions: warningExceptions(diagnostics, files.filter(f => f.endsWith(".vibe")),
+    warningExceptions: warningExceptions(diagnostics, files.filter(f => /\.vibex?$/.test(f)),
       readJsonIf(p.codemod(b))?.fix?.refused),
     styleExemptions: preserved.decisions,
     newErrors: added,
@@ -1875,9 +1875,9 @@ export async function revertMany(options) {
   const seen = new Set(), prepared = []
   for (const item of requests) {
     const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item
-    if (typeof file !== "string" || !/\.(?:ts|mts|vibe)$/.test(file) || isDeclarationFile(file) || !reason) throw new Error("revert needs module paths and a cause")
+    if (typeof file !== "string" || !/\.(?:ts|tsx|mts|vibe|vibex)$/.test(file) || isDeclarationFile(file) || !reason) throw new Error("revert needs module paths and a cause")
     if (posix.isAbsolute(file) || file.split("/").includes("..")) throw new Error("revert paths must be repository-relative")
-    const vibe = file.replace(/\.(?:ts|mts)$/, ".vibe"), ts = plan.batches.flatMap(batch => batch.files).find(source => vibePath(source) === vibe) ?? vibe.replace(/\.vibe$/, ".ts")
+    const vibe = /\.vibex?$/.test(file) ? file : vibePath(file), ts = plan.batches.flatMap(batch => batch.files).find(source => vibePath(source) === vibe) ?? vibe.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
     if (seen.has(ts)) throw new Error("duplicate revert: " + file)
     seen.add(ts)
     if (!existsSync(join(config.target, vibe))) throw new Error("missing .vibe module (already reverted?): " + vibe)
@@ -1912,7 +1912,7 @@ export async function revertMany(options) {
     // Body declarations are compiler outputs owned by this source's parsed
     // module declarations. Keep similarly named declarations with no such body.
     for (const declaration of bodyDeclarations) rmSync(declaration, { force: true })
-    rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true })
+    rmSync(join(config.target, vibe.replace(/\.(vibex?)$/, ".d.$1.ts")), { force: true })
     const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
     const file = owner && join(config.target, owner.dir, owner.tsconfig)
     if (file && existsSync(file)) {
@@ -2018,11 +2018,12 @@ export function batchSidecarLocator(config) {
   const located = new Map()
   const owners = config.packages.map((pkg) => posix.normalize(pkg.dir)).sort((a, b) => (b === "." ? 0 : b.length) - (a === "." ? 0 : a.length))
   return (path) => {
-    if (!/\.(?:[cm]?ts|vibe)$/.test(path) || /\.d\.(?:vibe\.)?[cm]?ts$/.test(path)) return null
+    if (!/\.(?:[cm]?ts|tsx|vibex?)$/.test(path) || /\.d\.(?:vibex?\.)?[cm]?ts$/.test(path)) return null
     const owner = owners.find((dir) => dir === "." || path.startsWith(dir + "/"))
     if (owner === undefined) return null
     if (!located.has(owner)) located.set(owner, sidecarOf(config.target, owner))
-    return posix.normalize(posix.join(owner, located.get(owner)(posix.relative(owner, path).replace(/\.(?:[cm]?ts|vibe)$/, ""))))
+    const extension = /\.vibex?$/.test(path) ? posix.extname(path) : path.endsWith(".tsx") ? ".vibex" : ".vibe"
+    return posix.normalize(posix.join(owner, located.get(owner)(posix.relative(owner, path).replace(/\.(?:[cm]?ts|tsx|vibex?)$/, ""), extension)))
   }
 }
 

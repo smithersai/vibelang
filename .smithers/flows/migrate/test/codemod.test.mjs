@@ -8,11 +8,11 @@ import { fileURLToPath } from "node:url"
 import { fixToFixedPoint, mergeFixes, parseFixOutput, renameBatch, restoreExports, rewriteExports, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
 import { loadTypeScript } from "../lib/declarations.mjs"
 
-test("vibePath renames only .ts modules", () => {
+test("vibePath preserves source kinds and refuses declarations", () => {
   assert.equal(vibePath("src/a.ts"), "src/a.vibe")
   assert.throws(() => vibePath("src/a.d.ts"))
   assert.throws(() => vibePath("src/a.d.vibe.ts"))
-  assert.throws(() => vibePath("src/a.tsx"))
+  assert.equal(vibePath("src/a.tsx"), "src/a.vibex")
 })
 
 test("a .vibe importer names a renamed module by its source name and keeps every other written specifier", () => {

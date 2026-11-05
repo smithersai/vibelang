@@ -14,7 +14,7 @@ import (
 const migrationJSXRouteTarget = "FuzzMigrationJSXRoutes"
 const migrationJSXRouteQuote = "Renaming `x.tsx` to `x.vibex` changes nothing in its JSX"
 
-const migrationJSXCandidateQuote = "JSX and declaration files remain outside the migration candidates."
+const migrationJSXCandidateQuote = "`.tsx` becomes `.vibex`."
 
 const migrationJSXRouteKindsQuote = "`.vibex` is to `.vibe` what `.tsx` is to `.ts`:"
 
@@ -120,7 +120,7 @@ func FuzzMigrationJSXRoutes(f *testing.F) {
 		if err := json.Unmarshal(output, &result); err != nil {
 			t.Fatalf("invalid route oracle: %v\n%s", err, output)
 		}
-		wantAdmitted := !jsx && !declaration
+		wantAdmitted := !declaration
 		if result.Admitted != wantAdmitted || result.Rejected != !wantAdmitted || !result.Unchanged {
 			Gap(t, migrationJSXRouteTarget, "candidate:"+key, "%q; admitted=%t want=%t unchanged=%t\n%s", migrationJSXCandidateQuote, result.Admitted, wantAdmitted, result.Unchanged, output)
 		}

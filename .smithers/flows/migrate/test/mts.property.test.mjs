@@ -20,7 +20,7 @@ const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-plan-mts.json", import.meta.url)))
 const boundary = JSON.parse(readFileSync(new URL("./corpus/foldkit-durable-mts-boundary.json", import.meta.url)))
 const record = path => ({ path, effect: "values", test: false, imports: [], testedBy: [], coverage: null, lines: 1 })
-const quote = "Plans and codemods accept `.ts` and `.mts` modules; `.mts` requires its nearest `package.json` to declare `type: \"module\"` so the renamed `.vibe` emits ESM."
+const quote = "Plans and codemods accept `.ts`, `.tsx` and `.mts` modules. `.ts` and `.mts` become `.vibe`; `.tsx` becomes `.vibex`. `.mts` requires its nearest `package.json` to declare `type: \"module\"` so the renamed `.vibe` emits ESM."
 
 test("foldkit-19: plan accepts an .mts ES module", () => {
   const inventory = { files: [record(corpus.path)] }
@@ -31,17 +31,17 @@ test("foldkit-19: plan accepts an .mts ES module", () => {
   assert.equal(vibePath(corpus.path), "scripts/main.vibe")
 })
 
-test("source extensions: only ordinary ts and mts sources are migration candidates", () => {
+test("source extensions: ordinary ts, tsx and mts sources are migration candidates", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote))
   fc.assert(fc.property(fc.stringMatching(/^[a-z][a-z0-9_-]{0,15}$/),
     fc.constantFrom(".ts", ".mts", ".tsx", ".cts", ".d.ts", ".d.mts", ".d.vibe.ts"), (stem, ext) => {
       const path = "src/" + stem + ext
-      const accepted = ext === ".ts" || ext === ".mts"
+      const accepted = ext === ".ts" || ext === ".tsx" || ext === ".mts"
       const inventory = { files: [record(path)] }
       const plan = { batches: [{ files: [path], reason: "extension" }] }
       assert.equal(validatePlan(plan, inventory).errors.length === 0, accepted)
       assert.equal(candidates(inventory).length, Number(accepted))
-      if (accepted) assert.equal(vibePath(path), "src/" + stem + ".vibe")
+      if (accepted) assert.equal(vibePath(path), "src/" + stem + (ext === ".tsx" ? ".vibex" : ".vibe"))
       else assert.throws(() => vibePath(path))
     }), { seed: 190019, numRuns: 250 })
 })

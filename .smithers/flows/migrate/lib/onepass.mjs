@@ -9,7 +9,7 @@ import { createHash } from "node:crypto"
 import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { assertFinished, newErrors, parseDiagnostics, styleProblems, warningExceptions } from "./diagnostics.mjs"
 import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
@@ -25,8 +25,8 @@ import { regenerate } from "./hooks.mjs"
 import * as Jj from "./jj.mjs"
 import { appendJsonl, isDeclarationFile, quote, readJson, readJsonIf, run, slug, writeJson } from "./util.mjs"
 
-const sourceModule = f => /\.(?:ts|tsx|mts|cts|vibe)$/.test(f) && !isDeclarationFile(f)
-const livePath = (root, f) => /\.(?:ts|mts)$/.test(f) && existsSync(join(root, f.replace(/\.(?:ts|mts)$/, ".vibe"))) ? f.replace(/\.(?:ts|mts)$/, ".vibe") : f
+const sourceModule = f => /\.(?:ts|tsx|mts|cts|vibe|vibex)$/.test(f) && !isDeclarationFile(f)
+const livePath = (root, f) => !isDeclarationFile(f) && /\.(?:ts|tsx|mts)$/.test(f) && existsSync(join(root, vibePath(f))) ? vibePath(f) : f
 const positive = (v, fallback, name, max = Infinity) => {
   const n = Number(v ?? fallback)
   if (!Number.isInteger(n) || n < 1 || n > max) throw new Error(`${name} must be an integer from 1 to ${max}`)
@@ -39,8 +39,8 @@ export function planScope(root, scope, { nativeConfigs = [], routeBundledImports
     if (posix.isAbsolute(file) || file.split("/").includes("..") || file !== posix.normalize(file)) throw new Error("scope paths must be repository-relative: " + file)
     if (!existsSync(join(root, file))) throw new Error("scope module missing: " + file)
     if (isToolConfig(file) && !nativeConfigs.includes(file)) deferred.push({ file, reason: "tool config has no supported native loader; keep its TypeScript filename" })
-    else if (/\.(?:ts|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
-    else deferred.push({ file, reason: file.endsWith(".tsx") ? "JSX source is not supported in .vibe; keep .tsx" : file.endsWith(".vibe") ? "already .vibe; no rename needed" : "not a .ts or .mts source module; keep its source format" })
+    else if (/\.(?:ts|tsx|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
+    else deferred.push({ file, reason: /\.vibex?$/.test(file) ? "already a VibeLang module; no rename needed" : isDeclarationFile(file) ? "declaration file; keep its source format" : "unsupported source kind; not a .ts, .tsx or .mts module" })
   }
   const bundled = testBundleDeferrals(root, files, { routed: routeBundledImports })
   const retained = new Set(bundled.map(d => d.file))
@@ -51,7 +51,7 @@ export function planScope(root, scope, { nativeConfigs = [], routeBundledImports
     deferred.push(bare)
   }
   for (let i = files.length - 1; i >= 0; i--) if (retained.has(files[i])) files.splice(i, 1)
-  if (!files.length) throw new Error("scope contains no .ts or .mts modules to migrate; " + deferred.map(d => d.reason).join("; "))
+  if (!files.length) throw new Error("scope contains no .ts, .tsx or .mts modules to migrate; " + deferred.map(d => d.reason).join("; "))
   return { version: 1, mode: "one-pass", batches: [{ files, reason: "One whole-scope pass; settle returns failing modules by diagnostic cause, dependency roots first." }], deferred }
 }
 
@@ -196,7 +196,7 @@ async function moduleGraph(config, p) {
     }
     if (!map && key === ".") values = [pkg.module, pkg.main, "./index.ts"].filter(Boolean)
     for (const value of values) if (value.startsWith(".")) {
-      const target = resolveFile(posix.normalize(posix.join(dir, value.replace(/\.d\.vibe\.ts$/, ".vibe"))), all)
+      const target = resolveFile(posix.normalize(posix.join(dir, value.replace(/\.d\.(vibex?)\.ts$/, ".$1"))), all)
       if (target) return target
     }
   }
@@ -222,7 +222,7 @@ async function checkProjects(config, p, options, projects = projectList(config))
     let crash = null
     try { assertFinished(result, log) } catch (error) { crash = error.message }
     if (crash) diagnostics.push({ file: null, code: "CRASH", category: "error", message: crash, line: 0, column: 0, notes: [] })
-    for (const d of diagnostics) if (d.file?.endsWith(".d.vibe.ts")) d.file = d.file.replace(/\.d\.vibe\.ts$/, ".vibe")
+    for (const d of diagnostics) if (/\.d\.vibex?\.ts$/.test(d.file ?? "")) d.file = d.file.replace(/\.d\.(vibex?)\.ts$/, ".$1")
     return { ...task, compilerArtifact: config.compilerArtifact ? bindCompilerArtifact(config) : undefined, code: result.code, ms: result.ms, crash, diagnostics }
   })
 }
@@ -260,12 +260,12 @@ function identicalDeclarations(config, p, cm) {
     const parsed = ts.parseJsonConfigFileContent(raw.config, ts.sys, posix.dirname(configPath))
     const root = parsed.options.rootDir
     if (!root) continue
-    const rel = posix.relative(root, join(config.target,r.from)).replace(/\.ts$/, ".d.ts")
+    const rel = posix.relative(root, join(config.target,r.from)).replace(/\.(?:ts|tsx)$/, ".d.ts")
     if (rel.startsWith("../")) continue
     const base = join(p.baseline,"dts",slug(dir),rel)
-    const side = join(config.target,r.to.replace(/\.vibe$/, ".d.vibe.ts"))
+    const side = join(config.target,r.to.replace(/\.(vibex?)$/, ".d.$1.ts"))
     if (!existsSync(base) || !existsSync(side)) continue
-    const normalize = text => text.replace(/(["'])(\.\.?\/[^"'\n]+?)\.(?:ts|vibe|js)\1/g,"$1$2.js$1")
+    const normalize = text => text.replace(/(["'])(\.\.?\/[^"'\n]+?)\.(?:tsx?|vibex?|jsx?)\1/g,"$1$2.js$1")
     if (normalize(readFileSync(base,"utf8")) === normalize(readFileSync(side,"utf8"))) same.add(r.to)
   }
   return same
@@ -285,7 +285,7 @@ async function settle(config, p, cm, options) {
       const base = baseline.find(b => b.file === c.file)
       if (!base) throw new Error("no baseline for project " + c.file + "; capture it before rename")
       // Every .vibe own error counts, even if the .ts baseline had it.
-      return [...newErrors(base.diagnostics, c.diagnostics).filter(d => !d.file?.endsWith(".vibe")), ...c.diagnostics.filter(d => d.category === "error" && d.file?.endsWith(".vibe")), ...styleProblems(c.diagnostics, [...new Set(c.diagnostics.map(d => d.file).filter(f => f?.endsWith(".vibe")))])]
+      return [...newErrors(base.diagnostics, c.diagnostics).filter(d => !/\.vibex?$/.test(d.file ?? "")), ...c.diagnostics.filter(d => d.category === "error" && /\.vibex?$/.test(d.file ?? "")), ...styleProblems(c.diagnostics, [...new Set(c.diagnostics.map(d => d.file).filter(f => /\.vibex?$/.test(f ?? "")))])]
     })
     const live = new Set(cm.renames.map(r => r.to).filter(f => existsSync(join(config.target, f))))
     const graph = await moduleGraph(config, p)
@@ -323,7 +323,7 @@ async function settle(config, p, cm, options) {
     writeJson(join(p.batch("01"), "settle-causes.json"), causes)
     await revertMany({ run: p.run, batch: "01", files: requests })
     for (const file of roots) {
-      if (existsSync(join(config.target, file)) || !existsSync(join(config.target, file.replace(/\.vibe$/, ".ts")))) throw new Error("settle revert did nothing: " + file)
+      if (existsSync(join(config.target, file)) || !existsSync(join(config.target, (cm.renames.find(r => r.to === file)?.from ?? file.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts"))))) throw new Error("settle revert did nothing: " + file)
       reverted.add(file)
     }
   }

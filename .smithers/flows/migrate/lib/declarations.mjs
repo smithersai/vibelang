@@ -246,7 +246,7 @@ export function sidecarChanges(ts, sidecars, outDir) {
   const emitted = listDeclarations(outDir), changed = [], missing = []
   const pairs = []
   for (const [sidecar, text] of Object.entries(sidecars)) {
-    const declaration = sidecar.replace(/\.d\.vibe\.ts$/, ".d.ts")
+    const declaration = sidecar.replace(/\.d\.vibex?\.ts$/, ".d.ts")
     const match = emitted
       .flatMap(file => [file, file.split("/").slice(1).join("/")].filter(f => f && (declaration === f || declaration.endsWith("/" + f))).map(f => ({ file, length: f.length })))
       .sort((a, b) => b.length - a.length)[0]
@@ -313,7 +313,7 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
     const lookup = candidate => aliases[candidate] ?? (known.has(candidate) ? candidate : undefined)
     const exact = lookup(path)
     if (exact) return exact
-    const stem = path.replace(/(?:\.d\.vibe\.ts|\.[cm]?[jt]s|\.vibe)$/, "")
+    const stem = path.replace(/(?:\.d\.vibex?\.ts|\.[cm]?[jt]sx?|\.vibex?)$/, "")
     return [stem + ".d.ts", stem + ".d.mts", stem + ".d.cts", path + ".d.ts", path + "/index.d.ts", path + "/index.d.mts", path + "/index.d.cts"].map(lookup).find(Boolean)
   }
   const targets = []
@@ -349,7 +349,7 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
     }
     // Snapshot files can live at different paths from their package outputs.
     for (const [path, file] of Object.entries(aliases)) {
-      if (/\.d\.[cm]?ts$/.test(path) && !/\.d\.vibe\.ts$/.test(path) && shipped(path)) roots.add(file)
+      if (/\.d\.[cm]?ts$/.test(path) && !/\.d\.vibex?\.ts$/.test(path) && shipped(path)) roots.add(file)
     }
   }
   const unresolved = []
@@ -433,8 +433,8 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
 // Select one coherent project layout against the files actually emitted; never
 // choose a root independently for each source, which can misattribute siblings.
 function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
-  const sources = parsed.fileNames.filter(file => !/\.d\.(?:vibe\.)?[cm]?ts$/.test(file))
-  const fileNames = parsed.fileNames.map(file => file.replace(/\.vibe$/, ".ts"))
+  const sources = parsed.fileNames.filter(file => !/\.d\.(?:vibex?\.)?[cm]?ts$/.test(file))
+  const fileNames = parsed.fileNames.map(file => file.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts"))
   const candidates = [{ strategy: parsed.options.rootDir ? "configured" : "common-source", rootDir: parsed.options.rootDir }]
   if (!parsed.options.rootDir)
     candidates.push({ strategy: "config-directory", rootDir: dirname(configPath) })
@@ -444,7 +444,7 @@ function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
     const emittedOptions = { ...candidate.originalOptions, outDir: snapshot, declarationDir: undefined, composite: false }
     candidate.outputs = sources.map(source => {
       const outputNames = options => ts.getOutputFileNames({ ...parsed, fileNames, options },
-        source.replace(/\.vibe$/, ".ts"), false)
+        source.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts"), false)
       const output = outputNames(emittedOptions).find(file => /\.d\.[cm]?ts$/.test(file))
       return { source, output, originals: outputNames(candidate.originalOptions) }
     })
@@ -479,7 +479,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     const config = ts.readConfigFile(path, ts.sys.readFile)
     if (config.error) throw new Error("cannot read declaration project " + tsconfig)
     const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, posix.dirname(path), { allowNonTsExtensions: true }, path,
-      undefined, [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }])
+      undefined, [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }, { extension: ".vibex", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }])
     const layout = { prefix: posix.normalize(prefix) }
     const configuredOutput = parsed.options.declarationDir ?? parsed.options.outDir ?? parsed.options.rootDir
     if (configuredOutput) layout.directory = rel(packageDir, configuredOutput) || "."
@@ -510,6 +510,8 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       aliases[rel(packageDir, source)] = declaration
       if (/\.(ts|vibe)$/.test(source)) {
         for (const ext of [".ts", ".vibe", ".d.vibe.ts"]) aliases[rel(packageDir, source).replace(/\.(ts|vibe)$/, ext)] = declaration
+      } else if (/\.(tsx|vibex)$/.test(source)) {
+        for (const ext of [".tsx", ".vibex", ".d.vibex.ts"]) aliases[rel(packageDir, source).replace(/\.(tsx|vibex)$/, ext)] = declaration
       }
       for (const original of originals) {
         aliases[rel(packageDir, original)] = declaration
@@ -527,7 +529,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
   // Aliases of emitted files win over stale build output from the target.
   const originals = handwritten ?? new Map([...declarationFiles(packageDir, resolve(dir))].map(([file, bytes]) => [rel(packageDir, file), bytes]))
   for (const [file, bytes] of originals) {
-    if (!/\.d\.[cm]?ts$/.test(file) || /\.d\.vibe\.ts$/.test(file) || aliases[file]) continue
+    if (!/\.d\.[cm]?ts$/.test(file) || /\.d\.vibex?\.ts$/.test(file) || aliases[file]) continue
     const stored = posix.join(shippedDir, file)
     mkdirSync(join(dir, stored, ".."), { recursive: true })
     writeFileSync(join(dir, stored), bytes)
@@ -741,7 +743,7 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
 // The files a declaration emit can write outside outDir: x.d.ts, x.d.mts,
 // x.d.cts beside a source outside the project's rootDir, and the x.d.vibe.ts
 // sidecar every compile writes beside x.vibe.
-const declarationOutput = /\.d\.(?:vibe\.)?[cm]?ts$/
+const declarationOutput = /\.d\.(?:vibex?\.)?[cm]?ts$/
 
 // The contents of each declaration file under directory, outside node_modules,
 // dot directories and skip, by absolute path.
@@ -873,7 +875,7 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
     output += result.stdout + result.stderr
     for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) {
       if (!file.startsWith(inside)) {
-        if (/\.d\.vibe\.ts$/.test(file)) continue
+        if (/\.d\.vibex?\.ts$/.test(file)) continue
         const before = existing.get(resolve(file))
         if (before === undefined) rmSync(file, { force: true })
         else writeFileSync(file, before)
@@ -941,7 +943,7 @@ export async function writeLoaderRecords({ compiler, packageDir, root }) {
       const path = join(directory, item.name)
       if (item.isDirectory()) {
         if (!existsSync(join(path, "package.json"))) walk(path)
-      } else if (item.name.endsWith(".vibe")) {
+      } else if (/\.vibex?$/.test(item.name)) {
         const project = nearestProject(path)
         if (project !== undefined && inside(project)) projects.add(project)
       }

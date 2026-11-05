@@ -11,7 +11,7 @@ import { isolateAmbientSnapshots } from "./api-identity-ambient.mjs"
 import { alignNominalIdentity } from "./api-identity-nominal.mjs"
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-const declaration = /\.d\.(?:[cm]?ts|vibe\.ts)$/
+const declaration = /\.d\.(?:[cm]?ts|vibex?\.ts)$/
 const slash = x => x.replaceAll("\\", "/")
 
 // pnpm stores one package per peer context. Keep those installations distinct,
@@ -40,16 +40,16 @@ function filesUnder(dir, includeJson = false, includeSource = false) {
     if (["node_modules", ".jj", ".git"].includes(item.name)) continue
     const path = join(dir, item.name)
     if (item.isDirectory()) out.push(...filesUnder(path, includeJson, includeSource))
-    else if (declaration.test(item.name) || (includeJson && item.name.endsWith(".json")) || (includeSource && /\.(?:[cm]?[jt]sx?|vibe)$/.test(item.name))) out.push(path)
+    else if (declaration.test(item.name) || (includeJson && item.name.endsWith(".json")) || (includeSource && /\.(?:[cm]?[jt]sx?|vibex?)$/.test(item.name))) out.push(path)
   }
   return out.sort()
 }
 
 function declarationPath(path) {
-  const emitted = path.replace(/\.(?:[cm]?[jt]sx?|vibe)$/, /\.m[jt]s$/.test(path) ? ".d.mts"
+  const emitted = path.replace(/\.(?:[cm]?[jt]sx?|vibex?)$/, /\.m[jt]s$/.test(path) ? ".d.mts"
     : /\.c[jt]s$/.test(path) ? ".d.cts" : ".d.ts")
   const candidates = declaration.test(path) ? [path] : [
-    ...(path.endsWith(".vibe") ? [path.replace(/\.vibe$/, ".d.vibe.ts")] : []),
+    ...(/\.vibex?$/.test(path) ? [path.replace(/\.(vibex?)$/, ".d.$1.ts")] : []),
     emitted, path + ".d.ts", join(path, "index.d.ts"),
   ]
   return candidates.find(p => declaration.test(p) && existsSync(p))
@@ -99,7 +99,7 @@ function projectSidecarHost(ts, host, virtual = new Map()) {
     return value
   }
   function sidecar(path) {
-    if (!path.endsWith(".d.vibe.ts")) return undefined
+    if (!/\.d\.vibex?\.ts$/.test(path)) return undefined
     const config = project(path)
     if (!config.sidecar) return undefined
     const local = relative(config.root, path)
@@ -127,7 +127,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
   if (!existsSync(manifestFile)) {
     const entries = {}
     for (const file of filesUnder(directory)) {
-      const key = slash(relative(directory, file)).replace(/\.d\.vibe\.ts$/, ".d.ts")
+      const key = slash(relative(directory, file)).replace(/\.d\.vibex?\.ts$/, ".d.ts")
       if (entries[key]) throw new Error("Ambiguous declaration twins for " + key)
       entries[key] = file
     }
@@ -157,7 +157,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
     const path = resolve(directory, target)
     if (target.includes("*") && key.split("#")[0].includes("*")) {
       const expected = declaration.test(path) ? path
-        : path.replace(/\.(?:[cm]?[jt]sx?|vibe)$/, path.endsWith(".mjs") || path.endsWith(".mts") ? ".d.mts"
+        : path.replace(/\.(?:[cm]?[jt]sx?|vibex?)$/, path.endsWith(".mjs") || path.endsWith(".mts") ? ".d.mts"
           : path.endsWith(".cjs") || path.endsWith(".cts") ? ".d.cts" : ".d.ts")
       const pieces = slash(expected).split("*")
       const pattern = new RegExp("^" + pieces.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.*)") + "$")
@@ -248,7 +248,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
           if (!resolved) continue
           const target = declarationPath(resolved.resolvedFileName) ?? resolved.resolvedFileName
           const applicable = candidates.filter(([key, path]) =>
-            (path === target || path.endsWith(".vibe") && path.replace(/\.vibe$/, ".d.vibe.ts") === target) &&
+            (path === target || /\.vibex?$/.test(path) && path.replace(/\.(vibex?)$/, ".d.$1.ts") === target) &&
             clean(key).split("#").slice(1).every(condition =>
               condition === meaning || condition === "default" || extra.includes(condition)))
           if (!applicable.length) { unrepresented.add(subpath); continue }
@@ -277,10 +277,10 @@ export function publishedEntrypoints(directory, tsCompiler) {
         const item = unresolvedPatterns.get(key)
         if (!item) continue
         const variants = new Set([item.target, path])
-        const extension = /\.(?:[cm]?[jt]sx?|vibe)$/.exec(item.target)?.[0]
+        const extension = /\.(?:[cm]?[jt]sx?|vibex?)$/.exec(item.target)?.[0]
         const replacements = extension === ".js" || extension === ".jsx" ? [".ts", ".tsx"]
           : extension === ".mjs" ? [".mts"] : extension === ".cjs" ? [".cts"]
-          : extension === ".vibe" ? [".d.vibe.ts"] : []
+          : /^\.vibex?$/.test(extension) ? [".d" + extension + ".ts"] : []
         for (const replacement of replacements) variants.add(item.target.slice(0, -extension.length) + replacement)
         for (const target of variants) {
           const files = wildcard(target)
@@ -617,8 +617,9 @@ const absentReferenceCodes = new Set([2305, 2307, 2339, 2459, 2460, 2614, 2694, 
 const absentReason = records => (Array.isArray(records) ? records : []).map(record =>
   [String(record.code ?? "").replace(/^TS/, ""), slash(String(record.file ?? "")).replace(/^\.\//, ""),
     record.line ?? "", record.column ?? ""].join(":")).sort()
-const declarationTwins = path => [path, path.endsWith(".d.vibe.ts") ? path.replace(/\.d\.vibe\.ts$/, ".d.ts")
-  : path.replace(/\.d\.(ts)$/, ".d.vibe.ts")]
+const declarationTwins = path => [path, ...(/\.d\.vibex?\.ts$/.test(path)
+  ? [path.replace(/\.d\.vibex?\.ts$/, ".d.ts")]
+  : [path.replace(/\.d\.ts$/, ".d.vibe.ts"), path.replace(/\.d\.ts$/, ".d.vibex.ts")])]
 
 function planAbsentDeclarations(before, after, supplied, exists) {
   const plan = { declarations: new Map(), paths: new Map(), diagnostics: [] }
@@ -713,7 +714,7 @@ function attributeAbsentReferences(ts, program, checker, diagnostics, before, af
     return undefined
   }
   const owned = file => [before, after].find(base => file.startsWith(base + "/") && !file.includes("/node_modules/"))
-  const logical = (base, file) => slash(relative(base, file)).replace(/\.d\.vibe\.ts$/, ".d.ts")
+  const logical = (base, file) => slash(relative(base, file)).replace(/\.d\.vibex?\.ts$/, ".d.ts")
   const records = new Map()
   for (const d of diagnostics) {
     if (!d.file || d.start === undefined || !absentReferenceCodes.has(d.code) || !owned(d.file)) continue
@@ -1024,8 +1025,8 @@ function prepareComparison(ts, before, after, options, progress) {
   const virtual = new Map()
   const { host, moduleResolutions, externalGroups } = createIdentityHost(ts, compilerOptions, before, after, options, virtual)
   for (const entries of [left, right]) for (const [key, path] of Object.entries(entries)) {
-    if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
-      entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
+    if (/\.vibex?$/.test(path) && host.fileExists(path.replace(/\.(vibex?)$/, ".d.$1.ts")))
+      entries[key] = path.replace(/\.(vibex?)$/, ".d.$1.ts")
   }
   const absent = planAbsentDeclarations(before, after, options.absentDeclarations, path => host.fileExists(path))
   result.environmentDiagnostics.push(...absent.diagnostics)
@@ -1150,8 +1151,13 @@ function prepareComparison(ts, before, after, options, progress) {
     // Global overload precedence follows source-file binding order.
     // Equal per-file closures cannot prove a reordered ambient environment.
     if (JSON.stringify([...ambientLeft.keys()]) !== JSON.stringify([...ambientRight.keys()])) {
+      const beforeOrder = [...ambientLeft.keys()], afterOrder = [...ambientRight.keys()]
+      let firstDifference = 0
+      while (firstDifference < Math.min(beforeOrder.length, afterOrder.length) &&
+        beforeOrder[firstDifference] === afterOrder[firstDifference]) firstDifference++
       result.environmentDiagnostics.push({ blocking: true,
-        diagnostic: "Ambient declaration load order differs; shared-program comparison is unavailable" })
+        diagnostic: "Ambient declaration load order differs; shared-program comparison is unavailable",
+        beforeSources: beforeOrder.length, afterSources: afterOrder.length, firstDifference })
       result.comparisonComplete = false
       return result
     }

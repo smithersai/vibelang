@@ -5,11 +5,14 @@ import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:p
 import { tmpdir } from "node:os"
 
 const slash = path => path.split(sep).join("/")
-const declaration = path => /\.d\.(?:vibe\.)?[cm]?ts$/.test(path) ? path
-  : path.replace(/\.vibe$/, ".d.vibe.ts").replace(/\.[cm]?[jt]sx?$/, extension =>
+const declaration = path => {
+  if (/\.d\.(?:vibex?\.)?[cm]?ts$/.test(path)) return path
+  if (/\.vibex?$/.test(path)) return path.replace(/\.(vibex?)$/, ".d.$1.ts")
+  return path.replace(/\.[cm]?[jt]sx?$/, extension =>
     extension === ".mts" || extension === ".mjs" ? ".d.mts" : extension === ".cts" || extension === ".cjs" ? ".d.cts" : ".d.ts")
+}
 const specifier = path => {
-  const output = slash(path).replace(/\.d\.vibe\.ts$/, ".vibe").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs").replace(/\.d\.ts$/, ".js")
+  const output = slash(path).replace(/\.d\.(vibex?)\.ts$/, ".$1").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs").replace(/\.d\.ts$/, ".js")
   return output.startsWith(".") ? output : "./" + output
 }
 export function apiProjection(ts, directory, surface, files, { published = true } = {}) {
@@ -60,7 +63,7 @@ export function apiProjection(ts, directory, surface, files, { published = true 
     }
     for (const [name, target] of Object.entries(metadata.aliases)) {
       const destination = declaration(name)
-      if (!/\.d\.(?:vibe\.)?[cm]?ts$/.test(destination)) continue
+      if (!/\.d\.(?:vibex?\.)?[cm]?ts$/.test(destination)) continue
       const physical = destinations.get(target)
       if (!physical) throw new Error("Declaration snapshot alias has no stored target: " + name)
       if (originals.has(destination)) {
@@ -88,7 +91,7 @@ export function apiProjection(ts, directory, surface, files, { published = true 
       if (Array.isArray(value)) return value.map(sourceConditions)
       if (value && typeof value === "object")
         return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, sourceConditions(child)]))
-      if (typeof value !== "string" || !value.startsWith("./") || !/\.(?:[cm]?ts|tsx)$/.test(value)) return value
+      if (typeof value !== "string" || !value.startsWith("./") || !/\.(?:[cm]?ts|tsx|vibex?)$/.test(value)) return value
       const name = posix.normalize(value)
       if (!Object.hasOwn(metadata.aliases, name)) return value
       return "./" + declaration(name)

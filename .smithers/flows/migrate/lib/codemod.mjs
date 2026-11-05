@@ -59,6 +59,10 @@ export function pathAliases(ts, root) {
     aliasesFor(file)
     return rewriteByConfig.get(nearest(file)) === true
   }
+  aliasesFor.emittedExtension = (file, sourceExt) => {
+    aliasesFor(file)
+    return sourceExt === ".vibex" && optionsByConfig.get(nearest(file))?.jsx === ts.JsxEmit.Preserve ? ".jsx" : ".js"
+  }
   aliasesFor.migratedSourceExtension = (file, sourceExt) => {
     aliasesFor(file)
     const options = optionsByConfig.get(nearest(file))
@@ -70,10 +74,11 @@ export function pathAliases(ts, root) {
   return aliasesFor
 }
 
-/** .ts and .mts source modules become .vibe. Declaration files stay put. */
+/** TypeScript sources keep their JSX kind. Declaration files stay put. */
 export function vibePath(path) {
-  if (!/\.(?:ts|mts)$/.test(path) || isDeclarationFile(path)) throw new Error(`${path}: only a .ts or .mts module becomes .vibe`)
-  return path.replace(/\.(?:ts|mts)$/, ".vibe")
+  if (isDeclarationFile(path)) throw new Error(`${path}: declaration file; keep its source format`)
+  if (!/\.(?:ts|tsx|mts)$/.test(path)) throw new Error(`${path}: unsupported source kind; only .ts, .tsx or .mts modules can migrate`)
+  return path.endsWith(".tsx") ? path.slice(0, -4) + ".vibex" : path.replace(/\.(?:ts|mts)$/, ".vibe")
 }
 
 /**
@@ -158,7 +163,7 @@ const typeConditions = new Set(["types", "typings"])
 
 // The package-relative path of a module's emitted JavaScript, which the migrate
 // flow commits under .vibelang/js/ (emitPackageJs): ./src/x -> ./.vibelang/js/src/x.js.
-const emittedOf = (stem) => "./.vibelang/js/" + posix.normalize(stem).replace(/^\.\//, "") + ".js"
+const emittedOf = (stem, extension = ".js") => "./.vibelang/js/" + posix.normalize(stem).replace(/^\.\//, "") + extension
 
 /**
  * value with each target that names source, a package-relative .ts module,
@@ -177,22 +182,22 @@ const emittedOf = (stem) => "./.vibelang/js/" + posix.normalize(stem).replace(/^
  * with ./x.vibe a consumer's inferred type that names one of the module's
  * types is TS2883.
  */
-function pointAt(value, source, { condition, entry = false, bare = false, sidecar = besideSidecar } = {}) {
+function pointAt(value, source, { condition, entry = false, bare = false, sidecar = besideSidecar, runtimeExtension = ".js" } = {}) {
   if (typeof value === "string") {
     if (posix.normalize(value) !== source) return value
-    const stem = value.replace(/\.(?:ts|mts)$/, "")
-    if (typeConditions.has(condition)) return sidecar(stem)
-    if (condition === "main" || condition === "module" || condition === "vibelang-source" || bare) return stem + ".vibe"
-    const runtime = { "vibelang-source": stem + ".vibe", default: emittedOf(stem) }
-    return entry ? { types: sidecar(stem), ...runtime } : runtime
+    const native = vibePath(value), extension = posix.extname(native), stem = value.replace(/\.(?:ts|tsx|mts)$/, "")
+    if (typeConditions.has(condition)) return sidecar(stem, extension)
+    if (condition === "main" || condition === "module" || condition === "vibelang-source" || bare) return native
+    const runtime = { "vibelang-source": native, default: emittedOf(stem, runtimeExtension) }
+    return entry ? { types: sidecar(stem, extension), ...runtime } : runtime
   }
-  if (Array.isArray(value)) return value.map((item) => pointAt(item, source, { condition, bare, sidecar }))
+  if (Array.isArray(value)) return value.map((item) => pointAt(item, source, { condition, bare, sidecar, runtimeExtension }))
   // A nested condition refines declaration lookup; it cannot turn it into runtime lookup.
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: typeConditions.has(condition) ? condition : key, bare, sidecar })]))
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: typeConditions.has(condition) ? condition : key, bare, sidecar, runtimeExtension })]))
   return value
 }
 
-const besideSidecar = (stem) => stem + ".d.vibe.ts"
+const besideSidecar = (stem, extension = ".vibe") => stem + ".d" + extension + ".ts"
 
 /** A portable layout for a driver that has validated its source and configuration snapshot. */
 export function sidecarPlanOf(root, dir) {
@@ -214,8 +219,8 @@ function sidecarFromPlan(root, dir, plan) {
     throw new Error("saved sidecar layout has an invalid owner or path")
   const home = resolve(root, dir)
   const settings = { home, sourceRoot: resolve(home, plan.sourceRoot), directory: resolve(home, plan.directory) }
-  return stem => {
-    const path = relative(home, sidecarPath(resolve(home, stem + ".vibe"), settings)).replaceAll("\\", "/")
+  return (stem, extension = ".vibe") => {
+    const path = relative(home, sidecarPath(resolve(home, stem + extension), settings)).replaceAll("\\", "/")
     return path.startsWith("./") || path.startsWith("../") ? path : "./" + path
   }
 }
@@ -235,11 +240,12 @@ export function sidecarOf(root, dir) {
  * from a bare path is that path again.
  */
 function pointBack(value, vibe, extension = ".ts", sidecar = besideSidecar) {
-  const stem = vibe.slice(0, -".vibe".length)
-  const sidecars = [stem + ".d.vibe.ts", posix.normalize(sidecar(stem))]
+  const extensionOf = posix.extname(vibe), stem = vibe.slice(0, -extensionOf.length)
+  const beside = stem + ".d" + extensionOf + ".ts"
+  const sidecars = [beside, posix.normalize(sidecar(stem, extensionOf))]
   const ts = (target) => {
-    if (posix.normalize(target) === vibe) return target.slice(0, -".vibe".length) + extension
-    if (posix.normalize(target) === stem + ".d.vibe.ts") return target.slice(0, -".d.vibe.ts".length) + extension
+    if (posix.normalize(target) === vibe) return target.slice(0, -extensionOf.length) + extension
+    if (posix.normalize(target) === beside) return target.slice(0, -(".d" + extensionOf + ".ts").length) + extension
     if (sidecars.includes(posix.normalize(target))) return "./" + stem + extension
     return target
   }
@@ -248,10 +254,10 @@ function pointBack(value, vibe, extension = ".ts", sidecar = besideSidecar) {
   if (Array.isArray(value)) return value.map((item) => pointBack(item, vibe, extension, sidecar))
   if (value && typeof value === "object") {
     const keys = Object.keys(value).sort().join(",")
-    const emitted = posix.normalize(emittedOf(stem))
+    const emitted = [".js", ".jsx"].map(extension => posix.normalize(emittedOf(stem, extension)))
     // What pointAt wrote, the source condition naming the .ts file's spelling.
-    if (keys === "default,vibelang-source" && is(value["vibelang-source"], vibe) && is(value.default, emitted)) return ts(value["vibelang-source"])
-    if (keys === "default,types,vibelang-source" && typeof value.types === "string" && sidecars.includes(posix.normalize(value.types)) && is(value["vibelang-source"], vibe) && is(value.default, emitted)) return ts(value["vibelang-source"])
+    if (keys === "default,vibelang-source" && is(value["vibelang-source"], vibe) && emitted.some(path => is(value.default, path))) return ts(value["vibelang-source"])
+    if (keys === "default,types,vibelang-source" && typeof value.types === "string" && sidecars.includes(posix.normalize(value.types)) && is(value["vibelang-source"], vibe) && emitted.some(path => is(value.default, path))) return ts(value["vibelang-source"])
     // An earlier toolchain's entry, { types, default: ./x.vibe }.
     if (keys === "default,types" && typeof value.types === "string" && sidecars.includes(posix.normalize(value.types)) && is(value.default, vibe)) return ts(value.default)
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointBack(item, vibe, extension, sidecar)]))
@@ -273,7 +279,7 @@ export function bareVibeExports(root, manifests) {
     return moduleMaps.some((field) => {
       const map = pkg[field]
       const values = isSubpathMap(map) ? Object.values(map) : [map]
-      return values.some((value) => typeof value === "string" && value.endsWith(".vibe"))
+      return values.some((value) => typeof value === "string" && /\.vibex?$/.test(value))
     })
   })
 }
@@ -305,6 +311,11 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
     let changed = false
     for (const { from, to } of moved) {
       const source = posix.relative(dir, from)
+      let runtimeExtension = ".js"
+      if (from.endsWith(".tsx")) {
+        const ts = loadTypeScript([root, fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
+        runtimeExtension = pathAliases(ts, root).emittedExtension(from, ".vibex")
+      }
       const record = (edit) => {
         edits.push({ manifest, ...edit, module: to })
         changed = true
@@ -312,14 +323,14 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
       for (const edit of inventoryEdits(pkg, source, posix.relative(dir, to))) record(edit)
       for (const field of modulePaths) {
         if (typeof pkg[field] !== "string" || posix.normalize(pkg[field]) !== source) continue
-        pkg[field] = pointAt(pkg[field], source, { condition: field, sidecar })
+        pkg[field] = pointAt(pkg[field], source, { condition: field, sidecar, runtimeExtension })
         record({ field })
       }
       for (const field of moduleMaps) {
         const map = pkg[field]
         if (!isSubpathMap(map)) {
           if (targetsOf(map).some((target) => posix.normalize(target) === source)) {
-            pkg[field] = pointAt(map, source, { entry: !bareEntries, bare: bareEntries, sidecar })
+            pkg[field] = pointAt(map, source, { entry: !bareEntries, bare: bareEntries, sidecar, runtimeExtension })
             record({ field })
           }
           continue
@@ -328,13 +339,13 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         for (const [key, value] of Object.entries(map)) {
           if (!key.includes("*")) {
             if (targetsOf(value).some((target) => posix.normalize(target) === source)) record({ field, key })
-            entries.push([key, pointAt(value, source, { entry: !bareEntries, bare: bareEntries, sidecar })])
+            entries.push([key, pointAt(value, source, { entry: !bareEntries, bare: bareEntries, sidecar, runtimeExtension })])
             continue
           }
           const star = targetsOf(value).map((target) => starOf(target, `./${source}`)).find((match) => match !== undefined)
           const exact = star === undefined ? undefined : key.replace("*", star)
           if (exact !== undefined && !(exact in map) && !entries.some(([name]) => name === exact)) {
-            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: !bareEntries, bare: bareEntries, sidecar })])
+            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: !bareEntries, bare: bareEntries, sidecar, runtimeExtension })])
             record({ field, key: exact, added: true })
           }
           entries.push([key, value])
@@ -359,9 +370,10 @@ export function refreshSidecarExports(root, tracked, configs, {
   const owners = new Set([...configs].map(file => packageDirOf(root, file)))
   const callbacks = new Map(), moved = new Map(), beside = new Set()
   for (const file of tracked) {
-    if (file.endsWith(".d.vibe.ts")) beside.add(posix.normalize(file))
-    if (!file.endsWith(".vibe")) continue
-    const old = file.slice(0, -5) + ".d.vibe.ts"
+    if (/\.d\.vibex?\.ts$/.test(file)) beside.add(posix.normalize(file))
+    if (!/\.vibex?$/.test(file)) continue
+    const extension = posix.extname(file)
+    const old = file.slice(0, -extension.length) + ".d" + extension + ".ts"
     beside.add(posix.normalize(old))
     const dir = packageDirOf(root, file)
     if (!owners.has(dir)) continue
@@ -371,7 +383,7 @@ export function refreshSidecarExports(root, tracked, configs, {
       callbacks.set(dir, sidecarFromPlan(root, dir, plan))
       if (!saved) onPlan(dir, plan)
     }
-    const sidecar = callbacks.get(dir), stem = "./" + posix.relative(dir, file).slice(0, -5)
+    const locate = callbacks.get(dir), sidecar = stem => locate(stem, extension), stem = "./" + posix.relative(dir, file).slice(0, -extension.length)
     const next = posix.normalize(posix.join(dir, sidecar(stem)))
     if (posix.normalize(old) !== next) moved.set(posix.normalize(old), { next, dir, sidecar })
   }
@@ -384,14 +396,14 @@ export function refreshSidecarExports(root, tracked, configs, {
     const update = (value, path) => {
       if (Array.isArray(value)) return value.map((item, index) => update(item, [...path, index]))
       if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, update(item, [...path, key])]))
-      if (typeof value !== "string" || !value.endsWith(".d.vibe.ts")) return value
+      if (typeof value !== "string" || !/\.d\.vibex?\.ts$/.test(value)) return value
       const target = posix.normalize(posix.join(dir, value))
       let next = moved.get(target)?.next
       if (target.includes("*")) {
         const matches = [...moved].filter(([file]) => starOf(target, file) !== undefined)
         if (!matches.length) return value
         const first = matches[0][1]
-        const pattern = posix.normalize(posix.join(first.dir, first.sidecar("./" + posix.relative(first.dir, target).slice(0, -".d.vibe.ts".length))))
+        const pattern = posix.normalize(posix.join(first.dir, first.sidecar("./" + posix.relative(first.dir, target).replace(/\.d\.vibex?\.ts$/, ""))))
         const uniform = [...beside].filter(file => starOf(target, file) !== undefined).every(file => moved.has(file)) &&
           matches.every(([file, plan]) => pattern.replaceAll("*", starOf(target, file)) === plan.next)
         if (!uniform) {
@@ -442,7 +454,7 @@ function inventoryEdits(pkg, source, target) {
  * names the .ts file again (pointBack). Returns the edits it undid.
  */
 export function restoreExports(root, edits, module) {
-  const vibe = module.replace(/\.(?:ts|mts)$/, ".vibe")
+  const vibe = vibePath(module)
   const undone = edits.filter((edit) => edit.module === vibe)
   for (const edit of undone) {
     const path = join(root, edit.manifest)
@@ -513,7 +525,7 @@ export function rewriteScripts(root, renames, { read = (file) => readFileSync(jo
  * names the .ts file again. Returns the edits it undid.
  */
 export function restoreScripts(root, edits, module) {
-  const vibe = module.replace(/\.ts$/, ".vibe")
+  const vibe = vibePath(module)
   const undone = edits.filter((edit) => edit.module === vibe)
   for (const edit of undone) {
     const path = join(root, edit.manifest)
@@ -546,14 +558,14 @@ export function rewriteSpecifier(importer, specifier, target, { base: aliased } 
   if (suffix) return rewriteSpecifier(importer, path, target, { base: aliased }) + suffix
   const targetExt = posix.extname(target)
   const ext = posix.extname(specifier)
-  if (targetExt === ".vibe") {
+  if (/^\.vibex?$/.test(targetExt)) {
     // The target is a renamed module: every importer names it by its source name.
-    if (ext === ".vibe") return specifier
-    if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"].includes(ext)) return specifier.slice(0, -ext.length) + ".vibe"
+    if (ext === targetExt) return specifier
+    if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe", ".vibex"].includes(ext)) return specifier.slice(0, -ext.length) + targetExt
     // Extensionless: name the file, or the directory's index file.
     const base = aliased ?? posix.normalize(posix.join(posix.dirname(importer), specifier))
-    if (target === posix.normalize(`${base}/index.vibe`)) return `${specifier.replace(/\/$/, "")}/index.vibe`
-    return specifier + ".vibe"
+    if (target === posix.normalize(`${base}/index${targetExt}`)) return `${specifier.replace(/\/$/, "")}/index${targetExt}`
+    return specifier + targetExt
   }
   // The target stays TypeScript, or revert returned it to TypeScript: only a
   // specifier the codemod spelled .vibe changes, back to the file's extension.
@@ -562,7 +574,7 @@ export function rewriteSpecifier(importer, specifier, target, { base: aliased } 
   // ../d/index.js and ./e as TypeScript does, and a declaration keeps the
   // written spelling, so the published .d.ts matches the original byte for byte
   // (foldkit: 18 declarations differed only by this rewrite).
-  if (ext === ".vibe") return specifier.slice(0, -ext.length) + targetExt
+  if (/^\.vibex?$/.test(ext)) return specifier.slice(0, -ext.length) + targetExt
   return specifier
 }
 
@@ -574,16 +586,16 @@ export function rewriteSpecifier(importer, specifier, target, { base: aliased } 
  * made.
  */
 export function restoreSpecifiers(root, edits, module, aliases) {
-  const vibe = module.replace(/\.(?:ts|mts)$/, ".vibe")
+  const vibe = vibePath(module)
   const restored = []
   const byFile = new Map()
   for (const edit of edits) {
     let file = edit.file
-    if (file.endsWith(".vibe") && !existsSync(join(root, file))) {
+    if (/\.vibex?$/.test(file) && !existsSync(join(root, file))) {
       // Revert may already have returned this importer to TypeScript. Its
       // recorded path still names .vibe; find the restored source, never a
       // still-native importer or an ambiguous pair of TypeScript sources.
-      const candidates = [".ts", ".mts", ".cts"].map(ext => file.slice(0, -".vibe".length) + ext)
+      const candidates = (file.endsWith(".vibex") ? [".tsx"] : [".ts", ".mts", ".cts"]).map(ext => file.slice(0, -posix.extname(file).length) + ext)
         .filter(path => existsSync(join(root, path)))
       if (candidates.length !== 1) continue
       file = candidates[0]
@@ -619,17 +631,18 @@ export function restoreSpecifiers(root, edits, module, aliases) {
  * swebench: three .mjs scripts kept the .ts name and failed
  * import/no-unresolved).
  */
-const specifierExtensions = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe"]
+const specifierExtensions = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe", ".vibex"]
 
-export const importerFile = /\.(?:ts|tsx|mts|cts|vibe|js|jsx|mjs|cjs)$/
+export const importerFile = /\.(?:ts|tsx|mts|cts|vibe|vibex|js|jsx|mjs|cjs)$/
 
 // VIP-40 bodies retain TypeScript import spelling. Parse their ranges so
 // comments, strings, regexps and templates cannot impersonate a boundary.
 let importTypeScript
-function nativeImportRanges(text, root) {
+function nativeImportRanges(text, root, jsx = false) {
   if (!/\bmodule\b/.test(text)) return []
   const ts = importTypeScript ??= loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
-  const source = ts.createSourceFile("imports.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const kind = jsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  const source = ts.createSourceFile("imports.ts", text, ts.ScriptTarget.Latest, true, kind)
   const ranges = []
   const native = node => node && ts.isModuleDeclaration(node) && ts.isIdentifier(node.name) && node.name.text && !(node.flags & ts.NodeFlags.Namespace) && node.body && ts.isModuleBlock(node.body)
   const visit = node => {
@@ -642,7 +655,7 @@ function nativeImportRanges(text, root) {
     // unlike a text search, this never starts inside a quoted literal.
     if (ts.isIdentifier(node) && node.text === "module") {
       const start = node.getStart(source)
-      const tail = ts.createSourceFile("imports.ts", text.slice(start), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS).statements[0]
+      const tail = ts.createSourceFile("imports.ts", text.slice(start), ts.ScriptTarget.Latest, true, kind).statements[0]
       if (native(tail)) ranges.push([start + tail.body.pos, start + tail.body.end])
     }
     ts.forEachChild(node, visit)
@@ -676,11 +689,11 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
     const path = join(root, file)
     const text = read(file)
     const changes = []
-    const nativeBodies = file.endsWith(".vibe") ? nativeImportRanges(text, root) : []
+    const nativeBodies = /\.vibex?$/.test(file) ? nativeImportRanges(text, root, file.endsWith(".vibex")) : []
     for (const i of parseImports(text)) {
       if (nativeBodies.some(([start, end]) => start <= i.start && i.start < end)) continue
       const { path: modulePath, suffix } = splitSpecifier(i.specifier)
-      if (javascript && !/\.(?:[cm]?tsx?|vibe)$/.test(modulePath)) continue
+      if (javascript && !/\.(?:[cm]?tsx?|vibex?)$/.test(modulePath)) continue
       if (kept.get(file)?.has(i.specifier)) continue
       // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).
       const aliased = resolveRelative(file, i.specifier, files) === undefined ? resolveAliased(file, i.specifier, files, aliases) : undefined
@@ -690,14 +703,14 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
       // spelling: it resolved under this configuration before the rename, and
       // `~/leaf.ts`, a non-relative TypeScript name, is TS2877 under
       // rewriteRelativeImportExtensions (t3code web, 23 modules).
-      if (aliased && !target.endsWith(".vibe") && posix.extname(modulePath) !== ".vibe") continue
+      if (aliased && !/\.vibex?$/.test(target) && !/\.vibex?$/.test(modulePath)) continue
       // Detail 272's first addendum: a test's or fixture's extensionless specifier needs
       // no edit (the test-diff protects both alike),
       // an import's or a Vitest or Jest mock's alike. Bun's mock.module("../src/x") does
       // need one: it does not reach x.vibe as written.
       if (i.kind !== "mock" && (isTestFile(file) || isFixtureFile(file)) && !specifierExtensions.includes(posix.extname(modulePath))) continue
       let next = rewriteSpecifier(file, modulePath, target, { base: aliased?.base })
-      if (aliased && target.endsWith(".vibe") && (aliased.exact || aliases?.rewriteRelativeImportExtensions?.(file))) {
+      if (aliased && /\.vibex?$/.test(target) && (aliased.exact || aliases?.rewriteRelativeImportExtensions?.(file))) {
         // An exact paths key cannot gain a source suffix. Native TS2877 also
         // rejects non-relative source names under rewriteRelativeImportExtensions.
         // Use the same resolved source through a relative name the compiler can emit.

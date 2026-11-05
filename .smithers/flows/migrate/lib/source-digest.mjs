@@ -12,7 +12,7 @@ import { isDeclarationFile } from "./util.mjs"
 
 export const sha256 = bytes => createHash("sha256").update(bytes).digest("hex")
 
-const relativeExtension = /(["'`])(\.{1,2}\/[^"'`\s]*?)\.(?:[cm]?[jt]s|vibe)\1/g
+const relativeExtension = /(["'`])(\.{1,2}\/[^"'`\s]*?)\.(?:[cm]?[jt]sx?|vibex?)\1/g
 
 /**
  * A source's digest with relative specifier extensions erased. Converting a module
@@ -92,11 +92,11 @@ export async function assertSourcesCurrent(root, modules, revision) {
   if (stale.length) throw new Error("record refused: " + staleMessage(stale, modules.length))
 }
 
-/** The modules a commit converts: a removed .ts or .mts whose .vibe the commit adds. A jj rename may pair it with the sidecar instead. */
+/** The modules a commit converts: a removed TypeScript source whose native twin the commit adds. A jj rename may pair it with the sidecar instead. */
 export function convertedIn(entries) {
   const removed = entries.flatMap(e => e.status === "D" ? [e.path] : e.status === "R" ? [e.from] : [])
   const added = new Set(entries.filter(e => e.status === "A" || e.status === "R" || e.status === "C").map(e => e.path))
-  return removed.filter(f => /\.m?ts$/.test(f) && !isDeclarationFile(f) && added.has(vibePath(f)))
+  return removed.filter(f => /\.(?:ts|tsx|mts)$/.test(f) && !isDeclarationFile(f) && added.has(vibePath(f)))
 }
 
 /**

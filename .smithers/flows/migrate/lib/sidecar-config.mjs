@@ -87,9 +87,9 @@ export function sidecarProjectLayout(file, ts, text) {
     if (name.startsWith(".")) {
       const target = resolve(dirname(containing), name)
       const stem = target.replace(/\.(?:[cm]?[jt]sx?)$/, "")
-      const candidates = /\.vibex?$/.test(target) ? [target] : [stem + ".vibe", stem + ".vibex", join(target, "index.vibe")]
+      const candidates = /\.vibex?$/.test(target) ? [target] : [stem + ".vibe", stem + ".vibex", join(target, "index.vibe"), join(target, "index.vibex")]
       const source = candidates.find(existsSync)
-      if (source) return { resolvedFileName: source, extension: ts.Extension.Ts, isExternalLibraryImport: false }
+      if (source) return { resolvedFileName: source, extension: source.endsWith(".vibex") ? ts.Extension.Tsx : ts.Extension.Ts, isExternalLibraryImport: false }
     }
     return resolved
   })
@@ -112,23 +112,23 @@ export function sidecarProjectLayout(file, ts, text) {
 }
 
 export function sidecarPath(source, settings) {
-  const beside = source.replace(/\.vibe$/, ".d.vibe.ts")
+  const beside = source.replace(/\.(vibex?)$/, ".d.$1.ts")
   return settings && within(settings.sourceRoot ?? settings.home, source) ? resolve(settings.directory, relative(settings.sourceRoot ?? settings.home, beside)) : beside
 }
 // Like emit, setup protects the complete selected output set before cleanup.
 function removeSupersededByGraph(root, tracked, configs, ts) {
   const key = path => ts.sys.useCaseSensitiveFileNames ? path : path.toLowerCase()
   const plans = [], selected = new Set()
-  const trackedSources = new Set(tracked.filter(file => file.endsWith(".vibe")).map(file => resolve(root, file)))
+  const trackedSources = new Set(tracked.filter(file => /\.vibex?$/.test(file)).map(file => resolve(root, file)))
   for (const config of configs) {
     const settings = sidecarSettings(resolve(root, config), ts)
     if (!settings) continue
-    for (const source of settings.sources.filter(path => path.endsWith(".vibe"))) {
+    for (const source of settings.sources.filter(path => /\.vibex?$/.test(path))) {
       if (!within(settings.sourceRoot, source)) continue
       const output = sidecarPath(source, settings)
       selected.add(key(output))
       if (!trackedSources.has(source)) continue
-      plans.push({ stale: source.replace(/\.vibe$/, ".d.vibe.ts"), output })
+      plans.push({ stale: source.replace(/\.(vibex?)$/, ".d.$1.ts"), output })
     }
   }
   const removed = []
@@ -144,7 +144,7 @@ function removeSupersededByGraph(root, tracked, configs, ts) {
 // graph only for an inferred boundary or a tracked import-only candidate.
 // Overlapping output directories keep the complete selected-output oracle.
 export function removeSupersededSidecars(root, tracked, configs, ts) {
-  const candidates = [...new Map(tracked.filter(file => file.endsWith(".vibe")).map(file => [resolve(root, file), {
+  const candidates = [...new Map(tracked.filter(file => /\.vibex?$/.test(file)).map(file => [resolve(root, file), {
     source: resolve(root, file), stale: resolve(root, file.replace(/\.vibe$/, ".d.vibe.ts"))
   }])).values()].filter(({ stale }) => existsSync(stale) && !lstatSync(stale).isDirectory())
   const projects = [...configs].map(config => {

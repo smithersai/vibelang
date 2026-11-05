@@ -14,13 +14,14 @@ const inventory = {
     file("src/plain.ts", { effect: "none" }),
     file("src/leaf.test.ts", { test: true, imports: ["src/leaf.ts"] }),
     file("src/view.tsx"),
+    file("src/cjs.cts"),
     file("src/cycle-a.ts", { imports: ["src/cycle-b.ts"] }),
     file("src/cycle-b.ts", { imports: ["src/cycle-a.ts"] })
   ]
 }
 
 test("candidates are .ts sources that use Effect values; tests stay unless asked", () => {
-  assert.deepEqual(candidates(inventory).map((f) => f.path), ["src/leaf.ts", "src/mid.ts", "src/top.ts", "src/cycle-a.ts", "src/cycle-b.ts"])
+  assert.deepEqual(candidates(inventory).map((f) => f.path), ["src/leaf.ts", "src/mid.ts", "src/top.ts", "src/view.tsx", "src/cycle-a.ts", "src/cycle-b.ts"])
   assert.ok(candidates(inventory, { includeTests: true }).some((f) => f.path === "src/leaf.test.ts"))
 })
 
@@ -65,7 +66,7 @@ test("validatePlan refuses unknown, duplicate, non-Effect, oversized and non-.ts
   const { errors } = validatePlan({
     batches: [
       { files: ["src/leaf.ts", "src/missing.ts"], reason: "x" },
-      { files: ["src/leaf.ts", "src/plain.ts", "src/view.tsx"], reason: "" },
+      { files: ["src/leaf.ts", "src/plain.ts", "src/cjs.cts"], reason: "" },
       { files: ["src/top.ts", "src/mid.ts", "src/cycle-a.ts"], reason: "y" }
     ]
   }, inventory, { maxFiles: 2, maxLines: 300 })
