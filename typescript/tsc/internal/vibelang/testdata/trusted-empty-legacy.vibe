@@ -1,0 +1,15 @@
+import { trusted } from "vibelang-runtime"
+import { Dialect } from "./plain.ts"
+
+const doubled = trusted(Dialect.integer, [])
+export effect function value(n: number): number!! {
+  return doubled(n)
+}
+
+
+// A local binding must not capture the caller's shadowed undefined.
+export effect function local(undefined: number, n: number): number!! {
+  void undefined
+  const doubled = trusted(Dialect.integer, [])
+  return doubled(n)
+}

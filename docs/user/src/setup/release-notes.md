@@ -185,6 +185,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 
 - Invalid `@throws` and `@rethrows` tags require a manual edit that preserves descriptive documentation.
+- Migrating `trusted(f, [])` keeps public declarations, capture timing, and the identity of thrown defects.
 
 - Concurrent operators could hide a literal's `satisfies` error or add an unrelated array error. They now preserve the literal's own TypeScript errors beside `EK1801`.
 

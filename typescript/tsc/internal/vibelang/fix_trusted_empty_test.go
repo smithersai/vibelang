@@ -1,10 +1,18 @@
 package vibelang
 
 import (
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -15,7 +23,14 @@ func TestTrustedEmptyMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/trusted-empty-migration"), root)
-	before := migrationRuleDeclarations(t, dir, nil)
+	legacy, err := os.ReadFile(filepath.Join(root, "typescript/tsc/internal/vibelang/testdata/trusted-empty-legacy.vibe"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "lib.vibe"), legacy, 0600); err != nil {
+		t.Fatal(err)
+	}
+	before := trustedEmptyLegacyDeclarations(t, dir)
 	if before["lib.d.ts"] == "" {
 		t.Fatal("no lib.d.ts API")
 	}
@@ -66,4 +81,41 @@ func TestTrustedEmptyMigrationRefusesEscapes(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The retired input is deliberately invalid under current callback contracts.
+// Assert those exact errors before capturing its emitted API; the ordinary
+// declaration helper still requires zero errors after the preserving repair.
+func trustedEmptyLegacyDeclarations(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	fs := bundled.WrapFS(osvfs.FS())
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	program := fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, map[tspath.RootedFilePath]string{})
+	count := 0
+	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), nil), program.GetSemanticDiagnostics(t.Context(), nil)...) {
+		if d.Category() != diagnostics.CategoryError {
+			continue
+		}
+		if d.Code() != 402 || d.File() == nil || filepath.Base(d.File().FileName().AsString()) != "lib.vibe" {
+			t.Fatalf("unexpected legacy diagnostic: %s", d.String())
+		}
+		count++
+	}
+	if count != 2 {
+		t.Fatalf("legacy wrapper must reject both unknown callbacks, got %d errors", count)
+	}
+	out := map[string]string{}
+	var mutex sync.Mutex
+	program.Emit(t.Context(), compiler.EmitOptions{WriteFile: func(name tspath.RootedFilePath, text string, _ *compiler.WriteFileData) error {
+		if strings.HasSuffix(name.AsString(), ".d.ts") {
+			mutex.Lock()
+			defer mutex.Unlock()
+			out[filepath.Base(name.AsString())] = text
+		}
+		return nil
+	}})
+	return out
 }

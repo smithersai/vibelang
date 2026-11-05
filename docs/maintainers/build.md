@@ -1913,3 +1913,5 @@ Setup follows TypeScript’s resolved `extends` chain when preserving an unpatch
 The `//:catch-value-identities` check preserves invalid handler errors, independent native diagnostics and source parentheses/comments, and rejects generic-call advisories on catch execution syntax.
 
 The `//:throws-documentation-preservation` gate runs located-refusal tests and generated comment variations, then compiles each manually migrated source.
+
+The `//:trusted-empty-forwarding` gate replays the legacy migration input, checks its fixed point and public API, and compares generated defect bridges with native Effect exits.
