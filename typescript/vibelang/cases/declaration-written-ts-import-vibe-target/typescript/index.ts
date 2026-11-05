@@ -1,7 +1,7 @@
-import type { Factory } from './target.js'
-import { greet } from './consumer.js'
+import type { Factory } from './target.ts'
+import { greet } from './consumer.ts'
 
-export { greeting } from './target.js'
+export { greeting } from './target.ts'
 
 export const twice = (fn: Factory): string => fn() + fn()
 

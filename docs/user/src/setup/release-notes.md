@@ -184,6 +184,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The cross-source declaration example now checks the TypeScript import route while retaining its original JavaScript runtime results.
+
+
 - The host-clock example now checks the platform diagnostic and verifies that retired clock severity settings cannot hide a host access.
 
 

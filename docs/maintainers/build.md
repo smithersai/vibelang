@@ -1870,3 +1870,5 @@ The `//:object-runner-promise-data` check retains method, arrow-property and Eff
 The `//:stream-loop-head-identities` check retains assignment, property, `var`, `using` and `await using` rejection witnesses and valid native head controls.
 
 The `//:host-clock-identities` check covers direct, computed and optional host clock reads in named functions, retired settings, local shadows and native ECMAScript controls.
+
+The `//:native-written-declaration-routes` check covers ordinary TypeScript consumers of VibeLang sources, quote styles, nested paths, rewrite settings and both source extensions.

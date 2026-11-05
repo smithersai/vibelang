@@ -28,7 +28,7 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 	startShortBudget(f)
 	writtenSourceDeclarationSpellingsQuoted(f)
 	for _, extension := range []string{"vibe", "vibex"} {
-		for _, form := range []string{"reexport", "namespace", "import-type", "export-type", "inferred"} {
+		for _, form := range []string{"reexport", "namespace", "import-type", "export-type", "inferred", "native-import"} {
 			for _, mode := range []uint8{0, 1, 2, 3, 4, 5, 6, 7} {
 				f.Add(extension+":"+form, mode)
 			}
@@ -41,11 +41,12 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 			extension = "vibe"
 		}
 		forms := map[string]string{
-			"reexport":    "export { value } from %s;\n",
-			"namespace":   "export * as model from %s;\n",
-			"import-type": "export type Value = import(%s).Value;\n",
-			"export-type": "export type { Value } from %s;\n",
-			"inferred":    "import { use } from %s; import { value } from \"./banners\"; export function read() { use(1); return { now: value() } };\n",
+			"reexport":      "export { value } from %s;\n",
+			"namespace":     "export * as model from %s;\n",
+			"import-type":   "export type Value = import(%s).Value;\n",
+			"export-type":   "export type { Value } from %s;\n",
+			"native-import": "import type { Value } from %s; export type { Value as PublicValue };\n",
+			"inferred":      "import { use } from %s; import { value } from \"./banners\"; export function read() { use(1); return { now: value() } };\n",
 		}
 		if _, ok := forms[form]; !ok {
 			form = "reexport"
@@ -96,7 +97,7 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 			t.Fatalf("invalid native control: %v; output %q", SortedKeys(Keys(native.Dir, native.Diagnostics)), want)
 		}
 		consumer := "vibe"
-		if form == "inferred" {
+		if form == "inferred" || form == "native-import" {
 			consumer = "ts"
 		}
 		vibe := compile(consumer, extension, written)
@@ -114,7 +115,7 @@ func FuzzWrittenSourceDeclarationSpellings(f *testing.F) {
 		})
 		wantSidecar := strings.ReplaceAll(want, twin, written)
 		wantCount := 1
-		if form == "inferred" {
+		if form == "inferred" || form == "native-import" {
 			wantCount, wantSidecar = 0, ""
 		}
 		if count != wantCount || sidecar != wantSidecar || result != nil && HasError(result.Diagnostics) {
