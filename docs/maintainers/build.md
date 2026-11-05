@@ -1803,3 +1803,5 @@ Compiler test prerequisite checks read the package’s TypeScript syntax, includ
 Appendix Go checks use `-trimpath` to share compiled packages with the compiler and `-count=1` to reread their test inputs. Put the flags before the selector and package paths so the command’s build settings and cache policy are visible together.
 
 The Go warmup includes `./internal/effecttsgo/lint`, which the lint configuration checks execute alongside the compiler packages. The warmup inventory checks that every declared package is covered without broadening exact package patterns to siblings.
+
+The bounded project-service target runs both manifest invalidation and stale-manifest preservation tests, including disk and editor content paths. Its selector excludes unrelated upstream fixtures.
