@@ -102,6 +102,14 @@ export function tableRowProblems(text, file, { checkWidths = true, checkPlatform
         problems.push(file + ":" + (i + 1) + ": Stdio args omit the executable and script entries; identify user arguments as process.argv.slice(2)")
       }
 
+      if (/^(?:globalThis\.)?performance\.now(?:\(\))?$/.test(call ?? "") &&
+          /Clock\s*\.\s*monotonicTimeNanos\b/.test(row[1] ?? "")) {
+        const fragments = (row[1] ?? "").split(String.fromCharCode(96))
+        if (fragments.length === 3 && !fragments[0].trim() && !fragments[2].trim()) {
+          problems.push(file + ":" + (i + 1) + ": Clock monotonic readings have an arbitrary origin; document elapsed intervals or retain the native performance timestamp")
+        }
+      }
+
     }
   }
   return problems

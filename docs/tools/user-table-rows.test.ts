@@ -209,3 +209,58 @@ test("generated argument mappings preserve which entries are returned", () => {
     }
   ), { numRuns: 200, seed: 32032 })
 })
+
+test("native performance timestamps are distinguished from clock intervals", () => {
+  const text = readFileSync(new URL("../user/src/platform/105-introduction.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Call|Effect|Layer")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const row = table.rows.find(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "performance.now() - start")
+  expect(row?.[1].text).toContain("- startNanos")
+  expect(text).toContain("arbitrary origin")
+  expect(text).toContain("same clock")
+})
+
+test("global performance advice keeps its key and qualifies the native origin", () => {
+  const text = readFileSync(new URL("../user/src/platform/platform-globals.md", import.meta.url), "utf8")
+  const table = lexer(text).find(token => token.type === "table" && token.header.map(cell => cell.text).join("|") === "Global|Use instead")
+  expect(table?.type).toBe("table")
+  if (table?.type !== "table") return
+  const row = table.rows.find(row => row[0].text.replaceAll(String.fromCharCode(96), "") === "performance.now")
+  expect(row?.[1].text).toContain("elapsed intervals")
+  expect(row?.[1].text).toContain("origin")
+  expect(row?.[1].text).toContain(".ts")
+})
+
+test("generated clock mappings separate arbitrary counters from elapsed intervals", () => {
+  const tick = String.fromCharCode(96)
+  const table = (source: string, replacement: string, global: boolean) => [
+    global ? "| Global | Use instead |" : "| Call | Effect | Layer |",
+    global ? "| --- | --- |" : "| --- | --- | --- |",
+    "| " + tick + source + tick + " | " + replacement + " |" + (global ? "" : " none |")
+  ].join("\n")
+  fc.assert(fc.property(
+    fc.constantFrom("performance.now", "performance.now()", "globalThis.performance.now()"),
+    fc.constantFrom("", " ", "  "), fc.boolean(),
+    fc.bigInt({ min: 1_000_000_000_000_000_000n, max: 1_000_000_000_000_000_000_000_000n }),
+    fc.bigInt({ min: 0n, max: 1_000_000_000_000_000n }),
+    fc.bigInt({ min: 0n, max: 1_000_000_000_000n }),
+    (source, space, global, offset, begin, duration) => {
+      const first = begin + offset, second = first + duration
+      expect(Number(second - first) / 1e6).toBe(Number(duration) / 1e6)
+      expect(Number(second) / 1e6).not.toBe(Number(begin + duration) / 1e6)
+      const expression = "Number(try Clock" + space + "." + space + "monotonicTimeNanos) / 1e6"
+      const bare = tick + expression + tick
+      const broken = table(source, bare, global)
+      const options = { checkPlatformReplacements: true }
+      expect(tableRowProblems(broken, "generated", options)).toHaveLength(1)
+      const delta = tick + "Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6" + tick
+      expect(tableRowProblems(table("performance.now() - start", delta, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table(source, bare + " for elapsed intervals; its origin can differ from " + tick + "performance.now()" + tick, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table("Date.now", tick + "try Clock.currentTimeMillis" + tick, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(table("process.hrtime.bigint()", tick + "try Clock.monotonicTimeNanos" + tick, global), "generated", options)).toEqual([])
+      expect(tableRowProblems(broken, "spec")).toEqual([])
+      expect(tableRowProblems(tick.repeat(3) + "md\n" + broken + "\n" + tick.repeat(3), "generated", options)).toEqual([])
+    }
+  ), { numRuns: 200, seed: 34034 })
+})

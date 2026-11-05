@@ -83,7 +83,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `console.log` | `try Console.log(message)` | none |
 | `setTimeout` | `try sleep("1 second")` | none |
 | `Date.now` | `try Clock.currentTimeMillis` | none |
-| `performance.now` | `Number(try Clock.monotonicTimeNanos) / 1e6` | none |
+| `performance.now() - start` | `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6` | none |
 | `Math.random` | `try Random.next` | none |
 
 `try (try FileSystem.FileSystem).readFile(path)` returns bytes, as Node’s default `fs.readFile` does. For UTF-8 text, use `try (try FileSystem.FileSystem).readFileString(path)`, corresponding to `fs.readFile(path, "utf8")`.
@@ -91,6 +91,8 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 The old `EK4403` is retired: host `performance` and `crypto` reads report `EK4402`, even when a legacy config tries to lower that code. Run native clock Effect values with `try`, and look up `SecureRandom.SecureRandom` before calling its methods.
 
 `try (try Stdio.Stdio).args` reads user arguments, matching `process.argv.slice(2)` on Node. It omits the executable and script entries. Keep a full `process.argv` read in a `.ts` adapter when those entries are needed.
+
+For elapsed intervals, capture `const startNanos = try Clock.monotonicTimeNanos` before work and subtract it from a later reading of the same clock. This clock has an arbitrary origin, which can differ from `performance.now()` on Node. In the table, `start` is the earlier native reading. Keep native `performance.now()` reads in a `.ts` adapter when their original origin is required, including when adding `performance.timeOrigin`.
 
 Get a service with `try`, as in `const random = try SecureRandom.SecureRandom`, then run `try random.uuidV4()`; `ChildProcess`, `HttpClient`, `HttpRouter`, and `FetchHttpClient` are in scope too. `NodeServices.layer` provides `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; `BunServices.layer` from `@effect/platform-bun` is Bun's. Since Effect 4.1 the crypto services, `SecureRandom`, `Digest`, `Mac`, `Signature` and the rest of `effect/crypto`, come from `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. Provide the platform's bundle to the application Effect and every other layer inside `main`. Effect's runtime provides the prelude's services itself.
 

@@ -109,7 +109,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 | `navigator.permissions` | `try (try Permissions.Permissions).query("geolocation")` |
 | `navigator.userAgent` | `try (try Experimental.BrowserInfo.BrowserInfo).userAgent` |
 | `performance` | `try Clock.currentTimeMillis` |
-| `performance.now` | `Number(try Clock.monotonicTimeNanos) / 1e6` |
+| `performance.now` | For elapsed intervals, subtract readings from the same clock: `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6`. The clock has an arbitrary origin; keep reads requiring the native origin in a `.ts` adapter. |
 | `performance.timeOrigin` | `try (try Experimental.Process.Process).timeOrigin` |
 | `postMessage` | Worker and WorkerRunner |
 | `process` | `try Config.String("NAME")` |
@@ -164,6 +164,8 @@ The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` 
 For storage diagnostics, `KeyValueStore` names a namespace. Obtain `KeyValueStore.KeyValueStore` with `try`, then run the Effect returned by its `get(key)` method.
 
 For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr()` methods return sinks, and its `stdin` property is a stream. Its `args` property is an Effect: use `try (try Stdio.Stdio).args`, without calling `args`. `args` omits the executable and script entries; on Node it matches `process.argv.slice(2)`. Read the full array in a `.ts` adapter when needed. The platform diagnostic's replacement examples use these service members.
+
+`Clock.monotonicTimeNanos` is for elapsed intervals: record `startNanos` from that clock before work and subtract it afterward. Its arbitrary origin can differ from `performance.now()` on Node. A native timestamp, including one combined with `performance.timeOrigin`, belongs in a `.ts` adapter.
 
 The terminal diagnostic examples obtain `Terminal.Terminal` with `try` and run its `readLine` Effect property to read a line.
 

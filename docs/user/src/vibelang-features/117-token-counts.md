@@ -250,13 +250,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Formatter](../schema/103-formatter.md) | 540 |
 | [Schema Compilers](../schema/104-compilers.md) | 2,200 |
 | **Platform** | **23,000** |
-| [Introduction](../platform/105-introduction.md) | 3,900 |
+| [Introduction](../platform/105-introduction.md) | 4,000 |
 | [FileSystem](../platform/106-file-system.md) | 1,400 |
 | [Path](../platform/107-path.md) | 950 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,600 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 9,300 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 9,400 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **180,000** |
