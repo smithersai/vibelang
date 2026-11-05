@@ -515,7 +515,10 @@ ImportSpecifier = BindingIdentifier | IdentifierName "as" BindingIdentifier | "t
 ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" [lookahead ∉ { "{", "function", "class" }] AssignmentExpression StatementEnd
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
 ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
-NamedExports = "{" "}" | "{" ImportsList ","? "}"
+NamedExports = "{" "}" | "{" ExportSpecifiers ","? "}"
+ExportSpecifiers = ExportSpecifier | ExportSpecifiers "," ExportSpecifier
+ExportSpecifier = ModuleExportName | ModuleExportName "as" ModuleExportName | "type" ModuleExportName | "type" ModuleExportName "as" ModuleExportName
+ModuleExportName = IdentifierName | StringLiteral
 Expression = AssignmentExpression | Expression "," AssignmentExpression
 AssignmentExpression = ConditionalExpression | ArrowFunction | AsyncArrowFunction | YieldExpression | LeftHandSideExpression "=" AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression
 AssignmentOperator = "+=" | "-=" | "??="

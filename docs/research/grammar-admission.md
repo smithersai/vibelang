@@ -396,3 +396,9 @@ The lab derives them in both native and VibeLang modes, alongside ordinary
 exports and string or identifier module re-exports. A trailing comma requires
 a preceding specifier; `export {,};` has no derivation. These native forms
 need no pending exemption.
+
+Native export specifiers use `ModuleExportName` on both sides of `as`,
+including keyword and string-literal names. The lab models them separately
+from import specifiers, whose local names remain binding identifiers.
+A keyword-only export such as `export { try };` may have an unresolved-name
+error (`TS2304`); that does not remove its native grammar derivation.
