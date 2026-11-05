@@ -2014,3 +2014,12 @@ inherited sidecar settings and self-comparisons remain active. Independent
 bidirectional assignments accept unchanged aliases and require two `TS2322`
 diagnostics for changed selected types. A missing `BigInt` still produces
 native `TS2583` and an incomplete API comparison.
+
+Ambient declaration API fixtures select `lib.es5.d.ts`. Independent stock
+TypeScript programs validate each snapshot separately, so its global
+declarations cannot merge with the other snapshot. Native consumers require
+the declared property type in each conflicting global and retain `TS2322`
+for the opposite type. Missing `BigInt` retains native `TS2583` and an
+unavailable API comparison. Global, referenced-script, inherited-interface
+and module-augmentation controls, documentation normalization and all four
+generated reflexivity/mutation samples remain active.

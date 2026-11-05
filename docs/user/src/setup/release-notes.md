@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Ambient-declaration API checks loaded unrelated browser declarations. They now use fewer libraries while preserving isolated global and augmentation checks.
+
 - Conditional-export API checks loaded unrelated browser declarations. They now use fewer libraries while retaining export selection, sidecar and native type checks.
 
 - An extra unparenthesized Effect type slot now reports `EK0302` with a grouping repair instead of a missing-semicolon error.

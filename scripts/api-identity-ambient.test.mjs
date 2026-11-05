@@ -6,10 +6,14 @@ import { join } from "node:path"
 import { createRequire } from "node:module"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
+import { createEs5FixtureGuard } from "./testing/fixture-libraries.mjs"
 
-const ts = loadTypeScript()
+const { ts, assertLibraries } = createEs5FixtureGuard(loadTypeScript(), "Ambient declaration fixtures")
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
-function fixture(before, after, run) {
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const nativeOptions = { ...compilerOptions, strict: true, noEmit: true, types: [],
+  module: ts.ModuleKind.Preserve, moduleResolution: ts.ModuleResolutionKind.Bundler }
+function fixture(before, after, run, diagnosticCodes = []) {
   const root = mkdtempSync(join(tmpdir(), "api-identity-ambient-"))
   try {
     for (const [side, input] of Object.entries({ before, after })) {
@@ -20,11 +24,15 @@ function fixture(before, after, run) {
         writeFileSync(target, text)
       }
       writeFileSync(join(root, side, "package.json"), JSON.stringify({ types: "index.d.ts" }))
+      const program = ts.createProgram([join(root, side, "index.d.ts")], nativeOptions)
+      assertLibraries()
+      assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), diagnosticCodes,
+        "stock TypeScript validates each ambient closure in a separate program")
     }
     return run(join(root, "before"), join(root, "after"))
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
-const compare = (before, after) => fixture(before, after, (a, b) => compareApiIdentity(ts, a, b))
+const compare = (before, after) => fixture(before, after, (a, b) => guardedCompare(a, b))
 function unavailable(result) {
   assert.equal(result.identical, false, JSON.stringify(result))
   assert.equal(result.comparisonComplete, false, JSON.stringify(result))
@@ -88,9 +96,40 @@ test("property: ambient packages compare with themselves and semantic mutations 
       const shape = { global, script: referenced, inherited }[kind]
       const before = shape(`x: ${literal};`), after = shape(`x: ${literal}; changed: number;`)
       fixture(before, after, (a, b) => {
-        assert.equal(compareApiIdentity(ts, a, a).identical, true)
-        differentTypes(compareApiIdentity(ts, a, b))
+        assert.equal(guardedCompare(a, a).identical, true)
+        differentTypes(guardedCompare(a, b))
       })
     },
+  })
+})
+
+function guardedCompare(before, after) {
+  const result = compareApiIdentity(ts, before, after, { compilerOptions })
+  assertLibraries()
+  return result
+}
+
+test("ambient fixture libraries retain native missing BigInt errors", () => {
+  const source = global("x: BigInt;")
+  fixture(source, source, (before, after) => {
+    const result = guardedCompare(before, after)
+    assert.equal(result.identical, false, JSON.stringify(result))
+    assert.equal(result.comparisonComplete, false, JSON.stringify(result))
+    assert.ok(result.environmentDiagnostics.some(d => /TS2583/.test(d.diagnostic)), JSON.stringify(result))
+    assert.ok(result.environmentDiagnostics.some(d => d.blocking), JSON.stringify(result))
+  }, [2583])
+})
+
+test("independent native programs retain conflicting global property types", () => {
+  fixture(global("x: string;"), global("x: number;"), (before, after) => {
+    for (const [dir, primitive] of [[before, "string"], [after, "number"]]) {
+      const file = join(dir, "consumer.ts")
+      writeFileSync(file, 'import type { X } from "./index.js"; declare const value: X; const same: '+primitive+
+        '=value.x; const different: '+(primitive === "string" ? "number" : "string")+'=value.x;')
+      const program = ts.createProgram([file], nativeOptions)
+      assertLibraries()
+      assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [2322])
+    }
+    differentTypes(guardedCompare(before, after))
   })
 })
