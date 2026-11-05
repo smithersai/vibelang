@@ -207,6 +207,8 @@ For a legacy `fork(program, options)` call inside `effect` code, `--fix` writes 
 
 Effect declarations and combinator calls ported from TypeScript compile in a `.vibe` file, with warnings EK4830-EK4837 where VibeLang has its own form. `Effect.gen` bodies do not compile there (EK1002). Run `npx vibelang -p tsconfig.json --fix --noEmit` to rewrite supported forms whose VibeLang form keeps what the program does, then read the diagnostics left: each says what its form would change. See [TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code). Support for the new forms arrives with the compiler's VIP implementation.
 
+For an `Effect.fn` callback that is not an inline generator, ordinary `--fix` retains the callback and reports a refused site explaining that a manual rewrite must preserve when it constructs its returned program. This includes direct and named `Effect.fn` calls; supported generator callbacks in the same file still convert. The migration-only scopes exclude this teaching report.
+
 Written generator return annotations, such as `Effect.fn.Return`, keep their checked `Effect` result contract when `--fix` converts `Effect.gen`. The converted program stays cold and retains contextual literal types. A direct `Generator` annotation already selects a native JavaScript generator and stays native.
 
 A bare `return` in an `Effect.fn` generator must satisfy its written `Effect.fn.Return<A>` success type. If it does not, `--fix` leaves the generator unchanged and reports the incompatible return; `void`, `undefined` and success types that include `undefined` remain eligible for conversion.

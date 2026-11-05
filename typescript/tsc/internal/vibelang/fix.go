@@ -780,7 +780,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			final := build(texts)
 			progress.stage("finding remaining fix sites")
 			for _, file := range fixableFiles(final) {
-				for _, d := range fileFixes(ctx, final, file, g.refused, codes).declined {
+				declined := fileFixes(ctx, final, file, g.refused, codes).declined
+				if !options.VIPOnly && !options.MigrationOnly {
+					declined = append(declined, plainEffectFnRefusals(ctx, final, file)...)
+				}
+				for _, d := range declined {
 					reason := refusedWhy[d.key]
 					if reason == "" {
 						reason = d.reason
