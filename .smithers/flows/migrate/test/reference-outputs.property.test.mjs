@@ -228,3 +228,34 @@ test("stock TypeScript builds selected references without unrelated generated co
     assert.match(invalid.stdout + invalid.stderr, /TS6053/)
   } finally { f.close() }
 })
+
+test("compiler resolution is deferred until a generated reference graph needs rebuilding", async () => {
+  await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: 5 }), fc.boolean(), async (count, unavailable) => {
+    const f = fixture(count)
+    try {
+      let resolutions = 0, executions = 0
+      const refresh = refreshProjectReferences({ ...f, ts: count ? ts : undefined,
+        changed: ["p0/src/main.ts"], log: join(f.root, "deferred.log"),
+        compiler: () => {
+          resolutions++
+          if (unavailable) throw new Error("fixture compiler unavailable")
+          return "vibelang"
+        },
+        execute: async command => {
+          executions++
+          assert.match(command, /^'vibelang' --build --force --pretty false/)
+          return { code: 0, stdout: "", stderr: "" }
+        } })
+      if (count > 1 && unavailable) {
+        await assert.rejects(refresh, /fixture compiler unavailable/)
+        for (let i = 0; i < count; i++) for (const output of corpus.outputs)
+          assert.equal(readFileSync(join(f.root, "p" + i, output), "utf8"), "stale")
+      } else {
+        const receipt = await refresh
+        assert.equal(receipt.state, count > 1 ? "complete" : "not-needed")
+      }
+      assert.equal(resolutions, count > 1 ? 1 : 0)
+      assert.equal(executions, count > 1 && !unavailable ? 1 : 0)
+    } finally { f.close() }
+  }), { numRuns: 30, seed: 515151 })
+})

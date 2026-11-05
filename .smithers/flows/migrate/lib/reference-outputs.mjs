@@ -100,10 +100,11 @@ export async function refreshProjectReferences({ root, ts, configs, changed, tra
   const receipt = { ...plan, startedAt: new Date().toISOString(), state: plan.projects.length ? "planned" : "not-needed" }
   writeJson(log + ".json", receipt)
   if (!plan.projects.length) return receipt
+  const executable = typeof compiler === "function" ? compiler() : compiler
   for (const path of plan.outputs) rmSync(resolve(root, path), { recursive: true, force: true })
   receipt.state = "outputs-cleared"
   writeJson(log + ".json", receipt)
-  const result = await execute(quote(compiler) + " --build --force --pretty false " + plan.roots.map(quote).join(" "), { cwd: root, log })
+  const result = await execute(quote(executable) + " --build --force --pretty false " + plan.roots.map(quote).join(" "), { cwd: root, log })
   Object.assign(receipt, { state: result.code === 0 ? "complete" : "failed", finishedAt: new Date().toISOString(), code: result.code, signal: result.signal ?? null })
   writeJson(log + ".json", receipt)
   assertFinished(result, log)
