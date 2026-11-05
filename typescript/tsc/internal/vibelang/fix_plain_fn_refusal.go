@@ -23,6 +23,13 @@ func plainEffectFnRefusals(ctx context.Context, program *compiler.Program, file 
 			callee := node.Expression()
 			direct := isEffectFunction(c, callee, "Effect", "fn")
 			named := ast.IsCallExpression(callee) && isEffectFunction(c, callee.Expression(), "Effect", "fn")
+			// A direct fn(callback) also returns a callable. Calling that
+			// result with a function argument is an invocation, not a name
+			// builder receiving its callback.
+			if named && len(callee.Arguments()) > 0 {
+				first := c.GetTypeAtLocation(callee.Arguments()[0])
+				named = len(c.GetSignaturesOfType(first, checker.SignatureKindCall)) == 0
+			}
 			if direct || named {
 				callback := ast.SkipParentheses(node.Arguments()[0])
 				// The name/options builder is not a callback application.

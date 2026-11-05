@@ -67,3 +67,32 @@ test("plain Effect.fn refusal preserves API, construction and repeated execution
     rmSync(directory, { recursive: true, force: true })
   }
 })
+
+test("an immediate invocation with a callable argument reports its wrapper once", () => {
+  const directory = mkdtempSync(join(tmpdir(), "plain-effect-fn-invocation-"))
+  try {
+    mkdirSync(join(directory, "node_modules"))
+    symlinkSync(join(root, "packages/runtime/node_modules/effect"), join(directory, "node_modules/effect"))
+    symlinkSync(join(root, "packages/runtime"), join(directory, "node_modules/vibelang-runtime"))
+    writeFileSync(join(directory, "package.json"), '{"type":"module"}')
+    writeFileSync(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: options, files: ["main.vibe"] }))
+    for (const callee of ["Effect.fn", 'Effect.fn("work")', 'Effect.fn("work", { attributes: { operation: "proof" } })']) {
+      const wrapper = callee + "((f: () => number) => Effect.succeed(f()))"
+      const input = 'import { Effect } from "effect"\nexport const value = ' + wrapper + "(() => 1)\n"
+      writeFileSync(join(directory, "oracle.ts"), input)
+      const program = ts.createProgram([join(directory, "oracle.ts")], {
+        ...options, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext, outDir: join(directory, "oracle"),
+      })
+      assert.deepEqual(ts.getPreEmitDiagnostics(program).filter(d => d.category === ts.DiagnosticCategory.Error).map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
+      assert.equal(program.emit().emitSkipped, false)
+      writeFileSync(join(directory, "main.vibe"), input)
+      const output = run(directory, "-p", ".", "--fix", "--pretty", "false")
+      assert.equal(readFileSync(join(directory, "out/main.d.ts"), "utf8"), readFileSync(join(directory, "oracle/oracle.d.ts"), "utf8"))
+      assert.equal(output.split("\n").filter(line => line.includes("refused site:") && line.includes("not an inline generator")).length, 1, output)
+      assert.ok(readFileSync(join(directory, "main.vibe"), "utf8").includes(wrapper))
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})

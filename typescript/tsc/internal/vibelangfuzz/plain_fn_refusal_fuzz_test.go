@@ -30,6 +30,7 @@ func FuzzPlainEffectFnRefusal(f *testing.F) {
 	startShortBudget(f)
 	for _, key := range plainFnRefusalKeys {
 		f.Add(key)
+		f.Add(key + ":call")
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, input string) {
@@ -56,18 +57,27 @@ func FuzzPlainEffectFnRefusal(f *testing.F) {
 			key = plainFnRefusalKeys[index]
 		}
 		callee := []string{"E.fn", "E.fn(\"work\")", "E.fn(\"work\", { attributes: { operation: \"proof\" } })"}[index/3]
-		expression := fmt.Sprintf("E.succeed(n + %d)", int(variant)%17)
+		parameter, value := "n: number", "n"
+		immediate := variant&2 != 0
+		if immediate {
+			parameter, value = "n: () => number", "n()"
+		}
+		expression := fmt.Sprintf("E.succeed(%s + %d)", value, int(variant)%17)
 		callback := []string{
-			"(n: number) => " + expression,
-			"(n: number) => { return " + expression + " }",
-			"function(n: number) { return " + expression + " }",
+			"(" + parameter + ") => " + expression,
+			"(" + parameter + ") => { return " + expression + " }",
+			"function(" + parameter + ") { return " + expression + " }",
 		}[index%3]
 		call := callee + "(/* callback */ " + callback + ")"
+		initializer := call
+		if immediate {
+			initializer += "(() => 1)"
+		}
 		prefix := "import { Effect as E } from \"effect\"\n"
 		if variant%2 != 0 {
 			prefix = "import * as E from \"effect/Effect\"\n"
 		}
-		source := prefix + "export const work = " + call + "\nexport const control = E.fn(function*(n: number) { return n + 1 })\n"
+		source := prefix + "export const work = " + initializer + "\nexport const control = E.fn(function*(n: number) { return n + 1 })\n"
 		files := map[string]string{"main.vibe": source}
 		before := toolsCompile(t, w, "FuzzPlainEffectFnRefusal", files)
 		defer before.Remove()

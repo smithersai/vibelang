@@ -73,3 +73,30 @@ func TestPlainEffectFnRefusalControls(t *testing.T) {
 		}
 	}
 }
+
+func TestPlainEffectFnImmediateInvocation(t *testing.T) {
+	for _, callee := range []string{"Effect.fn", "Effect.fn(\"work\")", "Effect.fn(\"work\", { attributes: { operation: \"proof\" } })"} {
+		for _, callback := range []string{
+			"(f: () => number) => Effect.succeed(f())",
+			"(f: () => number) => { return Effect.succeed(f()) }",
+			"function(f: () => number) { return Effect.succeed(f()) }",
+		} {
+			wrapper := callee + "(" + callback + ")"
+			source := "export const value = " + wrapper + "(() => 1)\n"
+			got, result := fixedPipe(t, source)
+			count := 0
+			for _, site := range result.Sites {
+				if site.Code != "EK1002" || !strings.Contains(site.Reason, "not an inline generator") {
+					continue
+				}
+				count++
+				if strings.TrimSpace(source[site.Start:site.End]) != wrapper || !SiteHolds(source, got, site) {
+					t.Fatalf("the invocation was mistaken for a wrapper: %+v\n%s", site, got)
+				}
+			}
+			if result.Err != nil || count != 1 {
+				t.Fatalf("want one wrapper refusal: err=%v sites=%+v", result.Err, result.Sites)
+			}
+		}
+	}
+}
