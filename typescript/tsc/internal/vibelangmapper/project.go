@@ -259,6 +259,7 @@ func lower(text string, ctx FileContext) *projector {
 	if ctx.Lint {
 		p.lintEffectArrows = lintEffectArrows(text, keywords)
 	}
+	p.checkSourceCatchPlacement()
 	for _, statement := range file.Statements.Nodes {
 		if isServiceClass(statement) || isServiceShapeClass(statement) {
 			p.services[statement.Name().Text()] = statement

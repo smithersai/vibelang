@@ -65,8 +65,6 @@ var (
 	// EK0108: an Effect modifier in a forbidden native async-modifier position (VIP-1).
 	EK0108 = message(108, errorCategory, "The effect modifier cannot appear on an abstract or ambient declaration or a type member. Remove effect, or write its implementation as a non-abstract function or method.")
 
-	// EK1001: a module's top level runs a program. {0} is the call, such as "loadConfig()".
-	EK1001 = message(1001, errorCategory, "{0} runs a program, but a module's top level is not inside one.")
 	// EK1002: a generator-based API such as Effect.gen, where function* declares a producer. {0} is the API.
 	EK1002 = message(1002, errorCategory, "{0} expects a JavaScript generator; an effect function* declares a producer.")
 	// EK1003: await using outside an async function. {0} is the keyword.
@@ -208,7 +206,7 @@ func init() {
 	for _, m := range []*Message{
 		EK0108,
 		EK1202,
-		EK1001, EK1002, EK1003, EK1005, EK1010, EK1011, EK1012, EK1023,
+		EK1002, EK1003, EK1005, EK1010, EK1011, EK1012, EK1023,
 		EK0201, EK0202, EK0203, EK0204, EK0205,
 		EK9201, EK9202, EK9203, EK9204, EK2006, EK9205, EK9206, EK9207, EK9209, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2117,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK9211, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,

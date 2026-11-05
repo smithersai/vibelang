@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // Handle statements (D132), the statement form of handle:
@@ -214,16 +213,12 @@ func hasHandleStatement(fn *ast.Node) bool {
 	return visit(fn.Body())
 }
 
-// checkHandleStatements reports EK1001 at a handle statement that no function
-// encloses, EK2107 at a clause whose control is not a control, and EK2108 at
-// the clauses of a control that leave one of its operations without a
-// clause or answer one twice.
+// checkHandleStatements checks control clauses during legacy source recovery.
 func checkHandleStatements(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(n *ast.Node, inFunction bool) bool
 	visit = func(n *ast.Node, inFunction bool) bool {
 		if isHandleStatement(n) {
 			if !inFunction {
-				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, n.Pos()), EK1001.With("This handle statement runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
 				cover(c, n.AsTryStatement().CatchClause) // TypeScript's errors about a clause's return outside a function
 			}
 			checkHandleClauses(c, n)

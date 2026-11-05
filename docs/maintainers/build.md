@@ -2100,3 +2100,7 @@ The `//:anonymous-cycle-parity` check compares recursive declaration bytes with 
 Computed class member probes keep the final method observation inside `Effect.sync` in both the VibeLang program and its native reference. This prevents `EK0403` on an `any`-typed observation from hiding the computed-name evaluation order the probe measures. Keyed minimal and composed inputs retain the original result and ordered events.
 
 The `//:bundler-service-receivers` check builds and runs the esbuild service example with source maps and exercises explicit receiver lookup and native class-static rejections under VIP-10.
+
+The `//:module-implicit-run-retirement` check rejects the retired implicit-execution identity, preserves original explicit-execution and service-key failures, and exercises cold module, class and parameter calls with native type controls.
+
+This check also compares native and mapper `EK0504` keyword spans across module, function, class, parameter and callback contexts, with valid Effect-body controls.

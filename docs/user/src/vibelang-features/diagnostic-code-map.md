@@ -136,3 +136,5 @@ Registration reserves a code; it does not mean the compiler already implements e
 `EK9210` is retired. Continuation forms report `EK3501` before provider or operation-contract checks; handlers remain outside the first release.
 
 `EK2118` is permanently retired. `EK2117` reports unsupported inheritance in an error declaration. Use a union to group VibeLang errors; native TypeScript classes retain TypeScript constructor rules.
+
+`EK1001` is permanently retired under VIP-26. Calling an effect function constructs a cold Effect value; an explicit `try` outside Effect code is `EK0501`, and `catch` outside effect code is `EK0504` in both compiler hosts.

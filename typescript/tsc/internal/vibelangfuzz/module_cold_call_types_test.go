@@ -28,7 +28,7 @@ func TestModuleColdCallTypesQuoted(t *testing.T) {
 
 func FuzzModuleColdCallTypes(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"held", "array", "object", "field", "parameter", "identity", "arrow", "primitive"}
+	keys := []string{"held", "array", "object", "field", "parameter", "identity", "arrow", "constructor", "getter", "static", "nested", "primitive"}
 	for _, key := range keys {
 		f.Add(key, uint8(7), uint8(0))
 	}
@@ -62,6 +62,14 @@ func FuzzModuleColdCallTypes(f *testing.F) {
 			body = "function keep<T>(value: T): T { return value }; export const held=keep(" + call + ")"
 		case "arrow":
 			body = "export const held=(() => " + call + ")()"
+		case "constructor":
+			body = "export class Store { readonly held: number!!; constructor() { this.held = " + call + " } }"
+		case "getter":
+			body = "export class Store { get held() { return " + call + " } }"
+		case "static":
+			body = "export class Store { static readonly held: number!! = " + call + " }"
+		case "nested":
+			body = "export const held = ({ read() { return " + call + " } }).read()"
 		case "primitive":
 			body = "export const held: number = " + call
 		}
@@ -74,6 +82,9 @@ func FuzzModuleColdCallTypes(f *testing.F) {
 		probeKey := fmt.Sprintf("feature:%s:%d", key, variant&3)
 		found := false
 		for _, d := range result.Diagnostics {
+			if IsEK(d) && d.Code() == 1001 {
+				Gap(t, "FuzzModuleColdCallTypes", probeKey, "VIP-26: retired implicit execution diagnostic returned: %s", d.String())
+			}
 			if d.Category() != diagnostics.CategoryError {
 				continue
 			}

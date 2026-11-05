@@ -1,0 +1,20 @@
+// expect-result: {"before":0,"after":5,"total":35}
+// rule-evidence: docs/design/src/001-functions.md#modules-and-the-top-level | A module's top level is ordinary JavaScript (VIP-26).
+let executed = 0
+effect function work() { executed++; return 7 }
+const held = work()
+class Store {
+  static readonly program = work()
+  readonly program = work()
+  get another() { return work() }
+}
+const store = new Store()
+function keep(program: number!! = work()) { return program }
+const programs = [held, Store.program, store.program, store.another, keep()]
+export effect function main() {
+  const before = executed
+  let total = 0
+  for (const program of programs) total += try program
+  return { before, after: executed, total }
+}
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | VIP-26 retires implicit module execution; explicit try outside Effect code retains EK0501.

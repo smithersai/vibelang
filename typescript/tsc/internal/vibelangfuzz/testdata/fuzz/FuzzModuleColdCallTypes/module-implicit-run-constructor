@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor")
+uint8(7)
+uint8(3)

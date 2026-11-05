@@ -1,6 +1,9 @@
 package vibelangmapper
 
-import "github.com/microsoft/TypeScript/tsc/internal/ast"
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
 
 // isCatchExpression recognizes the parser's D236 call, rather than a
 // source function that happens to be named $catchExpression. Its two
@@ -22,12 +25,7 @@ func (p *projector) catchExpression(call *ast.Node, e env) {
 		return
 	}
 	start := p.tokenStart(call)
-	if !e.effect {
-		p.diagnostics = append(p.diagnostics, Diagnostic{
-			Start: start, Length: call.End() - start, Code: 1001,
-			Message: "A catch expression runs a program. Move it into an Effect function with an explicit contract.",
-		})
-	} else {
+	if e.effect {
 		if p.statementStarts[start] {
 			p.plan.insert(start, ";")
 			delete(p.statementStarts, start)
@@ -146,4 +144,121 @@ func (p *projector) catchNarrowingCallee(operand *ast.Node) *ast.Node {
 		}
 	}
 	return nil
+}
+
+// checkSourceCatchPlacement runs before inferred lowering forms can change
+// the execution environment. Catch placement is owned by source syntax.
+func (p *projector) checkSourceCatchPlacement() {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isCatchExpression(node) {
+			_, hatch := p.forms.(*Resolver).inHatch(node)
+			if !hatch && !sourceCatchEffectCode(node) {
+				p.diagnostics = append(p.diagnostics, Diagnostic{
+					Start: p.tokenStart(node.Expression()), Length: len("catch"), Code: 504,
+					Message: "Catch outside effect code. Run an Effect with try inside effect code; use a function literal as the catch handler.",
+				})
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	p.file.AsNode().ForEachChild(visit)
+}
+
+func sourceCatchProgramArrow(node *ast.Node) bool {
+	return node != nil && node.Kind == ast.KindArrowFunction &&
+		node.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0
+}
+
+// Synthetic immediate calls and the left operand thunk do not introduce
+// a callable boundary in the authored program.
+func sourceCatchTransparentFunction(fn *ast.Node) bool {
+	if isCatchExpression(fn.Parent) && fn.Parent.Arguments()[0] == fn {
+		return true
+	}
+	if !sourceCatchProgramArrow(fn) {
+		return false
+	}
+	parent := fn.Parent
+	return parent != nil && ast.IsParenthesizedExpression(parent) && parent.Parent != nil &&
+		ast.IsCallExpression(parent.Parent) && parent.Parent.Expression() == parent
+}
+
+func sourceCatchDecoratedClass(class *ast.Node) bool {
+	if ast.HasDecorators(class) {
+		return true
+	}
+	for _, member := range class.Members() {
+		if ast.HasDecorators(member) {
+			return true
+		}
+		if ast.IsFunctionLike(member) {
+			for _, parameter := range member.Parameters() {
+				if ast.HasDecorators(parameter) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func sourceCatchOwner(node *ast.Node) *ast.Node {
+	child := node
+	for parent := node.Parent; parent != nil; child, parent = parent, parent.Parent {
+		if ast.IsComputedPropertyName(child) && ast.IsFunctionLike(parent) &&
+			parent.Parent != nil && ast.IsObjectLiteralExpression(parent.Parent) {
+			continue
+		}
+		if ast.IsExpressionWithTypeArguments(parent) && parent.Parent != nil &&
+			ast.IsHeritageClause(parent.Parent) && child != parent.Expression() {
+			return nil
+		}
+		if ast.IsClassLike(parent) && ast.IsHeritageClause(child) &&
+			child.AsHeritageClause().Token == ast.KindExtendsKeyword {
+			continue
+		}
+		if ast.IsComputedPropertyName(child) && ast.IsClassElement(parent) && parent.Name() == child &&
+			parent.Parent != nil && ast.IsClassLike(parent.Parent) && !sourceCatchDecoratedClass(parent.Parent) {
+			parent = parent.Parent
+			continue
+		}
+		boundary := ast.IsFunctionLike(parent) || ast.IsClassLike(parent) ||
+			parent.Kind == ast.KindClassStaticBlockDeclaration || parent.Kind == ast.KindEnumDeclaration
+		if !boundary || sourceCatchTransparentFunction(parent) {
+			continue
+		}
+		if ast.IsFunctionLike(parent) && parent.Body() != nil && parent.Body() == child {
+			return parent
+		}
+		return nil
+	}
+	return nil
+}
+
+func sourceCatchEffectCode(node *ast.Node) bool {
+	owner := sourceCatchOwner(node)
+	if owner == nil {
+		return false
+	}
+	if owner.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+		return true
+	}
+	if !sourceCatchProgramArrow(owner) {
+		return false
+	}
+	// Retired trailing-block recovery can still hold an explicit program.
+	// Ordinary source functions never acquire effect ownership by inference.
+	if call := owner.Parent; call != nil && ast.IsCallExpression(call) {
+		args := call.Arguments()
+		if len(args) > 0 && args[len(args)-1] == owner && len(owner.Parameters()) == 0 &&
+			owner.Body() != nil && owner.Body().Kind == ast.KindBlock {
+			text := ast.GetSourceFileOfNode(owner).Text()
+			start := scanner.SkipTrivia(text, owner.Pos())
+			if start < len(text) && text[start] == '{' {
+				return true
+			}
+		}
+	}
+	return sourceCatchEffectCode(owner)
 }

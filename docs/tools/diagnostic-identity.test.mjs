@@ -455,3 +455,12 @@ test("retired subclass constructor identity has no active registration, row or r
  assert.match(userMap,/EK2118.*permanently retired/)
  assert.match(userMap,/EK2117.*inheritance/)
 })
+
+test("retired implicit module execution has no active identity", async () => {
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const identity=loadIdentity()
+ assert.equal(identity.registered.has("EK1001"),false,JSON.stringify(identity.registered.get("EK1001")))
+ assert.equal(identity.appendix.has("EK1001"),false)
+ const fixtures=JSON.parse(readFileSync(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
+ assert.equal(fixtures.find(x=>x.code==="EK1001")?.retired,true)
+})

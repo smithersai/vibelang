@@ -344,8 +344,6 @@ func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
 		case "restore":
 			marker := n.AsBlock().Statements.Nodes[0]
 			switch {
-			case !ctx.inFunction:
-				note(report(c, marker, EK1001.With("This restore block runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
 			case ctx.item:
 				note(report(c, marker, EK2202.With("Restore in a for concurrent item: each item runs as its own Effect, outside the enclosing uninterruptible block, so there is no interruptibility to restore there.")), "Mask each item inside the body with Effect.uninterruptibleMask, or use a plain for loop.")
 			case ctx.masked:
@@ -355,17 +353,11 @@ func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
 				note(report(c, marker, EK2111), "Put it inside an uninterruptible block, or use interruptible { … } to make the code interruptible.")
 			}
 		case "uninterruptible":
-			if !ctx.inFunction {
-				note(report(c, n.AsBlock().Statements.Nodes[0], EK1001.With("This uninterruptible block runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
-			}
 			masked := ctx
 			masked.masked = true
 			n.ForEachChild(func(child *ast.Node) bool { return visit(child, masked) })
 			return false
 		case "interruptible":
-			if !ctx.inFunction {
-				note(report(c, n.AsBlock().Statements.Nodes[0], EK1001.With("This interruptible block runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
-			}
 		}
 		n.ForEachChild(func(child *ast.Node) bool { return visit(child, ctx) })
 		return false

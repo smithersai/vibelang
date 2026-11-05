@@ -606,7 +606,7 @@ func TestCatchExpressionOutsideEffect(t *testing.T) {
 	} {
 		projection := Project(source, testContext)
 		assert.Equal(t, len(projection.Diagnostics), 1)
-		assert.Equal(t, projection.Diagnostics[0].Code, int32(1001))
+		assert.Equal(t, projection.Diagnostics[0].Code, int32(504))
 		assertParses(t, projection.Text)
 	}
 }

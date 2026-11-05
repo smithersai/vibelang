@@ -9,13 +9,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
-// Where programs start (design D38, Chapter 13). A call never starts a fiber;
-// a program starts only when a runner receives it. A module's top level is not
-// inside any program, so a call there may build values but not run a program
-// (EK1001):
-//
-//	export const config = loadConfig()          // EK1001
-//	NodeRuntime.runMain(() => main())           // a runner: allowed here
+// Calling an effect function constructs an Effect value. Modules and plain
+// JavaScript contexts may hold those values; explicit runners start fibers.
 //
 // A runner may be called only where no fiber runs the code: at a module's top
 // level, in an async function, and in a plain callback that such a place
@@ -132,133 +127,20 @@ func init() {
 	fileChecks = append(fileChecks, checkProgramStarts)
 }
 
-// checkProgramStarts reports EK1001 for each call at file's top level that runs a
-// program, and for each in code that runs as plain JavaScript wherever it
-// stands (D282): a class field's initializer, a default parameter value, a
-// constructor, an accessor or a static block. It reports EK1005 for each
-// runner that code a fiber runs calls.
+// checkProgramStarts reports EK1005 when code already running in a fiber
+// calls a root runner instead of composing the Effect.
 func checkProgramStarts(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
-	type context struct {
-		topLevel bool
-		plain    *ast.Node
-	}
-	classes := map[*ast.Node]context{}
-	var visit func(node *ast.Node, topLevel bool, plain *ast.Node) bool
-	visit = func(node *ast.Node, topLevel bool, plain *ast.Node) bool {
-		outerTopLevel, outerPlain := topLevel, plain
-		if ast.IsClassLike(node) {
-			classes[node] = context{topLevel, plain}
-		}
-		// A member's computed name runs where its class is defined.
-		if node.Parent != nil && classMemberNameChild(node.Parent, node) {
-			outer := classes[node.Parent.Parent]
-			topLevel, plain = outer.topLevel, outer.plain
-		}
-		switch {
-		case node.Kind == ast.KindConstructor || node.Kind == ast.KindGetAccessor || node.Kind == ast.KindSetAccessor || node.Kind == ast.KindClassStaticBlockDeclaration:
-			topLevel, plain = false, node
-		case ast.IsFunctionLike(node) && node.Body() != nil:
-			topLevel, plain = false, nil
-		case node.Kind == ast.KindParameter && node.Initializer() != nil:
-			plain = node
-		case ast.IsPropertyDeclaration(node) && node.Parent != nil && ast.IsClassLike(node.Parent) && node.Initializer() != nil:
-			// One declared with an Effect type holds the program its
-			// initializer builds, as a const does (D269).
-			if node.Type() == nil || !isEffectType(c, c.GetTypeFromTypeNode(node.Type())) {
-				plain = node
-			}
-		}
-		if ast.IsTaggedTemplateExpression(node) && topLevel && !a.passedAsProgram(node) && a.runs(node) {
-			report(c, node, EK1001, nodeText(file, node))
-			return false
-		}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
 		if ast.IsCallExpression(node) {
-			if plain != nil && !a.passedAsProgram(node) {
-				if runs, explains := runsAtTopLevel(c, a, node); runs {
-					reportPlainCodeRun(c, file, node, plain)
-					if explains {
-						cover(c, node)
-					}
-					return false
-				}
-			}
-			if topLevel && plain == nil && !a.passedAsProgram(node) {
-				if runs, explains := runsAtTopLevel(c, a, node); runs {
-					reportTopLevelRun(c, file, node)
-					if explains {
-						cover(c, node)
-					}
-					return false // one error for the outermost program
-				}
-			}
 			if kind := runnerOf(c, node); kind != notRunner && !isRunnerCallee(c, node) && !outsideFibers(c, a, node) {
 				reportNestedRunner(c, file, node, kind)
 			}
 		}
-		return node.ForEachChild(func(child *ast.Node) bool {
-			if ast.IsComputedPropertyName(child) && ast.IsFunctionLike(node) &&
-				node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
-				return visit(child, outerTopLevel, outerPlain)
-			}
-			return visit(child, topLevel, plain)
-		})
+		return node.ForEachChild(visit)
 	}
-	file.AsNode().ForEachChild(func(child *ast.Node) bool { return visit(child, true, nil) })
-}
-
-// reportPlainCodeRun reports EK1001 for call, which would run a program in
-// plain, code that runs as plain JavaScript outside any program, as a module's
-// top level does (D282): a class field's initializer, a default parameter
-// value, a constructor, an accessor or a static block.
-func reportPlainCodeRun(c *checker.Checker, file *ast.SourceFile, call *ast.Node, plain *ast.Node) {
-	if analyzerFor(c).isThrowForm(call) {
-		// EK0401 reports the throw (nothrow.go). TypeScript's error that the
-		// form does not fit the declared type is part of the same mistake.
-		coverCodes(c, plain, 2322, 2345)
-		return
-	}
-	text := nodeText(file, call.Expression()) + "()"
-	switch plain.Kind {
-	case ast.KindPropertyDeclaration:
-		d := report(c, call, EK1001.With("{0} runs a program, but a class field's initializer runs as plain JavaScript, outside any program."), text)
-		note(d, "Compute the value in an Effect function and pass it to the constructor, or make {0} a method.", nodeText(file, plain.Name()))
-	case ast.KindParameter:
-		d := report(c, call, EK1001.With("{0} runs a program, but a default parameter value is plain JavaScript, so the call does not run."), text)
-		note(d, "Make {0} optional and compute the default in the body: {0} ?? {1}.", nodeText(file, plain.Name()), nodeText(file, call))
-		cover(c, plain) // TypeScript's error that the program does not fit the parameter's type
-	default:
-		d := report(c, call, EK1001.With("{0} runs a program, but {1} runs as plain JavaScript, outside any program."), text, plainCodeName(plain))
-		switch plain.Kind {
-		case ast.KindGetAccessor, ast.KindSetAccessor:
-			note(d, "Write a method instead, which runs as an Effect: {0}() { … }.", nodeText(file, plain.Name()))
-		case ast.KindConstructor:
-			note(d, "Run it in an Effect function before constructing, and pass the result to the constructor.")
-		default:
-			note(d, "Run it inside a function that a program runs, such as main.")
-		}
-	}
-}
-
-// runsAtTopLevel reports whether call, at a module's top level, would run a
-// program: a call that runs an Effect, or a service member call such as
-// Users.find(id). The checker types the last only inside function bodies, so
-// at the top level TypeScript reports a member that does not exist, which
-// EK1001 explains.
-func runsAtTopLevel(c *checker.Checker, a *analyzer, call *ast.Node) (runs bool, explainsTypeScript bool) {
-	if a.runs(call) {
-		return true, false
-	}
-	if call.QuestionDotToken() != nil {
-		return false, false
-	}
-	callee := call.Expression()
-	if ast.IsPropertyAccessExpression(callee) && !ast.IsPrivateIdentifier(callee.Name()) {
-		if identifier, _ := serviceMember(c, callee, c.GetApparentType(c.GetTypeAtLocation(callee.Expression()))); identifier != nil {
-			return true, true
-		}
-	}
-	return false, false
+	file.AsNode().ForEachChild(visit)
 }
 
 // passedAsProgram reports whether call, at a module's top level, is an
@@ -357,31 +239,6 @@ func holdsField(c *checker.Checker, node, decl *ast.Node) bool {
 	return isEffectType(c, c.GetContextualTypeForObjectLiteralElement(decl, checker.ContextFlagsSignature))
 }
 
-// reportTopLevelRun reports EK1001 for call, which runs a program at the
-// module's top level.
-func reportTopLevelRun(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
-	text := nodeText(file, call.Expression()) + "()"
-	if catchExpressionOf(call) != nil || isInvokedForm(file, call) {
-		text = nodeText(file, call) // x catch y, whose callee is the keyword (catch_expressions.go), or throw x
-	}
-	if isInvokedForm(file, call) && strings.HasPrefix(text, "throw") {
-		// throw x at the top level, which the parser writes as (() => { throw x })()
-		if analyzerFor(c).isThrowForm(call) {
-			return // EK0401 reports the throw (nothrow.go)
-		}
-	}
-	d := report(c, call, EK1001, text)
-	if owner, _ := ownerCall(call); owner != nil && ast.IsCallExpression(owner) && runnerOf(c, owner) != notRunner {
-		note(d, "Pass a program, a function with no parameters, to {0}:   () => {1}", nodeText(file, owner.Expression()), nodeText(file, call))
-		return
-	}
-	if declaration := ast.WalkUpParenthesizedExpressions(call).Parent; declaration != nil && ast.IsVariableDeclaration(declaration) && declaration.Initializer() == ast.WalkUpParenthesizedExpressions(call) && ast.IsIdentifier(declaration.Name()) {
-		note(d, "Hold the program as a function, and call it inside one: const {0} = () => {1}", declaration.Name().Text(), shortText(nodeText(file, call), "…"))
-	}
-	note(d, "Run it inside a function that a program runs, such as main.")
-	note(d, "Or provide the value as a service with a Layer.")
-}
-
 // isInvokedForm reports whether call is an expression form that the parser
 // writes as an invoked arrow function: throw x is (() => { throw x })() and
 // do { … } is (() => { … })() (D186, D187). Its source text starts with its
@@ -439,14 +296,6 @@ func invokedArrow(call *ast.Node) *ast.Node {
 	}
 	return nil
 }
-
-// topLevelFailure is EK1001's text for a throw that can escape a module's top
-// level. {0} is what it throws.
-var topLevelFailure = EK1001.With("A module's top level can't throw {0}: it runs as plain JavaScript, which never fails.")
-
-// topLevelBlockNote is EK1001's fix for a block or statement at a module's
-// top level that runs a program.
-const topLevelBlockNote = "Move it into a function that a program runs, such as main."
 
 // moduleThrowNote names the escape for code that must throw a JavaScript
 // exception, such as a test's throwing getter.

@@ -13,7 +13,7 @@ import (
 // TestRegistryDebtWitnessIdentity checks pending-witness receipts, not the
 // expected diagnostics of valid programs. Appendix B says: "A transitional
 // compiler may still print compatibility diagnostics from the old language."
-// These codes retain their interim inventory rows. VIP-26 replaced the
+// The remaining compatibility codes retain their interim rows. VIP-26 replaced the
 // implicit module execution behind EK1001: that saved source must now retain
 // its explicit-try and service-shape errors without the obsolete execution
 // error. The other witnesses still reach their named compatibility debt.
@@ -30,7 +30,12 @@ func TestRegistryDebtWitnessIdentity(t *testing.T) {
 	for _, code := range []int32{1001, 4602, 4603} {
 		for _, target := range []string{"FuzzCompile", "FuzzSplice"} {
 			t.Run(fmt.Sprintf("%s/%s", target, specCodeName(code)), func(t *testing.T) {
-				if !Facts().IsRegistered(code) || !slices.Contains(Facts().Interim, code) {
+				registered, interim := Facts().IsRegistered(code), slices.Contains(Facts().Interim, code)
+				if code == 1001 {
+					if registered || interim {
+						t.Fatal("VIP-26 retired the implicit module execution identity")
+					}
+				} else if !registered || !interim {
 					t.Fatalf("%s must retain its interim identity row", specCodeName(code))
 				}
 				name := fmt.Sprintf("registry-EK%04d", code)

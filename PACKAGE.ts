@@ -1178,6 +1178,12 @@ const targets = {
     [go, node, bun],
     "15m"
   ),
+  "module-implicit-run-retirement": goVibelang(
+    "Module and class calls retain cold Effect values and native type errors without retired execution diagnostics.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelang ./internal/vibelangmapper ./internal/vibelangfuzz -run '^(TestModuleRunDiagnosticRetired|TestCatchExpressionOutsideEffect|TestThrowOutsideEffectCodeIsEK0401|TestPlainRunnerCallbackBoundaries|TestModuleColdCallTypesQuoted|TestRegistryDebtWitnessIdentity|FuzzModuleColdCallTypes|TestCatchBoundaryIdentityQuoted|FuzzCatchBoundaryIdentity)$' && cd ../.. && node --test --test-name-pattern='^retired implicit module execution has no active identity$' docs/tools/diagnostic-identity.test.mjs`,
+    [Tsc["vibelangfuzz-files"]],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
