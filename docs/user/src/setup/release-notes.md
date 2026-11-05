@@ -40,6 +40,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Declaration reference packages confused published outputs with private files. Their manifests now declare shipped output and explicit public entry points, preserving the intended API checks.
 - Native declaration-context checks could not find the compiler when the migration suite ran from its flow directory. They now locate the repository compiler consistently and retain explicit compiler overrides.
 - Migration verification coverage stopped before checking missing builds and distribution files. Its simulated conversions now retain compiler provenance and exercise both refusals.
+- Migrating a published wildcard package moved generated source-child helpers into a private sibling and edited `package.json`. They now stay in the documented private `module` body with no manifest change.
 
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 

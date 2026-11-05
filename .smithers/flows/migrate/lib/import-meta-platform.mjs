@@ -3,6 +3,11 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, resolve } from "node:path"
 
+function inSourceChildHelper(node, ts) {
+  for (let at = node; at; at = at.parent) if (ts.isFunctionDeclaration(at) && /^__vibelangSourceChild\d*$/.test(at.name?.text ?? "")) return true
+  return false
+}
+
 export function splitImportMeta(text, file, sibling, ts) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const sites = [], taken = new Set()
@@ -37,7 +42,9 @@ export function splitImportMeta(text, file, sibling, ts) {
   const at = source.statements[0]?.getStart(source) ?? text.length
   module = module.slice(0, at) + importText + "\n" + module.slice(at)
   const platform = "export function " + name + "(specifier: string): string { return import.meta.resolve(specifier) }\n"
-  return { module, platform, moved: [name], wrapped: [], importMeta: true, importText }
+  // A generated source-child helper keeps its own private boundary in a VIP-40
+  // body. Only an authored resolver call may add a null export to the manifest.
+  return { module, platform, moved: [name], wrapped: [], importMeta: sites.some(site => !inSourceChildHelper(site, ts)), importText }
 }
 
 // An exact null export keeps the fresh resolver private under a source
