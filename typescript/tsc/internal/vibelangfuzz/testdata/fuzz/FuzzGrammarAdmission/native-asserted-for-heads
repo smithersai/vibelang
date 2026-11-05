@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-asserted-for-heads\nasync function f(xs) { for (async as async of xs) {} }")

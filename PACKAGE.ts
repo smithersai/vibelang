@@ -98,6 +98,7 @@ const specTests = [
   "TestGrammarAdmissionDiagnostics",
   "TestGrammarAdmissionForOfAsyncName",
   "TestGrammarAdmissionAsyncForOfContext",
+  "TestGrammarAdmissionAssertedForHeads",
   "TestGrammarAdmissionForAwaitAsyncHead",
   "TestGrammarAdmissionForOfAsyncModuleKeys",
   "TestGrammarAdmissionForOfAsyncModuleRegression",

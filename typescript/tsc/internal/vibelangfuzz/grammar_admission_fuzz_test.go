@@ -183,6 +183,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
 	{"for-of-async-module", "for (async of xs) {}"},
 	{"native-async-for-of-context", "async function f(xs) { for (async of xs) {} }"},
+	{"native-asserted-for-heads", "async function f(xs) { for (async as async of xs) {} }"},
 	{"native-for-of-async", "async\nfunction f ( xs ) { for ( async of xs ) effect { } }"},
 	{"native-for-await-async", "async function f(xs) { for await (async of xs) {} }"},
 	{"native-for-await", "async function f(xs) { for await (const x of xs) { x; } }"},

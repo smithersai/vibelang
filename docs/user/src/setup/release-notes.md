@@ -229,6 +229,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Calling a parameterless `effect function` declaration could invoke or throw from a replaced `Function.prototype.apply`; it now constructs its unrun Effect without that extra lookup.
 - `is` bindings in `for concurrent` and `for try` heads now retain their lexical homes and per-item values. Native `catch (...: any)` parameter bindings report `EK0705` instead of retired catch and home errors.
+- The grammar admission audit could mistake TypeScript assertions on loop targets for undefined syntax. It now derives asserted `for … of`, `for … in` and `for await … of` targets while retaining malformed-head restrictions.
 - The grammar admission audit could mistake a native `for … of` target named `async` inside an async callable for undefined syntax. It now follows that context through nested callables while preserving plain-body restrictions.
 - The grammar admission audit missed an invalid module-level `for … of` target named `async`. It now records that parser-context gap separately from native async functions and `for await` heads.
 - The grammar admission audit could mistake a valid `for await … of` target named `async` for undefined syntax. It now derives that native form while retaining the ordinary `for … of` restriction.
