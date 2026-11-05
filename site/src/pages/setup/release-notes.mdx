@@ -42,10 +42,20 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The TypeScript mapper could mistake an explicit `effect` block for an unclassified callback and reject a valid `catch`; blocks now retain their program form and execution boundary after reparsing. `try effect { … }` also failed there with a syntax error; it now runs the block where it stands.
 
 - Finding references could stall when a project loaded large native libraries; module aliases now use one lookup per document and return the complete reference list promptly.
+- A private schema reference case could inherit unrelated ambient declarations and reject a valid class base. Its TypeScript program now loads only the intended libraries and preserves source-error diagnostics.
+- Declaration reference packages confused published outputs with private files. Their manifests now declare shipped output and explicit public entry points, preserving the intended API checks.
+- Native declaration-context checks could not find the compiler when the migration suite ran from its flow directory. They now locate the repository compiler consistently and retain explicit compiler overrides.
+- Migration verification coverage stopped before checking missing builds and distribution files. Its simulated conversions now retain compiler provenance and exercise both refusals.
+- Migrating a published wildcard package moved generated source-child helpers into a private sibling and edited `package.json`. They now stay in the documented private `module` body with no manifest change.
 
 - Migrated nested-catch examples could acquire possible `undefined` returns and lose literal types; their explicit catch expressions now keep `undefined` out of the declaration, keep the literal types, and preserve the runtime result.
 
 - The TypeScript mapper could report `EK9001` on an `error` declaration with an `extends` clause that it had already lowered; it no longer reports the generated class member.
+- Bun setup did not identify older runtime defects that could return asset paths for modules or corrupt Unicode filenames; the runtime instructions now specify Bun `1.4.2` or newer.
+- An invalid `join` operand could suggest retired Promise hatches or leave an Effect unrun. Its notes now show native, runnable Effect expressions and withhold handle advice for incomplete markers.
+
+- Migration retries could leave host `Request` and `Response` uses behind when they collided with Effect modules; saved platform diagnostic notes now route the unchanged code through the TypeScript platform split.
+- A project inside a dot directory of its repository could fail a `vibelang-unplugin` Bun build with `Could not resolve` on a `./x.js` import of its own `x.vibe`. The plugin now scans the project as well as the repository.
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.
@@ -202,6 +212,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Imported callbacks from native function-type aliases could report `EK0403` after declaration emit; generated `@throws {never}` comments now stay attached when those declarations are loaded.
 
+- Migration could report `TS6059` after treating imported dependencies as temporary project roots. Fixing shards now preserve the original roots and imported dependency views.
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
@@ -233,6 +244,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Vitest coverage could list generated declarations for inline TypeScript module bodies as source files. Migration setup now excludes those declarations while preserving implementation coverage and thresholds.
 
 - A throwing callback supplied through an optional tuple spread could bypass throw checking. A final tuple spread now retains that callback's contract, including readonly tuples; `--fix` preserves synchronous defects with an explicit bridge.
+
+- A service key passed through a constrained generic parameter could bypass misuse checks. These parameters now report the same service diagnostics as the original key.
 
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
@@ -421,10 +434,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The legacy `any` call example omitted the native throw-contract error emitted at the same position. The guide and regression case now require both diagnostics.
 
+- Compiler package checks could reuse cached results after schema rewrite fixtures changed. Both fixtures now invalidate every compiler test shard.
+
+
 ### Upgrade from 0.0.11
 
 | Before | After and repair |
 | --- | --- |
+| A generic parameter constrained to a service key's value type, such as `Key extends typeof Users` | `EK3002`, `EK3003` and `EK3004` apply through the constraint. Obtain the implementation with `try ServiceName`, implement its shape or inspect its members; choosing that behavior requires a manual repair. |
 | Constructing, extending or matching a service key through an intersection-typed alias | `EK3003`, `EK3002` or `EK3004` applies as for the original service. Obtain the implementation with `try ServiceName`; implement its shape or inspect its members. Choosing the implementation or test requires a manual repair. |
 
 ## 0.0.11

@@ -377,6 +377,8 @@ Computed imports, CommonJS calls and older Bun releases need the explicit
 bundler plugin. Literal entry paths and module filename assertions still refer to their original files.
 
 
+Use Bun `1.4.2` or newer for its runtime loader. Older Bun plugin-resolution and Unicode-scanner defects can prevent migrated modules from loading correctly.
+
 For `Bun.build` calls, configure `vibelang-unplugin/bun/register` as both
 the top-level and `[test]` preload in `bunfig.toml`. It loads runtime
 imports and adds the VibeLang adapter to test-owned builds without editing

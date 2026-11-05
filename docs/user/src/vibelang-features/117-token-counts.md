@@ -110,11 +110,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,900 |
-| [Known limitations](../setup/known-limitations.md) | 550 |
-| **Start a project** | **8,700** |
+| [Known limitations](../setup/known-limitations.md) | 600 |
+| **Start a project** | **8,800** |
 | [New project](../setup/new-project.md) | 570 |
 | [Existing project](../setup/existing-project.md) | 3,800 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,400 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,500 |
 | **Build and test** | **22,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 18,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,800 |
@@ -127,11 +127,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vue](../setup/vue.md) | 2,900 |
 | [Svelte](../setup/svelte.md) | 2,600 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |
-| **Editors** | **4,800** |
+| **Editors** | **4,900** |
 | [VS Code and Cursor](../setup/vscode.md) | 1,300 |
 | [Neovim](../setup/neovim.md) | 1,200 |
 | [Zed](../setup/zed.md) | 520 |
-| [Other editors](../setup/other-editors.md) | 700 |
+| [Other editors](../setup/other-editors.md) | 730 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Upgrade** | **160,000** |
 | [Release notes](../setup/release-notes.md) | 160,000 |
@@ -182,7 +182,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Caching** | **2,000** |
 | [Caching Effects](../caching/045-caching-effects.md) | 950 |
 | [Cache](../caching/046-cache.md) | 1,100 |
-| **Concurrency** | **9,700** |
+| **Concurrency** | **9,800** |
 | [Fibers](../concurrency/047-fibers.md) | 4,500 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,400 |
