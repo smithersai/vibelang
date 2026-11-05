@@ -137,10 +137,11 @@ func FuzzWholeServiceShapeDeclaration(f *testing.F) {
 		// never contract is permitted; preserve every other declaration byte.
 		comparable := outputs[1]
 		if key == "callable" {
-			if !strings.Contains(comparable, "type Shape = /** @throws {never} */\n() => number;") {
+			const contract = "type Shape = \n/** @throws {never} */\n() => number;"
+			if !strings.Contains(comparable, contract) {
 				Gap(t, wholeServiceShapeTarget, "contract:"+label, "missing generated non-throwing callable contract:\n%s", comparable)
 			}
-			comparable = strings.Replace(comparable, "type Shape = /** @throws {never} */\n() => number;", "type Shape = () => number;", 1)
+			comparable = strings.Replace(comparable, contract, "type Shape = () => number;", 1)
 		}
 		if outputs[0] != comparable {
 			Gap(t, wholeServiceShapeTarget, "declaration:"+label, "VIP-9: %s; native:\n%s\nwhole-shape:\n%s", wholeServiceShapeNoNamespaceQuote, outputs[0], outputs[1])
