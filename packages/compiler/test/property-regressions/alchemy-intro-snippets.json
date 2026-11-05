@@ -1,0 +1,17 @@
+{
+  "files": {
+    "api-01-effect.vibe": "export effect function answer(): number!! { return 42 }\n",
+    "api-08-construct.error.vibe": "export const answer: number = \"wrong\"\n",
+    "retained.ts": "export const retained = true\n",
+    "api-01-effect.d.vibe.ts": "export declare const answer: unknown\n",
+    "nested/view.vibex": "export const view = <div />\n",
+    "tsconfig.json": "{}"
+  },
+  "sources": ["api-01-effect.vibe", "api-08-construct.error.vibe", "retained.ts"],
+  "references": {
+    "api-01-effect.ts": "api-01-effect.vibe",
+    "api-08-construct.error.ts": "api-08-construct.error.vibe",
+    "nested/view.tsx": "nested/view.vibex",
+    "retained.ts": "retained.ts"
+  }
+}

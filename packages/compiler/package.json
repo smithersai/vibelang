@@ -39,7 +39,11 @@
     "./babel": "./babel.cjs",
     "./prettier": "./prettier.mjs",
     "./format": "./format.mjs",
-    "./ast-grep": "./ast-grep.mjs"
+    "./ast-grep": "./ast-grep.mjs",
+    "./source": {
+      "types": "./source.d.mts",
+      "default": "./source.mjs"
+    }
   },
   "bin": {
     "vibelang": "bin/vibelang",
@@ -76,7 +80,9 @@
     "skills/vibelang/SKILL.md",
     "format.mjs",
     "prettier.mjs",
-    "ast-grep.mjs"
+    "ast-grep.mjs",
+    "source.mjs",
+    "source.d.mts"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs"

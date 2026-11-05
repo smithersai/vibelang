@@ -414,6 +414,45 @@ is no `archive.ts` or `archive.tsx`, and `./mount` reaches `mount/index.vibe`.
 
 When a package export names an emitted module under `.vibelang/js/`, both source loaders follow its source map or migration-generated source header. They distinguish `x.js` from `x.jsx` under the project’s inherited `jsx` mode. Without that metadata, a mirrored path redirects only when exactly one source can produce that output; ambiguous siblings leave the emitted module in place.
 
+## Tools that read source files
+
+A snippet builder or documentation tool reads source text with `vibelang/source`:
+
+```js
+import { readFileSync } from "node:fs"
+import { listSources, resolveSource } from "vibelang/source"
+
+const files = listSources("snippets")
+const file = resolveSource("snippets/example.ts")
+if (file === undefined) throw new Error("Missing snippet")
+const text = readFileSync(file, "utf8")
+```
+
+`listSources(directory)` returns sorted absolute paths for immediate `.ts`,
+`.tsx`, `.vibe` and `.vibex` source files. It excludes declaration outputs,
+including compatibility sidecars, and directories; file symlinks are followed.
+Call it for each snippet directory the tool owns.
+
+`resolveSource(file)` prefers an existing exact file. Only an absent `.ts`
+or `.tsx` source name tries its `.vibe` or `.vibex` sibling. Missing files
+and directories return `undefined`; other filesystem errors propagate.
+Declaration paths never redirect. This is an opt-in source-text lookup:
+module imports retain the compiler's ordinary resolution rules.
+
+Check native snippets with `projectBackend().compile(project)` from
+`vibelang/project`, using the returned `files` to confirm each selected
+source was checked and `errors` to associate diagnostics with its resolved
+path. Diagnostics retain `TS` or `EK` codes and one-based source positions.
+An expected-error snippet must have its own error; a missing source,
+configuration error or compiler failure must fail the build separately.
+Recognize expected-error names in both languages, such as `.error.ts` and
+`.error.vibe`. Keep warning policy explicit.
+
+Use the project cache instead of a stamp based only on `.ts` names or mtimes;
+it tracks native sources, dependencies, configs and compiler changes. Await
+`close()` when finished. Module loader hooks do not change `readFile` or
+directory enumeration.
+
 ## Run sources with Bun
 
 Bun can run and test the project from source, without `dist/`. Preload `vibelang/bun`, in `bunfig.toml`:

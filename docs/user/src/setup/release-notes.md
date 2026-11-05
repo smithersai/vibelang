@@ -30,6 +30,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Converting an `async` function with an error per `await` could duplicate an existing error name or capture a local binding. Generated error declarations now use fresh names.
 
+- Source-reading tools could omit renamed snippets or fail on old TypeScript paths. The opt-in `vibelang/source` helpers now discover native sources and resolve migrated source-text references.
+
 - An `effect` function with an inferred return type could report `TS7030` for a bare `return`; `noImplicitReturns` now checks its success value and accepts branches that only complete with `undefined`.
 
 - TypeScript's content mapper could report `TS2305` for missing `$matchCache` or `$propertyKey` helpers when checking `match` or `is`. Cached patterns and computed keys now resolve their helpers through the mapper's prelude.
