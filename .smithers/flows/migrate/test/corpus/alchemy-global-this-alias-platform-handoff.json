@@ -1,0 +1,10 @@
+{
+  "file": "src/Client.ts",
+  "source": "export const getClient = () => { const g = globalThis as unknown as { client?: unknown }; return g.client; };\nexport const retained = 42;\n",
+  "moved": [
+    "getClient"
+  ],
+  "retained": [
+    "retained"
+  ]
+}

@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+export interface Access { readonly query: Readonly<Record<string, string>> }
+const resolve = effect (flag: boolean): Access!! =>
+  try withSpan(effect {
+    if (flag) return { query: {} }
+    return { query: { ticket: "t" } }
+  }, "proof")
+export const main = () => Effect.all([resolve(true), resolve(false)])

@@ -1,7 +1,9 @@
 package vibelangfuzz
 
 import (
+	"encoding/json"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -25,6 +27,12 @@ var migrationWrittenGeneratorPrograms = []struct{ key, source string }{
 	{"smithers-generator-return", "export const main = () => Effect.gen(function* (): Generator<Effect.Effect<unknown>, Outcome, never> { yield* Effect.void; return { kind: \"ok\", value: 7 } })\n"},
 	{"alias", "type G = Generator<Effect.Effect<unknown>, Outcome, never>\nexport const main = () => Effect.gen(function* (): G { yield* Effect.void; return { kind: \"ok\", value: 7 } })\n"},
 	{"failure", "export const main = () => Effect.result(Effect.gen(function* (): Effect.fn.Return<Outcome, string> { yield* Effect.fail(\"bad\"); return { kind: \"ok\", value: 7 } }))\n"},
+	{"t3code-device-hub-record-inexact", ""},
+	{"t3code-device-hub-record-exact", ""},
+	{"t3code-device-hub-renamed-inexact", ""},
+	{"t3code-device-hub-renamed-exact", ""},
+	{"t3code-device-hub-conditional-inexact", ""},
+	{"t3code-device-hub-conditional-exact", ""},
 }
 
 func TestMigrationWrittenGeneratorQuoted(t *testing.T) {
@@ -54,14 +62,55 @@ func FuzzMigrationWrittenGenerator(f *testing.F) {
 		}
 		program := migrationWrittenGeneratorPrograms[i]
 		source := migrationWrittenGeneratorPrelude + program.source
+		spanContext := strings.HasPrefix(program.key, "t3code-device-hub-")
+		if spanContext {
+			raw, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", "t3code-device-hub-written-context.ts"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			source = string(raw)
+			if strings.Contains(program.key, "-renamed-") {
+				source = strings.ReplaceAll(source, "query", "headers")
+			}
+			if strings.Contains(program.key, "-conditional-") {
+				before := "  if (flag) return { query: {} }\n  return { query: { ticket: \"t\" } }"
+				after := "  return flag ? { query: {} } : { query: { ticket: \"t\" } }"
+				if !strings.Contains(source, before) {
+					t.Fatal("span corpus lost its branches")
+				}
+				source = strings.Replace(source, before, after, 1)
+			}
+		}
+		compile := func(files map[string]string) *Result {
+			if !spanContext {
+				return toolsCompile(t, w, migrationWrittenGeneratorTarget, files)
+			}
+			var config map[string]any
+			if err := json.Unmarshal([]byte(DefaultConfig), &config); err != nil {
+				t.Fatal(err)
+			}
+			config["compilerOptions"].(map[string]any)["exactOptionalPropertyTypes"] = strings.HasSuffix(program.key, "-exact")
+			raw, err := json.Marshal(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result *Result
+			toolsRun(t, migrationWrittenGeneratorTarget, "compile", Archive(files), nil, func() {
+				result, err = w.Compile(t.Context(), Project{Files: files, Config: string(raw)})
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return result
+		}
 		toolsGuard(t, migrationWrittenGeneratorTarget, func() {
-			stock := toolsCompile(t, w, migrationWrittenGeneratorTarget, map[string]string{"main.ts": source})
+			stock := compile(map[string]string{"main.ts": source})
 			defer stock.Remove()
 			if !toolsErrorFree(stock) {
 				t.Fatalf("invalid .ts control: %v\n%s", SortedKeys(Keys(stock.Dir, stock.Diagnostics)), source)
 			}
 			files := map[string]string{"main.vibe": source}
-			before := toolsCompile(t, w, migrationWrittenGeneratorTarget, files)
+			before := compile(files)
 			defer before.Remove()
 			config := toolsConfig(w, before.Dir)
 			if before.Program == nil || config == nil || len(config.Errors) > 0 {
@@ -78,7 +127,7 @@ func FuzzMigrationWrittenGenerator(f *testing.F) {
 			for name, file := range result.Files {
 				fixed[strings.TrimPrefix(name.AsString(), filepath.ToSlash(before.Dir)+"/")] = file.Text
 			}
-			after := toolsCompile(t, w, migrationWrittenGeneratorTarget, fixed)
+			after := compile(fixed)
 			defer after.Remove()
 			key := "context:" + program.key
 			if !toolsErrorFree(after) {

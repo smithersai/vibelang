@@ -20,6 +20,19 @@ test("platform handoff follows the quoted platform and module-body rules", () =>
   assert.ok(spec.includes(platformQuote), platformQuote)
   assert.ok(spec.includes(moduleQuote), moduleQuote)
 })
+const related = ["alias", "index"].map(pattern => JSON.parse(readFileSync(new URL("./corpus/alchemy-global-this-" + pattern + "-platform-handoff.json", import.meta.url), "utf8")))
+for (const witness of related) {
+  test("the saved " + witness.file + " platform pattern follows its exact diagnostic receipt", () => {
+    const cause = platformGlobalsFromCauses([receipts(witness.file.replace(/\.ts$/, ".vibe"), "settle")])
+    assert.deepEqual(cause(witness.file), ["globalThis"])
+    const result = splitPlatformToModule(witness.source, witness.file, ts, { globals: cause(witness.file) })
+    assert.ok(result && !result.refused, JSON.stringify(result))
+    assert.deepEqual(result.moved, witness.moved)
+    assert.deepEqual(result.kept, witness.retained)
+    assert.ok(result.module.includes(witness.source.split("\n")[0]), "the original alias or write remains verbatim")
+  })
+}
+
 const roots = ["src/HttpServer.ts", "src/HttpServer.mts"]
 const diagnostic = { code: "EK0107", message: corpus.message }
 const receipts = (file, shape, message = corpus.message, code = "EK0107") => shape === "settle"
@@ -66,6 +79,7 @@ test("platform receipt variants preserve casted member and element reads without
   // The routing must preserve the original TypeScript statements and the compiler restriction.
   const generated = fc.record({
     shape: fc.constantFrom("settle", "reverted"),
+    pattern: fc.constantFrom("member", "alias", "index-write", "in-test"),
     suffix: fc.constantFrom(".vibe", ".ts", ".mts"),
     member: fc.constantFrom(".Bun", '["Bun"]', "?.Bun"),
     wrapped: fc.integer({ min: 1, max: 4 }),
@@ -78,11 +92,22 @@ test("platform receipt variants preserve casted member and element reads without
     const globals = platformGlobalsFromCauses(list)(root)
     assert.deepEqual(globals, ["globalThis"])
     const access = "(".repeat(item.wrapped) + 'globalThis as { Bun?: unknown }' + ")".repeat(item.wrapped) + item.member
-    const source = `export const getClient = () => ${access};\nexport const retained = 42;\n`
+    let moved = "getClient", statement
+    if (item.pattern === "alias") {
+      const cast = "(".repeat(item.wrapped) + "globalThis as unknown as { client?: unknown }" + ")".repeat(item.wrapped)
+      statement = "export const getClient = () => { const g = " + cast + "; return g.client; };"
+    } else if (item.pattern === "index-write") {
+      moved = "register"
+      const cast = "(".repeat(item.wrapped) + "globalThis as Record<string, unknown>" + ")".repeat(item.wrapped)
+      statement = 'export const register = (value: unknown) => { ' + cast + '["__runtime"] = value; };'
+    } else if (item.pattern === "in-test") {
+      statement = 'export const getClient = () => "WebSocketPair" in globalThis;'
+    } else statement = "export const getClient = () => " + access + ";"
+    const source = statement + "\nexport const retained = 42;\n"
     const result = splitPlatformToModule(source, root, ts, { globals })
     assert.ok(result && !result.refused)
-    assert.ok(result.module.includes(source.split("\n")[0]))
-    assert.deepEqual(result.moved, ["getClient"])
+    assert.ok(result.module.includes(statement))
+    assert.deepEqual(result.moved, [moved])
     assert.deepEqual(result.kept, ["retained"])
   }), { seed: 561105, numRuns: 160 })
 })

@@ -1,0 +1,10 @@
+{
+  "file": "src/Register.ts",
+  "source": "export const register = (value: unknown) => { (globalThis as Record<string, unknown>)[\"__runtime\"] = value; };\nexport const retained = 42;\n",
+  "moved": [
+    "register"
+  ],
+  "retained": [
+    "retained"
+  ]
+}
