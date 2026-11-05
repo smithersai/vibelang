@@ -1780,6 +1780,16 @@ A missing `BigInt` library must produce `TS2583` and make API comparison
 unavailable, matching independent stock TypeScript validation. This negative
 case also detects removal of the comparison worker's library boundary.
 
+Absent-declaration fixtures select ES5 for pure declaration comparisons while
+retaining the default browser libraries for server declarations returning `URL`.
+The native browser control requires `URL` to bind to `lib.dom.d.ts`, requires
+`TS2304` without that library and detects a changed return type. Pure fixture
+guards run after comparison and retain native `TS2583` missing-library errors.
+Empty entry batches have no roots or sources and need no library; a program
+with actual roots still requires ES5, including when `noLib` is set.
+All 20 generated absence graphs, per-export availability, emit-evidence,
+reference-mutation, ambient-environment and batching controls remain enabled.
+
 The five fixed variance forms use guarded ES5 programs for native TypeScript
 validation and API comparison. Their original target and strictness settings
 remain in force. The `in`, `out` and `in out` forms, class/interface/type

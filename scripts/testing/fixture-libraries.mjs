@@ -8,7 +8,10 @@ export function createEs5FixtureGuard(stockTs, label) {
   const unexpected = new Set()
   const ts = { ...stockTs, createProgram(...args) {
     const program = stockTs.createProgram(...args)
-    const libraries = program.getSourceFiles().map(source => source.fileName)
+    const sources = program.getSourceFiles()
+    // An absent-only entry batch has no roots, sources or library requirement.
+    if (program.getRootFileNames().length === 0 && sources.length === 0) return program
+    const libraries = sources.map(source => source.fileName)
       .filter(file => /[/\\]lib\.[^/\\]+\.d\.ts$/.test(file))
       .map(file => basename(file.replaceAll("\\", "/")))
     if (!libraries.includes("lib.es5.d.ts")) unexpected.add("missing lib.es5.d.ts")

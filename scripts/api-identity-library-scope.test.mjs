@@ -65,10 +65,12 @@ test("property: repeated native library selections report each unexpected name o
     arbitrary: fc.record({
       extra: fc.constantFrom("lib.es2015.core.d.ts", "lib.es2015.collection.d.ts", "lib.es2015.promise.d.ts"),
       repetitions: fc.integer({ min: 2, max: 4 }),
+      emptyPrograms: fc.integer({ min: 1, max: 4 }),
     }),
     numRuns: 4,
-    check: ({ extra, repetitions }) => fixture(file => {
+    check: ({ extra, repetitions, emptyPrograms }) => fixture(file => {
       const { ts, assertLibraries } = createEs5FixtureGuard(stockTs, "Fixture")
+      for (let i = 0; i < emptyPrograms; i++) ts.createProgram([], options)
       for (let i = 0; i < repetitions; i++) {
         const program = ts.createProgram([file], { ...options, lib: [...options.lib, extra] })
         assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [])
@@ -77,3 +79,15 @@ test("property: repeated native library selections report each unexpected name o
     }),
   })
 })
+
+test("empty native programs have no library requirement while nonempty roots still require ES5", () => fixture(file => {
+  const { ts, assertLibraries } = createEs5FixtureGuard(stockTs, "Fixture")
+  for (const configuration of [options, { noLib: true, noEmit: true, types: [] }]) {
+    const empty = ts.createProgram([], configuration)
+    assert.deepEqual(empty.getRootFileNames(), [])
+    assert.deepEqual(empty.getSourceFiles(), [])
+    assertLibraries()
+  }
+  ts.createProgram([file], { noLib: true, noEmit: true, types: [] })
+  assert.deepEqual(failure(assertLibraries).actual, { count: 1, examples: ["missing lib.es5.d.ts"] })
+}))

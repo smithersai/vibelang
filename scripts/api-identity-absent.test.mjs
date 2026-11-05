@@ -8,8 +8,10 @@ import { test } from "node:test"
 import { createRequire } from "node:module"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
+import { createEs5FixtureGuard } from "./testing/fixture-libraries.mjs"
 
 const ts = loadTypeScript()
+const es5 = createEs5FixtureGuard(ts, "Pure absent-declaration fixtures")
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/t3code-absent-on-both-sides.json", import.meta.url), "utf8"))
 const tsOptions = { compilerOptions: { allowImportingTsExtensions: true } }
@@ -28,8 +30,16 @@ function fixture(before, after, fn) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 const entries = keys => Object.fromEntries(keys.map(key => [key, key]))
-const compare = (before, after, keys, absentDeclarations, extra = {}) => fixture(before, after, (a, b) =>
-  compareApiIdentity(ts, a, b, { beforeEntrypoints: entries(keys), afterEntrypoints: entries(keys), absentDeclarations, ...extra }))
+const compareWith = (compiler, compilerOptions, before, after, keys, absentDeclarations, extra = {}) => fixture(before, after, (a, b) =>
+  compareApiIdentity(compiler, a, b, { beforeEntrypoints: entries(keys), afterEntrypoints: entries(keys), absentDeclarations,
+    ...extra, compilerOptions: { ...compilerOptions, ...extra.compilerOptions } }))
+const compare = (...args) => {
+  const result = compareWith(es5.ts, { lib: ["lib.es5.d.ts"] }, ...args)
+  es5.assertLibraries()
+  return result
+}
+// The server corpus returns the native URL and retains its browser libraries.
+const compareBrowser = (...args) => compareWith(ts, {}, ...args)
 const groupBlockers = result => result.environmentDiagnostics.filter(d => d.blocking && d.scope !== "export")
 const unavailable = result => result.environmentDiagnostics.filter(d => d.blocking && d.scope === "export")
   .map(d => d.entrypoint + "#" + d.export).sort()
@@ -81,14 +91,14 @@ test("t3code mobile: absences with different emit diagnostics are unavailable, n
 
 test("t3code server: names re-exported through export * from absent contracts files are unavailable per export", () => {
   const { files, entries: keys, absent } = corpus.server
-  const result = compare(files, files, keys, same(absent), tsOptions)
+  const result = compareBrowser(files, files, keys, same(absent), tsOptions)
   assert.deepEqual(groupBlockers(result), [], JSON.stringify(result, null, 2))
   assert.deepEqual(unavailable(result), ["apps/server/src/auth/RpcAuthorization.d.ts#authorize"])
   assert.match(result.environmentDiagnostics.find(d => d.export === "authorize").diagnostic, /packages\/contracts\/src\/(environmentHttp|guestStream|orchestrationV2|rpc)\.d\.ts/)
   assert.deepEqual(result.typeDifferences, [])
   // threadOf reaches only the present ids.d.ts: a changed type there still fails.
   const changed = { ...files, "packages/contracts/src/ids.d.ts": "export type ThreadId = number;\n" }
-  const negative = compare(files, changed, keys, same(absent), tsOptions)
+  const negative = compareBrowser(files, changed, keys, same(absent), tsOptions)
   assert.deepEqual(negative.typeDifferences.map(d => d.export), ["threadOf"])
 })
 
@@ -96,7 +106,7 @@ test("a declaration missing on one side only never compares equal", () => {
   const { files, entries: keys, absent } = corpus.server
   const present = { ...files, "packages/contracts/src/rpc.d.ts": "export type RpcScopeAuthorization = string;\n" }
   for (const [before, after] of [[files, present], [present, files]]) {
-    const result = compare(before, after, keys, same(absent), tsOptions)
+    const result = compareBrowser(before, after, keys, same(absent), tsOptions)
     assert.equal(result.identical, false)
     assert.ok(groupBlockers(result).some(d => /one-sided absence never compares equal/.test(d.diagnostic)))
   }
@@ -218,4 +228,45 @@ test("property: random absent-file sets never pass a change and never block unre
       assert.equal(result.identical, mutate === null && !expected.length)
     },
   })
+})
+
+test("server absence fixtures retain the native browser URL and reject a changed return type", () => {
+  const { files, entries: keys, absent } = corpus.server
+  const entry = "apps/server/src/RequestUrl.d.ts"
+  fixture(files, files, (before, after) => {
+    for (const root of [before, after]) {
+      const file = join(root, entry)
+      const options = { strict: true, noEmit: true, types: [], target: ts.ScriptTarget.ESNext }
+      const program = ts.createProgram([file], options)
+      assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => d.code), [])
+      const source = program.getSourceFile(file)
+      const declaration = source.statements[0].declarationList.declarations[0]
+      const result = program.getTypeChecker().getTypeFromTypeNode(declaration.type.type)
+      assert.ok(result.symbol.declarations.some(node => /[/\\]lib\.dom\.d\.ts$/.test(node.getSourceFile().fileName)),
+        "URL must bind to the actual TypeScript browser declaration")
+      const pure = es5.ts.createProgram([file], { ...options, lib: ["lib.es5.d.ts"] })
+      assert.ok(ts.getPreEmitDiagnostics(pure).some(d => d.code === 2304), "ES5 alone must not supply URL")
+      es5.assertLibraries()
+    }
+  })
+  const changed = { ...files, [entry]: files[entry].replace("=> URL", "=> string") }
+  const result = compareBrowser(files, changed, keys, same(absent), tsOptions)
+  assert.deepEqual(groupBlockers(result), [])
+  assert.deepEqual(result.typeDifferences.map(d => d.export), ["requestUrl"])
+  assert.equal(result.identical, false)
+})
+
+test("pure absence fixtures preserve native missing-library errors", () => {
+  const files = { "index.d.ts": "export declare const value: BigInt;" }
+  fixture(files, files, before => {
+    const program = es5.ts.createProgram([join(before, "index.d.ts")], {
+      lib: ["lib.es5.d.ts"], strict: true, noEmit: true, types: [],
+    })
+    assert.ok(ts.getPreEmitDiagnostics(program).some(d => d.code === 2583))
+    es5.assertLibraries()
+  })
+  const result = compare(files, files, ["index.d.ts"])
+  assert.equal(result.comparisonComplete, false)
+  assert.equal(result.identical, false)
+  assert.ok(groupBlockers(result).some(d => /TS2583/.test(d.diagnostic)))
 })
