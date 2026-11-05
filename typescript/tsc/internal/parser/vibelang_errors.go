@@ -559,7 +559,11 @@ func (p *Parser) vibelangErrorRegistration(d *errorDeclaration) *ast.Node {
 		return p.vibelangSynthesized(p.factory.NewExpressionStatement(expression), at)
 	}
 	tag := p.vibelangSynthesized(p.factory.NewStringLiteral(d.name.Text(), ast.TokenFlagsNone), at)
-	statements := []*ast.Node{call("$schemaErrorMatcher", tag)}
+	matcherArgs := []*ast.Node{tag}
+	if !d.schema {
+		matcherArgs = append(matcherArgs, p.vibelangSynthesized(p.factory.NewKeywordExpression(ast.KindTrueKeyword), at))
+	}
+	statements := []*ast.Node{call("$schemaErrorMatcher", matcherArgs...)}
 	if d.schema {
 		switch {
 		case d.tag != nil || d.abstract:

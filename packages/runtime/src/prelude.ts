@@ -105,7 +105,11 @@ const joinSchemaErrorFamilies = (error: object, own: SchemaAST.AST): void => {
  * package copies. Both matcher modes extract the original subject; the
  * closure keeps its tag independently of the call receiver.
  */
-export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown, tag: string): void => {
+export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown, tag: string, privateFactoryBase = false): void => {
+  // Plain declarations have a private TaggedError/$errorSubclass factory base.
+  // Its legacy matcher belongs to direct runtime-factory consumers. Once the
+  // declaration owns its matcher, retain no inherited fallback on that base.
+  if (privateFactoryBase) Reflect.deleteProperty(Object.getPrototypeOf(error), customMatcher)
   const matcher = {
     match(this: unknown, subject: unknown, _hint?: MatchHint): false | [unknown] {
       return (subject as { _tag?: unknown } | null | undefined)?._tag === tag ? [subject] : false

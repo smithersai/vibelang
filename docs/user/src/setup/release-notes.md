@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Lexical wrapper captures remain supported, and retired capture and clock diagnostics no longer appear as current error examples.
 - Qualified `Effect.uninterruptible` and `Effect.interruptible` calls remain valid; their retired unqualified function-call syntax stays rejected.
 
+- Deleting an error class's own matcher could leave tag matching active through its generated base. The class now falls back to native `instanceof` matching.
 - Nested callbacks use their own rethrow admission; functions escaping those callbacks still retain the plain-code throw check.
 - Unchanged native importers retain their declaration spelling during a one-file migration; explicit source imports use the corresponding TypeScript import preference.
 - Legacy computed schema keys retain throwing-call errors alongside their migration diagnostic; preserving repairs still compile without errors.

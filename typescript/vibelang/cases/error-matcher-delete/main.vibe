@@ -1,0 +1,29 @@
+// expect-result: [[[true,true,true,true,false,false,true,true,true,true,true,true],[true,true,true,true,false,false,true,true,true,true,true,true],[true,true,true,true,false,false,true,true,true,true,true,true],[true,true,true,true,false,false,true,true,true,true,true,true]],false,false,true]
+import {Effect,Data,Schema} from "effect"
+function witness(){
+const symbol=(Symbol as any).customMatcher ?? Symbol.for("Symbol.customMatcher")
+error Root { n:number }
+error Empty
+error Methods { n:number; text(){return String(this.n)} }
+schema error SchemaError { n:number }
+class NativeChild extends Root {}
+const profiles=[
+{type:Root,tag:"Root",instance:new Root({n:1}),choose:(s:unknown)=>match(s){when Root:true;default:false;}},
+{type:Empty,tag:"Empty",instance:new Empty(),choose:(s:unknown)=>match(s){when Empty:true;default:false;}},
+{type:Methods,tag:"Methods",instance:new Methods({n:2}),choose:(s:unknown)=>match(s){when Methods:true;default:false;}},
+{type:SchemaError,tag:"SchemaError",instance:new SchemaError({n:3}),choose:(s:unknown)=>match(s){when SchemaError:true;default:false;}}
+]
+const rows:boolean[][]=[]
+for(const p of profiles){
+ const copy:unknown={_tag:p.tag}
+ const own=Reflect.get(p.type,symbol)
+ const row=[Object.hasOwn(p.type,symbol),p.choose(copy),p.choose(p.instance),Reflect.deleteProperty(p.type,symbol),Object.hasOwn(p.type,symbol),p.choose(copy),p.choose(p.instance)]
+ Reflect.defineProperty(p.type,symbol,{value:own,configurable:true,writable:true})
+ const descriptor=Object.getOwnPropertyDescriptor(p.type,symbol)!
+ row.push(p.choose(copy),p.choose(p.instance),!descriptor.enumerable,!!descriptor.writable,!!descriptor.configurable)
+ rows.push(row)
+}
+function childMatch(s:unknown){return s is NativeChild}
+return [rows,Object.hasOwn(NativeChild,symbol),childMatch({_tag:"Root",n:1}),childMatch(new NativeChild({n:1}))]
+}
+export function main(){return Effect.succeed(witness())}

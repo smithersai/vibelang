@@ -3312,6 +3312,14 @@ typescript/vibelang/cases/entry-platform-layer-services.fail/platform.test.vibe:
 typescript/vibelang/cases/entry-platform-layer-services.fail/services.vibe:6:55 lambda effectFn keyword
 typescript/vibelang/cases/entry-platform-layer/provide.vibe:9:39 lambda effectFn keyword
 typescript/vibelang/cases/enum-initializer-try-effect-block.fail/main.vibe:3:24 lambda choice fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:11:55 lambda plain fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:11:73 lambda dual fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:12:53 lambda plain fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:12:71 lambda dual fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:13:64 lambda plain fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:13:82 lambda dual fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:14:76 lambda plain fallback
+typescript/vibelang/cases/error-matcher-delete/main.vibe:14:94 lambda dual fallback
 typescript/vibelang/cases/execution-power-parentheses/main.vibe:4:38 byname program table
 typescript/vibelang/cases/experimental-animations/main.vibe:21:18 byname program table
 typescript/vibelang/cases/experimental-animations/main.vibe:22:39 lambda effectFn annotation
