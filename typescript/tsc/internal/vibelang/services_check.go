@@ -329,7 +329,7 @@ func serviceNamedByType(c *checker.Checker, t *checker.Type) *ast.Node {
 	if t == nil {
 		return nil
 	}
-	if t.Flags()&checker.TypeFlagsTypeParameter != 0 {
+	if t.Flags()&(checker.TypeFlagsTypeParameter|checker.TypeFlagsIndexedAccess) != 0 {
 		bound := c.GetBaseConstraintOfType(t)
 		if bound == nil || bound == t {
 			return nil

@@ -1,0 +1,5 @@
+// expect: EK3002 EK3003 EK3004
+service Users { static readonly key = "indexed/Identity"; value: number }
+export function construct<Box extends { key: typeof Users }>(key: Box["key"]) { return new key() }
+export function inherit<Box extends { key: typeof Users }>(key: Box["key"]) { class Child extends key {}; return Child }
+export function inspect<Box extends { key: typeof Users }>(key: Box["key"], value: unknown) { return value instanceof key }

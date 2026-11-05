@@ -1,0 +1,3 @@
+export service Valid {static readonly key="indexed/Valid";value:number}
+export function structural<Box extends {key:Valid & {new():object}}>(key:Box["key"],value:unknown){return value instanceof key}
+export function extractor<Box extends {key:Valid & ((value:unknown)=>unknown[])}>(key:Box["key"],value:unknown){return match(value){when key():1;default:0;}}

@@ -1788,5 +1788,35 @@
       "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
     },
     "reason": "A generic constraint on the key's value type retains service-key identity. Selecting an implementation, a shape test or a different constructor requires application intent; there is no general preserving mechanical rewrite."
+  },
+  {
+    "code": "EK3002",
+    "case": "typescript/vibelang/cases/service-indexed-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "An indexed generic constraint on the key's value type retains service-key identity. Selecting an implementation, a shape test or a different constructor requires application intent; there is no general preserving mechanical rewrite. This extends the existing generic-constraint exception to its indexed-access form."
+  },
+  {
+    "code": "EK3003",
+    "case": "typescript/vibelang/cases/service-indexed-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "An indexed generic constraint on the key's value type retains service-key identity. Selecting an implementation, a shape test or a different constructor requires application intent; there is no general preserving mechanical rewrite. This extends the existing generic-constraint exception to its indexed-access form."
+  },
+  {
+    "code": "EK3004",
+    "case": "typescript/vibelang/cases/service-indexed-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "An indexed generic constraint on the key's value type retains service-key identity. Selecting an implementation, a shape test or a different constructor requires application intent; there is no general preserving mechanical rewrite. This extends the existing generic-constraint exception to its indexed-access form."
   }
 ]

@@ -1,0 +1,29 @@
+service S0 {static readonly key="indexed/Case00";value:number};export function test0<Box extends {key:typeof S0}>(key:Box["key"],value:unknown){return value instanceof key}
+service S1: {value:number} {static readonly key="indexed/Case11"};export function test1<Box extends {key:typeof S1}>(key:Box["key"],value:unknown){return match(value){when key:1;default:0;}}
+service S2 {static readonly key="indexed/Case22";value:number};export function test2<Box extends {key:typeof S2}>(key:Box["key"],value:unknown){return match(value){when key():1;default:0;}}
+service S3: {value:number} {static readonly key="indexed/Case33"};type Selected3<Box extends {key:typeof S3}>=Box["key"];export function test3<Box extends {key:typeof S3}>(key:Selected3<Box>,value:unknown){return value instanceof key}
+service S4 {static readonly key="indexed/Case44";value:number};type Selected4<Box extends {key:typeof S4}>=Box["key"];export function test4<Box extends {key:typeof S4}>(key:Selected4<Box>,value:unknown){return match(value){when key:1;default:0;}}
+service S5: {value:number} {static readonly key="indexed/Case55"};type Selected5<Box extends {key:typeof S5}>=Box["key"];export function test5<Box extends {key:typeof S5}>(key:Selected5<Box>,value:unknown){return match(value){when key():1;default:0;}}
+service S6 {static readonly key="indexed/Case66";value:number};export function test6<Name extends PropertyKey, Box extends Record<Name,typeof S6>>(key:Box[Name],value:unknown){return value instanceof key}
+service S7: {value:number} {static readonly key="indexed/Case77"};export function test7<Name extends PropertyKey, Box extends Record<Name,typeof S7>>(key:Box[Name],value:unknown){return match(value){when key:1;default:0;}}
+service S8 {static readonly key="indexed/Case88";value:number};export function test8<Name extends PropertyKey, Box extends Record<Name,typeof S8>>(key:Box[Name],value:unknown){return match(value){when key():1;default:0;}}
+service S9: {value:number} {static readonly key="indexed/Case99"};export function test9<Keys extends readonly [typeof S9]>(key:Keys[0],value:unknown){return value instanceof key}
+service S10 {static readonly key="indexed/Case1010";value:number};export function test10<Keys extends readonly [typeof S10]>(key:Keys[0],value:unknown){return match(value){when key:1;default:0;}}
+service S11: {value:number} {static readonly key="indexed/Case1111"};export function test11<Keys extends readonly [typeof S11]>(key:Keys[0],value:unknown){return match(value){when key():1;default:0;}}
+service S12 {static readonly key="indexed/Case1212";value:number};export function test12<Keys extends ReadonlyArray<typeof S12>>(key:Keys[number],value:unknown){return value instanceof key}
+service S13: {value:number} {static readonly key="indexed/Case1313"};export function test13<Keys extends ReadonlyArray<typeof S13>>(key:Keys[number],value:unknown){return match(value){when key:1;default:0;}}
+service S14 {static readonly key="indexed/Case1414";value:number};export function test14<Keys extends ReadonlyArray<typeof S14>>(key:Keys[number],value:unknown){return match(value){when key():1;default:0;}}
+service S15: {value:number} {static readonly key="indexed/Case1515"};export function test15<Box extends {inner:{key:typeof S15}}>(key:Box["inner"]["key"],value:unknown){return value instanceof key}
+service S16 {static readonly key="indexed/Case1616";value:number};export function test16<Box extends {inner:{key:typeof S16}}>(key:Box["inner"]["key"],value:unknown){return match(value){when key:1;default:0;}}
+service S17: {value:number} {static readonly key="indexed/Case1717"};export function test17<Box extends {inner:{key:typeof S17}}>(key:Box["inner"]["key"],value:unknown){return match(value){when key():1;default:0;}}
+service S18 {static readonly key="indexed/Case1818";value:number};export function test18<Box extends Record<string,typeof S18>>(key:Box[string],value:unknown){return value instanceof key}
+service S19: {value:number} {static readonly key="indexed/Case1919"};export function test19<Box extends Record<string,typeof S19>>(key:Box[string],value:unknown){return match(value){when key:1;default:0;}}
+service S20 {static readonly key="indexed/Case2020";value:number};export function test20<Box extends Record<string,typeof S20>>(key:Box[string],value:unknown){return match(value){when key():1;default:0;}}
+service S21: {value:number} {static readonly key="indexed/Case2121"};export function test21<Box extends {key:typeof S21}>(key:{key:Box["key"]},value:unknown){return value instanceof key.key}
+service S22 {static readonly key="indexed/Case2222";value:number};export function test22<Box extends {key:typeof S22}>(key:{key:Box["key"]},value:unknown){return match(value){when key.key:1;default:0;}}
+service S23: {value:number} {static readonly key="indexed/Case2323"};export function test23<Box extends {key:typeof S23}>(key:{key:Box["key"]},value:unknown){return match(value){when key.key():1;default:0;}}
+service S24 {static readonly key="indexed/Case2424";value:number};export class Host24<Box extends {key:typeof S24}> {test24(key:Box["key"],value:unknown){return value instanceof key}}
+service S25: {value:number} {static readonly key="indexed/Case2525"};export class Host25<Box extends {key:typeof S25}> {test25(key:Box["key"],value:unknown){return match(value){when key:1;default:0;}}}
+service S26 {static readonly key="indexed/Case2626";value:number};export class Host26<Box extends {key:typeof S26}> {test26(key:Box["key"],value:unknown){return match(value){when key():1;default:0;}}}
+service S30 {static readonly key="indexed/New30";value:number};export function test30<Box extends {key:typeof S30}>(key:Box["key"]){return new key()}
+service S31 {static readonly key="indexed/Extends31";value:number};export function test31<Box extends {key:typeof S31}>(key:Box["key"]){class Child extends key{};return Child}
