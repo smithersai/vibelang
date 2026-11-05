@@ -26,6 +26,8 @@ effect function main() {
 
 Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns its string. Pass that Effect directly to `retry`, `timeout`, or another Effect function. Use `effect { ... }` to build an Effect from several statements. Plain and `async` functions keep their TypeScript meaning. `await` waits for Promises in `async` functions. Generic inference for an implementation built inside `Effect.gen` also preserves the requirements inferred by TypeScript 5.9.3: binding a function that pipes a union of Effects to a local `const` retains the same requirements as writing it directly in the returned object.
 
+A direct `try` call whose return type is `any` contributes `unknown` error and requirement channels, just like storing that result and trying the value. Give a dynamic call a precise `Effect.Effect<A, E, R>` return type when those channels are known.
+
 A plain function's written return type checks the whole value it returns. For `function make(value: string): { type: "dataUrl"; value: string }!unknown { return Effect.succeed({ type: "dataUrl", value }) }`, the return expression is typed by the full `Effect`, preserving `"dataUrl"` as a literal, as in TypeScript. An `effect` function's body instead returns the `Effect`'s success value.
 
 Choose one function kind: `effect` returns an Effect and `async` returns a Promise. Combining them in either order, including on arrows, methods and blocks, reports `EK0105`. The editor can remove either modifier from a function; for a block it removes `async` and keeps `effect { ... }`. `vibelang --fix` removes `effect` from functions to preserve the native `Promise` API previously emitted for accepted mixed declarations and methods; for blocks it removes `async`.

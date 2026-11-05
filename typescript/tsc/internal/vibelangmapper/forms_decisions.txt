@@ -7677,6 +7677,7 @@ typescript/vibelang/cases/try-all-settled-literal-map/main.vibe:27:23 lambda cho
 typescript/vibelang/cases/try-all-settled-literal-map/main.vibe:31:36 lambda choice fallback
 typescript/vibelang/cases/try-all-settled-literal-map/main.vibe:42:83 lambda plain fallback
 typescript/vibelang/cases/try-all-settled-literal-map/main.vibe:6:30 lambda plain table
+typescript/vibelang/cases/try-any-channel-identity/main.vibe:5:21 lambda plain table
 typescript/vibelang/cases/try-assignment-catch-if/main.vibe:22:7 byname program table
 typescript/vibelang/cases/try-assignment-catch-if/main.vibe:23:7 lambda plain table
 typescript/vibelang/cases/try-assignment-catch-if/main.vibe:24:7 lambda effectFn keyword

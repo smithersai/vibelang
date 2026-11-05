@@ -1,0 +1,16 @@
+// expect-result: 7
+declare function input(): any
+
+export function native() {
+  return Effect.gen(function* () { return yield* input() })
+}
+
+export effect function actual() { return try input() }
+
+const forward: typeof native = actual
+const backward: typeof actual = native
+void forward
+void backward
+
+function dynamic(): any { return Effect.succeed(7) }
+export effect function main() { return try dynamic() }

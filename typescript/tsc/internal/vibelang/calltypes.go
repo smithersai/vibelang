@@ -111,6 +111,14 @@ func triedResult(c *checker.Checker, call *ast.Node, t *checker.Type) *checker.T
 	if !triedFlag(call) || t == nil || isEffectType(c, t) {
 		return t
 	}
+	// An unchecked delegation has the same channels as native yield* any.
+	// Model its result before reading channels, as the stored-value $try
+	// identity already does; parentheses must not change the contract.
+	if t.Flags()&checker.TypeFlagsAny != 0 {
+		if effect := analyzerFor(c).programEffectInterface(); effect != nil {
+			return c.NewTypeReference(effect, []*checker.Type{c.GetAnyType(), c.GetUnknownType(), c.GetUnknownType()})
+		}
+	}
 	if effect := effectOfValue(c, t); effect != nil {
 		return effect
 	}

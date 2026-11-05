@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
+
 
 - Plain JavaScript catch bindings typed as `any` retain native destructuring and defaults; legacy untagged catch filters keep their existing diagnostic.
 
@@ -193,6 +195,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| A direct `try f()` with `f(): any` inferred no errors or requirements | Its channels are `unknown`, as for native `yield*`. Declare the actual `Effect.Effect<A, E, R>` return type when known. |
 | A service type guard or assertion result captures an enclosing generic type | `EK3005`: choose a concrete predicate result or a member-local generic operation independent of the enclosing type; this contract choice requires a manual repair. |
 | A callable service contract whose explicit `this` parameter captures an enclosing generic type | `EK3005`: use a concrete receiver or a member-local generic operation independent of the enclosing type. Choosing that contract needs a manual repair. |
 | A `private` or `protected` constructor in `error` or `schema error` | Run `vibelang --fix` to retain it in an Effect TypeScript class, preserving constructor visibility and tag matching. |
