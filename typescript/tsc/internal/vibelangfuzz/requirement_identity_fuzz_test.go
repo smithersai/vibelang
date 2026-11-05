@@ -39,7 +39,11 @@ func requirementIdentityProject(key string, data []byte) (map[string]string, str
 	ext := []string{".js", ".vibe"}[int(b(2))%2]
 	head := fmt.Sprintf("import {%s as %s} from \"./dep%s\";\n", exported, alias, ext)
 	body, requirement := "(try "+alias+").value", alias
-	files := map[string]string{"dep.vibe": "export service " + exported + " { value: number }\n"}
+	// Stable written keys keep unrelated key-freezing passes out of this oracle.
+	declaration := func(visibility, role string) string {
+		return fmt.Sprintf("%sservice %s { static readonly key = %q; value: number }\n", visibility, exported, "requirements/"+role)
+	}
+	files := map[string]string{"dep.vibe": declaration("export ", "dep")}
 	switch key {
 	case "namespace":
 		head = fmt.Sprintf("import * as %s from \"./dep%s\";\ntype %s = any;\n", alias, ext, exported)
@@ -48,18 +52,18 @@ func requirementIdentityProject(key string, data []byte) (map[string]string, str
 	case "collision":
 		head += "type " + exported + " = " + []string{"any", "unknown", "object"}[int(b(3))%3] + ";\n"
 	case "two-services":
-		files["other.vibe"] = files["dep.vibe"]
+		files["other.vibe"] = declaration("export ", "other")
 		head += fmt.Sprintf("import {%s as Second} from \"./other%s\";\ntype %s = any;\n", exported, ext, exported)
 		body += " + (try Second).value"
 		requirement = "(" + alias + " | Second)"
 	case "private":
-		files["dep.vibe"] = "service " + exported + " { value: number }\nexport const read = effect () => (try " + exported + ").value\n"
+		files["dep.vibe"] = declaration("", "dep") + "export const read = effect () => (try " + exported + ").value\n"
 		head = fmt.Sprintf("import {read} from \"./dep%s\";\ntype %s = any;\n", ext, exported)
 		body, requirement = "try read()", ""
 	case "generic":
 		head, body, requirement = "", "try p", "R"
 	case "local":
-		head, body, requirement = "service "+exported+" {value: number}\n", "(try "+exported+").value", exported
+		head, body, requirement = declaration("", "local"), "(try "+exported+").value", exported
 	}
 	params, generics := "", ""
 	if key == "generic" {
