@@ -1781,3 +1781,5 @@ The `//:emission-snapshots` target includes the pinned negation-pattern declarat
 The `//:appendix-oracles` target runs the Appendix B probe, quick-fix and stock-TypeScript twin controls. The chapter 4 reference-oracle controls run in `//:release`. Their test-runner catalog entries must match the commands that execute them.
 
 Give services explicit keys in isolated migration fixtures when the service-key repair is outside the assertion being tested. Keep exact source comparisons so an unrelated repair cannot obscure the callback or requirement migration under test.
+
+The cached-default oracle in `//:appendix-oracles` follows VIP-9's preserving native-class migration. It compares exact repaired source, recompiles its type reads, checks shared cached value identity and mutation visibility, and repeats those observations across generated field names and initial values.

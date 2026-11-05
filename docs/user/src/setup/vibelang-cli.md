@@ -45,6 +45,8 @@ A service needs a stable identity during migration. For a standalone source file
 
 For a local service with a cached `static readonly default`, `--fix` writes the native `Context.Service` class while keeping the field, key and reads. It preserves eager initialization and missing-provider failure. Exported keys, commented service bodies and keys that also declare `defaultValue` require a manual native class migration.
 
+The cached-default repair retains eager evaluation, the same object on repeated reads, mutable shape members and type-level reads of `default`. Replacing the field with a `Context.Reference` factory changes initialization and missing-provider behavior; choose that redesign explicitly rather than expecting `--fix` to introduce it.
+
 ### Inspect or initialize configuration
 
 - `vibelang --init` creates TypeScript's generic `tsconfig.json`. For an ESM project, set `"type": "module"` in `package.json`; then adapt `include` and the output options as above. The initializer does not create VibeLang's package setup.

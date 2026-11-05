@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import {test} from "node:test"
 import {mkdtempSync,writeFileSync,readFileSync,rmSync,mkdirSync,cpSync,existsSync,symlinkSync} from "node:fs"
 import {join} from "node:path"
-import {fileURLToPath} from "node:url"
+import {fileURLToPath,pathToFileURL} from "node:url"
 import {createRequire} from "node:module"
 import {spawnSync} from "node:child_process"
 const require=createRequire(new URL("../../packages/runtime/package.json",import.meta.url))
@@ -29,7 +29,13 @@ function fixture(source,body,severities={EK4833:"off"}){
    assert.notEqual(r.status,null,JSON.stringify({error:r.error?.message,signal:r.signal}))
    return {status:r.status,text:r.stdout+r.stderr}
   }
-  body({run,source:()=>readFileSync(join(root,"main.vibe"),"utf8"),emit:()=>readFileSync(join(root,"out/main.js"),"utf8")})
+  const observe=expression=>{
+   const script="import * as M from "+JSON.stringify(pathToFileURL(join(root,"out/main.js")).href)+"; "+expression
+   const r=spawnSync(process.execPath,["--input-type=module","-e",script],{cwd:root,encoding:"utf8",timeout:60000})
+   assert.equal(r.status,0,r.stdout+r.stderr)
+   return JSON.parse(r.stdout)
+  }
+  body({run,observe,source:()=>readFileSync(join(root,"main.vibe"),"utf8"),emit:()=>readFileSync(join(root,"out/main.js"),"utf8")})
  }finally{rmSync(root,{recursive:true,force:true})}
 }
 
@@ -94,18 +100,31 @@ test("abstract service migration retains members",()=>{
  assert.equal(generated,8)
 })
 
-// docs/design/src/900-appendices.md#df9984aa155ddffd — Chapter 900: defaultValue migration rewrites value and type reads.
-test("defaultValue migration rewrites value and type reads",()=>{
+// VIP-9 and Chapter 007 require cached defaults to retain native service semantics.
+const cachedDefaultMigrationRule = "Retain the original key, eager initialization, cached value identity, field and type reads, mutable shape members and missing-provider failure"
 
- const before='service Flags { static readonly key = "vip9/Flags"; static readonly default: Flags.Shape = { enabled: true }; enabled: boolean }\nexport type Value = typeof Flags.default\nexport type Indexed = (typeof Flags)["default"]\nexport type Enabled = (typeof Flags.default)["enabled"]\nexport type Deep = typeof Flags.default.enabled\nexport const value = Flags.default\nexport const element = Flags["default"]\n'
- const after='service Flags { static readonly key = "vip9/Flags"; static readonly defaultValue: () => Flags.Shape = () => ({ enabled: true }); enabled: boolean }\nexport type Value = ReturnType<typeof Flags.defaultValue>\nexport type Indexed = ReturnType<(typeof Flags)["defaultValue"]>\nexport type Enabled = (ReturnType<typeof Flags.defaultValue>)["enabled"]\nexport type Deep = ReturnType<typeof Flags.defaultValue>["enabled"]\nexport const value = Flags.defaultValue()\nexport const element = Flags["defaultValue"]()\n'
- fixture(before,({run,source})=>{
+function checkCachedDefaultMigration(field="enabled",initial=true) {
+ const spec=readFileSync(new URL("../../docs/design/vips/0009-service-declarations.md",import.meta.url),"utf8")
+ assert.ok(spec.includes(cachedDefaultMigrationRule),"VIP-9 cached default preservation rule")
+ const before="service Flags { static readonly key = \"vip9/Flags\"; static readonly default: Flags.Shape = { enabled: true }; enabled: boolean }\nexport type Value = typeof Flags.default\nexport type Indexed = (typeof Flags)[\"default\"]\nexport type Enabled = (typeof Flags.default)[\"enabled\"]\nexport type Deep = typeof Flags.default.enabled\nexport const value = Flags.default\nexport const element = Flags[\"default\"]\n"
+ const after="import { Context as $legacyServiceContext } from \"effect\"\nimport { $global as $legacyServiceInit } from \"vibelang-runtime\"\nvoid $legacyServiceInit\nclass Flags extends $legacyServiceContext.Service<Flags, $legacyServiceContext.Service.Shape<typeof $legacyServiceShape>>()(\"vip9/Flags\") { static readonly default: $legacyServiceContext.Service.Shape<typeof $legacyServiceShape> = { enabled: true };\n}\nservice $legacyServiceShape {static readonly key = \"vip9/Flags/shape/$legacyServiceShape\";\n enabled: boolean\n}\n\nexport type Value = typeof Flags.default\nexport type Indexed = (typeof Flags)[\"default\"]\nexport type Enabled = (typeof Flags.default)[\"enabled\"]\nexport type Deep = typeof Flags.default.enabled\nexport const value = Flags.default\nexport const element = Flags[\"default\"]\n"
+ const input=before.replaceAll("enabled",field).replace("= { "+field+": true }","= { "+field+": "+initial+" }")
+ const expected=after.replaceAll("enabled",field).replace("= { "+field+": true }","= { "+field+": "+initial+" }")
+ fixture(input,({run,source,observe})=>{
   const r=run();assert.equal((r.text.match(/EK4855:/g)||[]).length,1,r.text)
   const fixed=run("--fix");assert.equal(fixed.status,0,fixed.text)
-  assert.equal(source(),after)
+  assert.equal(source(),expected)
   const checked=run();assert.equal(checked.status,0,checked.text)
+  assert.deepEqual(observe("const same=M.value===M.element; const initial=M.value."+field+"; M.value."+field+"=!initial; console.log(JSON.stringify({same,initial,changed:M.element."+field+"}))"),{same:true,initial,changed:!initial})
+  run("--fix");assert.equal(source(),expected)
  })
+}
 
+test("cached default migration retains value identity and type reads",()=>{
+ checkCachedDefaultMigration()
+})
+test("cached default preservation covers field names and initial values",()=>{
+ fc.assert(fc.property(fc.constantFrom("enabled","ready","active"),fc.boolean(),checkCachedDefaultMigration),{seed:9004855,numRuns:6})
 })
 
 // docs/design/src/900-appendices.md#f805da7f3c8a6844 — Chapter 900: Option.match advisory names the Option API.
