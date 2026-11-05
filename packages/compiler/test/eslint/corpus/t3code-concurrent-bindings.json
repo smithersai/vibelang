@@ -1,0 +1,9 @@
+{
+  "key": "eslint:no-unreachable:for-concurrent-binding",
+  "rule": "linters, Knip, bundlers and test runners read `.vibe`",
+  "sources": [
+    "export const f = effect { for concurrent (const n of [1]) { try Console.log(n) } }",
+    "export const f = effect { for concurrent(2) (const n of [1]) { try Console.log(n) } }",
+    "export const f = effect { for concurrent (const [key, value] of entries) { use(key, value) } }"
+  ]
+}

@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Bundlers could write relocated declarations under an incorrect nested path; loader compilation now preserves the configured declaration root and source maps.
 - The TypeScript mapper could reject ordinary error declarations because it treated generated matcher registration as authored syntax; valid error members now project normally.
 - Layer repair examples used unsupported static service calls; they now look up the service before invoking its member.
+- ESLint reported valid `for concurrent` bindings as unreachable code. It now preserves their scope without false `no-unreachable` errors, while still reporting unreachable statements in the source.
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
 - Tagged match migration examples included an unnecessary fallback after covering every tag; their output now reflects the current coverage rule.

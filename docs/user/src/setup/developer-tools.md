@@ -188,6 +188,10 @@ passed as the program argument of `Effect.catchCause` is not mistaken for a
 handler. Captured names, local variables and control flow inside the block
 still receive their normal checks.
 
+Concurrent loops retain their iteration bindings and lexical scopes in the
+lint tree. `no-unreachable` checks written control flow inside and after
+`for concurrent` without reporting the compiler's loop-head bookkeeping.
+
 ## Oxlint
 
 ![Oxlint on .vibe files](/videos/eco-lint-oxlint.mp4)

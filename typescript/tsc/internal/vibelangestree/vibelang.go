@@ -127,6 +127,9 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 				set("right", c.convertChild(binary.Right, n)), true
 		}
 	case ast.KindLabeledStatement:
+		if result := c.concurrentHead(n); result != nil {
+			return result, true
+		}
 		// Match arms leave a generated block with a labeled break. A single
 		// default case keeps that exit in ESLint's control-flow graph without
 		// exposing a label the author did not write.
@@ -394,6 +397,24 @@ func (c *converter) concurrentStatement(n *ast.Node) *obj {
 		set("iterable", c.convertChild(args[0], expression)).
 		set("concurrency", concurrency).
 		set("body", c.convertChild(args[2], expression))
+}
+
+// concurrentHead keeps the lexical cells that shadow outer names in the
+// iterable, without exposing the generated jump that leaves them uninitialized.
+// That jump is runtime bookkeeping, not unreachable code in the source.
+func (c *converter) concurrentHead(n *ast.Node) *obj {
+	labeled := n.AsLabeledStatement()
+	if !synthesized(labeled.Label) || !strings.HasPrefix(labeled.Label.Text(), "$concurrentHead") || labeled.Statement.Kind != ast.KindBlock {
+		return nil
+	}
+	var statements []*ast.Node
+	for _, statement := range labeled.Statement.Statements() {
+		if statement.Kind == ast.KindBreakStatement && isSynthesizedIdentifier(statement.AsBreakStatement().Label, labeled.Label.Text()) {
+			continue
+		}
+		statements = append(statements, statement)
+	}
+	return c.node(n, "BlockStatement").set("body", c.convertBodyExpressions(statements, labeled.Statement, n))
 }
 
 // isProgramArrow reports whether n is an arrow function the parser wrote

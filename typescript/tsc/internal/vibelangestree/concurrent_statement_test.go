@@ -49,3 +49,30 @@ func TestSourceConcurrentNamedCallStaysCall(t *testing.T) {
 		}
 	}
 }
+
+// The source head has a lexical scope, but its generated TDZ-cell exit must
+// not make no-unreachable report the source binding as dead code.
+func TestConcurrentHeadHasNoGeneratedExit(t *testing.T) {
+	for _, limit := range []string{"", "(2)", "(limit(1))"} {
+		for _, binding := range []string{"const n", "let n", "const {n}", "const [n]"} {
+			text := "effect function f() { for concurrent" + limit + " (" + binding + " of items(() => n)) { use(n) } after() }"
+			forms, cells := 0, 0
+			for _, node := range nodes(parse(t, "concurrent.vibe", text)) {
+				switch node["type"] {
+				case "BreakStatement", "SwitchStatement":
+					t.Errorf("unwritten control-flow exit in %s: %v", text, node)
+				case "VibeForConcurrentStatement":
+					forms++
+				case "VariableDeclarator":
+					id, _ := node["id"].(map[string]any)
+					if id["name"] == "n" && id["synthesized"] == true && node["init"] == nil {
+						cells++
+					}
+				}
+			}
+			if forms != 1 || cells != 1 {
+				t.Errorf("lost source loop or head scope: forms=%d cells=%d: %s", forms, cells, text)
+			}
+		}
+	}
+}
