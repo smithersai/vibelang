@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Plain JavaScript catch bindings typed as `any` retain native destructuring and defaults; legacy untagged catch filters keep their existing diagnostic.
+
 - The TypeScript mapper could report an obsolete implicit-execution error for a catch outside effect code. It now reports the same catch-boundary error and keyword location as the native compiler.
 
 - The diagnostic guide omitted the replacement for a retired constructor error; it now explains the inheritance diagnostic and native class rules.

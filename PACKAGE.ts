@@ -1184,6 +1184,12 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "15m"
   ),
+  "native-and-legacy-catch-bindings": goVibelang(
+    "Plain catch bindings retain native behavior while existing legacy diagnostic witnesses keep their exact locations.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -short -p 8 -count=1 -timeout=10m -run '^(TestCatchBindingAnnotationKindsQuoted|TestNativeAnyCatchBindingTwin|FuzzCatchBindingAnnotationKinds)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/diagnostic-example-locations.mjs EK2105 EK2112`,
+    [Tsc["vibelangfuzz-files"], Packages["compiler-native"]],
+    "15m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

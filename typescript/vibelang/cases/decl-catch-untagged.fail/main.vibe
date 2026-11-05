@@ -9,3 +9,9 @@ export effect function attempt() {
   }
 }
 // Chapter 900: EK2105 diagnostic - spec-rule: docs/design/src/900-appendices.md#2ad16cbec46d7848
+
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The legacy typed catch still warns; its native replacement destructures an any binding without a typed failure filter.
+export function readNativeCode(source: { readonly code: number }): number {
+  try { return source.code }
+  catch ({ code = 1 }: any) { return code }
+}

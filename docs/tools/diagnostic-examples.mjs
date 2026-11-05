@@ -116,7 +116,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2006` | error: legacy compiler compatibility — a legacy effect `finally` block contains an outward `return`, `break` or `continue`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay EK2006 [example: main.vibe:12:5](../../../typescript/vibelang/cases/ek2006-finally-jump.fail/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2105` | error: legacy compiler compatibility — a typed legacy `catch` clause names a union member without a literal `_tag`.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:7:39; also EK2112](../../../typescript/vibelang/cases/catch-typed-destructured-parameter.fail/main.vibe).
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:2:65; also EK2112](../../../typescript/vibelang/cases/decl-catch-untagged.fail/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2106` | error: legacy compiler compatibility — a legacy `catch` clause follows one that catches every failure.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:11:15; also EK2112](../../../typescript/vibelang/cases/decl-catch-order.fail/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2107` | error: legacy compiler compatibility — a legacy `handle` clause names a value that is not a control declaration.

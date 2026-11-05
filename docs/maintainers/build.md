@@ -2104,3 +2104,5 @@ The `//:bundler-service-receivers` check builds and runs the esbuild service exa
 The `//:module-implicit-run-retirement` check rejects the retired implicit-execution identity, preserves original explicit-execution and service-key failures, and exercises cold module, class and parameter calls with native type controls.
 
 This check also compares native and mapper `EK0504` keyword spans across module, function, class, parameter and callback contexts, with valid Effect-body controls.
+
+The `//:native-and-legacy-catch-bindings` target checks unchanged native catch bindings with stock TypeScript, full declaration identity and JavaScript equality, alongside legacy typed-filter rejection controls.
