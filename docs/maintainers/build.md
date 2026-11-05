@@ -203,7 +203,8 @@ differ.
 
 Each Go test invocation passes `-trimpath` explicitly, including every
 invocation in an `&&` chain. This keeps portable workers on the same
-package-cache key convention as local builds.
+package-cache key convention as local builds. New loader and migration
+checks follow the same convention; a later target addition must retain it.
 
 The build flag audit checks each target's shell declaration independently.
 An inline `GOFLAGS` assignment cannot supply flags to another target in the
