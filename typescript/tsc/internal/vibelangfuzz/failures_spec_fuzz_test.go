@@ -1004,6 +1004,68 @@ func failuresCases() []*failCase {
 		}
 	}
 
+	// Each written conditional branch contributes to the enclosing rethrow contract.
+	for _, callback := range []struct {
+		key, arg string
+		risky    bool
+	}{
+		{"first", "s.length > 0 ? risky : safe", true},
+		{"last", "s.length > 0 ? safe : risky", true},
+		{"parenthesized", "(s.length > 0 ? risky : safe)", true},
+		{"nested", "s.length > 0 ? risky : (s.length > 1 ? safe : risky)", true},
+		{"safe", "s.length > 0 ? safe : safe", false},
+		{"safe-nested", "s.length > 0 ? safe : (s.length > 1 ? safe : safe)", false},
+	} {
+		for _, callee := range []struct{ key, text string }{{"foreign", "invoke"}, {"array", "xs.map"}} {
+			for _, context := range []string{"effect", "plain", "wrapped"} {
+				host, body, code := "effect", callee.text+"("+callback.arg+")", 0
+				if context == "plain" {
+					host = "plain"
+				}
+				if context == "wrapped" {
+					body = "try Effect.try(()=>" + body + ")"
+				} else if callback.risky {
+					code = 403
+					if host == "plain" {
+						code = 401
+					}
+					body = "⟦" + body + "⟧"
+				}
+				lib := "/** @throws {RangeError} */\nexport declare function risky(n:number):number\n/** @throws {never} */\nexport declare function safe(n:number):number\n" +
+					"/** @throws {never}\n * @rethrows cb\n */\nexport declare function invoke(cb:(n:number)=>number):number\n"
+				add(&failCase{Name: "rethrows-conditional-" + callee.key + "-" + callback.key + "-" + context, Quote: q.rethrows, Host: host, Body: body, Lib: lib, Code: code, OneDiagnostic: code != 0})
+			}
+		}
+	}
+
+	// Nullable destinations and preceding fixed spreads keep conditional branches.
+	for _, shape := range []struct{ key, parameter, prefix, tail string }{
+		{"optional", "cb?: (n:number)=>number", "", "undefined"},
+		{"undefined", "cb:((n:number)=>number)|undefined", "", "undefined"},
+		{"null", "cb:((n:number)=>number)|null", "", "null"},
+		{"nullish-undefined", "cb:((n:number)=>number)|null|undefined", "", "undefined"},
+		{"nullish-null", "cb:((n:number)=>number)|null|undefined", "", "null"},
+		{"tuple-prefix", "a:number,b:number,cb:(n:number)=>number", "...[1,2] as const,", "safe"},
+	} {
+		for _, context := range []string{"effect", "plain", "wrapped"} {
+			host, body, code := "effect", "invoke("+shape.prefix+"(s.length>0?risky:"+shape.tail+"))", 0
+			if context == "plain" {
+				host = "plain"
+			}
+			if context == "wrapped" {
+				body = "try Effect.try(()=>" + body + ")"
+			} else {
+				code = 403
+				if host == "plain" {
+					code = 401
+				}
+				body = "⟦" + body + "⟧"
+			}
+			lib := "/** @throws {RangeError} */\nexport declare function risky(n:number):number\n/** @throws {never} */\nexport declare function safe(n:number):number\n/** @throws {never}\n * @rethrows cb\n */\nexport declare function invoke(" + shape.parameter + "):number\n"
+			add(&failCase{Name: "rethrows-conditional-combined-" + shape.key + "-" + context, Quote: q.rethrows, Host: host, Body: body, Lib: lib, Code: code, OneDiagnostic: code != 0})
+		}
+	}
+
 	// Written callback contracts retain their receiver substitutions at rethrowing calls.
 	for _, bound := range []struct {
 		key, text string

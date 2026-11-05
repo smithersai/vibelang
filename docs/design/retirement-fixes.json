@@ -57,6 +57,10 @@
       {
         "input": "typescript/vibelang/cases/rethrows-nullable-callback.fail",
         "output": "typescript/vibelang/cases/rethrows-nullable-callback-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/rethrows-conditional-callback.fail",
+        "output": "typescript/vibelang/cases/rethrows-conditional-callback-fixed-output"
       }
     ]
   },

@@ -99,37 +99,55 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 			end = len(arguments)
 		}
 		for position := index; position < end && position < len(arguments); position++ {
-			argument := arguments[position]
-			source := argument.source
-			if source == nil {
-				continue
-			}
-			target := c.GetTypeAtPosition(signature, position)
-			if target == nil || source == nil || !c.IsTypeAssignableTo(source, target) {
-				continue
-			}
-			for _, part := range source.Distributed() {
-				for _, given := range c.GetSignaturesOfType(part, checker.SignatureKindCall) {
-					compatible := false
-					for _, required := range c.GetSignaturesOfType(c.GetNonNullableType(target), checker.SignatureKindCall) {
-						if c.IsTypeAssignableTo(c.NewFunctionType(nil, []*checker.Signature{given}), c.NewFunctionType(nil, []*checker.Signature{required})) {
-							compatible = true
-							break
+			for _, argument := range rethrowsCallbackAlternatives(c, arguments[position]) {
+				source := argument.source
+				if source == nil {
+					continue
+				}
+				target := c.GetTypeAtPosition(signature, position)
+				if target == nil || source == nil || !c.IsTypeAssignableTo(source, target) {
+					continue
+				}
+				for _, part := range source.Distributed() {
+					for _, given := range c.GetSignaturesOfType(part, checker.SignatureKindCall) {
+						compatible := false
+						for _, required := range c.GetSignaturesOfType(c.GetNonNullableType(target), checker.SignatureKindCall) {
+							if c.IsTypeAssignableTo(c.NewFunctionType(nil, []*checker.Signature{given}), c.NewFunctionType(nil, []*checker.Signature{required})) {
+								compatible = true
+								break
+							}
 						}
+						if !compatible {
+							continue
+						}
+						owners := []*checker.Type{part}
+						if argument.expression != nil && callbackReceiverIsWritten(c, argument.expression, map[*ast.Symbol]bool{}) {
+							owners = append(foreignReferenceOwners(c, argument.expression), part)
+						}
+						thrown = append(thrown, knownCallbackSignatureThrows(c, given, owners...)...)
 					}
-					if !compatible {
-						continue
-					}
-					owners := []*checker.Type{part}
-					if argument.expression != nil && callbackReceiverIsWritten(c, argument.expression, map[*ast.Symbol]bool{}) {
-						owners = append(foreignReferenceOwners(c, argument.expression), part)
-					}
-					thrown = append(thrown, knownCallbackSignatureThrows(c, given, owners...)...)
 				}
 			}
 		}
 	}
 	return thrown
+}
+
+// A conditional can reduce to one structurally equivalent function type.
+// Retain each written branch before reading its thrown contract. Assertions
+// remain authoritative callable types; spread slots keep their existing types.
+func rethrowsCallbackAlternatives(c *checker.Checker, argument knownRethrowsArgument) []knownRethrowsArgument {
+	if argument.expression == nil {
+		return []knownRethrowsArgument{argument}
+	}
+	node := ast.SkipParentheses(argument.expression)
+	if ast.IsConditionalExpression(node) {
+		conditional := node.AsConditionalExpression()
+		left := knownRethrowsArgument{conditional.WhenTrue, c.GetTypeAtLocation(conditional.WhenTrue)}
+		right := knownRethrowsArgument{conditional.WhenFalse, c.GetTypeAtLocation(conditional.WhenFalse)}
+		return append(rethrowsCallbackAlternatives(c, left), rethrowsCallbackAlternatives(c, right)...)
+	}
+	return []knownRethrowsArgument{argument}
 }
 
 func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signature, owners ...*checker.Type) []*checker.Type {

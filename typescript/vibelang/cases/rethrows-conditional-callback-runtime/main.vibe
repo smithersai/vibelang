@@ -1,0 +1,7 @@
+// expect-result: [8,-1]
+import {invoke,risky,safe,defect} from "./lib.js"
+export function caught(flag:boolean):number {
+ try {return invoke(flag ? risky : safe)}
+ catch(error){return error===defect ? -1 : -2}
+}
+export effect function main(){return [caught(false),caught(true)]}

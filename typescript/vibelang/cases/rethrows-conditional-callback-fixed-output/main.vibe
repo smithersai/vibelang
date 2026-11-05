@@ -1,0 +1,4 @@
+// expect: EK0403
+import {invoke,risky,safe} from "./lib.js"
+export effect function first(flag:boolean){return try Effect.orDie(Effect.try({ try: () => invoke(flag ? risky : safe), catch: (e) => e }))}
+export effect function last(flag:boolean){return try Effect.orDie(Effect.try({ try: () => invoke(flag ? safe : risky), catch: (e) => e }))}

@@ -314,7 +314,10 @@ var shippedRethrows = map[string]string{
 // named by @rethrows.
 func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 	node := expr
-	for ast.IsParenthesizedExpression(node.Parent) {
+	conditional := false
+	for ast.IsParenthesizedExpression(node.Parent) ||
+		ast.IsConditionalExpression(node.Parent) && node != node.Parent.AsConditionalExpression().Condition {
+		conditional = conditional || ast.IsConditionalExpression(node.Parent)
 		node = node.Parent
 	}
 	call := node.Parent
@@ -348,19 +351,25 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 		index = len(parameters) - 1
 	}
 	parameter := declarationName(parameters[index])
+	rethrowAdmitted := true
+	if conditional {
+		// Relax a conditional value only when its written call contract is retained.
+		_, written := foreignThrows(c, expr)
+		rethrowAdmitted = written && len(knownRethrownTypes(c, call)) > 0
+	}
 	declFile := ast.GetSourceFileOfNode(decl)
 	if isLibFile(c, declFile) {
 		if ast.IsNewExpression(call) && parameter == "executor" {
 			return true // new Promise(executor): the executor admits unknown
 		}
 		owner := ownerOf(decl)
-		return owner != nil && shippedRethrows[declarationName(owner)] == parameter
+		return owner != nil && shippedRethrows[declarationName(owner)] == parameter && rethrowAdmitted
 	}
 	for _, host := range jsdocHosts(decl) {
 		for _, jsdoc := range host.JSDoc(nil) {
 			for _, m := range rethrowsTag.FindAllStringSubmatch(declFile.Text()[jsdoc.Pos():jsdoc.End()], -1) {
 				if m[1] == parameter {
-					return true
+					return rethrowAdmitted
 				}
 			}
 		}
