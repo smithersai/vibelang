@@ -16,8 +16,8 @@ export effect function main() {
     static [try key(ev, "static")]() { return 4 }
     set [try key(ev, "setter")](v: number) { }
   }
-  const c: any = new C()
-  const k: any = C
+  const c = new C() as { base: number; getter: number; method(): number; run(): number!! }
+  const k = C as unknown as { static(): number }
   const failed = try Effect.exit(effect { class D { [try Effect.fail("bad")]() { return 0 } }; return 1 })
   const runner: { run(): Effect.Effect<number> } = c
   const ran = try runner.run()
