@@ -15,8 +15,64 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Migration regressions for compiler provenance and preserved error channels stopped at missing repository setup. Their fixtures now initialize repositories and reach the intended checks.
 
+- The TypeScript interop guide lacked a throwing helper example; it now shows a named `module` body and its identifier import.
+
+- Contracted dynamic-call examples omitted the unknown-throw error; they now show `EK0403` beside the existing `EK4409` compatibility diagnostic.
+
+- Nullable `for try` examples mixed Stream and receiver errors; they now distinguish the Stream rejection `EK2004` from independent unknown-operand and nullable-receiver TypeScript errors.
+
+- Migrating an abstract plain error could replace its inherited matcher and turn boolean results into arrays; `vibelang --fix` now preserves the original matcher and its extraction results.
+
+- Whole-shape service examples omitted required bodies and failed with `EK0906`; the runtime and declaration examples now include empty bodies for primitive and callable shapes.
+
+- Compiler commands could bury late failure details behind successful test output; their summaries now retain the failure details and execution totals.
+
 - Formatting an Effect type assertion before `<` could fail with a missing `>` error; comparisons now retain their operator and type boundary.
+- The debugging recipe’s failure example used a forbidden throw in a plain callback; it now creates an explicit Effect defect and checks the original source location across varied line offsets.
+
+- Diagnostic references for legacy catches, declarations and mapper errors led to sections that did not name their codes; those sections now include the matching warning and repair guidance.
+- Migration receipts from installed compilers changed shape after saving or resuming. They now retain an explicit `null` compiler artifact and compare consistently across recovery.
+- Rollback coverage assumed every relocated declaration mirrored the config directory. It now follows TypeScript’s inferred, explicit and composite source roots while protecting unrelated sidecars.
+
+- Diagnostic verification could mistake an enabled legacy diagnostic for an unexpected warning; it now honors overrides in source comments and still rejects incorrect categories.
+- The cached-service-default migration example expected a lazy factory; its fixed twin now retains eager initialization, the cached static field and all value and type reads through an equivalent native class.
+
+- A service recovery example applied `try` after `catch` had returned its value. It now consumes that value directly; the error guide explains when an outer `try` is valid.
+
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
+
+- A module-export repair could change code inside a declined repair site; declined sites are now recorded before independent export edits, preserving their original bytes and report locations.
+
+- Migrating an unmarked function with a legacy service call could freeze inferred channels too early and refuse the repair; its marker, receiver and dependent calls now migrate together before channel inference is written.
+
+- Bun rename checks incorrectly expected an explicit `.ts` import to load a renamed `.vibe` module; cache coverage now uses a stable `.js` import and separately verifies the required `TS2307` rejection.
+
+- Fork migration examples compared VIP-only repairs with broader ordinary cleanup; they now repeat each selection separately while preserving the fork options.
+
+- Catch-binding examples used a retired statement catch inside effect functions; they now use plain functions and show how an explicit `do` block scopes a default binding.
+
+- The migration table recommended calling the `interrupt` and `yieldNow` Effect values as functions; it now shows `try interrupt` and `try yieldNow`.
+- The JSX throw-expression example used a retired statement catch; it now uses a catch expression while preserving the failure payload and lazy JSX evaluation.
+- The migrated Effect-function example expected an expanded parameter brand; its declaration check now preserves the written type alias, matching TypeScript.
+- Exhaustive-match examples expected an older error-matcher encoding; their output checks now retain the current matcher calls and verify every arm and extracted payload.
+- Producer cleanup examples still used retired `try` statements; they now register scope finalizers and check disposal order against native Effect streams.
+- The exported-service migration example expected cached defaults to become `Reference` fallbacks; it now checks the documented refusal and preserves every source and shadowed utility type.
+- Service member examples still called methods on a service key; they now look up the implementation explicitly and retain native Effect results, failures and call counts.
+- Language-service examples omitted the no-throw diagnostic for direct `JSON.parse` calls; their exact diagnostics now include `EK0403` alongside independently configured lint warnings.
+- Throw-expression checks still expected comma violations to be warnings; they now require the documented `EK1010` error and verify that parentheses preserve the thrown value.
+- Migration reference refresh could fail on a missing child configuration in an unrelated vendor project; missing configurations are now validated only when affected or required by the reference graph, before any outputs are deleted.
+- Migration test-edit checks stopped at missing compiler provenance in simulated conversions. Their integration fixtures now record provenance before conversion and exercise the protected-edit checks.
+
+- Mapper callback tests could erase effect block syntax while removing function markers; their negative controls now retain valid blocks and still require every unresolved host callback.
+
+- Abstract error repair tests lacked the import collision that blocked child constructors; keyed controls now include existing Effect imports in every repair mode.
+
+- Catch declaration checks could reject equivalent generated Effect imports; they now compare the same exact success, failure and requirement types through the resolved namespace alias.
+
+- Repair twin tests could reject correctly retained coverage comments; fixed witnesses now keep their source metadata, with comment association and repeat-run controls.
+- Node and Playwright could fail to import a migrated workspace package before its JavaScript was built; the Node preload now selects its `vibelang-source` target while retaining existing package conditions.
+
+- Unpublished changes could appear under a later release and make the compiler candidate look published. Release-history checks now use npm's recorded publication to keep pending fixes with the right release.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 
@@ -34,6 +90,63 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The empty-effect regression still expected the retired single-operation lowering; it now compares scheduling with native `Effect.gen` and checks cold construction and repeated execution.
 
+- The contributor command for reserved-key migration examples could time out after repeated compiler starts; it now batches independent variants, reports each stage and reruns when its shared helper changes.
+
+- Repeated sidecar repair checks could fail because they expected a legacy generator error on valid source; they now require a clean initial compile and keep checking source types, idempotence and overwrite protection.
+
+- The readonly upgrade guide lacked an ordinary TypeScript example; it now shows how written modifiers are preserved in interfaces, nested object types and optional properties.
+- A call signature in a service with a written shape could report `EK0902` twice; it now reports the rejected member once while retaining independent key and type errors.
+
+- The `.vibex` declaration example compared against a TypeScript callable without its nonthrowing contract; the twin now includes `@throws {never}` while preserving exact declaration and package-consumer checks.
+
+- The `arguments`-through-regions example omitted the resource-migration warning; it now retains `EK0801` as a warning alongside every `EK0107` error.
+
+- The tagged-data emission example expected repeated property reads; its output now records the shared match cache and cleanup used by both `match` and `is`, with unchanged results.
+
+- An Effect-type-default example called a service member on its key; it now looks up the implementation first and reports the intended missing-error and missing-service contract errors.
+
+- The stream countdown example used a retired `try/finally` statement; it now registers a finalizer in the producer scope and still cleans up when collection stops early.
+
+- The ordered-match example called `yieldNow` as a function; it now runs the Effect value directly and preserves its single subject evaluation.
+
+- The computed-class-key example erased local method types and reported throwing-call errors; it now retains those method contracts while checking the same evaluation order and failure result.
+
+- The catch-narrowing example returned a nested Effect without running it; it now runs that Effect explicitly and isolates the intended optional-call errors.
+
+- Dynamic-call examples omitted the required throwing-call error; they now show `EK0403` alongside the unrun-program diagnostic while preserving TypeScript errors for unresolved callees.
+
+- The regression suite treated correct catch-parameter binding diagnostics as known failures; it now checks `EK0705` directly across defaults, destructuring and computed keys.
+
+- Examples for redacted values, callback adapters, platform services, scope rollback, and schema helpers were still marked unavailable after support landed; they now compile and check their documented output as active examples.
+
+- Migration test failures could disappear from CI logs after successful file progress filled the live output limit; the reporter now reserves output for failures, aggregate progress and completion counts.
+
+- The interruption example called a removed global and failed to compile; it now calls `Effect.uninterruptible` and checks its result against the native Effect function.
+
+- Opening a new release section could invalidate the published notice that plain VibeLang code cannot throw; the notice now remains checked in the version that introduced it.
+
+- Declaration documentation could be checked against superseded matcher requirements; its authority check now follows the accepted rule that generated matchers stay out of published types.
+
+- The documentation check treated the current `for try` declaration-head error as a retired handler error; `EK2005` now requires documentation for its current meaning.
+
+- The diagnostic reference check reported parser and mapper codes as unregistered because it read only native messages; it now checks every compiler registration host and still rejects missing identities.
+
+- The compatibility-diagnostic reference check rejected documented layer, runner and service-call diagnostics after their identities moved; it now verifies the complete `EK92xx` block and each code’s meaning and severity.
+
+- Formatting the diagnostic registry could falsely invalidate the module-declaration error block; its check now reads Go registrations and still rejects missing codes or changed severities.
+
+- The parameter-default reference check mistook generated parser inventory text for a language rule; it now distinguishes validated implementation metadata while still rejecting obsolete lowering recipes in normative prose.
+
+- Publishing the retired-forms migration guide in isolation falsely reported valid relative links as missing; the publication check now includes their real pages and sidebar entries while still rejecting broken links.
+
+- Comparing generated matcher declarations could time out while repeatedly loading browser libraries for primitive-only classes; those comparisons now use the standard library their declarations need, retaining the same type and member checks.
+
+- API scale tests could hide why a comparison process stopped; failures now include the process error, signal, budgets and last comparison stage.
+
+- Reverting ordinary source files could fail when the migration toolchain was unavailable; reverts now load reference-build tools only when the project graph needs them.
+
+- Migration rejected JSX components in `.tsx` files; they now convert to `.vibex` with matching imports, declaration checks and revert support.
+
 - Mapper catch tests could assume ordinary functions ran Effect code; valid examples now mark their owners explicitly and retain ordinary-body rejection controls.
 
 - TypeScript checking of mapped iterable patterns could fail on a missing cache helper export; the checking prelude now exposes its runtime type.
@@ -50,6 +163,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Local-service declaration examples could report an unrelated missing-key error; they now supply an explicit key and explain that disabling declaration output does not remove that requirement.
 
+- Migrating `Option.match` with a generic program constructor could narrow its inferred result type; the repair now preserves the original callback instantiation and cold execution.
+
+- Mapper catch examples could fail by omitting their Effect boundary; the checks now use explicit effect scopes and retain the unmarked examples as boundary-error controls.
+
+- An `is` binding in a `for` head could make the TypeScript mapper reject the file with overlapping edits; it now projects the loop and emits its executable output with valid source mappings.
+
 - Native errors under Playwright could show generated JavaScript line numbers. Native frames now retain their source locations when a test runner uses a custom stack formatter.
 
 - Migration could spend minutes scanning generated modules with many comments. Source-path checks now mask comments in one pass while preserving their protection rules.
@@ -57,6 +176,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Parenthesized Effect types with a missing final slot could appear as unexplained grammar failures. The audit now reports the existing dangling-bang gap precisely.
 
 - Building the compiler’s shared support package failed with undefined helper names; standalone Go builds now resolve those definitions.
+
+- Bun tests that imported Rolldown or esbuild themselves could still fail on native source graphs; bundler preloads now route literal ESM imports through native adapters on supported Bun releases.
+
+- Node tests that created their own Rolldown or esbuild bundles could fail to parse native sources despite a runtime loader; opt-in bundler preloads now add native source support to those calls.
 
 - Bun builds could not find a literal `.ts` entry after it migrated to `.vibe`; the Bun adapter now follows the migrated source while preserving existing TypeScript and in-memory entries.
 
@@ -369,7 +492,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Early 0.0.11 experimental layer imports named `NodeServices`, `NodeCrypto` or `BrowserLocks` | Exports from `vibelang-runtime/experimental/platform-*` now start with `Experimental`: import `ExperimentalNodeServices`, `ExperimentalNodeCrypto` or `ExperimentalBrowserLocks`. Rename the other experimental layers the same way. Imports from Effect's `@effect/platform-*` packages keep their names. |
 | Both `import "vibelang/platform/node"` and `import "vibelang/platform/bun"` in one file | EK3206 rejects conflicting imports. Keep one platform import per file; use a separate entry file for each host. Repeating the same platform is allowed. |
 | A platform API in a hatch because Effect has no equivalent | Prefer the new `Experimental.FileSystem`, `Experimental.Crypto`, `Experimental.Process` or `Experimental.Locks` where covered. Their layers and platform limits are listed below; an uncovered API stays in TypeScript. |
-| `interrupt` alone as a statement | `EK4801`: it previously ran nothing. Choose `try interrupt()` explicitly when execution is intended, likewise `try yieldNow()` and other zero-argument program references; execution has no automatic quick fix. |
+| `interrupt` alone as a statement | `EK4801`: it previously ran nothing. Choose `try interrupt` explicitly when execution is intended, likewise `try yieldNow` and other Effect values; execution has no automatic quick fix. |
 | A bare native Effect value such as `interrupt` or `yieldNow` | Run it with `try interrupt` or `try yieldNow`; `vibelang --fix --fix-vip-only` rewrites `try interrupt()` and `try yieldNow()` that way. `vibelang --fix` also migrates bare `yieldNow(priority)`, `yieldNow()` and `interrupt()` factory calls, preserving held and returned cold Effects and evaluating an optional priority once. For new code, write `try Effect.yieldNowWith(priority)` for a number, or `try yieldNow` for the default priority. These are values; native functions such as `log` still take parentheses. |
 | `return x ?? throw c ? a : b` | EK1010: it previously parsed as `(x ?? throw c) ? a : b`, throwing only `c`. Write `return x ?? throw (c ? a : b)`. |
 | `throw cause` where `cause` is a `Cause`, as in `when Exit.Failure(let cause): throw cause` | It now fails with the Cause object itself as an expected failure, as `Effect.fail(cause)` does: `throw` fails with the value it is given (VIP-4). It previously rethrew every reason the cause held. To keep that, write `return Effect.failCause(cause)`, as Effect code does. |
