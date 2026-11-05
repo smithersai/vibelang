@@ -20,7 +20,8 @@ func checkServiceCallSignatures(c *checker.Checker, file *ast.SourceFile) {
 	visit = func(node *ast.Node) bool {
 		if ast.IsClassDeclaration(node) || ast.IsClassExpression(node) {
 			for _, member := range node.Members() {
-				if ast.IsCallSignatureDeclaration(member) {
+				// Whole-shape declarations own every non-reserved body member.
+				if ast.IsCallSignatureDeclaration(member) && serviceShape(node) == nil {
 					report(c, member, serviceCallSignatureDiagnostic)
 					cover(c, member)
 				}

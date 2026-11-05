@@ -10,7 +10,7 @@ import (
 func TestServiceGenericWithRejectedMembers(t *testing.T) {
 	for _, shape := range []string{"", ": Shape", ": number"} {
 		for _, member := range []string{
-			"[x: string]: unknown", "constructor() {}", "(): number",
+			"[x: string]: unknown", "constructor() {}", "(): number", "new(): number",
 			"get n() { return 1 }", "read() { return 1 }",
 		} {
 			for _, mutable := range []bool{false, true} {

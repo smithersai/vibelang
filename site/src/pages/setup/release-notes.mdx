@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
+
 - The legacy catch diagnostic example for `Cause` linked to code that had already been migrated. It now links to an executable original input that still demonstrates the warning.
 
 - The foreign-predicate repair regression expected a boolean bridge that lost narrowing; it now checks the captured narrowed value, unchanged helper declarations, repeatable fixes and equivalent defect results.
