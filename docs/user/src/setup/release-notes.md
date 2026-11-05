@@ -51,6 +51,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The readonly upgrade guide lacked an ordinary TypeScript example; it now shows how written modifiers are preserved in interfaces, nested object types and optional properties.
 - A call signature in a service with a written shape could report `EK0902` twice; it now reports the rejected member once while retaining independent key and type errors.
 
+- An Effect-type-default example called a service member on its key; it now looks up the implementation first and reports the intended missing-error and missing-service contract errors.
+
 - The stream countdown example used a retired `try/finally` statement; it now registers a finalizer in the producer scope and still cleans up when collection stops early.
 
 - The ordered-match example called `yieldNow` as a function; it now runs the Effect value directly and preserves its single subject evaluation.

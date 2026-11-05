@@ -16,7 +16,7 @@ const serviceRunHeadRequirementsQuote = "`Users` is the identifier, the type tha
 const serviceRunHeadCollisionQuote = "Class statics collide with member names"
 const serviceRunHeadTarget = "FuzzServiceRunHead"
 
-var serviceRunHeadForms = []string{"catch", "try", "pipe", "pipe-catch", "try-catch", "nested"}
+var serviceRunHeadForms = []string{"catch", "try", "pipe", "pipe-catch", "try-catch", "nested", "lookup-grouped"}
 
 func TestServiceRunHeadQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("005-services.md"), serviceRunHeadQuote) {
@@ -59,12 +59,13 @@ func FuzzServiceRunHead(f *testing.F) {
 		}
 		call := fmt.Sprintf("Audit.%s(%d)", member, n)
 		expression := map[string]string{
-			"catch":      call + " catch () => -1",
-			"try":        "try " + call,
-			"pipe":       "try (" + call + " |> Effect.map(%, (n) => n + 1))",
-			"pipe-catch": "(" + call + " |> Effect.map(%, (n) => n + 1)) catch () => -1",
-			"try-catch":  "(try " + call + ") catch () => -1",
-			"nested":     "(" + call + " catch () => -1) catch () => -2",
+			"catch":          call + " catch () => -1",
+			"try":            "try " + call,
+			"pipe":           "try (" + call + " |> Effect.map(%, (n) => n + 1))",
+			"pipe-catch":     "(" + call + " |> Effect.map(%, (n) => n + 1)) catch () => -1",
+			"try-catch":      "(try " + call + ") catch () => -1",
+			"nested":         "(" + call + " catch () => -1) catch () => -2",
+			"lookup-grouped": "try " + call,
 		}[key]
 		shape := fmt.Sprintf("%s(n: number): number!Refused", member)
 		if len(data) > 2 && data[2]%2 == 1 {
@@ -117,9 +118,12 @@ func FuzzServiceRunHead(f *testing.F) {
 		// establish correctness. A valid lookup must also compile and emit
 		// the implementation call while retaining Audit in its environment.
 		explicit := owner + fmt.Sprintf(" { const implementation = try Audit; return try implementation.%s(%d) }\n", member, n)
+		if key == "lookup-grouped" {
+			explicit = owner + fmt.Sprintf(" { return try (try Audit).%s(%d) }\n", member, n)
+		}
 		positiveFiles := map[string]string{"main.vibe": declaration + explicit}
 		if len(files) > 1 {
-			explicit = strings.ReplaceAll(explicit, "try Audit;", "try Services.Audit;")
+			explicit = strings.ReplaceAll(explicit, "try Audit", "try Services.Audit")
 			positiveFiles = map[string]string{"main.vibe": "import * as Services from \"./audit.vibe\"\n" + explicit, "audit.vibe": declaration}
 		}
 		positive, err := w.Compile(t.Context(), Project{Files: positiveFiles})
@@ -133,7 +137,7 @@ func FuzzServiceRunHead(f *testing.F) {
 		}
 		js, decl := positive.Outputs["out/main.js"], positive.Outputs["out/main.d.ts"]
 		compact := strings.Join(strings.Fields(js), "")
-		if js == "" || strings.Contains(compact, "Audit."+member+"(") || !strings.Contains(compact, "implementation."+member+"(") {
+		if js == "" || strings.Contains(compact, "Audit."+member+"(") || (key != "lookup-grouped" && !strings.Contains(compact, "implementation."+member+"(")) || (key == "lookup-grouped" && !strings.Contains(compact, ")."+member+"(")) {
 			Gap(t, serviceRunHeadTarget, "lookup/"+key+":"+member, "explicit lookup lost its implementation call:\n%s", js)
 		}
 		if !strings.Contains(decl, "Audit>") {
