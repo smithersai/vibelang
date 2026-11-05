@@ -402,3 +402,14 @@ including keyword and string-literal names. The lab models them separately
 from import specifiers, whose local names remain binding identifiers.
 A keyword-only export such as `export { try };` may have an unresolved-name
 error (`TS2304`); that does not remove its native grammar derivation.
+
+The expression branch of a native default export admits an object literal:
+`export default { value: 1 };`. Its lookahead excludes declaration heads,
+not the opening brace of an object expression. The lab derives object-valued
+defaults alongside grouped objects, arrays and arrow expressions, retaining
+ordinary malformed-property checks.
+
+Default function and class exports also retain their native declaration
+boundary, including anonymous declarations and a following statement on
+the same line. Their dedicated default-export branches have no expression
+statement terminator; ordinary default expressions keep theirs.

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-default-class-export\nexport default class { value = 1; }")

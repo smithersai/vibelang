@@ -70,6 +70,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-export-modifiers", "export export { } ;"},
 	{"native-type-exports", "type Value = number; export type { Value };"},
 	{"native-export-names", "type Value = number; export { try };"},
+	{"native-default-object-export", "export default { value: 1 };"},
+	{"native-default-class-export", "export default class { value = 1; }"},
 	{"native-optional-tuple", "type T = [string?, number?];"},
 	{"native-bitwise", "const n = a | b ^ c & d;"},
 	{"is-bitwise-continuation", "const b = x is > 1 & 2 + 3;"},

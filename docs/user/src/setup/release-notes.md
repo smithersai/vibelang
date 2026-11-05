@@ -183,6 +183,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Unused host namespace aliases such as `import NativeModule = WebAssembly.Module` | `vibelang --fix` removes already-erased aliases. Move a needed alias into a `.ts` adapter or use the injected Effect service. |
 
 ### Bugs fixed since 0.0.10
+- The grammar admission audit could mistake default exports containing objects, functions or classes for undefined syntax. It now derives these ordinary TypeScript forms.
 - The grammar admission audit could mistake keyword or string-literal export names for undefined syntax. It now derives native export names while preserving import binding restrictions.
 - The grammar admission audit could misreport valid type-only exports and trailing commas in named export clauses as undefined syntax. It now derives these ordinary TypeScript forms.
 - The grammar admission audit could misreport an invalid export declaration as accepted syntax. It now recognizes the compiler's existing modifier error while preserving valid exports and name errors as controls.
