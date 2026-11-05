@@ -176,8 +176,6 @@ func init() {
 // owner interrupts.
 func (g *Gen) fork(s *Scope, form forkForm, joined bool, child Expr) []Stmt {
 	g.Use(form.key)
-	g.UseEffect()
-	g.UseModule("Deferred", true)
 	if form.effect == "forkScoped" {
 		// fork.scoped adds Scope to R, so its fiber's parent runs in a
 		// helper that Effect.scoped closes (VIP-8: Effect resources use
@@ -198,6 +196,8 @@ func (g *Gen) fork(s *Scope, form forkForm, joined bool, child Expr) []Stmt {
 }
 
 func (g *Gen) forkBody(s *Scope, form forkForm, joined bool, child Expr) []Stmt {
+	g.UseEffect()
+	g.UseModule("Deferred", true)
 	var out []Stmt
 	var scope string
 	if form.effect == "forkIn" {

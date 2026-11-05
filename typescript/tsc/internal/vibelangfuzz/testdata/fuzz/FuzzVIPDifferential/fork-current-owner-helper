@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip17.fork-outlives-function\x00")
