@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import assert from "node:assert/strict"
 import { readFileSync, existsSync, mkdtempSync, mkdirSync, symlinkSync, writeFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -224,6 +225,8 @@ test("foldkit-117: compile retains the journaled callback pipe's actual advisory
   const target = join(root, "repo"), run = join(root, "run")
   try {
     mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
+    writeFileSync(join(target, ".gitignore"), "node_modules/\n")
+    execFileSync("jj", ["git", "init"], { cwd: target, stdio: "pipe" })
     symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
     symlinkSync(dirname(require.resolve("effect/package.json")), join(target, "node_modules/effect"))
     symlinkSync(fileURLToPath(new URL("../../../../packages/runtime", import.meta.url)), join(target, "node_modules/vibelang-runtime"))

@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -27,6 +28,8 @@ test("foldkit-29: compile permits the written original global Error channel", na
   const run = join(root, "run")
   try {
     mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
+    writeFileSync(join(target, ".gitignore"), "node_modules/\n")
+    execFileSync("jj", ["git", "init"], { cwd: target, stdio: "pipe" })
     symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
     writeJson(join(target, "package.json"), { type: "module" })
     writeJson(join(target, "tsconfig.json"), { include: ["main.vibe"] })
@@ -216,6 +219,8 @@ test("compile reads the codemod journal's original source before falling back to
     const target = join(root, "repo"), run = join(root, "run")
     try {
       mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
+      writeFileSync(join(target, ".gitignore"), "node_modules/\n")
+      execFileSync("jj", ["git", "init"], { cwd: target, stdio: "pipe" })
       symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
       writeJson(join(target, "package.json"), { type: "module" })
       writeJson(join(target, "tsconfig.json"), { include: ["main.vibe"] })

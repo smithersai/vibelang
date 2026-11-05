@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -16,6 +17,7 @@ const revision = corpus.revision
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "migration-compiler-artifact-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
+  execFileSync("jj", ["git", "init"], { cwd: root, stdio: "pipe" })
   const tool = join(root, "tool"), p = paths(join(root, "run"))
   mkdirSync(tool); mkdirSync(p.run)
   const manifest = { commit: revision, compiler: "native", packages: {} }
