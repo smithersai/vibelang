@@ -48,7 +48,7 @@ export effect function seat(ids: ReadonlyArray<string>) {
     const seats = try Seats
     const first = fork seats.take("a")
     const second = fork seats.take("b")
-    const pair = join [first, second]
+    const pair = [join first, join second]
     const third = fork seats.take("c")
     const one = join third
     try detach(seats.take("d"))

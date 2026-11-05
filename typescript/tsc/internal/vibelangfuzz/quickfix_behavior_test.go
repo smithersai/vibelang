@@ -39,6 +39,7 @@ func quickfixBehaviorSeeds() map[int32][]Seed {
 		byName[seed.Name] = seed
 	}
 	for code, name := range map[int32]string{
+		1704: "join-collection-legacy.fail",
 		4830: "tsforms-errors", 4831: "tsforms-services", 4832: "tsforms-schemas",
 		4833: "tsforms-types", 4834: "tsforms-direct", 4835: "tsforms-catch",
 		4836: "tsforms-blocks", 4837: "tsforms-errors", 4839: "tsforms-option-match-api",

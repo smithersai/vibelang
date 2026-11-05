@@ -196,5 +196,14 @@
         "output": "typescript/vibelang/cases/callback-satisfies-contract-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK1704",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/join-collection-legacy.fail",
+        "output": "typescript/vibelang/cases/join-collection-legacy-fixed-output"
+      }
+    ]
   }
 ]

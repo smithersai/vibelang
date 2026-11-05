@@ -44,7 +44,7 @@ var (
 	// EK4610: await on a Deferred (D226). {0} is the operand.
 	EK4610 = message(4610, warningCategory, "await does not wait for this Deferred; use await runPromise(Deferred.await({0})).")
 	// EK1704: join on something that is not a Fiber or an array or object of them. {0} is the operand's type.
-	EK1704 = message(1704, errorCategory, "join takes a Fiber or an array or object of fibers, but this is {0}.")
+	EK1704 = message(1704, errorCategory, "join takes a Fiber, but this is {0}.")
 	// EK4612: join inside a hatch body, which is plain TypeScript.
 	EK4612 = message(4612, errorCategory, "join is VibeLang syntax, but a hatch body is plain TypeScript.")
 )
@@ -247,7 +247,7 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 }
 
 // checkJoin reports a join that is in a hatch body or whose operand is not a
-// Fiber or an array or object of fibers.
+// Fiber.
 func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	keyword := scanner.GetRangeOfTokenAtPosition(file, call.Pos())
 	if inHatch(call) {
@@ -267,7 +267,7 @@ func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 			t.Flags()&(checker.TypeFlagsNull|checker.TypeFlagsUndefined) != 0) {
 		return
 	}
-	if t == nil || isJoinable(c, t, 0) || analyzerFor(c).joinsRejectedFork(operand) {
+	if t == nil || isJoinable(c, t, 1) || analyzerFor(c).joinsRejectedFork(operand) {
 		return
 	}
 	d := reportAt(c, file, keyword, EK1704, c.TypeToString(t))
@@ -390,6 +390,13 @@ var awaitFiberFix = &ls.CodeFixProvider{
 				return nil, nil
 			}
 			operand := call.Arguments()[0]
+			if rewrite := legacyCollectionRewrite(c, fix.SourceFile, call, operand); rewrite.fixable() {
+				var changes []*lsproto.TextEdit
+				for _, edit := range rewrite.edits {
+					changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
+				}
+				return []*ls.CodeAction{{Description: "Join the fibers in the collection", Changes: changes}}, nil
+			}
 			if ast.IsCallExpression(ast.SkipParentheses(operand)) {
 				// Parentheses also handle contextual keyword callees such as get.
 				operandText := strings.TrimSpace(text[fix.Span.End():operand.End()])
@@ -657,7 +664,7 @@ func fiberFormQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 		return "await", paragraph + " In VibeLang code this is EK4609 or EK4610: join a fiber with join, and wait for a Deferred with d.await()."
 	case "$join":
 		value := c.GetTypeAtLocation(call)
-		paragraph := "Joins the fiber, or every fiber of the array or object, keeping the shape (Fiber.join), and returns `" + c.TypeToStringEx(value, call, hoverTypeFlags, nil) + "`. A failure interrupts the rest."
+		paragraph := "Runs Fiber.join on the fiber and returns `" + c.TypeToStringEx(value, call, hoverTypeFlags, nil) + "`, or propagates its failure."
 		if signature := c.GetResolvedSignature(call); signature != nil {
 			if errors := channelType(c, c.GetReturnTypeOfSignature(signature), "_E"); errors != nil && errors.Flags()&checker.TypeFlagsNever == 0 {
 				paragraph += " Its failures propagate: `" + c.TypeToStringEx(errors, call, hoverTypeFlags, nil) + "`."

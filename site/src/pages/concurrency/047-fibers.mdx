@@ -37,6 +37,8 @@ An operand that is not assignable to `Fiber.Fiber<any, any>` reports `EK1704`. A
 
 When `join` receives a `Deferred`, `Promise` or `Effect`, its diagnostic shows an executable alternative: `try Deferred.await(value)`, `try Effect.tryPromise(() => value)` or `try value`. Calling an Effect factory constructs its program; `try` runs it. An incomplete marker does not establish a valid `Effect` or `Deferred` operation.
 
+A collection of fibers is not itself a fiber: `join [first, second]` and `join { first, second }` report `EK1704`. For previously accepted collection joins, `vibelang --fix` writes an explicit compatibility helper that preserves operand evaluation, collection reads, result shape and interruption of the remaining fibers after a failure. It does not replace that cleanup policy with a different collection operation.
+
 With `strictNullChecks` disabled, `null` and `undefined` pass the operand's TypeScript assignability check; `void` remains invalid.
 
 A misplaced `fork` or `join` operator reports `EK1701`. Independent TypeScript errors in their operands, including wrong arguments and generic constraints, retain their own diagnostics.

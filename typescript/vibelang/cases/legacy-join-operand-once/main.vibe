@@ -1,0 +1,89 @@
+// expect-result: {"values":[7],"events":["operand","joined"]}
+
+module $LegacyJoin {
+import { Deferred, Effect, Fiber } from "effect"
+type IsFiber<T> = T extends Fiber.Fiber<infer _A, infer _E> ? true : false
+type JoinedLeaf<T> = T extends Fiber.Fiber<infer A, infer _E> ? A : never
+type JoinedLeafError<T> = T extends Fiber.Fiber<infer _A, infer E> ? E : never
+type NotJoinable = Effect.Effect<any, any, any> | Deferred.Deferred<any, any> | PromiseLike<any> | ((...args: never) => unknown)
+
+/**
+ * The value `join x` returns: a Fiber's value, or an array or object of them
+ * with the same shape. never for an operand join cannot join (EK1704).
+ * Elements must be Fibers themselves.
+ */
+export type JoinedValue<T> =
+  IsFiber<T> extends true ? JoinedLeaf<T>
+  : T extends NotJoinable ? never
+  : T extends readonly unknown[] ? { -readonly [K in keyof T]: JoinedLeaf<T[K]> }
+  : T extends object ? { -readonly [K in keyof T]: JoinedLeaf<T[K]> }
+  : never
+
+/** The failures `join x` can propagate. */
+export type JoinedError<T> =
+  IsFiber<T> extends true ? JoinedLeafError<T>
+  : T extends NotJoinable ? never
+  : T extends readonly unknown[] ? JoinedLeafError<T[number]>
+  : T extends object ? JoinedLeafError<T[keyof T]>
+  : never
+
+/**
+ * D225: `join x` joins a Fiber (Fiber.join), or every fiber of an array or
+ * object of them, keeping the shape. When one fails, the fibers still running
+ * are interrupted and the failure propagates, as Effect.all fails fast.
+ */
+export function $join<const T>(value: T): Effect.Effect<JoinedValue<T>, JoinedError<T>>
+// The implementation's return type is any for the same reason as $await's.
+export function $join(value: unknown): any {
+  return awaitValue(value)
+}
+
+// An array or object is read once: each element once, in order. The fibers
+// it joins are the fibers it interrupts when one fails, so a getter that
+// returns another fiber the second time cannot make it join one child and
+// interrupt another.
+function awaitValue(value: unknown): Effect.Effect<unknown, unknown> {
+  if (Fiber.isFiber(value)) return Fiber.join(value)
+  if (Deferred.isDeferred(value)) return Deferred.await(value)
+  if (typeof value !== "object" || value === null) return Effect.die(new TypeError("await expects a Fiber, a Deferred, or an array or object of them"))
+  const fibers: Array<Fiber.Fiber<unknown, unknown>> = []
+  return Effect.onError(joinParts(value, fibers), () => Fiber.interruptAll(fibers))
+}
+
+// The Effect that waits for each element of value, an array or object of
+// Fibers, Deferreds, or arrays or objects of them, keeping its shape. It adds
+// each Fiber it joins to fibers.
+//
+// Effect.all waits for each element in a fiber of its own, which inherits the
+// joining fiber's mask. Inside `uninterruptible { }` such a waiter could not
+// be interrupted when another element fails, so Effect.all would wait for a
+// held fiber forever and never reach the interruptAll above. Each wait is
+// interruptible: it runs no program code, and interrupting it stops only the
+// wait, not the fiber it waits for.
+function joinParts(value: object, fibers: Array<Fiber.Fiber<unknown, unknown>>): Effect.Effect<unknown, unknown> {
+  const join = (item: unknown): Effect.Effect<unknown, unknown> => {
+    if (Fiber.isFiber(item)) {
+      fibers.push(item)
+      return Effect.interruptible(Fiber.join(item))
+    }
+    if (Deferred.isDeferred(item)) return Effect.interruptible(Deferred.await(item))
+    if (typeof item !== "object" || item === null) return Effect.die(new TypeError("await expects a Fiber, a Deferred, or an array or object of them"))
+    return joinParts(item, fibers)
+  }
+  if (Array.isArray(value)) return Effect.all(Array.from(value, join), { concurrency: "unbounded" })
+  const entries = Object.entries(value).map(([key, item]) => [key, join(item)] as const)
+  return Effect.map(
+    Effect.all(Object.fromEntries(entries), { concurrency: "unbounded" }),
+    (result: Record<string, unknown>) => Object.fromEntries(entries.map(([key]) => [key, result[key]])) // the order written
+  )
+}
+}
+import { $join as $joinCollection } from $LegacyJoin
+function operand(child:Fiber.Fiber<number>,events:string[]){events.push("operand");return [child]}
+export effect function main(){
+ const events:string[]=[]
+ const child=try Effect.forkDetach(Effect.succeed(7))
+ const values=try $joinCollection(operand(child,events))
+ events.push("joined")
+ return {values,events}
+}

@@ -1,0 +1,8 @@
+// expect: EK1704
+// expect-result: {"values":[7],"events":["has-fiber"]}
+export effect function main() {
+ const events:string[]=[]
+ const child=try Effect.forkDetach(Effect.succeed(7))
+ const handle=new Proxy(child,{has(target,key){if(key==="~effect/Fiber")events.push("has-fiber");return Reflect.has(target,key)}})
+ return {values:join [handle],events}
+}

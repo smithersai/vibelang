@@ -213,6 +213,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Optional object-property bindings reported `EK4704`. Missing properties now leave the binding uninitialized, while present properties initialize it after the cached value read.
 
+- `join` accepted collections even though it denotes `Fiber.join`. Collections now report `EK1704`; `--fix` preserves their previous values, evaluation order and failure cleanup with an explicit helper.
+
 - Forked children could stop when an Effect helper or loop iteration returned, and storing their handles could report an obsolete escape error. They now stay with the current parent fiber, matching `Effect.forkChild`.
 
 - Native Bun launchers could lose an imported module after its TypeScript source migrated; the preload now follows missing relative or absolute `.ts` imports to their `.vibe` source while preserving existing native files.
@@ -448,6 +450,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| `join [a, b]`, `join record` or an effect-body `await` of a fiber collection | `EK1704` / `EK0102`: `join` takes a single fiber. Run `vibelang --fix` to preserve the old collection behavior through an explicit compatibility helper, including reads and failure cleanup. |
 | A generic parameter constrained to a service key's value type, such as `Key extends typeof Users` | `EK3002`, `EK3003` and `EK3004` apply through the constraint. Obtain the implementation with `try ServiceName`, implement its shape or inspect its members; choosing that behavior requires a manual repair. |
 | Constructing, extending or matching a service key through an intersection-typed alias | `EK3003`, `EK3002` or `EK3004` applies as for the original service. Obtain the implementation with `try ServiceName`; implement its shape or inspect its members. Choosing the implementation or test requires a manual repair. |
 

@@ -60,8 +60,12 @@ func TestAwaitPlacementQuickFixes(t *testing.T) {
 						}
 					}
 				}
-				if len(repairs) != 1 || repairs[0].Title != handle.title {
-					t.Fatalf("want only %q; got %v", handle.title, repairs)
+				title := handle.title
+				if handle.name == "fiber" && (i == 6 || i == 7) {
+					title = "Join the fibers in the collection"
+				}
+				if len(repairs) != 1 || repairs[0].Title != title {
+					t.Fatalf("want only %q; got %v", title, repairs)
 				}
 				if repairs[0].Edit == nil || repairs[0].Edit.Changes == nil {
 					t.Fatal("missing edit")

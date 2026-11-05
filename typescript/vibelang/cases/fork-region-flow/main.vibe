@@ -1,8 +1,86 @@
 // expect-result: {"joined":7,"pair":[7,7],"record":{"a":7},"interrupted":true,"method":true,"all":true,"operand":7,"raced":7,"loop":[7,7],"chosen":7,"done":7}
-// The places an owned fiber's value may go (D409): a const or let of its
-// region and reads of it, join with an array or object literal operand,
-// the Fiber functions whose result holds no Fiber and their methods, and a
-// fork operand, await element, or for concurrent body in the region.
+// Fiber handles can be joined, passed, stored and captured under native
+// current-fiber ownership; legacy collection waits keep their cleanup policy.
+
+module $LegacyJoin {
+import { Deferred, Effect, Fiber } from "effect"
+type IsFiber<T> = T extends Fiber.Fiber<infer _A, infer _E> ? true : false
+type JoinedLeaf<T> = T extends Fiber.Fiber<infer A, infer _E> ? A : never
+type JoinedLeafError<T> = T extends Fiber.Fiber<infer _A, infer E> ? E : never
+type NotJoinable = Effect.Effect<any, any, any> | Deferred.Deferred<any, any> | PromiseLike<any> | ((...args: never) => unknown)
+
+/**
+ * The value `join x` returns: a Fiber's value, or an array or object of them
+ * with the same shape. never for an operand join cannot join (EK1704).
+ * Elements must be Fibers themselves.
+ */
+export type JoinedValue<T> =
+  IsFiber<T> extends true ? JoinedLeaf<T>
+  : T extends NotJoinable ? never
+  : T extends readonly unknown[] ? { -readonly [K in keyof T]: JoinedLeaf<T[K]> }
+  : T extends object ? { -readonly [K in keyof T]: JoinedLeaf<T[K]> }
+  : never
+
+/** The failures `join x` can propagate. */
+export type JoinedError<T> =
+  IsFiber<T> extends true ? JoinedLeafError<T>
+  : T extends NotJoinable ? never
+  : T extends readonly unknown[] ? JoinedLeafError<T[number]>
+  : T extends object ? JoinedLeafError<T[keyof T]>
+  : never
+
+/**
+ * D225: `join x` joins a Fiber (Fiber.join), or every fiber of an array or
+ * object of them, keeping the shape. When one fails, the fibers still running
+ * are interrupted and the failure propagates, as Effect.all fails fast.
+ */
+export function $join<const T>(value: T): Effect.Effect<JoinedValue<T>, JoinedError<T>>
+// The implementation's return type is any for the same reason as $await's.
+export function $join(value: unknown): any {
+  return awaitValue(value)
+}
+
+// An array or object is read once: each element once, in order. The fibers
+// it joins are the fibers it interrupts when one fails, so a getter that
+// returns another fiber the second time cannot make it join one child and
+// interrupt another.
+function awaitValue(value: unknown): Effect.Effect<unknown, unknown> {
+  if (Fiber.isFiber(value)) return Fiber.join(value)
+  if (Deferred.isDeferred(value)) return Deferred.await(value)
+  if (typeof value !== "object" || value === null) return Effect.die(new TypeError("await expects a Fiber, a Deferred, or an array or object of them"))
+  const fibers: Array<Fiber.Fiber<unknown, unknown>> = []
+  return Effect.onError(joinParts(value, fibers), () => Fiber.interruptAll(fibers))
+}
+
+// The Effect that waits for each element of value, an array or object of
+// Fibers, Deferreds, or arrays or objects of them, keeping its shape. It adds
+// each Fiber it joins to fibers.
+//
+// Effect.all waits for each element in a fiber of its own, which inherits the
+// joining fiber's mask. Inside `uninterruptible { }` such a waiter could not
+// be interrupted when another element fails, so Effect.all would wait for a
+// held fiber forever and never reach the interruptAll above. Each wait is
+// interruptible: it runs no program code, and interrupting it stops only the
+// wait, not the fiber it waits for.
+function joinParts(value: object, fibers: Array<Fiber.Fiber<unknown, unknown>>): Effect.Effect<unknown, unknown> {
+  const join = (item: unknown): Effect.Effect<unknown, unknown> => {
+    if (Fiber.isFiber(item)) {
+      fibers.push(item)
+      return Effect.interruptible(Fiber.join(item))
+    }
+    if (Deferred.isDeferred(item)) return Effect.interruptible(Deferred.await(item))
+    if (typeof item !== "object" || item === null) return Effect.die(new TypeError("await expects a Fiber, a Deferred, or an array or object of them"))
+    return joinParts(item, fibers)
+  }
+  if (Array.isArray(value)) return Effect.all(Array.from(value, join), { concurrency: "unbounded" })
+  const entries = Object.entries(value).map(([key, item]) => [key, join(item)] as const)
+  return Effect.map(
+    Effect.all(Object.fromEntries(entries), { concurrency: "unbounded" }),
+    (result: Record<string, unknown>) => Object.fromEntries(entries.map(([key]) => [key, result[key]])) // the order written
+  )
+}
+}
+import { $join as $joinCollection } from $LegacyJoin
 import { join as $tryJoinFiber } from "effect/Fiber"
 effect function slow(): number!! {
   try sleep("5 millis")
@@ -23,12 +101,12 @@ effect function joined() {
 effect function pair() {
   const a = fork slow()
   const b = fork slow()
-  return join [a, b]
+  return try $joinCollection([a, b])
 }
 
 effect function record() {
   const a = fork slow()
-  return join { a }
+  return try $joinCollection({ a })
 }
 
 effect function interrupted() {
