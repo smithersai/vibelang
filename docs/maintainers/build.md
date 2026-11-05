@@ -1972,3 +1972,5 @@ The `//:lexical-capture-diagnostic-retirement` gate validates the retired fixtur
 The `//:qualified-interruption-call-controls` gate retains all running-rule controls and rejects, enforces the qualified-call pairs without pending allowances, and replays their keyed corpus.
 
 The `//:native-await-declaration-twins` gate retains byte-exact declaration comparisons against explicitly annotated native twins, all shadowing and generic-domain variations, and runtime operand-evaluation controls.
+
+The `//:async-match-throw-contexts` gate enforces the implemented async-match oracle without pending allowances and retains every ordinary, async, and Effect context and the minimized keyed corpus.

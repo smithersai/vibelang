@@ -1,4 +1,2 @@
 # CLI witnesses from the unchanged vibe compiler are recorded in the lane report.
 # Keys remain precise; a passing pending context is an XPASS.
-FuzzMatchThrowContexts context:async-match compiler VIP-7: async match fails parsing with TS1005; lane vip-match
-FuzzMatchThrowContexts corpus:async-match compiler VIP-4/VIP-7: minimized context:async-match witness; lane vip-match
