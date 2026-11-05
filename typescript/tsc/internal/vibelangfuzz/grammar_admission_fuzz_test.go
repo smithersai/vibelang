@@ -55,8 +55,6 @@ var grammarFiberBinding = regexp.MustCompile(`\b(?:const|let|var)\s+(?:fork|join
 
 var grammarFiberParameter = regexp.MustCompile(`\beffect\s+function\b[^(]*\([^)]*\b(?:fork|join)\b`)
 
-var grammarInterruptionBlock = regexp.MustCompile(`\b(?:uninterruptible|interruptible|restore)[ \t]*\{`)
-
 var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 	return grammarNewGrammarLab(SpecText(grammarAppendix), grammarAppendix)
 })
@@ -226,6 +224,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"custom-declaration-export", "type Value = number ; export service type { Value } ;"},
 	{"native-regexp-alternation", "n = / |> 2 /\n2\n;"},
 	{"native-instantiation-block-asi", "schema\nC < T >\n{ a :\nT\nT }"},
+	{"schema-interruption-name", "schema uninterruptible { effect id : join }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -955,8 +954,8 @@ func grammarAdmissionForm(source string) string {
 	if grammarImportRelationalRecovery(file) {
 		return "admission:import-relational-recovery"
 	}
-	// EK2201: an interruption block outside effect code. The bare block has no
-	// other reading, so the key follows the source callable around the word.
+	// EK2201: only a recorded interruption statement has interruption ownership.
+	// A declaration name or literal with the same spelling is not a block.
 	// EK1702: fork and join are reserved in effect code, in any binding.
 	for _, at := range grammarFiberBinding.FindAllStringIndex(source, -1) {
 		if grammarAdmissionEffectAt(file, at[0]) {
@@ -966,12 +965,22 @@ func grammarAdmissionForm(source string) string {
 	if grammarFiberParameter.MatchString(source) {
 		return "admission:fiber-binding"
 	}
-	for _, at := range grammarInterruptionBlock.FindAllStringIndex(source, -1) {
-		if !grammarAdmissionEffectAt(file, at[0]) {
-			if grammarAdmissionPlainGeneratorAt(file, at[0]) {
-				return "admission:interruption-in-generator"
+	for _, form := range forms {
+		if form.Kind != parser.VibeSyntaxBlockStatement {
+			continue
+		}
+		start, end := form.Word.Pos(), form.Word.End()
+		if start < 0 || start >= end || end > len(source) {
+			continue
+		}
+		switch source[start:end] {
+		case "uninterruptible", "interruptible", "restore":
+			if !grammarAdmissionEffectAt(file, start) {
+				if grammarAdmissionPlainGeneratorAt(file, start) {
+					return "admission:interruption-in-generator"
+				}
+				return "admission:interruption-outside-effect"
 			}
-			return "admission:interruption-outside-effect"
 		}
 	}
 	for _, form := range forms {

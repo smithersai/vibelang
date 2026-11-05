@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-interruption-name\nschema uninterruptible { effect id : join }")

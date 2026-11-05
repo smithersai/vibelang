@@ -514,3 +514,11 @@ retain both readings; the admission oracle requires a derivation. The line
 break is required for this bridge; it does not introduce a
 same-line trailing block. Labels and separate expressions in the following
 block retain their ordinary syntax.
+
+Interruption keys follow recorded interruption statements. A declaration
+named `uninterruptible`, `interruptible` or `restore`, or the same spelling in
+a comment or literal, does not introduce such a statement. A schema with
+one of those names and a field with an `effect` modifier retains the existing
+`admission:schema-effect-field` gap. The full grammar and diagnostics still
+decide whether the source is an admission mismatch; a recorded form selects
+only its pending key.

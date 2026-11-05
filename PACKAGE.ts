@@ -158,6 +158,8 @@ const specTests = [
   "TestGrammarAdmissionDeclarationExportRegression",
   "TestGrammarAdmissionRegExpSyntaxDiagnostics",
   "TestGrammarAdmissionRegExpSyntaxRegression",
+  "TestGrammarAdmissionSchemaInterruptionKeys",
+  "TestGrammarAdmissionSchemaInterruptionRegression",
   "TestGrammarAdmissionInstantiationASI",
   "TestGrammarAdmissionInstantiationASIRegression",
   "TestGrammarAdmissionRegExpLexing",
