@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import test from "node:test"
+import fc from "fast-check"
+import { loadIdentity } from "./diagnostic-identity.mjs"
 
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8")
 const appendix = () => read("design/src/900-appendices.md")
@@ -10,7 +12,7 @@ const appendix = () => read("design/src/900-appendices.md")
 test("the complete interim block follows the landed registry, with meanings and retirement owners", () => {
   const inventory = appendix().split("### Transitional compiler diagnostics")[1]?.split("\n## ")[0]
   assert.ok(inventory, "Appendix B must distinguish emitted compatibility checks from normative rules")
-  const registry = read("../typescript/tsc/internal/vibelang/diagnostics.go")
+  const { registered, categories } = loadIdentity()
   const rules = [
     [9201, "error", "1, 3", /expected failure.*written error contract/],
     [9202, "error", "1, 3", /requirement.*written requirement contract/],
@@ -19,18 +21,29 @@ test("the complete interim block follows the landed registry, with meanings and 
     [9205, "error", "1, 9", /declaration without a body.*return type.*not an Effect/],
     [9206, "error", "1, 3", /recursive function.*success type.*own result/],
     [9207, "error", "9", /service or control.*body or initializer/],
-    [9208, "error", "9", /static service member.*same name.*instance service member/]
+    [9208, "error", "9", /static service member.*same name.*instance service member/],
+    [9209, "error", "11", /legacy layer setup statement follows a member/],
+    [9211, "error", "24, 26", /legacy runner or automatic wiring site lacks a required provider/],
+    [9214, "error", "9, 30", /service key is called with arguments.*legacy service lowering/]
   ]
-  const registered = [...registry.matchAll(/EK(92\d\d) = message\((92\d\d), (error|warning)Category,/g)]
-  assert.deepEqual(registered.map(m => Number(m[1])).sort(), rules.map(r => r[0]))
+  const codes = [...registered.keys()].filter(code => /^EK92\d\d$/.test(code)).map(code => Number(code.slice(2))).sort()
+  assert.deepEqual(codes, rules.map(r => r[0]))
   for (const [code, severity, owner, meaning] of rules) {
-    assert.ok(registered.some(m => Number(m[1]) === code && Number(m[2]) === code && m[3] === severity))
+    const emitted = categories.get("EK" + code)
+    assert.ok(emitted?.length, "missing category for EK" + code)
+    assert.ok(emitted.every(site => site.category === severity), "category mismatch for EK" + code)
     const row = inventory.split("\n").find(line => line.startsWith("| interim `EK" + code + "` |"))
     assert.ok(row, "missing emitted compatibility code EK" + code)
     assert.ok(row.includes("| " + severity + ":") && row.includes("| " + owner + " |"), row)
     assert.match(row, meaning)
   }
-  assert.deepEqual([...inventory.matchAll(/\| interim `EK(\d+)`/g)].map(m => Number(m[1])).sort(), rules.map(r => r[0]))
+  const inventoryCodes = text => [...text.matchAll(/\| interim `EK(92\d\d)`/g)].map(m => Number(m[1])).sort()
+  assert.deepEqual(inventoryCodes(inventory), rules.map(r => r[0]))
+  fc.assert(fc.property(fc.integer({ min: 0, max: rules.length - 1 }), index => {
+    const code = rules[index][0]
+    const missing = inventory.split("\n").filter(line => !line.startsWith("| interim `EK" + code + "` |")).join("\n")
+    assert.notDeepEqual(inventoryCodes(missing), codes, "removing EK" + code + " must break coverage")
+  }), { seed: 349214, numRuns: 90 })
   assert.match(inventory, /infallible Effect.*still run/s)
   assert.match(inventory, /control.*historical.*not.*accepted/s)
   assert.doesNotMatch(inventory, /interim `EK(?:2001|2002|2004)`/)
