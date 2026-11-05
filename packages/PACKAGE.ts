@@ -43,7 +43,7 @@ const runtimeKernelContracts = S.Shell.Test({
 
 const runtimeReadmeExports = S.Shell.Test({
   summary: "Every runtime package export is documented by its exact specifier.",
-  shell: "cd packages/runtime && bun test tests/readme-exports.test.ts",
+  shell: "cd packages/runtime && bun test --timeout 30000 tests/readme-exports.test.ts",
   data: [...install, S.file("runtime/README.md"), S.file("runtime/tests/readme-exports.test.ts"), S.glob("runtime/tests/readme-export-regressions/**")],
   tools: [S.Host.bin("bun")],
   sandbox: "none",

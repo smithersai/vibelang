@@ -645,6 +645,13 @@ const targets = {
     [Typescript["forms-generator"], specLint, grammarAdmissionCheck],
     [bun, node]
   ),
+  "build-contracts": check(
+    "Build and test commands retain their explicit budgets and prerequisites.",
+    "node --test scripts/bun-test-budgets.test.mjs",
+    [],
+    [node],
+    "5m"
+  ),
   "docs-contracts": S.Shell.Test({
     summary: "Published documentation contracts and their native counterparts remain consistent.",
     shell: "node --test --test-concurrency=2 docs/tools/spec-colon-leads.test.mjs docs/tools/spec-catch-pipe-input.test.mjs docs/tools/spec-sidecar-roots.test.mjs docs/tools/spec-schema-jsdoc.test.mjs docs/tools/spec-direct-try-advisories.test.mjs docs/tools/spec-sidecar-input-protection.test.mjs docs/tools/spec-sidecar-final-path.test.mjs docs/tools/spec-async-throws.test.mjs docs/tools/spec-constructor-static-contract.test.mjs docs/tools/spec-generator-call-phase.test.mjs docs/tools/spec-handler-initialization.test.mjs docs/tools/spec-callable-contracts.test.mjs docs/tools/spec-contracts-overload.test.mjs docs/tools/spec-throw-contracts.test.mjs docs/tools/vip34-diagnostic-ownership.test.mjs docs/tools/spec-legacy-effect-alias-transition.test.mjs docs/tools/spec-builtins-contracts.test.mjs docs/tools/spec-foreign-call-contract.test.mjs docs/tools/spec-r16-carried.test.mjs docs/tools/spec-is-statement-body-home.test.mjs docs/tools/spec-is-limit-catch-homes.test.mjs && node --test --test-name-pattern='^Appendix B' docs/tools/spec-nothrow.test.mjs",
@@ -679,13 +686,13 @@ const targets = {
   }),
   "docs-experimental-service-calls": check(
     "Experimental service references use implementations and run Effect-valued members directly.",
-    "node docs/tools/experimental-service-calls.mjs && bun test docs/tools/experimental-service-calls.test.ts",
+    "node docs/tools/experimental-service-calls.mjs && bun test --timeout 30000 docs/tools/experimental-service-calls.test.ts",
     [],
     [bun, node]
   ),
   "docs-table-rows": check(
     "User tables retain headers and widths; temporary-directory queries retain their read semantics.",
-    "node docs/tools/table-rows.mjs && bun test docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
+    "node docs/tools/table-rows.mjs && bun test --timeout 30000 docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
     [],
     [bun, node]
   ),

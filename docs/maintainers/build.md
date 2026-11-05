@@ -1795,3 +1795,5 @@ The `//:deep-type-repair` target checks required shorthand grouping through 32 n
 The `//:reserved-error-repair` target checks independent reserved-payload and inheritance diagnostics across generated declaration forms, with each violation removed separately. Its native case retains exact declaration output, complete runtime Exit and idempotent class repairs.
 
 The `//:go-error-inheritance` target also replays every ambient error-class preservation input. It checks the specific diagnostic, independently written native declaration, editor edit, emitted erasure and second repair. Both Go packages share one compilation invocation; named test progress distinguishes compilation from test execution. Resolved inputs retain their corpus files and become mandatory passing cases.
+
+The `//:build-contracts` target checks explicit Bun test deadlines before graph or package-script changes land. Service-call, table-row and runtime export documentation checks receive 30 seconds rather than inheriting Bun’s five-second default.

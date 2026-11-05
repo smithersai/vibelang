@@ -427,6 +427,8 @@ Set up the editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](z
 
 With Bun 1.4.1, `bun --watch --preload vibelang/bun` does not reliably restart after a `.vibe` save. The preload compiles once per process and does not invalidate that result during watch. For development, use the starter's `npm run dev` or `bun run dev`: its compiler watch and Node process rebuild and restart the app.
 
+Bun sets each test’s time budget through `--timeout`. For service-initialization tests that need more than the default five seconds, use `bun test --timeout 30000`. This changes the test deadline, not the Effect’s cancellation or service lifetime.
+
 ### Bun test types
 
 Install Bun's declarations before adding a `.test.ts` suite to the project:
