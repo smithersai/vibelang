@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-nullable-sort-undefined-wrapped")
+byte(10)

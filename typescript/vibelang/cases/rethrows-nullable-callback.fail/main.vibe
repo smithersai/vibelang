@@ -1,0 +1,4 @@
+// expect: EK0403
+import { invoke, risky } from "./lib.js"
+export effect function optional() { return invoke(risky) }
+export effect function sorted() { return [2, 1].sort(risky) }

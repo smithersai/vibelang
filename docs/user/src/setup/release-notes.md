@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- A throwing callback passed to an optional or nullable parameter, including `sort`, could bypass throw checks. It now requires the same bridge as a required callback, and `vibelang --fix` preserves the original defect.
+
 - API provenance checks loaded unrelated browser declarations. They now use fewer libraries while retaining selected dependencies and native type errors.
 
 - Migration API verification could reject unchanged module augmentations when an adjacent callable gained generated `@throws {never}` metadata. Ambient closure checks now allow that addition while preserving authored contracts, comments and types.
@@ -90,6 +92,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| Throwing callbacks passed through optional or nullable `@rethrows` parameters, including `sort` | Run `vibelang --fix` to keep the original defect with `Effect.orDie(Effect.try(...))`. |
 | RHS closures in `for concurrent` that formerly captured an outer name with an incompatible type | `--fix` renames the item binding and its uses, keeping the RHS closure on the original outer binding |
 | Extra modifiers or `?`/`!` on a whole-shape service’s `key` or `defaultValue`, or a default factory without `readonly` | `EK0902`: run `vibelang --fix` to remove extra header syntax while retaining an existing `readonly` initializer. Supply a missing factory explicitly; adding `readonly` to a mutable default chooses `Context.Reference` fallback behavior and needs a manual migration. |
 | An index signature or constructor in `service Name: Type { … }` | `EK0902`: put the signature in `Type` and create the implementation in a layer. Move constructor behavior explicitly; the compiler does not discard or relocate it. |

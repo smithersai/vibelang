@@ -53,6 +53,10 @@
       {
         "input": "typescript/vibelang/cases/rethrows-tuple-spread.fail",
         "output": "typescript/vibelang/cases/rethrows-tuple-spread-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/rethrows-nullable-callback.fail",
+        "output": "typescript/vibelang/cases/rethrows-nullable-callback-fixed-output"
       }
     ]
   },

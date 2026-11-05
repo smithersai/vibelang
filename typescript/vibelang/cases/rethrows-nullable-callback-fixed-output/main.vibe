@@ -1,0 +1,4 @@
+// expect: EK0403
+import { invoke, risky } from "./lib.js"
+export effect function optional() { return try Effect.orDie(Effect.try({ try: () => invoke(risky), catch: (e) => e })) }
+export effect function sorted() { return try Effect.orDie(Effect.try({ try: () => [2, 1].sort(risky), catch: (e) => e })) }

@@ -111,7 +111,7 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 			for _, part := range source.Distributed() {
 				for _, given := range c.GetSignaturesOfType(part, checker.SignatureKindCall) {
 					compatible := false
-					for _, required := range c.GetSignaturesOfType(target, checker.SignatureKindCall) {
+					for _, required := range c.GetSignaturesOfType(c.GetNonNullableType(target), checker.SignatureKindCall) {
 						if c.IsTypeAssignableTo(c.NewFunctionType(nil, []*checker.Signature{given}), c.NewFunctionType(nil, []*checker.Signature{required})) {
 							compatible = true
 							break

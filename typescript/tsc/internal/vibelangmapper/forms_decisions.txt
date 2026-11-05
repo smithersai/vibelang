@@ -6419,6 +6419,12 @@ typescript/vibelang/cases/rethrows-callback-literals.fail/main.vibe:8:61 lambda 
 typescript/vibelang/cases/rethrows-callback-literals.fail/main.vibe:9:67 lambda choice fallback
 typescript/vibelang/cases/rethrows-known/main.vibe:11:31 byname program table
 typescript/vibelang/cases/rethrows-known/main.vibe:11:42 lambda plain table
+typescript/vibelang/cases/rethrows-nullable-callback-fixed-output/main.vibe:3:107 lambda plain table
+typescript/vibelang/cases/rethrows-nullable-callback-fixed-output/main.vibe:3:61 byname program table
+typescript/vibelang/cases/rethrows-nullable-callback-fixed-output/main.vibe:3:79 lambda plain table
+typescript/vibelang/cases/rethrows-nullable-callback-fixed-output/main.vibe:4:110 lambda plain table
+typescript/vibelang/cases/rethrows-nullable-callback-fixed-output/main.vibe:4:59 byname program table
+typescript/vibelang/cases/rethrows-nullable-callback-fixed-output/main.vibe:4:77 lambda plain table
 typescript/vibelang/cases/rethrows-tagged-literals-plain.fail/main.vibe:3:57 lambda choice fallback
 typescript/vibelang/cases/rethrows-tagged-literals-run/main.vibe:6:28 lambda plain table
 typescript/vibelang/cases/rethrows-tagged-literals-run/main.vibe:6:47 lambda choice fallback

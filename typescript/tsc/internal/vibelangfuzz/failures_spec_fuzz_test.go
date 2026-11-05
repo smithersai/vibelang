@@ -903,6 +903,74 @@ func failuresCases() []*failCase {
 		}
 	}
 
+	// A nullable destination retains the same rethrows contract when a callback is supplied.
+	for _, target := range []struct{ key, parameter string }{
+		{"required", "cb: (n:number)=>number"},
+		{"optional", "cb?: (n:number)=>number"},
+		{"undefined", "cb: ((n:number)=>number)|undefined"},
+		{"null", "cb: ((n:number)=>number)|null"},
+		{"nullish", "cb: ((n:number)=>number)|null|undefined"},
+	} {
+		for _, callback := range []struct {
+			key, arg string
+			risky    bool
+		}{
+			{"safe", "safe", false}, {"risky", "risky", true},
+
+			{"undefined", "undefined", false}, {"null", "null", false}, {"absent", "", false},
+		} {
+			if callback.key == "undefined" && target.key != "optional" && target.key != "undefined" && target.key != "nullish" {
+				continue
+			}
+			if callback.key == "null" && target.key != "null" && target.key != "nullish" {
+				continue
+			}
+			if callback.key == "absent" && target.key != "optional" {
+				continue
+			}
+			for _, context := range []string{"effect", "plain", "wrapped"} {
+				host, body, code := "effect", "invoke("+callback.arg+")", 0
+				if context == "plain" {
+					host = "plain"
+				}
+				if context == "wrapped" {
+					body = "try Effect.try(()=>" + body + ")"
+				} else if callback.risky {
+					code = 403
+					if host == "plain" {
+						code = 401
+					}
+					body = "⟦" + body + "⟧"
+				}
+				lib := "/** @throws {RangeError} */\nexport declare function risky(n:number):number\n/** @throws {never} */\nexport declare function safe(n:number):number\n" +
+					"/** @throws {never}\n * @rethrows cb\n */\nexport declare function invoke(" + target.parameter + "):number\n"
+				add(&failCase{Name: "rethrows-nullable-" + target.key + "-" + callback.key + "-" + context, Quote: q.rethrows, Host: host, Body: body, Lib: lib, Code: code, OneDiagnostic: code != 0})
+			}
+		}
+	}
+	for _, callback := range []struct {
+		key, arg string
+		risky    bool
+	}{{"safe", "safe", false}, {"risky", "risky", true}, {"undefined", "undefined", false}} {
+		for _, context := range []string{"effect", "plain", "wrapped"} {
+			host, body, code := "effect", "xs.sort("+callback.arg+")", 0
+			if context == "plain" {
+				host = "plain"
+			}
+			if context == "wrapped" {
+				body = "try Effect.try(()=>" + body + ")"
+			} else if callback.risky {
+				code = 403
+				if host == "plain" {
+					code = 401
+				}
+				body = "⟦" + body + "⟧"
+			}
+			lib := "/** @throws {RangeError} */\nexport declare function risky(a:number,b:number):number\n/** @throws {never} */\nexport declare function safe(a:number,b:number):number\n"
+			add(&failCase{Name: "rethrows-nullable-sort-" + callback.key + "-" + context, Quote: q.rethrows, Host: host, Body: body, Lib: lib, Code: code, OneDiagnostic: code != 0})
+		}
+	}
+
 	// Written callback contracts retain their receiver substitutions at rethrowing calls.
 	for _, bound := range []struct {
 		key, text string

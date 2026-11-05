@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-nullable-optional-undefined-effect")
+byte(18)
