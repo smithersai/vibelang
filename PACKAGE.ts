@@ -843,6 +843,15 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "10m"
   ),
+  "emission-snapshots": check(
+    "Coverage-preserving and native tail delegation emitters keep their exact JavaScript, declarations and runtime observations.",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose module-declaration-emit data-match-emit vibelang-lower vibelang-infer vibelang-concise-comments match-exhaustive-last-arm rerun-parameter-readonly try-tail-unchecked-message try-tail-native-delegation",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [node, bun],
+    "5m",
+    {},
+    [Vibelang.tree, S.Filegroup({srcs: [...S.glob(["docs/design/src/001-functions.md", "docs/design/src/002-running.md", "docs/design/src/008-testing.md", "packages/runtime/package.json", "experiments/package.json", "experiments/bun.lock"])]})]
+  ),
   "go-error-inheritance": goVibelang(
     "Rejected error inheritance reports EK2117 without generated base errors and retains independent native diagnostics.",
     `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestSchemaErrorInheritance.*|TestErrorInheritanceAdmission|TestErrorInheritanceNativeClassesUnaffected)$' ./internal/vibelang/`,

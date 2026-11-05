@@ -18,10 +18,9 @@ function greet(name) {
 // An arrow function that runs an Effect becomes one too. Its body is a single
 // call, so it returns that call's Effect through Effect.gen, which delegates
 // with yield* as try does (VIP-5), and runs nothing until it runs.
-const shout = (text) => (_tail_1 => { return Effect_1.gen(function* shout() {
-    const _completion_1 = _tail_1(), _value_1 = _completion_1[1];
-    return _completion_1[0] ? yield* _value_1 : _value_1;
-}); })({ shout: () => { return [true, Console.log(text.toUpperCase())]; } }.shout);
+const shout = (text) => {
+    return Effect_1.gen(function* shout() { return yield* Console.log(text.toUpperCase()); });
+};
 export function main() {
     return Effect_1.fnUntraced(runtime.$joinedFrame(function* main() {
         {

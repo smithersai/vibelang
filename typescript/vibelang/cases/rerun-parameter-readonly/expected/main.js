@@ -3,11 +3,11 @@ import * as Effect_1 from "effect/Effect";
 // mutations of caller-owned objects do not write the parameter binding.
 export const compact = (n) => Effect_1.sync({ compact: () => { return n + 1; } }.compact);
 export function declared(n) {
-    return Effect_1.sync({ declared: () => n + 1 }.declared);
+    return Effect_1.sync({ declared: () => { return n + 1; } }.declared);
 }
 export class Counter {
     read(n) {
-        return Effect_1.sync({ read: () => n + 1 }.read);
+        return Effect_1.sync({ read: () => { return n + 1; } }.read);
     }
 }
 export const shadowed = (n) => Effect_1.sync({ shadowed: () => { return [n].map((n) => ++n)[0]; } }.shadowed);
@@ -15,11 +15,10 @@ export const property = (value) => Effect_1.sync({ property: () => { return ++va
 // Plain exports are plain JavaScript functions (VIP-1).
 export function plain(n) { return ++n; }
 export function plainRest(...values) { return values.pop(); }
-export const hatch = (n) => (_tail_1 => Effect_1.gen(function* hatch() {
-    const _completion_1 = _tail_1(), _value_1 = _completion_1[1];
-    return _completion_1[0] ? yield* _value_1 : _value_1;
-}))({ hatch: () => { return [true, Effect_1.sync(((n) => ++n).bind(undefined, n))]; } }.hatch);
+export const hatch = (n) => {
+    return Effect_1.gen(function* hatch() { return yield* Effect_1.sync(((n) => ++n).bind(undefined, n)); });
+};
 export const shorthand = (n) => Effect_1.sync({ shorthand: () => { return ({ n }); } }.shorthand);
 // Explicit program factories intentionally keep their eager outer state.
-export function factory(n) { return Effect_1.sync(() => ++n); }
+export function factory(n) { return Effect_1.sync(() => { return ++n; }); }
 //# sourceMappingURL=main.js.map

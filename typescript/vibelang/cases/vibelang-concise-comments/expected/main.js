@@ -6,12 +6,15 @@ import { Effect } from "effect";
 class Settings extends runtime.$service("vibelang-concise-comments/main#Settings") {
 }
 function findName(id) {
-    return (_tail_1 => Effect_1.gen(function* findName() {
-        const _completion_1 = _tail_1(), _value_1 = _completion_1[1];
-        return _completion_1[0] ? yield* _value_1 : _value_1;
-    }))({ findName: () => id === 1 ? [true, Effect.succeed("ada")] : [true, Effect.succeed("grace")] }.findName);
+    return Effect_1.gen(function* findName() {
+        return id === 1 ? yield* Effect.succeed("ada") : yield* Effect.succeed("grace");
+    });
 }
-export const greeting = Effect_1.fnUntraced(function* greeting() { return (yield* Settings).greeting; });
+export const greeting = () => {
+    return Effect_1.gen(function* greeting() { return (yield* Settings).greeting; });
+};
 // Effect<string, never, Settings>
-export const nameLength = Effect_1.fnUntraced(function* nameLength() { return (yield* findName(1)).length; });
+export const nameLength = () => {
+    return Effect_1.gen(function* nameLength() { return (yield* findName(1)).length; });
+};
 // Effect<number, never, never>

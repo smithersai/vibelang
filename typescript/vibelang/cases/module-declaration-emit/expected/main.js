@@ -13,7 +13,7 @@ import "./main.vibe.setup.js";
 export { clean as tidy } from "./main.vibe.text.js";
 export * from "./main.vibe.extras.js";
 export function describe(shape) {
-    return Effect_1.sync({ describe: () => `${shape.width}x${shape.height}` }.describe);
+    return Effect_1.sync({ describe: () => { return `${shape.width}x${shape.height}`; } }.describe);
 }
 export function main() {
     return Effect_1.fnUntraced(function* main() {
