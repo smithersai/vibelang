@@ -110,16 +110,16 @@ func FuzzNativeAwaitBridge(f *testing.F) {
 		}
 		key = domain.key
 		operands := []string{"value", "(value)", "box.value", "get()", "/* wait 😀 */ value", "(flag ? value : other)"}
-		source := "import type {Fiber, Deferred} from 'effect';\n" +
-			"export const probe=async " + domain.parameters + "(value:" + domain.typ + ",other:" + domain.typ + ",box:{value:" + domain.typ + "},get:()=>" + domain.typ + ",flag:boolean," +
+		source := "import type {Fiber, Deferred} from 'effect';\ninterface AwaitGetter<A> { (): A }\n" +
+			"export const probe=async " + domain.parameters + "(value:" + domain.typ + ",other:" + domain.typ + ",box:{value:" + domain.typ + "},get:AwaitGetter<" + domain.typ + ">,flag:boolean," +
 			"Effect=0,Fiber=0,Deferred=0,runPromise=0,$awaitRunPromise=0,$awaitJoin=0,$awaitDeferred=0)=>await " + operands[mode%6] + ";\n"
 		if mode%12 >= 6 {
 			// The census witness uses a declaration and a value import, rather
 			// than the shadowed async-arrow environment above.
-			source = "import {Fiber, Deferred} from 'effect';\n" +
+			source = "import {Fiber, Deferred} from 'effect';\ninterface AwaitGetter<A> { (): A }\n" +
 				"export async function probe" + domain.parameters + "(value:" + domain.typ +
-				",other:" + domain.typ + ",box:{value:" + domain.typ + "},get:()=>" + domain.typ +
-				",flag:boolean) { return await " + operands[mode%6] + " }\n"
+				",other:" + domain.typ + ",box:{value:" + domain.typ + "},get:AwaitGetter<" + domain.typ +
+				">,flag:boolean) { return await " + operands[mode%6] + " }\n"
 		}
 		fixed := nativeAwaitBridgeEdit(t, w, source, domain.key, domain.optional)
 		if fixed == "" {
@@ -139,11 +139,17 @@ func FuzzNativeAwaitBridge(f *testing.F) {
 				return
 			}
 		}
-		reference := fixed
+		// VIP-4 serializes never on VibeLang callables and on the callable
+		// parameter type. A named interface call signature lets the native emitter
+		// retain that explicit parameter contract; keep byte-exact comparison.
+		reference := strings.Replace(fixed, "interface AwaitGetter<A> { (): A }", "interface AwaitGetter<A> {\n/** @throws {never} */\n(): A\n}", 1)
+		if reference == fixed {
+			t.Fatal("native getter contract was not annotated")
+		}
 		if mode%12 >= 6 {
-			// VibeLang infers native declarations' throws; the TypeScript
-			// twin states that contract explicitly.
-			reference = strings.Replace(fixed, "export async function probe", "/** @throws {never} */\nexport async function probe", 1)
+			reference = strings.Replace(reference, "export async function probe", "/** @throws {never} */\nexport async function probe", 1)
+		} else {
+			reference = strings.Replace(reference, "export const probe=", "/** @throws {never} */\nexport const probe=", 1)
 		}
 		twin := Project{Files: map[string]string{"main.ts": reference}}
 		ref, err := w.Compile(t.Context(), twin)

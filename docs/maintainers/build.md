@@ -1970,3 +1970,5 @@ The `//:native-repair-argument-thunks` target checks method-argument repairs acr
 The `//:lexical-capture-diagnostic-retirement` gate validates the retired fixture inventory and its resurrection guard, then checks captured values with independent native-error controls.
 
 The `//:qualified-interruption-call-controls` gate retains all running-rule controls and rejects, enforces the qualified-call pairs without pending allowances, and replays their keyed corpus.
+
+The `//:native-await-declaration-twins` gate retains byte-exact declaration comparisons against explicitly annotated native twins, all shadowing and generic-domain variations, and runtime operand-evaluation controls.

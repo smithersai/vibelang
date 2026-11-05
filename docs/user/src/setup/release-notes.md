@@ -18,6 +18,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Unchanged native importers retain their declaration spelling during a one-file migration; explicit source imports use the corresponding TypeScript import preference.
 - Legacy computed schema keys retain throwing-call errors alongside their migration diagnostic; preserving repairs still compile without errors.
 - Native `Option.gen(function* …)` remains valid JavaScript generator code; explicit producer arguments retain the diagnostic and iterator-preserving repair refusal.
+- Await-advisory repairs retain their async return types and non-throwing declaration contracts, including callable parameters.
 
 - The fibers guide omitted labeled `continue` targeting the `for concurrent` loop itself. It now explains that this ends the current item.
 - `vibelang --fix` left ordinary incomplete finite matches unchanged. It now adds a `default` that preserves the implicit empty-message `TypeError`, including an Effect defect or Promise rejection, without widening the function's result or channels.
