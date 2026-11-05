@@ -1,20 +1,21 @@
 // expect-result: ["caught:SyntaxError","caught:SyntaxError","caught:Bad","caught:Bad","caught:Bad"]
-// A call whose contract lists failures, such as JSON.parse's SyntaxError or a
+// A call whose contract lists failures, such as parseJson's SyntaxError or a
 // trusted function's classes, tests what it throws against those classes. A
 // binding around the call spelled like a class, here a parameter, does not
 // replace the class in that test: the failure stays expected, and catch
 // receives it.
 import { trusted } from "vibelang-runtime"
-import { parse, parseDeclared } from "./helpers.ts"
+import { parse, parseDeclared, parseJson } from "./helpers.ts"
 
 export error Bad
 
 const parseTrusted = trusted(parse, [Bad])
+const parseJsonTrusted = trusted(parseJson, [SyntaxError])
 
 // A function that compiles to plain JavaScript.
 function plainParse(SyntaxError: number) {
   try {
-    JSON.parse("{")
+    parseJson("{")
     return "ok"
   } catch (e) {
     return "caught:" + e.name
@@ -25,7 +26,7 @@ function plainParse(SyntaxError: number) {
 effect function effectParse(SyntaxError: number) {
   try sleep("0 millis")
   try {
-    JSON.parse("{")
+    parseJsonTrusted("{")
     return "ok"
   } catch (e) {
     return "caught:" + e.name
