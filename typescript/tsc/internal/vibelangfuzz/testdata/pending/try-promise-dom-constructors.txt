@@ -1,0 +1,11 @@
+# Constructor binding gaps retain the platform rule and reject namespace capture.
+FuzzEffectTryPromiseDOMConstructors Headers/expression compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors Headers/block compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors Headers/conditional compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors Headers/named-import compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors corpus:alchemy-try-promise-headers compiler VIP-33: minimized Promise-thunk constructor binding witness; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors Response/expression compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors Response/block compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors Response/conditional compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors Response/named-import compiler VIP-33: DOM constructor in a Promise thunk resolves to an Effect namespace instead of retaining its binding and EK4402; lane migfix-alchemy
+FuzzEffectTryPromiseDOMConstructors corpus:alchemy-try-promise-response compiler VIP-33: minimized Promise-thunk constructor binding witness; lane migfix-alchemy
