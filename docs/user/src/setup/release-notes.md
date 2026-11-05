@@ -51,6 +51,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The readonly upgrade guide lacked an ordinary TypeScript example; it now shows how written modifiers are preserved in interfaces, nested object types and optional properties.
 - A call signature in a service with a written shape could report `EK0902` twice; it now reports the rejected member once while retaining independent key and type errors.
 
+- Dynamic-call examples omitted the required throwing-call error; they now show `EK0403` alongside the unrun-program diagnostic while preserving TypeScript errors for unresolved callees.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

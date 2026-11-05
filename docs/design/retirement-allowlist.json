@@ -1798,5 +1798,25 @@
       "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md: a call through any has unknown thrown type in effect code. docs/design/src/900-appendices.md retains EK4409 for the legacy dynamic-return compatibility rule, including its configured severity."
     },
     "reason": "This fixture already receives both diagnostics from the unchanged compiler. Its expected output now records the existing unknown-throw error alongside the existing configured compatibility error. Choosing an explicit callable contract or a different returned program requires author intent; no new language form is rejected by this expectation update."
+  },
+  {
+    "code": "EK0403",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/any-call-error-recovery.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: accepted VIP-4; A call through any or Function throws unknown. The Decision rejects an unwrapped throwing call with EK0403."
+    },
+    "reason": "The parent compiler already rejects these unchanged call expressions under VIP-4. This fixture update records the existing EK0403 in the diagnostic header and exact snapshot; it introduces no new rejected form or compiler restriction."
+  },
+  {
+    "code": "EK0403",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/any-call-program-value.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: accepted VIP-4; A call through any or Function throws unknown. The Decision rejects an unwrapped throwing call with EK0403."
+    },
+    "reason": "The parent compiler already rejects these unchanged call expressions under VIP-4. This fixture update records the existing EK0403 in the diagnostic header and exact snapshot; it introduces no new rejected form or compiler restriction."
   }
 ]
