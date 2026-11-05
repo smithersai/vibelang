@@ -345,3 +345,12 @@ logical operators and nullish coalescing bind below them. The `is` test remains
 a relational expression, so `x is > 1 & 2 + 3` has a grammar derivation and
 stays outside the pending tighter-arithmetic family. Native and `is` bitwise
 seeds have keyed corpus controls and no pending exemption.
+
+
+An unsupported `import.meta` value in a static import or export specifier
+remains `admission:import-meta-specifier`. VIP-40 admits a string or identifier
+reference there. A platform diagnostic covering that complete specifier also
+covers TypeScript's independent `TS1141` grammar error. The pending key follows
+that AST edge, with exact keyed witnesses and future XPASS detection. Ordinary
+metadata expressions, dynamic imports and `import.meta.url` reads remain
+separate controls; `EK4402` remains a platform error, not syntax rejection.

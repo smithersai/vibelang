@@ -189,6 +189,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"module-specifier-keyword", "import static\nx;"},
 	{"module-require-reserved-identifier", "import x = require(static);"},
 	{"import-relational-recovery", "import < value;"},
+	{"import-meta-specifier", "import import.meta;"},
+	{"import-meta-specifier-campaign", "import import . meta\nmeta . url ; ;"},
 	{"import-relational-campaign", "1\nimport < require(join)"},
 	{"schema-jsdoc-postfix-type", "schema C { id: string? }"},
 	{"schema-jsdoc-field-type", "schema C { id: ?? string }"},
@@ -867,6 +869,9 @@ func grammarAdmissionForm(source string) string {
 	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
 		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
 	}, source)
+	if grammarImportMetaSpecifier(file) {
+		return "admission:import-meta-specifier"
+	}
 	if grammarImportRelationalRecovery(file) {
 		return "admission:import-relational-recovery"
 	}

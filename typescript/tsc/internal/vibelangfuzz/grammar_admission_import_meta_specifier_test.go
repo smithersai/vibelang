@@ -1,0 +1,128 @@
+package vibelangfuzz
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+)
+
+func TestGrammarAdmissionImportMetaSpecifierQuoted(t *testing.T) {
+	if !strings.Contains(SpecText(grammarAppendix), grammarModuleSpecifierQuote) ||
+		!strings.Contains(SpecText(grammarAppendix), grammarAdmissionQuote) {
+		t.Fatal("Appendix A module specifier authority changed; review import.meta specifier coverage")
+	}
+}
+
+// Static module specifiers are strings or identifier references. This key
+// follows an unsupported import.meta value occupying the complete specifier,
+// where its platform diagnostic covers the native grammar diagnostic.
+func grammarImportMetaSpecifier(file *ast.SourceFile) bool {
+	unwrap := func(n *ast.Node) *ast.Node {
+		for n != nil && ast.IsParenthesizedExpression(n) {
+			n = n.Expression()
+		}
+		return n
+	}
+	isMeta := func(n *ast.Node) bool {
+		return n != nil && ast.IsMetaProperty(n) &&
+			n.AsMetaProperty().KeywordToken == ast.KindImportKeyword && n.Name().Text() == "meta"
+	}
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if n == nil {
+			return false
+		}
+		if ast.IsImportDeclaration(n) || ast.IsExportDeclaration(n) {
+			spec := ast.GetExternalModuleName(n)
+			if spec != nil {
+				if isMeta(unwrap(spec)) {
+					return true
+				}
+				if ast.IsPropertyAccessExpression(spec) && spec.Name().Text() != "url" && isMeta(unwrap(spec.Expression())) {
+					return true
+				}
+				if ast.IsElementAccessExpression(spec) && isMeta(unwrap(spec.Expression())) {
+					return true
+				}
+			}
+		}
+		return n.ForEachChild(visit)
+	}
+	return visit(file.AsNode())
+}
+
+func TestGrammarAdmissionImportMetaSpecifierKeys(t *testing.T) {
+	for source, want := range map[string]bool{
+		"import import . meta\nmeta . url ; ;": true,
+		"import import.meta;":                  true,
+		"import x from import.meta;":           true,
+		"export * from import.meta;":           true,
+		"import import.meta.main;":             true,
+		"import import.meta[\"url\"];":         true,
+		"import x from (import.meta);":         true,
+		"import x from (import.meta).main;":    true,
+		"const u = import.meta;":               false,
+		"import.meta.url;":                     false,
+		"import(import.meta.url);":             false,
+		"import(import.meta);":                 false,
+		"import import.meta.url;":              false,
+		"import import.meta.main.value;":       false,
+		"import import.meta();":                false,
+		"import import.x;":                     false,
+		"import new.target;":                   false,
+		"import Missing;":                      false,
+		"import x from Missing;":               false,
+		"import \"pkg\";":                      false,
+	} {
+		if key := grammarAdmissionForm(source); (key == "admission:import-meta-specifier") != want {
+			t.Errorf("key=%q,want import.meta specifier=%v: %s", key, want, source)
+		}
+	}
+}
+
+func TestGrammarAdmissionImportMetaSpecifierRegression(t *testing.T) {
+	w := NewWorkspace(t)
+	for _, source := range []string{
+		"import import . meta\nmeta . url ; ;",
+		"import import.meta;",
+		"import x from import.meta;",
+		"export * from import.meta;",
+		"import import.meta.main;",
+		"import import.meta[\"url\"];",
+		"import x from (import.meta);",
+		"import x from (import.meta).main;",
+	} {
+		t.Run(source, func(t *testing.T) {
+			result, err := w.Compile(context.Background(), Single(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			platform := false
+			for _, d := range result.Diagnostics {
+				platform = platform || IsEK(d) && d.Code() == 4402
+			}
+			if !platform || !grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("static specifier lost the observed syntax diagnostic gap; diagnostics=%v", result.Diagnostics)
+			}
+		})
+	}
+	for _, source := range []string{
+		"const u = import.meta;",
+		"import.meta.url;",
+		"import(import.meta.url);",
+		"import(import.meta);",
+		"import import.meta.url;",
+		"import new.target;",
+		"import Missing;",
+		"import x from Missing;",
+		"import \"pkg\";",
+	} {
+		t.Run(source, func(t *testing.T) {
+			if grammarAdmissionVerdict(t, w, source) {
+				t.Fatal("native expression or rejected static specifier became an admission mismatch")
+			}
+		})
+	}
+}
