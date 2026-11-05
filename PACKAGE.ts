@@ -1200,6 +1200,12 @@ const targets = {
     [Packages["compiler-native"]],
     "15m"
   ),
+  "tagged-match-repair-goldens": goVibelang(
+    "Tagged Match migrations retain credited coverage, results and declarations",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestMatchChainQuickFixes$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=5m -run \"^TestTypeScriptFormCasesFix$/tsforms-match$\" ./internal/vibelang && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=10m -run \"^(TestMatchHandlerDestructureQuoted|FuzzMatchTagDestructure|TestMatchCombinatorCoverageQuoted|FuzzMatchCombinatorCoverage)$\" ./internal/vibelangfuzz",
+    [],
+    "25m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

@@ -45,7 +45,6 @@ export function area(shape: Shape): number {
   return match (shape) {
     when { _tag: "Circle" } and let $matchHandler: do { let { radius } = $matchHandler; (Math.PI * radius * radius); };
     when { _tag: "Square" } and let square: square.side * square.side;
-    default: match (void 0 as unknown) { when 0: (void 0 as never); };
   }
 }
 `},
@@ -69,7 +68,6 @@ export const describe = (event: Event) =>
       const text = reason.trim()
       "closed: " + text
     }); };
-    default: match (void 0 as unknown) { when 0: (void 0 as never); };
   }; $matchResult; }
 `},
 		{"objects, or, not and refinements", `type Config = { readonly method: "token" | "oauth" | "none"; readonly value: string | number }

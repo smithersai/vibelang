@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Direct `try` calls returning `any` could lose the errors and services their programs require. They now infer the same `unknown` channels as native `yield*`, as stored `any` values already do.
 
+- Tagged match migration examples included an unnecessary fallback after covering every tag; their output now reflects the current coverage rule.
+
 - The example for an unexported failure class showed an unrelated Promise error; it now demonstrates the actual visibility error.
 
 - Some schema migration examples still showed a removed return annotation on generated codec factories; the examples now use native TypeScript return inference.

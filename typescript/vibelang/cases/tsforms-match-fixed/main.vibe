@@ -16,9 +16,8 @@ type Shape = { readonly _tag: "Circle"; readonly radius: number } | { readonly _
 
 export function area(shape: Shape): number {
   return match (shape) {
-    when { _tag: "Circle", let radius }: 3 * radius * radius;
+    when { _tag: "Circle" } and let $matchHandler: do { let { radius } = $matchHandler; (3 * radius * radius); };
     when { _tag: "Square" } and let square: square.side * square.side;
-    default: match (void 0 as unknown) { when 0: (void 0 as never); };
   }
 }
 
@@ -27,10 +26,10 @@ type Event = { readonly _tag: "Opened" } | { readonly _tag: "Closed"; readonly r
 export const describe = (event: Event) =>
   do { const $matchResult: string = match (event) {
     when { _tag: "Opened" }: "open";
-    when { _tag: "Closed", let reason }: do {
+    when { _tag: "Closed" } and let $matchHandler: do { let { reason } = $matchHandler; (do {
       const text = reason.trim()
       "closed: " + text
-    };
+    }); };
   }; $matchResult; }
 
 type Config = { readonly method: "token" | "oauth" | "none"; readonly value: string | number }
@@ -68,3 +67,4 @@ export effect function main() {
     sizes2: [scale(10), scale(1)],
   }
 }
+// Chapter 900: EK4839 diagnostic - spec-rule: docs/design/src/900-appendices.md#4a8fdc6b1538d93e

@@ -2110,3 +2110,5 @@ The `//:native-and-legacy-catch-bindings` target checks unchanged native catch b
 The schema codec return check also replays grouped, required-field, and readonly-field migration fixtures, with mutable, optional, grouped, and readonly codec fuzz inputs.
 
 The trusted class visibility check replays the located compatibility example and varies private versus exported classes, import aliases, namespaces, and Unicode names against stock TypeScript visibility controls.
+
+The tagged match repair check compares complete migration output and compiles it, with exhaustive-tag handler and refutable-combinator fuzz controls.
