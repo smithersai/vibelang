@@ -1,0 +1,5 @@
+// expect: EK2001 EK2004 TS2488 TS2504
+export effect function invalidSync(){for try(const value of (()=>{for(const n of 1){void n};return 1})()){void value}}
+export effect function invalidAsync(){for try(const value of (()=>{const read=async()=>{for await(const n of 1){void n}};void read;return 1})()){void value}}
+export function misplaced(){for try(const value of (()=>{for(const n of 1){void n};return Stream.make(1)})()){void value}}
+export effect function validDomain(){for try(const value of (()=>{const [n]=1;void n;return Stream.make(1)})()){void value}}

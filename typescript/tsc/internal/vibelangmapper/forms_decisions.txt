@@ -3757,6 +3757,11 @@ typescript/vibelang/cases/for-of-native-close/main.vibe:47:60 lambda plain proto
 typescript/vibelang/cases/for-of-native-close/main.vibe:51:149 lambda plain annotation
 typescript/vibelang/cases/for-of-native-close/main.vibe:51:41 lambda plain annotation
 typescript/vibelang/cases/for-try-coverage-owner/main.vibe:8:17 lambda program table
+typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:2:62 lambda plain fallback
+typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:3:63 lambda plain fallback
+typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:3:79 lambda plain fallback
+typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:4:53 lambda dual fallback
+typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:5:62 lambda dual fallback
 typescript/vibelang/cases/foreign-callback-admitted/main.vibe:41:62 lambda plain table
 typescript/vibelang/cases/foreign-callback-aliases.fail/main.vibe:16:19 lambda plain fallback
 typescript/vibelang/cases/foreign-callback-aliases/main.vibe:12:21 lambda effectFn table
