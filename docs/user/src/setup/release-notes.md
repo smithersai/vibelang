@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Project and migration tools could use different Go package configurations. They now retain the shared compilation flags.
 
 
+- Rolldown builds started from another directory could compile the wrong project or bundle a same-named source from the caller's directory; the plugin now honors `cwd` for the default compiler root and relative entries.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.

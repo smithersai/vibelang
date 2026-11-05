@@ -1,0 +1,5 @@
+{
+  "key": "alchemy-rolldown-cwd",
+  "input": { "kind": "ts", "shape": "named", "project": "tsconfig.bundle.json", "dottedCwd": true, "value": 42 },
+  "reason": "A programmatic bundle owns a source graph in a different directory from the process that starts it; its plugin must compile that graph with the selected project."
+}

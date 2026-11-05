@@ -154,9 +154,30 @@ entry.
 ```js
 vibelang({
   project: "tsconfig.app.json", // Relative to root; default: tsconfig.json.
-  root: "/path/to/app", // Default: the webpack or Rspack context, esbuild's absWorkingDir, or the working directory.
+  root: "/path/to/app", // Default: the Vite root, webpack or Rspack context, Rolldown's cwd, esbuild's absWorkingDir, or the working directory.
   compiler: "/absolute/path/to/vibelang" // Native binary or Node launcher.
 })
+```
+
+Rolldown's `cwd` selects the default compiler root as well as the directory
+for relative bundle entries. A custom `project` resolves from that root.
+An explicit plugin `root` selects the compiler project without changing where
+Rolldown resolves its entries, so builds can run from another directory:
+
+```js
+import { rolldown } from "rolldown"
+import vibelang from "vibelang-unplugin/rolldown"
+
+const bundle = await rolldown({
+  cwd: appDirectory,
+  input: "src/main.vibe",
+  plugins: [vibelang({ project: "tsconfig.app.json" })]
+})
+try {
+  await bundle.write({ dir: "dist", format: "es" })
+} finally {
+  await bundle.close()
+}
 ```
 
 Without a `compiler` option, the plugin runs `VIBELANG_BINARY`, else the native

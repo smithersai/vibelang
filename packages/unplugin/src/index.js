@@ -212,12 +212,13 @@ async function esbuildMessage(formatDiagnostic, diagnostic) {
 
 /** @type {import('./index.d.ts').unplugin} */
 export const unplugin = createUnplugin((options = {}, meta) => {
-  let root, project, backend, modules, current, closing
+  let root, project, backend, modules, current, closing, entryDirectory
 
   function configure(base) {
     if (root) return
     root = resolve(options.root || base || process.cwd())
     project = resolve(root, options.project || "tsconfig.json")
+    debug(`configure ${meta.framework}: root=${root}, project=${project}`)
   }
 
   // One compile per tsconfig: the project for root's modules, and each
@@ -268,10 +269,10 @@ export const unplugin = createUnplugin((options = {}, meta) => {
   // the bundler. directory is where a relative specifier resolves from, when
   // the bundler says (esbuild's resolveDir: an entry point's absWorkingDir, or
   // stdin's resolveDir, whose importer is "<stdin>"); else the importer's, or
-  // the root for an entry point. unplugin's resolveId hook passes its own
-  // options third, so the hook is resolveId and only esbuild passes a directory.
+  // Rolldown's cwd for its entry points, or the compiler root otherwise.
+  // unplugin passes hook options third, so resolveId supplies the directory.
   function resolveId(source, importer) {
-    return resolveFrom(source, importer)
+    return resolveFrom(source, importer, importer ? undefined : entryDirectory)
   }
 
   function resolveFrom(source, importer, directory) {
@@ -365,6 +366,9 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     },
     rolldown: {
       options(input) {
+        // The compiler root can be explicit; relative entries still belong to cwd.
+        entryDirectory = resolve(input.cwd || process.cwd())
+        configure(entryDirectory)
         const defaults = ["module", ...(input.platform === "neutral" ? [] : [input.platform ?? "browser"])]
         return { ...input, input: withoutSidecarEntries(input.input), resolve: { ...input.resolve, conditionNames: sourceConditions(input.resolve?.conditionNames ?? defaults) } }
       }

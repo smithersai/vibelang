@@ -26,6 +26,11 @@ entries, including expanded `tsdown` entry globs. Array order and named
 entry aliases stay as configured; `.ts` and `.vibe` sources still build.
 Use the `.vibe` source when choosing a single entry.
 
+For programmatic Rolldown builds, `vibelang-unplugin/rolldown` uses
+Rolldown's `cwd` as its default compiler root. A plugin `project` path is
+relative to that root. An explicit plugin `root` can select a different
+compiler project; relative bundle entries still resolve from `cwd`.
+
 Setup installs the `vibelang-unplugin/rolldown` plugin in each static `tsdown`
 configuration and local configuration factory. It reuses an imported plugin only
 where that binding is in scope. If a parameter or local declaration shadows it,
