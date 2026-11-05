@@ -2062,3 +2062,5 @@ The `//:scoped-wrapper-refusal-progress` target checks scoped platform refusals,
 The `//:explicit-diagnostic-category-variants` target checks fixed throw-syntax error severity and contextual host warning categories against Appendix B.
 
 The `//:unique-diagnostic-authorizations` target checks that a retired diagnostic and its source fixture have one authorization record, preserving approval references and protected source/configuration digests when records are consolidated.
+
+The `//:syntax-error-matcher-registration` target checks complete syntax goldens and parse/print fuzz seeds, including matcher registrations and authored error members.

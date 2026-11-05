@@ -1,0 +1,2 @@
+go test fuzz v1
+string("error Error6 { readonly id: string; static marker=6; method(){return this.id} }")

@@ -1,6 +1,9 @@
 class Gone extends TaggedError("Gone")<{
     readonly id: string;
 }> {
+    static {
+        $schemaErrorMatcher(this, "Gone", true);
+    }
 }
 abstract class Users {
     abstract find(id: string): Effect.Effect<string, Gone, never>;

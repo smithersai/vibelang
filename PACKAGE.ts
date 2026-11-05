@@ -1100,6 +1100,12 @@ const targets = {
     [node],
     "2m"
   ),
+  "syntax-error-matcher-registration": goVibelang(
+    "Error matcher registrations survive parser and printer round trips",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -short -p 8 -count=1 -timeout=3m -run \"^(TestSyntaxRoundTripGoldens|FuzzVibeLangParsePrint)$\" ./internal/vibelang",
+    [],
+    "5m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,
