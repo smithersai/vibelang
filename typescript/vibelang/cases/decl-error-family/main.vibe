@@ -80,12 +80,12 @@ effect function failBase(error: AppError): never!AppError {
 effect function routeBase(error: AppError): string!! {
   return failBase(error)
     |> Effect.catchTag(%, "AppError", effect (caught) => `base ${caught.code}`)
-    catch (caught) => `subclass ${caught._tag}`
+    catch (caught: AppError) => `subclass ${caught._tag}`
 }
 
 function classify(value: unknown): string {
   return match (value) {
-    when NotFound(let error): `NotFound ${error.path}`;
+    when NotFound and {path: let path}: `NotFound ${path}`;
     when AppError and let error: `AppError ${error.code}`;
     default: "other";
   }

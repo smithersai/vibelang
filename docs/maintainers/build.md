@@ -1917,3 +1917,5 @@ The `//:throws-documentation-preservation` gate runs located-refusal tests and g
 The `//:trusted-empty-forwarding` gate replays the legacy migration input, checks its fixed point and public API, and compares generated defect bridges with native Effect exits.
 
 The `//:negative-promise-boundaries` check requires exact independent diagnostic sets for native Promise calls, foreign synchronous calls, host fetches and root runners.
+
+The `//:error-family-native-patterns` gate checks native family patterns, unsupported-extractor controls, exact public declarations, and all runtime error-family observations.
