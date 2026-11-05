@@ -154,7 +154,7 @@ export schema error Plain {
   readonly message: string
 }
 
-const FailedCauseField = Schema.Defect()
+const FailedCauseField: Schema.Defect = Schema.Defect()
 export schema error Failed {
   readonly reason: string
   cause?: FailedCauseField

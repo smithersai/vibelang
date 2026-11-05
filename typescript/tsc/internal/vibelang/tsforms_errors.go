@@ -460,8 +460,16 @@ func schemaErrorField(c *checker.Checker, file *ast.SourceFile, property *ast.No
 	if strings.Contains(file.Text(), name) {
 		return "", "", "the name " + name + " is taken."
 	}
-	if optional {
-		return key + "?: " + name, "const " + name + " = " + expressionText(file, value), ""
+	// The inline field is contextually checked by TaggedError. Re-inference
+	// at an unannotated binding can select different generic defaults.
+	annotation := ""
+	if c.GetContextualType(value, checker.ContextFlagsNone) != nil {
+		format := checker.TypeFormatFlagsNoTruncation | checker.TypeFormatFlagsUseFullyQualifiedType | checker.TypeFormatFlagsUseSourceScope | checker.TypeFormatFlagsUseStructuralFallback
+		annotation = ": " + c.TypeToStringEx(c.GetTypeAtLocation(value), value, format, nil)
 	}
-	return key + ": " + name, "const " + name + " = " + expressionText(file, value), ""
+	constant = "const " + name + annotation + " = " + expressionText(file, value)
+	if optional {
+		return key + "?: " + name, constant, ""
+	}
+	return key + ": " + name, constant, ""
 }
