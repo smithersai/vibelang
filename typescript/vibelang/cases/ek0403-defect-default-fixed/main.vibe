@@ -1,5 +1,6 @@
 import { isResolved, havePropsChanged, type Input } from "./helpers.ts"
 export effect function diff(news: Input<object>, olds: object): (string | undefined)!! {
-  if (!(try Effect.orDie(Effect.try({ try: () => isResolved(news), catch: (e) => e })))) return undefined
-  return (try Effect.orDie(Effect.try({ try: () => havePropsChanged(olds, news), catch: (e) => e }))) ? "update" : "noop"
+  const resolved = try Effect.orDie(Effect.try({ try: () => isResolved(news) ? news : undefined, catch: (e) => e }))
+  if (resolved === undefined) return undefined
+  return (try Effect.orDie(Effect.try({ try: () => havePropsChanged(olds, resolved), catch: (e) => e }))) ? "update" : "noop"
 }
