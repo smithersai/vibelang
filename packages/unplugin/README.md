@@ -199,6 +199,10 @@ vibelang({
 })
 ```
 
+For `Bun.build`, relative entries resolve from the process working directory.
+An explicit plugin `root` selects the compiler project without changing that
+entry directory; a custom `project` remains relative to the plugin root.
+
 Rolldown's `cwd` selects the default compiler root as well as the directory
 for relative bundle entries. A custom `project` resolves from that root.
 An explicit plugin `root` selects the compiler project without changing where

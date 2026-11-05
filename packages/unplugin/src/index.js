@@ -270,7 +270,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
   // the bundler. directory is where a relative specifier resolves from, when
   // the bundler says (esbuild's resolveDir: an entry point's absWorkingDir, or
   // stdin's resolveDir, whose importer is "<stdin>"); else the importer's, or
-  // Rolldown's cwd for its entry points, or the compiler root otherwise.
+  // Bun's working directory or Rolldown's cwd for entry points, or the compiler root otherwise.
   // unplugin passes hook options third, so resolveId supplies the directory.
   function resolveId(source, importer) {
     return resolveFrom(source, importer, importer ? undefined : entryDirectory)
@@ -345,10 +345,12 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     bun: {
       setup(build) {
         if (build.config) build.config.conditions = sourceConditions(build.config.conditions)
-        configure()
+        // The compiler project can be elsewhere; Bun entries belong to the caller.
+        entryDirectory = process.cwd()
+        configure(entryDirectory)
         const repository = repositoryOf(root)
         const names = vibeBasenames(repository, root)
-        debug(`bun: .js imports resolve for ${names.size} .vibe names under ${repository}`)
+        debug(`bun: entry directory=${entryDirectory}; .js imports resolve for ${names.size} .vibe names under ${repository}`)
         build.onResolve({ filter: bunResolveFilter(names) }, (args) => {
           const entry = args.kind === "entry-point-build" || args.kind === "entry-point-run"
           const id = resolveId(args.path, entry ? undefined : args.importer)

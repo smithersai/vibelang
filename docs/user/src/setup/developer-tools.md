@@ -26,6 +26,10 @@ Rolldown's `cwd` as its default compiler root. A plugin `project` path is
 relative to that root. An explicit plugin `root` can select a different
 compiler project; relative bundle entries still resolve from `cwd`.
 
+For `Bun.build`, relative entries resolve from the process working directory.
+The plugin's `root` and `project` options select the compiler configuration
+without changing that entry directory.
+
 Setup installs the `vibelang-unplugin/rolldown` plugin in each static `tsdown`
 configuration and local configuration factory. It reuses an imported plugin only
 where that binding is in scope. If a parameter or local declaration shadows it,

@@ -1,0 +1,7 @@
+{
+  "key": "Bun relative entries remain relative to the caller when the compiler root is explicit",
+  "entry": "leaf.vibe",
+  "value": 42,
+  "decoy": -19,
+  "pattern": "A test launches a bundle from a package subdirectory and selects the enclosing compiler project."
+}
