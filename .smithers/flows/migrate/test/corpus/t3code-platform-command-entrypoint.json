@@ -1,0 +1,7 @@
+{
+  "key": "t3code-platform-command-entrypoint",
+  "quote": "each export's type identical to `tsc`'s in both directions",
+  "original": "const main = 0; void main; export {};",
+  "facade": "import { main } from \"./cli.platform.js\"; void main;",
+  "helper": "export const main = 0;"
+}
