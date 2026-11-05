@@ -8,7 +8,9 @@
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4408` is retired and will never be reassigned: VIP-40 owns `EK4001`–`EK4009`; and a duplicate module or a module/value collision is the error `EK4005`.
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4843` is retired and will never be reassigned: it was the entry-point warning.
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { dirname, join } from "node:path"
 import { test } from "node:test"
 import {createHash} from "node:crypto"
 import {allocationPreservesChecker} from "./diagnostic-identity-allocation.mjs"
@@ -463,4 +465,28 @@ test("retired implicit module execution has no active identity", async () => {
  assert.equal(identity.appendix.has("EK1001"),false)
  const fixtures=JSON.parse(readFileSync(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
  assert.equal(fixtures.find(x=>x.code==="EK1001")?.retired,true)
+})
+
+test("one process inventories each root once and keeps roots apart", async () => {
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const compiler="typescript/tsc/internal/parser/vibelang_fixture.go"
+ const write=(root,path,text)=>{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),text)}
+ const root=code=>{
+  const dir=mkdtempSync(join(tmpdir(),"identity-root-"))
+  write(dir,compiler,"package parser\nconst FixtureCode = "+code+"\n")
+  for(const path of ["docs/user/src/guide.md","docs/user/llms-essentials.md","packages/compiler/skills/vibelang/SKILL.md","templates/app/AGENTS.md"]) write(dir,path,"")
+  write(dir,"docs/design/src/900-appendices.md","## Appendix B. Diagnostics\n\n| `EK"+code+"` | error: fixture |\n")
+  return dir
+ }
+ const one=root(1001),two=root(1002)
+ try {
+  const first=loadIdentity(one)
+  assert.deepEqual([...first.registered.keys()],["EK1001"])
+  write(one,compiler,"package parser\nconst FixtureCode = 1003\n")
+  assert.equal(loadIdentity(one),first)
+  assert.equal(loadIdentity(one+"/"),first)
+  assert.deepEqual([...loadIdentity(two).registered.keys()],["EK1002"])
+ } finally {
+  rmSync(one,{recursive:true,force:true});rmSync(two,{recursive:true,force:true})
+ }
 })
