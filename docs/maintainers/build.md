@@ -2023,3 +2023,5 @@ for the opposite type. Missing `BigInt` retains native `TS2583` and an
 unavailable API comparison. Global, referenced-script, inherited-interface
 and module-augmentation controls, documentation normalization and all four
 generated reflexivity/mutation samples remain active.
+
+The `//:schema-alias-native-properties` target checks alias repairs against native writable-property errors across optional, nested and imported schema variations.

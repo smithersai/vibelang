@@ -1002,6 +1002,12 @@ const targets = {
     [go, node, bun],
     "10m"
   ),
+  "schema-alias-native-properties": goVibelang(
+    "Schema alias repairs preserve native writable and readonly properties, optionality and declarations.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelang ./internal/vibelangfuzz -run '^(TestSchemaStructAliasQuickFix|TestSchemaAliasNativePropertiesQuoted|FuzzSchemaAliasNativeProperties)$'`,
+    [Tsc["vibelangfuzz-files"]],
+    "10m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

@@ -71,11 +71,11 @@ func TestSchemaAliasQuickFixes(t *testing.T) {
 // VIP-15 and VIP-34: the constant/type pair trigger includes Struct.
 func TestSchemaStructAliasQuickFix(t *testing.T) {
 	for _, test := range []struct{ name, fields, want string }{
-		{"primitive", "name: Schema.String", "name: string"},
+		{"primitive", "name: Schema.String", "readonly name: string"},
 		{"empty", "", ""},
-		{"optional", "name: Schema.optional(Schema.String)", "name?: string"},
-		{"mutable", "name: Schema.mutableKey(Schema.String)", "mutable name: string"},
-		{"nested", "child: Schema.Struct({ age: Schema.Number })", "child: { age: number }"},
+		{"optional", "name: Schema.optional(Schema.String)", "readonly name?: string"},
+		{"mutable", "name: Schema.mutableKey(Schema.String)", "name: string"},
+		{"nested", "child: Schema.Struct({ age: Schema.Number })", "readonly child: { readonly age: number }"},
 	} {
 		for _, imported := range []bool{false, true} {
 			prefix, suffix := "", "/implicit"
