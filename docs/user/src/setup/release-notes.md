@@ -44,6 +44,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migrated nested-catch examples could acquire possible `undefined` returns and lose literal types; their explicit catch expressions now keep `undefined` out of the declaration, keep the literal types, and preserve the runtime result.
 
+- The TypeScript mapper could report `EK9001` on an `error` declaration with an `extends` clause that it had already lowered; it no longer reports the generated class member.
 - A call signature in a service with a written shape could report `EK0902` twice; each invalid member now reports once while independent key and generic errors remain.
 
 - The legacy catch diagnostic example for `Cause` linked to code that had already been migrated. It now links to an executable original input that still demonstrates the warning.
