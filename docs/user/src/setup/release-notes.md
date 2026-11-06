@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12
 
 ### Bugs fixed since 0.0.11
+- Runtime compatibility checks could time out while repeatedly starting Node. They now reuse a Node process while keeping every generated comparison and failure reduction.
 
 - Bundler plugins could crash while loading when the compiler package was missing. They now load normally and report an installation hint when a build needs the compiler.
 

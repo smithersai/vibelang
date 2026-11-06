@@ -2097,6 +2097,14 @@ The `//:native-inferred-declarations` target covers inferred native consumer imp
 
 The `//:pipe-topic-regressions` target executes the implemented direct and nested missing-topic cases without pending markers. Its keyed corpus covers ordinary and Effect callables, with explicit positive controls that supply the correct outer topic.
 
+Runtime IPv6 and base64 compatibility properties use actual Node oracle
+processes, one per test, and send each sample or shrink attempt as a correlated
+JSON-line request. They keep their original seeds and run counts. The oracle
+bounds each response and request wait; child failures identify the request
+without printing inputs. `packages/runtime/tests/node-oracle-budget.test.ts`
+reruns the two suites with a real Node launch counter to prevent repeated
+startup from returning.
+
 The `//:build-contracts` target runs bounded declaration checks: Bun deadlines, compiler shard prerequisites, Go build flags, shared cache warmup, shared-package test selection and uncached Go test replay. It declares both Node and Go because cache replay verifies a real Go test against a changed external oracle.
 
 The release target depends on this same check and excludes its eight registered

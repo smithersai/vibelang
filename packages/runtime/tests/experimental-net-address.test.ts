@@ -3,24 +3,13 @@ import * as fc from "fast-check"
 import * as Experimental from "vibelang-runtime/experimental"
 import { fileURLToPath } from "node:url"
 import { runInNewContext } from "node:vm"
+import { withNodeOracle } from "./node-oracle"
 import corpus from "./fixtures/foldkit-relay-location-scoped-ipv6.json"
 
 const predicate = () => {
   expect(Experimental.NetAddress).toBeDefined()
   expect(typeof Experimental.NetAddress.isIPv6).toBe("function")
   return Experimental.NetAddress.isIPv6
-}
-const oracle = (inputs: ReadonlyArray<string>): Array<boolean> => {
-  const path = fileURLToPath(new URL("./fixtures/ipv6-node-oracle.mjs", import.meta.url))
-  const child = Bun.spawnSync(["node", path], {
-    stdin: new TextEncoder().encode(JSON.stringify(inputs)), stdout: "pipe", stderr: "pipe", timeout: 15_000
-  })
-  expect(child.exitCode).toBe(0)
-  expect(child.stderr.toString()).toBe("")
-  const results = JSON.parse(child.stdout.toString())
-  expect(results.length).toBe(inputs.length)
-  expect(results.every((v: unknown) => typeof v === "boolean")).toBe(true)
-  return results
 }
 const hex = fc.tuple(fc.integer({ min: 0, max: 0xffff }), fc.integer({ min: 1, max: 4 }))
   .map(([n, width]) => n.toString(16).padStart(width, "0"))
@@ -52,36 +41,36 @@ const neighbourhood = fc.oneof(valid, mutated, fc.string({ maxLength: 160 }), v4
 // Node26 is the independent oracle, in actual Node child processes (not Bun's
 // node:net compatibility layer). Only the missing zone grammar is new;
 // Effect remains the address parser. No service/layer/platform read is needed.
-test("NetAddress.isIPv6: consumed relay-location scoped-host corpus", () => {
+test("NetAddress.isIPv6: consumed relay-location scoped-host corpus", async () => withNodeOracle<boolean>("ipv6", async (oracle) => {
   const isIPv6 = predicate()
   const inputs = corpus.cases.map((witness) => witness.input)
-  const expected = oracle(inputs)
+  const expected = await oracle(inputs)
   expect(expected).toEqual(corpus.cases.map((witness) => witness.expected))
   expect(inputs.map(isIPv6)).toEqual(expected)
-})
+}))
 
-test("NetAddress.isIPv6: generated valid bare and scoped addresses match actual Node", () => {
+test("NetAddress.isIPv6: generated valid bare and scoped addresses match actual Node", async () => withNodeOracle<boolean>("ipv6", async (oracle) => {
   const isIPv6 = predicate()
-  fc.assert(fc.property(fc.array(valid, { minLength: 1, maxLength: 64 }), (inputs) => {
-    const expected = oracle(inputs)
+  await fc.assert(fc.asyncProperty(fc.array(valid, { minLength: 1, maxLength: 64 }), async (inputs) => {
+    const expected = await oracle(inputs)
     expect(expected.every(Boolean)).toBe(true) // Generator productivity, not a mostly-invalid oracle.
     expect(inputs.map(isIPv6)).toEqual(expected)
   }), { numRuns: 100, seed: 331560 })
-}, 60_000)
+}), 60_000)
 
-test("NetAddress.isIPv6: generated malformed, Unicode and scoped neighbourhood matches Node", () => {
+test("NetAddress.isIPv6: generated malformed, Unicode and scoped neighbourhood matches Node", async () => withNodeOracle<boolean>("ipv6", async (oracle) => {
   const isIPv6 = predicate()
-  fc.assert(fc.property(fc.array(neighbourhood, { minLength: 1, maxLength: 128 }), (inputs) => {
-    expect(inputs.map(isIPv6)).toEqual(oracle(inputs))
+  await fc.assert(fc.asyncProperty(fc.array(neighbourhood, { minLength: 1, maxLength: 128 }), async (inputs) => {
+    expect(inputs.map(isIPv6)).toEqual(await oracle(inputs))
   }), { numRuns: 150, seed: 331561 })
-}, 60_000)
+}), 60_000)
 
-test("NetAddress.isIPv6: every ASCII zone boundary and oversized scope stays Node-compatible", () => {
+test("NetAddress.isIPv6: every ASCII zone boundary and oversized scope stays Node-compatible", async () => withNodeOracle<boolean>("ipv6", async (oracle) => {
   const isIPv6 = predicate()
   const inputs = Array.from({ length: 128 }, (_, code) => "::1%" + String.fromCharCode(code))
   inputs.push("::1%" + "9".repeat(4096), "::1%" + "0".repeat(4096), "::ffff:127.0.0.1%4294967296")
-  expect(inputs.map(isIPv6)).toEqual(oracle(inputs))
-})
+  expect(inputs.map(isIPv6)).toEqual(await oracle(inputs))
+}))
 
 test("NetAddress.isIPv6: browser bundle executes with no process, require or provider", async () => {
   const isIPv6 = predicate()
