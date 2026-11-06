@@ -19,8 +19,10 @@ func platformHostKey(node *ast.Node) string {
 	if ast.IsIdentifier(node) || ast.IsStringLiteralLike(node) {
 		return node.Text()
 	}
-	if ast.IsComputedPropertyName(node) && ast.IsStringLiteralLike(node.Expression()) {
-		return node.Expression().Text()
+	if ast.IsComputedPropertyName(node) {
+		if key := legacyLiteralKey(node.Expression()); key != nil {
+			return key.Text()
+		}
 	}
 	return ""
 }
@@ -129,6 +131,12 @@ func platformHostOrigin(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol
 			}
 		}
 		receiver := platformHostOrigin(c, node.Expression(), seen, cache, writes, values)
+		// The host receiver keeps its identity through erased literal-key wrappers.
+		if receiver.root == "AbortSignal" || receiver.root == "URL" {
+			if name := legacyAccessedName(node); name != nil {
+				key = name.Text()
+			}
+		}
 		if receiver.root == "globalThis" && key != "" {
 			symbol := c.GetSymbolAtLocation(node)
 			if symbol == nil {

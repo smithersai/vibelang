@@ -20,6 +20,8 @@ func TestFixPlatformWrapperPreservesDeclaration(t *testing.T) {
 		"Effect.try(() => window.location.origin)",
 		"Effect.try(() => { /* keep adapter comment */ return window.location.origin; })",
 		"Effect.try(() => performance.now())",
+		"Effect.try(() => AbortSignal[(\"timeout\" as const)](1))",
+		"Effect.try(() => URL[(\"revokeObjectURL\" satisfies string)](\"blob:sample\"))",
 		"Effect.try(() => crypto.getRandomValues(new Uint8Array(2)))",
 		"Effect.try({ try: () => window.location.origin, catch: (e) => e })",
 		"sync(() => document.title)",

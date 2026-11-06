@@ -1,0 +1,3 @@
+go test fuzz v1
+string("URL-createObjectURL-nonnull-local")
+byte(3)

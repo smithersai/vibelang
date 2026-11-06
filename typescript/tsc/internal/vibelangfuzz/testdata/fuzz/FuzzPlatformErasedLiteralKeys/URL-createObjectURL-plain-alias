@@ -1,0 +1,3 @@
+go test fuzz v1
+string("URL-createObjectURL-plain-alias")
+byte(3)

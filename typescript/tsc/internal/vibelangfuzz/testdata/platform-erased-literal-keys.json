@@ -1,0 +1,2254 @@
+[
+  {
+    "key": "AbortSignal-timeout-plain-direct",
+    "source": "export const held = AbortSignal[\"timeout\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-plain-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[\"timeout\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-plain-global",
+    "source": "export const held = globalThis.AbortSignal[\"timeout\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-plain-destructured",
+    "source": "export const { [\"timeout\"]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-plain-optional",
+    "source": "export const held = AbortSignal?.[\"timeout\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-plain-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[\"timeout\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-plain-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[\"timeout\"];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-parenthesized-direct",
+    "source": "export const held = AbortSignal[(\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-parenthesized-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[(\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-parenthesized-global",
+    "source": "export const held = globalThis.AbortSignal[(\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-parenthesized-destructured",
+    "source": "export const { [(\"timeout\")]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-parenthesized-optional",
+    "source": "export const held = AbortSignal?.[(\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-parenthesized-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[(\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-parenthesized-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[(\"timeout\")];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-direct",
+    "source": "export const held = AbortSignal[\"timeout\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[\"timeout\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-global",
+    "source": "export const held = globalThis.AbortSignal[\"timeout\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-destructured",
+    "source": "export const { [\"timeout\" as const]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-optional",
+    "source": "export const held = AbortSignal?.[\"timeout\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[\"timeout\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[\"timeout\" as const];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-satisfies-direct",
+    "source": "export const held = AbortSignal[\"timeout\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-satisfies-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[\"timeout\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-satisfies-global",
+    "source": "export const held = globalThis.AbortSignal[\"timeout\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-satisfies-destructured",
+    "source": "export const { [\"timeout\" satisfies string]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-satisfies-optional",
+    "source": "export const held = AbortSignal?.[\"timeout\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-satisfies-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[\"timeout\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-satisfies-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[\"timeout\" satisfies string];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nonnull-direct",
+    "source": "export const held = AbortSignal[\"timeout\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nonnull-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[\"timeout\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nonnull-global",
+    "source": "export const held = globalThis.AbortSignal[\"timeout\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nonnull-destructured",
+    "source": "export const { [\"timeout\"!]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nonnull-optional",
+    "source": "export const held = AbortSignal?.[\"timeout\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nonnull-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[\"timeout\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nonnull-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[\"timeout\"!];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-angle-direct",
+    "source": "export const held = AbortSignal[(<\"timeout\">\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-timeout-angle-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[(<\"timeout\">\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-timeout-angle-global",
+    "source": "export const held = globalThis.AbortSignal[(<\"timeout\">\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-timeout-angle-destructured",
+    "source": "export const { [(<\"timeout\">\"timeout\")]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-timeout-angle-optional",
+    "source": "export const held = AbortSignal?.[(<\"timeout\">\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-timeout-angle-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[(<\"timeout\">\"timeout\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-timeout-angle-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[(<\"timeout\">\"timeout\")];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-timeout-nested-direct",
+    "source": "export const held = AbortSignal[((\"timeout\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nested-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[((\"timeout\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nested-global",
+    "source": "export const held = globalThis.AbortSignal[((\"timeout\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nested-destructured",
+    "source": "export const { [((\"timeout\" as const)! satisfies string)]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nested-optional",
+    "source": "export const held = AbortSignal?.[((\"timeout\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nested-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[((\"timeout\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-nested-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[((\"timeout\" as const)! satisfies string)];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-template-direct",
+    "source": "export const held = AbortSignal[`timeout`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-template-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[`timeout`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-template-global",
+    "source": "export const held = globalThis.AbortSignal[`timeout`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-template-destructured",
+    "source": "export const { [`timeout`]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-template-optional",
+    "source": "export const held = AbortSignal?.[`timeout`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-template-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[`timeout`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-template-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[`timeout`];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-template-direct",
+    "source": "export const held = AbortSignal[(`timeout` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-template-alias",
+    "source": "const Receiver = AbortSignal; export const held = Receiver[(`timeout` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-template-global",
+    "source": "export const held = globalThis.AbortSignal[(`timeout` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-template-destructured",
+    "source": "export const { [(`timeout` as const)]: held } = AbortSignal;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-template-optional",
+    "source": "export const held = AbortSignal?.[(`timeout` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-template-receiver",
+    "source": "export const held = (AbortSignal as typeof AbortSignal)[(`timeout` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-asserted-template-local",
+    "source": "const implementation: typeof AbortSignal[\"timeout\"] = (_value) => AbortSignal.abort(); const local = { timeout: implementation }; export const held = local[(`timeout` as const)];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-plain-direct",
+    "source": "export const held = URL[\"createObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-plain-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"createObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-plain-global",
+    "source": "export const held = globalThis.URL[\"createObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-plain-destructured",
+    "source": "export const { [\"createObjectURL\"]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-plain-optional",
+    "source": "export const held = URL?.[\"createObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-plain-receiver",
+    "source": "export const held = (URL as typeof URL)[\"createObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-plain-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[\"createObjectURL\"];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-parenthesized-direct",
+    "source": "export const held = URL[(\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-parenthesized-alias",
+    "source": "const Receiver = URL; export const held = Receiver[(\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-parenthesized-global",
+    "source": "export const held = globalThis.URL[(\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-parenthesized-destructured",
+    "source": "export const { [(\"createObjectURL\")]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-parenthesized-optional",
+    "source": "export const held = URL?.[(\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-parenthesized-receiver",
+    "source": "export const held = (URL as typeof URL)[(\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-parenthesized-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[(\"createObjectURL\")];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-direct",
+    "source": "export const held = URL[\"createObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"createObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-global",
+    "source": "export const held = globalThis.URL[\"createObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-destructured",
+    "source": "export const { [\"createObjectURL\" as const]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-optional",
+    "source": "export const held = URL?.[\"createObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-receiver",
+    "source": "export const held = (URL as typeof URL)[\"createObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[\"createObjectURL\" as const];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-satisfies-direct",
+    "source": "export const held = URL[\"createObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-satisfies-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"createObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-satisfies-global",
+    "source": "export const held = globalThis.URL[\"createObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-satisfies-destructured",
+    "source": "export const { [\"createObjectURL\" satisfies string]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-satisfies-optional",
+    "source": "export const held = URL?.[\"createObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-satisfies-receiver",
+    "source": "export const held = (URL as typeof URL)[\"createObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-satisfies-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[\"createObjectURL\" satisfies string];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nonnull-direct",
+    "source": "export const held = URL[\"createObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nonnull-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"createObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nonnull-global",
+    "source": "export const held = globalThis.URL[\"createObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nonnull-destructured",
+    "source": "export const { [\"createObjectURL\"!]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nonnull-optional",
+    "source": "export const held = URL?.[\"createObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nonnull-receiver",
+    "source": "export const held = (URL as typeof URL)[\"createObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nonnull-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[\"createObjectURL\"!];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-angle-direct",
+    "source": "export const held = URL[(<\"createObjectURL\">\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-createObjectURL-angle-alias",
+    "source": "const Receiver = URL; export const held = Receiver[(<\"createObjectURL\">\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-createObjectURL-angle-global",
+    "source": "export const held = globalThis.URL[(<\"createObjectURL\">\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-createObjectURL-angle-destructured",
+    "source": "export const { [(<\"createObjectURL\">\"createObjectURL\")]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-createObjectURL-angle-optional",
+    "source": "export const held = URL?.[(<\"createObjectURL\">\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-createObjectURL-angle-receiver",
+    "source": "export const held = (URL as typeof URL)[(<\"createObjectURL\">\"createObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-createObjectURL-angle-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[(<\"createObjectURL\">\"createObjectURL\")];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-createObjectURL-nested-direct",
+    "source": "export const held = URL[((\"createObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nested-alias",
+    "source": "const Receiver = URL; export const held = Receiver[((\"createObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nested-global",
+    "source": "export const held = globalThis.URL[((\"createObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nested-destructured",
+    "source": "export const { [((\"createObjectURL\" as const)! satisfies string)]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nested-optional",
+    "source": "export const held = URL?.[((\"createObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nested-receiver",
+    "source": "export const held = (URL as typeof URL)[((\"createObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-nested-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[((\"createObjectURL\" as const)! satisfies string)];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-template-direct",
+    "source": "export const held = URL[`createObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-template-alias",
+    "source": "const Receiver = URL; export const held = Receiver[`createObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-template-global",
+    "source": "export const held = globalThis.URL[`createObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-template-destructured",
+    "source": "export const { [`createObjectURL`]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-template-optional",
+    "source": "export const held = URL?.[`createObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-template-receiver",
+    "source": "export const held = (URL as typeof URL)[`createObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-template-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[`createObjectURL`];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-template-direct",
+    "source": "export const held = URL[(`createObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-template-alias",
+    "source": "const Receiver = URL; export const held = Receiver[(`createObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-template-global",
+    "source": "export const held = globalThis.URL[(`createObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-template-destructured",
+    "source": "export const { [(`createObjectURL` as const)]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-template-optional",
+    "source": "export const held = URL?.[(`createObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-template-receiver",
+    "source": "export const held = (URL as typeof URL)[(`createObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-asserted-template-local",
+    "source": "const implementation: typeof URL[\"createObjectURL\"] = (_value) => \"local\"; const local = { createObjectURL: implementation }; export const held = local[(`createObjectURL` as const)];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-plain-direct",
+    "source": "export const held = URL[\"revokeObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-plain-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"revokeObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-plain-global",
+    "source": "export const held = globalThis.URL[\"revokeObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-plain-destructured",
+    "source": "export const { [\"revokeObjectURL\"]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-plain-optional",
+    "source": "export const held = URL?.[\"revokeObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-plain-receiver",
+    "source": "export const held = (URL as typeof URL)[\"revokeObjectURL\"];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-plain-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[\"revokeObjectURL\"];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-parenthesized-direct",
+    "source": "export const held = URL[(\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-parenthesized-alias",
+    "source": "const Receiver = URL; export const held = Receiver[(\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-parenthesized-global",
+    "source": "export const held = globalThis.URL[(\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-parenthesized-destructured",
+    "source": "export const { [(\"revokeObjectURL\")]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-parenthesized-optional",
+    "source": "export const held = URL?.[(\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-parenthesized-receiver",
+    "source": "export const held = (URL as typeof URL)[(\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-parenthesized-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[(\"revokeObjectURL\")];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-direct",
+    "source": "export const held = URL[\"revokeObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"revokeObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-global",
+    "source": "export const held = globalThis.URL[\"revokeObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-destructured",
+    "source": "export const { [\"revokeObjectURL\" as const]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-optional",
+    "source": "export const held = URL?.[\"revokeObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-receiver",
+    "source": "export const held = (URL as typeof URL)[\"revokeObjectURL\" as const];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[\"revokeObjectURL\" as const];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-satisfies-direct",
+    "source": "export const held = URL[\"revokeObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-satisfies-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"revokeObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-satisfies-global",
+    "source": "export const held = globalThis.URL[\"revokeObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-satisfies-destructured",
+    "source": "export const { [\"revokeObjectURL\" satisfies string]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-satisfies-optional",
+    "source": "export const held = URL?.[\"revokeObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-satisfies-receiver",
+    "source": "export const held = (URL as typeof URL)[\"revokeObjectURL\" satisfies string];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-satisfies-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[\"revokeObjectURL\" satisfies string];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nonnull-direct",
+    "source": "export const held = URL[\"revokeObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nonnull-alias",
+    "source": "const Receiver = URL; export const held = Receiver[\"revokeObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nonnull-global",
+    "source": "export const held = globalThis.URL[\"revokeObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nonnull-destructured",
+    "source": "export const { [\"revokeObjectURL\"!]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nonnull-optional",
+    "source": "export const held = URL?.[\"revokeObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nonnull-receiver",
+    "source": "export const held = (URL as typeof URL)[\"revokeObjectURL\"!];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nonnull-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[\"revokeObjectURL\"!];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-angle-direct",
+    "source": "export const held = URL[(<\"revokeObjectURL\">\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-revokeObjectURL-angle-alias",
+    "source": "const Receiver = URL; export const held = Receiver[(<\"revokeObjectURL\">\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-revokeObjectURL-angle-global",
+    "source": "export const held = globalThis.URL[(<\"revokeObjectURL\">\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-revokeObjectURL-angle-destructured",
+    "source": "export const { [(<\"revokeObjectURL\">\"revokeObjectURL\")]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-revokeObjectURL-angle-optional",
+    "source": "export const held = URL?.[(<\"revokeObjectURL\">\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-revokeObjectURL-angle-receiver",
+    "source": "export const held = (URL as typeof URL)[(<\"revokeObjectURL\">\"revokeObjectURL\")];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-revokeObjectURL-angle-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[(<\"revokeObjectURL\">\"revokeObjectURL\")];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-revokeObjectURL-nested-direct",
+    "source": "export const held = URL[((\"revokeObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nested-alias",
+    "source": "const Receiver = URL; export const held = Receiver[((\"revokeObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nested-global",
+    "source": "export const held = globalThis.URL[((\"revokeObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nested-destructured",
+    "source": "export const { [((\"revokeObjectURL\" as const)! satisfies string)]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nested-optional",
+    "source": "export const held = URL?.[((\"revokeObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nested-receiver",
+    "source": "export const held = (URL as typeof URL)[((\"revokeObjectURL\" as const)! satisfies string)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-nested-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[((\"revokeObjectURL\" as const)! satisfies string)];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-template-direct",
+    "source": "export const held = URL[`revokeObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-template-alias",
+    "source": "const Receiver = URL; export const held = Receiver[`revokeObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-template-global",
+    "source": "export const held = globalThis.URL[`revokeObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-template-destructured",
+    "source": "export const { [`revokeObjectURL`]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-template-optional",
+    "source": "export const held = URL?.[`revokeObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-template-receiver",
+    "source": "export const held = (URL as typeof URL)[`revokeObjectURL`];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-template-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[`revokeObjectURL`];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-template-direct",
+    "source": "export const held = URL[(`revokeObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-template-alias",
+    "source": "const Receiver = URL; export const held = Receiver[(`revokeObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-template-global",
+    "source": "export const held = globalThis.URL[(`revokeObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-template-destructured",
+    "source": "export const { [(`revokeObjectURL` as const)]: held } = URL;",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-template-optional",
+    "source": "export const held = URL?.[(`revokeObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-template-receiver",
+    "source": "export const held = (URL as typeof URL)[(`revokeObjectURL` as const)];",
+    "codes": [
+      "EK4402"
+    ],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "host",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-asserted-template-local",
+    "source": "const implementation: typeof URL[\"revokeObjectURL\"] = (_value) => {}; const local = { revokeObjectURL: implementation }; export const held = local[(`revokeObjectURL` as const)];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "local",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-plain-pure",
+    "source": "export const held = AbortSignal[\"abort\"];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-parenthesized-pure",
+    "source": "export const held = AbortSignal[(\"abort\")];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-asserted-pure",
+    "source": "export const held = AbortSignal[\"abort\" as const];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-satisfies-pure",
+    "source": "export const held = AbortSignal[\"abort\" satisfies string];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-nonnull-pure",
+    "source": "export const held = AbortSignal[\"abort\"!];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-angle-pure",
+    "source": "export const held = AbortSignal[(<\"abort\">\"abort\")];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": false
+  },
+  {
+    "key": "AbortSignal-abort-nested-pure",
+    "source": "export const held = AbortSignal[((\"abort\" as const)! satisfies string)];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-template-pure",
+    "source": "export const held = AbortSignal[`abort`];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-abort-asserted-template-pure",
+    "source": "export const held = AbortSignal[(`abort` as const)];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "abort",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-plain-pure",
+    "source": "export const held = URL[\"canParse\"];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-parenthesized-pure",
+    "source": "export const held = URL[(\"canParse\")];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-asserted-pure",
+    "source": "export const held = URL[\"canParse\" as const];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-satisfies-pure",
+    "source": "export const held = URL[\"canParse\" satisfies string];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-nonnull-pure",
+    "source": "export const held = URL[\"canParse\"!];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-angle-pure",
+    "source": "export const held = URL[(<\"canParse\">\"canParse\")];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": false
+  },
+  {
+    "key": "URL-canParse-nested-pure",
+    "source": "export const held = URL[((\"canParse\" as const)! satisfies string)];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-template-pure",
+    "source": "export const held = URL[`canParse`];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-canParse-asserted-template-pure",
+    "source": "export const held = URL[(`canParse` as const)];",
+    "codes": [],
+    "host": "URL",
+    "member": "canParse",
+    "kind": "pure",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-dynamic",
+    "source": "const key = \"timeout\" as const; export const held = AbortSignal[key];",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "dynamic",
+    "jsxSafe": true
+  },
+  {
+    "key": "AbortSignal-timeout-type-only",
+    "source": "export type Captured = typeof AbortSignal.timeout; export const held = 0;",
+    "codes": [],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "type",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-dynamic",
+    "source": "const key = \"createObjectURL\" as const; export const held = URL[key];",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "dynamic",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-createObjectURL-type-only",
+    "source": "export type Captured = typeof URL.createObjectURL; export const held = 0;",
+    "codes": [],
+    "host": "URL",
+    "member": "createObjectURL",
+    "kind": "type",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-dynamic",
+    "source": "const key = \"revokeObjectURL\" as const; export const held = URL[key];",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "dynamic",
+    "jsxSafe": true
+  },
+  {
+    "key": "URL-revokeObjectURL-type-only",
+    "source": "export type Captured = typeof URL.revokeObjectURL; export const held = 0;",
+    "codes": [],
+    "host": "URL",
+    "member": "revokeObjectURL",
+    "kind": "type",
+    "jsxSafe": true
+  },
+  {
+    "key": "globalThis-wrapped-constructor-restriction",
+    "source": "export const held = globalThis[(\"AbortSignal\")].timeout;",
+    "codes": [
+      "EK0107"
+    ],
+    "host": "AbortSignal",
+    "member": "timeout",
+    "kind": "global-rejected",
+    "jsxSafe": true
+  }
+]

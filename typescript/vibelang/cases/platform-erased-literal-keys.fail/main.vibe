@@ -1,0 +1,5 @@
+// expect: EK4402
+export const timeout = AbortSignal[("timeout")]
+export const create = URL["createObjectURL" as const]
+export const revoke = URL["revokeObjectURL" satisfies string]
+export const { [("timeout" as const)]: capturedTimeout } = AbortSignal
