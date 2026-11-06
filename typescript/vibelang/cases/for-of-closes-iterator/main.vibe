@@ -1,9 +1,7 @@
-// A for...of over an iterable closes its iterator, calling return(), on every
-// abrupt exit, as JavaScript's for...of does: a break, a return, a typed
-// failure thrown in the body or by a call in it, and an interruption. Effect
-// abandons a generator at a failed or interrupted yield* without calling its
-// return(), so a loop whose body runs an Effect goes through $forOf, which
-// closes the iterator itself. Native loops keep Effect.gen abandonment.
+// A for...of keeps Effect.gen's meaning (chapter 8, Abandonment). JavaScript
+// completions close the iterator: a break and a return call return(). A failed
+// or interrupted yield* abandons the generator, so a typed failure thrown in the
+// body or by a call in it, and an interruption, leave the iterator open.
 error Stop { at: number }
 
 const events: string[] = []
@@ -81,7 +79,7 @@ effect function slow(): number!! {
   return 0
 }
 
-// expect-result: {"results":[-1,-1,-1,1,2,15,-1],"events":["throw","throw after an effect","throw","failing call","break","return","interrupted"]}
+// expect-result: {"results":[-1,-1,-1,1,2,15,-1],"events":["break","return"]}
 export effect function main() {
   const results = [
     throwing() catch () => -1,

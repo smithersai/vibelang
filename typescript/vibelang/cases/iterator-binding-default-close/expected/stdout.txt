@@ -1,2 +1,2 @@
 binding open,caught
-body open,close,caught
+body open,caught

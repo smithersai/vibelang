@@ -1,4 +1,4 @@
 array open,caught
-iterable open,close,caught
+iterable open,caught
 subclass open,caught
 proxy open,caught

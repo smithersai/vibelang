@@ -1,7 +1,8 @@
+import { Effect } from "effect"
 import {pairs,events} from "./helper.js"
-function boom():number{throw "boom"}
-try {for(const [n=boom()] of pairs()){events.push("body:"+n)}}catch{events.push("caught")}
+const caught = (body: Effect.Effect<void, string>) => Effect.runSync(Effect.catch(body, () => Effect.sync(() => { events.push("caught") })))
+caught(Effect.gen(function* () { for (const [n = yield* Effect.fail("boom")] of pairs()) { events.push("body:"+n) } }))
 console.log("binding",events.join(","))
 events.length=0
-try{for(const pair of pairs()){const [n=boom()]=pair;events.push("body:"+n)}}catch{events.push("caught")}
+caught(Effect.gen(function* () { for (const pair of pairs()) { const [n = yield* Effect.fail("boom")] = pair; events.push("body:"+n) } }))
 console.log("body",events.join(","))

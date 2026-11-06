@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1006 records)</summary>
+<summary>Parser and lowering hooks (995 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1291,10 +1291,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/chains_lower.go:lowering.visitGuardedLink ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` vibelang/chains_lower.go:lowering.invokeGuarded ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` vibelang/chains_lower.go:lowering.boundThunk ` | ` admission:implicit-running ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
-| ` vibelang/closing.go:lowering.closeLoops ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/closing.go:lowering.closeLoop ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/closing.go:lowering.isClosedLoop ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/closing.go:bindsOneName ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
 | ` vibelang/data_lower.go:newDataPlan ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` support ` | VIP-16/28 constructors |
 | ` vibelang/data_lower.go:dataPlan.planVariantTest ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` support ` | VIP-16/28 constructors |
 | ` vibelang/data_lower.go:dataPlan.withoutUnusedIs ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` support ` | VIP-16/28 constructors |
@@ -1455,13 +1451,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/imports.go:lowering.outputSpecifier ` | ` admission:imports ` | ` 007-tooling.md ` | ` support ` | VIP-34 emitted module specifiers |
 | ` vibelang/imports.go:outputSpecifierText ` | ` admission:imports ` | ` 007-tooling.md ` | ` support ` | VIP-34 emitted module specifiers |
 | ` vibelang/imports.go:outputSpecifierTextWithJSX ` | ` admission:imports ` | ` 007-tooling.md ` | ` support ` | VIP-34 emitted module specifiers |
-| ` vibelang/joined.go:analyzer.joinsFailures ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/joined.go:joinPlan.planJoins ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/joined.go:analyzer.compilesToPlain ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/joined.go:analyzer.callJoinsFailures ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/joined.go:lowering.joinFrames ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/joined.go:lowering.isFrameCall ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind |
-| ` vibelang/joined.go:iteratorGeneratorBody ` | ` admission:iterator-support ` | ` 002-running.md `, ` 008-runtime.md ` | ` support ` | Native generator body discovery for joined failure frames; VIP-31 leaves abandoned generators suspended |
 | ` vibelang/lower.go:newLowering ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.visit ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.visitSource ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |

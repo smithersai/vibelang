@@ -31,7 +31,6 @@ type plan struct {
 	prelude                    []string           // prelude names the file uses as values (prelude.go)
 	intrinsics                 map[*ast.Node]bool // intrinsics a source binding would capture, reached through the lowering's own import (prelude.go)
 	servicePlan
-	joinPlan
 	trustedPlan
 	scopePlan
 	handlerPlan
@@ -149,7 +148,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 		if isPipe(node) {
 			p.planPipe(a, node)
 		}
-		p.planJoins(a, node) // D340 (joined.go)
 		p.planServiceNode(c, node)
 		if p.wireOrders[node] != nil || fiberHelper(node) == "$forConcurrent" {
 			p.noteStable(c, node.Arguments()...) // arguments emitted in another order (order.go)

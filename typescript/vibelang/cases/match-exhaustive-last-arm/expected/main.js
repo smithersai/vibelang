@@ -27,28 +27,11 @@ function text(value) {
     }
 }
 export function main() {
-    return Effect.gen(runtime.$joinedFrame(function* main() {
+    return Effect.gen(function* main() {
         const phases = ["draft", "review", "published"];
         const logged = [];
-        {
-            let pending_1 = runtime.$normal;
-            try {
-                for (const phase of phases) {
-                    try {
-                        record(phase, logged);
-                    }
-                    catch (thrown_1) {
-                        pending_1 = thrown_1;
-                        break;
-                    }
-                }
-            }
-            catch (thrown_2) {
-                throw runtime.$finallyFailure(pending_1, thrown_2);
-            }
-            if (pending_1 !== runtime.$normal)
-                throw pending_1;
-        }
+        for (const phase of phases)
+            record(phase, logged);
         return {
             phases: phases.map(phaseLabel),
             widths: phases.map(width),
@@ -58,6 +41,6 @@ export function main() {
             announced: yield* announce("published"),
             text: text("hi")
         };
-    }));
+    });
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

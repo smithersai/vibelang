@@ -6,9 +6,9 @@
 // rule: docs/design/src/008-runtime.md#d7a9086923200286
 // 008-runtime.md: native for-of closing preserves the pending thrown object
 // rule: docs/design/src/008-runtime.md#295445f82cf3060b
-// Plain loops keep ECMAScript IteratorClose: a pending body or binding
-// exception wins over a close failure by identity (effectscript-75, RC-23).
-// Effect frames retain their existing failure-combining behavior. In either
+// Loops keep ECMAScript IteratorClose: a pending body or binding exception
+// wins over a close failure by identity, in plain functions and Effect frames,
+// as in the Effect.gen counterpart. In either
 // path, return is looked up once per close and never at loop entry, including
 // when the iterator gains it while the loop runs.
 let lookups = 0
@@ -94,7 +94,7 @@ function reasons(outcome: Exit<unknown, unknown>): string {
   return outcome.cause.reasons.map((reason) => reason._tag === "Die" ? `Die(${name(reason.defect)})` : reason._tag).join("+")
 }
 
-// expect-result: {"body":"Die(body)","head":"Die(type)","late":"Die(body)","break":"Die(close)","ok":"ok(3)","framed":"Die(body)+Die(close)","lookups":5}
+// expect-result: {"body":"Die(body)","head":"Die(type)","late":"Die(body)","break":"Die(close)","ok":"ok(3)","framed":"Die(body)","lookups":5}
 export effect function main() {
   const result = {
     body: reasons(try exit(Effect.sync(() => plainBody()))),

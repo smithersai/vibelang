@@ -25,6 +25,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration left a module in TypeScript when it read a clock or random source such as `crypto.randomUUID()`, because the platform split did not recognize the call in the compiler's message. The split now moves that code to the module's `.ts` companion.
 - Migrating a repository with routed bundle imports could revert healthy modules: each revert dropped the routes, and the import errors that left were blamed on modules that had none. Settle now emits again before it blames a kept module.
 
+- A `for…of` in effect code called its iterator's `return` when a `try` failed or the fiber was interrupted, and joined a failing close into a thrown defect. It now behaves as the same loop in `Effect.gen`: a failed `try`, a `throw` and an interruption leave the iterator open, and a thrown error wins over a failing close.
 - Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
 
 - Migrating a generator with nested pipelines could crash or corrupt the rewrite; `vibelang --fix` now preserves nested receiver and stage-callback changes when capturing the surrounding pipeline.

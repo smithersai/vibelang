@@ -22,28 +22,10 @@ const shout = (text) => {
     return Effect_1.gen(function* shout() { return yield* Console.log(text.toUpperCase()); });
 };
 export function main() {
-    return Effect_1.gen(runtime.$joinedFrame(function* main() {
-        {
-            let pending_1 = runtime.$normal;
-            try {
-                for (const id of [0, 1]) {
-                    try {
-                        {
-                            const length = yield* greet(`user ${id}`); // a .vibe Effect: runs
-                            yield* Console.log(`greeted with ${length} letters`);
-                        }
-                    }
-                    catch (thrown_1) {
-                        pending_1 = thrown_1;
-                        break;
-                    }
-                }
-            }
-            catch (thrown_2) {
-                throw runtime.$finallyFailure(pending_1, thrown_2);
-            }
-            if (pending_1 !== runtime.$normal)
-                throw pending_1;
+    return Effect_1.gen(function* main() {
+        for (const id of [0, 1]) {
+            const length = yield* greet(`user ${id}`); // a .vibe Effect: runs
+            yield* Console.log(`greeted with ${length} letters`);
         }
         yield* shout("calls run in order");
         const total = (yield* greet("a")) + (yield* greet("bc")); // operands run left to right
@@ -55,6 +37,6 @@ export function main() {
         // findName returns Effect<string>, so the call runs it and name is a string.
         const name = yield* findName(2);
         yield* Console.log(`found ${name.toUpperCase()}`);
-    }));
+    });
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));
