@@ -1,7 +1,9 @@
 import assert from "node:assert/strict"
 import { readdirSync, readFileSync } from "node:fs"
 import { test } from "node:test"
+import fc from "fast-check"
 const read = path => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")
+const registryCodes = source => [...source.matchAll(/\bmessage\((\d+),/g)].map(match => "EK" + match[1].padStart(4, "0"))
 
 test("CLI reference watch distinguishes selected inputs from the reference graph", () => {
   const text = read("docs/user/src/setup/vibelang-cli.md")
@@ -75,9 +77,22 @@ test("declaration consumers have an explicit stock TypeScript compatibility floo
 test("every EK code the skill names is one the compiler reports", () => {
   const dir = "typescript/tsc/internal/vibelang"
   const sources = readdirSync(new URL(`../../${dir}`, import.meta.url)).filter(name => name.endsWith(".go") && !name.endsWith("_test.go"))
-  const codes = new Set(sources.flatMap(name => [...read(`${dir}/${name}`).matchAll(/\bmessage\((\d{4}),/g)].map(m => `EK${m[1]}`)))
+  const codes = new Set(sources.flatMap(name => registryCodes(read(`${dir}/${name}`))))
   assert.ok(codes.has("EK9201") && codes.has("EK4801") && codes.has("EK4836"), "the registry scan found the compiler's codes")
   const named = [...read("packages/compiler/skills/vibelang/SKILL.md").matchAll(/\bEK\d{4}\b/g)].map(m => m[0])
   assert.ok(named.length >= 5)
   assert.deepEqual(named.filter(code => !codes.has(code)), [])
+})
+
+
+test("registry scans retain short numeric diagnostic identities", () => {
+  fc.assert(fc.property(
+    fc.array(fc.integer({ min: 1, max: 9999 }), { minLength: 1, maxLength: 24 }),
+    codes => {
+      const labels = codes.map(code => "EK" + String(code).padStart(4, "0"))
+      const source = codes.map((code, index) =>
+        "var " + labels[index] + " = message(" + code + ', errorCategory, "diagnostic")').join("\n")
+      assert.deepEqual([...new Set(registryCodes(source))].sort(), [...new Set(labels)].sort())
+    },
+  ), { seed: 9091000, numRuns: 200 })
 })
