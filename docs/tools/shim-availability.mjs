@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { checkRecordedPublication } from "./release-history.mjs"
 
 const root = fileURLToPath(new URL("../..", import.meta.url))
 const registry = "https://registry.npmjs.org"
@@ -52,18 +53,18 @@ export function checkerVersionProblems(text, { file = "document" } = {}) {
   return problems
 }
 
-export function shimAvailabilityProblems(text, { versions = [], open = true, file = "document" } = {}) {
+export function shimAvailabilityProblems(text, { versions = [], preparedVersions = [], open = true, file = "document" } = {}) {
   const problems = checkerVersionProblems(text, { file })
   if (open && !/\b(?:preview|experimental)\b/i.test(text)) {
     problems.push(file + ": identify the open proposal as a preview")
   }
   const unavailable = /\b(?:unpublished|not\s+(?:(?:yet|currently)\s+)?(?:published|available)[^.!?\n]*\bnpm)\b/i.test(text)
   if (versions.length && unavailable) problems.push(file + ": update the unpublished status after recording publication")
-  if (!versions.length && !unavailable) {
+  if (!versions.length && !preparedVersions.length && !unavailable) {
     problems.push(file + ": state that the replacement package is not available from npm")
   }
   for (const match of text.matchAll(/\bnpm:vibelang-typescript(?:@(\d+\.\d+\.\d+(?:[-+][\w.-]+)?))?/g)) {
-    if (!versions.length || match[1] && !versions.includes(match[1])) {
+    if (match[1] ? !versions.includes(match[1]) && !preparedVersions.includes(match[1]) : !versions.length) {
       const line = text.slice(0, match.index).split("\n").length
       problems.push(file + ":" + line + ": the npm alias names an unavailable replacement package; use the checkout preview")
     }
@@ -71,13 +72,29 @@ export function shimAvailabilityProblems(text, { versions = [], open = true, fil
   return problems
 }
 
+// Release preparation may finalize source versions before npm publication.
+// Reuse the release-history rule; a source candidate never becomes a registry receipt.
+export function preparedShimVersions(repository = root) {
+  const snapshot = checkRecordedPublication(repository)
+  const compiler = JSON.parse(readFileSync(join(repository, "packages/compiler/package.json"), "utf8")).version
+  if (compiler === snapshot.version) return []
+  const shim = JSON.parse(readFileSync(join(repository, "packages/typescript-shim/package.json"), "utf8"))
+  if (shim.name !== packageName || shim.private === true || shim.dependencies?.vibelang !== compiler) {
+    throw new Error("prepared shim must be the public source package and depend on the compiler candidate")
+  }
+  if (typeof shim.version !== "string") throw new Error("prepared shim must have an exact source version")
+  try { return registryVersions(shim.version) }
+  catch { throw new Error("prepared shim must have an exact source version") }
+}
+
 export function checkShimAvailability(repository = root) {
   const publication = JSON.parse(readFileSync(join(repository, receipt), "utf8"))
   if (publication.registry !== registry || publication.package !== packageName) throw new Error("invalid shim publication receipt")
   const versions = registryVersions(publication.versions)
+  const preparedVersions = preparedShimVersions(repository)
   const open = proposalIsOpen(readFileSync(join(repository, "docs/design/vips/0042-vibelang-in-ts-files-open.md"), "utf8"))
   return ["docs/user/src/setup/typescript-shim.md", "packages/typescript-shim/README.md"].flatMap(file =>
-    shimAvailabilityProblems(readFileSync(join(repository, file), "utf8"), { versions, open, file }))
+    shimAvailabilityProblems(readFileSync(join(repository, file), "utf8"), { versions, preparedVersions, open, file }))
 }
 
 export function recordShimPublication(repository = root, query = () => {
@@ -105,7 +122,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   } else {
     const problems = checkShimAvailability()
     for (const problem of problems) console.error(problem)
-    console.log("shim availability: " + problems.length + " failures")
+    const prepared = preparedShimVersions()
+    console.log("shim availability: " + problems.length + " failures" +
+      (prepared.length ? "; prepared source version " + prepared.join(", ") + " (publication not asserted)" : ""))
     process.exitCode = problems.length ? 1 : 0
   }
 }

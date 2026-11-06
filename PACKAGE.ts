@@ -1522,8 +1522,8 @@ const targets = {
     [bun, node]
   ),
   "docs-shim-availability": check(
-    "The TypeScript replacement guides match npm availability, proposal status and checker API requirements.",
-    "node docs/tools/shim-availability.mjs && bun test --timeout 60000 docs/tools/shim-availability.test.ts docs/tools/checker-version-claims.test.ts",
+    "The TypeScript replacement guides distinguish prepared source versions from recorded npm availability and match proposal status and checker API requirements.",
+    "node docs/tools/shim-availability.mjs && bun test --timeout 60000 docs/tools/shim-availability.test.ts docs/tools/checker-version-claims.test.ts docs/tools/shim-preparation.test.ts",
     [],
     [bun, node]
   ),
