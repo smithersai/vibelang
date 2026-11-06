@@ -1098,6 +1098,11 @@ func (c *Checker) GetPropertySymbolOfDestructuringAssignment(location *ast.Node)
 	return nil
 }
 
+// GetTypeOfAssignmentPattern is the type a destructuring assignment pattern reads from.
+func (c *Checker) GetTypeOfAssignmentPattern(pattern *ast.Node) *Type {
+	return c.getTypeOfAssignmentPattern(pattern)
+}
+
 // Gets the type of object literal or array literal of destructuring assignment.
 // { a } from
 //

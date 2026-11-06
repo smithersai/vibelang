@@ -26,7 +26,7 @@ func checkInlineURIModules(c *checker.Checker, file *ast.SourceFile) {
 				specifier = args[0]
 			}
 		}
-		if specifier != nil && ast.IsStringLiteral(specifier) {
+		if specifier != nil && ast.IsStringLiteralLike(specifier) {
 			if scheme := inlineModuleScheme(specifier.Text()); scheme != "" {
 				report(c, specifier, inlineURIModuleDiagnostic, scheme)
 				cover(c, specifier)

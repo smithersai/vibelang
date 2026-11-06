@@ -1,0 +1,11 @@
+// expect: EK0107
+const f = async () => 1
+export const { constructor: bound } = f
+export function assigned() {
+  let target: unknown
+  ;({ constructor: target } = f)
+  return target
+}
+export const template = import(`data:text/javascript,export default 1`)
+
+// Spec rule: docs/design/src/001-functions.md, Legacy JavaScript.

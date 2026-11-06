@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor-read-assign-for-of")
+string("plain")
+byte(0)

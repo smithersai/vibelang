@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor-read-binding-computed")
+string("effect")
+byte(0)

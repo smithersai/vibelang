@@ -4838,6 +4838,7 @@ typescript/vibelang/cases/lazyarg-alias-destination/main.vibe:11:11 lambda plain
 typescript/vibelang/cases/lazyarg-alias-destination/main.vibe:13:42 lambda program table
 typescript/vibelang/cases/lazyarg-alias-destination/main.vibe:15:13 lambda effectFn keyword
 typescript/vibelang/cases/lazyarg-alias-destination/main.vibe:9:12 lambda plain table
+typescript/vibelang/cases/legacy-constructor-destructured.fail/main.vibe:2:11 lambda plain fallback
 typescript/vibelang/cases/legacy-javascript.fail/main.vibe:15:20 lambda plain fallback
 typescript/vibelang/cases/legacy-javascript.fail/main.vibe:19:21 lambda plain fallback
 typescript/vibelang/cases/legacy-javascript.fail/main.vibe:20:22 lambda plain fallback

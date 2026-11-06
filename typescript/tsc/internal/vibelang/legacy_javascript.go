@@ -6,6 +6,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
+var legacyFunctionConstructor = EK0107.With("constructor of a function value reaches the Function constructor, which runs a string as code. Move the code to a .ts or .js file.")
+
 func init() {
 	fileChecks = append(fileChecks, checkLegacyJavaScript)
 }
@@ -56,9 +58,16 @@ func checkLegacyJavaScript(c *checker.Checker, file *ast.SourceFile) {
 				break
 			}
 			if name := legacyAccessedName(node); name != nil && name.Text() == "constructor" && isFunctionValue(c, node.Expression()) {
-				report(c, name, EK0107.With("constructor of a function value reaches the Function constructor, which runs a string as code. Move the code to a .ts or .js file."))
+				report(c, name, legacyFunctionConstructor)
 			}
-
+		case ast.KindBindingElement:
+			if ast.IsObjectBindingPattern(node.Parent) {
+				checkDestructuredConstructor(c, node, c.GetTypeAtLocation(node.Parent))
+			}
+		case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment:
+			if ast.IsArrayLiteralOrObjectLiteralDestructuringPattern(node.Parent) {
+				checkDestructuredConstructor(c, node, c.GetTypeOfAssignmentPattern(node.Parent))
+			}
 		}
 		return node.ForEachChild(visit)
 	}
@@ -107,21 +116,45 @@ func legacyAccessedName(node *ast.Node) *ast.Node {
 	case ast.KindPropertyAccessExpression:
 		return node.Name()
 	case ast.KindElementAccessExpression:
-		argument := node.AsElementAccessExpression().ArgumentExpression
-		for argument != nil && ast.IsOuterExpression(argument, ast.OEKParentheses|ast.OEKAssertions) {
-			argument = argument.Expression()
-		}
-		if argument != nil && ast.IsStringLiteralLike(argument) {
-			return argument
-		}
+		return legacyLiteralKey(node.AsElementAccessExpression().ArgumentExpression)
 	}
 	return nil
+}
+
+// legacyLiteralKey is a computed key's string literal without substitutions.
+func legacyLiteralKey(key *ast.Node) *ast.Node {
+	for key != nil && ast.IsOuterExpression(key, ast.OEKParentheses|ast.OEKAssertions) {
+		key = key.Expression()
+	}
+	if key != nil && ast.IsStringLiteralLike(key) {
+		return key
+	}
+	return nil
+}
+
+// checkDestructuredConstructor reports a destructuring element that reads the
+// property named constructor from a function value: const { constructor: C } = f
+// reads what f.constructor reads. The element's own target is a write.
+func checkDestructuredConstructor(c *checker.Checker, element *ast.Node, source *checker.Type) {
+	if ast.IsBindingElement(element) && element.AsBindingElement().DotDotDotToken != nil {
+		return
+	}
+	name := element.PropertyNameOrName()
+	if ast.IsComputedPropertyName(name) {
+		name = legacyLiteralKey(name.Expression())
+	}
+	if name != nil && (ast.IsIdentifier(name) || ast.IsStringLiteralLike(name)) && name.Text() == "constructor" && isFunctionType(c, source) {
+		report(c, name, legacyFunctionConstructor)
+	}
 }
 
 // isFunctionValue reports whether the static type of expression is a function
 // type or Function. any, unknown and the error type are not.
 func isFunctionValue(c *checker.Checker, expression *ast.Node) bool {
-	t := c.GetTypeAtLocation(expression)
+	return isFunctionType(c, c.GetTypeAtLocation(expression))
+}
+
+func isFunctionType(c *checker.Checker, t *checker.Type) bool {
 	if t == nil || t == c.GetErrorType() || t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
 		return false
 	}
