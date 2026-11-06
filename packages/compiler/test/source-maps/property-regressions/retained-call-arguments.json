@@ -1,0 +1,9 @@
+{
+  "property": "source-map-programs",
+  "rule": "docs/maintainers/source-maps.md: Tokens; retained string columns after call elimination",
+  "input": {
+    "key": "vip05.tail-native-delegation-array",
+    "variant": "plain",
+    "bundler": "rolldown"
+  }
+}

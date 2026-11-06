@@ -86,10 +86,10 @@ export function project(t, files = {}) {
 
 /** Runs a command to its end, with the fixture's cache and compiler. */
 export function run(command, args, options = {}) {
-  const { cwd, env, input } = options
+  const { cwd, env, input, timeout } = options
   return new Promise((done, failed) => {
     const child = spawn(command, args, {
-      cwd, stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+      cwd, timeout, killSignal: "SIGKILL", stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
       env: { ...process.env, NO_COLOR: "1", VIBELANG_BINARY: compiler, VIBELANG_CACHE_DIR: cwd && join(cwd, ".vibelang-cache"), ...env }
     })
     let stdout = "", stderr = ""

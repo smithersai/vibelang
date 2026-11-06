@@ -5,10 +5,10 @@ import { strict as assert } from "node:assert"
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { TraceMap, decodedMappings, originalPositionFor } from "@jridgewell/trace-mapping"
 import fc from "fast-check"
-import { SourceMapConsumer } from "source-map"
+import { SourceMapConsumer, SourceMapGenerator } from "source-map"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
 import { compiler, fixtures, position, project, run, succeed } from "./helpers.mjs"
 
@@ -54,9 +54,22 @@ const generatedWords = /^(?:fork|join|await|break|case|catch|class|const|continu
 const helper = /(?:\b(?:Schema|Effect|Data|Option|Exit|Cause|Layer|Stream|runtime)(?:_\d+)?\.)$/
 
 /** The strings a text spells once, by where. */
-function quoted(text) {
+function quoted(text, includeModules = true) {
+  // Imports may be synthesized. Identify module specifiers from text, never
+  // by accepting whatever positions the map happens to omit.
+  const modules = new Set()
+  if (!includeModules) {
+    let previous
+    const tokens = new RegExp(pieces.source + "|[A-Za-z_$][\\w$]*|[^\\s]", "g")
+    for (const token of text.matchAll(tokens)) {
+      if (token[0].startsWith("//") || token[0].startsWith("/*")) continue
+      if ((previous === "from" || previous === "import") && token[0].startsWith('"')) modules.add(token.index)
+      previous = token[0]
+    }
+  }
   const found = new Map()
   for (const match of blank(text, '"').matchAll(/"(?:[^"\\\n\r]|\\.)*"/g)) {
+    if (modules.has(match.index)) continue
     if (match[0].length > 3) found.set(match[0], found.has(match[0]) ? -1 : match.index)
   }
   return new Map([...found].filter(([, at]) => at >= 0))
@@ -107,48 +120,110 @@ async function checkMap(map, code, source) {
   }
 }
 
-let compiled = 0, wordsRead = 0
+let compiled = 0, wordsRead = 0, bundlesRead = 0, bundleTokensRead = 0
+let activeProgram
 
-async function checkProgram({ program, variant, bundler }) {
-  const { key, files } = programs[program % programs.length]
+async function checkProgram({ program, variant, bundler, key: programKey }) {
+  const selected = programKey === undefined ? programs[program % programs.length] : programs.find(({ key }) => key === programKey)
+  assert.ok(selected, `unknown generated program ${programKey ?? program}`)
+  const { key, files } = selected
+  activeProgram = { program, key, variant, bundler, stage: "compile" }
+  console.log(`source-map program ${JSON.stringify(activeProgram)}`)
   const apply = variants[variant]
   const texts = Object.fromEntries(Object.entries(files).map(([name, text]) => [name.startsWith("src/") ? name : `src/${name}`, name.endsWith(".vibe") ? apply(text) : text]))
-  const root = project({ after() {} }, { ...events, "src/entry.mjs": 'import * as main from "./main.vibe"\nconsole.log(Object.keys(main))\n', ...texts })
-  const source = texts["src/main.vibe"].replace(/^\uFEFF/, "")
-  const emit = await run(compiler, ["-p", "tsconfig.json"], { cwd: root })
-  const output = join(root, "out/main.js")
-  // A program with errors or a pending construct emits nothing to read.
-  if (!existsSync(output + ".map") || /error (?:TS|EK)/.test(emit.output)) return
-  compiled++
-  wordsRead += await checkMap(JSON.parse(readFileSync(output + ".map", "utf8")), readFileSync(output, "utf8"), source)
-  // Rollup reads JavaScript alone, and some programs import a .ts helper.
-  if (bundler === "none" || bundler === "rollup" && Object.keys(files).some((name) => name.endsWith(".ts"))) return
-  const built = await run(process.execPath, [bundle, bundler], { cwd: root })
-  assert.equal(built.code, 0, `${key}: ${bundler}\n${built.output}`)
-  const code = readFileSync(output, "utf8")
-  const map = JSON.parse(readFileSync(output + ".map", "utf8"))
-  if (variant === "directive") assert.ok(code.includes("//# sourceMappingURL=keep"), `${key}: ${bundler} lost a string's line`)
-  const index = map.sources.findIndex((name) => name.endsWith("main.vibe"))
-  // A bundler that tree-shook the module leaves nothing to compare.
-  if (index >= 0) await checkBundle(map, code, source, index)
-}
-
-// Strings survive a bundler, whose map holds one source among others.
-async function checkBundle(map, code, source, index) {
-  const trace = new TraceMap(map)
-  const inCode = quoted(code)
-  for (const [text, sourceAt] of quoted(source)) {
-    const codeAt = inCode.get(text)
-    if (codeAt === undefined) continue
-    const found = originalPositionFor(trace, position(code, codeAt))
-    if (found.source === null || found.source !== trace.resolvedSources[index]) continue
-    assert.equal(found.line, position(source, sourceAt).line, `the bundle's ${text}`)
+  const cleanup = []
+  const root = project({ after(fn) { cleanup.push(fn) } }, { ...events, "src/entry.mjs": 'import * as main from "./main.vibe"\nconsole.log(Object.keys(main))\n', ...texts })
+  try {
+    const source = texts["src/main.vibe"].replace(/^\uFEFF/, "")
+    const emit = await run(compiler, ["-p", "tsconfig.json"], { cwd: root, timeout: 30000 })
+    assert.equal(emit.signal, null, `${key}: compiler terminated (${emit.signal})`)
+    const output = join(root, "out/main.js")
+    // A program with errors or a pending construct emits nothing to read.
+    if (!existsSync(output + ".map") || /error (?:TS|EK)/.test(emit.output)) return
+    compiled++
+    wordsRead += await checkMap(JSON.parse(readFileSync(output + ".map", "utf8")), readFileSync(output, "utf8"), source)
+    // Rollup reads JavaScript alone, and some programs import a .ts helper.
+    if (bundler === "none" || bundler === "rollup" && Object.keys(files).some((name) => name.endsWith(".ts"))) return
+    activeProgram.stage = "bundle"
+    console.log(`source-map program ${JSON.stringify(activeProgram)}`)
+    const built = await run(process.execPath, [bundle, bundler], { cwd: root, timeout: 30000 })
+    assert.equal(built.code, 0, `${key}: ${bundler}\n${built.output}`)
+    const code = readFileSync(output, "utf8")
+    const map = JSON.parse(readFileSync(output + ".map", "utf8"))
+    if (variant === "directive") assert.ok(code.includes("//# sourceMappingURL=keep"), `${key}: ${bundler} lost a string's line`)
+    const read = await checkBundle(map, code, source, pathToFileURL(join(root, "src/main.vibe")).href, pathToFileURL(output + ".map").href)
+    bundlesRead++
+    bundleTokensRead += read
+  } catch (error) {
+    error.message = `${JSON.stringify(activeProgram)}: ${error.message}`
+    throw error
+  } finally {
+    for (const remove of cleanup) remove()
   }
 }
 
+// Strings survive a bundler, whose map holds one source among others.
+async function checkBundle(map, code, source, sourceName, mapURL) {
+  const trace = new TraceMap(map, mapURL)
+  const inCode = quoted(code, false)
+  let read = 0
+  for (const [text, sourceAt] of quoted(source, false)) {
+    const codeAt = inCode.get(text)
+    if (codeAt === undefined) continue
+    assert.ok(trace.resolvedSources.includes(sourceName), `the bundle retains ${text} but has no main.vibe source`)
+    // A bundler can place the surrounding expression and the string at
+    // the same opening quote. Read inside the token to select its segment.
+    const found = originalPositionFor(trace, position(code, codeAt + 1))
+    assert.equal(found.source, sourceName, `the bundle's ${text} source`)
+    assert.deepEqual({ line: found.line, column: found.column }, position(source, sourceAt), `the bundle's ${text} position`)
+    read++
+  }
+  return read
+}
+
+test("the bundle check rejects missing sources, missing mappings and shifted positions", async () => {
+  await fc.assert(fc.asyncProperty(fc.constantFrom(...Object.keys(variants)), fc.nat({ max: 12 }), fc.boolean(), fc.boolean(), async (variant, indent, withImport, withBase) => {
+    const prefix = withImport ? 'import "unique retained string";\n' : ""
+    const source = variants[variant](prefix + 'export const message = "unique retained string";\n').replace(/^\uFEFF/, "")
+    const code = `${prefix}${" ".repeat(indent)}const message = "unique retained string";\n`
+    const at = position(code, code.lastIndexOf('"unique retained string"'))
+    const want = position(source, source.lastIndexOf('"unique retained string"'))
+    const build = (name, original) => {
+      const generator = new SourceMapGenerator({ file: "main.js" })
+      generator.addMapping({ generated: at, original, source: name })
+      generator.setSourceContent(name, source)
+      return generator.toJSON()
+    }
+    const correct = build("main.vibe", want)
+    const mapURL = withBase ? "https://example.invalid/project/main.js.map" : undefined
+    const expectedSource = withBase ? new URL("main.vibe", mapURL).href : "main.vibe"
+    assert.equal(await checkBundle(correct, code, source, expectedSource, mapURL), 1)
+    const boundary = new SourceMapGenerator({ file: "main.js" })
+    boundary.addMapping({ generated: at, original: { ...want, column: want.column - 1 }, source: "main.vibe" })
+    boundary.addMapping({ generated: at, original: want, source: "main.vibe" })
+    assert.equal(await checkBundle(boundary.toJSON(), code, source, expectedSource, mapURL), 1)
+    for (const [key, map] of [
+      ["missing mappings", { ...correct, mappings: "" }],
+      ["missing source", { ...correct, sources: [] }],
+      ["wrong source", { ...build("other.vibe", want), sources: ["other.vibe", "main.vibe"] }],
+      ["wrong directory", build("other/main.vibe", want)],
+      ["wrong column", build("main.vibe", { ...want, column: want.column + 1 })],
+      ["wrong line", build("main.vibe", { ...want, line: want.line + 1 })]
+    ]) {
+      await assert.rejects(checkBundle(map, code, source, expectedSource, mapURL), undefined, key)
+    }
+    // An eliminated module has no retained token to require a source for.
+    assert.equal(await checkBundle({ ...correct, sources: [], mappings: "" }, "", source, expectedSource, mapURL), 0)
+  }), { numRuns: 48 })
+})
+
 test("generated programs keep their tokens at both ends", async () => {
+  const seed = process.env.FC_SEED ?? String(Date.now() | 0)
+  console.log(`source-map-programs seed=${seed}`)
   await checkProperty(fc, {
     name: "source-map-programs",
+    env: { ...process.env, FC_SEED: seed },
+    diagnostics: () => JSON.stringify(activeProgram),
     rule: "docs/maintainers/source-maps.md: Rules",
     command: "sh packages/compiler/test/source-maps/run.sh programs.property.test.mjs",
     regressions,
@@ -162,5 +237,6 @@ test("generated programs keep their tokens at both ends", async () => {
   })
   assert.ok(compiled > 0, "no generated program compiled")
   assert.ok(wordsRead > compiled, `only ${wordsRead} words read in ${compiled} programs`)
-  console.log(`read ${wordsRead} words at both ends in ${compiled} programs`)
+  assert.ok(bundlesRead > 0 && bundleTokensRead > 0, `no composed token positions checked in ${bundlesRead} bundles`)
+  console.log(`read ${wordsRead} words at both ends in ${compiled} programs; ${bundleTokensRead} composed tokens in ${bundlesRead} bundles`)
 })

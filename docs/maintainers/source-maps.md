@@ -75,8 +75,12 @@ Rule names are stable. A test cites them.
 | Bounds and statements in every compile | `OutputChecker.checkSourceMap` in `FuzzCompile` |
 | Determinism | `checkDeterminism` in `FuzzCompile` |
 | Shape, Content, Units, Range and Order of `vibelangmapper.Emit` | `FuzzEmitSourceMap` |
-| Two independent consumers, and bundlers, over generated programs | `programs.property.test.mjs` |
+| Two independent consumers, and exact source, line and column checks for retained bundle strings, with mapping-loss controls | `programs.property.test.mjs` |
 | Independent paused function and statement, with swapped-map controls | `inspector.test.mjs` |
 | Metro, Babel, React Compiler and Oxc | `//packages:compiler-tools-test`, a dependency of `//packages:source-map-tools-test` |
 | Independent paused function and statement, with swapped-map controls | `inspector.test.mjs` |
 | One test per tool | `packages/compiler/test/source-maps/`, target `//packages:source-map-tools-test` |
+
+The generated-program run logs its replay seed, program key, text variant, bundler and active stage. Compiler and bundler children have a `30`-second bound; a terminated compiler fails the check. Runs report their composed token comparisons, and a retained string requires a source even when `main.vibe` is missing from the map. A fully eliminated module may have no comparisons.
+
+A bundler can place a surrounding expression's segment and a string's segment at the same opening quote. The composed-map check reads inside the string and requires the original token's quote position. A keyed replay covers strings kept after a call is eliminated. Module specifiers are excluded by their syntax in the text; a missing mapping is never itself a reason to skip a retained value.
