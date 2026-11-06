@@ -1506,6 +1506,12 @@ const targets = {
     [],
     [bun, node]
   ),
+  "docs-shim-availability": check(
+    "The TypeScript replacement guides match recorded npm availability and proposal status.",
+    "node docs/tools/shim-availability.mjs && bun test --timeout 60000 docs/tools/shim-availability.test.ts",
+    [],
+    [bun, node]
+  ),
   "docs-table-rows": check(
     "User tables retain headers and widths; platform advice qualifies queries, argument lists, byte reads and elapsed time.",
     "node docs/tools/table-rows.mjs && bun test --timeout 30000 docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",

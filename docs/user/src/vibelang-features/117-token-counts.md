@@ -110,7 +110,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 2,000 |
-| [Known limitations](../setup/known-limitations.md) | 600 |
+| [Known limitations](../setup/known-limitations.md) | 630 |
 | [Source maps](../setup/source-maps.md) | 780 |
 | **Start a project** | **9,000** |
 | [New project](../setup/new-project.md) | 570 |

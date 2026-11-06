@@ -1,28 +1,25 @@
 # VibeLang in .ts files
 
-Write VibeLang in a `.ts` file by starting it with `// @vibe`. The `vibelang-typescript` package takes the place of the `typescript` package, so your `tsc` scripts run the VibeLang compiler. Files without that line stay TypeScript.
+This is an experimental source-checkout preview of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md). The `vibelang-typescript` replacement package is not currently available from npm. Use [the regular integration](existing-project.md) for package-based installation.
+
+The checkout compiler recognizes VibeLang in a `.ts` file whose first line is `// @vibe`. The proposed replacement package runs it under the name `typescript`, so existing `tsc` scripts can reach it. Files without the directive stay TypeScript.
 
 This is the last option. Use it only when you can't name files `.vibe`. The [`vibelang` CLI](vibelang-cli.md), [Vite and Vitest](vite.md) and the other plugins in [Set up VibeLang](../setup.md) keep every stock TypeScript tool working. Here each tool that reads a `// @vibe` file with stock TypeScript or its own parser fails.
 
-## Install
+## Source checkout preview
+
+Use Go, Bun and Node with the [contributor setup](https://github.com/smithersai/vibelang/blob/main/CONTRIBUTING.md). From the repository root:
 
 ```sh
-npm install --save-dev typescript@npm:vibelang-typescript@7.1.11
-npm install effect@4.1.1 vibelang-runtime@0.0.11
+(cd docs/tools && bun install --frozen-lockfile)
+(cd packages/runtime && bun install --frozen-lockfile && bun run build)
+sh scripts/build-vibelang.sh
+node packages/compiler/bin/vibelang --version
 ```
 
-`vibelang-typescript` is TypeScript 7.1 with VibeLang. A project on TypeScript 5 or 6 moves to 7 first. Your `tsconfig.json` stays as it is.
+Use the checkout's compiler launcher with your project's normal compiler options to check marked files. This preview uses the repository's `vibelang` compiler; the npm replacement package remains unpublished.
 
-In a monorepo, install it at the root and replace every other `typescript` with the root's `overrides`:
-
-```json
-{
-  "devDependencies": { "typescript": "npm:vibelang-typescript@7.1.11" },
-  "overrides": { "typescript": "$typescript" }
-}
-```
-
-pnpm takes `overrides: { typescript: npm:vibelang-typescript@7.1.11 }` in `pnpm-workspace.yaml`.
+The prototype targets TypeScript 7.1. Move a TypeScript 5 or 6 project to that compiler version first, including its configuration migrations.
 
 ## Write a file
 
@@ -51,9 +48,9 @@ A `.ts`, `.mts` or `.cts` file with the line follows every `.vibe` rule, and a `
 | No `module` declarations: `module text { }` is `TS1540`. Put the code in a plain `.ts` file and import it | TypeScript gives that syntax another meaning |
 | No declaration sidecar | Sidecars exist for `.vibe` names |
 
-## What each tool does
+## Repository prototype behavior
 
-| Tool | With `vibelang-typescript` |
+| Tool | With the repository shim |
 | --- | --- |
 | `tsc`, `tsc --watch`, `tsc -b` | Checks and emits both kinds of file |
 | An editor that starts `tsc --lsp --stdio` from the project | Diagnostics, hover and the rest, in both kinds of file. In VS Code set `"js/ts.tsdk.path": "node_modules/typescript/lib"` and accept the workspace version |
@@ -68,13 +65,6 @@ A `.ts`, `.mts` or `.cts` file with the line follows every `.vibe` rule, and a `
 
 Bundlers need a plugin because esbuild and Oxc parse `.ts` files themselves, so there is no TypeScript for this package to replace there. A file that uses no VibeLang syntax can pass through these tools, and it means there what it means in VibeLang, except that `vibelang` always reads it as a module.
 
-## Remove it
+## Return to stock TypeScript
 
-Put `typescript` back and uninstall the VibeLang packages:
-
-```sh
-npm install --save-dev typescript@~7.0.2
-npm uninstall vibelang-vite effect vibelang-runtime
-```
-
-Nothing in `node_modules` was patched, so nothing else needs undoing. `tsc` then reports `TS1434` in each `// @vibe` file until you rewrite it.
+Rewrite the VibeLang forms before passing a marked file to stock TypeScript. A file that retains that syntax reports parse errors such as `TS1434`.

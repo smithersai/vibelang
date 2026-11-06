@@ -54,7 +54,7 @@ Follow each matching page, in this order: project, build or framework, editor.
 | Zed | [Zed](setup/zed.md) |
 | Another editor with an LSP client | [Other editors](setup/other-editors.md) |
 | Claude Code, Codex, opencode, or an agent in Cursor or VS Code | [Coding agents](setup/coding-agents.md) |
-| The project must keep `.ts` file names, and nothing above fits | [VibeLang in .ts files](setup/typescript-shim.md) |
+| The project must keep `.ts` file names, and nothing above fits | [Unpublished source-checkout preview](setup/typescript-shim.md) |
 
 For webpack, Rspack, Rollup, Rolldown, esbuild, and `bun build`, version 0.0.11 includes `vibelang-unplugin`: install `vibelang@0.0.11` and `vibelang-unplugin@0.0.11` as dev dependencies and follow the [plugin configuration](https://www.npmjs.com/package/vibelang-unplugin#configure) for the bundler. Vite and Vitest use `vibelang-vite`.
 

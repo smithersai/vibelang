@@ -1,0 +1,6 @@
+{
+  "generatedBy": "node docs/tools/shim-availability.mjs --record",
+  "registry": "https://registry.npmjs.org",
+  "package": "vibelang-typescript",
+  "versions": []
+}

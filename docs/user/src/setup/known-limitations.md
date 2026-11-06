@@ -2,6 +2,8 @@
 
 VibeLang is in early alpha.
 
+The `vibelang-typescript` replacement is an unpublished, experimental [source-checkout preview](typescript-shim.md) under open VIP-42.
+
 - Platforms: [macOS arm64/x64, Linux arm64/x64, Windows arm64/x64](../getting-started/004-installation.md#prerequisites). The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built.
 - Bun runtime: use `1.4.2` or newer for [complete source-loader support](vibelang-cli.md#run-sources-with-bun). Older versions can misresolve computed imports or corrupt Unicode import paths.
 - Effect: [`effect@4.1.1` exactly](existing-project.md); other versions are unsupported.

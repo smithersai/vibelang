@@ -152,4 +152,4 @@ Migration setup routes the forced built-in `bun check --no-script` checker to `v
 
 The migration flow pins a staged native compiler's revision and executable digest before conversion. Checking, emission and recording require the same artifact, so replacing a toolchain in place or switching to an installed compiler cannot relabel earlier conversions. After a compiler upgrade, reconvert in a fresh run; `--force` does not bypass this check. Loader-only edits leave the native digest unchanged.
 
-If the project must keep `.ts` file names, see [VibeLang in .ts files](typescript-shim.md), the last option after these.
+If the project must keep `.ts` file names, see [VibeLang in .ts files](typescript-shim.md), an unpublished source-checkout preview.
