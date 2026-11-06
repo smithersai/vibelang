@@ -1,0 +1,11 @@
+{
+  "ids": [
+    "\u0000virtual:worker-entry:entry.ts",
+    "\u0000virtual:worker-entry:registry.ts",
+    "virtual:\u0000worker.tsx",
+    "virtual:worker\u0000.mts",
+    "virtual:worker.cts\u0000",
+    "\u0000virtual:component.vibex"
+  ],
+  "expected": false
+}

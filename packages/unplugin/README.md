@@ -11,6 +11,8 @@ Unicode file names and diagnostic text are preserved, including in large compile
 The shared load hook also compiles explicit `.vibex` JSX sources, including
 module IDs with query strings, using the project's `jsx` compiler option.
 
+The `// @vibe` check reads real source files. Virtual module identifiers from another bundler plugin stay with that plugin, even when their names end in `.ts` or `.vibe`.
+
 ## Install
 
 ```sh

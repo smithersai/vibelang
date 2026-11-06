@@ -28,6 +28,8 @@ Delegated package imports retain Vite and Rollup resolver options, including SSR
 The migration flow keeps bundled private imports as exact source entries. When a publication helper maps them to build output, its `types` condition selects the package’s regular declarations in its own output directory. Compatibility sidecars under `.vibe/declarations/` are for source checking and need not be packed. Runtime import targets and declaration contents stay unchanged.
 
 
+The `// @vibe` check reads real source files. Virtual module identifiers from another bundler plugin stay with that plugin, even when their names end in `.ts` or `.vibe`.
+
 ## 1. Add the plugin to Vite
 
 Add `vibelang()` to the `plugins` array in `vite.config.ts`, beside the existing plugins:
