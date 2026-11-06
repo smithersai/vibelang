@@ -1,0 +1,3 @@
+go test fuzz v1
+string("legacy-function-nested-raw")
+byte(7)

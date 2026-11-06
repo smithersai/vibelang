@@ -4,7 +4,7 @@ VibeLang reaches files, paths, processes, HTTP, randomness, and terminals throug
 
 Bare internal Node builtins, including `_http_client` and `_tls_wrap`, have the same `EK4402` import rule as `node:fs`. Legacy builtin names from supported Node 22/24 remain reserved across runtimes; move their value imports to a `.ts` module.
 
-The pure helpers `AbortSignal` and `URL` remain available, but `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL` reach the host and report `EK4402`. Move those operations into a sibling `.ts` module; `Effect.try`, `Effect.tryPromise` and `Effect.sync` arrows inside `.vibe` files keep the same restriction.
+The pure helpers `AbortSignal` and `URL` remain available, but `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL` reach the host and report `EK4402`. Grouping and erased TypeScript assertions on a `globalThis` receiver retain the same rule. Move those operations into a sibling `.ts` module; `Effect.try`, `Effect.tryPromise` and `Effect.sync` arrows inside `.vibe` files keep the same restriction.
 
 The restriction covers the whole file: plain and `async` functions, nested callbacks, and `Effect.try`, `tryPromise`, `sync` and `callback` bodies all report `EK4402` for a host binding such as `window` or `document`. A local binding with the same name keeps its own meaning, and erased type queries remain allowed.
 

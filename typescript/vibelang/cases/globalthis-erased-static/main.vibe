@@ -1,0 +1,3 @@
+export const URLConstructor = (globalThis as typeof globalThis).URL
+export const SignalConstructor = (globalThis satisfies typeof globalThis)["AbortSignal"]
+export const FunctionPrototype = globalThis!["Function"].prototype

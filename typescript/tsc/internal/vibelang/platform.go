@@ -660,8 +660,10 @@ func platformReference(c *checker.Checker, id *ast.Node) (platformRef, bool) {
 	if ast.IsIdentifier(id) && id.Parent != nil && ast.IsShorthandPropertyAssignment(id.Parent) {
 		// { setTimeout } reads the global; the name's own symbol is the property.
 		symbol = c.GetShorthandAssignmentValueSymbol(id.Parent)
-	} else {
+	} else if ast.IsIdentifier(id) {
 		symbol = c.GetSymbolAtLocation(id)
+	} else {
+		symbol = globalPlatformSymbol(c, id)
 	}
 	if symbol == nil && ast.IsElementAccessExpression(id) {
 		// Symbol lookup does not expose every literal-key access. Resolve the
@@ -722,21 +724,39 @@ func globalPlatformName(c *checker.Checker, node *ast.Node) string {
 	if name == "" || name == "globalThis" {
 		return ""
 	}
-	receiver := ast.SkipParentheses(platformMemberReceiver(node))
-	for ast.IsPropertyAccessExpression(receiver) || ast.IsElementAccessExpression(receiver) || ast.IsQualifiedName(receiver) {
-		if staticGlobalMemberName(receiver) != "globalThis" {
-			return ""
-		}
-		receiver = ast.SkipParentheses(platformMemberReceiver(receiver))
-	}
-	if !ast.IsIdentifier(receiver) || receiver.Text() != "globalThis" {
-		return ""
-	}
-	symbol := c.GetSymbolAtLocation(receiver)
-	if symbol == nil || symbol.Name() != "globalThis" || len(symbol.Declarations()) != 0 {
+	if globalPlatformObject(c, node) == nil {
 		return ""
 	}
 	return name
+}
+
+// globalPlatformObject resolves the original global object through erased
+// receiver wrappers and repeated static globalThis properties.
+func globalPlatformObject(c *checker.Checker, node *ast.Node) *ast.Node {
+	receiver := ast.SkipOuterExpressions(platformMemberReceiver(node), ast.OEKParentheses|ast.OEKAssertions)
+	for ast.IsPropertyAccessExpression(receiver) || ast.IsElementAccessExpression(receiver) || ast.IsQualifiedName(receiver) {
+		if staticGlobalMemberName(receiver) != "globalThis" {
+			return nil
+		}
+		receiver = ast.SkipOuterExpressions(platformMemberReceiver(receiver), ast.OEKParentheses|ast.OEKAssertions)
+	}
+	if !ast.IsIdentifier(receiver) || receiver.Text() != "globalThis" {
+		return nil
+	}
+	symbol := c.GetSymbolAtLocation(receiver)
+	if symbol == nil || symbol.Name() != "globalThis" || len(symbol.Declarations()) != 0 {
+		return nil
+	}
+	return receiver
+}
+
+// An assertion can change the apparent property declaration without changing
+// the global object's value. Read its original member for platform identity.
+func globalPlatformSymbol(c *checker.Checker, node *ast.Node) *ast.Symbol {
+	if root := globalPlatformObject(c, node); root != nil {
+		return c.GetPropertyOfType(c.GetTypeAtLocation(root), staticGlobalMemberName(node))
+	}
+	return c.GetSymbolAtLocation(node)
 }
 
 // Internal aliases can name types alone. Only a value-bearing target reads

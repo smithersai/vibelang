@@ -138,7 +138,7 @@ func platformHostOrigin(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol
 			}
 		}
 		if receiver.root == "globalThis" && key != "" {
-			symbol := c.GetSymbolAtLocation(node)
+			symbol := globalPlatformSymbol(c, node)
 			if symbol == nil {
 				// Literal element keys need a property lookup on the actual receiver.
 				symbol = c.GetPropertyOfType(c.GetTypeAtLocation(node.Expression()), key)

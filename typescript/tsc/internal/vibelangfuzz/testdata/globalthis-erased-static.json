@@ -1,0 +1,1751 @@
+[
+  {
+    "Key": "pure-url-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"URL\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"URL\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"URL\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-nonnull-raw",
+    "Source": "export const held=globalThis![\"URL\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-nonnull-template",
+    "Source": "export const held=globalThis![(`URL` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-paren-raw",
+    "Source": "export const held=(globalThis)[\"URL\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-plain-const",
+    "Source": "export const held=globalThis[\"URL\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-plain-nested",
+    "Source": "export const held=globalThis[((\"URL\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-plain-nonnull",
+    "Source": "export const held=globalThis[\"URL\"!];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-plain-paren",
+    "Source": "export const held=globalThis[(\"URL\")];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-plain-raw",
+    "Source": "export const held=globalThis[\"URL\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-plain-satisfies",
+    "Source": "export const held=globalThis[\"URL\" satisfies string];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-plain-template",
+    "Source": "export const held=globalThis[(`URL` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"URL\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"URL\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-url-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"URL\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"AbortSignal\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"AbortSignal\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"AbortSignal\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-nonnull-raw",
+    "Source": "export const held=globalThis![\"AbortSignal\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-nonnull-template",
+    "Source": "export const held=globalThis![(`AbortSignal` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-paren-raw",
+    "Source": "export const held=(globalThis)[\"AbortSignal\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-plain-const",
+    "Source": "export const held=globalThis[\"AbortSignal\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-plain-nested",
+    "Source": "export const held=globalThis[((\"AbortSignal\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-plain-nonnull",
+    "Source": "export const held=globalThis[\"AbortSignal\"!];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-plain-paren",
+    "Source": "export const held=globalThis[(\"AbortSignal\")];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-plain-raw",
+    "Source": "export const held=globalThis[\"AbortSignal\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-plain-satisfies",
+    "Source": "export const held=globalThis[\"AbortSignal\" satisfies string];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-plain-template",
+    "Source": "export const held=globalThis[(`AbortSignal` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"AbortSignal\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"AbortSignal\"];",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-signal-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"AbortSignal\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"fetch\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-nonnull-raw",
+    "Source": "export const held=globalThis![\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-nonnull-template",
+    "Source": "export const held=globalThis![(`fetch` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-paren-raw",
+    "Source": "export const held=(globalThis)[\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-plain-const",
+    "Source": "export const held=globalThis[\"fetch\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-plain-nested",
+    "Source": "export const held=globalThis[((\"fetch\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-plain-nonnull",
+    "Source": "export const held=globalThis[\"fetch\"!];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-plain-paren",
+    "Source": "export const held=globalThis[(\"fetch\")];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-plain-raw",
+    "Source": "export const held=globalThis[\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-plain-satisfies",
+    "Source": "export const held=globalThis[\"fetch\" satisfies string];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-plain-template",
+    "Source": "export const held=globalThis[(`fetch` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"fetch\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-fetch-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"fetch\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"setTimeout\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-nonnull-raw",
+    "Source": "export const held=globalThis![\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-nonnull-template",
+    "Source": "export const held=globalThis![(`setTimeout` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-paren-raw",
+    "Source": "export const held=(globalThis)[\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-plain-const",
+    "Source": "export const held=globalThis[\"setTimeout\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-plain-nested",
+    "Source": "export const held=globalThis[((\"setTimeout\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-plain-nonnull",
+    "Source": "export const held=globalThis[\"setTimeout\"!];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-plain-paren",
+    "Source": "export const held=globalThis[(\"setTimeout\")];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-plain-raw",
+    "Source": "export const held=globalThis[\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-plain-satisfies",
+    "Source": "export const held=globalThis[\"setTimeout\" satisfies string];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-plain-template",
+    "Source": "export const held=globalThis[(`setTimeout` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"setTimeout\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timer-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"setTimeout\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"AbortSignal\" as const].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-nonnull-raw",
+    "Source": "export const held=globalThis![\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-nonnull-template",
+    "Source": "export const held=globalThis![(`AbortSignal` as const)].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-paren-raw",
+    "Source": "export const held=(globalThis)[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-plain-const",
+    "Source": "export const held=globalThis[\"AbortSignal\" as const].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-plain-nested",
+    "Source": "export const held=globalThis[((\"AbortSignal\" as const)! satisfies string)].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-plain-nonnull",
+    "Source": "export const held=globalThis[\"AbortSignal\"!].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-plain-paren",
+    "Source": "export const held=globalThis[(\"AbortSignal\")].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-plain-raw",
+    "Source": "export const held=globalThis[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-plain-satisfies",
+    "Source": "export const held=globalThis[\"AbortSignal\" satisfies string].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-plain-template",
+    "Source": "export const held=globalThis[(`AbortSignal` as const)].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"AbortSignal\" as const)! satisfies string)].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-timeout-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"URL\" as const].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-nonnull-raw",
+    "Source": "export const held=globalThis![\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-nonnull-template",
+    "Source": "export const held=globalThis![(`URL` as const)].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-paren-raw",
+    "Source": "export const held=(globalThis)[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-plain-const",
+    "Source": "export const held=globalThis[\"URL\" as const].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-plain-nested",
+    "Source": "export const held=globalThis[((\"URL\" as const)! satisfies string)].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-plain-nonnull",
+    "Source": "export const held=globalThis[\"URL\"!].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-plain-paren",
+    "Source": "export const held=globalThis[(\"URL\")].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-plain-raw",
+    "Source": "export const held=globalThis[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-plain-satisfies",
+    "Source": "export const held=globalThis[\"URL\" satisfies string].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-plain-template",
+    "Source": "export const held=globalThis[(`URL` as const)].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"URL\" as const)! satisfies string)].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-create-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"URL\" as const].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-nonnull-raw",
+    "Source": "export const held=globalThis![\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-nonnull-template",
+    "Source": "export const held=globalThis![(`URL` as const)].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-paren-raw",
+    "Source": "export const held=(globalThis)[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-plain-const",
+    "Source": "export const held=globalThis[\"URL\" as const].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-plain-nested",
+    "Source": "export const held=globalThis[((\"URL\" as const)! satisfies string)].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-plain-nonnull",
+    "Source": "export const held=globalThis[\"URL\"!].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-plain-paren",
+    "Source": "export const held=globalThis[(\"URL\")].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-plain-raw",
+    "Source": "export const held=globalThis[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-plain-satisfies",
+    "Source": "export const held=globalThis[\"URL\" satisfies string].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-plain-template",
+    "Source": "export const held=globalThis[(`URL` as const)].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"URL\" as const)! satisfies string)].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "host-revoke-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"eval\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-nonnull-raw",
+    "Source": "export const held=globalThis![\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-nonnull-template",
+    "Source": "export const held=globalThis![(`eval` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-paren-raw",
+    "Source": "export const held=(globalThis)[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-plain-const",
+    "Source": "export const held=globalThis[\"eval\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-plain-nested",
+    "Source": "export const held=globalThis[((\"eval\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-plain-nonnull",
+    "Source": "export const held=globalThis[\"eval\"!];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-plain-paren",
+    "Source": "export const held=globalThis[(\"eval\")];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-plain-raw",
+    "Source": "export const held=globalThis[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-plain-satisfies",
+    "Source": "export const held=globalThis[\"eval\" satisfies string];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-plain-template",
+    "Source": "export const held=globalThis[(`eval` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"eval\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-eval-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"Function\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-nonnull-raw",
+    "Source": "export const held=globalThis![\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-nonnull-template",
+    "Source": "export const held=globalThis![(`Function` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-paren-raw",
+    "Source": "export const held=(globalThis)[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-plain-const",
+    "Source": "export const held=globalThis[\"Function\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-plain-nested",
+    "Source": "export const held=globalThis[((\"Function\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-plain-nonnull",
+    "Source": "export const held=globalThis[\"Function\"!];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-plain-paren",
+    "Source": "export const held=globalThis[(\"Function\")];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-plain-raw",
+    "Source": "export const held=globalThis[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-plain-satisfies",
+    "Source": "export const held=globalThis[\"Function\" satisfies string];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-plain-template",
+    "Source": "export const held=globalThis[(`Function` as const)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"Function\" as const)! satisfies string)];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "legacy-function-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-as-const",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"Function\" as const].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-as-raw",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"Function\"].prototype;",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-nested-raw",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"Function\"].prototype;",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-nonnull-raw",
+    "Source": "export const held=globalThis![\"Function\"].prototype;",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-nonnull-template",
+    "Source": "export const held=globalThis![(`Function` as const)].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-paren-raw",
+    "Source": "export const held=(globalThis)[\"Function\"].prototype;",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-plain-const",
+    "Source": "export const held=globalThis[\"Function\" as const].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-plain-nested",
+    "Source": "export const held=globalThis[((\"Function\" as const)! satisfies string)].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-plain-nonnull",
+    "Source": "export const held=globalThis[\"Function\"!].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-plain-paren",
+    "Source": "export const held=globalThis[(\"Function\")].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-plain-raw",
+    "Source": "export const held=globalThis[\"Function\"].prototype;",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-plain-satisfies",
+    "Source": "export const held=globalThis[\"Function\" satisfies string].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-plain-template",
+    "Source": "export const held=globalThis[(`Function` as const)].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-satisfies-nested",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[((\"Function\" as const)! satisfies string)].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-satisfies-raw",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"Function\"].prototype;",
+    "Codes": [],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "pure-prototype-repeated",
+    "Source": "export const held=(globalThis[\"globalThis\" as const] as typeof globalThis)[\"Function\"].prototype;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "static",
+    "JSXSafe": true
+  },
+  {
+    "Key": "copy-plain",
+    "Source": "export const held=globalThis;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-plain",
+    "Source": "const key=\"URL\";export const held=globalThis[key];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "repeated-copy-plain",
+    "Source": "export const held=globalThis[\"globalThis\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "copy-as",
+    "Source": "export const held=(globalThis as typeof globalThis);",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-as",
+    "Source": "const key=\"URL\";export const held=(globalThis as typeof globalThis)[key];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "repeated-copy-as",
+    "Source": "export const held=(globalThis as typeof globalThis)[\"globalThis\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "copy-satisfies",
+    "Source": "export const held=(globalThis satisfies typeof globalThis);",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-satisfies",
+    "Source": "const key=\"URL\";export const held=(globalThis satisfies typeof globalThis)[key];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "repeated-copy-satisfies",
+    "Source": "export const held=(globalThis satisfies typeof globalThis)[\"globalThis\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "copy-nonnull",
+    "Source": "export const held=globalThis!;",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-nonnull",
+    "Source": "const key=\"URL\";export const held=globalThis![key];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "repeated-copy-nonnull",
+    "Source": "export const held=globalThis![\"globalThis\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "copy-nested",
+    "Source": "export const held=((globalThis as typeof globalThis)!);",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-nested",
+    "Source": "const key=\"URL\";export const held=((globalThis as typeof globalThis)!)[key];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "repeated-copy-nested",
+    "Source": "export const held=((globalThis as typeof globalThis)!)[\"globalThis\" as const];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "escape",
+    "JSXSafe": true
+  },
+  {
+    "Key": "shadow-as-const",
+    "Source": "const globalThis={URL:7};export const held=(globalThis as typeof globalThis)[\"URL\" as const];",
+    "Codes": [],
+    "Kind": "local",
+    "JSXSafe": true
+  },
+  {
+    "Key": "shadow-as-nested",
+    "Source": "const globalThis={URL:7};export const held=(globalThis as typeof globalThis)[((\"URL\" as const)! satisfies string)];",
+    "Codes": [],
+    "Kind": "local",
+    "JSXSafe": true
+  },
+  {
+    "Key": "shadow-satisfies-const",
+    "Source": "const globalThis={URL:7};export const held=(globalThis satisfies typeof globalThis)[\"URL\" as const];",
+    "Codes": [],
+    "Kind": "local",
+    "JSXSafe": true
+  },
+  {
+    "Key": "shadow-satisfies-nested",
+    "Source": "const globalThis={URL:7};export const held=(globalThis satisfies typeof globalThis)[((\"URL\" as const)! satisfies string)];",
+    "Codes": [],
+    "Kind": "local",
+    "JSXSafe": true
+  },
+  {
+    "Key": "shadow-nonnull-const",
+    "Source": "const globalThis={URL:7};export const held=globalThis![\"URL\" as const];",
+    "Codes": [],
+    "Kind": "local",
+    "JSXSafe": true
+  },
+  {
+    "Key": "shadow-nonnull-nested",
+    "Source": "const globalThis={URL:7};export const held=globalThis![((\"URL\" as const)! satisfies string)];",
+    "Codes": [],
+    "Kind": "local",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-host-timeout",
+    "Source": "const key=\"timeout\";export const held=AbortSignal[key];",
+    "Codes": [],
+    "Kind": "dynamic",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-host-createObjectURL",
+    "Source": "const key=\"createObjectURL\";export const held=URL[key];",
+    "Codes": [],
+    "Kind": "dynamic",
+    "JSXSafe": true
+  },
+  {
+    "Key": "variable-host-revokeObjectURL",
+    "Source": "const key=\"revokeObjectURL\";export const held=URL[key];",
+    "Codes": [],
+    "Kind": "dynamic",
+    "JSXSafe": true
+  },
+  {
+    "Key": "type-only",
+    "Source": "export type Held=typeof globalThis.URL;",
+    "Codes": [],
+    "Kind": "type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-fetch-asserted",
+    "Source": "export const held=(globalThis as unknown as {fetch:()=>number})[\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-fetch-repeated",
+    "Source": "export const held=(globalThis.globalThis as unknown as {fetch:()=>number})[\"fetch\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-timer-asserted",
+    "Source": "export const held=(globalThis as unknown as {setTimeout:()=>number})[\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-timer-repeated",
+    "Source": "export const held=(globalThis.globalThis as unknown as {setTimeout:()=>number})[\"setTimeout\"];",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-timeout-asserted",
+    "Source": "export const held=(globalThis as unknown as {AbortSignal:{timeout:()=>number}})[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-timeout-repeated",
+    "Source": "export const held=(globalThis.globalThis as unknown as {AbortSignal:{timeout:()=>number}})[\"AbortSignal\"].timeout;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-create-asserted",
+    "Source": "export const held=(globalThis as unknown as {URL:{createObjectURL:()=>number}})[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-create-repeated",
+    "Source": "export const held=(globalThis.globalThis as unknown as {URL:{createObjectURL:()=>number}})[\"URL\"].createObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-revoke-asserted",
+    "Source": "export const held=(globalThis as unknown as {URL:{revokeObjectURL:()=>number}})[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-revoke-repeated",
+    "Source": "export const held=(globalThis.globalThis as unknown as {URL:{revokeObjectURL:()=>number}})[\"URL\"].revokeObjectURL;",
+    "Codes": [
+      "EK4402"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-eval-asserted",
+    "Source": "export const held=(globalThis as unknown as {eval:()=>number})[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-eval-repeated",
+    "Source": "export const held=(globalThis.globalThis as unknown as {eval:()=>number})[\"eval\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-function-asserted",
+    "Source": "export const held=(globalThis as unknown as {Function:()=>number})[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-function-repeated",
+    "Source": "export const held=(globalThis.globalThis as unknown as {Function:()=>number})[\"Function\"];",
+    "Codes": [
+      "EK0107"
+    ],
+    "Kind": "apparent-type",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-pure",
+    "Source": "export const held=(globalThis as unknown as {URL:number}).URL;",
+    "Codes": [],
+    "Kind": "pure",
+    "JSXSafe": true
+  },
+  {
+    "Key": "apparent-local",
+    "Source": "const globalThis={fetch:()=>1};export const held=(globalThis as unknown as {fetch:()=>number}).fetch;",
+    "Codes": [],
+    "Kind": "local",
+    "JSXSafe": true
+  }
+]

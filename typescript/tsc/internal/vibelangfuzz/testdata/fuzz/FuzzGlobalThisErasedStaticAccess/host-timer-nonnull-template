@@ -1,0 +1,3 @@
+go test fuzz v1
+string("host-timer-nonnull-template")
+byte(7)

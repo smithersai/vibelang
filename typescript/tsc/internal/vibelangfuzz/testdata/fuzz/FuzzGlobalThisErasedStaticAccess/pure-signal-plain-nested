@@ -1,0 +1,3 @@
+go test fuzz v1
+string("pure-signal-plain-nested")
+byte(7)

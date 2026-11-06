@@ -22,6 +22,8 @@ func TestFixPlatformWrapperPreservesDeclaration(t *testing.T) {
 		"Effect.try(() => performance.now())",
 		"Effect.try(() => AbortSignal[(\"timeout\" as const)](1))",
 		"Effect.try(() => URL[(\"revokeObjectURL\" satisfies string)](\"blob:sample\"))",
+		"Effect.try(() => (globalThis as typeof globalThis).AbortSignal.timeout(1))",
+		"Effect.try(() => (globalThis satisfies typeof globalThis).URL.revokeObjectURL(\"blob:sample\"))",
 		"Effect.try(() => crypto.getRandomValues(new Uint8Array(2)))",
 		"Effect.try({ try: () => window.location.origin, catch: (e) => e })",
 		"sync(() => document.title)",

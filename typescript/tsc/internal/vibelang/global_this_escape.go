@@ -39,7 +39,7 @@ func checkGlobalThisEscapes(c *checker.Checker, file *ast.SourceFile) {
 		}
 		value := node
 		for {
-			for value.Parent != nil && ast.IsParenthesizedExpression(value.Parent) {
+			for value.Parent != nil && ast.IsOuterExpression(value.Parent, ast.OEKParentheses|ast.OEKAssertions) && value.Parent.Expression() == value {
 				value = value.Parent
 			}
 			parent := value.Parent
