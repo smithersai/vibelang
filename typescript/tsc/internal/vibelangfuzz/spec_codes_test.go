@@ -70,10 +70,11 @@ func TestSpecCodesInAppendixB(t *testing.T) {
 			t.Errorf("EK%s now has an Appendix B row; delete it from pendingCodes (%s)", code, reason)
 		}
 	}
+	interim := appendixBInterimCodes(table)
 	listed := func(code string) bool {
 		_, row := rows[code]
 		_, pending := pendingCodes[code]
-		return row || pending
+		return row || pending || interim[code]
 	}
 	chapters, err := filepath.Glob(filepath.Join(src, "*.md"))
 	if err != nil {
@@ -120,6 +121,16 @@ func TestSpecCodesInAppendixB(t *testing.T) {
 				t.Errorf("VIP-%d's decision cites EK%s, whose Appendix B row names VIP %s", n, code, column)
 			}
 		}
+	}
+}
+
+// A chapter may name an interim code, because Appendix B's inventory lists it.
+// A VIP's decision may not: that check reads only rows that name a VIP.
+func TestAppendixBInterimCodes(t *testing.T) {
+	section := "| Emitted code | Rule |\n| --- | --- |\n| interim `EK4814` | warning |\n| `EK0101` | normative |\nprose interim `EK4815` |\n"
+	got := appendixBInterimCodes(section)
+	if !got["4814"] || len(got) != 1 {
+		t.Fatalf("interim codes = %v, want only 4814", got)
 	}
 }
 

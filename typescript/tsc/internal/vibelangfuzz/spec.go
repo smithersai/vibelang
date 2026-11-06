@@ -117,6 +117,19 @@ var AppendixBCodes = sync.OnceValue(func() []int32 {
 // ekCell is the code cell of an Appendix B row, EK0101 or `EK0101`.
 var ekCell = regexp.MustCompile("^`?EK(38[0-9]{2,}|[0-9]{4})`?$")
 
+// interimCell is the first cell of a row in Appendix B's inventory of
+// transitional compatibility codes.
+var interimCell = regexp.MustCompile("(?m)^\\| interim `EK(38[0-9]{2,}|[0-9]{4})` \\|")
+
+// appendixBInterimCodes returns the codes section lists as interim.
+func appendixBInterimCodes(section string) map[string]bool {
+	codes := map[string]bool{}
+	for _, m := range interimCell.FindAllStringSubmatch(section, -1) {
+		codes[m[1]] = true
+	}
+	return codes
+}
+
 // appendixBRows returns Appendix B's codes, each with its row's cell in the
 // column the table's header names "VIP". It counts that column from the end
 // of the row, so a pipe in a rule's text cannot move it.
