@@ -251,6 +251,10 @@ that starts from a directory without its own install, such as a test run from a
 monorepo's root, still compiles. Set `VIBELANG_UNPLUGIN_DEBUG=1` to
 trace each build start, compile, and module load on stderr.
 
+Loading the plugin does not require its `vibelang` peer. Builds that need a
+missing compiler package report an installation hint without terminating the
+process, including repeated builds.
+
 ## How it works
 
 VibeLang's emit is type-directed: a module's JavaScript depends on the contracts of

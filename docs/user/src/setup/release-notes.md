@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Bundler plugins could crash while loading when the compiler package was missing. They now load normally and report an installation hint when a build needs the compiler.
+
 - Migrating a package could falsely report a changed public API when its exports pointed at generated declaration files. Unchanged sidecar paths now keep their original API identity.
 
 - Migrating an Effect `try` statement could fail when it returned a tagged object or a tuple. The repair now keeps the declared return type while writing the Effect handlers.

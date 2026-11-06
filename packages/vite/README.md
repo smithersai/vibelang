@@ -66,6 +66,9 @@ own loader. Native config helpers use Node ESM resolution: use explicit source
 extensions and package exports, rather than TypeScript path aliases.
 See the [config-loading guide](https://vibelang.sh/setup/vite).
 
+The plugin can load without the `vibelang` package. A build that needs the
+compiler reports an installation hint if that package is missing.
+
 Keep your normal `tsconfig.json` with the `.vibe` sources included; the plugin
 uses the same compiler options and diagnostics as `vibelang -p tsconfig.json`.
 Import local sources as `./welcome.vibe`; imports `vibelang` rewrites to
