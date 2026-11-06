@@ -855,7 +855,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
           progressDetails = { entryOffset: offset, entryCount: batch.length, totalEntries: keys.length, ...details }
           if (options.profile) console.error(JSON.stringify({ stage,
             elapsedMs: Math.round(performance.now() - started), ...progressDetails, ...process.memoryUsage() }))
-        })
+        }, [left, right])
       for (const field of ["nameDifferences", "typeDifferences", "docDifferences", "environmentDiagnostics"]) {
         for (const item of part[field]) {
           const key = field + ":" + JSON.stringify(item)
@@ -1072,7 +1072,7 @@ function collectInputDiagnostics(ts, roots, compilerOptions, host, files, option
     a.code - b.code || a.diagnostic.localeCompare(b.diagnostic))
 }
 
-function prepareComparison(ts, before, after, options, progress) {
+function prepareComparison(ts, before, after, options, progress, allEntrypoints) {
   before = resolve(before); after = resolve(after)
   const entryMap = (base, supplied) => Object.fromEntries(Object.entries(supplied ?? publishedEntrypoints(base, ts))
     .map(([key, path]) => [key, resolve(base, path)]))
@@ -1091,7 +1091,8 @@ function prepareComparison(ts, before, after, options, progress) {
   }
   const virtual = new Map()
   const { host, moduleResolutions, externalGroups } = createIdentityHost(ts, compilerOptions, before, after, options, virtual)
-  for (const entries of [left, right]) for (const [key, path] of Object.entries(entries)) {
+  const nominalEntries = (allEntrypoints ?? [left, right]).map(entries => ({ ...entries }))
+  for (const entries of [left, right, ...nominalEntries]) for (const [key, path] of Object.entries(entries)) {
     if (/\.vibex?$/.test(path) && host.fileExists(path.replace(/\.(vibex?)$/, ".d.$1.ts")))
       entries[key] = path.replace(/\.(vibex?)$/, ".d.$1.ts")
   }
@@ -1272,8 +1273,15 @@ function prepareComparison(ts, before, after, options, progress) {
   const equivalents = equivalentModules(ts, program, host, left, right, externalGroups)
   progress("module-equivalence-complete", { provedModules: equivalents.size, ...equivalents.normalization })
   for (const [from, to] of ambient.equivalentFiles) equivalents.set(from, to)
-  progress("nominal-identity")
-  const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.cts"), [left, right], ambient.names)
+  // A dependency can refer directly to a generated private declaration. Its
+  // public forwarding entry may belong to another probe batch, but still
+  // establishes the identity shared by both snapshots. Load that export graph
+  // only for nominal alignment; input diagnostics and probes keep their bounds.
+  const nominalRoots = [...new Set([...roots, ...nominalEntries.flatMap(entries => Object.values(entries))])]
+  progress("nominal-identity", { publicEntries: nominalRoots.length, batchEntries: roots.length })
+  const nominalProgram = nominalRoots.every(file => program.getSourceFile(file))
+    ? program : ts.createProgram(nominalRoots, compilerOptions, host, program)
+  const nominal = alignNominalIdentity(ts, nominalProgram, before, after, join(repo, ".api-identity-brands.d.cts"), nominalEntries, ambient.names)
   if (nominal.size > 1) {
     for (const [path, text] of nominal) {
       virtual.set(path, text)
@@ -1806,8 +1814,8 @@ function prepareComparison(ts, before, after, options, progress) {
     absentReferences: [...absentReferences.attributed.keys()] }
 }
 
-function compareUnchecked(ts, before, after, options, progress) {
-  const plan = prepareComparison(ts, before, after, options, progress)
+function compareUnchecked(ts, before, after, options, progress, allEntrypoints) {
+  const plan = prepareComparison(ts, before, after, options, progress, allEntrypoints)
   if (!plan.result) return plan
   return checkComparison(ts, plan, progress)
 }

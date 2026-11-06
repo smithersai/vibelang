@@ -1108,3 +1108,5 @@ Source-linked documentation follows recorded source renames and import routing w
 Public declarations reachable from exports or types must remain API-identical; internal file layout can change while retaining the API. Nominal declarations, including classes with `private` or `protected` members and `enum` declarations, follow their public export identity through re-exports. Their member names, types, visibility, enum values and alias relationships remain checked.
 
 A bare filename held as data is not a source reference; rewriting it requires a source-input context. Output descriptors such as `{ path: "index.ts" }` retain their generated filename. Imports, source URLs, filesystem reads, joined source paths and input configuration still follow renamed modules. Unqualified filename data remains visible as a `bare-name` audit report.
+
+API comparison batches retain the nominal identities established by every published export path. A private declaration reached through a generated helper keeps the same identity when its public re-export falls in another batch. Batching still checks member mutations and distinct public aliases.

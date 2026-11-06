@@ -20,6 +20,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrating a code generator could change an output filename from `index.ts` to `index.vibe`; bare filename data now stays unchanged while source inputs follow renamed modules.
 - Preparing a new version could require repeating fixes from an older release. Publication checks now keep each fix with the version that shipped it.
 - Release rehearsals showed `vibelang-typescript` with the compiler’s version. They now report the shim’s own version.
+
+- A migrated package could report different exported types depending on how its entrypoints were grouped; API comparison now follows public declaration identities across groups.
 - `effect` on an index signature or after a modifier in an interface or type literal, as in `interface I { readonly effect value: number }`, reported syntax errors. It now reports `EK0108`, with its quick fix.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
 

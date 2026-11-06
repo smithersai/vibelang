@@ -1,0 +1,4 @@
+{
+  "key": "opencode-batched-nominal-reexport",
+  "rule": "API comparison batches retain the nominal identities established by every published export path."
+}
