@@ -5,22 +5,16 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { setTimeout as delay } from "node:timers/promises"
 import { test } from "node:test"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
+import { waitForLifecycleReceipt } from "./orphan-compiler-helpers.mjs"
 const require = createRequire(new URL("../../runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const rule = "docs/user/src/setup/vite.md: Closing the last instance waits for the compiler and closes its output pipes."
 const native = process.env.VIBELANG_BINARY
 const projectModule = new URL("../project.mjs", import.meta.url).href
-const waitFile = async file => {
-  const end = Date.now() + 15000
-  while (Date.now() < end) {
-    try { return JSON.parse(await readFile(file, "utf8")) } catch (e) { if (e.code !== "ENOENT") throw e }
-    await delay(10)
-  }
-  throw new Error("compiler lifecycle receipt was not written")
-}
+const waitFile = waitForLifecycleReceipt
+
 async function exercise({ runtime, synchronous, ownerExits }) {
   assert.ok(native)
   const root = await mkdtemp(join(tmpdir(), "vibelang-owner-exit-"))
@@ -82,3 +76,56 @@ test("loader-owner-lifetime", {skip}, async () => checkProperty(fc, {
   arbitrary: fc.record({runtime:fc.constantFrom("node","bun"),synchronous:fc.boolean(),ownerExits:fc.boolean()}),
   check: exercise
 }))
+
+
+test("lifecycle JSON waits for an absent receipt", async () => {
+  const receipt = { pid: 17, wrapper: 23 }
+  let attempt = 0
+  const actual = await waitFile("ready.json", { pollMs: 0, read: async () => {
+    if (attempt++ === 0) throw Object.assign(new Error("not created"), { code: "ENOENT" })
+    return JSON.stringify(receipt)
+  } })
+  assert.deepEqual(actual, receipt)
+})
+
+test("lifecycle JSON waits for an empty newly created receipt", async () => {
+  const receipt = { pid: 17, wrapper: 23 }
+  let attempt = 0
+  assert.deepEqual(await waitFile("ready.json", { pollMs: 0, read: async () =>
+    attempt++ === 0 ? "" : JSON.stringify(receipt)
+  }), receipt)
+})
+
+test("lifecycle JSON retries generated incomplete object prefixes", async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.integer({ min: 1, max: 4194304 }),
+    fc.integer({ min: 1, max: 4194304 }),
+    fc.nat({ max: 1000 }),
+    async (pid, wrapper, cut) => {
+      const receipt = { pid, wrapper }
+      const complete = JSON.stringify(receipt)
+      const partial = complete.slice(0, cut % complete.length)
+      let attempt = 0
+      const actual = await waitFile("ready.json", { pollMs: 0, read: async () =>
+        attempt++ === 0 ? partial : complete
+      })
+      assert.deepEqual(actual, receipt)
+    }
+  ), { seed: 371240, numRuns: 50 })
+})
+
+test("lifecycle JSON timeout identifies incomplete state without recording its payload", async () => {
+  const payload = "private-receipt-value"
+  await assert.rejects(waitFile("ready.json", { timeoutMs: 20, pollMs: 0, read: async () => payload }), error => {
+    assert.match(error.message, /receipt.*timeout/)
+    assert.match(error.message, /SyntaxError/)
+    assert.match(error.message, /chars=21/)
+    assert.doesNotMatch(error.message, /private-receipt-value/)
+    return true
+  })
+})
+
+test("lifecycle JSON retains filesystem errors", async () => {
+  const denied = Object.assign(new Error("denied"), { code: "EACCES" })
+  await assert.rejects(waitFile("ready.json", { read: async () => { throw denied } }), error => error === denied)
+})

@@ -106,6 +106,11 @@ The `//:api-identity-test` target checks [published declaration identity](api-id
 
 Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
 
+Compiler lifecycle fixtures wait for complete JSON receipts within their
+`15`-second guard. The poller handles a file that is created before its write
+finishes and retains other filesystem errors. Timeouts record the filename,
+attempt count, character count and error kind without recording receipt contents.
+
 The custom pipeline stage-order property compiles all `16` combinations of
 stage count and library-stage positions in one fixture. It checks construction
 and execution traces over fixed inputs and `100` generated values, preserving
