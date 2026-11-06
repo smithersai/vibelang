@@ -228,10 +228,13 @@ that source from the recorded compile instead of compiling the package. Export i
 `bun-export-surface.mjs` helper, independently of Bun module registration and
 resolution, and checks the namespace without executing the source.
 
-The Bun preload resolves a missing relative or absolute `.ts` import to its
-sibling `.vibe` source, so a native launcher can retain the import after
-migration. Existing native files keep their priority. The command-line entry
-itself must name an existing file; update that path when migrating the entry.
+The Bun preload resolves a missing `.ts` import to its sibling `.vibe` source
+when the import is relative, absolute or mapped by `paths` in `tsconfig.json`.
+A native launcher or test can retain the import after migration. Existing native files keep their priority.
+Alias lookup keeps the config's inherited paths and substitution order. This
+runtime fallback does not change the compiler's handling of written `.ts` imports.
+The command-line entry itself must name an existing file; update that path when
+migrating the entry.
 
 ## Bundle .vibe modules with Metro
 

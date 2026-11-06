@@ -509,10 +509,13 @@ A child `bun test` process reads `bunfig.toml` from its own working directory. I
 
 Set up the editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](zed.md), or [other editors](other-editors.md). Then verify with step 4 of [Set up VibeLang](../setup.md).
 
-The Bun preload resolves a missing relative or absolute `.ts` import to its
-sibling `.vibe` source, so a native launcher can retain the import after
-migration. Existing native files keep their priority. The command-line entry
-itself must name an existing file; update that path when migrating the entry.
+The Bun preload resolves a missing `.ts` import to its sibling `.vibe` source
+when the import is relative, absolute or mapped by `paths` in `tsconfig.json`.
+A native launcher or test can retain the import after migration. Existing native files keep their priority.
+Alias lookup keeps the config's inherited paths and substitution order. This
+runtime fallback does not change the compiler's handling of written `.ts` imports.
+The command-line entry itself must name an existing file; update that path when
+migrating the entry.
 
 ### Builds inside Bun scripts and tests
 

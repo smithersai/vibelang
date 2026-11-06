@@ -69,7 +69,7 @@ function vibeImport(directory, specifier) {
   if (looking) return undefined
   looking = true
   try {
-    const source = migratedTypeScriptImport(directory, specifier) ?? (isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier))
+    const source = migratedTypeScriptImport(directory, specifier) ?? (isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier, { migratedTypeScript: true }))
     return source !== undefined && /\.vibex?$/.test(source) ? source : undefined
   } finally { looking = false }
 }

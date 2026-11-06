@@ -1,0 +1,14 @@
+{
+  "property": "bun-migrated-paths",
+  "rule": "Bun native launchers follow missing TypeScript paths aliases to migrated sources, preserving native candidates and alias substitution order",
+  "input": {
+    "inherited": false,
+    "baseUrl": false,
+    "exact": false,
+    "extension": "ts",
+    "first": "vibe",
+    "second": "none",
+    "name": "Migrate"
+  },
+  "reason": "An unchanged SQLite test imports a source through a TypeScript paths alias after the source migrated."
+}

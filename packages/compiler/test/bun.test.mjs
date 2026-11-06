@@ -485,3 +485,26 @@ test("the preload scans a project's modules, no dependency's, and still reaches 
   assert.equal(result.stdout, "42\n")
   assert.match(result.stderr, /dependency modules scanned: 0\n/)
 })
+
+test("Bun resolves a migrated literal TypeScript paths alias in original native launchers", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({
+      compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true, paths: { "@/*": ["./src/*"] } },
+      include: ["src/**/*"]
+    }),
+    "src/Migrate.vibe": "export const marker = 42\n",
+    "main.ts": 'import { marker } from "@/Migrate.ts"; console.log(marker)\n',
+    "dynamic.ts": 'console.log((await import("@/Migrate.ts")).marker)\n',
+    "main.cjs": 'console.log(require("@/Migrate.ts").marker)\n',
+    "main.test.ts": 'import { test, expect } from "bun:test"; import { marker } from "@/Migrate.ts"; test("original alias", () => expect(marker).toBe(42))\n',
+    "bunfig.toml": 'preload = ["vibelang/bun"]\n[test]\npreload = ["vibelang/bun"]\n'
+  })
+  for (const entry of ["main.ts", "dynamic.ts", "main.cjs"]) {
+    const result = bun(["run", entry])
+    assert.equal(result.status, 0, entry + "\n" + result.stderr)
+    assert.equal(result.stdout, "42\n", entry)
+  }
+  const result = bun(["test", "main.test.ts"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stderr, /1 pass/)
+})

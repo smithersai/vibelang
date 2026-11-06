@@ -99,8 +99,12 @@ function matchingPattern(paths, specifier) {
 // itself when it names a .vibe or .ts-family extension, the declaration file
 // of a .vibe name with no source, as in a published package, the .vibe or
 // TypeScript source of a .js name (D298), else extensionlessImport's rule.
-function loadFile(path) {
+function loadFile(path, migratedTypeScript = false) {
   if (/\.vibex?$/.test(path)) return [path, path.replace(/\.vibex?$/, ".d.ts")].find(isFile)
+  if (migratedTypeScript && path.endsWith(".ts") && !path.endsWith(".d.ts")) {
+    const stem = path.slice(0, -3)
+    return [path, stem + ".tsx", stem + ".d.ts", stem + ".vibe"].find(isFile)
+  }
   if (/\.(?:d\.[cm]?ts|[cm]?ts|tsx|json)$/.test(path)) return isFile(path) ? path : undefined
   if (/\.jsx?$/.test(path)) {
     const stem = path.replace(/\.jsx?$/, "")
@@ -117,8 +121,10 @@ function loadFile(path) {
  * no pattern matches or no substitution resolves, where TypeScript goes on to
  * node_modules. A loader that finds .vibe only for relative imports misses a
  * `@/x` alias to x.vibe; this is the alias half of extensionlessImport.
+ * The Bun runtime opts into migrated TypeScript names for native launchers;
+ * ordinary resolver callers keep their written TypeScript extension rules.
  */
-export function aliasImport(config, specifier) {
+export function aliasImport(config, specifier, { migratedTypeScript = false } = {}) {
   if (config === undefined || specifier.startsWith("./") || specifier.startsWith("../") || isAbsolute(specifier)) return undefined
   const options = pathsOf(config)
   if (options?.paths === undefined) return undefined
@@ -127,7 +133,7 @@ export function aliasImport(config, specifier) {
   const base = options.baseUrl ?? options.pathsBase
   for (const substitution of [options.paths[match.key]].flat()) {
     if (typeof substitution !== "string") continue
-    const found = loadFile(resolve(base, substitution.replace("*", match.star)))
+    const found = loadFile(resolve(base, substitution.replace("*", match.star)), migratedTypeScript)
     if (found !== undefined) return found
   }
   return undefined
