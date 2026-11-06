@@ -353,6 +353,9 @@ func toolsSlug(message string) string {
 // diagnostic, and the formatter has no TypeScript form for it (D276 writes a
 // provide block as a labeled block, a statement).
 func formatSyntaxError(source string) string {
+	if placement := formatNamedModulePlacementError(toolsParse("main.vibe", source)); placement != "" {
+		return placement
+	}
 	if syntax := toolsSyntaxError("main.vibe", source); syntax != "" {
 		return syntax
 	}
