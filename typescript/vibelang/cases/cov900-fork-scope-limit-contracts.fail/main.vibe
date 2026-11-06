@@ -1,0 +1,8 @@
+// expect: EK1706 EK1907
+// docs/design/src/900-appendices.md#f3a392ed35570eb9 — Chapter 900: fork scope and concurrency operand contracts.
+// Keep these type errors separate from the malformed-owner syntax witness.
+export effect function f() {
+ const child = fork.in("not a Scope") Effect.succeed(1)
+ for concurrent (true) (const item of [1]) { void item }
+ return child
+}

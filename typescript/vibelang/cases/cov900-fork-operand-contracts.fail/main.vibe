@@ -1,9 +1,6 @@
-// expect: EK1705 EK1706 EK1907
-// docs/design/src/900-appendices.md#625e5b6ee2005f42 — Chapter 900: cov900-fork-operand-contracts.fail.
-// docs/design/src/900-appendices.md#f3a392ed35570eb9 — Chapter 900: cov900-fork-operand-contracts.fail.
+// expect: EK1705
+// docs/design/src/900-appendices.md#625e5b6ee2005f42 — Chapter 900: fork owner syntax.
 export effect function f() {
  const owner = fork.other Effect.succeed(1)
- const scope = fork.in("not a Scope") Effect.succeed(1)
- for concurrent (true) (const n of [1]) {}
- return [owner,scope]
+ return owner
 }

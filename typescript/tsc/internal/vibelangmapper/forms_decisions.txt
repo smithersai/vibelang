@@ -2160,9 +2160,9 @@ typescript/vibelang/cases/cov900-declaration-controls/main.vibe:14:29 lambda pla
 typescript/vibelang/cases/cov900-declaration-controls/main.vibe:15:34 lambda plain table
 typescript/vibelang/cases/cov900-effect-jump.fail/main.vibe:4:31 lambda program keyword
 typescript/vibelang/cases/cov900-error-constructors/main.vibe:9:34 lambda program table
-typescript/vibelang/cases/cov900-fork-operand-contracts.fail/main.vibe:5:27 byname program table
-typescript/vibelang/cases/cov900-fork-operand-contracts.fail/main.vibe:6:39 byname program table
-typescript/vibelang/cases/cov900-fork-operand-contracts.fail/main.vibe:7:31 lambda effectFn table
+typescript/vibelang/cases/cov900-fork-operand-contracts.fail/main.vibe:4:27 byname program table
+typescript/vibelang/cases/cov900-fork-scope-limit-contracts.fail/main.vibe:5:39 byname program table
+typescript/vibelang/cases/cov900-fork-scope-limit-contracts.fail/main.vibe:6:31 lambda effectFn table
 typescript/vibelang/cases/cov900-infallible-catch/main.vibe:5:28 lambda plain table
 typescript/vibelang/cases/cov900-infallible-catch/main.vibe:6:12 lambda effectFn table
 typescript/vibelang/cases/cov900-infallible-catch/main.vibe:6:36 lambda effectFn table
