@@ -175,6 +175,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration rewrote import-shaped text inside JSX and template literals, which changed what a component rendered; it now edits only real imports.
 
+- A file selector an earlier migration batch had widened for `.vibe` dropped `.vibex` modules, so a coverage test could silently skip converted components; it now upgrades when a `.tsx` module moves.
+
 - Migration rejected JSX components in `.tsx` files; they now convert to `.vibex` with matching imports, declaration checks and revert support.
 
 - Mapper catch tests could assume ordinary functions ran Effect code; valid examples now mark their owners explicitly and retain ordinary-body rejection controls.

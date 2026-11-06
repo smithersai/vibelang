@@ -559,8 +559,10 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], gener
               if (ad !== bd || ad.startsWith("../")) throw new Error("selector directory changed or leaves the repository")
               // Since only suffix predicates qualify, these representatives
               // cover every supported extension and the complement class.
-              for (const name of ["probe.ts", "probe.tsx", "probe.js", "probe.json", "probe", "probe.d.vibe.ts", "probe.d.vibex.ts"]) {
-                if (bp(name) !== (/\.d\.vibex?\.ts$/.test(name) ? false : ap(name))) throw new Error("selector changes an existing extension")
+              // A selector owes an exclusion only for sidecars this batch writes; without JSX, .d.vibex.ts is one more .ts name.
+              const sidecarNames = ["probe.d.vibe.ts", ...(renames.some(r => r.to.endsWith(".vibex")) ? ["probe.d.vibex.ts"] : [])]
+              for (const name of ["probe.ts", "probe.tsx", "probe.js", "probe.json", "probe", ...sidecarNames]) {
+                if (bp(name) !== (sidecarNames.includes(name) ? false : ap(name))) throw new Error("selector changes an existing extension")
               }
               if (bp("probe.vibe") !== ap("probe.ts") || bp("probe.vibex") !== ap("probe.tsx"))
                 throw new Error("selector is not a matching VibeLang extension widening")

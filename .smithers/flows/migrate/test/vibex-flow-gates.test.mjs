@@ -14,7 +14,7 @@ import { followLintRenames } from "../lib/lint-paths.mjs"
 import { pathReadDeferrals, restoreReferences, rewriteReferences } from "../lib/references.mjs"
 import { regexIdentity, widenExtensionRegex } from "../lib/regex-selectors.mjs"
 import { removeSupersededSidecars } from "../lib/sidecar-config.mjs"
-import { pairedSidecar } from "../lib/test-diff.mjs"
+import { pairedSidecar, verifyTestDiff } from "../lib/test-diff.mjs"
 import { eslintScriptReadsVibe } from "../lib/tooling.mjs"
 import { foreignChanges } from "../lib/touched.mjs"
 
@@ -146,6 +146,29 @@ test("a lint script's glob gains the native twin of each kind it names", () => {
   assert.equal(eslintScriptReadsVibe("eslint 'src/**/*.tsx'"), "eslint 'src/**/*.tsx' 'src/**/*.vibex' --no-error-on-unmatched-pattern")
   assert.equal(eslintScriptReadsVibe("eslint 'src/**/*.ts'"), "eslint 'src/**/*.ts' 'src/**/*.vibe' --no-error-on-unmatched-pattern")
 })
+
+test("a .vibe-only widening upgrades once, and only where it admits .tsx", () => {
+  const earlier = "/(?<!\\.d\\.vibe)\\.(?:tsx?|vibe)$/", next = "/(?<!\\.d\\.vibex?)\\.(?:tsx?|vibex?)$/"
+  assert.equal(widenExtensionRegex(earlier), next)
+  assert.equal(widenExtensionRegex(next), null)
+  assert.equal(widenExtensionRegex("/(?<!\\.d\\.vibe)\\.(?:ts|vibe)$/"), null)
+  const before = ["src/a.vibe", "src/a.d.vibe.ts", "src/Card.tsx"]
+  const after = ["src/a.vibe", "src/a.d.vibe.ts", "src/Card.vibex", "src/Card.d.vibex.ts"]
+  assert.equal(regexIdentity(earlier, next, before, after, [{ from: "src/Card.tsx", to: "src/Card.vibex" }]).pass, true)
+})
+
+test("a test's selector owes an exclusion only for the sidecars its batch writes", () => inRepository(scratch => {
+  const selector = body => 'const files = readdirSync("src").filter(n => ' + body + ');\n'
+  const widenedForVibe = '(n.endsWith(".ts") || n.endsWith(".vibe")) && !n.endsWith(".d.vibe.ts")'
+  const check = (from, to, after) => verifyTestDiff({
+    ts, scratch,
+    before: { "package.json": "{}", [from]: "", "test/x.test.ts": selector('n.endsWith(".ts")') },
+    after: { "package.json": "{}", [to]: "", "test/x.test.ts": selector(after) },
+    renames: [{ from, to }]
+  }).ok
+  assert.equal(check("src/X.ts", "src/X.vibe", widenedForVibe), true)
+  assert.equal(check("src/X.tsx", "src/X.vibex", widenedForVibe), false)
+}))
 
 test("a selector that reaches a JSX sidecar fails identity by name", () => {
   const widened = "/\\.(?:tsx?|vibex?)$/"

@@ -56,12 +56,12 @@ const inventory = [
 ]
 const webRenames = [{ from: "apps/web/src/modelOrdering.ts", to: "apps/web/src/modelOrdering.vibe" }, { from: "apps/web/src/state/query.ts", to: "apps/web/src/state/query.vibe" }]
 const mobileRenames = [{ from: "apps/mobile/src/connection/catalog-store.ts", to: "apps/mobile/src/connection/catalog-store.vibe" }, { from: "apps/mobile/src/connection/background-activity.ts", to: "apps/mobile/src/connection/background-activity.vibe" }]
-const widened = "/(?<!\\.d\\.vibe)\\.(?:tsx?|vibe)$/"
+const widened = "/(?<!\\.d\\.vibex?)\\.(?:tsx?|vibex?)$/"
 
 const trees = (renames, file, beforeText, afterText) => {
   const before = Object.fromEntries(inventory.map(p => [p, null]))
   const after = Object.fromEntries(inventory.filter(p => !renames.some(r => r.from === p)).map(p => [p, null]))
-  for (const r of renames) { after[r.to] = null; after[r.to.replace(/\.vibe$/, ".d.vibe.ts")] = null }
+  for (const r of renames) { after[r.to] = null; after[r.to.replace(/\.(vibex?)$/, ".d.$1.ts")] = null }
   before[file] = beforeText
   after[file] = afterText
   return { before, after }
@@ -114,6 +114,17 @@ test("a rename another path test tells apart is refused, and verify refuses the 
   const result = verify(renames, file, web, forced)
   assert.equal(result.ok, false)
   assert.match(JSON.stringify(result), /another path test/)
+})
+
+test("t3code web: a filter an earlier batch widened gains .vibex when its component moves", () => {
+  const file = "apps/web/src/reactCompilerCoverage.test.ts", earlierForm = "/(?<!\\.d\\.vibe)\\.(?:tsx?|vibe)$/"
+  const earlier = web.replace("/\\.tsx?$/.test(file) &&", earlierForm + ".test(file) &&")
+  assert.notEqual(earlier, web)
+  const renames = [{ from: "apps/web/src/App.tsx", to: "apps/web/src/App.vibex" }]
+  const migrated = [...inventory.filter(path => path !== "apps/web/src/modelOrdering.ts"), "apps/web/src/modelOrdering.vibe", "apps/web/src/modelOrdering.d.vibe.ts"]
+  const changed = rewriteSourceLiterals(ts, earlier, file, renames, { inventory: migrated })
+  assert.equal(changed.text, earlier.replace(earlierForm, widened), changed.warnings.join("\n"))
+  assert.equal(verify(renames, file, earlier, changed.text).ok, true)
 })
 
 test("regexes that strip, sit in an assertion, or filter no listed directory stay as written", () => {

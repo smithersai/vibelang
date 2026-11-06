@@ -21,8 +21,10 @@ function parts(text) {
 export function widenExtensionRegex(text) {
   const p = parts(text)
   if (!p || !/^[iu]*$/.test(p.flags)) return null
-  const m = /^\\\.(.+)\$$/.exec(p.body)
-  if (!m || !extensionGroups.has(m[1])) return null
+  // A filter an earlier batch widened for .vibe still drops a .vibex module, so it upgrades in place.
+  const earlier = /^\(\?<!\\\.d\\\.vibe\)\\\.\(\?:(.+)\|vibe\)\$$/.exec(p.body)
+  const m = earlier ?? /^\\\.(.+)\$$/.exec(p.body)
+  if (!m || !extensionGroups.has(m[1]) || earlier && !/x/.test(m[1])) return null
   // A group that admits .tsx admits its native twin; .vibe alone would drop every .vibex module.
   return /x/.test(m[1]) ? "/(?<!\\.d\\.vibex?)\\.(?:" + m[1] + "|vibex?)$/" + p.flags : "/(?<!\\.d\\.vibe)\\.(?:" + m[1] + "|vibe)$/" + p.flags
 }
@@ -307,7 +309,9 @@ export function regexIdentity(before, after, beforePaths, afterPaths, renames, b
   const beforeSet0 = new Set(beforePaths)
   const sidecarOf = p => p.replace(/\.(vibex?)$/, ".d.$1.ts"), nativeOf = p => p.replace(/\.d\.(vibex?)\.ts$/, ".$1")
   const sourceOf = p => p.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
-  const logicalBefore = p => /\.d\.vibex?\.ts$/.test(p) && beforeSet0.has(nativeOf(p)) ? fromOf.get(nativeOf(p)) ?? sourceOf(nativeOf(p)) : p
+  // A filter an earlier batch widened selects x.vibe itself, so that side maps as the migrated tree does.
+  const logicalBefore = p => /\.d\.vibex?\.ts$/.test(p) && beforeSet0.has(nativeOf(p)) ? fromOf.get(nativeOf(p)) ?? sourceOf(nativeOf(p))
+    : /\.vibex?$/.test(p) && beforeSet0.has(sidecarOf(p)) ? sourceOf(p) : p
   const logicalAfter = p => fromOf.get(p) ?? (/\.vibex?$/.test(p) && beforeSet0.has(sidecarOf(p)) ? sourceOf(p) : p)
   const withSidecars = [...new Set([...afterPaths, ...afterPaths.filter(p => /\.vibex?$/.test(p)).map(sidecarOf)])]
   const beforeNames = [...new Set(beforePaths.filter(p => old.test(p)).map(logicalBefore))].sort()
