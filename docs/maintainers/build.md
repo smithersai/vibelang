@@ -944,6 +944,21 @@ owned marker keeps the existing `pending` and `XPASS` behavior.
 `scripts/harness-pending.test.mjs` checks both paths, including generated
 whitespace markers.
 
+The stock command applies `--singleThreaded` and native memory settings only
+to the native compiler; the JavaScript baseline keeps its original arguments.
+`TestStockCompileCLICompatibility` checks concurrent calls, exact emitted
+JavaScript and declarations, and paths containing spaces and Unicode against
+independent legacy and native command-line fixtures. A parity emission failure
+records the stock process result and output byte count beside the file difference.
+
+The fuzz checks use the mapper's pinned stock TypeScript, the historical
+declaration baseline named in
+`typescript/tsc/internal/vibelangfuzz/recursive_parity_baseline.go`, and the
+runtime's TypeScript inference baseline. Install `packages/compiler` test
+dependencies for the `dprint` formatter oracle too. Preserve package-manager
+links in `node_modules/.bin`: copying a script there changes its relative
+module lookup.
+
 `:go-vibelangfuzz` runs its test binary through `scripts/go-test-shards.sh`
 (`go test -exec`): six processes at once, or one per core on a smaller machine, sharing two threads per core through `GOMAXPROCS`, each with its own `-run` list and the
 40-minute deadline. Go runs a package's tests and each seed corpus one after

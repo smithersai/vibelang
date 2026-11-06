@@ -292,7 +292,7 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 		}
 	}
 	if diff := DiffOutputs(fork.Dir, emitted, fork.Dir, written); diff != "" {
-		g.Add("feature:d266-emit", "D266: the fork (first) and stock TypeScript (second) emit different JavaScript, declarations or maps:\n%s", diff)
+		g.Add("feature:d266-emit", "D266: the fork (first) and stock TypeScript (second) emit different JavaScript, declarations or maps:\nstock process: error=%v, output_bytes=%d\n%s", runErr, len(out), diff)
 	}
 	g.FinishInput(t, key)
 }

@@ -21,7 +21,7 @@ func TestAlchemyUnionPipeRequirementsQuoted(t *testing.T) {
 // Compare diagnostics, complete spans and output, including provider: B.
 func FuzzAlchemyUnionPipeRequirements(f *testing.F) {
 	startShortBudget(f)
-	rows := []string{"original", "renamed-parameter", "renamed-provider", "renamed-requirements", "inline", "parenthesized", "annotated-error"}
+	rows := []string{"original", "renamed-parameter", "renamed-provider", "renamed-requirements", "inline", "parenthesized", "annotated-error", "renamed-method"}
 	f.Add("original") // The keyed corpus covers every variant without duplicate short seeds.
 	stock := alchemyUnionPipeStock(f)
 	w := NewWorkspace(f)
@@ -38,6 +38,8 @@ func FuzzAlchemyUnionPipeRequirements(f *testing.F) {
 		}
 		archive := alchemyUnionPipeArchive
 		switch key {
+		case "renamed-method":
+			archive = strings.ReplaceAll(archive, "configure", "initialize")
 		case "renamed-parameter":
 			archive = strings.ReplaceAll(archive, "name", "label")
 		case "renamed-provider":
