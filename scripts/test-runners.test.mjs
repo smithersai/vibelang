@@ -6,6 +6,7 @@ import { dirname, resolve, relative, join, basename } from "node:path"
 import { tmpdir } from "node:os"
 import { matchesGlob } from "node:path"
 import { test } from "node:test"
+import { buildContractSuites } from "../build-contract-inputs.ts"
 
 // Every test file in the repository runs in a build-graph target, or is listed in `unrun` with what keeps it out.
 // On 2026-10-31 eight suites ran nowhere: the migrate and convert flows' 174 tests, while 48 of the last 400
@@ -16,11 +17,12 @@ const read = (path) => readFileSync(new URL(path, root), "utf8")
 
 // [test files, the file that runs them, the text in it that names them]
 const runs = [
+  ...buildContractSuites.map(file => [file, "build-contract-inputs.ts", JSON.stringify(file)]),
   ["build-contract-inputs.test.mjs", "PACKAGE.ts", "node --test build-contract-inputs.test.mjs"],
   ["site/scripts/not-found.test.mjs", "docs/tools/site-contrast.test.ts", "test:404"],
   ["site/scripts/patch-vocs-search.test.mjs", "site/package.json", "scripts/patch-vocs-search.test.mjs"],
   ["site/scripts/patch-vocs-llms.test.mjs", "site/package.json", "scripts/patch-vocs-llms.test.mjs"],
-  ["scripts/!(api-identity*).test.mjs", "PACKAGE.ts", "scripts/!(api-identity*).test.mjs"],
+  ["scripts/!(api-identity*|bun-test-budgets|compiler-test-inputs|compiler-failure-output|compiler-shard-installs|go-build-flags|go-cache|go-shared-test-inventory|go-test-cache).test.mjs", "PACKAGE.ts", "scripts/!(api-identity*|bun-test-budgets|compiler-test-inputs|compiler-failure-output|compiler-shard-installs|go-build-flags|go-cache|go-shared-test-inventory|go-test-cache).test.mjs"],
   ["scripts/api-identity*.test.mjs", "PACKAGE.ts", "node --test scripts/api-identity*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
   ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],
@@ -269,7 +271,7 @@ test("entrypoint audit agrees with Node for a multi-suite forwarder and repeated
 })
 
 test("release and API globs give prefixed files one runner without dropping their neighbours", () => {
-  const release = matcher("scripts/!(api-identity*).test.mjs")
+  const release = matcher("scripts/!(api-identity*|bun-test-budgets|compiler-test-inputs|compiler-failure-output|compiler-shard-installs|go-build-flags|go-cache|go-shared-test-inventory|go-test-cache).test.mjs")
   const api = matcher("scripts/api-identity*.test.mjs")
   for (const name of ["api-identity", "api-identity-extra", "api-identity space", "api-identityλ"]) {
     const file = "scripts/" + name + ".test.mjs"

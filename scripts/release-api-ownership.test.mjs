@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
+import { buildContractSuites } from "../build-contract-inputs.ts"
 
 const declaration = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
 function command(name) {
@@ -33,7 +34,11 @@ function command(name) {
   assert.equal(source[position++], ",")
   const parts = []
   do {
-    parts.push(string())
+    space()
+    if (source.startsWith('buildContractSuites.join(" ")', position)) {
+      parts.push(buildContractSuites.join(" "))
+      position += 'buildContractSuites.join(" ")'.length
+    } else parts.push(string())
     space()
     if (source[position] !== "+") break
     position++
@@ -43,6 +48,7 @@ function command(name) {
 }
 
 const release = command("release")
+const contracts = command("build-contracts")
 const apiCheck = command("api-identity-test")
 assert.ok(apiCheck.startsWith("node scripts/sync-api-identity.mjs --check && "))
 // Exercise the actual test-selection command; the independent source-sync
@@ -69,15 +75,20 @@ const apiFiles = [
 ].map(name => "scripts/" + name + ".test.mjs")
 const ordinary = Array.from({ length: 26 }, (_, index) =>
   "scripts/" + ["ordinary ", "xapi-identity", "api_identity", "λ", "quote'"][index % 5] + index + ".test.mjs")
-const releaseFiles = [...common, ...ordinary]
+const neighbours = buildContractSuites.flatMap(file => {
+  const base = file.slice("scripts/".length, -".test.mjs".length)
+  return [base + "-extra", "x" + base, base + " space", base + "λ"]
+    .map(name => "scripts/" + name + ".test.mjs")
+})
+const releaseFiles = [...common, ...ordinary, ...neighbours]
 
-for (const failure of ["none", "api", "release"]) {
-  test("release delegates API suites once and preserves " + failure + " failures across 32 filename neighbours", t => {
+for (const failure of ["none", "api", "release", "contracts"]) {
+  test("release delegates API suites and command audits once and preserves " + failure + " failures across filename neighbours", t => {
     const root = mkdtempSync(join(tmpdir(), "release-api-"))
     t.after(() => rmSync(root, { recursive: true, force: true }))
     const trace = join(root, "trace.jsonl")
-    const failedFile = failure === "api" ? apiFiles[0] : failure === "release" ? ordinary[0] : ""
-    for (const file of [...releaseFiles, ...apiFiles]) {
+    const failedFile = failure === "api" ? apiFiles[0] : failure === "release" ? ordinary[0] : failure === "contracts" ? buildContractSuites[0] : ""
+    for (const file of [...releaseFiles, ...apiFiles, ...buildContractSuites]) {
       const path = join(root, file)
       mkdirSync(dirname(path), { recursive: true })
       writeFileSync(path, 'import test from "node:test"; import {appendFileSync} from "node:fs";\n' +
@@ -98,7 +109,12 @@ for (const failure of ["none", "api", "release"]) {
     const second = invoke(api)
     assert.equal(second.signal, null, second.stdout + second.stderr)
     assert.equal(second.status, failure === "api" ? 1 : 0, second.stdout + second.stderr)
-    assert.deepEqual(seen(), [...releaseFiles, ...apiFiles].sort(), "the two commands execute every file exactly once")
-    if (failure !== "none") assert.match(first.stdout + second.stdout, /deliberate selection witness/)
+    assert.deepEqual(seen(), [...releaseFiles, ...apiFiles].sort(), "API and build contracts retain separate ownership")
+    const third = invoke(contracts)
+    assert.equal(third.signal, null, third.stdout + third.stderr)
+    assert.equal(third.status, failure === "contracts" ? 1 : 0, third.stdout + third.stderr)
+    assert.deepEqual(seen(), [...releaseFiles, ...apiFiles, ...buildContractSuites].sort(),
+      "the three declared commands execute every file exactly once")
+    if (failure !== "none") assert.match(first.stdout + second.stdout + third.stdout, /deliberate selection witness/)
   })
 }

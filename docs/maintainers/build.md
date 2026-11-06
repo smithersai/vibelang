@@ -1968,6 +1968,12 @@ The `//:pipe-topic-regressions` target executes the implemented direct and neste
 
 The `//:build-contracts` target runs bounded declaration checks: Bun deadlines, compiler shard prerequisites, Go build flags, shared cache warmup, shared-package test selection and uncached Go test replay. It declares both Node and Go because cache replay verifies a real Go test against a changed external oracle.
 
+The release target depends on this same check and excludes its eight registered
+suites from the quoted script glob. Selecting both targets executes the command
+audits once; selecting only `//:release` still runs them as a prerequisite.
+The runner inventory accounts for every excluded suite, and real Node filename
+controls retain neighbouring suites and propagate failures from each owner.
+
 Its cache inputs are the inspected declarations, scripts, manifests and
 lockfiles in `build-contract-inputs.ts`, plus compiler test files and
 VibeLang-prefixed Go test files discovered on each plan. Acceptance cases,

@@ -477,6 +477,16 @@ const sidecarRootContract = S.Shell.Test({
 const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress.mjs"])] })
 
 const buildContractInputs = createBuildContractInputs(S)
+const buildContracts = check(
+  "Build and test commands retain their explicit budgets and prerequisites.",
+  "node --test --test-concurrency=4 " + buildContractSuites.join(" "),
+  [],
+  [go, node],
+  "5m",
+  {},
+  [buildContractInputs]
+)
+
 const apiIdentityFiles = createApiIdentityInputs(S, Packages.tree)
 
 const apiIdentityTest = check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node], undefined, {}, [apiIdentityFiles])
@@ -637,11 +647,11 @@ const targets = {
   "spec-catch-diagnostics": specCatchDiagnostics,
   release: check(
     "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
-    "node --test --test-concurrency=4 scripts/release/*.test.mjs 'scripts/!(api-identity*).test.mjs' typescript/vibelang/harness.test.mjs typescript/vibelang/cov-ch004-twin.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
+    "node --test --test-concurrency=4 scripts/release/*.test.mjs 'scripts/!(api-identity*|bun-test-budgets|compiler-test-inputs|compiler-failure-output|compiler-shard-installs|go-build-flags|go-cache|go-shared-test-inventory|go-test-cache).test.mjs' typescript/vibelang/harness.test.mjs typescript/vibelang/cov-ch004-twin.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
       "site/scripts/sync-spec-docs.test.mjs site/scripts/sync-user-docs.test.mjs " +
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",
-    [apiIdentityTest, Typescript["forms-generator"], Packages["compiler-native"], Packages["runtime-dist"]],
+    [apiIdentityTest, buildContracts, Typescript["forms-generator"], Packages["compiler-native"], Packages["runtime-dist"]],
     [node, bun, gofmt, bun, go, S.Host.bin("diff3")]
   ),
   "starter-templates": check(
@@ -707,15 +717,7 @@ const targets = {
     [Typescript["forms-generator"], specLint, grammarAdmissionCheck],
     [bun, node]
   ),
-  "build-contracts": check(
-    "Build and test commands retain their explicit budgets and prerequisites.",
-    "node --test --test-concurrency=4 " + buildContractSuites.join(" "),
-    [],
-    [go, node],
-    "5m",
-    {},
-    [buildContractInputs]
-  ),
+  "build-contracts": buildContracts,
   "build-contract-inputs-cache": check(
     "Build contracts retain their read inputs and reuse unrelated changes, with actual SDK controls.",
     "node --test build-contract-inputs.test.mjs",

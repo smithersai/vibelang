@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 
+- Contributor release checks repeated build command validation; they now share the checked result while preserving failures.
+
 - A choice between service keys could bypass the usual construction, inheritance and pattern checks. A union made entirely of service keys now reports the same misuse diagnostics as each key on its own.
 - Generated declarations for native `module` bodies could fail lint with `unicorn/require-module-specifiers` or formatting checks. Migration setup now excludes these compiler outputs while continuing to check authored implementation files.
 - An indexed generic type could hide a service key from construction, inheritance and class-pattern checks. Indexed constraints now retain the key's identity and report the usual misuse diagnostics.
