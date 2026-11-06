@@ -41,7 +41,7 @@ A `provide` block does not create a fiber owner. A child started with `fork` can
 
 A `provide` statement requires effect code. At module scope, `EK1201` points to moving it into an `effect function` or `effect { }` block.
 
-Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition.
+Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition. The compiler still checks the recovered body, including `EK1201` for a block outside effect code and independent type errors.
 
 A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once. Support for diagnostics on the new provider forms arrives with the compiler's VIP implementation.
 

@@ -40,8 +40,9 @@ var EK0509 = message(509, errorCategory, parser.VibeLangCatchHandlerMessage)
 
 func init() {
 	compiler.RegisterRecoverableSyntacticDiagnosticCallback(func(d *ast.Diagnostic) bool {
-		// Missing catch arrows retain an intact recovered function body.
-		return d.Source() == diagnosticSource && d.Code() == EK0509.Code
+		// Catch arrows and provider separators retain intact recovered bodies,
+		// so independent semantic diagnostics still apply.
+		return d.Source() == diagnosticSource && (d.Code() == EK0509.Code || d.Code() == EK1202.Code)
 	})
 	registry[EK0509.Code] = EK0509
 	tsFormFixCodes = append(tsFormFixCodes, EK0509.Code)

@@ -1,0 +1,4 @@
+// expect: EK1201 EK1202 TS2322
+export function inspect(){provide Layer.empty,
+ Layer.empty {};return 1}
+export const unrelated:number="wrong"
