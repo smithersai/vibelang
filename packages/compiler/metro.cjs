@@ -1,5 +1,5 @@
 "use strict"
-// vibelang/metro: Metro bundles .vibe modules.
+// vibelang/metro: Metro bundles .vibe and .vibex modules.
 //
 //   // metro.config.js
 //   module.exports = require("vibelang/metro").withVibeLang(config)
@@ -51,7 +51,8 @@ function transformerOf(root, name) {
 // A compile rewrites a .vibe module's relative imports to the emitted names, so
 // ./a.ts reaches Metro as ./a.js. From source, those names are the files beside
 // the module, as for vibelang/register.
-const sources = { ".js": [".vibe", ".ts", ".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
+const sources = { ".js": [".vibe", ".vibex", ".ts", ".tsx"], ".jsx": [".vibex", ".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
+const isVibeLang = (file) => /\.vibex?$/.test(file)
 
 function resolveEmittedNames(next) {
   return (context, name, platform) => {
@@ -59,7 +60,7 @@ function resolveEmittedNames(next) {
     try {
       return resolve(context, name, platform)
     } catch (error) {
-      if (!context.originModulePath.endsWith(".vibe") || !/^\.\.?\//.test(name)) throw error
+      if (!isVibeLang(context.originModulePath) || !/^\.\.?\//.test(name)) throw error
       const extension = Object.keys(sources).find((candidate) => name.endsWith(candidate))
       for (const replacement of extension === undefined ? [] : sources[extension]) {
         try {
@@ -90,7 +91,7 @@ function withVibeLang(config) {
     ...config,
     resolver: {
       ...config.resolver,
-      sourceExts: sourceExts.includes("vibe") ? sourceExts : [...sourceExts, "vibe"],
+      sourceExts: [...sourceExts, ...["vibe", "vibex"].filter((extension) => !sourceExts.includes(extension))],
       resolveRequest: resolveEmittedNames(config.resolver?.resolveRequest)
     },
     transformer: { ...transformer, babelTransformerPath: transformerPath }
@@ -124,7 +125,7 @@ function moveImportLocations(metadata, toSource) {
 function transform(args) {
   const file = isAbsolute(args.filename) ? args.filename : resolve(args.options?.projectRoot ?? process.cwd(), args.filename)
   const { toolSource, remapLocations, sourcePosition } = vibelangEmit()
-  const source = file.endsWith(".vibe") ? toolSource(file, args.src) : undefined
+  const source = isVibeLang(file) ? toolSource(file, args.src) : undefined
   if (source === undefined) return upstream().transform(args)
   const moved = (result) => {
     if (result?.ast) remapLocations(result.ast, source.map)

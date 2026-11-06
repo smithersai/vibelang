@@ -475,8 +475,8 @@ the project's compile and move the parsed syntax tree back to `.vibe`
 positions, so diagnostics and source maps name `.vibe` lines:
 
 - `vibelang/metro`: `withVibeLang(config)` around the config that
-  `metro.config.js` exports. Metro resolves `.vibe` modules, and the app's
-  own Babel transformer receives their JavaScript. See
+  `metro.config.js` exports. Metro resolves `.vibe` and `.vibex` modules, and
+  the app's own Babel transformer receives their JavaScript. See
   [React Native and Metro](react-native.md).
 - `vibelang/babel`: a Babel preset, listed last, for a tool that runs Babel
   on a file itself, such as babel-jest or a React Compiler coverage test.

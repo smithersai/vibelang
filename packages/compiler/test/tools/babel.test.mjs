@@ -26,6 +26,12 @@ test("without the preset Babel cannot parse a .vibe module", (t) => {
   assert.throws(() => compile(root, "src/useLabel.vibe", []), SyntaxError)
 })
 
+test("the preset reads a .vibex module", (t) => {
+  const root = project(t, { "src/useLabel.vibex": hooks["src/useLabel.vibe"] }, ["react", "@types/react"])
+  assert.throws(() => compile(root, "src/useLabel.vibex", []), SyntaxError)
+  assert.match(compile(root, "src/useLabel.vibex").code, /useMemoCache|_c\(/)
+})
+
 test("the React Compiler memoizes a clean .vibe hook", (t) => {
   const root = project(t, hooks, ["react", "@types/react"])
   const { code, bailouts } = compile(root, "src/useLabel.vibe")

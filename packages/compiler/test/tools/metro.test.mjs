@@ -54,6 +54,17 @@ test("Metro bundles a .vibe module through the app's transformer", async (t) => 
   assert.equal(context.result, "metro-marker:metro")
 })
 
+test("Metro bundles a .vibex module and its relative imports", async (t) => {
+  const { code } = await bundle(t, withVibeLang, {
+    "src/greet.vibex": greet,
+    "src/use.vibe": 'import { greet } from "./greet.vibex"\n\nexport const name: string = greet("metro")\n',
+    "index.js": 'import { name } from "./src/use.vibe"\nglobalThis.result = name\n'
+  })
+  const context = {}
+  runInNewContext(code, Object.assign(context, { globalThis: context }))
+  assert.equal(context.result, "metro-marker:metro")
+})
+
 // t3code's @t3tools/contracts has only an `import` condition.
 test("a .vibe module's import takes a package's import condition", async (t) => {
   const { code } = await bundle(t, withVibeLang, {

@@ -1,5 +1,5 @@
 "use strict"
-// vibelang/babel: Babel reads .vibe modules.
+// vibelang/babel: Babel reads .vibe and .vibex modules.
 //
 //   // babel.config.js
 //   presets: [..., "vibelang/babel"]
@@ -19,7 +19,7 @@ function plugin() {
     name: "vibelang",
     parserOverride(code, parserOpts, parse) {
       const file = parserOpts.sourceFileName
-      if (typeof file !== "string" || !file.endsWith(".vibe")) return undefined
+      if (typeof file !== "string" || !/\.vibex?$/.test(file)) return undefined
       const { toolSource, remapLocations } = vibelangEmit()
       const source = toolSource(file, code)
       if (source === undefined) return undefined
