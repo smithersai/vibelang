@@ -59,8 +59,8 @@
     "name": "throw-handler",
     "source": "export effect function f(){return Effect.fail(1) catch (e)=>{throw e}}",
     "diagnostic": {
-      "code": "EK0511",
-      "category": "warning"
+      "code": "EK0401",
+      "category": "error"
     }
   }
 ]

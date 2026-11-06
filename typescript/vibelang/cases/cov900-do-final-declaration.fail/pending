@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: A direct var in a do expression is accepted instead of EK0201.
-Rules: docs/design/src/900-appendices.md#8e48a1c2394390c8
-Witness: typescript/vibelang/cases/cov900-do-final-declaration.fail/main.vibe

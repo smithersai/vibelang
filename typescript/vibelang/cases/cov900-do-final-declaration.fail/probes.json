@@ -13,7 +13,7 @@
   },
   {
     "name": "direct var",
-    "source": "export const x=do {var n=1;n}",
+    "source": "export const x=do {var n=1}",
     "status": "error",
     "diagnostic": {
       "code": "EK0201",
