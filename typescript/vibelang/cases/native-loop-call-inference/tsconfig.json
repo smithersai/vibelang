@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "Preserve",
+    "skipLibCheck": true
+  },
+  "files": [
+    "main.vibe",
+    "reference.ts"
+  ]
+}

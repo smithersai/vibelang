@@ -614,6 +614,7 @@ vibelang/provide.go:layerChannels	admission:provide	900-appendices.md#ProvideSta
 vibelang/provide.go:lowering.visitProvideBlock	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:checkProvideBlocks	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:checkProvideProviders	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:mayCallProvide	admission:provide	000-intro.md,900-appendices.md#ProvideStatement	support	Canonical callee screening preserves native call return inference before resolving provider overloads
 vibelang/provide.go:effectProvideArguments	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:providedCallType	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:providerCall	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers

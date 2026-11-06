@@ -1,0 +1,12 @@
+type Url={origin:string;toString():string};type Reply={location?:string;status:number};
+declare function parse(s:string,base?:Url):Url|undefined;
+declare function execute(s:string):Reply;
+export function run(input:string):Reply|undefined {
+ let url=parse(input);if(url===undefined)return;
+ for(let i=0;i<10;i++){
+  const response=execute(url.toString());
+  const location=response.location;
+  if(location!==undefined){const next=parse(location,url);if(next===undefined)return;url=next;continue;}
+  return response;
+ }
+}

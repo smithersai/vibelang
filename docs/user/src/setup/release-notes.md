@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A loop that updated a narrowed URL could report `TS7022` on a response and `TS18048` on the URL. Calls with a known return type now preserve TypeScript inference and narrowing.
+
 - Migration could stop when the same declaration appeared with and without a source-map comment. Matching declarations now compare successfully while type and documentation changes still fail.
 
 - A formatter failure in a batch could omit the input filename. Formatter commands and `formatSource` now identify the original file, including marked TypeScript files.
