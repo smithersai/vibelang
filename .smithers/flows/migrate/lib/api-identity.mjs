@@ -409,6 +409,55 @@ type __Assert<T extends true> = T;
 // Original entry bindings and docs remain checked; shared canonical exports
 // prove identity directly, while other exports use generated strict probes.
 // Changed or unresolved dependencies invalidate every ancestor, including cycles.
+// Two checkouts of one workspace can reach a package as source on one side and
+// as its declaration on the other. Both name one module of one package.
+function workspaceOrigin(file) {
+  for (let dir = dirname(file); dirname(dir) !== dir; dir = dirname(dir)) {
+    let manifest
+    try { manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) } catch { continue }
+    if (!manifest.name) return undefined
+    return [manifest.name, slash(relative(dir, file)).replace(/(?:\.d)?(?:\.vibex?)?(?:\.[cm]?tsx?)?$/, "")]
+  }
+}
+
+// What a module adds to the shared environment: its ambient blocks and every
+// local declaration they reach, printed. Source and declaration differ in
+// everything else, so only this part of each file can be compared.
+function ambientContribution(ts, source) {
+  const printer = ts.createPrinter()
+  const print = node => printer.printNode(ts.EmitHint.Unspecified, node, source).replace(/\s+/gu, " ")
+  const locals = new Map()
+  for (const statement of source.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      const clause = statement.importClause, specifier = statement.moduleSpecifier.text.replace(/\.[cm]?[jt]sx?$|\.vibex?$/, "")
+      const bindings = clause?.namedBindings
+      const names = [...(clause?.name ? [clause.name] : []), ...(bindings ? ts.isNamespaceImport(bindings) ? [bindings.name] : bindings.elements.map(element => element.name) : [])]
+      for (const name of names) locals.set(name.text, "import " + name.text + " from " + specifier)
+    } else if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations)
+        if (ts.isIdentifier(declaration.name)) locals.set(declaration.name.text, statement)
+    } else if (statement.name && !ts.isModuleDeclaration(statement)) locals.set(statement.name.text, statement)
+  }
+  const ambient = statement => ts.isModuleDeclaration(statement) &&
+    (ts.isStringLiteral(statement.name) || (statement.flags & ts.NodeFlags.GlobalAugmentation))
+  const seen = new Set(), printed = [], pending = source.statements.filter(ambient).reverse()
+  while (pending.length) {
+    const node = pending.pop()
+    if (seen.has(node)) continue
+    seen.add(node)
+    printed.push(typeof node === "string" ? node : print(node))
+    if (typeof node === "string") continue
+    const reached = []
+    const visit = child => {
+      if (ts.isIdentifier(child) && locals.has(child.text)) reached.push(locals.get(child.text))
+      ts.forEachChild(child, visit)
+    }
+    visit(node)
+    pending.push(...reached.reverse())
+  }
+  return printed
+}
+
 function equivalentModules(ts, program, host, left, right, externalGroups, documentation) {
   const printer = ts.createPrinter({ removeComments: true })
   const checker = program.getTypeChecker()
@@ -1153,7 +1202,10 @@ function prepareComparison(ts, before, after, options, progress) {
           try { manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) } catch {}
           key = "package:" + JSON.stringify([manifest.name ?? tail.slice(0, count).join("/"), manifest.version, relative(root, file), ...peerInstallation(root, manifest)])
         } else if (file === base || file.startsWith(base + "/")) key = "owned:" + relative(base, file)
-        else key = "shared:" + file
+        else {
+          const workspace = workspaceOrigin(file)
+          key = workspace ? "workspace:" + JSON.stringify(workspace) : "shared:" + file
+        }
         order.push(key)
         // Two installed copies of one package are one origin only when their
         // bytes match here and their closures match in the proof below.
@@ -1187,6 +1239,10 @@ function prepareComparison(ts, before, after, options, progress) {
     for (const key of new Set([...ambientLeft.keys(), ...ambientRight.keys()])) {
       const a = ambientLeft.get(key), b = ambientRight.get(key)
       if (a && b && (a === b || ambientProof.get(b) === a)) continue
+      // A snapshot's own exports are compared as entries; a workspace module
+      // is its own package's comparison. Only the environment is left here.
+      if (a && b && /^(?:workspace|owned):/.test(key) && JSON.stringify(ambientContribution(ts, program.getSourceFile(a))) ===
+        JSON.stringify(ambientContribution(ts, program.getSourceFile(b)))) continue
       result.environmentDiagnostics.push({ blocking: true, file: b ?? a, diagnostic: "Ambient declaration closures differ; shared-program comparison is unavailable: " + key })
     }
     const copies = [...leftCopies, ...rightCopies]

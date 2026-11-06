@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 - A TypeScript barrel in a built project reference could lose exports after a module moved to `.vibe` or `.vibex`; consumers now resolve those native modules through their emitted declarations.
+- Migration API checks refused every importer of a workspace package with a `declare module` block when the frozen original and the candidate lived in separate checkouts. The key is now the package and module, and the proof compares the ambient blocks and the local declarations they reach.
 
 - Vite+ projects could still lint or format generated VibeLang declarations because their ignores live inside `vite.config.ts`. Migration setup now updates the embedded `fmt.ignorePatterns` and `lint.ignorePatterns` settings while preserving checks on authored implementations.
 
