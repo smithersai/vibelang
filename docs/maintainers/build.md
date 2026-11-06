@@ -2423,3 +2423,5 @@ Optional object-property bindings initialize their lexical cell only after a suc
 `//:catch-completion-declaration-surface` checks nested catch runtime results, the exact declaration goldens, and keyed literal-return and normal-completion controls.
 
 The runner inventory identifies the documentation suites by their file selector. Reporting flags and option order can change without losing that identity; the Bun budget check still requires the explicit deadline. Real Bun fixtures retain the selected suites, exclusions and failure status across reporting and worker-count profiles.
+
+The module sidecar property uses the stock TypeScript API to check every generated consumer, including expected-error directives and re-exported JSDoc. Its fixed example also invokes the stock `tsc` command. Stage timing records include the generated case and child-process status so a timeout identifies the compiler phase.
