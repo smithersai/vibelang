@@ -183,6 +183,16 @@ export function intermittent(runs, testsOf) {
 export function failedTests(lines) {
   const out = new Set()
   for (const line of lines) {
+    // Compiler shards retain Node's failures as one JSON record, including
+    // nested and cancelled tests. Todo failures do not fail the execution.
+    if (line.startsWith("[node-test] ")) {
+      try {
+        const item = JSON.parse(line.slice(12))
+        if (item?.event === "failure" && !item.todo && !item.skip &&
+            typeof item.name === "string" && item.name.trim()) out.add(item.name)
+      } catch { /* A truncated record must not invent a failed test. */ }
+      continue
+    }
     const m = /^\s*\(fail\) (.+?)(?: \[[\d.]+m?s\])?$/.exec(line)
       ?? /^\s*✖ (?!failing tests)(.+?)(?: \([\d.]+m?s\))?$/.exec(line)
       ?? /^\s*--- FAIL: (\S+)/.exec(line)

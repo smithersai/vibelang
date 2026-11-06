@@ -1,0 +1,10 @@
+{
+  "results": [
+    {
+      "label": "//packages:compiler-test-2",
+      "status": "ran",
+      "key": "5b13e34372411f1a6a5c7aa1c42318ad0588b1d941301c94882e8cc15fe7e864",
+      "durationMs": 109.49237299999999
+    }
+  ]
+}

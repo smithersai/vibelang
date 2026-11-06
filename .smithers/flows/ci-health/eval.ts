@@ -43,6 +43,7 @@ type Input = {
   readonly split: string;
   readonly flaky?: ReadonlyArray<string>;
   readonly tests?: ReadonlyArray<string>;
+  readonly exactTests?: boolean;
   readonly causes?: Readonly<Record<string, string>>;
   readonly regressed?: Readonly<Record<string, number>>;
   readonly intermittent?: ReadonlyArray<string>;
@@ -125,6 +126,20 @@ cases.push({
   } satisfies Input
 });
 
+// Real compiler-shard reporter executions alternate controlled failure/success.
+cases.push({
+  name: "node-reporter",
+  input: {
+    fixture: "fixture-node-reporter",
+    split: "",
+    flaky: ["//packages:compiler-test-2"],
+    tests: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    exactTests: true,
+    intermittent: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    causes: { "//packages:compiler-test-2": "timeout" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "1", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
@@ -138,6 +153,7 @@ const intermittent = score("intermittent", (i, o) => (i.intermittent ? exactly(i
 const tests = score("tests", (i, o) => {
   if (!i.tests) return 1;
   if (i.tests.length === 0) return Number(o.tests.length === 0);
+  if (i.exactTests) return exactly(i.tests, o.tests);
   return i.tests.filter((t) => o.tests.includes(t)).length / i.tests.length;
 });
 const causes = score("causes", (i, o) => {

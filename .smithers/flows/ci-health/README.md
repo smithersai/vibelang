@@ -38,6 +38,12 @@ evidence. `process startup` identifies a supervisor that could not start a
 process in time; inspect startup handling and host capacity. It does not name a
 failed test or imply that a test deadline needs changing.
 
+Compiler shards emit `[node-test]` JSON records through
+`scripts/testing/node-failures.mjs`. The analyzer reads their failure names,
+including nested and cancelled tests, while excluding skipped and todo tests.
+Escaped names retain their original text; incomplete records supply no test name.
+Legacy Bun, Node, Go and compiler-case output remains supported.
+
 Check a test's last failure before fixing it. An old date usually means someone
 already did.
 
@@ -88,6 +94,13 @@ post-merge runs, each under new keys. `//:mapper-scripts` failed its deadline
 test, passed, failed it again and passed; `//:grammar-inventory` failed once
 and then passed twice. Only the deadline test is intermittent, and neither
 target is flaky.
+
+The `node-reporter` eval runs the flow on `fixture-node-reporter/`: four
+actual Node executions using the compiler shard's reporter, alternating
+controlled failure and success. It checks the exact failed and returning test
+names, including nested and cancelled tests, and excludes skip/todo controls.
+Regenerate the logs with
+`node .smithers/flows/ci-health/fixture-node-reporter/record.mjs`.
 
 | Scorer | 1 when |
 | --- | --- |

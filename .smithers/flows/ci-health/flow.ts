@@ -8,7 +8,7 @@ import { run as steps, start } from "./lib/steps.mjs";
 // causes are behind them. Every step reads and writes the run directory, so a stopped execution
 // resumes where it stopped. No step calls a model. README.md describes the run.
 
-const implementationVersion = "ci-health/v4";
+const implementationVersion = "ci-health/v5";
 
 const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary: Schema.String });
 
