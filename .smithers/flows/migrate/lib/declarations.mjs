@@ -678,7 +678,17 @@ function publishedEquivalent(ts, a, b, sides) {
   return excused
 }
 
-export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false, profile, workerHeaps, diagnosticBatchSize } = {}) {
+// Grouping sizes pass to the API check as given. A present value, even an
+// invalid 0, must reach its validation rather than fall back to the default.
+const batchSizeOptions = ["entryBatchSize", "probeBatchSize", "diagnosticBatchSize"]
+function batchSizes(options) {
+  const unknown = Object.keys(options).filter(key => !batchSizeOptions.includes(key))
+  if (unknown.length) throw new Error("compareDeclarations: unknown option " + unknown.join(", "))
+  return Object.fromEntries(batchSizeOptions.filter(key => options[key] !== undefined).map(key => [key, options[key]]))
+}
+
+export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false, profile, workerHeaps, ...batches } = {}) {
+  const batchOptions = batchSizes(batches)
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
   const surface = dir => {
@@ -792,7 +802,7 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     api = compareApiIdentity(ts, left.directory, right.directory, {
       beforeEntrypoints: aEntries, afterEntrypoints: bEntries,
       projectContexts: [...left.projectContexts, ...right.projectContexts], moduleRoots: [...new Set(modules)], includeComparedFiles: true,
-      absentDeclarations: absentFrom(aSurface, bSurface, { before: left.absentSources, after: right.absentSources }), profile, ...(workerHeaps ? { workerHeaps } : {}), ...(diagnosticBatchSize ? { diagnosticBatchSize } : {}),
+      absentDeclarations: absentFrom(aSurface, bSurface, { before: left.absentSources, after: right.absentSources }), profile, ...(workerHeaps ? { workerHeaps } : {}), ...batchOptions,
     })
     const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
       [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>

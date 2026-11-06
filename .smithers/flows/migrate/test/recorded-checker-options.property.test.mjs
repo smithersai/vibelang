@@ -74,6 +74,25 @@ test("a worker heap list reaches the comparison: one too small to run fails it, 
  assert.equal(result.comparisonComplete,false)
 })
 
+// The drive set entryBatchSize to cut a whole-application API check and the
+// facade dropped it, so the run kept the default groups of eight entries.
+for(const key of ["entryBatchSize","probeBatchSize","diagnosticBatchSize"]){
+ test(`${key} reaches the comparison: an invalid 0 is refused, never replaced by the default`,()=>{
+  const result=compare({before:keybindings,[key]:0})
+  assert.equal(result.identical,false)
+  assert.equal(result.comparisonComplete,false)
+ })
+ test(`${key} 1 still compares complete and identical`,()=>{
+  const result=compare({before:keybindings,[key]:1})
+  assert.equal(result.comparisonComplete,true)
+  assert.equal(result.identical,true)
+ })
+}
+
+test("an option compareDeclarations does not know is refused, not dropped",()=>{
+ assert.throws(()=>compare({before:keybindings,entryBatchSise:64}),/unknown option entryBatchSise/)
+})
+
 test("profiled stage records stream while the comparison runs",async()=>{
  const script=`
 import {createRequire} from "node:module"

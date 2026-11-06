@@ -247,8 +247,10 @@ be collected before probe checkers allocate their own type relations.
 This also applies to a single entry point with many generic instantiations.
 
 Input diagnostics also use fresh groups of eight source files (the internal
-`diagnosticBatchSize` option controls this for qualification, and
-`compareDeclarations` forwards it). Every group
+`diagnosticBatchSize` option controls this for qualification).
+`compareDeclarations` forwards `entryBatchSize`, `probeBatchSize` and
+`diagnosticBatchSize` unchanged, so an invalid size is refused rather than
+replaced by the default, and it refuses any option it does not know. Every group
 keeps the complete program roots, compiler options and global environment.
 All source diagnostics remain in the receipt, including unrelated dependency
 errors; only plain records survive a group. Profiling records
