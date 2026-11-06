@@ -169,3 +169,25 @@ for (const ext of ["ts", "mts", "cts", "tsx"]) {
     assert.equal(readFileSync(path, "utf8"), source)
   })
 }
+
+for (const ext of ["ts", "mts", "cts", "tsx"]) {
+  test(`LSP selects VibeLang syntax from an unsaved .${ext} directive`, async t => {
+    const { dir } = fixture(t)
+    const path = join(dir, "src/unsaved." + ext)
+    const disk = "export const disk = 1\n"
+    writeFileSync(path, disk)
+    const source = "// @vibe\nexport   effect function f( ) { return 1 }\n"
+    const client = connection(dir, 15_000)
+    t.after(() => client.kill())
+    await client.request("initialize", { processId: process.pid, rootUri: pathToFileURL(dir).href, capabilities: {} })
+    client.notify("initialized", {})
+    const uri = pathToFileURL(path).href
+    client.notify("textDocument/didOpen", { textDocument: { uri, languageId: ext === "tsx" ? "typescriptreact" : "typescript", version: 1, text: source } })
+    const format = () => client.request("textDocument/formatting", { textDocument: { uri }, options: { tabSize: 2, insertSpaces: true } })
+    assert.equal(applyEdits(source, await format()), "// @vibe\nexport effect function f() {\n  return 1\n}\n")
+    const plain = "export   const n = 1\n"
+    client.notify("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: plain }] })
+    assert.match(applyEdits(plain, await format()), /^export const n = 1/)
+    assert.equal(readFileSync(path, "utf8"), disk)
+  })
+}

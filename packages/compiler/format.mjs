@@ -1,7 +1,7 @@
 // All formatter entry points use the shipped dprint process plugin.
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
-import { fileHasVibeDirective } from "./source.mjs"
+import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync, readFileSync } from "node:fs"
 import { availableParallelism, tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
@@ -106,6 +106,10 @@ export function formatSource(text, filePath = "file.vibe", style = repositorySty
   return formatText(text, filePath, style, ["--no-gitignore", "--allow-node-modules"])
 }
 function formatText(text, filePath, style, flags = []) {
+  // Read the supplied buffer: an editor's unsaved directive can differ from disk.
+  if (hasVibeDirective(filePath, text)) {
+    filePath = filePath.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
+  }
   return withConfig(style, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
 }
 // discoverable lists the absolute paths dprint would format, which is what

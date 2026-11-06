@@ -123,7 +123,7 @@ result.
 
 The dprint plugin recognizes both `.vibe` and `.vibex`; include `**/*.{vibe,vibex}` in a repository's dprint configuration. The `vibelang-format` companion discovers both extensions by default. A `.vibex` file uses the host's TSX mode.
 
-For editor integrations, `formatSource(text, filePath)` from `vibelang/format` formats the supplied buffer even when its path is ignored or under `node_modules`. The full path selects the repository's style; the caller selects which buffers to format. The Prettier plugin uses the same behavior and reports syntax errors in unsaved input. File-scanning commands apply their ignore rules when selecting files.
+For editor integrations, `formatSource(text, filePath)` from `vibelang/format` formats the supplied buffer even when its path is ignored or under `node_modules`. The full path selects the repository's style; the caller selects which buffers to format. A supplied `.ts`, `.mts`, `.cts` or `.tsx` buffer with the `// @vibe` directive uses VibeLang syntax, including JSX for `.tsx`, even if the saved file has no directive. Removing the directive restores TypeScript parsing. The Prettier plugin uses the same behavior and reports syntax errors in unsaved input. File-scanning commands apply their ignore rules when selecting files.
 
 `vibelang-format` reads the same two settings from the repository's formatter
 configuration, so `.vibe` files follow the style of its `.ts` files. It uses
