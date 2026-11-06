@@ -642,6 +642,13 @@ const targets = {
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [bun, node]
   ),
+  "docs-shim-checkout": check(
+    "The source-checkout preview installs its runtime in the target project before checking marked files.",
+    "bun test --timeout 120000 docs/tools/shim-checkout.test.ts",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node],
+    "3m"
+  ),
   "spec-lint": specLint,
   "docs-comparison-output": check(
     "Complete Effect comparisons print the output their prose promises, without an injected runner.",

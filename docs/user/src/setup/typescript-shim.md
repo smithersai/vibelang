@@ -17,13 +17,21 @@ The checkout targets TypeScript 7.1. Move a TypeScript 5 or 6 project to that co
 Use Go, Bun and Node with the [contributor setup](https://github.com/smithersai/vibelang/blob/main/CONTRIBUTING.md). From the repository root:
 
 ```sh
+export VIBELANG_CHECKOUT="$PWD"
 (cd docs/tools && bun install --frozen-lockfile)
 (cd packages/runtime && bun install --frozen-lockfile && bun run build)
 sh scripts/build-vibelang.sh
 node packages/compiler/bin/vibelang --version
 ```
 
-Use the checkout's compiler launcher with your project's normal compiler options to check marked files. This route uses the repository's `vibelang` compiler directly.
+In the same shell, switch to your target project's directory. Install Effect and the built runtime from this checkout before checking marked files:
+
+```sh
+npm install --save-exact effect@4.1.1 "$VIBELANG_CHECKOUT/packages/runtime"
+node "$VIBELANG_CHECKOUT/packages/compiler/bin/vibelang" --noEmit
+```
+
+Pass the project's normal compiler options to the launcher. This route uses the checkout's compiler and runtime together.
 
 ## Write a file
 
