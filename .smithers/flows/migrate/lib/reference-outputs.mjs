@@ -36,6 +36,11 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
   }
   for (const path of configs) visit(path)
   const changedPaths = new Set(changed.map(path => resolve(root, path)))
+  // A shared source can also belong to independent checking configurations.
+  // Only members of a reference graph own work in this refresh.
+  const referencedProjects = new Set([...projects.values()].flatMap(project => project.references))
+  const connected = new Set([...projects].filter(([path, project]) =>
+    project.references.length || referencedProjects.has(path)).map(([path]) => path))
   const affected = new Set([...projects].filter(([, project]) =>
     project.parsed.fileNames.some(file => changedPaths.has(resolve(file))) ||
     project.errors.length && [...changedPaths].some(file => inside(dirname(project.path), file))).map(([path]) => path))
@@ -55,10 +60,9 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
     for (const ref of project.references) validate(ref)
   }
   for (const path of affected) validate(path)
+  for (const path of affected) if (!connected.has(path)) affected.delete(path)
   // Projects without reference edges need no reference-output refresh.
-  const related = [...affected].some(path => projects.get(path).references.length ||
-    [...projects.values()].some(project => project.references.includes(path)))
-  if (!related) return { projects: [], roots: [], outputs: [] }
+  if (!affected.size) return { projects: [], roots: [], outputs: [] }
   const referenced = new Set([...affected].flatMap(path => projects.get(path).references))
   const roots = [...affected].filter(path => !referenced.has(path)).sort()
   if (!roots.length) throw new Error("project reference cycle has no build root")
@@ -88,7 +92,14 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
     if (path === root || !inside(root, path) || !inside(realpathSync(root), realpathSync(parent)) ||
       [".jj", ".git", "node_modules"].some(name => inside(join(root, name), path)) ||
       sources.some(source => inside(path, resolve(source)))) {
-      throw new Error("unsafe project output: " + relative(root, path))
+      const error = new Error("unsafe project output: " + relative(root, path))
+      error.details = { output: relative(root, path).split(sep).join("/"),
+        protectedSources: sources.filter(source => inside(path, resolve(source)))
+          .slice(0, 8).map(source => relative(root, resolve(source)).split(sep).join("/")),
+        repositoryRoot: path === root, outsideRepository: !inside(root, path),
+        outsideRealRepository: !inside(realpathSync(root), realpathSync(parent)),
+        protectedDirectory: [".jj", ".git", "node_modules"].find(name => inside(join(root, name), path)) ?? null }
+      throw error
     }
   }
   const names = paths => paths.map(path => relative(root, path).split(sep).join("/"))
@@ -98,8 +109,15 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
 
 /** Persist each stage so failed or interrupted rebuilds cannot look complete. */
 export async function refreshProjectReferences({ root, ts, configs, changed, tracked, compiler, log, execute = run }) {
-  const plan = referenceRefreshPlan({ root, ts, configs, changed, tracked })
-  const receipt = { ...plan, startedAt: new Date().toISOString(), state: plan.projects.length ? "planned" : "not-needed" }
+  const startedAt = new Date().toISOString()
+  let plan
+  try { plan = referenceRefreshPlan({ root, ts, configs, changed, tracked }) }
+  catch (error) {
+    writeJson(log + ".json", { startedAt, finishedAt: new Date().toISOString(), state: "planning-failed",
+      stage: "reference-planning", error: String(error?.message ?? error), ...(error.details ? { details: error.details } : {}) })
+    throw error
+  }
+  const receipt = { ...plan, startedAt, state: plan.projects.length ? "planned" : "not-needed" }
   writeJson(log + ".json", receipt)
   if (!plan.projects.length) return receipt
   const executable = typeof compiler === "function" ? compiler() : compiler

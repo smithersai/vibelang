@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Contributor build checks could break when a shared input helper gained an export; they now load those helpers consistently.
+- Reverting a module during migration could try to clear build outputs of unrelated packages and stop on an unsafe-output error. Reference refresh now limits cleanup to projects linked by references and records the path behind any refusal.
 
 - Migration emission could retain a large TypeScript declaration graph while compiling, exhausting the coordinator heap. Declaration layout planning now finishes in a separate process before compilation and records its duration.
 - Service-key checks could be skipped after a nullable generic key was narrowed or asserted non-null. Those narrowed values now receive the same errors as direct keys.

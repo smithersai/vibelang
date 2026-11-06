@@ -1,0 +1,6 @@
+{
+  "key": "opencode-independent-reference-refresh",
+  "project": "packages/ai",
+  "rule": "Through a project reference, only the owning project writes the source's sidecar under its own `sidecarDir`.",
+  "flowRule": "Projects with no affected reference edges need no compiler executable."
+}
