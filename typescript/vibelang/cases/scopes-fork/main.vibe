@@ -1,10 +1,10 @@
 import * as $nativeTryEffect1 from "effect/Effect";
 import * as $nativeTryEffect from "effect/Effect";
-// fork starts a fiber that the region around it owns (D19, D47, D408): the
-// region is a Scope region even without using, and when it exits by any path
-// it interrupts the fiber and waits for its cleanup before it releases what
-// it acquired earlier. A bare block owns nothing. Fiber.join waits for the
-// fiber. Effect's own fork combinators keep their meaning, and
+// fork starts a fiber that the current fiber owns (VIP-17), as Effect.forkChild
+// does: the child runs until it ends or its parent does, and the parent's end
+// interrupts it and waits for its cleanup. No block, loop body or function
+// around the fork owns it, and none of them stops it on the way out. Fiber.join
+// waits for the fiber. Effect's own fork combinators keep their meaning, and
 // Effect.forkScoped gives a fiber the caller's Scope.
 import { Data, Effect, Fiber } from "effect"
 import { fork } from "vibelang-runtime"
@@ -54,7 +54,7 @@ effect function boom() {
   throw new Boom()
 }
 
-// The ticker stops before the server, acquired earlier, is released.
+// The ticker outlives this function and the server it acquired: main owns it.
 effect function serve() {
   const started = try Deferred.make<void>()
   using server = try resource("server")
@@ -71,8 +71,8 @@ effect function joined() {
   return try Fiber.join(child)
 }
 
-// A bare block owns nothing (D408): the function's body owns the fiber, so
-// it stops when the body exits, after the block.
+// A block owns nothing, and neither does the function around it: the fiber
+// belongs to the current fiber, so it runs on after both.
 effect function inner() {
   const started = try Deferred.make<void>();
   {
@@ -84,7 +84,7 @@ effect function inner() {
   return "inner done"
 }
 
-// A fork in a loop body stops at the end of its iteration.
+// A fork in a loop body runs on past its iteration, for the same reason.
 effect function perIteration() {
   for (const n of [1, 2]) {
     const started = try Deferred.make<void>()
@@ -102,7 +102,7 @@ effect function failingChild() {
   return Effect.as(Fiber.join(child), "no failure") catch (e) => `joined ${e._tag}`
 }
 
-// A block that fails still stops its fibers.
+// A failure the caller handles leaves the child running: its parent goes on.
 effect function failingBlock() {
   const started = try Deferred.make<void>()
   fork ticker("doomed", started)
@@ -111,8 +111,8 @@ effect function failingBlock() {
   throw new Boom()
 }
 
-// Effect.forkScoped: the caller's Scope owns the fiber. An arrow's body owns
-// a fork in it (D353), so returning that fiber would be EK4838 (D409).
+// Effect.forkScoped: the caller's Scope owns the fiber, so it stops when that
+// scope closes, even though it was started in this arrow.
 const background = effect (name: string, started: Deferred.Deferred<void>) => try Effect.forkScoped(effect { return try ticker(name, started) })
 
 effect function scopedBackground() {
@@ -156,7 +156,7 @@ function phase<A>(name: string, result: A) {
   return result
 }
 
-// expect-result: {"served":"served by server","joined":42,"inner":"inner done","loop":"loop done","failing":"joined Boom","failedBlock":"Boom","scoped":"scoped done","outlives":"block","detached":2,"events":["acquire server","stop ticker","release server","-- served","parent goes on","computed 21","-- joined","after inner block","stop inner","-- inner","end of iteration 1","stop loop 1","end of iteration 2","stop loop 2","-- loop","-- failing","stop doomed","-- failedBlock","scope closing","stop background","-- scoped","acquire block","release block","block exited","stop forkScoped","-- outlives","computed 1","-- detached"]}
+// expect-result: {"served":"served by server","joined":42,"inner":"inner done","loop":"loop done","failing":"joined Boom","failedBlock":"Boom","scoped":"scoped done","outlives":"block","detached":2,"events":["acquire server","release server","-- served","parent goes on","computed 21","-- joined","after inner block","-- inner","end of iteration 1","end of iteration 2","-- loop","-- failing","-- failedBlock","scope closing","stop background","-- scoped","acquire block","release block","block exited","stop forkScoped","-- outlives","computed 1","-- detached","stop ticker","stop inner","stop loop 1","stop loop 2","stop doomed"]}
 export effect function main() {
   const served = phase("served", try serve())
   const j = phase("joined", try joined())

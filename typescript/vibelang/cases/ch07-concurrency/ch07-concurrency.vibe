@@ -95,7 +95,7 @@ effect function heartbeat(started: Deferred.Deferred<void>) {
 effect function serve(port: number) {
   using server = try (try Http).listen(port)
   const started = try Deferred.make<void>()
-  fork heartbeat(started)   // stopped before the server closes
+  fork heartbeat(started)   // runs until main ends, after the server closes
   try Deferred.await(started)
   return try server.awaitShutdown()
 }
@@ -156,7 +156,7 @@ effect function scenario() {
   }
 }
 
-// expect-result: {"profile":"Ada","orders":2,"thumbnails":["a.png@thumb","b.png@thumb"],"first":"cache:42","quick":"rows for 42","served":"stopped","beating":true,"report":"report r1","events":["listen 8080","shutdown requested","heartbeat stopped","server closed","progress email r1","report r1 built"]}
+// expect-result: {"profile":"Ada","orders":2,"thumbnails":["a.png@thumb","b.png@thumb"],"first":"cache:42","quick":"rows for 42","served":"stopped","beating":true,"report":"report r1","events":["listen 8080","shutdown requested","server closed","progress email r1","report r1 built","heartbeat stopped"]}
 export effect function main() {
   return try Effect.provide(effect { return try scenario() }, HttpTest)
 }
