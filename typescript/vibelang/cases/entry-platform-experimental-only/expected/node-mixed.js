@@ -2,7 +2,7 @@ import * as Console from "effect/Console";
 import * as FileSystem from "effect/FileSystem";
 import { Experimental } from "vibelang-runtime";
 import * as Effect from "effect/Effect";
-import * as runtime from "vibelang-runtime";
+import * as runtime from "vibelang-runtime/internal";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import { ExperimentalNodeServices as ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node";
 export function main() {

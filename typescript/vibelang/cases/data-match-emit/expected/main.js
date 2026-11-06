@@ -1,7 +1,7 @@
 import * as Data from "effect/Data";
-import { $matchCache } from "vibelang-runtime";
+import { $matchCache } from "vibelang-runtime/internal";
 import * as Effect from "effect/Effect";
-import * as runtime from "vibelang-runtime";
+import * as runtime from "vibelang-runtime/internal";
 const Delivery = Data.taggedEnum();
 function describe(delivery) {
     {

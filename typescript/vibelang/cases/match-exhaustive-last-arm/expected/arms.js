@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { $extract, $is, $schemaErrorMatcher, TaggedError } from "vibelang-runtime";
+import { $extract, $is, $schemaErrorMatcher, TaggedError } from "vibelang-runtime/internal";
 import * as Effect_1 from "effect/Effect";
-import * as runtime from "vibelang-runtime";
+import * as runtime from "vibelang-runtime/internal";
 import * as Option_1 from "effect/Option";
 export class NotFound extends TaggedError("NotFound") {
     static {
