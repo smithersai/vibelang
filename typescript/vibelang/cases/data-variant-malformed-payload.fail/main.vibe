@@ -1,0 +1,10 @@
+// expect: EK1606 EK1606 EK1606 EK1606 EK1606 EK1606
+data Invalid0 { "Bad" { value:string }; Good }
+data Invalid1 { 'Bad'
+{ nested:{ value:number } }; Good }
+data Invalid2 { 1 { tuple:[number,{tag:"x"}] }; Good }
+data Invalid3 { 1n { run:(input:{x:number})=>{result:string} }; Good }
+data Invalid4 { `Bad` { value:ReadonlyArray<{text:string}> }; Good }
+data Invalid5 { "Bad"(value:string); Good }
+data After { Ready }
+const after:After=After.Ready()

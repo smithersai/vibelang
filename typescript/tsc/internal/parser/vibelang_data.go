@@ -159,6 +159,14 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.scanner.TokenRange(), "EK", diagnostics.CategoryError, 1606, "A data variant needs an identifier name, such as `Ready`."))
 		p.hasParseError = true
 		p.nextToken()
+		// A malformed name keeps its payload, so the payload's fields cannot
+		// become variants or close the surrounding declaration.
+		switch p.token {
+		case ast.KindOpenBraceToken:
+			p.parseDataFields()
+		case ast.KindOpenParenToken:
+			p.skipDataVariantParameters()
+		}
 		return nil
 	}
 	name := p.parseIdentifierName()

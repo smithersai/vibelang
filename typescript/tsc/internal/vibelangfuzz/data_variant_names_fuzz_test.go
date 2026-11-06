@@ -12,11 +12,12 @@ import (
 
 const dataVariantIdentifierQuote = "Variant names are TypeScript `IdentifierName`s, including reserved words such as `default`."
 const dataVariantMalformedQuote = "a malformed variant or a payload member that is not a [Field](900-appendices.md#field)"
+const dataVariantPayloadQuote = "A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](900-appendices.md#separator) does not apply before that `{`."
 
 func dataVariantNameQuotes(tb testing.TB) {
 	tb.Helper()
 	chapter := SpecText("006-data.md")
-	for _, quote := range []string{dataVariantIdentifierQuote, dataVariantMalformedQuote} {
+	for _, quote := range []string{dataVariantIdentifierQuote, dataVariantMalformedQuote, dataVariantPayloadQuote} {
 		if !strings.Contains(chapter, quote) {
 			tb.Fatalf("data variant rule changed: %q", quote)
 		}
@@ -30,7 +31,7 @@ func FuzzDataVariantNames(f *testing.F) {
 	startShortBudget(f)
 	dataVariantNameQuotes(f)
 	for _, key := range dataVariantNameKeys {
-		for _, flags := range []uint8{0, 3, 4, 9, 19} {
+		for _, flags := range []uint8{0, 3, 4, 9, 19, 32, 35, 36, 41, 51, 96, 99, 100, 105, 115} {
 			f.Add(key, uint16(7), flags)
 		}
 	}
@@ -76,7 +77,21 @@ func FuzzDataVariantNames(f *testing.F) {
 		if flags&2 != 0 {
 			generic = "<T>"
 		}
-		source := "data Bad" + generic + " { " + name + "; Good { value:number } }; data After { Ready }; const tail=1;"
+		payload := ""
+		if flags&32 != 0 {
+			gap := " "
+			if flags&64 != 0 {
+				gap = "\r\n"
+			} else if flags&128 != 0 {
+				gap = " /* payload */\r\n"
+			}
+			bodies := []string{"{}", "{ value:number }", "{ nested:{ text:string; more:{flag:boolean} }; tuple:[number,{tag:\"x\"}] }", "{ run:(input:{x:number})=>{result:string}; list:readonly (number|string)[] }"}
+			if invalid {
+				bodies = append(bodies, "(value:number)", "(run:(input:{x:number})=>void)")
+			}
+			payload = gap + bodies[int(n)%len(bodies)]
+		}
+		source := "data Bad" + generic + " { " + name + payload + "; Good { value:number } }; data After { Ready }; const tail=1;"
 		source = fmt.Sprintf([]string{"%s", "function scope(){%s}", "namespace Scope{%s}"}[int(flags>>2)%3], source)
 		if flags&16 != 0 {
 			source = strings.ReplaceAll(source, ";", ";\r\n")
@@ -108,7 +123,11 @@ func FuzzDataVariantNames(f *testing.F) {
 				}
 			}
 		}
-		if !found["Good"] || !found["Ready"] {
+		want := 2
+		if !invalid {
+			want++
+		}
+		if len(found) != want || !found["Good"] || !found["Ready"] || (!invalid && !found[name]) {
 			Gap(t, "FuzzDataVariantNames", precise+":recovery", "following variants lost: %v", found)
 		}
 	})
