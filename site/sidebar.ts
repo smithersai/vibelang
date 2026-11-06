@@ -188,6 +188,16 @@ export const sidebar = [
         ]
       },
       {
+        "text": "Keep .ts file names",
+        "collapsed": false,
+        "items": [
+          {
+            "text": "VibeLang in .ts files",
+            "link": "/setup/typescript-shim"
+          }
+        ]
+      },
+      {
         "text": "Upgrade",
         "collapsed": false,
         "items": [

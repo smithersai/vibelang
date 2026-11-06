@@ -1,0 +1,46 @@
+{
+  "name": "vibelang-typescript",
+  "version": "7.1.11",
+  "description": "VibeLang's compiler under the name typescript: VibeLang in a .ts file compiles with your tsc and editor",
+  "keywords": [
+    "vibelang",
+    "effect",
+    "typescript",
+    "tsc"
+  ],
+  "homepage": "https://vibelang.sh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smithersai/vibelang.git",
+    "directory": "packages/typescript-shim"
+  },
+  "bugs": {
+    "url": "https://github.com/smithersai/vibelang/issues"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./lib/version.cjs",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "tsc": "bin/tsc"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "launcher.mjs",
+    "tsc",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "vibelang": "0.0.11"
+  },
+  "engines": {
+    "node": "^22.22.3 || >=24.11.1"
+  }
+}

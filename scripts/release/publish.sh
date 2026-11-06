@@ -1,6 +1,7 @@
 #!/bin/sh
-# Publishes VibeLang's eleven npm packages from dist-npm/tarballs/ in order: the six
-# platform compilers, vibelang, vibelang-runtime, vibelang-vite, create-vibelang, and vibelang-unplugin.
+# Publishes VibeLang's twelve npm packages from dist-npm/tarballs/ in order: the six
+# platform compilers, vibelang, vibelang-runtime, vibelang-vite, create-vibelang, vibelang-unplugin,
+# and vibelang-typescript, whose version is TypeScript's major and minor.
 # Run it yourself in a terminal, after npm login:
 #
 #   sh scripts/release/publish.sh            # asks for a one-time password once
@@ -52,24 +53,26 @@ else
 fi
 
 todo=""
-for item in $(node -e 'for (const p of require(process.argv[1]).packages) console.log(`${p.name}=${p.file}`)' "$tarballs/manifest.json"); do
+for item in $(node -e 'for (const p of require(process.argv[1]).packages) console.log(`${p.name}=${p.version}=${p.file}`)' "$tarballs/manifest.json"); do
   name=${item%%=*}
-  file=${item#*=}
+  rest=${item#*=}
+  package_version=${rest%%=*}
+  file=${rest#*=}
   packed=$(tar -xOzf "$tarballs/$file" package/package.json | node -p 'const p = JSON.parse(require("fs").readFileSync(0, "utf8")); `${p.name}@${p.version}`')
-  [ "$packed" = "$name@$version" ] || { echo "publish: $file contains $packed, expected $name@$version" >&2; exit 1; }
+  [ "$packed" = "$name@$package_version" ] || { echo "publish: $file contains $packed, expected $name@$package_version" >&2; exit 1; }
   skipped=""
   for pattern in $(printf '%s' "${VIBELANG_SKIP:-}" | tr ',' ' '); do
     case $name in *"$pattern"*) skipped=$pattern ;; esac
   done
   if [ -n "$skipped" ]; then
-    echo "publish: skipping $name@$version (VIBELANG_SKIP=$skipped)"
-  elif registry_shasum=$(npm view "$name@$version" dist.shasum --registry "$registry" 2>/dev/null); then
+    echo "publish: skipping $name@$package_version (VIBELANG_SKIP=$skipped)"
+  elif registry_shasum=$(npm view "$name@$package_version" dist.shasum --registry "$registry" 2>/dev/null); then
     local_shasum=$(node -e 'const fs = require("node:fs"); const crypto = require("node:crypto"); console.log(crypto.createHash("sha1").update(fs.readFileSync(process.argv[1])).digest("hex"))' "$tarballs/$file")
     [ "$registry_shasum" = "$local_shasum" ] || {
-      echo "publish: $name@$version checksum mismatch: registry dist.shasum=$registry_shasum; local sha1=$local_shasum ($file). Refusing to publish; inspect the existing registry version and local tarball." >&2
+      echo "publish: $name@$package_version checksum mismatch: registry dist.shasum=$registry_shasum; local sha1=$local_shasum ($file). Refusing to publish; inspect the existing registry version and local tarball." >&2
       exit 1
     }
-    echo "publish: $name@$version is already on npm with an identical tarball; skipping"
+    echo "publish: $name@$package_version is already on npm with an identical tarball; skipping"
   else
     todo="$todo $item"
   fi
@@ -83,13 +86,15 @@ fi
 
 for item in $todo; do
   name=${item%%=*}
-  file=${item#*=}
+  rest=${item#*=}
+  package_version=${rest%%=*}
+  file=${rest#*=}
   while :; do
     set -- npm publish "$tarballs/$file" --registry "$registry" --access public
     [ -z "$otp" ] || set -- "$@" --otp "$otp"
     [ -z "$dry" ] || set -- "$@" --dry-run
     if "$@"; then
-      if [ -n "$dry" ]; then echo "publish: $name@$version checked (dry run)"; else echo "publish: $name@$version published"; fi
+      if [ -n "$dry" ]; then echo "publish: $name@$package_version checked (dry run)"; else echo "publish: $name@$package_version published"; fi
       break
     fi
     [ -z "$dry" ] || exit 1

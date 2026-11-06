@@ -19,7 +19,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,976 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,840 |
-| The skill and the user guide (142 pages) | 520,000 |
+| The skill and the user guide (143 pages) | 520,000 |
 | The user guide alone | 510,000 |
 | The specification (11 chapters) | 250,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -91,9 +91,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Welcome](../001-onboarding.md) | 2,000 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 1,900 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
-| **Learning Path** | **14,000** |
+| **Learning Path** | **15,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 3,100 |
-| [Installation](../getting-started/004-installation.md) | 2,900 |
+| [Installation](../getting-started/004-installation.md) | 3,000 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,300 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,500 |
@@ -109,7 +109,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Set up VibeLang](../setup.md) | 1,900 |
+| [Set up VibeLang](../setup.md) | 2,000 |
 | [Known limitations](../setup/known-limitations.md) | 600 |
 | **Start a project** | **9,000** |
 | [New project](../setup/new-project.md) | 570 |
@@ -133,9 +133,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 520 |
 | [Other editors](../setup/other-editors.md) | 730 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
+| **Keep .ts file names** | **1,200** |
+| [VibeLang in .ts files](../setup/typescript-shim.md) | 1,200 |
 | **Upgrade** | **160,000** |
 | [Release notes](../setup/release-notes.md) | 160,000 |
-| **All 20 pages** | **220,000** |
+| **All 21 pages** | **220,000** |
 
 ### Guides
 

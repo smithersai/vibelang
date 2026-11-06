@@ -20,7 +20,8 @@ function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-release-test-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   for (const path of ["scripts/release/make-packages.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
-    ...["compiler", "runtime", "vite", "create-vibelang", "unplugin"].flatMap((name) => [`packages/${name}/package.json`, `packages/${name}/README.md`]),
+    ...["compiler", "runtime", "vite", "create-vibelang", "unplugin", "typescript-shim"].flatMap((name) => [`packages/${name}/package.json`, `packages/${name}/README.md`]),
+    ...["bin", "lib", "launcher.mjs", "tsc"].map((name) => `packages/typescript-shim/${name}`),
     ...compilerSources, "editors/tree-sitter-vibelang/tree-sitter.json",
     ...json(join(repo, "editors/tree-sitter-vibelang/tree-sitter.json")).grammars.map(grammar => join("editors/tree-sitter-vibelang", grammar.path ?? ".", "src")), "packages/vite/src", "packages/create-vibelang/bin", "packages/unplugin/src", "templates/app"]) {
     mkdirSync(dirname(join(root, path)), { recursive: true })
@@ -63,10 +64,10 @@ test("assembles every package in publish order with pinned versions, platform bi
   const result = assemble(root)
   assert.equal(result.status, 0, result.stderr)
   const manifest = json(join(root, "dist-npm/tarballs/manifest.json"))
-  const names = [...platforms.map((p) => platformPackage(p)), "vibelang", "vibelang-runtime", "vibelang-vite", "create-vibelang", "vibelang-unplugin"]
+  const names = [...platforms.map((p) => platformPackage(p)), "vibelang", "vibelang-runtime", "vibelang-vite", "create-vibelang", "vibelang-unplugin", "vibelang-typescript"]
   assert.deepEqual(manifest.packages.map((p) => p.name), names)
   for (const pkg of manifest.packages) {
-    assert.equal(pkg.version, manifest.version)
+    assert.equal(pkg.version, pkg.name === "vibelang-typescript" ? json(join(repo, "packages/typescript-shim/package.json")).version : manifest.version)
     assert.equal(readFileSync(join(root, "dist-npm/tarballs", pkg.file)).length, pkg.size)
     assert.ok(pkg.files > 0)
     const packed = JSON.parse(archive(root, pkg.name, "package.json"))

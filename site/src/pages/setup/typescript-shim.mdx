@@ -1,0 +1,85 @@
+---
+title: "VibeLang in .ts files"
+description: "Write VibeLang in a .ts file by starting it with // @vibe. The vibelang-typescript package takes the place of the typescript package, so your tsc scripts run the VibeLang compiler. Files without..."
+---
+
+# VibeLang in .ts files
+
+Write VibeLang in a `.ts` file by starting it with `// @vibe`. The `vibelang-typescript` package takes the place of the `typescript` package, so your `tsc` scripts run the VibeLang compiler. Files without that line stay TypeScript.
+
+This is the last option. Use it only when you can't name files `.vibe`. The [`vibelang` CLI](/setup/vibelang-cli), [Vite and Vitest](/setup/vite) and the other plugins in [Set up VibeLang](/setup) keep every stock TypeScript tool working. Here each tool that reads a `// @vibe` file with stock TypeScript or its own parser fails.
+
+## Install
+
+```sh
+npm install --save-dev typescript@npm:vibelang-typescript@7.1.11
+npm install effect@4.1.1 vibelang-runtime@0.0.11
+```
+
+`vibelang-typescript` is TypeScript 7.1 with VibeLang. A project on TypeScript 5 or 6 moves to 7 first. Your `tsconfig.json` stays as it is.
+
+In a monorepo, install it at the root and replace every other `typescript` with the root's `overrides`:
+
+```json
+{
+  "devDependencies": { "typescript": "npm:vibelang-typescript@7.1.11" },
+  "overrides": { "typescript": "$typescript" }
+}
+```
+
+pnpm reads the same entry from `pnpm.overrides`, and Yarn from `resolutions`.
+
+## Write a file
+
+The first line is exactly `// @vibe`. Only a `#!` line can come before it.
+
+```ts
+// @vibe
+error Empty
+
+effect function greet(name: string) {
+  if (name === "") throw new Empty()
+  return `hello ${name}`
+}
+
+export effect function main() {
+  const who = greet("") catch () => "nobody"
+  return try greet(who)
+}
+```
+
+A `.ts`, `.mts` or `.cts` file with the line follows every `.vibe` rule, and a `.tsx` file every `.vibex` rule, including `EK` diagnostics. Plain TypeScript files import it as they import any `.ts` file. Three things stay as they are in TypeScript:
+
+| In a `// @vibe` file | Because |
+| --- | --- |
+| Import paths follow your `tsconfig.json`, such as `./plain.js`, or `./plain.ts` with `allowImportingTsExtensions` | The file is a `.ts` file |
+| No `module` declarations: `module text { }` is `TS1540`. Put the code in a plain `.ts` file and import it | TypeScript gives that syntax another meaning |
+| No declaration sidecar | Sidecars exist for `.vibe` names |
+
+## What each tool does
+
+| Tool | With `vibelang-typescript` |
+| --- | --- |
+| `tsc`, `tsc --watch`, `tsc -b` | Checks and emits both kinds of file |
+| An editor that starts `tsc --lsp --stdio` from the project | Diagnostics, hover and the rest, in both kinds of file. In VS Code set `"js/ts.tsdk.path": "node_modules/typescript/lib"` and accept the workspace version |
+| Vite and Vitest | Add [`vibelang-vite`](/setup/vite): one line in the config |
+| webpack, Rspack, Rollup, Rolldown, esbuild | Add [`vibelang-unplugin`](https://www.npmjs.com/package/vibelang-unplugin#configure): one line in the config |
+| Node.js | `node --import vibelang/register src/main.ts` |
+| `bun build`, Bun's test runner, Metro | Not supported: use `.vibe` files |
+| `tsx`, `ts-node`, Node.js without `vibelang/register` | Stops with a syntax error |
+| A stock TypeScript, such as one a dependency installs | Stops with `TS1434` and other syntax errors. Your `tsc` stays VibeLang, unless the project also installs a stock `typescript` under another name: both then claim the `tsc` command |
+| Prettier, ESLint, Oxlint, Knip | Stops with a syntax error: ignore `// @vibe` files, and use `vibelang format` and `vibelang lint` |
+| Anything that imports TypeScript's JavaScript API | Fails: the package exports only `version`. This includes `vue-tsc`, `svelte-check` and `ngc`, which need TypeScript 6 |
+
+Bundlers need a plugin because esbuild and Oxc parse `.ts` files themselves, so there is no TypeScript for this package to replace there. A file that uses no VibeLang syntax can pass through these tools, and it means there what it means in VibeLang, except that `vibelang` always reads it as a module.
+
+## Remove it
+
+Put `typescript` back and uninstall the VibeLang packages:
+
+```sh
+npm install --save-dev typescript@~7.0.2
+npm uninstall vibelang-vite effect vibelang-runtime
+```
+
+Nothing in `node_modules` was patched, so nothing else needs undoing. `tsc` then reports `TS1434` in each `// @vibe` file until you rewrite it.

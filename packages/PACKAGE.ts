@@ -244,6 +244,18 @@ const compilerToolsTest = S.Shell.Test({
 })
 const viteTest = pluginTest("vite", "vibelang-vite's node tests: Vite and Vitest builds, source maps and watch.", "15m")
 const unpluginTest = pluginTest("unplugin", "vibelang-unplugin's node tests: each bundler's build, source maps and watch.", "20m")
+// Runs tsc and the language server through the package as npm lays it out, and
+// TypeScript's own VS Code discovery code against that layout.
+const typescriptShimTest = S.Shell.Test({
+  summary: "vibelang-typescript: tsc, the language server and editor discovery of VibeLang in .ts files.",
+  shell: "cd packages/runtime && bun install --frozen-lockfile && cd ../.. && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang node --test packages/typescript-shim/test/*.test.mjs",
+  data: [compilerNative, runtimeDist, S.glob("compiler/**"), S.glob("typescript-shim/**"), ...install,
+    S.file("//typescript/vibelang/lsp-connection.mjs"), S.file("//typescript/vibelang/lsp-framing.mjs"),
+    S.file("//typescript/packages/vscode-typescript/src/util.ts"), S.file("//typescript/packages/vscode-typescript/src/tsdkPackage.ts")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun")],
+  sandbox: "none",
+  timeout: "5m"
+})
 
 /** Every file in the npm packages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
@@ -273,6 +285,7 @@ export const Package = S.Package({
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,
+    "typescript-shim-test": typescriptShimTest,
     tree
   }
 })

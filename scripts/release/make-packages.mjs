@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// make-packages assembles VibeLang's eleven npm packages under dist-npm/pkg/ and
+// make-packages assembles VibeLang's twelve npm packages under dist-npm/pkg/ and
 // packs them into dist-npm/tarballs/, with manifest.json listing the tarballs
 // in publish order. Run scripts/release/build-binaries.sh first.
 //
@@ -8,7 +8,7 @@
 // --skip-build reuses packages/runtime/dist and editors/vscode/vibelang.vsix.
 // The script fails unless every package version equals the compiler's own
 // version (typescript/tsc/internal/vibelang/identity.go) and every pin agrees.
-import { releaseDocsProblems } from "../../docs/tools/release-docs.mjs"
+import { releaseDocsProblems, typescriptShimPatch } from "../../docs/tools/release-docs.mjs"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
@@ -46,9 +46,13 @@ const runtime = readJson("packages/runtime/package.json")
 const vite = readJson("packages/vite/package.json")
 const unplugin = readJson("packages/unplugin/package.json")
 const create = readJson("packages/create-vibelang/package.json")
+const typescriptShim = readJson("packages/typescript-shim/package.json")
 const template = readJson("templates/app/package.json")
 const identity = readFileSync(join(root, "typescript/tsc/internal/vibelang/identity.go"), "utf8")
 const version = /const Version = "([^"]+)"/.exec(identity)?.[1]
+
+// Its major and minor are the TypeScript the compiler forks.
+const typescriptShimVersion = () => typescriptShim.version.split(".").slice(0, 2).concat(typescriptShimPatch(version)).join(".")
 
 const problems = releaseDocsProblems(root)
 const nodeEngine = runtime.engines?.node
@@ -65,6 +69,9 @@ expect(JSON.stringify(Object.keys(optional).sort()) === JSON.stringify(Object.ke
   `vibelang: optionalDependencies must list exactly ${Object.keys(platforms).join(", ")}`)
 for (const [name, pin] of Object.entries(optional)) expect(pin === version, `vibelang: ${name} pinned to ${pin}, expected ${version}`)
 expect(vite.peerDependencies?.vibelang === version, `vibelang-vite: peer vibelang ${vite.peerDependencies?.vibelang}, expected ${version}`)
+expect(typescriptShim.dependencies?.vibelang === version, `vibelang-typescript: dependency vibelang ${typescriptShim.dependencies?.vibelang}, expected ${version}`)
+expect(typescriptShim.version === typescriptShimVersion(), `vibelang-typescript: version ${typescriptShim.version}, expected ${typescriptShimVersion()}`)
+expect(typescriptShim.engines?.node === nodeEngine, `vibelang-typescript: engines.node ${typescriptShim.engines?.node}, expected ${nodeEngine}`)
 expect(unplugin.peerDependencies?.vibelang === version, `vibelang-unplugin: peer vibelang ${unplugin.peerDependencies?.vibelang}, expected ${version}`)
 const effect = runtime.peerDependencies?.effect
 expect(typeof effect === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(effect),
@@ -217,6 +224,14 @@ order.push({
   required: ["src/index.js", "src/index.d.ts", "src/webpack.js", "src/rspack.js", "src/rollup.js", "src/rolldown.js", "src/esbuild.js", "src/bun.js", "src/vite.js", "LICENSE"]
 })
 
+order.push({
+  name: "vibelang-typescript",
+  version: typescriptShim.version,
+  dir: stage("vibelang-typescript", [["packages/typescript-shim/bin", "bin"], ["packages/typescript-shim/lib", "lib"], ["packages/typescript-shim/launcher.mjs"], ["packages/typescript-shim/tsc"], ["packages/typescript-shim/README.md"], ["packages/typescript-shim/package.json"]], { LICENSE: apache }),
+  required: ["bin/tsc", "lib/tsc", "lib/version.cjs", "launcher.mjs", "tsc", "LICENSE"],
+  executable: "bin/tsc"
+})
+
 // writeDprintPlugin writes vibelang's dprint plugin manifest, which dprint names
 // npm:vibelang/dprint-plugin.json: each platform's compiler is the plugin's
 // executable, fetched from its platform package and checked against the
@@ -242,7 +257,7 @@ for (const entry of order) {
   }
   if (entry.forbidden) for (const path of paths.keys()) if (entry.forbidden.test(path)) problems.push(`${entry.name}: tarball includes ${path}`)
   if (entry.executable && (paths.get(entry.executable)?.mode & 0o111) === 0) problems.push(`${entry.name}: ${entry.executable} is not executable`)
-  if (packed.name !== entry.name || packed.version !== version) problems.push(`${entry.name}: packed as ${packed.name}@${packed.version}`)
+  if (packed.name !== entry.name || packed.version !== (entry.version ?? version)) problems.push(`${entry.name}: packed as ${packed.name}@${packed.version}`)
   manifest.push({ name: packed.name, version: packed.version, file: packed.filename, size: packed.size, unpackedSize: packed.unpackedSize, files: packed.files.length })
 }
 if (problems.length) {

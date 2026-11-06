@@ -169,6 +169,8 @@ bun add -d vibelang@latest vibelang-vite@latest
 
 VibeLang is v0, so a new version can change the language in breaking ways. Read the [release notes](../setup/release-notes.md) before updating.
 
+If the project must keep `.ts` file names, see [VibeLang in .ts files](../setup/typescript-shim.md), the last option after these.
+
 ## Configure your editor
 
 From the project directory, after installing dependencies:

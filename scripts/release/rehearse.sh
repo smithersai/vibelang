@@ -93,4 +93,6 @@ node -e 'for (const p of require(process.argv[1]).packages) console.log(p.name, 
   done
 
 sh "$root/scripts/release/check-app.sh" "$registry" "$version" npm bun
+shim=$(node -p 'require(process.argv[1]).packages.find((p) => p.name === "vibelang-typescript").version' "$tarballs/manifest.json")
+sh "$root/scripts/release/check-typescript-shim.sh" "$registry" "$version" "$shim"
 echo "rehearse: PASS"

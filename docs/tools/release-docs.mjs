@@ -10,10 +10,19 @@ const semver = String.raw`\d+\.\d+\.\d+(?:-[\w.-]+)?`
 // VIP pages record decisions as written, including the Effect version they cite ("In 4.1.0 ...").
 const historical = /(?:^|\/)(?:release-notes|compiler-gaps)\.(?:md|mdx)$|^site\/src\/pages\/vips\//
 
+// vibelang-typescript stands where the typescript package stands, and tools
+// read its version as TypeScript's, so a peer range such as ">=5" accepts it:
+// TypeScript's major and minor, then a patch counting this package's releases.
+export function typescriptShimPatch(version) {
+  const [, minor, patch] = version.split(".").map(Number)
+  return minor * 1000 + patch
+}
+
 export function renderReleasePage(path, text, version, effect) {
   if (historical.test(path)) return text
   let output = text
-    .replace(new RegExp(String.raw`\b(vibelang(?:-[a-z0-9-]+)?@)` + semver, "g"), (_, prefix) => prefix + version)
+    .replace(new RegExp(String.raw`\b(vibelang(?:-(?!typescript@)[a-z0-9-]+)?@)` + semver, "g"), (_, prefix) => prefix + version)
+    .replace(/\b(vibelang-typescript@\d+\.\d+\.)\d+/g, (_, prefix) => prefix + typescriptShimPatch(version))
     .replace(new RegExp(String.raw`\b((?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In) )` + semver, "g"), (_, prefix) => prefix + version)
     .replace(new RegExp('(vibelang@' + semver + ' version\\x60? and expect \\x60)' + semver + '(\\x60)', "g"), (_, prefix, suffix) => prefix + version + suffix)
   if (["site/src/pages/index.mdx", "site/src/index.mdx"].includes(path)) {

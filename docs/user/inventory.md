@@ -60,6 +60,8 @@ Code example count: one example per fenced code block in the source body, includ
   - [Zed](src/setup/zed.md)
   - [Other editors](src/setup/other-editors.md)
   - [Coding agents](src/setup/coding-agents.md)
+- **Keep .ts file names**
+  - [VibeLang in .ts files](src/setup/typescript-shim.md)
 - **Upgrade**
   - [Release notes](src/setup/release-notes.md)
 
