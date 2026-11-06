@@ -62,6 +62,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 - A TypeScript barrel in a built project reference could lose exports after a module moved to `.vibe` or `.vibex`; consumers now resolve those native modules through their emitted declarations.
 - Migration API checks could report a successfully emitted original as incomplete against itself when its project set `moduleSuffixes` and took `--outDir` on the command line. The check now reads each module's real declaration, so `TS2694` no longer appears on unchanged code.
+- Migration API checks reported names as missing when a project's globals came from a declaration file compared in a different batch, which refused the whole package. Every batch now keeps the entries that add globals or augment a module.
 - Migration API checks refused every importer of a workspace package with a `declare module` block when the frozen original and the candidate lived in separate checkouts. The key is now the package and module, and the proof compares the ambient blocks and the local declarations they reach.
 
 - Migration could separate a throwing class from its merged namespace, breaking types such as `Asset.Input`. Type-only namespace companions now move with the declaration; namespaces with runtime initialization keep the original source unchanged.

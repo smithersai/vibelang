@@ -816,6 +816,13 @@ function projectJsonModules(ts, path) {
   })?.options.resolveJsonModule ?? false
 }
 
+function contributesAmbient(ts, file) {
+  if (!file || !declaration.test(file) || !existsSync(file)) return false
+  const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest)
+  return !ts.isExternalModule(source) || source.statements.some(statement => ts.isModuleDeclaration(statement) &&
+    (statement.flags & ts.NodeFlags.GlobalAugmentation || ts.isStringLiteral(statement.name)))
+}
+
 /** Compile a generated .ts probe. Generic type exports get a local bridge
  * inside their own declaration module, so constraints and private aliases
  * resolve in their original scope; a generic factory preserves constraints.
@@ -833,11 +840,14 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort()
     const size = options.entryBatchSize ?? 8
     if (!Number.isSafeInteger(size) || size < 1) throw new Error("entryBatchSize must be a positive safe integer")
+    // Batches are subsets of one program. An entry that adds to the global scope
+    // or a module stays in each one, or the rest lose names the whole program has.
+    const ambientKeys = keys.filter(key => [left[key], right[key]].some(file => contributesAmbient(ts, file)))
     const result = { identical: true, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
     if (options.includeComparedFiles) result.comparedFiles = { before: [], after: [] }
     const seen = new Set()
     for (let offset = 0; offset < Math.max(1, keys.length); offset += size) {
-      const batch = keys.slice(offset, offset + size)
+      const batch = [...new Set([...keys.slice(offset, offset + size), ...ambientKeys])]
       const pick = entries => Object.fromEntries(batch.filter(key => entries[key]).map(key => [key, entries[key]]))
       const part = compareUnchecked(ts, before, after,
         { ...options, beforeEntrypoints: pick(left), afterEntrypoints: pick(right) }, (value, details = {}) => {
