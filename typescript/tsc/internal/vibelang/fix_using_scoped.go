@@ -67,18 +67,23 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 	indent := lineIndent(text, start)
 	var body strings.Builder
 	body.WriteString("return try scoped(effect {\n")
+	body.WriteString(indent + "  const")
+	cursor := start + len("using")
 	for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
 		initializer := declaration.Initializer()
 		t := c.GetTypeAtLocation(declaration.Name())
 		if initializer == nil || usingScopedLosesName(initializer) || a.runsEffect(initializer) || t.Flags()&checker.TypeFlagsAny != 0 || c.GetNonNullableType(t) != t || !c.IsSyncDisposableType(t) {
 			return nil, nil
 		}
-		value := text[nodeStart(file, initializer):initializer.End()]
-		if ast.IsObjectLiteralExpression(ast.SkipOuterExpressions(initializer, ast.OEKAll)) {
-			value = "(" + value + ")"
-		}
-		body.WriteString(indent + "  const " + declaration.Name().Text() + " = try acquireDisposable(effect { return " + value + " })\n")
+		// Keep the written declaration and its trivia; only wrap each initializer.
+		// Parentheses let a leading line comment follow return without ending it.
+		body.WriteString(text[cursor:initializer.Pos()])
+		body.WriteString("try acquireDisposable(effect { return (")
+		body.WriteString(text[initializer.Pos():initializer.End()])
+		body.WriteString(") })")
+		cursor = initializer.End()
 	}
+	body.WriteString(text[cursor:statement.End()] + "\n")
 	end := block.End() - 1
 	rest := strings.TrimRight(text[statement.End():end], " \t\r\n")
 	rest = strings.TrimPrefix(strings.TrimLeft(rest, " \t\r\n;"), ";")

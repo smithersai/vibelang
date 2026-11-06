@@ -18,6 +18,14 @@ var usingScopedForms = map[string]struct {
 	source  string
 	offered bool
 }{
+	"comment-after-using":              {"export effect function load(): number!! { using /* resource note */ resource = open(); return 1 }", true},
+	"comment-after-name":               {"export effect function load(): number!! { using resource /* resource note */ = open(); return 1 }", true},
+	"comment-before-value":             {"export effect function load(): number!! { using resource = /* resource note */ open(); return 1 }", true},
+	"comment-line-before-value":        {"export effect function load(): number!! { using resource = // resource note\n open(); return 1 }", true},
+	"comment-after-value":              {"export effect function load(): number!! { using resource = open() /* resource note */; return 1 }", true},
+	"comment-between-bindings":         {"export effect function load(): number!! { using resource = open(), /* resource note */ other = open(); return 1 }", true},
+	"comment-inside-value":             {"export effect function load(): number!! { using resource = open(/* resource note */); return 1 }", true},
+	"comment-before-using":             {"export effect function load(): number!! { /* resource note */ using resource = open(); return 1 }", true},
 	"head-object-method":               {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ [try Effect.succeed(\"key\" as const)]() {}, [Symbol.dispose]() {} }); return 1 }", true},
 	"head-object-getter":               {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ get [try Effect.succeed(\"key\" as const)]() { return 1 }, [Symbol.dispose]() {} }); return 1 }", true},
 	"head-object-setter":               {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ set [try Effect.succeed(\"key\" as const)](value: number) {}, [Symbol.dispose]() {} }); return 1 }", true},
@@ -183,6 +191,9 @@ func FuzzEffectUsingScopedFix(f *testing.F) {
 				if edited == nil {
 					Gap(t, "FuzzEffectUsingScopedFix", gapKey, "invalid scoped edit")
 					continue
+				}
+				if strings.Count(edited["main.vibe"], "resource note") != strings.Count(source, "resource note") {
+					Gap(t, "FuzzEffectUsingScopedFix", gapKey, "%s must retain declaration comments: %s", usingScopedGroupingQuote, edited["main.vibe"])
 				}
 				checked, err := w.Compile(t.Context(), Project{Files: edited})
 				if err != nil {

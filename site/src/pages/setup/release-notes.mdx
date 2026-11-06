@@ -58,6 +58,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migrating a package could falsely report a changed public API when its exports pointed at generated declaration files. Unchanged sidecar paths now keep their original API identity.
 
+- The `using` resource action could drop comments around resource declarations. It now retains those comments when wrapping acquisition.
+
 - The `using` resource action could move `try` operations into a plain callback and produce invalid code or unrun Effects. Acquisitions now keep their Effect context.
 
 - The `using` resource action could produce invalid code for object initializers using `as`, `satisfies` or `!`; it now keeps them grouped correctly.
