@@ -1,31 +1,15 @@
-import { createApiIdentityInputs } from "../api-inputs.ts"
-import { buildContractSuites, createBuildContractInputs } from "../build-contract-inputs.ts"
+import { declarationFixture } from "./testing/package-declaration.mjs"
 import assert from "node:assert/strict"
 import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { stripTypeScriptTypes } from "node:module"
 import { test } from "node:test"
-import { runInNewContext } from "node:vm"
 
-function declarations() {
-  const source = stripTypeScriptTypes(readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8"))
-    .replace(/^import .*$/gm, "").replace("export const Package", "globalThis.result")
-  const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
-  const context = {
-    createApiIdentityInputs, buildContractSuites, createBuildContractInputs,
-    process: { env: {} }, fuzzTopics: [], vibelangTopics: [], migrationSources: "migration-sources",
-    S: { Generate: spec => spec, Filegroup: spec => spec, glob: glob => glob, file: file => file,
-      Shell: { Test: spec => spec, Run: spec => spec, Build: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
-    Tsc: group("tsc"), Packages: group("packages"), Typescript: group("typescript"), Vibelang: group("vibelang")
-  }
-  runInNewContext(source, context)
-  return context
-}
+const declarations = () => declarationFixture("PACKAGE.ts")
 
 function target(name = "spec-tests") {
-  return declarations().result.targets[name]
+  return declarations().targets[name]
 }
 
 test("the spec gate reports Go startup and streams test events", () => {
@@ -42,14 +26,14 @@ test("the spec gate invalidates its cache when its progress runner changes", () 
 
 test("progress retains spec selection, fresh external oracles and the existing deadline", () => {
   const context = declarations()
-  const spec = context.result.targets["spec-tests"]
+  const spec = context.targets["spec-tests"]
   assert.match(spec.shell, /-count=1(?: |$)/)
   assert.match(spec.shell, /-run /)
   for (const pkg of ["./internal/checker/", "./internal/vibelang/", "./internal/vibelangfuzz/", "./internal/effecttsgo/shim/checker/"]) {
     assert.ok(spec.shell.includes(pkg), "missing package " + pkg)
   }
   assert.match(spec.shell, /VIBELANG_FUZZ_REQUIRE=1/)
-  const shared = runInNewContext('check("deadline contract", "true", [], []).timeout', context)
+  const shared = context.evaluate('check("deadline contract", "true", [], []).timeout')
   assert.match(shared, /^[1-9]\d*(?:ms|s|m|h)$/)
   assert.equal(spec.timeout, shared, "the observer retains the shared graph deadline")
 })
@@ -101,8 +85,8 @@ for (const [name, shared, deadline, status] of [
 ]) test("spec progress deadline contract handles " + name, t => {
   const root = mkdtempSync(join(tmpdir(), "spec-progress-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  mkdirSync(join(root, "scripts"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs"]) {
+  mkdirSync(join(root, "scripts/testing"), { recursive: true })
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs"]) {
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
   const original = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
@@ -131,8 +115,8 @@ for (const [name, shared, deadline, status] of [
 test("spec deadline fixture controls follow a later shared graph limit", t => {
   const root = mkdtempSync(join(tmpdir(), "spec-progress-next-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  mkdirSync(join(root, "scripts"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs"]) {
+  mkdirSync(join(root, "scripts/testing"), { recursive: true })
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs"]) {
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
   const original = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")

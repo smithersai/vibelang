@@ -16,12 +16,18 @@ file or spread `S.glob(["pattern"])` for a group. String paths belong in
 the arguments to those helpers. Invalid declarations fail before any target
 can run; successful tests of a target's command alone do not validate them.
 
-When the root declaration imports new input factories or audit inventories,
-update the VM bindings in its declaration fixtures with the real imports too.
-Those fixtures check dependency identity and command transport. Run them with:
+The declaration fixtures share `scripts/testing/package-declaration.mjs`,
+which imports the production input-helper modules. New exports from those
+modules reach every fixture without separate binding lists. A missing imported
+binding reports the declaration file and identifier. Callers supply dependency
+identities and environment values; the adapter keeps environments independent.
+These fixtures check dependency identity and command transport. The real SDK
+check above still validates declarations. Run both the adapter's export-mutation
+controls and its consumers with:
 
 ```sh
-node --test scripts/forms-generator.test.mjs scripts/fuzz-hangs-target.test.mjs \
+node --test scripts/package-declaration.test.mjs scripts/forms-generator.test.mjs \
+  scripts/fuzz-hangs-target.test.mjs \
   scripts/native-output.test.mjs scripts/spec-progress-target.test.mjs
 ```
 

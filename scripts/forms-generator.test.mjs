@@ -1,34 +1,18 @@
-import { createApiIdentityInputs } from "../api-inputs.ts"
-import { buildContractSuites, createBuildContractInputs } from "../build-contract-inputs.ts"
+import { declarationTargets } from "./testing/package-declaration.mjs"
 import assert from "node:assert/strict"
 import { spawnSync, spawn } from "node:child_process"
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { stripTypeScriptTypes } from "node:module"
-import { runInNewContext } from "node:vm"
 import { test } from "node:test"
 
 const read = file => readFileSync(new URL("../" + file, import.meta.url), "utf8")
 const goSources = { compilerSources: true }
 const nativeSources = { nativeCompilerSources: true }
 const formsGenerator = { formsGenerator: true }
-function targets(file) {
-  const source = stripTypeScriptTypes(read(file)).replace(/^import .*$/gm, "")
-    .replace("export const Package", "globalThis.result")
-  const context = {
-    createApiIdentityInputs, buildContractSuites, createBuildContractInputs,
-    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
-    vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
-    process: { env: {} },
-    migrationSources: { migrationSources: true },
-    S: { Generate: spec => spec, Shell: { Build: spec => spec, Test: spec => spec, Run: spec => spec }, Host: { bin: bin => bin },
-      Filegroup: spec => spec, glob: patterns => patterns, file: file => file, Package: spec => spec },
-    Tsc: { srcs: goSources, "native-srcs": nativeSources }, Typescript: { "forms-generator": formsGenerator }, Packages: {}, Vibelang: {}
-  }
-  runInNewContext(source, context)
-  return context.result.targets
-}
+const targets = file => declarationTargets(file, { bindings: {
+  Tsc: { srcs: goSources, "native-srcs": nativeSources }, Typescript: { "forms-generator": formsGenerator }
+} })
 
 test("the forms executable is cached by compiler build inputs, independently of docs and test sources", () => {
   const target = targets("typescript/PACKAGE.ts")["forms-generator"]

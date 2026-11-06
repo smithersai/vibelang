@@ -1,29 +1,8 @@
-import { createApiIdentityInputs } from "../api-inputs.ts"
-import { buildContractSuites, createBuildContractInputs } from "../build-contract-inputs.ts"
+import { declarationTargets } from "./testing/package-declaration.mjs"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
-import { stripTypeScriptTypes } from "node:module"
 import { test } from "node:test"
-import { runInNewContext } from "node:vm"
 
-function targets(env = {}) {
-  const source = stripTypeScriptTypes(readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8"))
-    .replace(/^import .*$/gm, "")
-    .replace("export const Package", "globalThis.result")
-  const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
-  const context = {
-    createApiIdentityInputs, buildContractSuites, createBuildContractInputs,
-    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]], ["migration", ["FuzzMigrationFormatterFixedPoint", "FuzzMigrationJSXRoutes"]]]),
-    vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
-    process: { env },
-    migrationSources: { migrationSources: true },
-    S: { Generate: spec => spec, Filegroup: spec => spec, glob: glob => glob, file: file => file,
-      Shell: { Test: spec => spec, Run: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
-    Tsc: group("tsc"), Packages: group("packages"), Typescript: group("typescript"), Vibelang: group("vibelang")
-  }
-  runInNewContext(source, context)
-  return context.result.targets
-}
+const targets = (env = {}) => declarationTargets("PACKAGE.ts", { env })
 
 test("the pending merge gate requires real hang probes", () => {
   const graph = targets()

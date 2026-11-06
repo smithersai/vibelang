@@ -1,33 +1,14 @@
-import { createApiIdentityInputs } from "../api-inputs.ts"
-import { buildContractSuites, createBuildContractInputs } from "../build-contract-inputs.ts"
+import { declarationTargets } from "./testing/package-declaration.mjs"
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { stripTypeScriptTypes } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
-import { runInNewContext } from "node:vm"
 
 const read = file => readFileSync(new URL("../" + file, import.meta.url), "utf8")
 const compilerNative = { native: true }
-function targets(file) {
-  const source = stripTypeScriptTypes(read(file)).replace(/^import .*$/gm, "")
-    .replace("export const Package", "globalThis.result")
-  const context = {
-    createApiIdentityInputs, buildContractSuites, createBuildContractInputs,
-    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
-    vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
-    process: { env: {} },
-    migrationSources: { migrationSources: true },
-    S: { Generate: spec => spec, Shell: { Build: spec => spec, Test: spec => spec, Run: spec => spec }, Host: { bin: bin => bin },
-      Filegroup: spec => spec, glob: patterns => patterns, file: file => file, Package: spec => spec },
-    Tsc: { srcs: {} }, Typescript: { compiler: {} },
-    Packages: { "compiler-native": compilerNative }, Vibelang: {}
-  }
-  runInNewContext(source, context)
-  return context.result.targets
-}
+const targets = file => declarationTargets(file, { bindings: { Packages: { "compiler-native": compilerNative } } })
 
 test("release declares the native compiler dependency used by its warning fixture", () => {
   assert.ok(targets("PACKAGE.ts").release.data.includes(compilerNative))

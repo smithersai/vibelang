@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Contributor build checks could break when a shared input helper gained an export; they now load those helpers consistently.
+
 - Migration emission could retain a large TypeScript declaration graph while compiling, exhausting the coordinator heap. Declaration layout planning now finishes in a separate process before compilation and records its duration.
 - Service-key checks could be skipped after a nullable generic key was narrowed or asserted non-null. Those narrowed values now receive the same errors as direct keys.
 - Bundling native error declarations could pull in unused experimental platform services; generated language helpers now keep those services out of the bundle graph.
