@@ -137,7 +137,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,200 |
 | **Upgrade** | **160,000** |
 | [Release notes](../setup/release-notes.md) | 160,000 |
-| **All 21 pages** | **220,000** |
+| **All 21 pages** | **230,000** |
 
 ### Guides
 
