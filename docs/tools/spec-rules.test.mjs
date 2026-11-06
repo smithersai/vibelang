@@ -421,16 +421,15 @@ test("superseded-denial: positive authority still fails beside the historical ex
   assert.ok(findings.every(f => f.line === 3), JSON.stringify(findings))
 }))
 
-test("superseded-denial: fast-check requires the recorded accepted successor", () => fixture((root, edit) => {
+test("superseded-denial: every status, link and marker form requires the recorded accepted successor", () => fixture((root, edit) => {
   const original = read(root, "docs/design/vips/0025-inline-modules-denied.md")
   const successorPath = "docs/design/vips/0040-module-declarations.md"
   const successor = read(root, successorPath)
   const mutation = "docs/design/src/999-supersession.md"
-  fc.assert(fc.property(
-    fc.constantFrom("accepted", "denied", "open"),
-    fc.constantFrom("0040-module-declarations.md", "0040-module-declarations.md#decision", "0040-wrong.md"),
-    fc.boolean(),
-    (status, link, explicit) => {
+  // These 18 combinations are the whole domain, so each runs exactly once.
+  let combinations = 0, successors = 0
+  for (const status of ["accepted", "denied", "open"]) for (const explicit of [true, false])
+    for (const link of ["0040-module-declarations.md", "0040-module-declarations.md#decision", "0040-wrong.md"]) {
       writeFileSync(join(root, successorPath), successor.replace(/(\*\*Status:\*\*\s*)accepted\b/, "$1" + status))
       const marker = (explicit ? "*Superseded by " : "*Proposed replacement: ") + "[VIP-40](" + link + ")"
       edit("docs/design/vips/0025-inline-modules-denied.md", () => original.replace("*Superseded by [VIP-40](0040-module-declarations.md)", marker))
@@ -448,8 +447,10 @@ test("superseded-denial: fast-check requires the recorded accepted successor", (
         writeFileSync(join(root, mutation), statement + "\n")
         assert.ok(lintAuthority(root).some(f => f.path === mutation && f.message.includes("VIP-25")), statement)
       }
+      combinations++
+      if (valid) successors++
     }
-  ), { seed: 310725, numRuns: 72 })
+  assert.deepEqual([combinations, successors], [18, 2])
 }))
 
 

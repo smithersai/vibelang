@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
 import { readdirSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
 import { test } from "node:test"
-import fc from "fast-check"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { createDependencyDocuments } from "../../scripts/api-identity-diagnostics-cache.mjs"
 import { compareApiIdentity, formatResult, loadTypeScript } from "../../scripts/api-identity.mjs"
 import { chapter } from "./spec-witness.mjs"
 
@@ -38,31 +38,34 @@ test("CLI guide follows the published matcher declaration boundary", () => {
 // The published class must match stock TypeScript, including symbol members.
 test("generated class matcher metadata cannot change the native class API", () => {
   const ts = loadTypeScript()
-  fc.assert(fc.property(
-    fc.constantFrom("NotFound", "InvalidInput", "Timeout"),
-    fc.constantFrom("string", "number", "boolean"),
-    (name, payload) => {
-      const root = mkdtempSync(join(tmpdir(), "published-matcher-"))
-      try {
-        const native = "declare const customMatcher: unique symbol;\nexport declare class " + name +
-          " { readonly _tag: " + JSON.stringify(name) + "; readonly value: " + payload + "; }\n"
-        for (const dir of ["typescript/out", "out"]) mkdirSync(join(root, dir), { recursive: true })
-        writeFileSync(join(root, "typescript/out/main.d.ts"), native)
-        const compare = text => {
-          writeFileSync(join(root, "out/main.d.ts"), text)
-          // These declarations use only scalars and a unique symbol. Loading
-          // browser libraries for every mutation dominated this property.
-          const result = compareApiIdentity(ts, join(root, "typescript/out"), join(root, "out"), {
-            compilerOptions: { lib: ["lib.es2022.d.ts"] }
-          })
-          const detail = name + "<" + payload + ">: " + formatResult(result)
-          assert.equal(result.comparisonComplete, true, detail)
-          assert.equal(result.identical, true, detail)
-        }
-        compare(native)
-        assert.throws(() => compare(native.replace("; }", "; static [customMatcher](value: unknown): boolean; }")), /differences/)
-        assert.throws(() => compare(native.replace(JSON.stringify(name), '"Changed"')), /differences/)
-      } finally { rmSync(root, { recursive: true, force: true }) }
-    }
-  ), { seed: 270027, numRuns: 12 })
+  const dependencyDocuments = createDependencyDocuments(ts)
+  // These nine classes are the whole domain: each runs exactly once.
+  let classes = 0
+  for (const name of ["NotFound", "InvalidInput", "Timeout"]) for (const payload of ["string", "number", "boolean"]) {
+    const root = mkdtempSync(join(tmpdir(), "published-matcher-"))
+    try {
+      const native = "declare const customMatcher: unique symbol;\nexport declare class " + name +
+        " { readonly _tag: " + JSON.stringify(name) + "; readonly value: " + payload + "; }\n"
+      for (const dir of ["typescript/out", "out"]) mkdirSync(join(root, dir), { recursive: true })
+      writeFileSync(join(root, "typescript/out/main.d.ts"), native)
+      const compare = text => {
+        writeFileSync(join(root, "out/main.d.ts"), text)
+        // These declarations use only scalars and a unique symbol. Loading
+        // browser libraries for every mutation dominated this test, and
+        // reparsing the same library files dominated what remained.
+        const result = compareApiIdentity(ts, join(root, "typescript/out"), join(root, "out"), {
+          compilerOptions: { lib: ["lib.es2022.d.ts"] },
+          dependencyDocuments
+        })
+        const detail = name + "<" + payload + ">: " + formatResult(result)
+        assert.equal(result.comparisonComplete, true, detail)
+        assert.equal(result.identical, true, detail)
+      }
+      compare(native)
+      assert.throws(() => compare(native.replace("; }", "; static [customMatcher](value: unknown): boolean; }")), /differences/)
+      assert.throws(() => compare(native.replace(JSON.stringify(name), '"Changed"')), /differences/)
+      classes++
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  }
+  assert.equal(classes, 9)
 })
