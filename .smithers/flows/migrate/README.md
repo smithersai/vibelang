@@ -1082,3 +1082,5 @@ Declaration snapshots attribute a native `module` body's declaration to its fres
 For Vite+ configurations, setup also updates the exported `defineConfig` object's `fmt.ignorePatterns` and `lint.ignorePatterns`. Literal sections keep their existing patterns and rules and gain the declaration and emitted-JavaScript exclusions. Computed sections or later overriding spreads remain unchanged with a warning. Ordinary Vite configurations and nested test settings are unaffected.
 
 A module-body split keeps merged declarations together. Type-only namespace companions move with their class, function or enum, including nested and reopened namespaces. Runtime namespace initialization refuses the split and preserves the original source order.
+
+JavaScript emission preserves the selected project's declaration source root for `vibe.sidecarDir`. Its package `types` targets remain valid for explicit, composite and inferred roots. Physical source maps place runtime JavaScript under `.vibelang/js/` at package-relative paths without relocating declaration sidecars.

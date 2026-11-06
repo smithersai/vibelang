@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { compareApiIdentityInWorker as compareApiIdentity, publishedEntrypoints } from "./api-identity.mjs"
 import { apiProjection } from "./api-projection.mjs"
 import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
+import { sidecarSettings } from "./sidecar-config.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 import { dependencyEmitPathSubstitution } from "./dependency-emit-paths.mjs"
@@ -881,12 +882,17 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
     files++
   }
   for (const tsconfig of tsconfigs) {
-    // Empty CLI roots do not replace configured roots in this emitter. Keep
-    // temporary maps local and physical so each output identifies its source.
-    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --sourceRoot ${quote(resolve(packageDir) + sep)} --mapRoot ${quote(resolve(out) + sep)} --rootDir ${quote(packageDir)} --outDir ${quote(out)}`, { cwd: packageDir, log })
+    // Declaration sidecars keep the selected project's declaration root.
+    // JavaScript is relocated afterward to its package-relative runtime tree.
+    // Physical map roots also replace any authored virtual source/map roots.
+    const config = resolve(packageDir, tsconfig)
+    const settings = existsSync(config) ? sidecarSettings(config, ts, undefined, { sourceRootOnly: true }) : undefined
+    const sourceRoot = settings?.sourceRoot ?? resolve(packageDir)
+    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --sourceRoot ${quote(sourceRoot + sep)} --mapRoot ${quote(resolve(out) + sep)} --rootDir ${quote(sourceRoot)} --outDir ${quote(out)}`, { cwd: packageDir, log })
     assertFinished(result, log)
     code = Math.max(code, result.code)
     output += result.stdout + result.stderr
+    const staged = []
     for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) {
       if (!file.startsWith(inside)) {
         if (/\.d\.vibex?\.ts$/.test(file)) continue
@@ -896,18 +902,23 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
         continue
       }
       if (file.endsWith(".map")) continue // needed until all JavaScript is attributed
-      const outputName = file.slice(inside.length).split(sep).join("/")
       const mapped = emittedSource(file)
       const source = mapped === undefined ? undefined : relative(packageDir, mapped).split(sep).join("/")
       if (source === undefined || source.startsWith("../") || isTestFile(source)) {
         rmSync(file, { force: true })
         continue
       }
-      if (inTestDirectory(source)) {
-        testModules.set(outputName, { file, source, relative: outputName })
-        continue
-      }
-      keep(file, source, outputName)
+      const outputName = posix.join(posix.dirname(source), basename(file))
+      staged.push({ file: join(out, outputName), previous: file, source, relative: outputName, text: readFileSync(file, "utf8") })
+    }
+    // Read the whole output set before moving it: an inferred outer root can
+    // make one old location another source's final runtime location.
+    for (const item of staged) if (item.file !== item.previous) rmSync(item.previous, { force: true })
+    for (const item of staged) {
+      mkdirSync(dirname(item.file), { recursive: true })
+      writeFileSync(item.file, item.text)
+      if (inTestDirectory(item.source)) testModules.set(item.relative, item)
+      else keep(item.file, item.source, item.relative)
     }
     for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) {
       if (file.startsWith(inside) && file.endsWith(".map")) rmSync(file, { force: true })

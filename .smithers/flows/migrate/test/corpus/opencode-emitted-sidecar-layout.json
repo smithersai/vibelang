@@ -1,0 +1,4 @@
+{
+  "source": "export * as Tool from \"./tool.js\";\nexport const Content = 1 as const;\nexport type Content = { readonly value: number };\n",
+  "rule": "Sidecar placement follows TypeScript 5.9's declaration layout"
+}
