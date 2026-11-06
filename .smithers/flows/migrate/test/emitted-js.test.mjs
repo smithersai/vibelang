@@ -14,6 +14,7 @@ import { emitPackageJs, writeLoaderRecords } from "../lib/declarations.mjs"
 import { loaderRecord } from "../../../../packages/compiler/cache.mjs"
 import { renameBatch, rewriteExports } from "../lib/codemod.mjs"
 import { routeEmittedExports } from "../lib/emitted-exports.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
@@ -471,16 +472,22 @@ test("property: custom output receipts follow physical paths and content across 
 // Smithers ViewCsp: a module declaration is a second output of its parent.
 // The README's emitted-graph contract requires both files to load in plain Node.
 const inlineCorpus = JSON.parse(readFileSync(new URL("./corpus/smithers-inline-module-emit.json", import.meta.url), "utf8"))
+const inlineFilenameQuote = "It keeps `a`–`z`, `0`–`9` and `_`, and writes every other code point as `-`, its code point in lowercase hexadecimal without leading zeros, and `-`"
+test("module body filename oracle quotes VIP-40", () => {
+  assert.ok(readFileSync(SpecPath("../vips/0040-module-declarations.md"), "utf8").includes(inlineFilenameQuote))
+})
 async function inlineModuleFixture({ source = inlineCorpus.source, module = inlineCorpus.module, value = inlineCorpus.value, reverse = false, exported = false, native = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "smithers-inline-emit-"))
   try {
     const parent = source.replace(/\.vibex?$/, ".js")
-    const companion = source + "." + module + ".js"
+    const encoded = [...module].map(c => /^[a-z0-9_]$/.test(c) ? c : "-" + c.codePointAt(0).toString(16) + "-").join("")
+    const companion = source + "." + encoded + ".js"
     const published = exported ? { "./entry": "./" + source } : {}
     write(root, {
       "package.json": JSON.stringify({ type: "module", exports: published }),
       "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true }, files: [source] }),
-      [source]: inlineCorpus.text,
+      [source]: module === inlineCorpus.module && value === inlineCorpus.value ? inlineCorpus.text :
+        "module " + module + " { export function invoke() { return " + value + " } }\nimport { invoke as $invoke } from " + module + "\nexport const value = $invoke()\n",
     })
     const output = [
       { path: parent, source, text: 'import { invoke } from "./' + companion.split("/").at(-1) + '"; export const value = invoke();' },
@@ -513,9 +520,16 @@ test("smithers inline module emit property: ordering, paths, names and test owne
   await fc.assert(fc.asyncProperty(
     fc.constantFrom("src", "src/deep", "test", "src/__tests__"),
     fc.constantFrom("ViewCsp", "with-dash", "part.name", "hidden.test", "hidden.spec"),
-    fc.constantFrom(".vibe", ".vibex"), fc.constantFrom("$call$ts", "$throw$ts", "platform"),
+    fc.constantFrom(".vibe", ".vibex"), fc.constantFrom("$call$ts", "$throw$ts", "platform", "Text", "text", "Über", "café", "cafe\u0301", "𐐀"),
     fc.integer({ min: -999, max: 999 }), fc.boolean(), fc.boolean(),
     async (dir, name, ext, module, value, reverse, exported) =>
       inlineModuleFixture({ source: dir + "/" + name + ext, module, value, reverse, exported })
   ), { seed: 82429, numRuns: 50 })
+})
+
+
+test("smithers inline module emit native filenames preserve case and Unicode code points", { skip: !compiler && "set VIBELANG_BINARY" }, async t => {
+  for (const module of ["Text", "text", "Über", "café", "cafe\u0301", "𐐀"]) {
+    await t.test(module, async () => inlineModuleFixture({ module, value: 17, native: true }))
+  }
 })
