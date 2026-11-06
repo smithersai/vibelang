@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The source checkout preview could fail with `TS2307` for `vibelang-runtime` in another project. The instructions now install the checkout's runtime there before checking.
 
+- `vibelang format` silently skipped marked `.tsx` files. Default discovery and explicit paths now check and format them while leaving unmarked TypeScript unchanged.
+
 - Editor formatting rejected VibeLang syntax in marked TypeScript files. It now selects the VibeLang parser from the current buffer, including unsaved directives and JSX.
 
 - Editor formatting through an installed TypeScript shim could report that the formatter module was missing. The launcher now locates the formatter in the installed compiler package.

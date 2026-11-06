@@ -44,6 +44,17 @@ npx dprint check
 
 `dprint fmt` rewrites unformatted files. `dprint check` changes nothing: it prints a diff per unformatted file and exits with status 20, so a CI step or `lint` script fails on a file that needs formatting. Run `npx dprint check` again after `npx dprint fmt`: it prints nothing and exits with status 0.
 
+## Marked TypeScript files
+
+For `.ts`, `.mts`, `.cts` and `.tsx` files with the `// @vibe` directive, use `vibelang format`. It reads the directive before selecting the parser; direct dprint selects a plugin by the filename alone.
+
+```sh
+npx vibelang format --check
+npx vibelang format --write src/view.tsx
+```
+
+Default discovery includes marked `.tsx` files as well as the other marked TypeScript extensions and `.vibe`/`.vibex` files. `--check` exits with status `1` when formatting is needed and writes nothing; `--write` updates the selected files. Unmarked TypeScript files remain unchanged, including explicit paths.
+
 ## What the formatter changes
 
 Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line breaks at `lineWidth`, quotes, semicolons, and trailing commas. Import and re-export declarations keep their original order, so formatting preserves module initialization order. The names within one import or export keep their order too, so a linter's `sort-imports` rule sees the order you wrote. VibeLang's own forms keep their shape:

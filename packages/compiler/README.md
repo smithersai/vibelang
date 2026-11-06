@@ -409,6 +409,9 @@ The package ships an agent skill for writing VibeLang, `node_modules/vibelang/sk
 
 ## Format .vibe files with dprint
 
+For TypeScript filenames marked with `// @vibe`, use `vibelang format --check` or `vibelang format --write`. Default discovery and explicit paths include `.tsx`, `.ts`, `.mts` and `.cts`; unmarked TypeScript files stay unchanged.
+
+
 The package ships a [dprint](https://dprint.dev) plugin for `.vibe` files. Use
 dprint 0.64.3 or later for `npm:` plugin resolution. Add
 it beside dprint's TypeScript plugin, and add `vibe` to `includes`:
