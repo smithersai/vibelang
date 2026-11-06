@@ -122,7 +122,12 @@ function fixture(t) {
     mkdirSync(join(root, dir, "node_modules"), { recursive: true })
   }
   write("packages/ts-mapper/package.json", JSON.stringify({ devDependencies: { typescript: "fixture" } }))
-  write("packages/ts-mapper/test/.cache/typescript-fixture/node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n", true)
+  for (const version of ["fixture", "7.0.2"]) {
+    write("packages/ts-mapper/test/.cache/typescript-" + version + "/node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n", true)
+  }
+  write("bin/npm", "#!" + process.execPath + "\n" +
+    "require('node:fs').writeFileSync('npm-call.json', JSON.stringify(process.argv.slice(2)))\n" +
+    "console.error('unexpected package download in prepared selection fixture')\nprocess.exit(73)\n", true)
   write("bin/bun", "#!/bin/sh\nexit 0\n", true)
   write(".smithers/node_modules/.bin/smthrs",
     "#!" + process.execPath + "\nrequire('node:fs').writeFileSync('args.json', JSON.stringify(process.argv.slice(2)))\n", true)
@@ -197,3 +202,26 @@ test("build-only queue checks include starters even without a changed-path envir
   assert.equal(run.status, 0, run.stderr)
   assert.ok(f.args().includes("//:starter-templates"))
 })
+
+
+test("selection fixtures run offline with both stock compiler baselines prepared", t => {
+  const f = fixture(t)
+  f.write("paths.txt", "typescript/tsc/internal/vibelangfmt/format.go\n")
+  const run = f.run({ CI_CHANGED_PATHS: join(f.root, "paths.txt") })
+  assert.equal(run.status, 0, run.stdout + run.stderr)
+  assert.ok(f.args().includes(label("format")), "the real shell still dispatches the selected target")
+})
+
+for (const version of ["fixture", "7.0.2"]) {
+  test("a missing stock baseline still makes the real setup request it: " + version, t => {
+    const f = fixture(t)
+    rmSync(join(f.root, "packages/ts-mapper/test/.cache/typescript-" + version), { recursive: true, force: true })
+    const run = f.run()
+    assert.equal(run.status, 73, run.stdout + run.stderr)
+    assert.match(run.stderr, /unexpected package download/)
+    assert.deepEqual(JSON.parse(readFileSync(join(f.root, "npm-call.json"), "utf8")),
+      ["install", "--prefix", "packages/ts-mapper/test/.cache/typescript-" + version,
+        "--no-audit", "--no-fund", "--silent", "typescript@" + version])
+    assert.throws(() => f.args(), { code: "ENOENT" }, "a refused prerequisite must stop graph dispatch")
+  })
+}

@@ -89,6 +89,12 @@ For remote checks, `scripts/remote.sh` restores tracked fixtures under
 filter stops the check with its diagnostics and exit status. An empty fixture
 list is valid. Temporary discovery files are removed on success and failure.
 
+The changed-path selection fixtures prepare both the current and historical
+stock compiler baselines in each temporary project. They reject package
+downloads, so the selection probes run offline. Missing-baseline controls
+still make the real setup attempt its install and stop before graph dispatch.
+Run them with `node --test scripts/fuzz-gate.test.mjs`.
+
 The CI install fixtures allow `30` seconds for their child shell as a hang
 guard. Their install, lockfile and shared-symlink assertions remain independent
 of elapsed time. A deliberately delayed installer checks this distinction.
