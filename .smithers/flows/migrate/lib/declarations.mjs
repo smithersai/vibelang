@@ -678,7 +678,7 @@ function publishedEquivalent(ts, a, b, sides) {
   return excused
 }
 
-export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false, profile, workerHeaps } = {}) {
+export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false, profile, workerHeaps, diagnosticBatchSize } = {}) {
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
   const surface = dir => {
@@ -792,7 +792,7 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     api = compareApiIdentity(ts, left.directory, right.directory, {
       beforeEntrypoints: aEntries, afterEntrypoints: bEntries,
       projectContexts: [...left.projectContexts, ...right.projectContexts], moduleRoots: [...new Set(modules)], includeComparedFiles: true,
-      absentDeclarations: absentFrom(aSurface, bSurface, { before: left.absentSources, after: right.absentSources }), profile, ...(workerHeaps ? { workerHeaps } : {}),
+      absentDeclarations: absentFrom(aSurface, bSurface, { before: left.absentSources, after: right.absentSources }), profile, ...(workerHeaps ? { workerHeaps } : {}), ...(diagnosticBatchSize ? { diagnosticBatchSize } : {}),
     })
     const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
       [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>

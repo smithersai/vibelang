@@ -247,12 +247,24 @@ be collected before probe checkers allocate their own type relations.
 This also applies to a single entry point with many generic instantiations.
 
 Input diagnostics also use fresh groups of eight source files (the internal
-`diagnosticBatchSize` option controls this for qualification). Every group
+`diagnosticBatchSize` option controls this for qualification, and
+`compareDeclarations` forwards it). Every group
 keeps the complete program roots, compiler options and global environment.
 All source diagnostics remain in the receipt, including unrelated dependency
 errors; only plain records survive a group. Profiling records
 `diagnosticOffset`, `diagnosticCount` and `totalDiagnosticFiles` so a stalled
 validation stage can be located without logging declaration contents.
+
+Entry groups overlap in the modules they reach, so one comparison checks each
+file once per environment. A file's key hashes the compiler options, every file
+that changes the global scope or declares a module, in program order, and the
+reachable module graph: each file's text, format and resolved imports. Any
+change in those checks the file again, and a file reaching an edge that names no
+program file has no key. Option and global diagnostics and every probe still run
+for each group. Records live for that comparison, and `reusedDiagnosticFiles` in
+a profile counts them. Nominal alignment reads the whole public graph, so it runs
+once for each set of roots and declarations. `identityReuse: false` turns both
+off as a control.
 
 An invalid entry group stops the comparison immediately. Its blocking
 diagnostics remain available even if a later group would exhaust resources.

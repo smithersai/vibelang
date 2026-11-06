@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process"
 import { totalmem } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { dependencyDiagnosticsPlan, saveDependencyDiagnostics } from "./api-identity-diagnostics-cache.mjs"
+import { dependencyDiagnosticsPlan, fileDiagnosticKeys, saveDependencyDiagnostics } from "./api-identity-diagnostics-cache.mjs"
 import { isolateAmbientSnapshots } from "./api-identity-ambient.mjs"
 import { alignNominalIdentity } from "./api-identity-nominal.mjs"
 
@@ -853,11 +853,14 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     const result = { identical: true, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
     if (options.includeComparedFiles) result.comparedFiles = { before: [], after: [] }
     const seen = new Set()
+    // Entry groups overlap in the modules they reach. Records are plain and
+    // live for this comparison only; `identityReuse: false` turns this off.
+    const identityReuse = options.identityReuse === false ? undefined : options.identityReuse ?? { files: new Map(), nominal: new Map() }
     for (let offset = 0; offset < Math.max(1, keys.length); offset += size) {
       const batch = [...new Set([...keys.slice(offset, offset + size), ...ambientKeys])]
       const pick = entries => Object.fromEntries(batch.filter(key => entries[key]).map(key => [key, entries[key]]))
       const part = compareUnchecked(ts, before, after,
-        { ...options, beforeEntrypoints: pick(left), afterEntrypoints: pick(right) }, (value, details = {}) => {
+        { ...options, identityReuse, beforeEntrypoints: pick(left), afterEntrypoints: pick(right) }, (value, details = {}) => {
           stage = value
           progressDetails = { entryOffset: offset, entryCount: batch.length, totalEntries: keys.length, ...details }
           if (options.profile) console.error(JSON.stringify({ stage,
@@ -1040,35 +1043,48 @@ function collectInputDiagnostics(ts, roots, compilerOptions, host, files, option
   const cache = options.dependencyDiagnosticsCache
   if (cache !== undefined && !(cache instanceof Map))
     throw new Error("dependencyDiagnosticsCache must be a Map")
-  let firstProgram, plan, saved
-  if (cache) {
+  const fileCache = options.identityReuse?.files
+  let firstProgram, plan, saved, keys
+  if (cache || fileCache) {
     firstProgram = suppliedProgram ?? ts.createProgram(roots, compilerOptions, host)
     const environment = host.identityDiagnosticEnvironment
-    if (environment) plan = dependencyDiagnosticsPlan(ts, firstProgram, compilerOptions,
+    if (cache && environment) plan = dependencyDiagnosticsPlan(ts, firstProgram, compilerOptions,
       environment.snapshots, environment.resolutions, files)
     if (plan) saved = cache.get(plan.key)
+    if (fileCache && environment) keys = fileDiagnosticKeys(ts, firstProgram, compilerOptions, environment.resolutions)
   }
-  const checked = saved ? files.filter(file => !plan.files.has(file)) : files
-  const records = new Map((saved ?? []).map(record => [JSON.stringify(record), { ...record }]))
-  const capture = diagnostic => {
+  const unsaved = saved ? files.filter(file => !plan.files.has(file)) : files
+  const reused = unsaved.filter(file => fileCache?.has(keys?.get(file)))
+  const checked = unsaved.filter(file => !fileCache?.has(keys?.get(file)))
+  const records = new Map([...(saved ?? []), ...reused.flatMap(file => fileCache.get(keys.get(file)))]
+    .map(record => [JSON.stringify(record), { ...record }]))
+  const capture = (diagnostic, target = records) => {
     const item = { diagnostic: "TS" + diagnostic.code + ": " + ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
       file: diagnostic.file?.fileName, start: diagnostic.start, length: diagnostic.length, code: diagnostic.code,
       line: diagnostic.file && diagnostic.start !== undefined
         ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1 : 0 }
-    records.set(JSON.stringify(item), item)
+    target.set(JSON.stringify(item), item)
   }
+  // A new program over the last one keeps its parsed structure; each still has
+  // a fresh checker, which is what bounds a group's memory.
+  let lastProgram
   const group = (offset, batch) => {
-    progress(stage, { diagnosticOffset: offset, diagnosticCount: batch.length, totalDiagnosticFiles: files.length, reusedInputProgram: Boolean(firstProgram && firstProgram === suppliedProgram) })
-    const program = firstProgram ?? ts.createProgram(roots, compilerOptions, host)
+    progress(stage, { diagnosticOffset: offset, diagnosticCount: batch.length, totalDiagnosticFiles: files.length,
+      reusedDiagnosticFiles: reused.length, reusedInputProgram: Boolean(firstProgram && firstProgram === suppliedProgram) })
+    const program = firstProgram ?? ts.createProgram(roots, compilerOptions, host, lastProgram)
     firstProgram = undefined
+    lastProgram = program
     if (offset === 0) {
       for (const diagnostic of [...program.getConfigFileParsingDiagnostics(),
         ...program.getOptionsDiagnostics(), ...program.getGlobalDiagnostics()]) capture(diagnostic)
     }
     for (const file of batch) {
       const source = program.getSourceFile(file)
+      const own = new Map()
       for (const diagnostic of [...program.getSyntacticDiagnostics(source),
-        ...program.getSemanticDiagnostics(source)]) capture(diagnostic)
+        ...program.getSemanticDiagnostics(source)]) capture(diagnostic, own)
+      for (const [text, item] of own) records.set(text, item)
+      if (fileCache && keys?.has(file)) fileCache.set(keys.get(file), [...own.values()].map(item => ({ ...item })))
     }
   }
   for (let offset = 0; offset < Math.max(1, checked.length); offset += size)
@@ -1315,10 +1331,15 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   // while leaving unrelated nominal roots unloaded.
   const nominalRoots = inputGroupBlocked ? roots :
     [...new Set([...roots, ...nominalEntries.flatMap(entries => Object.values(entries))])]
-  progress("nominal-identity", { publicEntries: nominalRoots.length, batchEntries: roots.length })
-  const nominalProgram = nominalRoots.every(file => program.getSourceFile(file))
+  // The public graph is the same for every group that is not blocked, so its
+  // alignment is too, given the same declarations in place.
+  const nominalKey = options.identityReuse && JSON.stringify([[...nominalRoots].sort(), nominalEntries, [...virtual], [...ambient.names]])
+  const nominalSaved = nominalKey && options.identityReuse.nominal.get(nominalKey)
+  progress("nominal-identity", { publicEntries: nominalRoots.length, batchEntries: roots.length, reusedAlignment: Boolean(nominalSaved) })
+  const nominalProgram = nominalSaved ? undefined : nominalRoots.every(file => program.getSourceFile(file))
     ? program : ts.createProgram(nominalRoots, compilerOptions, host, program)
-  const nominal = alignNominalIdentity(ts, nominalProgram, before, after, join(repo, ".api-identity-brands.d.cts"), nominalEntries, ambient.names)
+  const nominal = nominalSaved ?? alignNominalIdentity(ts, nominalProgram, before, after, join(repo, ".api-identity-brands.d.cts"), nominalEntries, ambient.names)
+  if (nominalKey) options.identityReuse.nominal.set(nominalKey, nominal)
   if (nominal.size > 1) {
     for (const [path, text] of nominal) {
       virtual.set(path, text)

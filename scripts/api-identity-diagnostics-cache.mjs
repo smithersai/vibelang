@@ -44,6 +44,76 @@ export function dependencyDiagnosticsPlan(ts, program, compilerOptions, snapshot
   return { key: hash.digest("hex"), files: new Set(checked) }
 }
 
+// What a source file's own diagnostics depend on, in one program: the compiler
+// options, every file that changes the global scope or declares a module, and
+// the module graph the file reaches. Two entry groups usually share all three,
+// so a file is checked once for all of them. A key that cannot prove the whole
+// reachable graph is left out, and its file is checked as before.
+const environmentSource = (ts, source) => !ts.isJsonSourceFile(source) && (!ts.isExternalModule(source) ||
+  source.statements.some(statement => ts.isNamespaceExportDeclaration(statement) || ts.isModuleDeclaration(statement) &&
+    (statement.flags & ts.NodeFlags.GlobalAugmentation || ts.isStringLiteral(statement.name))))
+const sha = (...values) => {
+  const hash = createHash("sha256")
+  for (const value of values) hash.update(value).update("\0")
+  return hash.digest("hex")
+}
+
+export function fileDiagnosticKeys(ts, program, compilerOptions, resolutions) {
+  const sources = program.getSourceFiles()
+  const text = source => sha(source.fileName, String(source.impliedNodeFormat), source.text)
+  const options = JSON.stringify({ ...compilerOptions, configFile: undefined })
+  const environment = sha(options, ...sources.filter(source => environmentSource(ts, source)).map(text))
+  const edges = new Map(sources.map(source => [source, []]))
+  const unknown = new Set()
+  const named = new Map(sources.map(source => [resolve(source.fileName), source]))
+  for (const [key, target] of resolutions) {
+    const from = named.get(key.split("\0")[0])
+    if (!from) continue
+    const to = target ? program.getSourceFile(target.resolvedFileName) : undefined
+    if (target && !to) unknown.add(from)
+    edges.get(from).push({ key, to })
+  }
+  for (const source of sources) if (source.imports?.length && !edges.get(source).length) unknown.add(source)
+  // Tarjan's algorithm, iterative because a dependency chain can outrun the
+  // stack. It finishes each import cycle after the cycles it reaches, so one
+  // pass hashes every cycle from its members and their reachable hashes.
+  const order = new Map(), low = new Map(), hashes = new Map(), stack = [], active = new Set()
+  let next = 0
+  for (const root of sources) {
+    if (order.has(root)) continue
+    const work = [{ source: root, index: 0 }]
+    while (work.length) {
+      const frame = work[work.length - 1], { source } = frame
+      if (frame.index === 0) {
+        order.set(source, next); low.set(source, next++)
+        stack.push(source); active.add(source)
+      }
+      const targets = edges.get(source)
+      if (frame.index < targets.length) {
+        const { to } = targets[frame.index++]
+        if (!to) continue
+        if (!order.has(to)) work.push({ source: to, index: 0 })
+        else if (active.has(to)) low.set(source, Math.min(low.get(source), order.get(to)))
+        continue
+      }
+      work.pop()
+      const parent = work[work.length - 1]?.source
+      if (parent) low.set(parent, Math.min(low.get(parent), low.get(source)))
+      if (low.get(source) !== order.get(source)) continue
+      const members = []
+      for (let member; member !== source;) { member = stack.pop(); active.delete(member); members.push(member) }
+      const inside = new Set(members)
+      const reached = members.flatMap(member => edges.get(member).filter(edge => edge.to && !inside.has(edge.to)).map(edge => hashes.get(edge.to)))
+      const open = members.some(member => unknown.has(member)) || reached.includes(undefined)
+      const hash = open ? undefined : sha(...members.map(member => sha(text(member), ...edges.get(member)
+        .map(edge => edge.key + "\0" + (edge.to?.fileName ?? "")).sort())).sort(), ...[...new Set(reached)].sort())
+      for (const member of members) hashes.set(member, hash)
+    }
+  }
+  return new Map(sources.flatMap(source => hashes.get(source) === undefined ? []
+    : [[source.fileName, sha(environment, hashes.get(source), source.fileName)]]))
+}
+
 export function saveDependencyDiagnostics(cache, plan, records) {
   if (!plan) return
   if (!cache.has(plan.key) && cache.size >= 16) cache.delete(cache.keys().next().value)
