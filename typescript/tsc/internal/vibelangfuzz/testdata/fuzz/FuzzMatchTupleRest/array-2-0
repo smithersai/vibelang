@@ -1,0 +1,4 @@
+go test fuzz v1
+string("array")
+byte(2)
+byte(0)

@@ -1,0 +1,23 @@
+// expect-result: [["x",true],["y"],["a","b"],[2,"c"]]
+import { Effect } from "effect"
+type Equal<A,B>=(<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false
+const same=<A,B>(_:Equal<A,B>)=>undefined
+function fixed(s:readonly [number,string,boolean]) {
+ return match(s){when [,...let rest]:do{same<typeof rest,[string,boolean]>(true);rest};default:[];}
+}
+function optional(s:[number,string?]) {
+ return match(s){when [,...let rest]:do{same<typeof rest,[string?]>(true);rest};default:[];}
+}
+function variadic(s:[number,...string[]]) {
+ return match(s){when [,...let rest]:do{same<typeof rest,string[]>(true);rest};default:[];}
+}
+function trailing(s:[boolean,...number[],string]) {
+ return match(s){when [,...let rest]:do{same<typeof rest,[...number[],string]>(true);rest};default:[];}
+}
+function generic<T>(s:readonly [number,T]) {
+ return match(s){when [,...let rest]:do{same<typeof rest,[T]>(true);rest};default:[];}
+}
+void generic
+export function main(): Effect.Effect<readonly unknown[]> {
+ return Effect.sync(()=>[fixed([1,"x",true]),optional([1,"y"]),variadic([1,"a","b"]),trailing([true,2,"c"])])
+}

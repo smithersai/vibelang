@@ -21,6 +21,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Focused contributor checks could fail with missing packages on a fresh checkout. The documented preparation step now installs all pinned prerequisites before the chosen check.
 - Contributor checks for changed files downloaded a compiler unnecessarily and failed offline. Their temporary projects now include both required compiler baselines.
 - Migrating an inherited error could stop at a match that already handled its tag. The class repair now retains that tagged matcher, narrowing and coverage.
+- Rest bindings from tuple patterns lost their remaining element positions. They now keep the tuple tail, including optional and variadic elements.
 - The migrate flow renamed TanStack Router file routes, and the generator then took the `.d.vibex.ts` sidecar for the route. A one-pass plan now keeps those files as `.ts` or `.tsx`.
 - Migration API checks counted a native module body's declaration as a new entry point, so a module with an internal body never compared identical. Its parent's exports now decide the API.
 - `vibelang/babel` and `vibelang/metro` read only `.vibe`, so a `.vibex` module failed to parse or was left out of the bundle. Both now read `.vibex`.

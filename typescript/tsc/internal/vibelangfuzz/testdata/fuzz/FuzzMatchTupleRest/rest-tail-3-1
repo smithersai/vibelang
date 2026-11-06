@@ -1,0 +1,4 @@
+go test fuzz v1
+string("rest-tail")
+byte(3)
+byte(1)

@@ -17,6 +17,26 @@ type IterableSubject<S> = [S] extends [Iterable<unknown>] ? S
 type ItemOf<S> = S extends Iterable<infer T> ? T : unknown
 type Item<S> = 0 extends 1 & S ? any : ItemOf<IterableSubject<S>>
 type ItemAt<S, I extends number> = S extends ReadonlyArray<unknown> ? S[I] : ItemOf<S>
+// A rest binding copies the unconsumed tuple positions into a mutable tuple.
+type TupleRest<S extends readonly unknown[], I extends number, Count extends unknown[]=[]>
+ = Count["length"] extends I ? [...S]
+ : S extends readonly [unknown, ...infer Tail] ? TupleRest<Tail,I,[...Count,unknown]>
+ : number extends S["length"] ? S[number][]
+ : S extends readonly [unknown?, ...infer Tail] ? TupleRest<Tail,I,[...Count,unknown]>
+ : []
+type IsTuple<S extends readonly unknown[]> = S extends unknown
+  ? number extends S["length"]
+    ? "0" extends keyof S ? true
+      : S extends readonly [...unknown[], unknown] ? true : false
+    : true
+  : never
+type Rest<S,I extends number> = 0 extends 1 & S ? any
+ : number extends I ? Item<S>[]
+ : [IterableSubject<S>] extends [readonly unknown[]]
+   ? false extends IsTuple<IterableSubject<S>> ? Item<S>[]
+     : I extends unknown ? TupleRest<IterableSubject<S>,I> : never
+   : Item<S>[]
+
 interface RecordState {
   iterator: object
   next: unknown
@@ -90,10 +110,10 @@ export function $matchCache() {
       return record(subject).values[index] as ItemAt<IterableSubject<S>, I>
     },
     end(subject: unknown, index: number): boolean { return !pull(record(subject), index) },
-    rest<S>(subject: S, index: number): Item<S>[] {
+    rest<S, I extends number>(subject: S, index: I): Rest<S, I> {
       const entry = record(subject)
       while (pull(entry, entry.values.length)) {}
-      return entry.values.slice(index) as Item<S>[]
+      return entry.values.slice(index) as Rest<S, I>
     },
     threw(error: unknown): void { failed = true; failure = error },
     finish(): void {
