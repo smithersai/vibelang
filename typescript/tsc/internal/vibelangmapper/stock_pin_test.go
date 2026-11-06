@@ -108,7 +108,6 @@ func TestStockTypeScriptPinHasOneSource(t *testing.T) {
 	// The user docs may name the stock TypeScript the mapper is tested
 	// with, and then name the pin.
 	if pin, err := stockTypeScriptVersion(root); err == nil {
-		named := regexp.MustCompile(`typescript@(\d+\.\d+\.\d+[0-9A-Za-z.-]*[0-9A-Za-z])`)
 		err := filepath.WalkDir(filepath.Join(root, "docs/user/src"), func(path string, entry fs.DirEntry, err error) error {
 			if err != nil || entry.IsDir() || filepath.Ext(path) != ".md" {
 				return err
@@ -117,7 +116,7 @@ func TestStockTypeScriptPinHasOneSource(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			for _, match := range named.FindAllStringSubmatch(string(data), -1) {
+			for _, match := range stockTypeScriptNamed.FindAllStringSubmatch(string(data), -1) {
 				if match[1] != pin {
 					rel, _ := filepath.Rel(root, path)
 					found = append(found, rel+": "+match[0]+" is not the pin, typescript@"+pin)
@@ -152,6 +151,37 @@ func TestRequireStockTypeScriptWhenRequired(t *testing.T) {
 		output, err := command.CombinedOutput()
 		if failed := err != nil; failed != tc.fails || !strings.Contains(string(output), "missing pinned stock TypeScript compiler") {
 			t.Errorf("VIBELANG_REQUIRE_STOCK_TYPESCRIPT=%q: failed %v, want %v\n%s", tc.required, failed, tc.fails, output)
+		}
+	}
+}
+
+// stockTypeScriptNamed finds the npm package typescript at an exact version. A
+// longer package name that ends in typescript, such as vibelang-typescript or
+// a scoped package, is a different package with its own versions.
+var stockTypeScriptNamed = regexp.MustCompile(`(?:^|[^\w/-])typescript@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]*[0-9A-Za-z])?)`)
+
+func TestStockTypeScriptNamedOnlyMatchesThatPackage(t *testing.T) {
+	// Spelled in parts, so the repository scan above does not read these as pins.
+	const at = "typescript" + "@"
+	for text, want := range map[string]string{
+		at + "9.9.9":                         "9.9.9",
+		"npm install " + at + "5.9.3":        "5.9.3",
+		"`" + at + "7.1.0-beta`":             "7.1.0-beta",
+		"(" + at + "1.2.3)":                  "1.2.3",
+		"npm:" + at + "1.2.3":                "1.2.3",
+		at + "npm:vibelang-" + at + "7.1.11": "",
+		"npm:vibelang-" + at + "7.1.11":      "",
+		"@scope/" + at + "1.2.3":             "",
+		"not-" + at + "1.2.3":                "",
+		"my" + at + "1.2.3":                  "",
+		at + "latest":                        "",
+	} {
+		got := ""
+		if match := stockTypeScriptNamed.FindStringSubmatch(text); match != nil {
+			got = match[1]
+		}
+		if got != want {
+			t.Errorf("%q: got %q, want %q", text, got, want)
 		}
 	}
 }
