@@ -18,15 +18,21 @@ if (found !== wanted) {
 
 const exe = findBinary()
 const args = process.argv.slice(2)
+// The optional native package is a sibling of the compiler package.
+const env = {
+  ...process.env,
+  VIBELANG_FORMAT_NODE: process.execPath,
+  VIBELANG_FORMAT_MODULE: require.resolve("vibelang/format")
+}
 if (process.platform !== "win32" && typeof process.execve === "function") {
   try {
-    process.execve(exe, [exe, ...args])
+    process.execve(exe, [exe, ...args], env)
   } catch {
     // Fall back to a child process below.
   }
 }
 try {
-  execFileSync(exe, args, { stdio: "inherit" })
+  execFileSync(exe, args, { stdio: "inherit", env })
 } catch (error) {
   process.exitCode = error.status ?? 1
 }

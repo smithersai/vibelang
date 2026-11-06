@@ -20,3 +20,5 @@ effect function greet(name: string) {
 The compiler is `vibelang`, TypeScript 7.1 with VibeLang. A tool that needs TypeScript's JavaScript API doesn't work with it. Bundlers parse `.ts` themselves, so they need `vibelang-vite` or `vibelang-unplugin`.
 
 Read [VibeLang in .ts files](https://vibelang.sh/setup/typescript-shim) before installing the package.
+
+Editor formatting uses the formatter shipped with the installed `vibelang` package, including when the native executable is in a separate platform package. No formatter environment settings are needed.

@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The source checkout preview could fail with `TS2307` for `vibelang-runtime` in another project. The instructions now install the checkout's runtime there before checking.
 
+- Editor formatting through an installed TypeScript shim could report that the formatter module was missing. The launcher now locates the formatter in the installed compiler package.
+
 - A long ordinary comment beginning with `// @vibe` could make loaders or the formatter treat an unmarked TypeScript file as VibeLang. They now check the complete directive line and leave that file unchanged.
 
 - The TypeScript-file guide claimed stock tools always reject VibeLang or preserve its meaning. It now explains that prelude names can compile successfully with different bindings.
