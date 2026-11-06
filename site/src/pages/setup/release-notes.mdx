@@ -13,6 +13,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12
 
 ### Bugs fixed since 0.0.11
+- A `.vibex` file with a `module` body failed in Vite under `"jsx": "preserve"`, with `Failed to resolve import` for its `.jsx` output. `vibelang-vite` now serves that output.
+- Migration `record` refused a batch whose every module had reverted for a recorded cause, even with every gate passing. It now keeps that outcome and its causes.
+- Migration verify reported a lost wrapper when a conversion wrote `onSome: Effect.succeed` as `onSome: (value) => Effect.succeed(value)`.
 - A JavaScript exception in a `do` that ran an Effect could skip an iterator's `return` method when the `do` stood in an array destructuring default or a `for…of` body. The iterator now closes, and the exception wins over an error from closing.
 - Migration API checks reported a type difference for an unchanged generic alias that uses `infer`, and for generic exports over it, when its file had any other change. They now prove such an alias equal, and a real change to it still fails.
 - Migration API checks could not compare an export that reached a module stopped by `TS7056`, so a package stayed unavailable. A snapshot now saves that module's source and the check reads it, so the export compares normally. Record older snapshots again to get this.
