@@ -12,7 +12,7 @@ func TestTryOperandEvaluation(t *testing.T) {
 		{"parenthesized try", "declare function build(): Effect.Effect<ReadonlyArray<Effect.Effect<number>>>; function f() { return try.all (try (build())) }", "$try((build()))", ""},
 		{"tagged factory", "declare const make: (s: TemplateStringsArray) => Effect.Effect<ReadonlyArray<Effect.Effect<number>>>; function f() { return try.all (try make`x`) }", "$try(make`x`)", ""},
 		{"array-producing value", "function f(p: Effect.Effect<ReadonlyArray<Effect.Effect<number>>>) { return try.all (try p) }", "$try(p)", ""},
-		{"untried constructors", "declare function task(): Effect.Effect<number>; function f() { return try.all [task(), Effect.succeed(2)] }", "$tryAll([task(), Effect.succeed(2)])", "$run(task())"},
+		{"untried constructors", "declare function task(): Effect.Effect<number>; function f() { return try.all [task(), Effect.succeed(2)] }", `Effect.all([task(), Effect.succeed(2)], { concurrency: "unbounded" })`, "$run(task())"},
 		{"nested operation", "function f(p: Effect.Effect<number>, q: Effect.Effect<number>) { return try.all [Effect.succeed(try.any [p, q])] }", "$tryAny([p, q])", "$run(Effect.succeed("},
 	} {
 		t.Run(test.name, func(t *testing.T) {
