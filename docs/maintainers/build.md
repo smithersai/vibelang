@@ -63,7 +63,7 @@ no target arguments. A failed install retains its diagnostic and nonzero exit
 status; provisioned `node_modules` symlinks stay with their owner.
 
 `scripts/ci.sh` installs what the targets read (`.smithers`, the runtime, the
-compiler package, `experiments`, `docs/tools`) from their lockfiles, then runs
+compiler package, `packages/compiler/test/tools`, `experiments`, `docs/tools`) from their lockfiles, then runs
 `smthrs ci`, which runs build and test targets alike. `explain` prints a
 target's inputs, its key and whether the cache holds a result for it.
 
