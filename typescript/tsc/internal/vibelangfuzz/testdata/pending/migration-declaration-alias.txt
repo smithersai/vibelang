@@ -1,0 +1,7 @@
+# Native-emitted original declarations must compare identically to themselves.
+FuzzMigrationDeclarationAlias self:interface-ts compiler VIP-34: successful original declaration emission must self-compare completely; lane migfix-t3code-apiabsent
+FuzzMigrationDeclarationAlias self:named-js compiler VIP-34: successful original declaration emission must self-compare completely; lane migfix-t3code-apiabsent
+FuzzMigrationDeclarationAlias self:named-ts compiler VIP-34: successful original declaration emission must self-compare completely; lane migfix-t3code-apiabsent
+FuzzMigrationDeclarationAlias self:namespace-js compiler VIP-34: successful original declaration emission must self-compare completely; lane migfix-t3code-apiabsent
+FuzzMigrationDeclarationAlias self:namespace-ts compiler VIP-34: successful original declaration emission must self-compare completely; lane migfix-t3code-apiabsent
+FuzzMigrationDeclarationAlias corpus:t3code-original-self-projected-alias compiler VIP-34: self:namespace-ts; lane migfix-t3code-apiabsent

@@ -1,0 +1,8 @@
+{
+  "key": "namespace-ts",
+  "quote": "each export's type identical to `tsc`'s in both directions",
+  "files": {
+    "src/a.ts": "export class Failure extends Error {}\nexport function make(): Failure { return new Failure(); }\n",
+    "src/index.ts": "import * as A from \"./a.ts\";\nexport const factory: () => A.Failure = A.make;\n"
+  }
+}
