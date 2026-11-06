@@ -8,6 +8,15 @@ file or spread `S.glob(["pattern"])` for a group. String paths belong in
 the arguments to those helpers. Invalid declarations fail before any target
 can run; successful tests of a target's command alone do not validate them.
 
+When the root declaration imports new input factories or audit inventories,
+update the VM bindings in its declaration fixtures with the real imports too.
+Those fixtures check dependency identity and command transport. Run them with:
+
+```sh
+node --test scripts/forms-generator.test.mjs scripts/fuzz-hangs-target.test.mjs \
+  scripts/native-output.test.mjs scripts/spec-progress-target.test.mjs
+```
+
 
 The compiler package gate also runs `//typescript/tsc:go-vibelangfmt`, so formatter Go regressions run before a compiler change lands. Schema-optional oracles quote the conditional specification table and retain both project-setting branches; wording updates do not replace semantic or declaration checks.
 

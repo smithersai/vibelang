@@ -1,4 +1,5 @@
 import { createApiIdentityInputs } from "../api-inputs.ts"
+import { buildContractSuites, createBuildContractInputs } from "../build-contract-inputs.ts"
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
@@ -14,7 +15,7 @@ function targets(file) {
   const source = stripTypeScriptTypes(read(file)).replace(/^import .*$/gm, "")
     .replace("export const Package", "globalThis.result")
   const context = {
-    createApiIdentityInputs,
+    createApiIdentityInputs, buildContractSuites, createBuildContractInputs,
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
     vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
     process: { env: {} },
