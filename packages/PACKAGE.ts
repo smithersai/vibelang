@@ -183,12 +183,11 @@ const migrateLoaderValidation = S.Shell.Test({
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
-    "cd ../../.smithers/flows && node --test " +
-    "--test-reporter=../../scripts/testing/migrate-progress.mjs --test-reporter-destination=stderr " +
-    "migrate/test/*.test.mjs convert/*.test.mjs",
+    "cd ../../.smithers/flows && files=$(node ../../scripts/testing/migrate-slice.mjs migrate/test/*.test.mjs convert/*.test.mjs) && node --test " +
+    "--test-reporter=../../scripts/testing/migrate-progress.mjs --test-reporter-destination=stderr $files",
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
-    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//scripts/testing/migrate-progress.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//scripts/testing/migrate-progress.mjs"), S.file("//scripts/testing/migrate-slice.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
     S.file("//docs/user/src/setup/migrating-retired-forms.md"),
     S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
