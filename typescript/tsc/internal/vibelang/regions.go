@@ -36,6 +36,13 @@ import (
 // region's closure too and the jump leaves it as well, it returns the record
 // to its own runner. A region that no jump leaves has no record to dispatch.
 //
+// A provide or interruption region is observable: a layer's finalizer sees the
+// success payload of its Effect. Its record travels in a private cell instead,
+// and the closure returns what the accepted generator returns: the value of a
+// return, and undefined for a break, a continue and a normal end (chapter 2,
+// Effect observers). The enclosing generator dispatches on the cell after the
+// region and its finalizers succeed.
+//
 // The API for other region kinds (using, fork, and loops over producers):
 // create a *region, emit each block with regionStatements, which collects the
 // jumps that leave it, and regionFunction, compose the closures with runtime
@@ -50,8 +57,9 @@ type jump struct {
 // A region collects the jumps that leave it while the lowering emits its
 // closures.
 type region struct {
-	forTry bool   // VIP-20: a consumer returns whether to keep pulling
-	jumps  []jump // each jump once, in the order the lowering met them
+	forTry bool      // VIP-20: a consumer returns whether to keep pulling
+	cell   *ast.Node // an observable region's completion record, or nil
+	jumps  []jump    // each jump once, in the order the lowering met them
 }
 
 func (r *region) add(j jump) {
@@ -183,10 +191,31 @@ func (tx *lowering) leave(j jump, value *ast.Node, original *ast.Node) *ast.Node
 	} else {
 		properties = append(properties, f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("label"), nil /*postfixToken*/, nil /*typeNode*/, f.NewStringLiteral(j.label, ast.TokenFlagsNone)))
 	}
-	record := f.NewReturnStatement(f.NewObjectLiteralExpression(f.NewNodeList(properties), false /*multiLine*/))
+	object := f.NewObjectLiteralExpression(f.NewNodeList(properties), false /*multiLine*/)
+	var record *ast.Node
+	if tx.frame.region.cell != nil {
+		record = tx.transfer(object, j)
+	} else {
+		record = f.NewReturnStatement(object)
+	}
 	tx.EmitContext().SetOriginal(record, original)
 	record.Loc = original.Loc
 	return record
+}
+
+// transfer records completion, the record of j, in the cell of the observable
+// region whose closure the frame emits, and returns the closure's payload.
+func (tx *lowering) transfer(completion *ast.Node, j jump) *ast.Node {
+	f := tx.Factory()
+	cell := tx.frame.region.cell
+	var payload *ast.Node
+	if j.kind == ast.KindReturnStatement {
+		payload = f.NewPropertyAccessExpression(cell, nil /*questionDotToken*/, f.NewIdentifier("value"), ast.NodeFlagsNone)
+	}
+	return f.NewBlock(f.NewNodeList([]*ast.Node{
+		f.NewExpressionStatement(f.NewAssignmentExpression(cell, completion)),
+		f.NewReturnStatement(payload),
+	}), false /*multiLine*/)
 }
 
 func jumpKind(kind ast.Kind) string {
@@ -291,7 +320,7 @@ func (tx *lowering) regionFunction(r *region, role string, binding *ast.Node, bl
 	}
 	if r.forTry {
 		statements = append(statements, f.NewReturnStatement(f.NewKeywordExpression(ast.KindTrueKeyword)))
-	} else if len(r.jumps) > 0 && canCompleteNormally(block) {
+	} else if r.cell == nil && len(r.jumps) > 0 && canCompleteNormally(block) {
 		statements = append(statements, tx.generated(f.NewReturnStatement(tx.runtimeMember("$normal"))))
 	}
 	body := f.NewBlock(f.NewNodeList(statements), true /*multiLine*/)
@@ -345,13 +374,25 @@ func (tx *lowering) runRegion(original *ast.Node, run *ast.Node, r *region) *ast
 		statement.Loc = original.Loc
 		return statement
 	}
-	completion := f.NewUniqueName("completion")
-	declaration := f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
-		f.NewVariableDeclaration(completion, nil /*exclamationToken*/, nil /*typeNode*/, yield),
-	}), ast.NodeFlagsConst))
-	ec.SetOriginal(declaration, original)
-	declaration.Loc = original.Loc
-	statements := []*ast.Node{declaration}
+	var statements []*ast.Node
+	completion := r.cell
+	if completion != nil {
+		declaration := f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
+			f.NewVariableDeclaration(completion, nil /*exclamationToken*/, nil /*typeNode*/, tx.runtimeMember("$normal")),
+		}), ast.NodeFlagsLet))
+		run := f.NewExpressionStatement(yield)
+		ec.SetOriginal(run, original)
+		run.Loc = original.Loc
+		statements = []*ast.Node{declaration, run}
+	} else {
+		completion = f.NewUniqueName("completion")
+		declaration := f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
+			f.NewVariableDeclaration(completion, nil /*exclamationToken*/, nil /*typeNode*/, yield),
+		}), ast.NodeFlagsConst))
+		ec.SetOriginal(declaration, original)
+		declaration.Loc = original.Loc
+		statements = []*ast.Node{declaration}
+	}
 	for _, j := range r.jumps {
 		statements = append(statements, tx.dispatch(completion, j))
 	}
@@ -381,7 +422,11 @@ func (tx *lowering) dispatch(completion *ast.Node, j jump) *ast.Node {
 		then = f.NewReturnStatement(f.NewKeywordExpression(kind))
 	case !tx.frame.lands(j) && tx.frame.region != nil:
 		tx.frame.region.add(j)
-		then = f.NewReturnStatement(completion)
+		if tx.frame.region.cell != nil {
+			then = tx.transfer(completion, j)
+		} else {
+			then = f.NewReturnStatement(completion)
+		}
 	case j.kind == ast.KindReturnStatement:
 		then = f.NewReturnStatement(member("value"))
 	default:

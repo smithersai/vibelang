@@ -626,6 +626,7 @@ vibelang/regions.go:lowering.visitJumpTarget	admission:regions	002-running.md	su
 vibelang/regions.go:lowering.visitJump	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
 vibelang/regions.go:lowering.jumpTo	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
 vibelang/regions.go:lowering.leave	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.transfer	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
 vibelang/regions.go:jumpKind	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
 vibelang/regions.go:lowering.visitTryStatement	admission:effect-try	-	pending	VIP-5 forbids Effect try statements; native TypeScript try remains valid
 vibelang/regions.go:lowering.regionStatements	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below

@@ -6875,6 +6875,11 @@ typescript/vibelang/cases/ref5-programs-as-data/ref5-programs-as-data.vibe:37:18
 typescript/vibelang/cases/ref5-programs-as-data/ref5-programs-as-data.vibe:43:36 byname program table
 typescript/vibelang/cases/ref5-programs-as-data/ref5-programs-as-data.vibe:44:32 byname program table
 typescript/vibelang/cases/ref5-programs-as-data/ref5-programs-as-data.vibe:44:65 byname program table
+typescript/vibelang/cases/region-observer-payloads/main.vibe:32:15 lambda effectFn keyword
+typescript/vibelang/cases/region-observer-payloads/main.vibe:7:19 lambda effectFn fallback
+typescript/vibelang/cases/region-observer-payloads/main.vibe:7:59 byname program table
+typescript/vibelang/cases/region-observer-payloads/main.vibe:7:72 lambda effectFn table
+typescript/vibelang/cases/region-observer-payloads/main.vibe:7:85 lambda plain table
 typescript/vibelang/cases/regions-jumps/main.vibe:102:73 lambda program table
 typescript/vibelang/cases/regions-jumps/main.vibe:104:4 lambda effectFn keyword
 typescript/vibelang/cases/regions-jumps/main.vibe:109:64 lambda program table

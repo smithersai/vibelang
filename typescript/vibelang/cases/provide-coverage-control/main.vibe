@@ -1,5 +1,5 @@
 // VIP-12 source-completions-and-finalizer-payloads
-service NumberService {value:number}
+service NumberService {static readonly key="provide-coverage-control/main#NumberService";value:number}
 const observed:unknown[]=[]
 const Live=Layer.effectDiscard(Effect.acquireRelease(Effect.succeed(undefined),(_,ex)=>Effect.sync(()=>{observed.push(Exit.isSuccess(ex)?ex.value??"undefined":ex._tag)})))
 effect function returned():number!!{

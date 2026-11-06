@@ -23,8 +23,9 @@ import (
 // statements that the layer does not provide plus the layer's own. The
 // lowering runs the statements as a region closure under Effect.provide:
 //
-//	const completion = yield* Effect.provide(Effect.fnUntraced(function* f$provide() {
-//	  return { kind: "return", value: yield* greet("42") };
+//	let completion = runtime.$normal;
+//	yield* Effect.provide(Effect.fnUntraced(function* f$provide() {
+//	  { completion = { kind: "return", value: yield* greet("42") }; return completion.value; }
 //	})(), UsersLive);
 //	if (completion.kind === "return") return completion.value;
 //
@@ -343,7 +344,7 @@ func (tx *lowering) visitProvideBlock(node *ast.Node) *ast.Node {
 	if services && !ast.IsArrayLiteralExpression(layer) {
 		layer = f.NewArrayLiteralExpression(f.NewNodeList([]*ast.Node{layer}), false /*multiLine*/)
 	}
-	r := &region{}
+	r := &region{cell: f.NewUniqueName("completion")}
 	statements := tx.regionStatements(r, node)
 	run := tx.runNow(tx.regionFunction(r, "provide", nil, node, statements), node)
 	if services {

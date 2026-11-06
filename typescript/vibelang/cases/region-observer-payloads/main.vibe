@@ -1,0 +1,43 @@
+// expect-result: [[7,7,5],[["undefined"],["value:7"],["undefined"],["undefined"],["undefined","undefined","undefined"],["value:7","value:7"],["value:7"],["record:return"],["undefined"],["value:9"]]]
+// Chapter 2, Region bodies, Effect observers: provide and interruption regions
+// keep the accepted generator's success payload at every Effect or Scope
+// boundary. Compiler control records never appear in the primitive success channel.
+const record = { kind: "return", value: 1 }
+
+const observing = (seen: string[]) => Layer.effectDiscard(addFinalizer(exit => sync(() => {
+  if (exit._tag !== "Success") seen.push(exit._tag)
+  else if (exit.value === undefined) seen.push("undefined")
+  else if (exit.value === record) seen.push("record:" + record.kind)
+  else seen.push("value:" + String(exit.value))
+})))
+
+effect function normal(seen: string[]) { return do { provide observing(seen) { 7 } } }
+effect function returned(seen: string[]) { provide observing(seen) { return 7 } }
+effect function bare(seen: string[]) { provide observing(seen) { return } }
+effect function broke(seen: string[]) {
+  outer: while (true) { provide observing(seen) { break outer } }
+}
+effect function jumps(seen: string[]) {
+  for (const n of [1, 2]) { provide observing(seen) { if (n === 1) continue } }
+  outer: for (const n of [1]) { for (const m of [1]) { provide observing(seen) { continue outer } } }
+}
+effect function nested(seen: string[]) { provide observing(seen) { provide observing(seen) { return 7 } } }
+effect function masked(seen: string[]) { provide observing(seen) { uninterruptible { restore { return 7 } } } }
+effect function data(seen: string[]) { provide observing(seen) { return record } }
+effect function inherited(seen: string[]) { const v = do { 5; provide observing(seen) { } }; return v }
+effect function deep(seen: string[]) { for (const n of [9]) { provide observing(seen) { uninterruptible { return n } } } }
+
+export effect function main() {
+  const all: string[][] = []
+  const run = effect (body: (seen: string[]) => Effect.Effect<unknown>) => {
+    const seen: string[] = []
+    const value = try body(seen)
+    all.push(seen)
+    return value
+  }
+  const values = [try run(normal), try run(returned)]
+  try run(bare); try run(broke); try run(jumps); try run(nested); try run(masked); try run(data)
+  values.push(try run(inherited))
+  try run(deep)
+  return [values, all]
+}

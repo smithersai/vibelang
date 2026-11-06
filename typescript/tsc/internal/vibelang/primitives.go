@@ -400,7 +400,7 @@ func primitiveQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 // runs under the prelude's uninterruptible, restore, or interruptible.
 func (tx *lowering) visitMaskBlock(node *ast.Node, word string) *ast.Node {
 	f := tx.Factory()
-	r := &region{}
+	r := &region{cell: f.NewUniqueName("completion")}
 	statements := tx.regionStatements(r, node)
 	run := tx.runNow(tx.regionFunction(r, word, nil, node, statements), node)
 	run = f.NewCallExpression(tx.runtimeMember(word), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{run}), ast.NodeFlagsNone)
