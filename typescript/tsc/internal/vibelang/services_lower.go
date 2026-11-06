@@ -161,7 +161,8 @@ func (tx *lowering) visitServiceClass(node *ast.Node) *ast.Node {
 	tx.inEffect = false
 	members := tx.Visitor().VisitNodes(node.MemberList())
 	tx.inEffect = saved
-	if _, written := writtenKey(node); written != nil && members != nil {
+	_, written := writtenKey(node)
+	if written != nil && members != nil {
 		// static readonly key = "<key>" is the key (D501), not a member.
 		var kept []*ast.Node
 		for _, member := range members.Nodes {
@@ -174,7 +175,12 @@ func (tx *lowering) visitServiceClass(node *ast.Node) *ast.Node {
 		members = list
 	}
 
-	helper, arguments := "$service", []*ast.Node{f.NewStringLiteral(key, ast.TokenFlagsNone)}
+	literal := f.NewStringLiteral(key, ast.TokenFlagsNone)
+	if written != nil {
+		// A written key moves into the heritage clause and keeps its position.
+		ec.AssignSourceMapRange(literal, written.Initializer())
+	}
+	helper, arguments := "$service", []*ast.Node{literal}
 	if hasDefaultValue(node) {
 		// runtime.$reference(key, () => Flags.defaultValue())
 		helper = "$reference"

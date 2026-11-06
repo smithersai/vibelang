@@ -113,6 +113,12 @@ func (tx *lowering) visitAcquisitionReference(node *ast.Node) *ast.Node {
 	reference := tx.runtimeMember(tx.plan.recording[node])
 	tx.EmitContext().SetOriginal(reference, node)
 	reference.Loc = node.Loc
+	// V8 reports a call at the callee's name, so the written name keeps its place.
+	written := node
+	if ast.IsPropertyAccessExpression(node) {
+		written = node.Name()
+	}
+	tx.EmitContext().AssignSourceMapRange(reference.Name(), written)
 	return reference
 }
 
