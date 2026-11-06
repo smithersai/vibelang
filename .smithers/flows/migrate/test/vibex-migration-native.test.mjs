@@ -55,20 +55,27 @@ test("a TSX component with hooks, generics and an Effect value compiles identica
     const comparison = compareDeclarations(ts, before, after)
     assert.equal(comparison.comparisonComplete, true, JSON.stringify(comparison))
     assert.equal(comparison.identical, true, JSON.stringify(comparison))
-    // A tool that reads source gets the emitted module, and a native edge reads through the compiler.
+    // Tools transform preserved JSX and retain the native component runtime behavior.
     const { toolArguments } = await import(new URL("../../../../packages/compiler/emit.mjs", import.meta.url).href)
     const nativeText = readFileSync(join(root, "Card.vibex"), "utf8")
     const [, toolText, toolOptions] = toolArguments(join(root, "Card.vibex"), nativeText, {})
     assert.equal(toolOptions.lang, "jsx")
-    assert.equal(toolText.trim().startsWith(readFileSync(join(root, "dist/Card.js"), "utf8").trim().split("\n")[0]), true)
+    assert.match(toolText, /<button\b/)
+    assert.doesNotMatch(toolText, /from ["']react\/jsx(?:-dev)?-runtime["']/)
+    const transformed = ts.transpileModule(toolText, {
+      fileName: "Card.jsx", reportDiagnostics: true,
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX }
+    })
+    assert.deepEqual(transformed.diagnostics, [])
     assert.ok(runtimeEdges(nativeText, "Card.vibex", ts, compiler, root).some(edge => edge.specifier === "effect"))
     const { createElement } = await import(pathToFileURL(reactRequire.resolve("react")).href)
     const { renderToStaticMarkup } = await import(pathToFileURL(reactRequire.resolve("react-dom/server")).href)
     const { Effect } = await import(pathToFileURL(require.resolve("effect")).href)
     mkdirSync(join(root, "render"))
-    for (const dir of ["before", "after"]) {
-      const file = join(root, "render", "Card-" + dir + ".js")
-      writeFileSync(file, readFileSync(join(directory, dir, "Card.js")))
+    const rendered = { before: readFileSync(join(before, "Card.js")), after: readFileSync(join(after, "Card.js")), tool: transformed.outputText }
+    for (const [variant, code] of Object.entries(rendered)) {
+      const file = join(root, "render", "Card-" + variant + ".js")
+      writeFileSync(file, code)
       const { Card, ready } = await import(pathToFileURL(file).href)
       assert.equal(renderToStaticMarkup(createElement(Card, { item: { name: "Ada" } })), '<button type="button">Ada: ready</button>')
       assert.equal(Effect.runSync(ready), "ready")
