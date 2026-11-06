@@ -82,9 +82,9 @@ export function parseOutput(output, root) {
       if (diagnostic) diagnostic.text += "\n" + line
     } else if (isAbsolute(line.trim()) &&
       // A multiline message can quote source comments at column zero.
-      // A double slash may instead name a UNC file. Keep those and unusual
-      // existing paths in the listing, as well as ordinary missing inputs.
-      !(diagnostic && /^(?:\/\*|\/\/(?![^/\s]+\/[^/\s]+\/))/.test(line.trim()) && !existsSync(line.trim()))) {
+      // Keep existing input paths even when their spelling resembles a
+      // comment. Once file listing starts, missing paths remain inputs too.
+      !(diagnostic && /^\/[*/]/.test(line.trim()) && !existsSync(line.trim()))) {
       files.push(line.trim())
       diagnostic = undefined
     } else if (diagnostic && line) {

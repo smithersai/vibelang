@@ -88,3 +88,5 @@ The generated-program run logs its replay seed, program key, text variant, bundl
 A bundler can place a surrounding expression's segment and a string's segment at the same opening quote. The composed-map check reads inside the string and requires the original token's quote position. A keyed replay covers strings kept after a call is eliminated. Module specifiers are excluded by their syntax in the text; a missing mapping is never itself a reason to skip a retained value.
 
 The subprocess checks record elapsed time and distinguish their own deadline from another termination signal. Rolldown progress records identify import, creation, writing and closure. A loader replay covers a multiline warning whose comment-prefixed source text previously became nonexistent watched paths; the diagnostic parser retains the excerpt and the unchanged project finishes once.
+
+While a diagnostic is continuing, nonexistent comment-shaped paths, including `//path/to/source`, stay in its source excerpt. Existing input files remain inputs, and a started file listing still accepts missing paths. The parser property covers these boundaries separately.

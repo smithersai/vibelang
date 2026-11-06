@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
 import { resolve, join } from "node:path"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { test } from "node:test"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
@@ -13,7 +15,7 @@ test("warning source excerpts stay diagnostics and never become watched inputs",
     command: "node --test packages/compiler/test/project-diagnostic-excerpts.property.test.mjs",
     numRuns: 100,
     arbitrary: fc.record({
-      comment: fc.constantFrom("/* plain */", "/*😀𝒜*/", "/* open", "// comment", "// 😀", "//plain", "//# directive", "/// reference"),
+      comment: fc.constantFrom("/* plain */", "/*😀𝒜*/", "/* open", "// comment", "// 😀", "//plain", "//# directive", "/// reference", "//path/to/excerpt", "//path/to/excerpt.vibe"),
       statement: fc.constantFrom("const kept = 1;", "return kept;", "})"),
       indent: fc.constantFrom("", " ", "\t"),
       eol: fc.constantFrom("\n", "\r\n")
@@ -45,10 +47,33 @@ test("a following diagnostic starts its own multiline message", () => {
   assert.deepEqual(parsed.files, [join(root, "main.vibe")])
 })
 
-test("UNC source listings remain files after a warning", () => {
+test("missing UNC source listings remain files after the file list starts", () => {
   const root = resolve("project")
   const unc = ["", "", "fixture-server", "share", "main.vibe"].join("/")
-  const parsed = parseOutput("warning EK9204: warning\n" + unc + "\n" + join(root, "main.vibe"), root)
-  assert.deepEqual(parsed.files, [unc, join(root, "main.vibe")])
+  const parsed = parseOutput("warning EK9204: warning\n" + join(root, "main.vibe") + "\n" + unc, root)
+  assert.deepEqual(parsed.files, [join(root, "main.vibe"), unc])
+  assert.equal(parsed.diagnostics[0].text, "warning")
+})
+
+
+test("a network-path-shaped source comment stays in the warning", () => {
+  const root = resolve("project")
+  const parsed = parseOutput([
+    "warning EK9204: effect {", "//path/to/excerpt.vibe", "return 1", "} cannot fail",
+    join(root, "main.vibe")
+  ].join("\n"), root)
+  assert.deepEqual(parsed.files, [join(root, "main.vibe")])
+  assert.equal(parsed.diagnostics[0].text, "effect {\n//path/to/excerpt.vibe\nreturn 1\n} cannot fail")
+})
+
+
+test("an existing listed input remains a file immediately after a warning", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "vibelang-listed-input-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const file = join(root, "main.vibe")
+  writeFileSync(file, "export const value = 1")
+  const listed = process.platform === "win32" ? file : "/" + file
+  const parsed = parseOutput("warning EK9204: warning\n" + listed, root)
+  assert.deepEqual(parsed.files, [listed])
   assert.equal(parsed.diagnostics[0].text, "warning")
 })

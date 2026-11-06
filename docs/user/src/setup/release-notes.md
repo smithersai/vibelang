@@ -15,8 +15,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A line break between `try`, the dot and the operation name, as in `try` followed by `.all [a, b]` on the next line, reported a syntax error. Line breaks and comments may now separate those tokens.
 - Migration API checks ignored a project's `lib`, so a global from a selected library reported `TS2304` on unchanged declarations. They now load those libraries, and `compareDeclarations` takes `profile` and `workerHeaps`, with stage records streamed as they happen.
 - The source-map token check ignored written code on lines with no mappings. It now reports the missing source positions.
+- A warning quoting a `//path/to/source` comment could repeatedly recompile a loader project. Path-like line comments now stay in the warning, while listed source files remain watched.
 - A migration API check could replace an invalid declaration's missing-type error with a later checker crash. It now retains the original diagnostic and stops that comparison.
-- A multiline warning containing commented source could keep a loader recompiling forever. Source excerpts now remain diagnostic text instead of becoming watched filenames.
+- A multiline warning containing a `/* ... */` source comment could keep a loader recompiling forever. Block-comment excerpts now remain diagnostic text instead of becoming watched filenames.
 
 - Checking native routes in a fresh checkout could report that the route generator was missing. Preparation now installs the required adapter.
 - A `react-jsx` project built with `vibelang-vite` gave `.vibex` modules to the React Compiler already lowered, so it could skip them silently. Plugins after `vibelang-vite` now read the JSX when the project uses React's runtime.
