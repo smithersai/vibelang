@@ -1,0 +1,4 @@
+go test fuzz v1
+string("plain-both")
+byte(5)
+byte(1)

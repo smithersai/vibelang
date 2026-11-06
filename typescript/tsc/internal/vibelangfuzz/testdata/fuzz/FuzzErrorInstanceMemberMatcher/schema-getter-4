@@ -1,0 +1,4 @@
+go test fuzz v1
+string("schema-getter")
+byte(4)
+byte(0)
