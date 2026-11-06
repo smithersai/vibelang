@@ -1,0 +1,11 @@
+service Required { static readonly key = "regression/Required"; value: number }
+export effect function inside(provider: never) {
+  provide provider { return (try Required).value }
+}
+const computed = inside(Layer.empty as never)
+type Equal<A,B> = (<T>()=>T extends A ? 1 : 2) extends (<T>()=>T extends B ? 1 : 2) ? true : false
+export const exact: Equal<[Effect.Success<typeof computed>,Effect.Error<typeof computed>,Effect.Services<typeof computed>],[number,never,Required]> = true
+export effect function main() {
+  const provider = Layer.succeed(Required, { value: 7 }) as never
+  provide Required = { value: 3 } { return try inside(provider) }
+}

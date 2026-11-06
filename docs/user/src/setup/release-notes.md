@@ -24,6 +24,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A migrated package could report different exported types depending on how its entrypoints were grouped; API comparison now follows public declaration identities across groups.
 
 - A `for concurrent` head over an `any` operand could infer `unknown` and reject item properties. Identifier heads now retain the native item type and TypeScript narrowing.
+
+- Provider expressions typed as `never` were rejected. Concrete `never` providers now keep Effect's error and service types.
 - `effect` on an index signature or after a modifier in an interface or type literal, as in `interface I { readonly effect value: number }`, reported syntax errors. It now reports `EK0108`, with its quick fix.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
 

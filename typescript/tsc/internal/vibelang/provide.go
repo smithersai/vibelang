@@ -192,12 +192,22 @@ func providerType(c *checker.Checker, t *checker.Type) providerInfo {
 		return providerInfo{provided: unknown, errors: unknown, needs: unknown, valid: true, nonempty: true, layer: true}
 	}
 	result := emptyProvider(c)
+	// A concrete never contributes no channels and satisfies a layer slot.
+	if t != nil && t.Flags()&checker.TypeFlagsNever != 0 {
+		result.nonempty, result.layer = true, true
+		return result
+	}
 	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 {
 		result.valid = false
 		return result
 	}
 	if t.Flags()&checker.TypeFlagsInstantiable != 0 {
 		if constraint := c.GetBaseConstraintOfType(t); constraint != nil && constraint != t {
+			// A deferred generic must retain its native conditional channels.
+			if constraint.Flags()&checker.TypeFlagsNever != 0 {
+				result.valid = false
+				return result
+			}
 			return providerType(c, constraint)
 		}
 	}

@@ -40,7 +40,7 @@ A `provide` statement requires effect code. At module scope, `EK1201` points to 
 
 Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition. The compiler still checks the recovered body, including `EK1201` for a block outside effect code and independent type errors.
 
-A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. A provider typed as `any` follows Effect's overloads too: its error and requirement types remain `unknown`. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once. Support for diagnostics on the new provider forms arrives with the compiler's VIP implementation.
+A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. A provider typed as `any` follows Effect's overloads too: its error and requirement types remain `unknown`. A concrete `never` provider adds no error or requirement types, and keeps any service requirements its body still needs. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once. Support for diagnostics on the new provider forms arrives with the compiler's VIP implementation.
 
 ## Preventing dependency leakage
 
