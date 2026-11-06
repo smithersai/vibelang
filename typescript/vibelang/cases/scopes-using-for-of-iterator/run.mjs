@@ -11,12 +11,12 @@ function native(fail, count) {
     for (let i = 1; i <= count; i++) yield* Queue.offer(queue, "p" + i)
     yield* Queue.end(queue)
   }), { bufferSize: 1, strategy: "suspend" })
-  return Effect.map(Effect.exit(Stream.runForEach(stream, item =>
-    Effect.ensuring(Effect.gen(function* () {
+  return Effect.map(Effect.exit(Stream.runForEach(stream, item => Effect.gen(function* () {
+      using value = { [Symbol.dispose]() { events.push("dispose " + item) } }
       events.push("body")
       yield* Effect.sleep("1 millis")
       if (fail) return yield* Effect.fail("failed")
-    }), Effect.sync(() => { events.push("dispose " + item) })))),
+    }))),
     outcome => [Exit.isFailure(outcome), events])
 }
 await fc.assert(fc.asyncProperty(fc.boolean(), fc.integer({ min: 0, max: 8 }), async (fail, count) => {

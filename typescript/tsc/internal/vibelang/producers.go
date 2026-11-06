@@ -275,7 +275,7 @@ func (p *producerPlan) planProducer(c *checker.Checker, fn *ast.Node) {
 // unwinds through native IteratorClose, as in the Effect.gen counterpart.
 func isClosingLoop(c *checker.Checker, statement *ast.Node) bool {
 	loop := statement.AsForInOrOfStatement()
-	if loop.AwaitModifier != nil || !inLowerableBody(statement) || isForTry(statement) || !isUsingForOf(statement) {
+	if loop.AwaitModifier != nil || !inLowerableBody(statement) || isForTry(statement) || !isUsingForOf(statement) || analyzerFor(c).isNativeUsing(loop.Initializer) {
 		return false
 	}
 	if initializer := loop.Initializer; ast.IsVariableDeclarationList(initializer) && len(initializer.AsVariableDeclarationList().Declarations.Nodes) == 0 {

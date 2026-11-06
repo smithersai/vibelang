@@ -29,16 +29,22 @@ func (p *scopePlan) planScopes(a *analyzer, fn *ast.Node) {
 		case isFunctionBoundary(node):
 			return false
 		case isBlockUsing(node):
-			p.scopeBlocks[node.Parent] = true
-			p.usings[node] = true
-			p.planUsingDeclarations(a, node.AsVariableStatement().DeclarationList)
+			if !a.nativeUsingBlock(node.Parent) {
+				p.scopeBlocks[node.Parent] = true
+				p.usings[node] = true
+				p.planUsingDeclarations(a, node.AsVariableStatement().DeclarationList)
+			}
 		case isUsingForOf(node):
-			p.usingLoops[node] = true
-			p.planUsingDeclarations(a, node.AsForInOrOfStatement().Initializer)
+			if !a.isNativeUsing(node.AsForInOrOfStatement().Initializer) {
+				p.usingLoops[node] = true
+				p.planUsingDeclarations(a, node.AsForInOrOfStatement().Initializer)
+			}
 		case isUsingFor(node):
-			p.usingLoops[outermostLabel(node)] = true
-			p.planUsingDeclarations(a, node.AsForStatement().Initializer)
-
+			// TypeScript's using emit moves a label off a C-style loop's head.
+			if outermostLabel(node) != node || !a.isNativeUsing(node.AsForStatement().Initializer) {
+				p.usingLoops[outermostLabel(node)] = true
+				p.planUsingDeclarations(a, node.AsForStatement().Initializer)
+			}
 		}
 		return node.ForEachChild(visit)
 	}

@@ -86,6 +86,50 @@ func isUsingForOf(node *ast.Node) bool {
 	return initializer != nil && initializer.Kind == ast.KindVariableDeclarationList && isUsingList(initializer)
 }
 
+// isNativeUsing reports whether list keeps TypeScript's using in effect code
+// (VIP-8): each initializer runs no Effect and each binding is a Disposable,
+// null or undefined. The statement stays in its generator, so a failed try
+// abandons it undisposed (chapter 8, Abandonment). An Effect acquisition and
+// an AsyncDisposable keep their Scope region until they retire.
+func (a *analyzer) isNativeUsing(list *ast.Node) bool {
+	for _, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
+		if a.runsEffect(declaration.Initializer()) || !a.checker.IsSyncDisposableType(a.checker.GetTypeAtLocation(declaration.Name())) {
+			return false
+		}
+	}
+	return true
+}
+
+// runsEffect reports whether node, evaluated in its own activation, can stop
+// at a yield*.
+func (a *analyzer) runsEffect(node *ast.Node) bool {
+	if node == nil {
+		return false
+	}
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		switch {
+		case isFunctionBoundary(n):
+			return false
+		case isTry(n), n.Kind == ast.KindYieldExpression, isInvocation(n) && a.runs(n):
+			return true
+		}
+		return n.ForEachChild(visit)
+	}
+	return visit(node)
+}
+
+// nativeUsingBlock reports whether every using statement of block is native,
+// so block needs no Scope region.
+func (a *analyzer) nativeUsingBlock(block *ast.Node) bool {
+	for _, statement := range block.Statements() {
+		if isBlockUsing(statement) && !a.isNativeUsing(statement.AsVariableStatement().DeclarationList) {
+			return false
+		}
+	}
+	return true
+}
+
 // usingDeclarationOf returns the declaration whose initializer is node,
 // skipping parentheses, when that declaration belongs to a using statement
 // directly in a block or to the head of a C-style for loop; otherwise nil.

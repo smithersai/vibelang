@@ -55,7 +55,7 @@ export const sources: Record<string, () => Program> = {
   r6_interruptThenFinallyThrows: () => Effect.onExit(Effect.interrupt, fail),
   r8_allSettled: () => Effect.all([mixed()], { concurrency: "unbounded", mode: "result" }),
   r2_forUsingHead: () => disposed(),
-  r2_forUsingOf: () => Effect.forEach([1], () => disposed(), { discard: true }),
+  r2_forUsingOf: () => Effect.gen(function*() { for (using r of yield* Effect.sync(() => [disposable()])) { return yield* fail() } }),
   r2_callableDispose: () => disposed(callable),
   r2_callableAsyncDispose: asyncDisposed,
   r2_holder: holder,

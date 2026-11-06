@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- A `using` of a plain Disposable in effect code ran its disposer when a `try` failed or the fiber was interrupted. It now keeps TypeScript's meaning, as in `Effect.gen`: a failed `try` abandons the generator, so the disposer doesn't run. Use `acquireDisposable` inside `scoped` for cleanup on every exit.
 - A routed import in a migrated package could point at a declaration file that was never written, so TypeScript fell back to untyped JavaScript and reported TS7016 and TS7006 across the importers. A route now names the declaration the compiler wrote.
 - In a repository whose root project also compiles its packages, a routed import could point outside its package, and Bun then failed with `Cannot find module`. A package's own emitted file now wins.
 - The site's Proposals page still showed a layer as `Layer.effect(Users) { ... }`, a trailing block that `EK1101` rejects, and the contributor benchmark for `vibelang/register` generated its modules in that older syntax, so every module it wrote failed to compile. The page now shows `Layer.effect(Users, effect { ... })`, and the benchmark generates current syntax.
@@ -564,6 +565,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | A generic parameter constrained to a service key's value type, such as `Key extends typeof Users` | `EK3002`, `EK3003` and `EK3004` apply through the constraint. Obtain the implementation with `try ServiceName`, implement its shape or inspect its members; choosing that behavior requires a manual repair. |
 | Constructing, extending or matching a service key through an intersection-typed alias | `EK3003`, `EK3002` or `EK3004` applies as for the original service. Obtain the implementation with `try ServiceName`; implement its shape or inspect its members. Choosing the implementation or test requires a manual repair. |
 | Destructuring `constructor` from a function, or a template-literal `data:` or `blob:` specifier in `import()` | `EK0107`. Keep the read or the inline module in a `.ts` or `.js` adapter. |
+| A `using` of a plain Disposable in effect code that relied on disposal after a failed `try`, a defect or an interruption | The disposer now runs only when JavaScript control leaves its scope. Use `acquireDisposable` inside `scoped`, which `EK0801`'s fix writes, for cleanup on every exit. |
 
 ## 0.0.11
 

@@ -91,7 +91,7 @@ effect function acquires(fail: boolean) {
   return [Exit.isFailure(outcome), events]
 }
 
-// expect-result: {"completes":["body","step","dispose b","dispose a","after"],"fails":[true,["body","dispose h"]],"dies":[true,["body","dispose h"]],"interrupted":["body","dispose h"],"breaks":["broke",["inner","dispose b","inner","dispose b","inner","dispose b","dispose a"]],"returns":["returned",["inner","dispose b","inner","dispose b","inner","dispose b","dispose a"]],"acquires":[false,["acquire","use c","use c","release"]],"acquireFails":[true,["acquire","use c","release"]]}
+// expect-result: {"completes":["body","step","dispose b","dispose a","after"],"fails":[true,["body"]],"dies":[true,["body"]],"interrupted":["body"],"breaks":["broke",["inner","dispose b","inner","dispose b","inner","dispose b","dispose a"]],"returns":["returned",["inner","dispose b","inner","dispose b","inner","dispose b","dispose a"]],"acquires":[false,["acquire","use c","use c","release"]],"acquireFails":[true,["acquire","use c","release"]]}
 export effect function main() {
   return {
     completes: try completes(),

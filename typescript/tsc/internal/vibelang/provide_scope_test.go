@@ -19,7 +19,7 @@ func TestProvideBlockKeepsProviderWhenScoped(t *testing.T) {
 		body   string
 		scoped bool
 	}{
-		{body: "using value = null; return 1", scoped: true},
+		{body: "using value = try Effect.succeed(null); return 1", scoped: true},
 		{body: "const child = fork Effect.succeed(1); return 1", scoped: false},
 	} {
 		t.Run(test.body, func(t *testing.T) {

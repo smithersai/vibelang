@@ -49,3 +49,13 @@ func (c *Checker) CheckUsingDisposable(declaration *ast.Node) {
 	c.checkTypeAssignableTo(widenedInitializerType, optionalDisposableType, initializer,
 		diagnostics.The_initializer_of_a_using_declaration_must_be_either_an_object_with_a_Symbol_dispose_method_or_be_null_or_undefined)
 }
+
+// IsSyncDisposableType reports whether t is a Disposable, null or undefined,
+// the types TypeScript's using disposes without an await.
+func (c *Checker) IsSyncDisposableType(t *Type) bool {
+	globalDisposableType := c.getGlobalDisposableType()
+	if t == nil || globalDisposableType == c.emptyObjectType {
+		return false
+	}
+	return c.isTypeAssignableTo(t, c.getUnionType([]*Type{globalDisposableType, c.nullType, c.undefinedType}))
+}

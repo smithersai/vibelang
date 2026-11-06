@@ -94,7 +94,7 @@ effect function labeled() {
   return events
 }
 
-// expect-result: {"iterator":[false,["body","dispose g1","body","dispose g2","iterator closed"]],"iteratorFails":[true,["body","dispose g1","iterator closed"]],"iteratorInterrupted":["body","dispose g1","iterator closed"],"producer":[false,["body","dispose p1","body","dispose p2","producer done"]],"producerFails":[true,["body","dispose p1","producer done"]],"stream":[false,["body","dispose s1","body","dispose s2"]],"streamFails":[true,["body","dispose s1"]],"labeled":["body 1","dispose g1","iterator closed","body 2","dispose g1","iterator closed"]}
+// expect-result: {"iterator":[false,["body","dispose g1","body","dispose g2","iterator closed"]],"iteratorFails":[true,["body"]],"iteratorInterrupted":["body"],"producer":[false,["body","dispose p1","body","dispose p2","producer done"]],"producerFails":[true,["body","producer done"]],"stream":[false,["body","dispose s1","body","dispose s2"]],"streamFails":[true,["body"]],"labeled":["body 1","dispose g1","iterator closed","body 2","dispose g1","iterator closed"]}
 export effect function main() {
   return {
     iterator: try iterator(false),
