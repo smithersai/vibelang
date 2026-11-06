@@ -133,9 +133,9 @@ cases.push({
     fixture: "fixture-node-reporter",
     split: "",
     flaky: ["//packages:compiler-test-2"],
-    tests: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    tests: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
     exactTests: true,
-    intermittent: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    intermittent: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
     causes: { "//packages:compiler-test-2": "timeout" }
   } satisfies Input
 });
@@ -147,9 +147,9 @@ cases.push({
     fixture: "fixture-migrate-reporter",
     split: "",
     flaky: ["//packages:migrate-test"],
-    tests: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    tests: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
     exactTests: true,
-    intermittent: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    intermittent: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
     causes: { "//packages:migrate-test": "timeout" }
   } satisfies Input
 });

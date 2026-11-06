@@ -12,3 +12,4 @@ test("skipped control", { skip: "intentional skip" }, () => { throw new Error("S
 test("todo control", { todo: "intentional todo" }, () => { throw new Error("TODO_CONTROL") })
 test("empty todo reason", { todo: "" }, () => { throw new Error("EMPTY_TODO_CONTROL") })
 test("empty skip reason", { skip: "" }, () => { throw new Error("EMPTY_SKIP_CONTROL") })
+test("Unicode \u2028 and \u2029 separators", () => assert.equal(failing, false))

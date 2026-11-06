@@ -187,7 +187,7 @@ export function failedTests(lines) {
   for (const line of lines) {
     // Compiler and migration reporters retain nested and cancelled failures.
     // Their failure event names differ; skip/todo flags have the same meaning.
-    const record = /^\[(node-test|migrate-test)\] (.*)$/.exec(line)
+    const record = /^\[(node-test|migrate-test)\] (.*)$/s.exec(line)
     if (record) {
       try {
         const item = JSON.parse(record[2])

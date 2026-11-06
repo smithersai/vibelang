@@ -42,6 +42,8 @@ Compiler shards emit `[node-test]` JSON records through
 `scripts/testing/node-failures.mjs`. The analyzer reads their failure names,
 including nested and cancelled tests, while excluding skipped and todo tests.
 Escaped names retain their original text; incomplete records supply no test name.
+Names containing `U+2028` or `U+2029` remain intact: they are valid JSON
+string characters even though JavaScript also treats them as line separators.
 A `skip` or `todo` reason string marks a test even when it is `""`, matching
 Node's successful exit and skipped/todo counts. Both reporter fixtures include
 actual executions of these empty-reason controls.

@@ -5,7 +5,7 @@ import { test } from "node:test"
 import { failedTests, targetLines } from "../lib/steps.mjs"
 
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
-export const expected = ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"]
+export const expected = ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"]
 const record = item => "[node-test] " + JSON.stringify(item)
 
 test("real compiler reporter names nested and cancelled failures while excluding todos", () => {
@@ -21,7 +21,10 @@ test("real compiler reporter names nested and cancelled failures while excluding
 
 test("structured failure names survive generated JSON escapes, duplicates and skip/todo neighbours", () => {
   fc.assert(fc.property(fc.array(fc.record({
-    name: fc.string({ minLength: 1, maxLength: 80 }).filter(name => name.trim().length > 0),
+    name: fc.oneof(
+      fc.constant("Unicode \u2028 and \u2029 separators"),
+      fc.array(fc.integer({ min: 0, max: 0xffff }), { minLength: 1, maxLength: 80 }).map(units => String.fromCharCode(...units))
+    ).filter(name => name.trim().length > 0),
     event: fc.constantFrom("failure", "progress", "diagnostic", "summary"),
     todo: fc.constantFrom(false, true, "", "future control"),
     skip: fc.constantFrom(false, true, "", "skip control")
