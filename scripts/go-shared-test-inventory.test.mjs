@@ -132,3 +132,17 @@ test("generated package neighbours cannot steal an owned test selection", () => 
   }
   assert.ok(neighbours >= 128)
 })
+
+test("directive selection includes unit and fuzz witnesses without prefix matches", () => {
+  const pkg = "./internal/ast"
+  const target = selected.filter(selection => covers(selection.pattern, pkg))
+  assert.equal(target.length, 1, "retain one directive target after declaration cleanup")
+  for (const name of ["TestHasVibeLangDirective", "FuzzHasVibeLangDirective"]) {
+    assert.equal(target.some(selection => selects(selection, { pkg, name })), true, name)
+    for (let index = 0; index < 32; index++) {
+      for (const neighbour of [name + "Extra" + index, "Prefix" + index + name]) {
+        assert.equal(target.some(selection => selects(selection, { pkg, name: neighbour })), false, neighbour)
+      }
+    }
+  }
+})

@@ -18,7 +18,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
 
 - Migration could leave source-linked documentation pointing at removed TypeScript files or showing old imports; matching code blocks and their source paths now follow the conversion.
-- Contributor checks failed because the directive tests were registered twice. They now use one shared validation target.
+- Contributor build checks could duplicate or omit the directive tests. The graph now runs those tests once.
 - A `using` of a plain Disposable in effect code ran its disposer when a `try` failed or the fiber was interrupted. It now keeps TypeScript's meaning, as in `Effect.gen`: a failed `try` abandons the generator, so the disposer doesn't run. Use `acquireDisposable` inside `scoped` for cleanup on every exit.
 
 - Array patterns on non-array iterables could give their bindings `any` or reject nested object tests. They now preserve the iterable's element type and narrow nested values as TypeScript does.
