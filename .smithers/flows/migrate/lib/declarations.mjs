@@ -2,10 +2,10 @@
 // Text canonicalization remains available for syntax/formatting utilities;
 // public API decisions never depend on its printed spelling.
 import { createHash } from "node:crypto"
-import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { basename, dirname, join, posix, relative, resolve, sep } from "node:path"
+import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { compareApiIdentityInWorker as compareApiIdentity, publishedEntrypoints } from "./api-identity.mjs"
 import { apiProjection } from "./api-projection.mjs"
@@ -537,6 +537,28 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
         for (const ext of [".ts", ".vibe", ".d.vibe.ts"]) aliases[rel(packageDir, source).replace(/\.(ts|vibe)$/, ext)] = declaration
       } else if (/\.(tsx|vibex)$/.test(source)) {
         for (const ext of [".tsx", ".vibex", ".d.vibex.ts"]) aliases[rel(packageDir, source).replace(/\.(tsx|vibex)$/, ext)] = declaration
+      }
+      // A rootDirs mirror can publish the compiler-owned sidecar directly.
+      // Bind it only when one existing mirror has the exact emitted bytes.
+      if (/\.vibex?$/.test(source) && parsed.options.rootDirs?.length) {
+        const candidates = new Set()
+        for (const from of parsed.options.rootDirs) {
+          const local = relative(from, source)
+          if (local === ".." || local.startsWith(".." + sep) || isAbsolute(local)) continue
+          for (const to of parsed.options.rootDirs) {
+            const candidate = resolve(to, local.replace(/\.(vibex?)$/, ".d.$1.ts"))
+            if (existsSync(candidate) && lstatSync(candidate).isFile()) candidates.add(candidate)
+          }
+        }
+        if (candidates.size === 1) {
+          const candidate = [...candidates][0]
+          const key = rel(packageDir, candidate)
+          if (key !== ".." && !key.startsWith("../") && !isAbsolute(key) && readFileSync(candidate).equals(readFileSync(output))) {
+            if (aliases[key] !== undefined && aliases[key] !== declaration)
+              throw new Error("ambiguous sidecar declaration owner: " + key)
+            aliases[key] = declaration
+          }
+        }
       }
       for (const original of originals) {
         aliases[rel(packageDir, original)] = declaration

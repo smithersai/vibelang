@@ -1,0 +1,14 @@
+{
+  "sidecarDir": ".vibe/declarations",
+  "rootDir": "src",
+  "rootDirs": [
+    ".",
+    ".vibe/declarations"
+  ],
+  "source": "src/main.vibe",
+  "types": "./.vibe/declarations/src/main.d.vibe.ts",
+  "publicNames": [
+    "Value",
+    "make"
+  ]
+}

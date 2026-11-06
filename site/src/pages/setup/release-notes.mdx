@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Migrating a package could falsely report a changed public API when its exports pointed at generated declaration files. Unchanged sidecar paths now keep their original API identity.
+
 - Migrating an Effect `try` statement could fail when it returned a tagged object or a tuple. The repair now keeps the declared return type while writing the Effect handlers.
 - The CLI guide promised a progress log file after every `vibelang --fix` call. It now explains that the migration runner saves these files when logging is enabled.
 - A `for concurrent` loop could allocate fiber IDs that collided with surrounding fibers when the project and runtime loaded separate Effect copies. It now uses the project's `Effect.forEach`, as the native counterpart does.

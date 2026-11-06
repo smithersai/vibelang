@@ -112,7 +112,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Set up VibeLang](../setup.md) | 2,000 |
 | [Known limitations](../setup/known-limitations.md) | 660 |
 | [Source maps](../setup/source-maps.md) | 780 |
-| **Start a project** | **9,100** |
+| **Start a project** | **9,200** |
 | [New project](../setup/new-project.md) | 570 |
 | [Existing project](../setup/existing-project.md) | 3,900 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,700 |
