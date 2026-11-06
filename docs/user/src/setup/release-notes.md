@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The `using` resource quick fix could hide later declarations from earlier closures and type references. The editor now withholds the action when moving those bindings would change their scope.
 - Breaking: old `layer Live: Service { … }` declarations compiled with a warning. They now fail with `EK2121`; `vibelang --fix` writes the equivalent `Layer.effect` or `Layer.succeed` call.
+- Migration API checks ignored `exactOptionalPropertyTypes`, so a declaration valid only under that option left the comparison incomplete with TS2411. The comparison now uses the project's setting.
 - The migrate flow renamed TanStack Router file routes, and the generator then took the `.d.vibex.ts` sidecar for the route. A one-pass plan now keeps those files as `.ts` or `.tsx`.
 - Migration API checks counted a native module body's declaration as a new entry point, so a module with an internal body never compared identical. Its parent's exports now decide the API.
 - `vibelang/babel` and `vibelang/metro` read only `.vibe`, so a `.vibex` module failed to parse or was left out of the bundle. Both now read `.vibex`.

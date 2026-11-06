@@ -1080,11 +1080,17 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   const right = entryMap(after, options.afterEntrypoints)
   const result = { identical: false, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
   const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort()
+  // One program checks both sides, so a project's checker option applies to
+  // all of it. Any project enabling it wins: the migration keeps tsconfig, and
+  // a snapshot from an older flow carries no record of the option.
+  const exactOptionalPropertyTypes = (options.projectContexts ?? [])
+    .some(context => context.compilerOptions?.exactOptionalPropertyTypes)
   const compilerOptions = {
     target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
     noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true, allowArbitraryExtensions: true,
     resolveJsonModule: projectJsonModules(ts, before) && projectJsonModules(ts, after),
+    ...(exactOptionalPropertyTypes ? { exactOptionalPropertyTypes } : {}),
     ...options.compilerOptions,
     strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
     noEmit: true, skipLibCheck: false, noCheck: false, allowSyntheticDefaultImports: true,

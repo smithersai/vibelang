@@ -498,12 +498,14 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     const configuredOutput = parsed.options.declarationDir ?? parsed.options.outDir ?? parsed.options.rootDir
     if (configuredOutput) layout.directory = rel(packageDir, configuredOutput) || "."
     layouts.push(layout)
-    // Keep only ambient-type and module-resolution settings, not arbitrary
-    // plugin configuration or emit destinations from the source project.
+    // Keep only ambient-type, module-resolution and declaration-meaning settings,
+    // not arbitrary plugin configuration or emit destinations from the source project.
     const resolutionNames = ["types", "typeRoots", "baseUrl", "paths", "rootDirs",
       "module", "moduleResolution", "customConditions", "moduleSuffixes",
       "resolveJsonModule", "allowArbitraryExtensions", "allowImportingTsExtensions",
-      "preserveSymlinks", "noResolve", "resolvePackageJsonExports", "resolvePackageJsonImports"]
+      "preserveSymlinks", "noResolve", "resolvePackageJsonExports", "resolvePackageJsonImports",
+      // Declarations mean something else under this checker option.
+      "exactOptionalPropertyTypes"]
     const resolutionOptions = Object.fromEntries(resolutionNames
       .filter(name => parsed.options[name] !== undefined).map(name => [name, parsed.options[name]]))
     // Automatic package selection is part of the setup environment too.
