@@ -12,4 +12,4 @@ Will approved rejecting `service class Name { … }`. [VIP-9](vips/0009-service-
 
 ## Retired provider alias
 
-Will approved rejecting `with Provider { … }`. [VIP-12](vips/0012-provide.md) uses `provide`. The retired alias already fails as ordinary syntax, and its provider must not be reinterpreted as a trailing callback call or offered that migration.
+Will approved rejecting `with Provider { … }`. [VIP-12](vips/0012-provide.md) uses `provide`. The retired alias already fails as ordinary syntax, and its provider must not be reinterpreted as a trailing callback call or offered that migration. This also covers the final operand of a conditional, binding or other compound provider.

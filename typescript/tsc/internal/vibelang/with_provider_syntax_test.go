@@ -4,7 +4,7 @@ import "testing"
 
 func TestRetiredWithProviderHasNoTrailingBlockAdvice(t *testing.T) {
 	for _, kind := range []string{"function", "effect function"} {
-		for _, provider := range []string{"Layer.empty", "Live", "makeLive()"} {
+		for _, provider := range []string{"Layer.empty", "Live", "makeLive()", "[Live]", "[Live, Other]", "flag ? Live : Other", "Service = value", "Live ?? Other", "Live!", "Layers[key]"} {
 			for _, space := range []string{" ", " /* provider */ ", "\t"} {
 				source := "export " + kind + " probe() { with" + space + provider + " { return 1 } }"
 				native := false
@@ -28,6 +28,12 @@ func TestRetiredWithProviderKeepsNestedTrailingBlockAdvice(t *testing.T) {
 	for _, source := range []string{
 		"export effect function probe() { with Live { run { return 1 } } }",
 		"export function probe() { with (run { return 1 }) {} }",
+		"export effect function probe() { with flag ? Live : Other { run { return 1 } } }",
+		"export effect function probe() { with Service = value { run { return 1 } } }",
+		"export effect function probe() { with Live ?? Other { run { return 1 } } }",
+		"export effect function probe() { with makeLive(run { return 1 }) {} }",
+		"export effect function probe() { with flag ? Live : makeLive(run { return 1 }) {} }",
+		"export function probe() { with (flag ? Live : run { return 1 }) {} }",
 	} {
 		count := 0
 		for _, d := range trailingBlockErrorsOf(t, source) {

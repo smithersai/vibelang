@@ -272,4 +272,4 @@ The codemod passes a captured tuple to an immediately called arrow that composes
 
 The migration leaves a candidate unchanged if it adds a compiler error, even when its declaration text would match.
 
-To update an old `with Live { … }` provider block, replace `with` with `provide` in effect code. The old header reports ordinary syntax errors.
+To update an old `with Live { … }` provider block, replace `with` with `provide` in effect code. The old header reports ordinary syntax errors, including when the provider is conditional (`with cond ? A : B { … }`) or a binding (`with Service = value { … }`).

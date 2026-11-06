@@ -347,7 +347,7 @@ class Users extends Context.Service<Users, {}>()("tools/Users") {}
 
 ## `provide` blocks
 
-The retired `with Provider { … }` spelling is invalid syntax; it has no trailing-block migration.
+The retired `with Provider { … }` spelling is invalid syntax; it has no trailing-block migration. This includes compound providers such as `with cond ? A : B { … }` and `with Service = value { … }`.
 
 ### Syntax
 

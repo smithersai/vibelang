@@ -36,7 +36,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A callback returned by a throwing factory could inherit the factory's errors and be rejected as an argument or assignment; its own explicit throw contract now stays separate.
 
 - The resource quick fix could give an anonymous class an empty name, including the name seen by its static initializer. The editor now withholds the action when the initializer would lose its inferred name.
-- An invalid `with Live { … }` provider header suggested rewriting the provider as a callback call. It now reports ordinary syntax errors; update the header to `provide Live { … }` in effect code.
+- Invalid provider headers such as `with Live { … }`, `with cond ? A : B { … }` and `with Service = value { … }` suggested callback rewrites. They now report ordinary syntax errors; use `provide` in effect code.
 - Breaking: `service class Name { … }` compiled with a warning. It now fails with `EK0909`; `vibelang --fix` removes `class` while keeping the service key, shape and comments. The editor setup guides now describe the same error and repair.
 - The contribution guide left release-note checks until publication, so contributors could miss repeated fixes or internal wording. It now gives the strict check before submission.
 - Rechecking a module body referenced by an inferred declaration type could report `TS5055` after the first build. Declaration imports now keep reading the body source across builds.

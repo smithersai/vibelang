@@ -1,0 +1,4 @@
+// expect: TS1005
+export effect function conditional() { with flag ? Live : Other { return 1 } }
+export effect function binding() { with Service = value { return 1 } }
+export effect function fallback() { with Live ?? Other { return 1 } }

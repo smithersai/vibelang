@@ -21,6 +21,9 @@ func FuzzRetiredWithProviderSyntax(f *testing.F) {
 	providers := []struct{ key, source string }{
 		{"name", "Live"}, {"property", "Layer.empty"}, {"call", "makeLive()"},
 		{"nested-property", "Module.Live"}, {"unicode-name", "Lîve"},
+		{"array", "[Live]"}, {"tuple", "[Live, Other]"},
+		{"conditional", "flag ? Live : Other"}, {"assignment", "Service = value"},
+		{"nullish", "Live ?? Other"}, {"nonnull", "Live!"}, {"computed", "Layers[key]"},
 	}
 	for _, p := range providers {
 		f.Add("key:with-provider/" + p.key)
@@ -30,16 +33,20 @@ func FuzzRetiredWithProviderSyntax(f *testing.F) {
 		if !strings.Contains(SpecText("005-services.md"), retiredWithProviderQuote) {
 			t.Fatal("missing syntax rule")
 		}
+		key, variant, _ := strings.Cut(data, "@")
 		pick := byte(0)
 		if len(data) > 0 {
 			pick = data[len(data)-1]
 		}
 		item := providers[int(pick)%len(providers)]
 		for _, p := range providers {
-			if data == "key:with-provider/"+p.key {
+			if key == "key:with-provider/"+p.key {
 				item = p
 				break
 			}
+		}
+		if variant != "" {
+			pick = variant[0]
 		}
 		kind, space, ext := "effect function", " ", "vibe"
 		if pick&1 != 0 {
