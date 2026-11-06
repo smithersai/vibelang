@@ -15,6 +15,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - A routed import in a migrated package could point at a declaration file that was never written, so TypeScript fell back to untyped JavaScript and reported TS7016 and TS7006 across the importers. A route now names the declaration the compiler wrote.
 - A project that imports through `paths` aliases and emits only declarations failed with TS5097 at every import of a migrated module, so the migration reverted modules that were fine. Setup now turns on `allowImportingTsExtensions` for such a project.
+- With bundle routing on, one test assertion about bundle input names held its whole package back from migrating. The assertion now holds only the modules it names and the imports between them, so the rest of the package converts.
+- Destructuring a function, as in `const { constructor: C } = f`, and a template-literal `data:` or `blob:` specifier in `import()` could still reach code that runs a string. Both now report `EK0107`, as `f.constructor` and a string-literal specifier do.
+- A layer finalizer around a `provide` block could see an internal record instead of the block's result when a `return`, `break` or `continue` left the block, including through `uninterruptible`, `interruptible` and `restore` inside it. The finalizer now sees the returned value, or `undefined` for a `break` or `continue`, as with `Effect.provide`.
 - A project that couldn't rename its files couldn't use VibeLang. A `.ts`, `.tsx`, `.mts` or `.cts` file whose first line is `// @vibe` now compiles as VibeLang; every other `.ts` file keeps TypeScript's verdict.
 - `vibelang-vite`, `vibelang-unplugin`, `vibelang/register`, `vibelang format` and `vibelang lint` skipped or failed on a `.ts` file with `// @vibe`. They now compile, run, format and lint it. Bun's bundler and Metro still need `.vibe`.
 - A project had to change its scripts to call `vibelang`. The new `vibelang-typescript` package replaces `typescript`, so `tsc` and editors that start `tsc --lsp --stdio` read `// @vibe` files. It's the last option: see [VibeLang in .ts files](/setup/typescript-shim).
@@ -551,6 +554,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | `join [a, b]`, `join record` or an effect-body `await` of a fiber collection | `EK1704` / `EK0102`: `join` takes a single fiber. Run `vibelang --fix` to preserve the old collection behavior through an explicit compatibility helper, including reads and failure cleanup. |
 | A generic parameter constrained to a service key's value type, such as `Key extends typeof Users` | `EK3002`, `EK3003` and `EK3004` apply through the constraint. Obtain the implementation with `try ServiceName`, implement its shape or inspect its members; choosing that behavior requires a manual repair. |
 | Constructing, extending or matching a service key through an intersection-typed alias | `EK3003`, `EK3002` or `EK3004` applies as for the original service. Obtain the implementation with `try ServiceName`; implement its shape or inspect its members. Choosing the implementation or test requires a manual repair. |
+| Destructuring `constructor` from a function, or a template-literal `data:` or `blob:` specifier in `import()` | `EK0107`. Keep the read or the inline module in a `.ts` or `.js` adapter. |
 
 ## 0.0.11
 
