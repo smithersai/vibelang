@@ -310,6 +310,11 @@ typescript/vibelang/cases/await-ops/main.vibe:99:20 lambda program table
 typescript/vibelang/cases/await-ops/main.vibe:99:50 lambda program table
 typescript/vibelang/cases/await-using-placement.fail/main.vibe:3:64 lambda plain protocol
 typescript/vibelang/cases/batch-d-effect-local-shadow/main.vibe:2:33 lambda plain annotation
+typescript/vibelang/cases/binding-pattern-holes/main.vibe:39:25 lambda effectFn table
+typescript/vibelang/cases/binding-pattern-holes/main.vibe:40:25 lambda effectFn table
+typescript/vibelang/cases/binding-pattern-holes/main.vibe:41:25 lambda effectFn table
+typescript/vibelang/cases/binding-pattern-holes/main.vibe:42:25 lambda effectFn table
+typescript/vibelang/cases/binding-pattern-holes/main.vibe:53:21 lambda plain table
 typescript/vibelang/cases/block-do.fail/main.vibe:2:53 block appended/program table
 typescript/vibelang/cases/block-param-postfix.fail/main.vibe:5:27 lambda program annotation
 typescript/vibelang/cases/block-param-postfix.fail/main.vibe:6:30 lambda program annotation
