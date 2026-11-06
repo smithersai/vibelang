@@ -1104,3 +1104,5 @@ A revert spells an unrecorded `.vibe` import by the project's emission policy: `
 Setup turns on `allowImportingTsExtensions` in a project that has `paths` aliases and emits no JavaScript, because an alias can name a migrated module only by its source name. An explicit setting stays as written.
 
 Source-linked documentation follows recorded source renames and import routing while preserving independently edited prose and excerpts. Source markers retain their fragment names, matching named declarations or properties; whole-file snippets also follow the source language. A snippet that did not match before migration is retained with a warning.
+
+Public declarations reachable from exports or types must remain API-identical; internal file layout can change while retaining the API. Nominal declarations, including classes with `private` or `protected` members and `enum` declarations, follow their public export identity through re-exports. Their member names, types, visibility, enum values and alias relationships remain checked.

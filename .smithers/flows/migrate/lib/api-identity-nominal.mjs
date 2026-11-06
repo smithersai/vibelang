@@ -47,7 +47,8 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     }
   }
   const keyFor = (source, node) => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+    if ((ts.isVariableDeclaration(node) || ts.isClassDeclaration(node) || ts.isEnumDeclaration(node)) &&
+      node.name && ts.isIdentifier(node.name)) {
       const publicOrigin = publicOrigins.get(checker.getSymbolAtLocation(node.name))
       if (publicOrigin) return publicOrigin
     }

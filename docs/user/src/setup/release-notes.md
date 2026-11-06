@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration API checks counted a native module body's declaration as a new entry point, so a module with an internal body never compared identical. Its parent's exports now decide the API.
 - `vibelang/babel` and `vibelang/metro` read only `.vibe`, so a `.vibex` module failed to parse or was left out of the bundle. Both now read `.vibex`.
 - When a site audit stalled on a video, its logs gave no request timings. The logs now show when local media requests receive headers, finish or abort.
+
+- Migrating a package could report a changed API when an unchanged class with private members or enum moved behind a re-export; the comparison now retains its public identity while checking member and alias changes.
 - `effect` on an index signature or after a modifier in an interface or type literal, as in `interface I { readonly effect value: number }`, reported syntax errors. It now reports `EK0108`, with its quick fix.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
 

@@ -1,0 +1,4 @@
+{
+  "key": "opencode-private-class-reexport",
+  "rule": "Public declarations reachable from exports or types must remain API-identical; internal file layout can change while retaining the API."
+}
