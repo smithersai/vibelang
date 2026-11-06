@@ -232,6 +232,7 @@ func lower(text string, ctx FileContext) *projector {
 		kind = core.ScriptKindTSX
 	}
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
+	fiberOperations := fiberOperationPositions(file, text)
 	effectDeclarations := writtenEffectDeclarationMarks(file)
 	operandTries := tryOperandMarks(file, text)
 	effectLambdas := writtenEffectLambdaMarks(file)
@@ -243,7 +244,7 @@ func lower(text string, ctx FileContext) *projector {
 	if len(keywords) > 0 {
 		methods := producerMethodMarks(file)
 		text = blank(text, keywords)
-		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
+		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true, VibeLangFiberOperations: fiberOperations}, text, kind)
 		restoreProducerMethodMarks(file, methods)
 	}
 	restoreWrittenEffectLambdaMarks(file, effectLambdas)

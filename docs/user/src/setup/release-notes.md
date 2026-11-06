@@ -37,6 +37,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration `record` refused a batch whose every module had reverted for a recorded cause, even with every gate passing. It now keeps that outcome and its causes.
 - Migration verify reported a lost wrapper when a conversion wrote `onSome: Effect.succeed` as `onSome: (value) => Effect.succeed(value)`.
 - A JavaScript exception in a `do` that ran an Effect could skip an iterator's `return` method when the `do` stood in an array destructuring default or a `for…of` body. The iterator now closes, and the exception wins over an error from closing.
+- The TypeScript mapper could misread `fork` or `join` when the operand began on another line. It now keeps the fiber operation, including named fork owners and intervening comments.
 - Migration API checks reported a type difference for an unchanged generic alias that uses `infer`, and for generic exports over it, when its file had any other change. They now prove such an alias equal, and a real change to it still fails.
 - Migration API checks could not compare an export that reached a module stopped by `TS7056`, so a package stayed unavailable. A snapshot now saves that module's source and the check reads it, so the export compares normally. Record older snapshots again to get this.
 - `fork.in(scope) e`, `fork.scoped e` and `fork.detached e` reported syntax errors. They now start a fiber with that owner, with `EK1705` for another owner name and `EK1706` for a `fork.in` scope that is not a `Scope`.

@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
@@ -17,6 +18,10 @@ type SourceFileParseOptions struct {
 	// lowering it to the statements around it. The TS7 mapper, which prints
 	// the tree in source order, reads do expressions so.
 	VibeLangDoAsFunction bool
+	// VibeLangFiberOperations preserves recognized source operators when the
+	// mapper reparses after removing Effect modifiers. Positions identify
+	// only operators from the original parse, never ordinary identifier uses.
+	VibeLangFiberOperations *collections.Set[int]
 }
 
 type ExternalModuleIndicatorOptions struct {
