@@ -20,7 +20,7 @@ const concurrentHeadRenameLabel = "concurrent head renames"
 // No value is copied and no user function is moved or invoked.
 func concurrentHeadMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
 	p := proposal{file: file}
-	if !file.FileName().IsVibeLangSource() {
+	if !file.IsVibeLang() {
 		return p
 	}
 	ds := program.GetSemanticDiagnostics(ctx, file)

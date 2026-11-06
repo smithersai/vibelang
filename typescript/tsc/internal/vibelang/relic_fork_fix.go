@@ -14,7 +14,7 @@ import (
 // This migration precedes rejection so repositories can upgrade separately.
 func relicForkBlockFixes(file *ast.SourceFile, refused map[string]bool) proposal {
 	result := proposal{file: file}
-	if !file.FileName().IsVibeLangSource() || !strings.Contains(file.Text(), "fork") {
+	if !file.IsVibeLang() || !strings.Contains(file.Text(), "fork") {
 		return result
 	}
 	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: file.FileName(), PathKey: file.PathKey()}, file.Text())

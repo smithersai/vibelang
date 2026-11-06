@@ -18,7 +18,7 @@ func init() {
 // initializers would change their evaluation environment.
 func isStatementHomeActions(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 	file := fix.SourceFile
-	if !file.FileName().IsVibeLangSource() {
+	if !file.IsVibeLang() {
 		return nil, nil
 	}
 	var body *ast.Node

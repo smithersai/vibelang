@@ -174,7 +174,7 @@ func generatorRegionFiberNames(c *checker.Checker, call *ast.Node) []*ast.Node {
 // fork or join that EK1702 reports or that a generator's rewrite would reach.
 func fiberNameRenames(c *checker.Checker, file *ast.SourceFile) []fiberRename {
 	text := file.Text()
-	if !file.FileName().IsVibeLangSource() || !strings.Contains(text, "fork") && !strings.Contains(text, "join") && !strings.Contains(text, `\`) {
+	if !file.IsVibeLang() || !strings.Contains(text, "fork") && !strings.Contains(text, "join") && !strings.Contains(text, `\`) {
 		return nil
 	}
 	identifiers, taken := fiberNameIdentifiers(file)
@@ -391,7 +391,7 @@ func generatorFiberNameRefusal(c *checker.Checker, call *ast.Node) string {
 // rename taken waits for a round that rechecks the edited source.
 func fiberNameMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
 	p := proposal{file: file}
-	if !file.FileName().IsVibeLangSource() {
+	if !file.IsVibeLang() {
 		return p
 	}
 	c, done := program.GetTypeCheckerForFile(ctx, file)

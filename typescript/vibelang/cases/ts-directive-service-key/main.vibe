@@ -1,0 +1,8 @@
+// expect-result: true
+import { Named } from "./named.ts"
+
+service Local { name(): string!! }
+
+export effect function main() {
+  return Named.key.endsWith("/named#Named") && Local.key.endsWith("/main#Local")
+}

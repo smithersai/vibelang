@@ -37,7 +37,7 @@ var typeScriptFileChecks []func(c *checker.Checker, file *ast.SourceFile)
 // isCheckedTypeScriptFile reports whether file is a .ts, .tsx, .mts, or .cts
 // source file outside node_modules.
 func isCheckedTypeScriptFile(file *ast.SourceFile) bool {
-	if file == nil || file.IsDeclarationFile || strings.Contains(string(file.FileName()), "/node_modules/") {
+	if file == nil || file.IsDeclarationFile || file.IsVibeLang() || strings.Contains(string(file.FileName()), "/node_modules/") {
 		return false
 	}
 	return tspath.FileExtensionIsOneOf(string(file.FileName()), []string{tspath.ExtensionTs, tspath.ExtensionTsx, tspath.ExtensionMts, tspath.ExtensionCts})

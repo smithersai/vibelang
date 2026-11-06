@@ -15,7 +15,7 @@ import (
 func isVibeLangWrittenDeclaration(declaration *ast.Node) bool {
 	name := declaration.Name()
 	return name != nil && ast.IsIdentifier(name) && name.Flags&ast.NodeFlagsReparsed != 0 && strings.HasPrefix(name.Text(), "$") &&
-		ast.GetSourceFileOfNode(declaration).FileName().IsVibeLangSource()
+		ast.GetSourceFileOfNode(declaration).IsVibeLang()
 }
 
 // isVibeLangPatternRead reports whether accessNode is the VibeLang parser's read
@@ -32,7 +32,7 @@ func isVibeLangPatternRead(accessNode *ast.Node) bool {
 // override nothing the source wrote.
 func isVibeLangServiceDeclaredMember(class *ast.Node, member *ast.Symbol) bool {
 	extends := ast.GetClassExtendsHeritageElement(class)
-	if extends == nil || !ast.GetSourceFileOfNode(class).FileName().IsVibeLangSource() {
+	if extends == nil || !ast.GetSourceFileOfNode(class).IsVibeLang() {
 		return false
 	}
 	base := extends.Expression()

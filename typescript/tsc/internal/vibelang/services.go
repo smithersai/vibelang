@@ -291,7 +291,7 @@ func (s *services) key(class *ast.Node) string {
 	file := ast.GetSourceFileOfNode(class)
 	fileName := file.FileName()
 	program := s.checker.Program()
-	module := string(fileName.RemoveExtension(tspath.VibeLangSourceExtension(fileName.AsString())))
+	module := tspath.RemoveFileExtension(fileName.AsString()) // the same key for x.vibe and for x.ts with the directive
 	prefix := ""
 	if directory := program.GetNearestAncestorDirectoryWithPackageJson(fileName.Directory()); directory != "" {
 		prefix = directory.BaseName()

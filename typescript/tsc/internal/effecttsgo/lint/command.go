@@ -310,7 +310,7 @@ func vibeFiles(cwd string, paths []string, config *Config, ignore *ignorer) ([]s
 				}
 				return nil
 			}
-			if tspath.IsVibeLangSource(file) && !config.Ignored(file) && !ignore.ignored(file, false) {
+			if vibeLangOnDisk(file) && !config.Ignored(file) && !ignore.ignored(file, false) {
 				files = append(files, file)
 			}
 			return nil
@@ -532,4 +532,17 @@ func withoutDisabled(diags []*ast.Diagnostic, text string) []*ast.Diagnostic {
 		kept = append(kept, d)
 	}
 	return kept
+}
+
+// vibeLangOnDisk reports whether file is a VibeLang source, by its name or by
+// the directive of a .ts file (VIP-42).
+func vibeLangOnDisk(file string) bool {
+	if tspath.IsVibeLangSource(file) {
+		return true
+	}
+	if !tspath.HasTSFileExtension(file) || tspath.IsDeclarationFileName(file) {
+		return false
+	}
+	text, err := os.ReadFile(file)
+	return err == nil && ast.HasVibeLangDirective(file, string(text))
 }

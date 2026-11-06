@@ -109,7 +109,7 @@ func formatNodeLines(ctx context.Context, sourceFile *ast.SourceFile, node *ast.
 }
 
 func FormatDocument(ctx context.Context, sourceFile *ast.SourceFile) []core.TextChange {
-	if sourceFile.FileName().IsVibeLangSource() {
+	if sourceFile.IsVibeLang() {
 		return formatVibeLangDocument(ctx, sourceFile)
 	}
 	return FormatSpan(ctx, core.NewTextRange(0, sourceFile.End()), sourceFile, FormatRequestKindFormatDocument)

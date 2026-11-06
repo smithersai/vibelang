@@ -33,7 +33,7 @@ func init() {
 		upstream := rules.All[i].Run
 		rules.All[i].Run = func(ctx *rule.Context) []*ast.Diagnostic {
 			result := upstream(ctx)
-			if !ctx.SourceFile.FileName().IsVibeLangSource() {
+			if !ctx.SourceFile.IsVibeLang() {
 				return result
 			}
 			var excluded map[[2]int]bool

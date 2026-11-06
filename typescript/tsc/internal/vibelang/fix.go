@@ -1402,11 +1402,11 @@ type fixCompilerHost struct {
 }
 
 func (h fixCompilerHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
-	opts.VibeLangLegacyTrailingBlocks = opts.FileName.IsVibeLangSource()
 	text, ok := h.FS().ReadFile(opts.FileName)
 	if !ok {
 		return nil
 	}
+	opts.VibeLangLegacyTrailingBlocks = opts.FileName.IsVibeLangSource() || ast.HasVibeLangDirective(string(opts.FileName), text)
 	if file, ok := h.parsed.Load(opts); ok && file.Text() == text {
 		return file
 	}

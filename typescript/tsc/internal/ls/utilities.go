@@ -849,7 +849,7 @@ func getMeaningFromLocation(node *ast.Node) ast.SemanticMeaning {
 // synthesized namespace. Actual symbol identity still decides each reference.
 func isVibeLangShapeQualifier(node *ast.Node) bool {
 	file := ast.GetSourceFileOfNode(node)
-	if file == nil || !file.FileName().IsVibeLangSource() {
+	if file == nil || !file.IsVibeLang() {
 		return false
 	}
 	entity := node

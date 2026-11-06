@@ -1,0 +1,3 @@
+// licence
+// @vibe
+error SecondLine

@@ -23,7 +23,7 @@ import (
 // isVibeLangFile reports whether the parser is reading a .vibe file, outside
 // a module declaration's body, which is TypeScript (vibelang_modules.go).
 func (p *Parser) isVibeLangFile() bool {
-	return !p.vibelangTypeScript && p.opts.FileName.IsVibeLangSource()
+	return !p.vibelangTypeScript && p.vibelangSource
 }
 
 // isVibeLangDeclarationWord reports whether text starts a VibeLang declaration

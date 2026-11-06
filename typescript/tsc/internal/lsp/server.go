@@ -2206,7 +2206,7 @@ func (s *Server) handleCompletionItemResolve(ctx context.Context, params *lsprot
 }
 
 func (s *Server) handleDocumentFormat(ctx context.Context, ls *ls.LanguageService, params *lsproto.DocumentFormattingParams) (lsproto.DocumentFormattingResponse, error) {
-	if s.formatVibe != nil && strings.HasSuffix(strings.ToLower(params.TextDocument.Uri.FileName().AsString()), ".vibe") {
+	if s.formatVibe != nil && ls.FormatsAsVibeLang(params.TextDocument.Uri) {
 		return ls.ProvideFormatDocumentUsing(ctx, params.TextDocument.Uri, s.formatVibe, nil)
 	}
 	return ls.ProvideFormatDocument(
@@ -2217,7 +2217,7 @@ func (s *Server) handleDocumentFormat(ctx context.Context, ls *ls.LanguageServic
 }
 
 func (s *Server) handleDocumentRangeFormat(ctx context.Context, ls *ls.LanguageService, params *lsproto.DocumentRangeFormattingParams) (lsproto.DocumentRangeFormattingResponse, error) {
-	if s.formatVibe != nil && strings.HasSuffix(strings.ToLower(params.TextDocument.Uri.FileName().AsString()), ".vibe") {
+	if s.formatVibe != nil && ls.FormatsAsVibeLang(params.TextDocument.Uri) {
 		return ls.ProvideFormatDocumentUsing(ctx, params.TextDocument.Uri, s.formatVibe, &params.Range)
 	}
 	return ls.ProvideFormatDocumentRange(
@@ -2229,7 +2229,7 @@ func (s *Server) handleDocumentRangeFormat(ctx context.Context, ls *ls.LanguageS
 }
 
 func (s *Server) handleDocumentOnTypeFormat(ctx context.Context, ls *ls.LanguageService, params *lsproto.DocumentOnTypeFormattingParams) (lsproto.DocumentOnTypeFormattingResponse, error) {
-	if s.formatVibe != nil && strings.HasSuffix(strings.ToLower(params.TextDocument.Uri.FileName().AsString()), ".vibe") {
+	if s.formatVibe != nil && ls.FormatsAsVibeLang(params.TextDocument.Uri) {
 		return ls.ProvideFormatDocumentUsing(ctx, params.TextDocument.Uri, s.formatVibe, &lsproto.Range{Start: lsproto.Position{Line: params.Position.Line}, End: lsproto.Position{Line: params.Position.Line, Character: 0x7fffffff}})
 	}
 	return ls.ProvideFormatDocumentOnType(

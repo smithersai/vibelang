@@ -194,6 +194,9 @@ func entryCandidate(file *ast.SourceFile) *ast.Node {
 // entryMain returns file's entry candidate, or nil when file has none or
 // starts a program at its top level by calling a runner.
 func entryMain(c *checker.Checker, file *ast.SourceFile) *ast.Node {
+	if !file.FileName().IsVibeLangSource() {
+		return nil // a TypeScript source with the directive runs what it calls, as TypeScript does (VIP-42)
+	}
 	main := entryCandidate(file)
 	if main == nil {
 		return nil

@@ -5,6 +5,7 @@ import (
 	"context"
 	"iter"
 	"slices"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -15,6 +16,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 func (l *LanguageService) toLSProtoTextEdits(file *ast.SourceFile, changes []core.TextChange) []*lsproto.TextEdit {
@@ -53,6 +55,20 @@ func (l *LanguageService) ProvideFormatDocument(
 
 // ProvideFormatDocumentUsing formats the current document text through the host's
 // shared formatter, while retaining the negotiated LSP position encoding.
+// FormatsAsVibeLang reports whether documentURI goes to the VibeLang
+// formatter: a .vibe file or a .ts source with the directive (VIP-42).
+func (l *LanguageService) FormatsAsVibeLang(documentURI lsproto.DocumentUri) bool {
+	fileName := documentURI.FileName().AsString()
+	if strings.HasSuffix(strings.ToLower(fileName), ".vibe") {
+		return true
+	}
+	if !tspath.FileExtensionIs(fileName, tspath.ExtensionTs) {
+		return false
+	}
+	_, file := l.getProgramAndFile(documentURI)
+	return file != nil && ast.HasVibeLangDirective(fileName, file.Text())
+}
+
 func (l *LanguageService) ProvideFormatDocumentUsing(
 	ctx context.Context,
 	documentURI lsproto.DocumentUri,

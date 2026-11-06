@@ -2241,7 +2241,7 @@ var doHeadCellsKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
 // a do in a lexical loop head.
 func VibeLangDoHeadBinding(declaration *ast.Node) *ast.Node {
 	file := ast.GetSourceFileOfNode(declaration)
-	if file == nil || !file.FileName().IsVibeLangSource() {
+	if file == nil || !file.IsVibeLang() {
 		return nil
 	}
 	return file.GetOrComputeData(doHeadCellsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })[declaration]

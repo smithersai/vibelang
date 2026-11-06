@@ -42,9 +42,12 @@ import (
 // module, starts a module declaration: an identifier follows it on the same
 // line, and a { follows the identifier. A { in the identifier's place starts
 // one without its name, which the checker refuses (EK4003), rather than a
-// block passed to a function named module.
+// block passed to a function named module. Only a .vibe or .vibex file has
+// module declarations: in a TypeScript source with the directive, module x { }
+// stays TypeScript's, which means something else, and TypeScript rejects it
+// (VIP-42).
 func (p *Parser) isStartOfVibeLangModuleDeclaration() bool {
-	return p.isVibeLangFile() && p.token == ast.KindModuleKeyword && p.lookAhead(func(p *Parser) bool {
+	return p.isVibeLangFile() && p.opts.FileName.IsVibeLangSource() && p.token == ast.KindModuleKeyword && p.lookAhead(func(p *Parser) bool {
 		p.nextToken()
 		if p.hasPrecedingLineBreak() {
 			return false

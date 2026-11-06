@@ -1168,7 +1168,7 @@ func VibeLangIsInitializerDeclaration(target *ast.Node) *ast.Node {
 		return nil
 	}
 	file := ast.GetSourceFileOfNode(target)
-	if file == nil || !file.FileName().IsVibeLangSource() {
+	if file == nil || !file.IsVibeLang() {
 		return nil
 	}
 	declarations := file.GetOrComputeData(isInitializerDeclarationsKey, func(file *ast.SourceFile) map[isInitializerKey]*ast.Node {

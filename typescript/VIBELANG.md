@@ -67,6 +67,9 @@ Each case gets two symlinks in its `node_modules`: `effect`, from `$EFFECT_NODE_
 | `node-format-esm`, `node-format-cjs.fail`, `node-format-default.fail` | Smithers C-9/E-12: NodeNext package type controls import.meta, top-level await, mixed TS/Vibe imports, conditional exports, and declaration emit |
 | `tsforms-errors`, `tsforms-services`, `tsforms-schemas`, `tsforms-types`, `tsforms-direct`, `tsforms-catch`, `tsforms-blocks` (each with a `-fixed` twin) | D284-D291: TypeScript-style Effect forms draw EK4830-EK4837 at the positions `expected/diagnostics.txt` lists; each twin is exactly what `vibelang --fix` writes for its case (`TestTypeScriptFormCasesFix`), reports only the warnings without a fix, and returns the same result |
 | `ts-hello` | The stock compiler still compiles and runs plain TypeScript |
+| `ts-directive-runs`, `ts-directive-importers`, `ts-directive-bom-shebang`, `ts-directive-mts`, `ts-directive-tsx`, `ts-directive-service-key` | VIP-42: a TypeScript source whose first line is `// @vibe` compiles and runs as VibeLang, imported by `.ts` and `.vibe` alike, with the same service key as a `.vibe` file of that name |
+| `ts-directive-rules.fail`, `ts-directive-no-entry`, `ts-directive-module.fail`, `ts-directive-ts-import.fail` | VIP-42: `EK` rules attach to the file, an exported `main` stays ordinary, `module x { }` stays TypeScript's `TS1540`, and a written `./y.ts` stays `TS5097` |
+| `ts-directive-lookalike.fail`, `ts-directive-declaration.fail` | VIP-42: every other spelling of the line is a comment, and a declaration or JavaScript file has no directive |
 | `ts-ownership-interrupt` | D266: terminal interrupt in an unchanged Effect generator compiles with zero errors in `.ts`, `.tsx`, `.mts`, and `.cts`, even with EK rules configured as errors |
 | `vibe-ownership-interrupt.fail` | The same program in `.vibe` keeps EK1001 (module-level Effect call) and EK1002 (generator argument) |
 | `ts-ordinary-error.fail` | D266 preserves ordinary TS2322 and TS2339 |
@@ -378,6 +381,10 @@ Regenerate with `jj log -r 'unpwqpnz::main' --reversed -- typescript/`.
 | `tnnzwswk` | vibelang: compile function* to producers and loop over Streams | vibelang |
 | `moutqkun` | vibelang: document handlers and producers in VIBELANG.md | vibelang |
 | `oxmyvyxm` | docs: refresh the compiler commit table | docs |
+
+## VibeLang in `.ts` files (VIP-42)
+
+`ast.HasVibeLangDirective` reads a file's name and first line, and `ast.SourceFile.IsVibeLang` is the name or the directive. A question about what a file means asks `IsVibeLang`: the parser (`Parser.vibelangSource`), the checker hooks, `isVibeLangFile`, the language service, lint and the fixes. A question about how a file is named keeps asking `FileName().IsVibeLangSource()`: declaration sidecars, `module` declarations (`isStartOfVibeLangModuleDeclaration`), the `$entry` runner (`entryMain`), module specifiers, and the `.vibe`-only mapper. `isCheckedTypeScriptFile` leaves such a file out of the TypeScript-file checks. `packages/compiler/vibe-directive.mjs` holds the same rule in JavaScript, and `packages/typescript-shim/test/twin.test.mjs` compiles a sample of the cases both ways.
 
 ## Short forms
 

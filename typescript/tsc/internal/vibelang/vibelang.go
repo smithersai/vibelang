@@ -53,7 +53,7 @@ func init() {
 
 // isVibeLangFile reports whether file is a VibeLang source file.
 func isVibeLangFile(file *ast.SourceFile) bool {
-	return file != nil && !file.IsDeclarationFile && file.FileName().IsVibeLangSource()
+	return file != nil && !file.IsDeclarationFile && file.IsVibeLang()
 }
 
 // isLowerable reports whether node is a function that the lowering can turn

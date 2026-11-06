@@ -124,7 +124,7 @@ var vibeRuleNames = func() []string {
 
 // ruleNamesFor returns the rules a build runs on sf; nil selects every rule.
 func ruleNamesFor(sf *ast.SourceFile) []string {
-	if sf.FileName().IsVibeLangSource() {
+	if sf.IsVibeLang() {
 		return vibeRuleNames
 	}
 	return nil
@@ -160,7 +160,7 @@ func init() {
 			run := r.Run
 			r.Run = func(ctx *rule.Context) []*ast.Diagnostic {
 				diags := run(ctx)
-				if len(diags) == 0 || !ctx.SourceFile.FileName().IsVibeLangSource() {
+				if len(diags) == 0 || !ctx.SourceFile.IsVibeLang() {
 					return diags
 				}
 				minArgCount := 2

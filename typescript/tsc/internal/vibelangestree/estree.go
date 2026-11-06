@@ -40,15 +40,15 @@ func (e *Error) Error() string {
 // language: .vibe and .vibex are VibeLang; .vibex and .tsx enable JSX.
 // The JSON has no loc, which the JavaScript side computes from the ranges.
 func Parse(fileName string, text string) (json string, failure *Error) {
-	vibe := tspath.IsVibeLangSource(fileName)
+	vibe := tspath.IsVibeLangSource(fileName) || ast.HasVibeLangDirective(fileName, text)
 	name := "/estree.ts"
-	if vibe {
-		name = "/estree" + tspath.VibeLangSourceExtension(fileName)
+	if extension := tspath.VibeLangSourceExtension(fileName); extension != "" {
+		name = "/estree" + extension
 	}
 	kind := core.ScriptKindTS
 	if core.GetScriptKindFromFileName(tspath.RootedFilePath(fileName)) == core.ScriptKindTSX {
 		kind = core.ScriptKindTSX
-		if !vibe {
+		if tspath.VibeLangSourceExtension(fileName) == "" {
 			name = "/estree.tsx"
 		}
 	}

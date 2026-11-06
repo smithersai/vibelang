@@ -167,7 +167,7 @@ func outsideLoaderRoot(file *ast.SourceFile, caseSensitivity tspath.CaseSensitiv
 	if canonical := file.CanonicalSourceFile(); canonical != nil {
 		file = canonical
 	}
-	return file.IsDeclarationFile || !file.FileName().IsVibeLangSource() ||
+	return file.IsDeclarationFile || !file.IsVibeLang() ||
 		!tspath.ContainsPath(loaderRoot, string(file.FileName()), caseSensitivity)
 }
 

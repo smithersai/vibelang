@@ -195,6 +195,10 @@ export const vipsSidebar = [
           {
             "text": "37. Effectify the universe",
             "link": "/vips/0037-effectify-the-universe-open"
+          },
+          {
+            "text": "42. VibeLang in .ts files",
+            "link": "/vips/0042-vibelang-in-ts-files-open"
           }
         ]
       }

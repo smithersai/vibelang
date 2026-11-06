@@ -12,7 +12,7 @@ import (
 // and the reachability of the surrounding activation remain unchanged.
 func (c *Checker) unreachablePatternCaptureType(reference *ast.Node, declared *Type) *Type {
 	if !ast.IsIdentifier(reference) || reference.Flags&ast.NodeFlagsReparsed == 0 ||
-		!strings.HasPrefix(reference.Text(), "$match") || !ast.GetSourceFileOfNode(reference).FileName().IsVibeLangSource() {
+		!strings.HasPrefix(reference.Text(), "$match") || !ast.GetSourceFileOfNode(reference).IsVibeLang() {
 		return declared
 	}
 	if remainder := c.unreachableMatchRemainder(reference, declared); remainder != nil {

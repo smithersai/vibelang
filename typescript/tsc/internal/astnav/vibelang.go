@@ -22,7 +22,7 @@ import (
 // trivia still panics, as upstream.
 
 func isVibeLangSourceFile(sourceFile *ast.SourceFile) bool {
-	return sourceFile.FileName().IsVibeLangSource()
+	return sourceFile.IsVibeLang()
 }
 
 // vibelangSourceToken returns the source node that is exactly the token at

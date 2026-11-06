@@ -1,0 +1,2 @@
+// @vibes
+error Suffix

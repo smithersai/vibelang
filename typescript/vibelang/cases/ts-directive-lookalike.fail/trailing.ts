@@ -1,0 +1,2 @@
+// @vibe please
+error Trailing

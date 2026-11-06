@@ -1,0 +1,7 @@
+// expect-result: [8, 10]
+import { fromTypeScript } from "./caller.ts"
+import { doubled } from "./source.ts"
+
+export effect function main() {
+  return [try fromTypeScript, try doubled(5)]
+}

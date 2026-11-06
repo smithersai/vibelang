@@ -19,7 +19,7 @@ import (
 // type of the same name is not a site, and a written M.M is left alone.
 func preludeShorthandMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
 	p := proposal{file: file}
-	if !file.FileName().IsVibeLangSource() {
+	if !file.IsVibeLang() {
 		return p
 	}
 	c, done := program.GetTypeCheckerForFile(ctx, file)

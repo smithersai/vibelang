@@ -40,7 +40,8 @@ var (
 
 // IsVibeLangSource reports whether fileName names a VibeLang source, a .vibe
 // or a .vibex file (VIP-39). A declaration sidecar such as x.d.vibe.ts is
-// TypeScript. Every "is this VibeLang?" test calls it.
+// TypeScript. A file's name is not the whole answer: a .ts source can be
+// VibeLang too, so a test of a parsed file asks ast.SourceFile.IsVibeLang.
 func IsVibeLangSource(fileName string) bool {
 	return VibeLangSourceExtension(fileName) != ""
 }

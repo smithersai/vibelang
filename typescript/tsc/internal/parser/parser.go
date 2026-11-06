@@ -133,6 +133,7 @@ type Parser struct {
 	vibelangSyntax           *[]VibeSyntax                  // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
 	vibelangFiberContext     bool                           // fork/join reservation inherited by source grammar
 	vibelangNamespaceContext bool                           // native namespace syntax, independent of suspension permission
+	vibelangSource           bool                           // the file is VibeLang by its name or its directive (ast.HasVibeLangDirective)
 	vibelangTypeScript       bool                           // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
 	vibelangDos              map[*ast.Node]*doExpression    // do expressions as written, by their call (vibelang_do.go)
 	vibelangDoOrder          []*doExpression                // the same, in source order
@@ -352,6 +353,7 @@ func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText str
 	p.opts = opts
 	p.sourceText = sourceText
 	p.scriptKind = scriptKind
+	p.vibelangSource = opts.FileName.IsVibeLangSource() || ast.HasVibeLangDirective(string(opts.FileName), sourceText)
 	p.languageVariant = getLanguageVariant(p.scriptKind)
 	switch p.scriptKind {
 	case core.ScriptKindJS, core.ScriptKindJSX:
