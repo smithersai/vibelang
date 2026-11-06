@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Checking native routes in a fresh checkout could report that the route generator was missing. Preparation now installs the required adapter.
 - A `react-jsx` project built with `vibelang-vite` gave `.vibex` modules to the React Compiler already lowered, so it could skip them silently. Plugins after `vibelang-vite` now read the JSX when the project uses React's runtime.
+- A migration's `--fix` progress waited for the compiler to exit, making a long repair appear stalled. Live phase and check counters now appear while it runs.
 
 - Editor formatting could hang on a marked `.mts`, `.cts` or `.tsx` file. Formatting now returns normally and keeps the directive.
 

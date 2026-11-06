@@ -15,6 +15,7 @@ import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
 import { fixProgramFiles, withFixFiles } from "./fix-scope.mjs"
+import { fixProgressStream } from "./fix-progress.mjs"
 import { Minimatch } from "./vendor/minimatch.mjs"
 
 /**
@@ -825,7 +826,7 @@ export async function fixToFixedPoint(options) {
   }
 }
 
-async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs, selectionFile }, scopeFiles) {
+async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs, selectionFile, onProgress = event => process.stderr.write("MIGRATE_FIX_PROGRESS " + JSON.stringify(event) + "\n") }, scopeFiles) {
   const rounds = []
   const byFile = {}
   const refused = []
@@ -859,10 +860,22 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
   let last
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
-    let result
+    let result, pid
+    const progressLog = log && `${log}.${round}.progress.jsonl`
+    if (progressLog) writeFileSync(progressLog, "")
+    const progress = fixProgressStream(event => {
+      const record = { event: "compiler-fix-progress", invocation: round, pid, ...event }
+      if (progressLog) appendFileSync(progressLog, JSON.stringify(record) + "\n")
+      onProgress?.(record)
+    })
     try {
       const selection = selectionFile ? ` --only ${quote("@" + selectionFile)}` : ""
-      result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
+      try {
+        result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, {
+          cwd, log: log && `${log}.${round}.log`, timeoutMs,
+          onStderr: (chunk, process) => { pid = process.pid; progress.write(chunk) }
+        })
+      } finally { progress.end() }
     } finally {
       // An interrupted compiler may keep verified writes without printing
       // per-file statistics. Restore the whole nonselected byte snapshot.

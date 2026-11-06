@@ -6,11 +6,11 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { dirname, relative, sep } from "node:path"
 
 /** Runs a shell command and resolves with its exit code and output; never rejects on a nonzero exit. */
-export function run(command, { cwd, env, log, input, timeoutMs } = {}) {
+export function run(command, { cwd, env, log, input, timeoutMs, onStderr } = {}) {
   const started = Date.now()
   return new Promise((resolve, reject) => {
     const child = spawn("bash", ["-c", command], { cwd, env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "pipe"], detached: Boolean(timeoutMs) })
-    let timedOut = false, forceTimer
+    let timedOut = false, forceTimer, observerError, observerFailed = false
     const kill = signal => { try { process.kill(-child.pid, signal) } catch (error) { if (error.code !== "ESRCH") throw error } }
     const timer = timeoutMs && setTimeout(() => {
       timedOut = true
@@ -20,7 +20,18 @@ export function run(command, { cwd, env, log, input, timeoutMs } = {}) {
     let stdout = ""
     let stderr = ""
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk
+      if (!onStderr || observerFailed) return
+      try { onStderr(chunk, { pid: child.pid }) }
+      catch (error) {
+        observerError = error
+        observerFailed = true
+        const stop = signal => timeoutMs ? kill(signal) : child.kill(signal)
+        stop("SIGTERM")
+        forceTimer = setTimeout(() => stop("SIGKILL"), 1000)
+      }
+    })
     child.on("error", reject)
     // A command that exits without reading its input (`true` as an install step) closes stdin first: that is no failure.
     child.stdin.on("error", (error) => { if (error.code !== "EPIPE") reject(error) })
@@ -32,7 +43,8 @@ export function run(command, { cwd, env, log, input, timeoutMs } = {}) {
         mkdirSync(dirname(log), { recursive: true })
         writeFileSync(log, `$ ${command}\n# cwd ${cwd ?? process.cwd()}\n# exit ${result.code} in ${result.ms} ms\n# pid ${child.pid}${signal ? `, killed by ${signal}` : ""}, ended ${new Date().toISOString()}\n\n${stdout}${stderr ? "\n# stderr\n" + stderr : ""}`)
       }
-      resolve(result)
+      if (observerFailed) reject(observerError)
+      else resolve(result)
     })
     child.stdin.end(input ?? "")
   })

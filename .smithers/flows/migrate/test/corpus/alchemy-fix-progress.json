@@ -1,0 +1,4 @@
+{
+  "line": "vibelang --fix: 4m10s: round 3: 41 fixes applied, 20 pending, 3 refused; 17 checks, 6 this round (2 whole, 4 partial); checking 23 fixes in 9 files for 6s; heap 64 MiB, goal 128 MiB, 2 GCs",
+  "expected": { "elapsed": "4m10s", "phase": "round", "round": 3, "applied": 41, "pending": 20, "refused": 3, "checks": 17, "phaseChecks": 6, "whole": 2, "partial": 4, "heapMiB": 64, "heapGoalMiB": 128, "gcs": 2 }
+}
