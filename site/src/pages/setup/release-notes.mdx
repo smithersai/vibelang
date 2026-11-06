@@ -10,30 +10,26 @@ Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
-## 0.0.12 (unreleased)
+## 0.0.12
 
 ### Bugs fixed since 0.0.11
 - Moving platform code could widen a unique-symbol key and break computed-property access with `TS7053`. Generated local aliases now retain the imported value type.
 - The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
-- The TypeScript replacement guide told npm to install an unavailable package. It now identifies the unpublished preview and shows the source-checkout route.
+- The TypeScript replacement guide told npm to install an unavailable package. It now names the version included in this release and retains the source-checkout option.
 
 - The `using` resource quick fix could hide later declarations from earlier closures and type references. The editor now withholds the action when moving those bindings would change their scope.
 - Breaking: old `layer Live: Service { … }` declarations compiled with a warning. They now fail with `EK2121`; `vibelang --fix` writes the equivalent `Layer.effect` or `Layer.succeed` call.
 - The migrate lost-wrapper check flagged kept programs: records of `Effect.fn` members, branches emitted as inline calls, and `do` temporaries. It now reads all three, and a real loss in those shapes still flags.
 - Migration API checks ignored `exactOptionalPropertyTypes`, so a declaration valid only under that option left the comparison incomplete with TS2411. The comparison now uses the project's setting.
-- Focused contributor checks could fail with missing packages on a fresh checkout. The documented preparation step now installs all pinned prerequisites before the chosen check.
-- Contributor checks for changed files downloaded a compiler unnecessarily and failed offline. Their temporary projects now include both required compiler baselines.
 - Migrating an inherited error could stop at a match that already handled its tag. The class repair now retains that tagged matcher, narrowing and coverage.
 - Rest bindings from tuple patterns lost their remaining element positions. They now keep the tuple tail, including optional and variadic elements.
 - The migrate flow renamed TanStack Router file routes, and the generator then took the `.d.vibex.ts` sidecar for the route. A one-pass plan now keeps those files as `.ts` or `.tsx`.
 - Migration API checks counted a native module body's declaration as a new entry point, so a module with an internal body never compared identical. Its parent's exports now decide the API.
 - `vibelang/babel` and `vibelang/metro` read only `.vibe`, so a `.vibex` module failed to parse or was left out of the bundle. Both now read `.vibex`.
-- When a site audit stalled on a video, its logs gave no request timings. The logs now show when local media requests receive headers, finish or abort.
 
 - Migrating a package could report a changed API when an unchanged class with private members or enum moved behind a re-export; the comparison now retains its public identity while checking member and alias changes.
-- Site checks waited for video metadata requests to time out. The local build router now honors byte ranges, so those checks finish loading media promptly.
 - Bundling a project with virtual TypeScript modules could fail while VibeLang checked a virtual identifier as a file. Virtual modules now stay with the plugin that generates them.
 - Migrating a code generator could change an output filename from `index.ts` to `index.vibe`; bare filename data now stays unchanged while source inputs follow renamed modules.
 - Preparing a new version could require repeating fixes from an older release. Publication checks now keep each fix with the version that shipped it.
@@ -50,7 +46,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A class pattern whose custom matcher returns `boolean` could incorrectly expose class fields in its arm. It now leaves the subject's type unchanged, as a boolean test does.
 
 - Migration could leave source-linked documentation pointing at removed TypeScript files or showing old imports; matching code blocks and their source paths now follow the conversion.
-- Contributor build checks could duplicate or omit the directive tests. The graph now runs those tests once.
 - A `do` expression in a `provide` provider crashed the compiler. The `do` now runs before the block, and a `continue` or `break` inside it leaves the block as written.
 - `vibelang --fix` could leave independent type repairs unapplied between uses of a name whose rename was declined. It now preserves the declined binding and its uses while applying repairs between them.
 - A `using` of a plain Disposable in effect code ran its disposer when a `try` failed or the fiber was interrupted. It now keeps TypeScript's meaning, as in `Effect.gen`: a failed `try` abandons the generator, so the disposer doesn't run. Use `acquireDisposable` inside `scoped` for cleanup on every exit.

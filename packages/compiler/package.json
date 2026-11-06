@@ -1,6 +1,6 @@
 {
   "name": "vibelang",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "The VibeLang compiler and language server: a readable syntax for Effect that compiles to JavaScript with TypeScript declarations",
   "keywords": [
     "vibelang",
@@ -93,12 +93,12 @@
     "test": "node --test test/*.test.mjs"
   },
   "optionalDependencies": {
-    "vibelang-darwin-arm64": "0.0.11",
-    "vibelang-darwin-x64": "0.0.11",
-    "vibelang-linux-arm64": "0.0.11",
-    "vibelang-linux-x64": "0.0.11",
-    "@smthrs/cli-win32-arm64": "0.0.11",
-    "@smthrs/cli-win32-x64": "0.0.11"
+    "vibelang-darwin-arm64": "0.0.12",
+    "vibelang-darwin-x64": "0.0.12",
+    "vibelang-linux-arm64": "0.0.12",
+    "vibelang-linux-x64": "0.0.12",
+    "@smthrs/cli-win32-arm64": "0.0.12",
+    "@smthrs/cli-win32-x64": "0.0.12"
   },
   "devDependencies": {
     "fast-check": "4.10.2",

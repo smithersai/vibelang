@@ -1,15 +1,35 @@
 ---
 title: "VibeLang in .ts files"
-description: "This is an experimental source-checkout preview of open VIP-42. The vibelang-typescript replacement package is not currently available from npm. Use the regular integration for package-based..."
+description: "The vibelang-typescript package is an experimental implementation of open VIP-42. It is included in the VibeLang 0.0.12 release. Prefer the regular integration when you can use .vibe files."
 ---
 
 # VibeLang in .ts files
 
-This is an experimental source-checkout preview of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md). The `vibelang-typescript` replacement package is not currently available from npm. Use [the regular integration](/setup/existing-project) for package-based installation.
+The `vibelang-typescript` package is an experimental implementation of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md). It is included in the VibeLang 0.0.12 release. Prefer [the regular integration](/setup/existing-project) when you can use `.vibe` files.
 
-The checkout compiler recognizes VibeLang in a `.ts` file whose first line is `// @vibe`. The proposed replacement package runs it under the name `typescript`, so existing `tsc` scripts can reach it. Files without the directive stay TypeScript.
+The compiler recognizes VibeLang in a `.ts` file whose first line is `// @vibe`. The replacement package runs it under the name `typescript`, so existing `tsc` scripts can reach it. Files without the directive stay TypeScript.
 
 This is the last option. Use it only when you can't name files `.vibe`. The [`vibelang` CLI](/setup/vibelang-cli), [Vite and Vitest](/setup/vite) and the other plugins in [Set up VibeLang](/setup) keep every stock TypeScript tool working. Here each tool that reads a `// @vibe` file with stock TypeScript or its own parser fails.
+
+## Install
+
+```sh
+npm install --save-dev --save-exact typescript@npm:vibelang-typescript@7.1.12
+npm install --save-exact effect@4.1.1 vibelang-runtime@0.0.12
+```
+
+The package targets TypeScript 7.1. Move a TypeScript 5 or 6 project to that compiler version first, including its configuration migrations.
+
+In a monorepo, install it at the root and replace every other `typescript` with the root's `overrides`:
+
+```json
+{
+  "devDependencies": { "typescript": "npm:vibelang-typescript@7.1.12" },
+  "overrides": { "typescript": "$typescript" }
+}
+```
+
+pnpm takes `overrides: { typescript: npm:vibelang-typescript@7.1.12 }` in `pnpm-workspace.yaml`.
 
 ## Source checkout preview
 
@@ -22,9 +42,7 @@ sh scripts/build-vibelang.sh
 node packages/compiler/bin/vibelang --version
 ```
 
-Use the checkout's compiler launcher with your project's normal compiler options to check marked files. This preview uses the repository's `vibelang` compiler; the npm replacement package remains unpublished.
-
-The prototype targets TypeScript 7.1. Move a TypeScript 5 or 6 project to that compiler version first, including its configuration migrations.
+Use the checkout's compiler launcher with your project's normal compiler options to check marked files. This route uses the repository's `vibelang` compiler directly.
 
 ## Write a file
 
@@ -53,9 +71,9 @@ A `.ts`, `.mts` or `.cts` file with the line follows every `.vibe` rule, and a `
 | No `module` declarations: `module text { }` is `TS1540`. Put the code in a plain `.ts` file and import it | TypeScript gives that syntax another meaning |
 | No declaration sidecar | Sidecars exist for `.vibe` names |
 
-## Repository prototype behavior
+## Tool compatibility
 
-| Tool | With the repository shim |
+| Tool | With the shim |
 | --- | --- |
 | `tsc`, `tsc --watch`, `tsc -b` | Checks and emits both kinds of file |
 | An editor that starts `tsc --lsp --stdio` from the project | Diagnostics, hover and the rest, in both kinds of file. In VS Code set `"js/ts.tsdk.path": "node_modules/typescript/lib"` and accept the workspace version |

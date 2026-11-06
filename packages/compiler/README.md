@@ -533,7 +533,7 @@ export default { compilers: { vibe: vibelang, vibex: vibelang }, ignore: ["**/*.
 
 ## How the package finds the native compiler
 
-`vibelang` is a small Node launcher. In 0.0.11, the native compiler comes from one of six
+`vibelang` is a small Node launcher. In 0.0.12, the native compiler comes from one of six
 optional dependencies, and npm installs the one that matches your platform:
 `vibelang-darwin-arm64`, `vibelang-darwin-x64`, `vibelang-linux-arm64`,
 `vibelang-linux-x64`, `@smthrs/cli-win32-arm64`,

@@ -12,12 +12,12 @@
     "@effect/platform-browser": "4.1.1",
     "effect": "4.1.1",
     "foldkit": "0.169.0",
-    "vibelang-runtime": "0.0.11"
+    "vibelang-runtime": "0.0.12"
   },
   "devDependencies": {
     "happy-dom": "20.14.6",
-    "vibelang": "0.0.11",
-    "vibelang-vite": "0.0.11",
+    "vibelang": "0.0.12",
+    "vibelang-vite": "0.0.12",
     "vite": "8.3.4",
     "vitest": "5.0.5"
   }
