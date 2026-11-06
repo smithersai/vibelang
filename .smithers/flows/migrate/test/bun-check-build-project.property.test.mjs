@@ -11,7 +11,8 @@ import {SpecPath} from "../../../../scripts/testing/spec-path.mjs"
 const require=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))
 const ts=require("typescript"),fc=require("fast-check"),repo=resolve(new URL("../../../../",import.meta.url).pathname)
 const compiler=process.env.VIBELANG_BINARY||join(repo,"packages/compiler/native/vibelang")
-const bun=process.env.VIBELANG_TEST_BUN||"bun"
+// Gates pin Bun 1.4.2, which has no `bun check`. docs/tools pins one that does.
+const bun=process.env.VIBELANG_TEST_BUN||join(repo,"docs/tools/node_modules/.bin/bun")
 test("TestBunBuildProjectRulesQuoted",()=>{
   const chapter=readFileSync(SpecPath("007-tooling.md"),"utf8")
   for(const quote of ["Fields retain their TypeScript meaning with one deliberate file-kind exception:","Module resolution is as in TypeScript"])assert.ok(chapter.includes(quote))
