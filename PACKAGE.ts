@@ -1488,7 +1488,7 @@ const targets = {
   ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
-    "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
+    "cd docs/tools && bun test --only-failures --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
     [Typescript.compiler, Typescript["forms-generator"], Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks, specLint],
     [bun, node, S.Host.bin("jj")]
   ),
