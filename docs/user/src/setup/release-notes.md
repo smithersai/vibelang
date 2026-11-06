@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` refused a `.pipe` on a parenthesized `try`, as in `(try f()).pipe(g)`, reporting `')' expected`, because its rewrite lost the closing parenthesis. It now keeps the parenthesis, and it leaves a success value's own `.pipe` as written.
 - A test or build killed while a `.vibe` module compiled could leave a native compiler running, each holding gigabytes of memory. The compiler now stops when the process that started it exits.
 
+- Migration left a module in TypeScript when it read a clock or random source such as `crypto.randomUUID()`, because the platform split did not recognize the call in the compiler's message. The split now moves that code to the module's `.ts` companion.
 - Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
 
 - Migrating a generator with nested pipelines could crash or corrupt the rewrite; `vibelang --fix` now preserves nested receiver and stage-callback changes when capturing the surrounding pipeline.

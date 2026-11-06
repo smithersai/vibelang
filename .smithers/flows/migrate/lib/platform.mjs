@@ -51,7 +51,8 @@ const diagnosticNotes = notes => Array.isArray(notes)
   // host-value explanation is its final sentence; retain that boundary.
   : typeof notes === "string" ? [notes.trim().split(/(?<=\.)\s+|\r?\n/).at(-1)] : []
 
-const globalMessage = new RegExp(String.raw`^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* (?:${globalWordings.join("|")})`)
+// A clock or randomness read is named as written, with its call: crypto.randomUUID(), new Date().
+const globalMessage = new RegExp(String.raw`^(?:new )?([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])*(?:\(\))? (?:${globalWordings.join("|")})`)
 
 /**
  * The host globals that EK4402 messages name, as the identifiers a

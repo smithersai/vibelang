@@ -56,6 +56,15 @@ test("the opencode witness: AbortSignal.timeout reaches the host names AbortSign
   assert.deepEqual(platformGlobalsOf(["URL.createObjectURL reaches the host and cannot be used in a .vibe file."]), ["URL"])
 })
 
+test("smithers: a clock or randomness read names its global through the call", () => {
+  const text = (name) => `${name} is platform code, which VibeLang code does not use directly.`
+  assert.deepEqual(platformGlobalsOf([text("crypto.randomUUID()")]), ["crypto"])
+  assert.deepEqual(platformGlobalsOf([text("crypto.getRandomValues()")]), ["crypto"])
+  assert.deepEqual(platformGlobalsOf([text("performance.now()")]), ["performance"])
+  assert.deepEqual(platformGlobalsOf([text("globalThis.crypto.randomUUID()")]), ["globalThis"])
+  assert.deepEqual(platformGlobalsOf([text("new Date()")]), ["Date"])
+})
+
 test("every EK4402 text in the compiler's message table is classified", () => {
   const templates = ek4402Templates()
   assert.ok(templates.includes("{0} reaches the host and cannot be used in a .vibe file."), "the table reader finds the platform-member text")
@@ -77,7 +86,7 @@ test("platformGlobalsOf names exactly the globals of the compiler's global texts
   const globalTexts = templates.filter((t) => kinds[t] === "global")
   const otherTexts = templates.filter((t) => kinds[t] !== "global")
   const identifier = fc.stringMatching(/^[A-Za-z_$][A-Za-z0-9_$]{0,8}$/).filter((s) => s !== "import")
-  const member = fc.array(fc.oneof(fc.stringMatching(/^\??\.[A-Za-z_$][A-Za-z0-9_$]{0,6}$/), fc.constant('["key"]')), { maxLength: 3 }).map((parts) => parts.join(""))
+  const member = fc.array(fc.oneof(fc.stringMatching(/^\??\.[A-Za-z_$][A-Za-z0-9_$]{0,6}$/), fc.constant('["key"]')), { maxLength: 3 }).chain((parts) => fc.constantFrom("", "()").map((call) => parts.join("") + call))
   const site = fc.oneof(
     fc.record({ global: identifier, member, template: fc.constantFrom(...globalTexts), prefix: fc.boolean() }),
     fc.record({ global: fc.constant(null), member: fc.constant(""), template: fc.constantFrom(...otherTexts), prefix: fc.boolean() }),
