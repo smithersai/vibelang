@@ -8,6 +8,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import fc from "fast-check"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compilerPackage = fileURLToPath(new URL("../", import.meta.url))
@@ -80,6 +81,16 @@ for (const [name, text] of Object.entries({ latin: "café", cjk: "日本語", as
     assert.equal(JSON.parse(result.stdout), text)
   })
 }
+
+test("random text stays exact through vibelang/bun", { skip }, (t) => {
+  const texts = fc.sample(fc.oneof(fc.string({ unit: "binary" }), fc.string({ unit: "grapheme" }), fc.string({ unit: "grapheme-ascii" })), { numRuns: 300, seed: 20261105 })
+  const result = run(t, {
+    "src/main.vibe": `export const texts = ${JSON.stringify(texts)}\n`,
+    "src/entry.mjs": 'import { texts } from "./main.vibe"\nconsole.log(JSON.stringify(texts))\n'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), texts)
+})
 
 // Bun's transpiler supplies each of these. JavaScriptCore has no decorators.
 const needing = {

@@ -38,6 +38,7 @@ Code example count: one example per fenced code block in the source body, includ
 
 - [Set up VibeLang](src/setup.md)
 - [Known limitations](src/setup/known-limitations.md)
+- [Source maps](src/setup/source-maps.md)
 - **Start a project**
   - [New project](src/setup/new-project.md)
   - [Existing project](src/setup/existing-project.md)

@@ -90,6 +90,10 @@ export const sidebar = [
         "link": "/setup/known-limitations"
       },
       {
+        "text": "Source maps",
+        "link": "/setup/source-maps"
+      },
+      {
         "text": "Start a project",
         "collapsed": false,
         "items": [

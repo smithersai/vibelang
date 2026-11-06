@@ -242,6 +242,21 @@ const compilerToolsTest = S.Shell.Test({
   sandbox: "none",
   timeout: "10m"
 })
+// One test per tool that reads a VibeLang source map, driving the tool itself:
+// Node, Bun, the V8 inspector, Vite, Vitest, the bundlers, tsserver and an error
+// tracker's consumer. docs/maintainers/source-maps.md says what each proves.
+const sourceMapToolsTest = S.Shell.Test({
+  summary: "Source maps through Node, Bun, the V8 inspector, Vite, Vitest, the bundlers and the language servers.",
+  shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/compiler/test/source-maps/run.sh",
+  // The fuzz generator's programs come from a Go command in the module's sources.
+  data: [compilerNative, Tsc.srcs, S.file("//typescript/go.work"), S.glob("compiler/**"), S.glob("vite/**"), S.glob("unplugin/**"),
+    S.file("//scripts/testing/property.mjs"), S.file("//experiments/package.json"), S.file("//experiments/bun.lock"),
+    S.file("//typescript/vibelang/lsp-connection.mjs"), S.file("//typescript/vibelang/lsp-framing.mjs"),
+    ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("go")],
+  sandbox: "none",
+  timeout: "20m"
+})
 const viteTest = pluginTest("vite", "vibelang-vite's node tests: Vite and Vitest builds, source maps and watch.", "15m")
 const unpluginTest = pluginTest("unplugin", "vibelang-unplugin's node tests: each bundler's build, source maps and watch.", "20m")
 // Runs tsc and the language server through the package as npm lays it out, and
@@ -283,6 +298,7 @@ export const Package = S.Package({
     "migrate-native-loadpaths": migrateNativeLoadpaths,
     "migrate-loader-validation": migrateLoaderValidation,
     "compiler-tools-test": compilerToolsTest,
+    "source-map-tools-test": sourceMapToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,
     "typescript-shim-test": typescriptShimTest,

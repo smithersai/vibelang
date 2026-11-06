@@ -669,6 +669,7 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :compiler-test-1 .. -4        node --test (compiler package), sharded by file
   :migrate-test                 node --test (the migrate and convert flows)
   :vite-test :unplugin-test      the bundler plugins' test/run.sh (source maps, builds, watch)
+  :source-map-tools-test         source maps through each tool that reads them (docs/maintainers/source-maps.md)
 //                              repository and focused checks
   :create-cli                   node --test (fast scaffolder CLI unit tests; no compiler or install)
   :tree                         Filegroup: every file

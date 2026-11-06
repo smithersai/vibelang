@@ -1,0 +1,29 @@
+# Source maps
+
+`vibelang` writes standard version 3 source maps that name `.vibe` lines. Turn them on with `"sourceMap": true`. Add `"inlineSources": true` to carry the source text, and `"declarationMap": true` for go-to-definition into a built package.
+
+## What works where
+
+Each row is checked by driving the tool itself. The tests are under `packages/compiler/test/source-maps/`.
+
+| Tool | What works | Test |
+| --- | --- | --- |
+| Node | `--enable-source-maps` and `vibelang/register` print `.vibe` lines and columns | `node.test.mjs` |
+| Debuggers | A breakpoint set on a `.vibe` line pauses there, over V8's inspector protocol | `inspector.test.mjs` |
+| Bun | `vibelang/bun` prints `.vibe` lines, with the limits below | `bun.test.mjs` |
+| Vite | The dev server's modules and SSR stacks, and `vite build` | `vite.test.mjs`, `bundlers.test.mjs` |
+| Vitest | A failing test's stack, with `@effect/vitest` too, and coverage with the V8 and Istanbul providers | `vitest.test.mjs` |
+| esbuild, Rollup, Rolldown, webpack | The bundle's map reaches `.vibe` text, and Node prints `.vibe` frames | `bundlers.test.mjs` |
+| Rspack | The bundle's map reaches `.vibe` text | `packages/unplugin/test/bundlers.test.mjs` |
+| Metro, Babel | The bundle's map names `.vibe` lines | `packages/compiler/test/tools/metro.test.mjs` |
+| Error trackers | A minified production stack resolves to `.vibe` lines and source context, as Sentry does, through `@sentry/vite-plugin`'s debug IDs too | `production.test.mjs` |
+| Editors | Go to definition from a built package's import reaches the `.vibe` declaration, in VibeLang's language server and in `tsserver` | `language-server.test.mjs` |
+
+## Limits
+
+- **Bun's runtime:** Bun reads a source map only from a module it runs without transpiling. `vibelang/bun` can do that for a module whose emitted JavaScript is ASCII and that needs nothing from Bun's transpiler: no JSX left in the output, no decorators at `target: "ESNext"`, and no `require`, `__dirname` or `__filename`. In any other module a stack frame names the `.vibe` file with the line of its compiled JavaScript.
+- **`Bun.build`:** it ignores a plugin's source map, so a bundle's map points into each module's compiled JavaScript.
+- **Compiled output under Bun:** `bun dist/main.js` reads no map beside plain JavaScript, so a stack names the emitted file.
+- **Names:** `names` is empty, as in `tsc`. A debugger shows an emitted name, such as `$do1`, where the lowering made one.
+- **Line ends:** `U+2028` and `U+2029` end a line, as in JavaScript.
+- **Stacks:** a JavaScript stack shows the active frame above Effect's run loop. Use spans for the logical call chain.

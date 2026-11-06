@@ -1,0 +1,9 @@
+# Install only releases published at least 7 days (604800 seconds) ago.
+# @effect/vitest and its peer effect ship with the release the repository pins,
+# and may resolve immediately; run.sh omits the peer, and fixtures link the
+# pinned effect. Other dependencies keep the age gate.
+# Bun 1.4 skips the age check when a manifest is already cached
+# (https://github.com/oven-sh/bun/issues/45831); run.sh installs with --no-cache.
+[install]
+minimumReleaseAge = 604800
+minimumReleaseAgeExcludes = ["@effect/vitest", "effect"]

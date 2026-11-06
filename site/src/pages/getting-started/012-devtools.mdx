@@ -605,7 +605,7 @@ effect function tracedSample() {
 
 Add spans where an execution boundary should appear in telemetry. VibeLang adds no spans of its own: name each one with `withSpan`. Effect's `DevTools` layer from `effect/devtools`, with its VS Code extension, shows fibers and logical span stacks across suspensions.
 
-`vibelang` with `sourceMap` enabled, and the Vite plugin, map emitted JavaScript directly to `.vibe` positions. Debuggers that read standard source maps map breakpoints and paused frames to `.vibe`: VS Code's JavaScript debugger, Chrome and Edge DevTools, and JetBrains IDEs.
+`vibelang` with `sourceMap` enabled, and the Vite plugin, map emitted JavaScript directly to `.vibe` positions. Debuggers that read standard source maps map breakpoints and paused frames to `.vibe`: VS Code's JavaScript debugger, Chrome and Edge DevTools, and JetBrains IDEs. [Source maps](/setup/source-maps) lists what works in each tool.
 
 Compiled functions and producers keep their source names. The JavaScript stack shows the active frame above Effect's run loop. Stepping over a pausing `try` can enter the run loop; set a breakpoint on the next source line. Use spans for the logical call chain. When reporting a problem, include the Effect version, inferred contract, and diagnostic.
 
