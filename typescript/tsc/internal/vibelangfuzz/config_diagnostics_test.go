@@ -37,6 +37,30 @@ func TestConfigDiagnosticsLocation(t *testing.T) {
 	}
 }
 
+// A warning configuration diagnostic is adjustable, so vibe.severities sets its
+// category. EK3009 at error is valid only where the project asks for it.
+func TestConfigDiagnosticHonorsConfiguredSeverity(t *testing.T) {
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/project/input.json", PathKey: "/project/input.json"}, `{"vibe":{}}`, core.ScriptKindJSON)
+	for _, test := range []struct {
+		category   diagnostics.Category
+		severities map[string]string
+		valid      bool
+	}{
+		{diagnostics.CategoryError, map[string]string{"EK3009": "error"}, true},
+		{diagnostics.CategoryWarning, map[string]string{"EK3009": "error"}, false},
+		{diagnostics.CategoryError, map[string]string{"EK3009": "warning"}, false},
+		{diagnostics.CategoryError, map[string]string{"EK4802": "error"}, false},
+		{diagnostics.CategoryWarning, map[string]string{"EK4802": "error"}, true},
+	} {
+		d := ast.NewExternalDiagnostic(file, core.NewTextRange(1, 7), "EK", test.category, 3009, "configuration test")
+		gaps := &Gaps{}
+		CheckDiagnostics(gaps, "/project", []*ast.Diagnostic{d}, true, test.severities)
+		if gaps.Any() == test.valid {
+			t.Errorf("category=%v severities=%v valid=%v gaps=%v", test.category, test.severities, test.valid, gaps.found)
+		}
+	}
+}
+
 func TestConfigDiagnosticChapterCells(t *testing.T) {
 	text := "## Appendix B. Diagnostics\n| Code | VIP | Rule | Chapter |\n| --- | --- | --- | --- |\n| `EK3009` | 30 | warning: config | alternative | [Configuration](007-tooling.md#config-files) |\n| `EK4402` | 33 | ordinary error | [Services](005-services.md) |\n## Appendix C\n"
 	rows := appendixBChapterRows(text)

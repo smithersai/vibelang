@@ -256,6 +256,11 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		// from language rules and VIP-38's imported lint rules.
 		if !imported {
 			if want, ok := configurationDiagnosticDefault(d); ok {
+				if len(severities) != 0 && facts.IsAdjustable(code) {
+					if severity, configured := severities[0][name]; configured {
+						want = map[string]DefaultCategory{"error": DefaultError, "warning": DefaultWarning, "off": DefaultOff}[severity]
+					}
+				}
 				if (defaultsApply || want != DefaultWarning) && !CategoryMatches(want, d.Category()) {
 					g.Add("config:category:"+name, "%s has the wrong configuration category: %s", name, keyOf(dir, d))
 				}
