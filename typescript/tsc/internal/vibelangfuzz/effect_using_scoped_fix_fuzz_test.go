@@ -11,12 +11,29 @@ import (
 const usingScopedFixTitle = "Acquire with acquireDisposable inside scoped"
 const usingScopedNameQuote = "The naming context must be preserved or suppressed before creation, rather than repairing `.name` afterward: a class static initializer may already have observed it."
 const usingScopedBindingQuote = "Bindings and jump targets are resolved on the source before any callback is introduced."
+const usingScopedGroupingQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
 
 // Each form states whether EK0801's fix is context-safe there.
 var usingScopedForms = map[string]struct {
 	source  string
 	offered bool
 }{
+	"object-asserted":                  {"export effect function load() { using resource = { [Symbol.dispose]() {} } as Disposable; return 1 }", true},
+	"object-satisfies":                 {"export effect function load() { using resource = { [Symbol.dispose]() {} } satisfies Disposable; return 1 }", true},
+	"object-nonnull":                   {"export effect function load() { using resource = { [Symbol.dispose]() {} }!; return 1 }", true},
+	"object-asserted-nonnull":          {"export effect function load() { using resource = { [Symbol.dispose]() {} }! as Disposable; return 1 }", true},
+	"object-satisfies-nonnull":         {"export effect function load() { using resource = { [Symbol.dispose]() {} }! satisfies Disposable; return 1 }", true},
+	"object-double-asserted":           {"export effect function load() { using resource = { [Symbol.dispose]() {} } as unknown as Disposable; return 1 }", true},
+	"object-multiline":                 {"export effect function load() { using resource = {\n  [Symbol.dispose]() {}\n} as Disposable; return 1 }", true},
+	"object-bare":                      {"export effect function load() { using resource = { [Symbol.dispose]() {} }; return 1 }", true},
+	"object-parenthesized":             {"export effect function load() { using resource = ({ [Symbol.dispose]() {} }); return 1 }", true},
+	"object-wrapped-assertion":         {"export effect function load() { using resource = ({ [Symbol.dispose]() {} } as Disposable); return 1 }", true},
+	"object-wrapped-satisfies":         {"export effect function load() { using resource = ({ [Symbol.dispose]() {} } satisfies Disposable); return 1 }", true},
+	"object-wrapped-nonnull":           {"export effect function load() { using resource = ({ [Symbol.dispose]() {} }!); return 1 }", true},
+	"object-inner-parentheses":         {"export effect function load() { using resource = ({ [Symbol.dispose]() {} }) as Disposable; return 1 }", true},
+	"object-angle-assertion":           {"export effect function load() { using resource = <Disposable>{ [Symbol.dispose]() {} }; return 1 }", true},
+	"object-conditional":               {"export effect function load() { using resource = true ? { [Symbol.dispose]() {} } : { [Symbol.dispose]() {} }; return 1 }", true},
+	"object-factory":                   {"export effect function load() { using resource = open(); return 1 }", true},
 	"binding-hoisted-function":         {"const later = 2;\nexport effect function load() { const read = later; using r = open(); function later() { return 1 }; return read() }", false},
 	"binding-closure-const":            {"const later = 2;\nexport effect function load() { const read = () => later; using r = open(); const later = 1; return read() }", false},
 	"binding-closure-let":              {"const later = 2;\nexport effect function load() { const read = () => later; using r = open(); let later = 1; return read() }", false},
@@ -73,12 +90,14 @@ func TestEffectUsingScopedFixQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", usingScopedNameQuote)
 	chapterSays(t, "007-tooling.md", effectUsingWarningQuote)
 	chapterSays(t, "008-runtime.md", usingScopedBindingQuote)
+	chapterSays(t, "007-tooling.md", usingScopedGroupingQuote)
 }
 
 func FuzzEffectUsingScopedFix(f *testing.F) {
 	startShortBudget(f)
 	chapterSays(f, "001-functions.md", usingScopedNameQuote)
 	chapterSays(f, "008-runtime.md", usingScopedBindingQuote)
+	chapterSays(f, "007-tooling.md", usingScopedGroupingQuote)
 	for key := range usingScopedForms {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(1))

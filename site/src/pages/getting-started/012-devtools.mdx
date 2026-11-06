@@ -104,6 +104,8 @@ For `EK0801`, the resource quick fix moves a direct `using` declaration and the 
 
 The `EK0801` resource action keeps initializer names: an anonymous class, function or arrow initializer has no automatic conversion when the acquisition callback would erase its inferred name. A class can observe that name while its static fields initialize, so setting `.name` afterward is insufficient.
 
+The resource action groups object initializers through `as`, `satisfies` and non-null `!` wrappers, so the acquisition callback still returns the object.
+
 ### Move a TypeScript module body to a file
 
 Place the cursor in a top-level `module parse { … }` declaration and request **Move module to a .ts file** (VIP-40). The refactor writes the TypeScript body to `parse.ts` beside the `.vibe` source and rewrites its identifier imports and re-exports to that file. Other module declarations stay in place. The new file keeps the body's comments, JSDoc, relative imports and runtime behavior.

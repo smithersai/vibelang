@@ -74,7 +74,7 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 			return nil, nil
 		}
 		value := text[nodeStart(file, initializer):initializer.End()]
-		if ast.IsObjectLiteralExpression(ast.SkipParentheses(initializer)) {
+		if ast.IsObjectLiteralExpression(ast.SkipOuterExpressions(initializer, ast.OEKAll)) {
 			value = "(" + value + ")"
 		}
 		body.WriteString(indent + "  const " + declaration.Name().Text() + " = try acquireDisposable(sync(() => " + value + "))\n")
