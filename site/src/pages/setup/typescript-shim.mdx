@@ -1,11 +1,11 @@
 ---
 title: "VibeLang in .ts files"
-description: "The vibelang-typescript package is an experimental implementation of open VIP-42. It is included in the VibeLang 0.0.12 release. Prefer the regular integration when you can use .vibe files."
+description: "The vibelang-typescript package is an experimental implementation of open VIP-42. It is a source-checkout preview and is not published to npm. Prefer the regular integration when you can use .vibe..."
 ---
 
 # VibeLang in .ts files
 
-The `vibelang-typescript` package is an experimental implementation of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md). It is included in the VibeLang 0.0.12 release. Prefer [the regular integration](/setup/existing-project) when you can use `.vibe` files.
+The `vibelang-typescript` package is an experimental implementation of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md). It is a source-checkout preview and is not published to npm. Prefer [the regular integration](/setup/existing-project) when you can use `.vibe` files.
 
 The compiler recognizes VibeLang in a `.ts` file whose first line is `// @vibe`. The replacement package runs it under the name `typescript`, so existing `tsc` scripts can reach it. Files without the directive stay TypeScript.
 
@@ -13,23 +13,9 @@ This is the last option. Use it only when you can't name files `.vibe`. The [`vi
 
 ## Install
 
-```sh
-npm install --save-dev --save-exact typescript@npm:vibelang-typescript@7.1.12
-npm install --save-exact effect@4.1.1 vibelang-runtime@0.0.12
-```
+The replacement package is not currently available from npm. Use the source-checkout preview below.
 
-The package targets TypeScript 7.1. Move a TypeScript 5 or 6 project to that compiler version first, including its configuration migrations.
-
-In a monorepo, install it at the root and replace every other `typescript` with the root's `overrides`:
-
-```json
-{
-  "devDependencies": { "typescript": "npm:vibelang-typescript@7.1.12" },
-  "overrides": { "typescript": "$typescript" }
-}
-```
-
-pnpm takes `overrides: { typescript: npm:vibelang-typescript@7.1.12 }` in `pnpm-workspace.yaml`.
+The checkout targets TypeScript 7.1. Move a TypeScript 5 or 6 project to that compiler version first, including its configuration migrations.
 
 ## Source checkout preview
 
