@@ -1,0 +1,76 @@
+// expect-result: [1,2,3,4,"x",5,4,"text"]
+import { Effect } from "effect"
+import { customMatcher as key } from "vibelang-runtime"
+
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const same = <A, B>(_: Equal<A, B>) => undefined
+
+class Box<T> { constructor(readonly value: T) {} }
+class Named<T extends string> extends Box<T> {}
+class Plain { readonly id = 1 }
+class Matched {
+  static [Symbol.customMatcher](subject: unknown): [number] | false { return subject === 1 ? [1] : false }
+}
+
+// Chapter 004: an ordinary class pattern narrows as `s instanceof C`, in the
+// arm and through the default arm's false branch. An own matcher proves
+// nothing when it fails.
+function open(s: unknown): number {
+  return match (s) {
+    when Box: do { same<typeof s, Box<any>>(true); s.value };
+    when Promise: do { same<typeof s, Promise<any>>(true); 2 };
+    default: 0;
+  }
+}
+function bounded(s: unknown): number {
+  return match (s) { when Named: do { same<typeof s, Named<any>>(true); 3 }; default: 0; }
+}
+function declared(s: Box<number> | string): number {
+  return match (s) {
+    when Box: do { same<typeof s, Box<number>>(true); s.value };
+    default: do { same<typeof s, string>(true); s.length };
+  }
+}
+function plain(s: Plain | string): string {
+  return match (s) {
+    when Plain: "plain";
+    default: do { same<typeof s, string>(true); s };
+  }
+}
+function guarded(s: Plain | string): string {
+  return match (s) {
+    when Plain and if (s.id > 0): "plain";
+    default: do { same<typeof s, Plain | string>(true); "other" };
+  }
+}
+function custom(s: Matched | string): string {
+  return match (s) {
+    when Matched: "matched";
+    default: do { same<typeof s, Matched | string>(true); "other" };
+  }
+}
+class HasText {
+  static [Symbol.hasInstance](value: unknown): value is string { return typeof value === "string" }
+}
+function byGuard(s: unknown): number {
+  return match (s) { when HasText: do { same<typeof s, string>(true); s.length }; default: 0; }
+}
+declare const EmptyCtor: new () => {}
+function emptyDefault(s: { id: number } | string): void {
+  match (s) { when EmptyCtor: undefined; default: do { same<typeof s, { id: number } | string>(true); undefined }; }
+}
+class OwnRoute {
+  readonly value = 4
+  static [Symbol.hasInstance](s: unknown): s is string { return typeof s === "string" }
+  static [key](s: unknown): s is OwnRoute { return typeof s === "object" && s !== null && "value" in s }
+}
+function ownRoute(s: unknown): number | string {
+  return match (s) {
+    when OwnRoute: do { same<typeof s, OwnRoute>(true); s.value };
+    default: typeof s === "string" ? s : "other";
+  }
+}
+void [guarded, custom, emptyDefault]
+export function main(): Effect.Effect<readonly unknown[]> {
+  return Effect.sync(() => [open(new Box(1)), open(Promise.resolve(1)), bounded(new Named("a")), declared(new Box(4)), plain("x"), byGuard("hello"), ownRoute({ value: 4 }), ownRoute("text")])
+}

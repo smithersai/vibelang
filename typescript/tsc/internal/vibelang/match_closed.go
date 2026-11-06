@@ -18,6 +18,9 @@ import (
 // Effect error subclasses.
 
 func init() {
+	checker.RegisterPatternInstanceofHook(func(c *checker.Checker, matcher *ast.Node) bool {
+		return !hasOwnPatternMatcher(c, c.TypeOfPatternMatcher(matcher))
+	})
 	checker.RegisterFlowNarrowingHook(narrowOpenClassArm)
 	checker.RegisterFlowNarrowingHook(narrowUncoveredArm)
 }
@@ -119,6 +122,10 @@ func narrowOpenClassArm(c *checker.Checker, reference *ast.Node, t *checker.Type
 		return nil
 	}
 	if classArmCreditOf(c, matcher).counts {
+		return nil
+	}
+	// Source flow follows the native false branch independently of coverage.
+	if !primitiveCoverageReference(reference) && !declaresOwnMatcher(c, c.TypeOfPatternMatcher(matcher)) {
 		return nil
 	}
 	return t

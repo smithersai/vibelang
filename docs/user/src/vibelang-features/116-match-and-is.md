@@ -193,6 +193,8 @@ An `error` or `schema error` class has a `Symbol.customMatcher` that tests `_tag
 
 A legacy concrete error root still tests its own tag, so a child with a different tag misses that root's arm. A legacy abstract plain-error root retains native instance matching. Preserving migration keeps that distinction.
 
+Ordinary class patterns use TypeScript's `instanceof` narrowing in both branches, including `Symbol.hasInstance` predicates. An own custom matcher takes precedence over this class test. On an `unknown` subject, a generic `class Box<T>` gives `Box<any>`, matching its prototype type. The `default` arm keeps the type TypeScript leaves after the preceding tests fail; a failed guard does not prove that the class test failed.
+
 An ordinary class pattern, including a handwritten `Data.TaggedError` class, covers no finite case for `EK4701`. TypeScript permits structurally compatible values whose prototype can fail that class’s `instanceof` test. Use an object tag pattern such as `when { _tag: "Shared" }:` or add a `default`. Generated `error` and `schema error` patterns and retained fixed patterns keep their tag or guard coverage rules. An extractor's irrefutable captures, such as `when NotFound(let first and const second):`, retain that coverage after the compiler installs the declaration's matcher. A guard inside the extractor still covers no finite case.
 
 Changing an `error` or `schema error` declaration's name also changes its `_tag`; update any `catchTag` or `catchTags` key that names it.

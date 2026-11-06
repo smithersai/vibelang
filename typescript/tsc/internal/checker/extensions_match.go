@@ -115,3 +115,49 @@ func isVibeLangArrayPattern(call *ast.Node) bool {
 	return ast.IsIdentifier(receiver) && receiver.Flags&ast.NodeFlagsReparsed != 0 &&
 		receiver.Text() == "Array" && name.Text() == "isArray"
 }
+
+// Keep the native instanceof test attached to the generated recognition call.
+// Its operands retain their original source parents and flow nodes.
+type patternInstanceofTestsKey struct{}
+type patternInstanceofTests struct {
+	factory *ast.NodeFactory
+	tests   map[*ast.Node]*ast.Node
+}
+
+func (c *Checker) narrowTypeByPatternInstanceof(f *FlowState, t *Type, call *ast.Node, assumeTrue bool) *Type {
+	state := c.ExtensionState(patternInstanceofTestsKey{}, func() any {
+		return &patternInstanceofTests{
+			factory: ast.NewNodeFactory(ast.NodeFactoryHooks{}),
+			tests:   map[*ast.Node]*ast.Node{},
+		}
+	}).(*patternInstanceofTests)
+	test := state.tests[call]
+	if test == nil {
+		token := state.factory.NewToken(ast.KindInstanceOfKeyword)
+		test = state.factory.NewBinaryExpression(nil, call.Arguments()[1], nil, token, call.Arguments()[0])
+		test.Parent, test.Loc = call.Parent, call.Loc
+		token.Parent, token.Loc = test, call.Loc
+		state.tests[call] = test
+	}
+	return c.narrowTypeByInstanceof(f, t, test.AsBinaryExpression(), assumeTrue)
+}
+
+// PatternInstanceofHook reports whether a constructor pattern uses instanceof
+// after higher-priority matcher dispatch.
+type PatternInstanceofHook func(*Checker, *ast.Node) bool
+
+var patternInstanceofHooks []PatternInstanceofHook
+
+// RegisterPatternInstanceofHook registers an in-tree extension at init time.
+func RegisterPatternInstanceofHook(hook PatternInstanceofHook) {
+	patternInstanceofHooks = append(patternInstanceofHooks, hook)
+}
+
+func (c *Checker) patternUsesInstanceof(matcher *ast.Node) bool {
+	for _, hook := range patternInstanceofHooks {
+		if !hook(c, matcher) {
+			return false
+		}
+	}
+	return true
+}

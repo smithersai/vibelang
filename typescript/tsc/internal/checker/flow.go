@@ -39,18 +39,18 @@ type SharedFlow struct {
 
 type FlowState struct {
 	unreachablePatternCoverage bool
-	reference        *ast.Node
-	declaredType     *Type
-	initialType      *Type
-	flowContainer    *ast.Node
-	refKey           CacheHashKey
-	depth            int
-	sharedFlowStart  int
-	doEntry          *ast.FlowNode
-	doCompletion     bool
-	generatedCapture bool
-	reduceLabels     []*ast.FlowReduceLabelData
-	next             *FlowState
+	reference                  *ast.Node
+	declaredType               *Type
+	initialType                *Type
+	flowContainer              *ast.Node
+	refKey                     CacheHashKey
+	depth                      int
+	sharedFlowStart            int
+	doEntry                    *ast.FlowNode
+	doCompletion               bool
+	generatedCapture           bool
+	reduceLabels               []*ast.FlowReduceLabelData
+	next                       *FlowState
 }
 
 func (c *Checker) getFlowState() *FlowState {
@@ -416,6 +416,9 @@ func (c *Checker) narrowTypeByTypePredicate(f *FlowState, t *Type, predicate *Ty
 	if predicate.t != nil && !(IsTypeAny(t) && (predicate.t == c.globalObjectType || predicate.t == c.globalFunctionType)) {
 		// A VibeLang class pattern narrows as instanceof does (extensions_match.go).
 		checkDerived := c.isVibeLangClassPattern(callExpression)
+		if checkDerived && c.patternUsesInstanceof(callExpression.Arguments()[0]) {
+			return c.narrowTypeByPatternInstanceof(f, t, callExpression, assumeTrue)
+		}
 		predicateArgument := c.getTypePredicateArgument(predicate, callExpression)
 		if predicateArgument != nil {
 			if c.isMatchingReference(f.reference, predicateArgument) {
