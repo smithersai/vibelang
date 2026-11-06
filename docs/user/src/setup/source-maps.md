@@ -24,6 +24,7 @@ Each row is checked by driving the tool itself. The tests are under `packages/co
 - **Bun's runtime:** Bun reads a source map only from a module it runs without transpiling. `vibelang/bun` can do that for a module whose emitted JavaScript is ASCII and that needs nothing from Bun's transpiler: no JSX left in the output, no decorators at `target: "ESNext"`, and no `require`, `__dirname` or `__filename`. In any other module a stack frame names the `.vibe` file with the line of its compiled JavaScript.
 - **`Bun.build`:** it ignores a plugin's source map, so a bundle's map points into each module's compiled JavaScript.
 - **Compiled output under Bun:** `bun dist/main.js` reads no map beside plain JavaScript, so a stack names the emitted file.
+- **Sidecars:** an `x.d.vibe.ts` sidecar has no map, so go-to-definition in stock `tsserver` stops at the sidecar for a relative `.vibe` import. VibeLang's language server reaches the source. A built package's `.d.ts` maps reach the source in both.
 - **Names:** `names` is empty, as in `tsc`. A debugger shows an emitted name, such as `$do1`, where the lowering made one.
 - **Line ends:** `U+2028` and `U+2029` end a line, as in JavaScript.
 - **Stacks:** a JavaScript stack shows the active frame above Effect's run loop. Use spans for the logical call chain.

@@ -79,11 +79,9 @@ test("the language server goes from an import to the .vibe declaration", async (
 
 // tsserver, the process editors run. Its session maps a definition through a
 // declaration map; the LanguageService API alone does not.
-test("stock tsserver goes from an import to the .vibe declaration", async (t) => {
-  const root = await built(t)
-  const app = join(root, "app")
+function tsserver(t, cwd) {
   const require = createRequire(join(process.env.EFFECT_NODE_MODULES ?? join(import.meta.dirname, "../../../../experiments/node_modules"), "package.json"))
-  const server = spawn(process.execPath, [require.resolve("typescript/lib/tsserver.js"), "--disableAutomaticTypingAcquisition"], { cwd: app, stdio: ["pipe", "pipe", "inherit"] })
+  const server = spawn(process.execPath, [require.resolve("typescript/lib/tsserver.js"), "--disableAutomaticTypingAcquisition"], { cwd, stdio: ["pipe", "pipe", "inherit"] })
   t.after(() => server.kill())
   const waiting = new Map()
   let buffer = ""
@@ -102,13 +100,22 @@ test("stock tsserver goes from an import to the .vibe declaration", async (t) =>
     }
   })
   let seq = 0
-  const request = (command, args) => new Promise((done) => {
-    seq++
-    waiting.set(seq, done)
-    server.stdin.write(JSON.stringify({ seq, type: "request", command, arguments: args }) + "\n")
-  })
+  return {
+    open: (file, fileContent) => server.stdin.write(JSON.stringify({ seq: ++seq, type: "request", command: "open", arguments: { file, fileContent, scriptKindName: "TS" } }) + "\n"),
+    request: (command, args) => new Promise((done) => {
+      seq++
+      waiting.set(seq, done)
+      server.stdin.write(JSON.stringify({ seq, type: "request", command, arguments: args }) + "\n")
+    })
+  }
+}
+
+test("stock tsserver goes from an import to the .vibe declaration", async (t) => {
+  const root = await built(t)
+  const app = join(root, "app")
+  const { open, request } = tsserver(t, app)
   const file = join(app, "src/use.ts")
-  server.stdin.write(JSON.stringify({ seq: ++seq, type: "request", command: "open", arguments: { file, fileContent: consumer, scriptKindName: "TS" } }) + "\n")
+  open(file, consumer)
   for (const [use, declared] of names) {
     const from = locate(consumer, `= ${use}`, "use.ts")
     const response = await request("definition", { file, line: from.line, offset: from.column + 3 })
@@ -119,4 +126,40 @@ test("stock tsserver goes from an import to the .vibe declaration", async (t) =>
     const want = locate(library, declared, "users.vibe")
     assert.deepEqual({ line: definition.start.line, column: definition.start.offset - 1 }, want, use)
   }
+})
+
+// A named limitation. The sidecar beside a .vibe file has no map of its own, so
+// tsserver stops there. When this fails, sidecars have maps: update the docs.
+test("stock tsserver stops at the sidecar of a relative .vibe import", async (t) => {
+  const consumerOfSidecar = `import { greet } from "./users.vibe"
+export const text = greet({ id: "1" })
+`
+  const root = project(t, {
+    "tsconfig.json": JSON.stringify({
+      compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], lib: ["ES2022"], allowArbitraryExtensions: true, allowImportingTsExtensions: true, noEmit: true },
+      include: ["src"]
+    }),
+    "src/main.vibe": "export {}\n", "src/entry.mjs": "", "src/users.vibe": library, "src/use.ts": consumerOfSidecar
+  })
+  await succeed(compiler, ["-p", "tsconfig.json"], { cwd: root })
+  const { open, request } = tsserver(t, root)
+  const file = join(root, "src/use.ts")
+  open(file, consumerOfSidecar)
+  const from = locate(consumerOfSidecar, "= greet(", "use.ts")
+  const response = await request("definition", { file, line: from.line, offset: from.column + 3 })
+  assert.ok(response.success, JSON.stringify(response))
+  assert.ok(response.body[0]?.file.endsWith("users.d.vibe.ts"), JSON.stringify(response.body))
+  // VibeLang's language server reads the .vibe file itself, so it has no such stop.
+  const connection = new Connection(compiler, ["--lsp", "--stdio"], root)
+  t.after(() => connection.close())
+  const rootUri = pathToFileURL(root).href
+  await connection.request("initialize", {
+    processId: process.pid, rootUri, workspaceFolders: [{ uri: rootUri, name: "app" }],
+    capabilities: { general: { positionEncodings: ["utf-16"] }, textDocument: { definition: { linkSupport: false } } }
+  })
+  connection.notify("initialized", {})
+  const uri = pathToFileURL(file).href
+  connection.notify("textDocument/didOpen", { textDocument: { uri, languageId: "typescript", version: 1, text: consumerOfSidecar } })
+  const [location] = [await connection.request("textDocument/definition", { textDocument: { uri }, position: { line: from.line - 1, character: from.column + 2 } })].flat()
+  assert.ok(location?.uri.endsWith("/src/users.vibe"), JSON.stringify(location))
 })

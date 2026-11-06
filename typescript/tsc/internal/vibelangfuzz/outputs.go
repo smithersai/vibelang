@@ -460,12 +460,13 @@ func (oc *OutputChecker) checkDeclarationText(c *Compilation, name, text string,
 
 // A SourceMap is a version 3 source map.
 type SourceMap struct {
-	Version    int      `json:"version"`
-	File       string   `json:"file"`
-	SourceRoot string   `json:"sourceRoot"`
-	Sources    []string `json:"sources"`
-	Names      []string `json:"names"`
-	Mappings   string   `json:"mappings"`
+	Version        int       `json:"version"`
+	File           string    `json:"file"`
+	SourceRoot     string    `json:"sourceRoot"`
+	Sources        []string  `json:"sources"`
+	SourcesContent []*string `json:"sourcesContent"`
+	Names          []string  `json:"names"`
+	Mappings       string    `json:"mappings"`
 }
 
 func (oc *OutputChecker) checkSourceMap(c *Compilation, name, text string) {

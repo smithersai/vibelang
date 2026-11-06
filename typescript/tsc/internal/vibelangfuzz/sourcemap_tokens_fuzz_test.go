@@ -175,8 +175,8 @@ func sourceMapSeeds() []sourceMapSeed {
 }
 
 const (
-	sourceMapShortSeeds    = 12
-	sourceMapShortPrograms = 36
+	sourceMapShortSeeds    = 40
+	sourceMapShortPrograms = 108
 )
 
 // sampleStrings takes n evenly spaced elements, so a run stays reproducible
@@ -403,16 +403,6 @@ func generatedTokens(name, text string, mapped func(int) bool) []mapToken {
 // the record a provide block completes with, and an entry's import.meta.url.
 var loweredSpelling = regexp.MustCompile(`(?:\b[A-Z]\w*\.|\bruntime\.|[\w$]_\d+\.|\$\w+\.|\$tdz\)\.|function\* |\b(?:break|continue) |kind: "\w+", |import\.meta\.)$`)
 
-// sourceMapFile is the part of a version 3 map the contract reads.
-type sourceMapFile struct {
-	Version        int       `json:"version"`
-	File           string    `json:"file"`
-	Sources        []string  `json:"sources"`
-	SourcesContent []*string `json:"sourcesContent"`
-	Names          []string  `json:"names"`
-	Mappings       string    `json:"mappings"`
-}
-
 type sourceMapStats struct{ sourceTokens, generatedTokens, checked int }
 
 // checkMappedTokens applies the contract's rules to one map. The Tokens rule
@@ -422,7 +412,7 @@ type sourceMapStats struct{ sourceTokens, generatedTokens, checked int }
 // after the lowering, which `exports.x` and `require` spell anew.
 func checkMappedTokens(g *Gaps, name, generated, mapJSON, vibe, source string) sourceMapStats {
 	var stats sourceMapStats
-	var m sourceMapFile
+	var m SourceMap
 	if err := json.Unmarshal([]byte(mapJSON), &m); err != nil || m.Version != 3 {
 		g.Add("feature:source-map", "%s is not a version 3 source map (%v)", name, err)
 		return stats
