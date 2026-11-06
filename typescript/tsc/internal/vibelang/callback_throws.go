@@ -119,8 +119,8 @@ func isSatisfiesCallbackOperand(node *ast.Node) bool {
 }
 
 // throwContract is what a function type's @throws tags say: whether it has
-// one, whether one names unknown (or any), which admits anything, and the
-// other types they name. A tag naming never adds nothing.
+// one, whether one names unknown, which admits anything, and the other
+// types they name. Explicit any uses TypeScript assignability; never adds nothing.
 type throwContract struct {
 	tagged  bool
 	unknown bool
@@ -145,7 +145,7 @@ func writtenThrows(c *checker.Checker, decl *ast.Node) throwContract {
 				contract.tagged = true
 				t := tag.AsJSDocThrowsTag().TypeExpression.AsJSDocTypeExpression().Type
 				switch {
-				case t == nil, t.Kind == ast.KindUnknownKeyword, t.Kind == ast.KindAnyKeyword:
+				case t == nil, t.Kind == ast.KindUnknownKeyword:
 					contract.unknown = true
 				case t.Kind == ast.KindNeverKeyword:
 				default:
@@ -164,6 +164,11 @@ func (dst throwContract) admits(c *checker.Checker, src throwContract) bool {
 	case dst.unknown:
 		return true
 	case src.unknown:
+		for _, admitted := range dst.types {
+			if admitted == c.GetAnyType() {
+				return true
+			}
+		}
 		return false
 	case len(src.types) == 0:
 		return true

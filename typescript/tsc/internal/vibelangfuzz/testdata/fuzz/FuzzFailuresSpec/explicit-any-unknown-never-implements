@@ -1,0 +1,3 @@
+go test fuzz v1
+string("explicit-any-unknown-never-implements")
+byte(0)

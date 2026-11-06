@@ -274,7 +274,7 @@ func defaultForeignCallbackContract(c *checker.Checker, signature *checker.Signa
 				}
 				t := c.InstantiateWrittenSignatureType(signature, c.GetTypeFromTypeNode(node), owners)
 				switch {
-				case t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0:
+				case t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 && t != c.GetAnyType():
 					contract.unknown = true
 				case t.Flags()&checker.TypeFlagsNever != 0:
 				default:

@@ -1244,6 +1244,9 @@ func failuresCases() []*failCase {
 	for _, c := range failuresGeneratorParameterCases() {
 		add(c)
 	}
+	for _, c := range failuresExplicitAnyCases() {
+		add(c)
+	}
 	return foreignFixtures(append(append(cases, failuresExtraCases()...), failuresNoThrowCases()...))
 }
 

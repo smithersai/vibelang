@@ -185,6 +185,8 @@ const invalid = Effect.gen(function* () {
 
 A callable whose thrown type is `T` is assignable to a function type only when that type admits `T`: a type without `@throws` admits only `never`, `@throws {U}` admits subtypes of `U`, `@throws {unknown}` admits anything, and a parameter named by `@rethrows` admits anything. So with a foreign `parse`, `const r: () => string = parse` is `EK0402`: wrap it, or declare the annotated function type in a `.ts` file or `module` body and import it. The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`, with `service` members as interface members.
 
+Explicit `@throws {any}` follows TypeScript assignability: it fits a typed thrown contract such as `@throws {string}`, but not `@throws {never}`. In contrast, `@throws {unknown}` fits only a contract admitting `unknown`, such as `@throws {unknown}` or `@throws {any}`. Neither annotation fits an untagged callback type.
+
 `Effect.try` and `Effect.tryPromise` declare their thunk `@throws {unknown}` in both overloads, so `Effect.try(() => parse(s))` is allowed and the wrapper turns a throw into a failure. Effect's `LazyArg` and other callback parameter types, those in `.d.ts` files included, describe what an argument callback may throw: without `@throws`, they admit only `never`. So `sync(() => parse(s))` is an error. The `Promise` executor also admits `@throws {unknown}`, and the constructor itself throws `never`.
 ### Calls in effect code
 
