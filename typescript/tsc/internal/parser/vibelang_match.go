@@ -146,6 +146,17 @@ type matchStep struct {
 // matchPath writes one subject or part of a subject, as a new node each time.
 type matchPath func() *ast.Node
 
+// isPropertyChain reports a name or a property path from one. An inline pattern
+// reads such a path where each test stands, so TypeScript narrows the written
+// reference; a capture would narrow only its own temporary.
+func isPropertyChain(node *ast.Node) bool {
+	node = ast.SkipParentheses(node)
+	for ast.IsPropertyAccessExpression(node) {
+		node = ast.SkipParentheses(node.Expression())
+	}
+	return ast.IsIdentifier(node)
+}
+
 // matchCompile carries the state of compiling one top-level pattern.
 type matchCompile struct {
 	coverage     bool   // mark refutable combinators in finite coverage queries
@@ -1968,7 +1979,7 @@ func (p *Parser) relationTest(pat *pattern, path matchPath) *ast.Node {
 // every test and binding sees one value. An inline pattern, which can hold no
 // declaration, reads the part where each test stands.
 func (p *Parser) enterSubject(path matchPath, pat *pattern, steps *[]matchStep, ctx *matchCompile) matchPath {
-	if subjectReads(pat) < 2 {
+	if subjectReads(pat) < 2 || (ctx.inline && isPropertyChain(path())) {
 		return path
 	}
 	p.vibelangMatchTemps++
@@ -2140,8 +2151,7 @@ func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) 
 	mark := len(p.reparseList)
 	var steps []matchStep
 	if subjectReads(pat) >= 2 {
-		original := path()
-		if !ast.IsIdentifier(ast.SkipParentheses(original)) {
+		if original := path(); !isPropertyChain(original) {
 			path = p.enterSubject(func() *ast.Node { return original }, pat, &steps, inner)
 		}
 	}

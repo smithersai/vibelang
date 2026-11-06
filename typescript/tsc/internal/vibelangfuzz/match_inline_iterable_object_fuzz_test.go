@@ -92,3 +92,71 @@ func FuzzInlineIterableObjectTypes(f *testing.F) {
 		ExpectPending(t, inlineIterableTypesTarget, specCorpusKey(t))
 	})
 }
+
+// compileReadDeclaration returns the declaration of read and the program's errors.
+func compileReadDeclaration(t *testing.T, w *Workspace, file, source string) (string, []string) {
+	t.Helper()
+	config := "{\"compilerOptions\":{\"target\":\"ES2022\",\"lib\":[\"ES2023\",\"DOM\"],\"module\":\"NodeNext\",\"strict\":true,\"declaration\":true,\"skipLibCheck\":true,\"types\":[]},\"files\":[\"" + file + "\"]}"
+	r, err := w.Compile(t.Context(), Project{Files: map[string]string{file: source, "package.json": servicesPackage}, Config: config})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Remove()
+	var errors []string
+	for _, d := range r.Diagnostics {
+		if d.Category() == diagnostics.CategoryError {
+			errors = append(errors, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
+		}
+	}
+	for name, output := range r.Outputs {
+		if strings.HasSuffix(name, ".d.ts") {
+			for line := range strings.SplitSeq(output, "\n") {
+				if strings.HasPrefix(line, "export declare function read") {
+					return line, errors
+				}
+			}
+		}
+	}
+	return "", errors
+}
+
+var inlinePropertyChainNarrowing = []struct{ key, subject, pattern, native, read string }{
+	{"or", "{ kind: string }", "{ kind: \"a\" or \"b\" }", "s.kind===\"a\"||s.kind===\"b\"", "s.kind"},
+	{"nested-or", "{ inner: { kind: string } }", "{ inner: { kind: \"a\" or \"b\" } }", "s.inner.kind===\"a\"||s.inner.kind===\"b\"", "s.inner.kind"},
+	{"literal-union", "{ kind: \"a\" | \"b\" | \"c\" }", "{ kind: \"a\" or \"b\" }", "s.kind===\"a\"||s.kind===\"b\"", "s.kind"},
+	{"tagged", "{ _tag: \"a\", x: number } | { _tag: \"b\", y: string } | { _tag: \"c\" }", "{ _tag: \"a\" or \"b\" }", "s._tag===\"a\"||s._tag===\"b\"", "s"},
+}
+
+// An inline test of a property path reads the written reference, so its
+// narrowing is the narrowing of the same || test in tsc.
+func FuzzInlinePropertyChainNarrowing(f *testing.F) {
+	startShortBudget(f)
+	for _, entry := range inlinePropertyChainNarrowing {
+		f.Add(entry.key)
+	}
+	w := NewWorkspace(f)
+	f.Fuzz(func(t *testing.T, key string) {
+		if key == "" {
+			return
+		}
+		index := slices.IndexFunc(inlinePropertyChainNarrowing, func(entry struct{ key, subject, pattern, native, read string }) bool { return entry.key == key })
+		if index < 0 {
+			index = int(key[0]) % len(inlinePropertyChainNarrowing)
+		}
+		entry := inlinePropertyChainNarrowing[index]
+		header := "declare const s:" + entry.subject + ";"
+		native, errors := compileReadDeclaration(t, w, "main.ts", header+"export function read(){if("+entry.native+"){return ["+entry.read+"]}return undefined}")
+		if len(errors) != 0 || native == "" {
+			Gap(t, "FuzzInlinePropertyChainNarrowing", "native:"+entry.key, "the counterpart fails: %v", errors)
+			return
+		}
+		custom, errors := compileReadDeclaration(t, w, "main.vibe", header+"export function read(){if(s is "+entry.pattern+"){return ["+entry.read+"]}return undefined}")
+		if len(errors) != 0 || custom != native {
+			Gap(t, "FuzzInlinePropertyChainNarrowing", "type:"+entry.key, "%s\nnative: %s\ncustom: %s\nerrors: %v", entry.pattern, native, custom, errors)
+			return
+		}
+		ExpectPending(t, "FuzzInlinePropertyChainNarrowing", "native:"+entry.key)
+		ExpectPending(t, "FuzzInlinePropertyChainNarrowing", "type:"+entry.key)
+		ExpectPending(t, "FuzzInlinePropertyChainNarrowing", specCorpusKey(t))
+	})
+}
