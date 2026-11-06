@@ -4,8 +4,6 @@ FuzzRunningRules control:fork-scoped-requirement compiler VIP-17: `fork.scoped e
 FuzzRunningRules corpus:fork-scoped-requirement compiler VIP-17: minimal reproduction of control:fork-scoped-requirement; lane w2-fork
 FuzzRunningRules diagnostic:concurrent-head-break-outer compiler VIP-19: a labeled `break` in a head default's `do` draws the retired EK1019, not EK1903; lane core-block
 FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-break-outer; lane core-block
-FuzzRunningRules diagnostic:concurrent-head-continue-outer compiler VIP-19: a labeled `continue` in a head default's `do` draws the retired EK1019, not EK1905; lane core-block
-FuzzRunningRules corpus:concurrent-head-continue-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-continue-outer; lane core-block
 
 FuzzDoDeclarationBytes bytes:inferred-return:depth-1 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
 FuzzDoDeclarationBytes bytes:inferred-return:depth-2 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
