@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The `for concurrent` tooltip said every item used its own fiber, even with a limit of `1`. It now explains sequential execution, and jump errors no longer give that incorrect reason.
+
 - Migration could stop before fixing files when a dependency was outside `rootDir`. It now reads the complete source list while preserving the diagnostic for checking.
 
 - A failed test named `__proto__` could disappear from the health report, and names such as `constructor` could have invalid failure counts. These names now keep their own counts.

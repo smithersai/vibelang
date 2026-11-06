@@ -29,7 +29,7 @@ var (
 	EK1701 = message(1701, errorCategory, "Fork or join outside effect code. Move fork or join into an effect function or effect block.")
 	EK1901 = message(1901, errorCategory, "for concurrent requires an Iterable. Pass an iterable value; consume a Stream with for try instead.")
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
-	EK1905 = message(1905, errorCategory, "continue cannot leave a for concurrent item: each item runs in its own fiber.")
+	EK1905 = message(1905, errorCategory, "continue cannot leave a for concurrent item.")
 	EK1907 = message(1907, errorCategory, "A for concurrent limit must be assignable to Types.Concurrency: number or \"unbounded\".")
 	EK2102 = message(2102, errorCategory, "A producer whose written return type is not a Stream. Yield values from a producer and return without a value; its return type is a Stream.")
 	EK2103 = message(2103, errorCategory, "yield* is not supported in a producer. Loop over the source and yield each value instead.")
