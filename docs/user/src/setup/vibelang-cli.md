@@ -619,6 +619,8 @@ The migration flow keeps only the selected batch's fixes. It lists the compiler 
 
 Temporary fixing projects list only roots from the original project; imported TypeScript and VibeLang dependencies remain imports. This preserves `rootDir` checks and declaration-backed views. If retained roots cannot reach a selected module, the flow keeps the original project. Each shard receipt lists its `roots` separately from its dependency closure.
 
+Migration into a TypeScript module body keeps merged declarations in one lexical scope. A class, function or enum moved into the body takes its type-only namespace companions, including reopened and nested namespaces. Namespace-local types keep their scope. A companion with runtime initialization prevents the split, preserving the original statement order.
+
 Migration setup installs the selected dependencies before formatting the files it writes, so newly selected formatter plugins are available. The same order applies when adding workspace packages to an existing setup. If installation fails, setup stops before formatting; formatter failures after a successful install remain recorded warnings.
 
 Setup refreshes matching whole-file Markdown code blocks marked `<!-- source: relative/path.ts -->` after rewriting and formatting their owned source. It preserves prose, named excerpts such as `#start`, markers quoted inside code fences, and already mismatched snippets. A mismatch or a document changed during setup produces a review warning. The `sourceSnippets` receipt records changed documents and before/after source hashes.

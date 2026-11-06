@@ -1080,3 +1080,5 @@ Setup installs its selected dependencies before running the target formatter on 
 Declaration snapshots attribute a native `module` body's declaration to its freshly emitted parent project. A live compatibility copy is not retained as a second handwritten declaration. Unowned neighbouring declarations remain in the snapshot, and exported name, type and documentation changes still fail verification.
 
 For Vite+ configurations, setup also updates the exported `defineConfig` object's `fmt.ignorePatterns` and `lint.ignorePatterns`. Literal sections keep their existing patterns and rules and gain the declaration and emitted-JavaScript exclusions. Computed sections or later overriding spreads remain unchanged with a warning. Ordinary Vite configurations and nested test settings are unaffected.
+
+A module-body split keeps merged declarations together. Type-only namespace companions move with their class, function or enum, including nested and reopened namespaces. Runtime namespace initialization refuses the split and preserves the original source order.

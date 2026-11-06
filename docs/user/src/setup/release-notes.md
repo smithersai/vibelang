@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A TypeScript barrel in a built project reference could lose exports after a module moved to `.vibe` or `.vibex`; consumers now resolve those native modules through their emitted declarations.
 - Migration API checks refused every importer of a workspace package with a `declare module` block when the frozen original and the candidate lived in separate checkouts. The key is now the package and module, and the proof compares the ambient blocks and the local declarations they reach.
 
+- Migration could separate a throwing class from its merged namespace, breaking types such as `Asset.Input`. Type-only namespace companions now move with the declaration; namespaces with runtime initialization keep the original source unchanged.
+
 - Vite+ projects could still lint or format generated VibeLang declarations because their ignores live inside `vite.config.ts`. Migration setup now updates the embedded `fmt.ignorePatterns` and `lint.ignorePatterns` settings while preserving checks on authored implementations.
 
 - Contributor release checks repeated build command validation; they now share the checked result while preserving failures.

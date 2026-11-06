@@ -1,0 +1,4 @@
+{
+  "source": "export class Asset {\n  constructor(readonly input: Asset.Input) {\n    if (input.value < 0) throw new Error(\"negative\")\n  }\n}\nexport namespace Asset {\n  export interface Input { readonly value: number }\n}\nexport type Input = Asset.Input\nexport const kept = 42\n",
+  "rule": "No shared lexical scope."
+}

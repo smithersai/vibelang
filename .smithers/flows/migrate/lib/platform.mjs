@@ -439,7 +439,22 @@ function declaredNames(statement, ts) {
   } else if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isEnumDeclaration(statement)) && statement.name) {
     names.add(statement.name.text)
   }
+  if (ts.isModuleDeclaration(statement) && ts.isIdentifier(statement.name) && !(statement.flags & ts.NodeFlags.GlobalAugmentation)) {
+    names.add(statement.name.text)
+  }
   return names
+}
+
+// Type-only namespace companions erase at runtime. Moving their merged value
+// must keep these declarations in the same lexical module. Runtime namespace
+// initializers retain the conservative statement-order refusal.
+function typeNamespace(statement, ts) {
+  if (!ts.isModuleDeclaration(statement) || !ts.isIdentifier(statement.name) || (statement.flags & ts.NodeFlags.GlobalAugmentation)) return false
+  const body = statement.body
+  if (!body) return false
+  if (ts.isModuleDeclaration(body)) return typeNamespace(body, ts)
+  return ts.isModuleBlock(body) && body.statements.every(s =>
+    ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || typeNamespace(s, ts))
 }
 
 function collectBindingNames(name, names, ts) {
@@ -666,7 +681,7 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   const throwSeed = throws ? declarations.filter((d) => !reexport_(d, ts) && !platformSeed.includes(d) && throwsPlainly(d.statement, ts)) : []
   if (!platformSeed.length && !throwSeed.length) return null
   if (source.statements.some((s) => ts.isExportAssignment(s) && s.isExportEquals)) return { refused: `${file}: export = has no place beside a module body (EK4008)` }
-  const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement)
+  const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement) || typeNamespace(d.statement, ts)
   const reexport = (d) => ts.isExportDeclaration(d.statement)
   const moved = new Set([...platformSeed, ...throwSeed])
   for (let grew = true; grew; ) {
@@ -681,7 +696,7 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
     // An import is read-only (TS2632): whatever writes a moved binding moves with it.
     for (const d of declarations) if (!reexport(d) && [...writtenNames(d.statement, ts)].some((n) => values.has(n))) add(d)
   }
-  const movable = (s) => ts.isVariableStatement(s) || ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isEnumDeclaration(s) || ts.isExportAssignment(s)
+  const movable = (s) => ts.isVariableStatement(s) || ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isEnumDeclaration(s) || ts.isExportAssignment(s) || typeNamespace(s, ts)
   for (const d of moved) {
     if (!movable(d.statement)) return { refused: `${file}: ${firstLine(source, d.statement)} runs in order among the module's statements, so it cannot move to a module body` }
     if (readsImportMeta(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which a module body cannot (EK4009)` }
@@ -799,7 +814,7 @@ function freeNames(statement, ts, valuesOnly = false) {
       else if ((ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isEnumDeclaration(s)) && s.name) into.add(s.name.text)
     }
   }
-  const isDeclarationName = (node, parent) => (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) || ts.isClassDeclaration(parent) || ts.isClassExpression(parent) || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent) || ts.isEnumDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent) || ts.isTypeParameterDeclaration(parent) || ts.isNamedTupleMember(parent) || ts.isLabeledStatement(parent)) && parent.name === node || (ts.isNamedTupleMember(parent) && parent.name === node) || (ts.isLabeledStatement(parent) && parent.label === node) || (ts.isBindingElement(parent) && parent.propertyName === node) || ((ts.isBreakStatement(parent) || ts.isContinueStatement(parent)) && parent.label === node)
+  const isDeclarationName = (node, parent) => (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) || ts.isClassDeclaration(parent) || ts.isClassExpression(parent) || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent) || ts.isEnumDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent) || ts.isTypeParameterDeclaration(parent) || ts.isModuleDeclaration(parent) || ts.isNamedTupleMember(parent) || ts.isLabeledStatement(parent)) && parent.name === node || (ts.isNamedTupleMember(parent) && parent.name === node) || (ts.isLabeledStatement(parent) && parent.label === node) || (ts.isBindingElement(parent) && parent.propertyName === node) || ((ts.isBreakStatement(parent) || ts.isContinueStatement(parent)) && parent.label === node)
   const isMemberName = (node, parent) => (ts.isPropertyAccessExpression(parent) && parent.name === node) || (ts.isQualifiedName(parent) && parent.right === node) || ((ts.isPropertyAssignment(parent) || ts.isPropertyDeclaration(parent) || ts.isPropertySignature(parent) || ts.isMethodDeclaration(parent) || ts.isMethodSignature(parent) || ts.isGetAccessor(parent) || ts.isSetAccessor(parent) || ts.isEnumMember(parent)) && parent.name === node)
   const walk = (node, values, types, inType) => {
     let v = values, t = types
@@ -818,6 +833,12 @@ function freeNames(statement, ts, valuesOnly = false) {
     if (node.typeParameters) { const own = scopeT(); for (const p of node.typeParameters) own.add(p.name.text) }
     if (ts.isClassLike(node) && node.name) { scopeV().add(node.name.text); scopeT().add(node.name.text) }
     if (ts.isBlock(node) || ts.isModuleBlock(node)) lexical(node.statements, scopeV())
+    if (ts.isModuleBlock(node)) {
+      const own = scopeT()
+      for (const s of node.statements) {
+        if ((ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isClassDeclaration(s) || ts.isEnumDeclaration(s) || ts.isModuleDeclaration(s)) && s.name && ts.isIdentifier(s.name)) own.add(s.name.text)
+      }
+    }
     if (ts.isCaseBlock(node)) for (const c of node.clauses) lexical(c.statements, scopeV())
     if ((ts.isForStatement(node) || ts.isForInStatement(node) || ts.isForOfStatement(node)) && node.initializer && ts.isVariableDeclarationList(node.initializer)) for (const d of node.initializer.declarations) bindingNames(d.name, scopeV())
     if (ts.isCatchClause(node) && node.variableDeclaration) bindingNames(node.variableDeclaration.name, scopeV())
