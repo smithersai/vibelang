@@ -204,6 +204,9 @@ or runtime references valid in first-release `.vibe` source.
 | `$region` | Create a block-owned scope without adding it to the body's Context | D14, D47 |
 | `$using` | Run an acquisition with a block's scope, keeping its own interruptibility, and register disposal for objects and functions with interruption masked; await `Symbol.asyncDispose` when no acquisition release exists and no `Symbol.dispose` is present | D14, D25, D94 |
 | `$fork` | Fork into a block's scope, with `forkIn`'s options, or require a scope from the caller | D19, D47 |
+| `$forkIn` | Fork into the scope `fork.in(s)` names, with the scope written first | D47 |
+| `$forkScoped` | Fork `fork.scoped` into the current `Scope` | D47 |
+| `$forkDetach` | Fork `fork.detached` into a fiber nothing owns | D47 |
 | `fork` | Expose `Effect.forkScoped` to TypeScript and prelude type positions | D4, D19 |
 | `$Context` | Expose Effect's Context namespace for generated service references | D1, D40 |
 | `$service` | Create the Context key base merged with a generated service interface | D1, D45 |
