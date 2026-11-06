@@ -19,6 +19,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The TypeScript mapper could reject a `for concurrent` loop with an invalid or overlapping edit after reading its head binding. Braced and single-statement bodies now project correctly.
 
 - Editor formatting could hang on a marked `.mts`, `.cts` or `.tsx` file. Formatting now returns normally and keeps the directive.
+- Source-file helpers could throw on virtual TypeScript module IDs or accept virtual `.vibe` IDs as paths. The compiler and Vite helpers now reject them consistently.
 - Moving platform code could widen a unique-symbol key and break computed-property access with `TS7053`. Generated local aliases now retain the imported value type.
 - The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 

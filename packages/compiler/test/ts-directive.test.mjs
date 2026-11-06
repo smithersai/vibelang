@@ -71,6 +71,22 @@ test("each plugin's copy of the rule is the compiler's", () => {
   }
 })
 
+test("source file helpers reject NUL-containing virtual IDs across integrations", async () => {
+  const copies = await Promise.all([
+    import("../vibe-directive.mjs"),
+    import("../../vite/src/vibe-directive.js"),
+    import("../../unplugin/src/vibe-directive.js")
+  ])
+  const text = fc.array(fc.constantFrom("a", "Z", "0", "雪", " ", ".", "-", "_", "/", ":"), { maxLength: 48 }).map(parts => parts.join(""))
+  fc.assert(fc.property(text, text, fc.constantFrom(".ts", ".tsx", ".mts", ".cts", ".vibe", ".vibex", ".d.ts", ".js"), (before, after, suffix) => {
+    const id = before + "\0" + after + suffix
+    for (const copy of copies) {
+      assert.equal(copy.fileHasVibeDirective(id), false, JSON.stringify(id))
+      assert.equal(copy.isVibeLangFile(id), false, JSON.stringify(id))
+    }
+  }), { numRuns: 400, seed: 421931 })
+})
+
 test("only a TypeScript source has the directive", () => {
   for (const name of ["a.ts", "a.tsx", "a.mts", "a.cts"]) assert.equal(hasVibeDirective(name, "// @vibe\n"), true, name)
   for (const name of ["a.d.ts", "a.d.mts", "a.d.cts", "a.d.css.ts", "a.d.vibe.ts", "a.js", "a.mjs", "a.json", "a.vibe", "a.vibex"]) {
