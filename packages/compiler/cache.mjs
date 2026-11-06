@@ -241,7 +241,7 @@ export function parseJsonc(text) {
       if (out[next] !== "}" && out[next] !== "]") result += char
     } else result += char
   }
-  return JSON.parse(result.replace(/^﻿/, ""))
+  return JSON.parse(result.replace(/^\uFEFF/, ""))
 }
 
 const relativeSpecifier = (specifier) => /^\.\.?(?:[\\/]|$)/.test(specifier) || isAbsolute(specifier)
@@ -667,6 +667,15 @@ function entryOf({ project, root, snapshot, result, files, hashDependencies = fa
 // costs only the compile it would have saved.
 // 2: relocate structured path fields only; format 1 rewrote program data.
 const recordFormat = 2
+
+// The text the compiler read from `path`, which is what a map's sourcesContent
+// holds: its reader removes a BOM and decodes UTF-16.
+function compilerText(path) {
+  const bytes = readFileSync(path)
+  if (bytes[0] === 0xFF && bytes[1] === 0xFE) return bytes.toString("utf16le", 2)
+  if (bytes[0] === 0xFE && bytes[1] === 0xFF) return bytes.subarray(2, 2 + (bytes.length - 2 & ~1)).swap16().toString("utf16le")
+  return bytes.toString("utf8").replace(/^\uFEFF/, "")
+}
 const lockfiles = installFiles.filter((name) => !name.includes("/"))
 
 /** The loader record of a project. */
@@ -837,7 +846,7 @@ export function loaderRecord({ project, root, compiler }) {
     }
     const outputs = new Map()
     for (const { paths, code, map } of entry.outputs) {
-      if (map) map.sourcesContent = map.sources.map((source) => readFileSync(source, "utf8"))
+      if (map) map.sourcesContent = map.sources.map(compilerText)
       const output = { code, map }
       for (const path of paths) outputs.set(path, output)
     }
