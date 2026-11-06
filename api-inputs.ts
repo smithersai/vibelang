@@ -11,6 +11,7 @@ export const apiInputPatterns = [
   "docs/tools/**",
   "experiments/**",
   ".smithers/flows/migrate/lib/api-identity*.mjs",
+  ".smithers/flows/migrate/README.md",
   ".smithers/package.json",
   ".smithers/bun.lock",
   ".smithers/WORKSPACE.ts",

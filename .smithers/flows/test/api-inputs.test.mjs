@@ -128,6 +128,7 @@ test("the actual root API key ignores unrelated files and retains every input fa
     "scripts/testing/property.mjs",
     "scripts/sync-api-identity.mjs",
     ".smithers/flows/migrate/lib/api-identity.mjs",
+    ".smithers/flows/migrate/README.md",
     "docs/design/src/001-functions.md",
     "docs/tools/bun.lock",
     "experiments/package.json",
