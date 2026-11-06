@@ -53,6 +53,9 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 	}
 	c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
 	defer done()
+	if usingScopedMovesReferencedBinding(c, file, statement) {
+		return nil, nil
+	}
 	a := analyzerFor(c)
 	for _, name := range []string{"scoped", "acquireDisposable", "sync"} {
 		if !isEffectGlobalAt(c, name, block) {
@@ -97,4 +100,38 @@ func isEffectGlobalAt(c *checker.Checker, name string, location *ast.Node) bool 
 		symbol = c.GetAliasedSymbol(symbol)
 	}
 	return symbol != nil && len(symbol.Declarations()) > 0 && effectModuleOfFile(ast.GetSourceFileOfNode(symbol.Declarations()[0])) == "Effect"
+}
+
+// Moving the suffix into an Effect block must not hide a declaration from
+// earlier code, including closures, hoisted functions and type references.
+// Resolve symbols so property names and shadowing locals stay unrelated.
+func usingScopedMovesReferencedBinding(c *checker.Checker, file *ast.SourceFile, statement *ast.Node) bool {
+	block := statement.Parent
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsIdentifier(node) {
+			symbol := c.GetSymbolAtLocation(node)
+			if node.Parent.Kind == ast.KindShorthandPropertyAssignment {
+				symbol = c.GetShorthandAssignmentValueSymbol(node.Parent)
+			}
+			if symbol != nil {
+				for _, declaration := range symbol.Declarations() {
+					if ast.GetSourceFileOfNode(declaration) == file &&
+						declaration.Pos() >= statement.Pos() && declaration.End() <= block.End() {
+						return true
+					}
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	for _, earlier := range block.Statements() {
+		if earlier == statement {
+			break
+		}
+		if visit(earlier) {
+			return true
+		}
+	}
+	return false
 }

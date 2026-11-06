@@ -9,34 +9,57 @@ import (
 )
 
 const usingScopedFixTitle = "Acquire with acquireDisposable inside scoped"
+const usingScopedBindingQuote = "Bindings and jump targets are resolved on the source before any callback is introduced."
 
 // Each form states whether EK0801's fix is context-safe there.
 var usingScopedForms = map[string]struct {
 	source  string
 	offered bool
 }{
-	"function":        {"export effect function load() { using r = open(); return 1 }", true},
-	"arrow":           {"export const load = effect () => { using r = open(); return 1 }", true},
-	"method":          {"export class Loader { effect load() { using r = open(); return 1 } }", true},
-	"no-rest":         {"export effect function load() { using r = open() }", true},
-	"two-values":      {"export effect function load() { using a = open(), b = open(); return 2 }", true},
-	"before":          {"export effect function load() { const n = 1; using r = open(); return n }", true},
-	"object-literal":  {"export effect function load() { using r = { [Symbol.dispose]() { } }; return 1 }", true},
-	"multiline":       {"export effect function load() {\n  using r = open()\n  const n = 1\n  return n\n}", true},
-	"producer":        {"export effect function* load() { using r = open(); yield 1 }", false},
-	"nested-block":    {"export effect function load() { { using r = open() } return 1 }", false},
-	"for-head":        {"export effect function load() { for (using r of [open()]) { } return 1 }", false},
-	"null":            {"export effect function load() { using r = null; return 1 }", false},
-	"effect-operand":  {"export effect function load() { using r = try Effect.succeed(open()); return 1 }", false},
-	"shadowed-scoped": {"const scoped = 1\nexport effect function load() { using r = open(); return scoped }", false},
+	"binding-hoisted-function":         {"const later = 2;\nexport effect function load() { const read = later; using r = open(); function later() { return 1 }; return read() }", false},
+	"binding-closure-const":            {"const later = 2;\nexport effect function load() { const read = () => later; using r = open(); const later = 1; return read() }", false},
+	"binding-closure-let":              {"const later = 2;\nexport effect function load() { const read = () => later; using r = open(); let later = 1; return read() }", false},
+	"binding-closure-destructuring":    {"const later = 2;\nexport effect function load() { const read = () => later; using r = open(); const { later } = { later: 1 }; return read() }", false},
+	"binding-closure-shorthand":        {"const later = 2;\nexport effect function load() { const read = () => ({ later }); using r = open(); const later = 1; return read().later }", false},
+	"binding-closure-class":            {"const later = 2;\nexport effect function load() { const read = () => new Later().value; using r = open(); class Later { value = 1 }; return read() }", false},
+	"binding-closure-enum":             {"const later = 2;\nexport effect function load() { const read = (): number => Later.Value; using r = open(); enum Later { Value = 1 }; return read() }", false},
+	"binding-closure-resource":         {"const later = 2;\nexport effect function load() { const read = () => r; using r = open(); return read() }", false},
+	"binding-prefix-function":          {"const later = 2;\nexport effect function load() { function read() { return later }; using r = open(); const later = 1; return read() }", false},
+	"binding-type-alias":               {"const later = 2;\nexport effect function load() { type Before = Later; using r = open(); type Later = number; const result: Before = 1; return result }", false},
+	"binding-interface":                {"const later = 2;\nexport effect function load() { interface Before extends Later {}; using r = open(); interface Later { value: number }; const result: Before = { value: 1 }; return result.value }", false},
+	"binding-type-query":               {"const later = 2;\nexport effect function load() { type Before = typeof later; using r = open(); const later = 1; const result: Before = 1; return result }", false},
+	"binding-outer-fallback":           {"const later = 2;\nexport effect function load() { const read = () => later; using r = open(); const later = 3; return read() }", false},
+	"binding-outer-shorthand-fallback": {"const later = 2;\nexport effect function load() { const read = () => ({ later }); using r = open(); const later = 3; return read().later }", false},
+	"binding-suffix-closure":           {"const later = 2;\nexport effect function load() { using r = open(); const read = () => later; const later = 1; return read() }", true},
+	"binding-prefix-local":             {"const later = 2;\nexport effect function load() { const earlier = 1; const read = () => earlier; using r = open(); const later = 2; return read() + later }", true},
+	"binding-shadowed-parameter":       {"const later = 2;\nexport effect function load() { const read = (later: number) => later; using r = open(); const later = 1; return read(later) }", true},
+	"binding-property-name":            {"const later = 2;\nexport effect function load() { const earlier = { later: 1 }; using r = open(); const later = 2; return earlier.later + later }", true},
+	"binding-type-property-name":       {"const later = 2;\nexport effect function load() { type Before = { later: number }; using r = open(); const later = 2; const result: Before = { later }; return result.later }", true},
+	"binding-nested-block-binding":     {"const later = 2;\nexport effect function load() { const read = () => { const later = 1; return later }; using r = open(); const later = 2; return read() + later }", true},
+	"function":                         {"export effect function load() { using r = open(); return 1 }", true},
+	"arrow":                            {"export const load = effect () => { using r = open(); return 1 }", true},
+	"method":                           {"export class Loader { effect load() { using r = open(); return 1 } }", true},
+	"no-rest":                          {"export effect function load() { using r = open() }", true},
+	"two-values":                       {"export effect function load() { using a = open(), b = open(); return 2 }", true},
+	"before":                           {"export effect function load() { const n = 1; using r = open(); return n }", true},
+	"object-literal":                   {"export effect function load() { using r = { [Symbol.dispose]() { } }; return 1 }", true},
+	"multiline":                        {"export effect function load() {\n  using r = open()\n  const n = 1\n  return n\n}", true},
+	"producer":                         {"export effect function* load() { using r = open(); yield 1 }", false},
+	"nested-block":                     {"export effect function load() { { using r = open() } return 1 }", false},
+	"for-head":                         {"export effect function load() { for (using r of [open()]) { } return 1 }", false},
+	"null":                             {"export effect function load() { using r = null; return 1 }", false},
+	"effect-operand":                   {"export effect function load() { using r = try Effect.succeed(open()); return 1 }", false},
+	"shadowed-scoped":                  {"const scoped = 1\nexport effect function load() { using r = open(); return scoped }", false},
 }
 
 func TestEffectUsingScopedFixQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", effectUsingWarningQuote)
+	chapterSays(t, "008-runtime.md", usingScopedBindingQuote)
 }
 
 func FuzzEffectUsingScopedFix(f *testing.F) {
 	startShortBudget(f)
+	chapterSays(f, "008-runtime.md", usingScopedBindingQuote)
 	for key := range usingScopedForms {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(1))
@@ -74,6 +97,9 @@ func FuzzEffectUsingScopedFix(f *testing.F) {
 		})
 		if !ok {
 			t.Fatal("missing using diagnostics response")
+		}
+		if !toolsErrorFree(result) {
+			t.Fatalf("invalid original: %v", result.Diagnostics)
 		}
 		gapKey := "using-scoped-fix:" + key
 		var diagnostic *lsproto.Diagnostic
