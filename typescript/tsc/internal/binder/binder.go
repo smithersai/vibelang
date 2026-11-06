@@ -1670,6 +1670,20 @@ func (b *Binder) declareCommonJSVariable(name string) {
 }
 
 func (b *Binder) bindChildren(node *ast.Node) {
+	// Throws annotations contain ordinary type syntax, whose anonymous
+	// members and nested signatures need the same symbols as written types.
+	for _, doc := range node.JSDoc(b.file) {
+		if doc.AsJSDoc().Tags == nil {
+			continue
+		}
+		for _, tag := range doc.AsJSDoc().Tags.Nodes {
+			if ast.IsJSDocThrowsTag(tag) {
+				if expr := tag.AsJSDocThrowsTag().TypeExpression; expr != nil {
+					b.bind(expr.AsJSDocTypeExpression().Type)
+				}
+			}
+		}
+	}
 	saveInAssignmentPattern := b.inAssignmentPattern
 	// Most nodes aren't valid in an assignment pattern, so we clear the value here
 	// and set it before we descend into nodes that could actually be part of an assignment pattern.

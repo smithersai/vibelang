@@ -1908,5 +1908,15 @@
       "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
     },
     "reason": "After nullish values are excluded, every possible value is a service key. The existing construction, inheritance and class-pattern restrictions therefore apply. Selecting an implementation or changing a class pattern requires application intent; ordinary constructors and identifier-only types remain distinct from key values."
+  },
+  {
+    "code": "EK0402",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/structured-throws-contract.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md#assignability: accepted throws contracts attach to call signatures, and a written @throws {U} admits subtypes of U. The structural witness instantiates this existing rule; it introduces no new rejection policy."
+    },
+    "reason": "The foreign source declares string while the destination admits an object with a required code property. TypeScript rejects the corresponding thrown-value assignment. Changing the foreign API contract or choosing a converted error value requires author intent; a mechanical rewrite must not silently widen that contract or change the thrown value."
   }
 ]

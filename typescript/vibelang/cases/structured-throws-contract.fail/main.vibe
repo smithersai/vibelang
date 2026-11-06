@@ -1,0 +1,3 @@
+// expect: EK0402
+import{risky,Target}from"./foreign.js"
+export const selected:Target=risky

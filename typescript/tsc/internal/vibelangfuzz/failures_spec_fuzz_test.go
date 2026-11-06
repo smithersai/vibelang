@@ -1238,6 +1238,9 @@ func failuresCases() []*failCase {
 	for _, c := range failuresNamedTupleLabelCases() {
 		add(c)
 	}
+	for _, c := range failuresStructuredThrowsCases() {
+		add(c)
+	}
 	for _, c := range failuresGeneratorAdmissionCases() {
 		add(c)
 	}
