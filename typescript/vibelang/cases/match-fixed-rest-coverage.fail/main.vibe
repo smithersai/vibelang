@@ -1,0 +1,11 @@
+// expect: EK4701 EK4701 EK4701
+// Chapter 004: a fixed pattern covers its case bare or with its required
+// argument list of bare bindings, so a rest or an optional element covers
+// nothing, though the arm's test always succeeds and default stays narrowed.
+import { Option, Result } from "effect"
+export const some = (o: Option.Option<number>): number =>
+  match (o) { when Option.Some(...): 1; when Option.None: 0; }
+export const binding = (o: Option.Option<number>): number =>
+  match (o) { when Option.Some(let v, ...): v; when Option.None: 0; }
+export const optional = (r: Result.Result<number, string>): number =>
+  match (r) { when Result.Success(let v, let w?): v; when Result.Failure: 0; }

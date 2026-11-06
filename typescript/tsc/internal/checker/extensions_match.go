@@ -161,3 +161,10 @@ func (c *Checker) patternUsesInstanceof(matcher *ast.Node) bool {
 	}
 	return true
 }
+
+// NarrowTypeByPatternInstanceof applies the native recognition test to an
+// extractor's subject while retaining the constructor's source resolution.
+func (c *Checker) NarrowTypeByPatternInstanceof(reference *ast.Node, t *Type, call *ast.Node, assumeTrue bool) *Type {
+	f := &FlowState{reference: reference, declaredType: t, initialType: t}
+	return c.narrowTypeByPatternInstanceof(f, t, call, assumeTrue)
+}

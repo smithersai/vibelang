@@ -2803,8 +2803,19 @@ func isNarrowingBinaryExpression(expr *ast.BinaryExpression) bool {
 		return isNarrowingExpression(expr.Right)
 	case ast.KindCommaToken:
 		return isNarrowingExpression(expr.Right)
+	case ast.KindGreaterThanEqualsToken, ast.KindLessThanEqualsToken:
+		return IsPatternLengthBound(expr)
 	}
 	return false
+}
+
+// IsPatternLengthBound reports the length test the VibeLang parser writes for
+// a list pattern with a rest or an optional element. It takes a flow condition,
+// so its false branch reaches the pattern narrowing hooks as an === test does.
+func IsPatternLengthBound(expr *ast.BinaryExpression) bool {
+	kind := expr.OperatorToken.Kind
+	return (kind == ast.KindGreaterThanEqualsToken || kind == ast.KindLessThanEqualsToken) && expr.OperatorToken.Flags&ast.NodeFlagsReparsed != 0 &&
+		ast.IsPropertyAccessExpression(expr.Left) && expr.Left.Name().Text() == "length"
 }
 
 func isNarrowableOperand(expr *ast.Node) bool {

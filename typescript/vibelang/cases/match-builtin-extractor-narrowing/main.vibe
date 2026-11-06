@@ -1,0 +1,57 @@
+// expect-result: [1,2,3,4,5,0]
+import { Effect, Option, Result } from "effect"
+
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const same = <A, B>(_: Equal<A, B>) => undefined
+
+// Chapter 004: a built-in extractor narrows the subject by its recognition test.
+function open(s: unknown): number {
+  return match (s) {
+    when Date(...): do { same<typeof s, Date>(true); 1 };
+    when Uint8Array(...): do { same<typeof s, Uint8Array>(true); 2 };
+    when Map(...): do { same<typeof s, Map<any, any>>(true); 3 };
+    when Promise(...): do { same<typeof s, Promise<any>>(true); 4 };
+    when Array(...): do { same<typeof s, any[]>(true); 5 };
+    default: 0;
+  }
+}
+function declared(s: Uint8Array | string): number {
+  return match (s) {
+    when Uint8Array(...): do { same<typeof s, Uint8Array>(true); s.length };
+    default: do { same<typeof s, string>(true); s.length };
+  }
+}
+function keepsReadonly(s: readonly number[] | string): number {
+  return match (s) {
+    when Array(let first, ...): do { same<typeof s, any[]>(true); same<typeof first, number>(true); first };
+    default: do { same<typeof s, readonly number[] | string>(true); 0 };
+  }
+}
+function collection(s:Map<string,number>|string):number {
+ return match(s){
+  when Map(let value):do{same<typeof s,Map<string,number>>(true);same<typeof value,Map<string,number>>(true);value.size};
+  default:do{same<typeof s,string>(true);s.length};
+ }
+}
+// A rest pattern over a fixed extractor always succeeds, so only the other case reaches default.
+function restDefault(o: Option.Option<number>, r: Result.Result<number, string>): number {
+  const first = match (o) {
+    when Option.Some(...): 1;
+    default: do { same<typeof o, Option.None<number>>(true); 0 };
+  }
+  const second = match (r) {
+    when Result.Success(let v, ...): v;
+    default: do { same<typeof r, Result.Failure<number, string>>(true); 0 };
+  }
+  return first + second
+}
+function collectionRest(s: Map<string, number> | string): number {
+  return match (s) {
+    when Map(let value, ...): value.size;
+    default: do { same<typeof s, string>(true); s.length };
+  }
+}
+void [declared, keepsReadonly, collection, restDefault, collectionRest]
+export function main(): Effect.Effect<readonly number[]> {
+  return Effect.sync(() => [new Date(0), new Uint8Array(1), new Map(), Promise.resolve(1), [1], "x"].map(open))
+}

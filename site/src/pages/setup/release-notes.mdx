@@ -57,6 +57,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Moving a helper into a native module could make migration report a changed namespace API even when every export was unchanged. Declaration checks now recognize those re-exports and retain checks for changed members and documentation.
 - Finalizing release notes made contributor checks fail. Their temporary example now keeps an unreleased heading without changing the real notes.
 - Parentheses or type assertions around literal keys could hide host operations such as `AbortSignal[("timeout")]`. These accesses now report `EK4402`, including destructured keys.
+- A built-in extractor left its subject unnarrowed, and a `default` arm after a rest pattern such as `when Option.Some(...)` still saw the matched case. Arms now narrow as `instanceof` does, and `default` sees only what the pattern left.
 - Moving platform code could widen a unique-symbol key and break computed-property access with `TS7053`. Generated local aliases now retain the imported value type.
 - The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 

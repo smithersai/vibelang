@@ -344,7 +344,10 @@ func narrowBuiltinExtraction(c *checker.Checker, reference *ast.Node, t *checker
 	if ok && builtin.TypeOf != "" && primitiveCoverageReference(reference) {
 		return t
 	}
-	if !ok || builtin.Guard == "" {
+	if !ok {
+		return narrowConstructorExtraction(c, reference, t, call, binary, length, assumeTrue)
+	}
+	if builtin.Guard == "" {
 		return nil
 	}
 	if length && binary.Right.Kind == ast.KindNumericLiteral {
@@ -413,4 +416,59 @@ func builtinGuardType(c *checker.Checker, matcher *ast.Node, builtin parser.Buil
 		}
 	}
 	return c.TypeOfPatternMatcher(matcher)
+}
+
+// A built-in extractor first recognizes its subject. Later arity and element
+// tests remain separate flow conditions, including on the path to default.
+func narrowConstructorExtraction(c *checker.Checker, reference *ast.Node, t *checker.Type, call *ast.Node, test *ast.BinaryExpression, length, assumeTrue bool) *checker.Type {
+	if primitiveCoverageReference(reference) {
+		return nil
+	}
+	constructor := c.TypeOfPatternMatcher(call.Arguments()[0])
+	if constructor == nil || len(c.GetConstructSignatures(constructor)) == 0 || !isGlobal(c, constructor.Symbol()) || hasOwnPatternMatcher(c, constructor) {
+		return nil
+	}
+	array := c.GlobalSymbol("Array", ast.SymbolFlagsValue)
+	isArray := array != nil && constructor == c.GetTypeOfSymbol(array)
+	variableLength := isArray || c.GetPropertyOfType(constructor, "BYTES_PER_ELEMENT") != nil
+	if length {
+		if test.Right.Kind != ast.KindNumericLiteral {
+			return nil
+		}
+		n, err := strconv.Atoi(test.Right.Text())
+		if err != nil {
+			return nil
+		}
+		var matches bool
+		switch test.OperatorToken.Kind {
+		case ast.KindGreaterThanEqualsToken:
+			if variableLength && n != 0 {
+				return nil
+			}
+			matches = n <= 1
+		case ast.KindEqualsEqualsEqualsToken:
+			if variableLength {
+				return nil
+			}
+			matches = n == 1
+		case ast.KindLessThanEqualsToken:
+			if variableLength {
+				return nil
+			}
+			matches = n >= 1
+		default:
+			return nil
+		}
+		if matches != assumeTrue {
+			return c.GetNeverType()
+		}
+		return t
+	}
+	if test.Right.Kind != ast.KindFalseKeyword || test.OperatorToken.Kind != ast.KindExclamationEqualsEqualsToken {
+		return nil
+	}
+	if isArray {
+		return c.NarrowTypeTo(t, c.CreateArrayType(c.GetAnyType(), false), assumeTrue)
+	}
+	return c.NarrowTypeByPatternInstanceof(call.Arguments()[1], t, call, assumeTrue)
 }

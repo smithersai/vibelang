@@ -1,6 +1,9 @@
 package checker
 
-import "github.com/microsoft/TypeScript/tsc/internal/ast"
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/binder"
+)
 
 // FlowNarrowingHook can narrow a reference using a language-specific test.
 // Return nil to use normal narrowing. narrowAlias applies the same
@@ -59,6 +62,11 @@ func isMatchCoverageReference(reference *ast.Node) bool {
 func uncountedMatchCoverageTest(reference, test *ast.Node) bool {
 	if !isMatchCoverageReference(reference) {
 		return false
+	}
+	// Coverage counts a fixed pattern only with its required argument list, so
+	// a rest or an optional element covers nothing whatever its length test says.
+	if ast.IsBinaryExpression(test) && binder.IsPatternLengthBound(test.AsBinaryExpression()) {
+		return true
 	}
 	statement := reference.Parent
 	for statement != nil && !ast.IsStatement(statement) {
