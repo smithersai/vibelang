@@ -1,3 +1,4 @@
+import { captureTrackedSourceSnippets, refreshSourceSnippets } from "./source-snippets.mjs"
 // The codemod: keep the batch's writable members writable, rename its
 // modules to .vibe, point their packages' exports at them, rewrite the imports
 // that name them by VibeLang's rules, then run `vibelang --fix` until it finds
@@ -804,6 +805,9 @@ export async function fixToFixedPoint(options) {
     return { settled: true, rounds: [], byFile: {}, refused: [], restored: [], diagnostics: [] }
   }
   const files = await fixProgramFiles(options)
+  const snippetRoot = resolve(options.root ?? options.cwd ?? ".")
+  const snippetTs = () => loadTypeScript([snippetRoot, resolve(options.compiler ?? ".", "..")])
+  const snippets = await captureTrackedSourceSnippets(snippetRoot, { ts: snippetTs })
   const directory = options.only ? mkdtempSync(join(tmpdir(), "vibelang-fix-selection-")) : undefined
   try {
     const selectionFile = directory && join(directory, "files.txt")
@@ -817,6 +821,7 @@ export async function fixToFixedPoint(options) {
     return await withFixFiles(files, () => fixToFixedPointInScope({ ...options, selectionFile }, files), options.log)
   } finally {
     if (directory) rmSync(directory, { recursive: true, force: true })
+    refreshSourceSnippets(snippetRoot, snippets, { ts: snippetTs })
   }
 }
 

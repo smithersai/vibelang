@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - `effect` on an index signature or after a modifier in an interface or type literal, as in `interface I { readonly effect value: number }`, reported syntax errors. It now reports `EK0108`, with its quick fix.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
+
+- Migration could leave source-linked documentation pointing at removed TypeScript files or showing old imports; matching code blocks and their source paths now follow the conversion.
 - A `using` of a plain Disposable in effect code ran its disposer when a `try` failed or the fiber was interrupted. It now keeps TypeScript's meaning, as in `Effect.gen`: a failed `try` abandons the generator, so the disposer doesn't run. Use `acquireDisposable` inside `scoped` for cleanup on every exit.
 
 - Vite debug output omitted project invalidations, making rebuild traces incomplete. Each invalidation now reports the new revision immediately.

@@ -579,7 +579,7 @@ export async function onePassStep(step, options) {
     }
     await Jj.trackFiles(config.target, state.renames.map(r => r.to).filter(file => existsSync(join(config.target, file))))
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { compilerArtifact: config.compilerArtifact ?? null, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { sourceSnippets: state.sourceSnippets, packingFiles: state.packingFiles ?? [], compilerArtifact: config.compilerArtifact ?? null, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }

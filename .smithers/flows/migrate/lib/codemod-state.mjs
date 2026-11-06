@@ -1,3 +1,4 @@
+import { captureSourceSnippets, refreshSourceSnippets } from "./source-snippets.mjs"
 // Write-ahead state for the batch's mechanical edits. Completion remains a
 // separate receipt: nextStep must never mistake "compiler started" for "done".
 import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
@@ -41,6 +42,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   const deferred = pathReadDeferrals(target, files, referenceFiles, { pinned })
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
   const renames = files.map(from => ({ from, to: vibePath(from) }))
+  const linkedSources = captureSourceSnippets(target, (tracked ?? catalog).filter(file => !isTestFile(file) && !isFixtureFile(file)), { ts, named: true })
   assertComputedBuildEntrypoints(target, tracked ?? catalog, renames, ts)
   const originals = renames.map(({ from, to }) => {
     if (!existsSync(join(target, from))) throw new Error(`${from} does not exist`)
@@ -83,6 +85,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   // Literal Vite build inputs that name a renamed module (tracked: the repository's files).
   const buildEntries = ts && tracked ? rewriteBuildEntrypoints(target, tracked, renames, ts, { read, write }) : { edits: [], warnings: [] }
   importEdits.push(...rewriteImports(target, [...scope, ...platform.splits.flatMap(s => s.platform ?? [])].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write }))
+  const sourceSnippets = refreshSourceSnippets(target, linkedSources, { ts, renames, read, write })
   const referenceEdits = [], referenceWarnings = [], selectorChecks = [], matcherCache = new Map()
   const started = performance.now()
   const packages = packageContext(catalog, file => readFileSync(join(target, file), "utf8"))
@@ -103,7 +106,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     selectorChecks.push(...(changed.selectorChecks ?? []))
     if (changed.edits.length) write(file, changed.text)
   }
-  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, pathSourceFiles: pathSources.filter(file => !listed.has(file)).length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, sourceChildModules, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
+  return { version: 1, target, files, sourceSnippets, packingFiles: sourceSnippets.changed, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, pathSourceFiles: pathSources.filter(file => !listed.has(file)).length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, sourceChildModules, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */

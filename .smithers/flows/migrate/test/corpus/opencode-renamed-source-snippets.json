@@ -1,0 +1,4 @@
+{
+  "key": "opencode-renamed-source-snippets",
+  "rule": "Source-linked documentation follows recorded source renames and import routing while preserving independently edited prose and excerpts."
+}

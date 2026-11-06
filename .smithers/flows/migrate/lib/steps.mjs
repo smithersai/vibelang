@@ -1,4 +1,4 @@
-import { captureSourceSnippets, refreshSourceSnippets } from "./source-snippets.mjs"
+import { captureSourceSnippets, captureTrackedSourceSnippets, refreshSourceSnippets } from "./source-snippets.mjs"
 import { refreshProjectReferences } from "./reference-outputs.mjs"
 import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
 import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
@@ -1008,7 +1008,7 @@ export async function wireNewPackages(config, log) {
 /** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
 export async function wireTarget(config, log) {
   const t = config.target
-  const linkedSources = captureSourceSnippets(t, (await Jj.trackedFiles(t)).filter(Wire.ownedPaths(t)).filter(file => !isProtectedFile(file)))
+  const linkedSources = captureSourceSnippets(t, (await Jj.trackedFiles(t)).filter(Wire.ownedPaths(t)).filter(file => !isProtectedFile(file)), { ts: typeScriptOf(config), named: true })
   const changed = []
   const warnings = []
   // A Git submodule's packages stay as its own repository has them (alchemy-31).
@@ -1201,7 +1201,7 @@ export async function wireTarget(config, log) {
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  const sourceSnippets = refreshSourceSnippets(t, linkedSources)
+  const sourceSnippets = refreshSourceSnippets(t, linkedSources, { ts: () => typeScriptOf(config) })
   changed.push(...sourceSnippets.changed.filter(file => !changed.includes(file)))
   warnings.push(...sourceSnippets.warnings)
   return { toolchainPublication: publication, sourceSnippets, manager, typecheck, declarationRedirects, emittedImports, sidecarDir, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config,
@@ -1505,6 +1505,7 @@ export function recordOutputs(outputs, dir, written, ownerOf) {
 }
 
 export async function emitMigratedJs(config, t, logs) {
+  const snippets = await captureTrackedSourceSnippets(t, { ts: () => typeScriptOf(config) })
   const artifact = compilerArtifactOf(config.toolchain)
   const emitted = [], sourceOutputs = new Map(), outputs = {}
   const emit = async (pkg, pass = 0) => {
@@ -1565,6 +1566,8 @@ export async function emitMigratedJs(config, t, logs) {
     if (routed.changed.length || routed.warnings?.length) emitted.push({ package: ".", files: 0, code: 0, restored: true, packingFiles: routed.changed, routedImports: routed.modules, ...(routed.warnings ? { warnings: routed.warnings } : {}) })
     if(sourceDeclarations.changed.length || sourceDeclarations.warnings.length) emitted.push({package:".",files:0,code:0,restored:true,packingFiles:sourceDeclarations.changed,sourceDeclarations})
   }
+  const sourceSnippets = refreshSourceSnippets(t, snippets, { ts: () => typeScriptOf(config) })
+  if (sourceSnippets.changed.length || sourceSnippets.warnings.length) emitted.push({ package: ".", files: 0, code: 0, restored: true, packingFiles: sourceSnippets.changed, sourceSnippets })
   return emitted
 }
 
@@ -1745,6 +1748,8 @@ export async function codemod(options) {
     batch: b,
     at: new Date().toISOString(),
     files,
+    sourceSnippets: state.sourceSnippets,
+    packingFiles: state.packingFiles ?? [],
     compilerArtifact: config.compilerArtifact ?? null,
     platform: platformResult,
     sourceChildModules: state.sourceChildModules ?? { converted: [], refused: [] },
@@ -1904,6 +1909,7 @@ export async function revertMany(options) {
   const { p, config, plan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   const aliases = aliasesOf(config)
+  const snippets = await captureTrackedSourceSnippets(config.target, { ts: () => typeScriptOf(config) })
   const requests = options.files ?? []
   if (!requests.length) throw new Error("revert needs at least one file")
   sourceDeclarationImports(config,{restore:true})
@@ -2020,6 +2026,8 @@ export async function revertMany(options) {
   for (const result of results) result.lintPaths = lintPaths
   // A revert runs while other modules still fail: settle returns them one round
   // at a time, and its next check reports what remains.
+  const sourceSnippets = refreshSourceSnippets(config.target, snippets, { ts: () => typeScriptOf(config), renames: prepared.map(({ vibe, ts }) => ({ from: vibe, to: ts })) })
+  for (const result of results) result.sourceSnippets = sourceSnippets
   const referenceRefresh = await refreshReferences(config, results.map(result => result.file), join(p.batch(b), "logs", "reference-refresh-revert.log"), { diagnosticsAllowed: true })
   for (const result of results) result.referenceRefresh = referenceRefresh
   writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
