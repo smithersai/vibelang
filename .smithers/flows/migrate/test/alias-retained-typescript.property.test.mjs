@@ -7,7 +7,7 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { pathAliases, renameBatch, rewriteImports } from "../lib/codemod.mjs"
 
-// codemod-gap:nonrelative-ts-extension (drive-t3code-apps 2026-11-02T04:38Z):
+// codemod-gap:nonrelative-ts-extension:
 // a migrated t3code web module imported a module that stays TypeScript as
 // `~/state/filesystem`, and the codemod wrote `~/state/filesystem.ts`, which
 // native TS2877 rejects under rewriteRelativeImportExtensions. 23 of 160 web
@@ -115,7 +115,7 @@ function emitTypeScript(root) {
   assert.deepEqual([...ts.getPreEmitDiagnostics(program), ...emitted.diagnostics].map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
 }
 
-test("t3code web: the codemod's output compiles natively and keeps the module's declaration", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("t3code web: native output preserves declaration types and records the VibeLang callable contract", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
   const root = t3code()
   try {
     emitTypeScript(root)
@@ -127,7 +127,12 @@ test("t3code web: the codemod's output compiles natively and keeps the module's 
     assert.equal(result.status, 0, result.stdout + result.stderr)
     const sidecar = join(root, "src/assets/assetUrls.d.vibe.ts")
     const declaration = existsSync(sidecar) ? sidecar : join(root, "out/assets/assetUrls.d.ts")
-    assert.equal(readFileSync(declaration, "utf8"), original)
+    // Chapter 3 requires this callable's static throws tag in declaration output.
+    // Preserve the full TypeScript declaration, adding only that specified tag.
+    const signature = "export declare function access(): ReadAccess;\n"
+    assert.ok(original.includes(signature))
+    const expected = original.replace(signature, "/** @throws {never} */\n" + signature)
+    assert.equal(readFileSync(declaration, "utf8"), expected)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
