@@ -14,6 +14,9 @@ export const buildContractSuites = [
   "scripts/source-map-tool-coverage.test.mjs",
 ] as const
 
+export const buildContractExclusions = buildContractSuites
+  .map(file => file.slice("scripts/".length, -".test.mjs".length)).join("|")
+
 // These suites inspect commands and inventories, without compiling the compiler
 // or reading acceptance cases. Keep their installed parser/property libraries
 // keyed by the manifests and locks used to provision docs/tools.

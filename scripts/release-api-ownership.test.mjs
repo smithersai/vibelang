@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { buildContractSuites } from "../build-contract-inputs.ts"
+import { buildContractExclusions, buildContractSuites } from "../build-contract-inputs.ts"
 
 const declaration = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
 function command(name) {
@@ -38,6 +38,9 @@ function command(name) {
     if (source.startsWith('buildContractSuites.join(" ")', position)) {
       parts.push(buildContractSuites.join(" "))
       position += 'buildContractSuites.join(" ")'.length
+    } else if (source.startsWith("buildContractExclusions", position)) {
+      parts.push(buildContractExclusions)
+      position += "buildContractExclusions".length
     } else parts.push(string())
     space()
     if (source[position] !== "+") break
