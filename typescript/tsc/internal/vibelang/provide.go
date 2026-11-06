@@ -184,6 +184,12 @@ func providerChannelsOf(c *checker.Checker, expression *ast.Node) (provided, err
 }
 
 func providerType(c *checker.Checker, t *checker.Type) providerInfo {
+	// An any provider selects Effect's unconstrained layer overload. Its
+	// errors and requirements remain unknown instead of disappearing.
+	if t != nil && t.Flags()&checker.TypeFlagsAny != 0 {
+		unknown := c.GetUnknownType()
+		return providerInfo{provided: unknown, errors: unknown, needs: unknown, valid: true, nonempty: true, layer: true}
+	}
 	result := emptyProvider(c)
 	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 {
 		result.valid = false

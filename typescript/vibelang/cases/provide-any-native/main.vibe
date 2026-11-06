@@ -1,0 +1,3 @@
+export effect function inspect(provider:any){provide provider {return 7}};type Channels<T> = T extends Effect.Effect<infer A,infer E,infer R> ? [A,E,R] : never;
+type Equal<A,B> = (<T>()=>T extends A ? 1 : 2) extends (<T>()=>T extends B ? 1 : 2) ? true : false;
+export const exact:Equal<Channels<ReturnType<typeof inspect>>,[number,unknown,unknown]> = true;
