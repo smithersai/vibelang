@@ -234,6 +234,9 @@ A shell script can export `GOFLAGS` before running its commands; a later
 assignment or `unset GOFLAGS` ends that allowance. Regression mutations remove
 `-trimpath` from the actual native build declarations and insert independent
 build and test commands before and after them.
+Parameter expansions stay inside their shell word, including the space in
+`GOFLAGS=${GOFLAGS:+$GOFLAGS }-trimpath`. The audit reaches the compiler's
+native helper and rejects removal of that appended flag.
 
 A `node_modules` symlink in any of these directories, including `.smithers`,
 is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never

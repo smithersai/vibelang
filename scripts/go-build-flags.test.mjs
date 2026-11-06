@@ -51,6 +51,25 @@ function shellSource(text, file) {
     .join("")
 }
 
+// A parameter expansion is part of its surrounding shell word. Its fallback
+// can contain spaces, separators, quotes and nested expansions without ending
+// an assignment or introducing another command.
+function parameterEnd(source, start) {
+  let depth = 1, quote = ""
+  for (let i = start + 2; i < source.length; i++) {
+    const char = source[i]
+    if (char === "\\" && quote !== "'") { i++; continue }
+    if (quote) {
+      if (char === quote) quote = ""
+      continue
+    }
+    if (char === "'" || char === '"') { quote = char; continue }
+    if (char === "$" && source[i + 1] === "{") { depth++; i++; continue }
+    if (char === "}" && --depth === 0) return i + 1
+  }
+  return source.length
+}
+
 function shellCommands(source) {
   const commands = []
   let words = [], word = "", quote = ""
@@ -67,6 +86,10 @@ function shellCommands(source) {
     const char = source[i]
     if (char === "\\" && quote !== "'") {
       word += source[++i] ?? ""
+    } else if (char === "$" && source[i + 1] === "{" && quote !== "'") {
+      const end = parameterEnd(source, i)
+      word += source.slice(i, end)
+      i = end - 1
     } else if (quote) {
       if (char === quote) quote = ""
       else word += char
@@ -231,11 +254,12 @@ test("trimpath audit accepts the current native command declarations", t => {
   assert.equal(result.status, 0, result.stdout + result.stderr)
 })
 for (const [name, entry] of [
+  ["compiler", "GOFLAGS=" + "$" + "{GOFLAGS:+$GOFLAGS }-trimpath "],
   ["forms generator", "build ../built/local/vibelang-forms -p 8 -trimpath"],
   ["mapper", "go build -p 8 -trimpath -o ../built/local/vibelang-mapper"],
 ]) test("trimpath audit rejects a missing flag in the " + name, t => {
   assert.equal(nativeSource.split(entry).length, 2, "the real native command must be unique")
-  const changed = nativeSource.replace(entry, entry.replace(" -trimpath", ""))
+  const changed = nativeSource.replace(entry, entry.replace("-trimpath", ""))
   const result = auditNativeSource(t, changed)
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.match(result.stdout, /typescript\/PACKAGE\.ts:/)
@@ -261,6 +285,38 @@ test("trimpath audit rejects generated native neighbours with independent enviro
   }
   assert.equal(samples, 12)
   assert.deepEqual(accepted, [])
+})
+
+test("trimpath audit retains generated parameter expansion boundaries", t => {
+  const failures = []
+  let samples = 0
+  for (const prefix of [
+    'EXTRA=${EXTRA:-value with spaces}',
+    'EXTRA=${EXTRA:-"quoted } words"}',
+    'EXTRA=${EXTRA:-${FALLBACK:-nested words}}',
+    'EXTRA=${EXTRA:-escaped\\} words}',
+  ]) {
+    for (const command of ["go build", "go test", "sh scripts/native-output.sh build out"]) {
+      for (const flag of ["", " -trimpath"]) {
+        const shell = prefix + " " + command + flag + " ./fixture"
+        const source = "const target = { shell: " + JSON.stringify(shell) + " }\n"
+        const result = auditNativeSource(t, source)
+        if (result.status !== (flag ? 0 : 1)) failures.push({ prefix, command, flag, status: result.status })
+        samples++
+      }
+    }
+  }
+  assert.equal(samples, 24)
+  assert.deepEqual(failures, [])
+})
+
+for (const [name, shell] of [
+  ["semicolon", "echo ${EXTRA:-first; go build ./data} && go test -trimpath ./fixture"],
+  ["pipeline", "echo ${EXTRA:-first | go build ./data} && go test -trimpath ./fixture"],
+]) test("trimpath audit keeps " + name + " inside parameter fallback data", t => {
+  const source = "const target = { shell: " + JSON.stringify(shell) + " }\n"
+  const result = auditNativeSource(t, source)
+  assert.equal(result.status, 0, result.stdout + result.stderr)
 })
 
 for (const [name, source, status] of [
@@ -368,7 +424,7 @@ test("trimpath audit rejects a missing flag in the later mapper helper check", t
   const start = source.lastIndexOf("go test ", witness)
   const entry = source.slice(start, witness)
   assert.match(entry, /go test -trimpath/)
-  const changed = source.slice(0, start) + entry.replace(" -trimpath", "") + source.slice(witness)
+  const changed = source.slice(0, start) + entry.replace("-trimpath", "") + source.slice(witness)
   const result = auditNativeSource(t, changed, "PACKAGE.ts")
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.match(result.stdout, /PACKAGE\.ts:/)
@@ -392,7 +448,7 @@ test("trimpath audit retains the real template command's flag coverage", t => {
   const source = read("PACKAGE.ts")
   const entry = "go test -p 8 -count=1 -trimpath -timeout 5m"
   assert.equal(source.split(entry).length, 2, "the template command must remain unique")
-  const result = auditNativeSource(t, source.replace(entry, entry.replace(" -trimpath", "")), "PACKAGE.ts")
+  const result = auditNativeSource(t, source.replace(entry, entry.replace("-trimpath", "")), "PACKAGE.ts")
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.match(result.stdout, /go test invocation 1 requires -trimpath/)
 })
