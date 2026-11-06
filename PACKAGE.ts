@@ -1521,6 +1521,12 @@ const targets = {
     [],
     [bun, node]
   ),
+  "docs-editor-migration": check(
+    "Current editor guides keep retired service errors distinct from control-class migration warnings.",
+    "bun docs/tools/check-diagnostic-docs.ts && bun test --timeout 60000 docs/tools/editor-migration-diagnostics.test.ts docs/tools/check-diagnostic-docs.test.ts",
+    [],
+    [bun]
+  ),
   "docs-shim-availability": check(
     "The TypeScript replacement guides distinguish prepared source versions from recorded npm availability and match proposal status and checker API requirements.",
     "node docs/tools/shim-availability.mjs && bun test --timeout 60000 docs/tools/shim-availability.test.ts docs/tools/checker-version-claims.test.ts docs/tools/shim-preparation.test.ts",

@@ -78,8 +78,52 @@ export function checkDiagnosticDocs(root = repo): string[] {
   return undocumentedCodes(diagnosticCodes(sources), pages)
 }
 
+
+// Services: "Legacy service class Name { members } ... reports EK0909."
+// The retained EK2120 warning belongs to control class in editor semantics.
+export function editorMigrationDiagnosticProblems(text: string, file = "document"): string[] {
+  const problems: string[] = []
+  let fence = "", paragraph: string[] = [], start = 1
+  const check = () => {
+    const prose = paragraph.join(" ").replaceAll("\x60", "").replace(/\s+/g, " ")
+    if (/\b(?:class(?:-|\s+)only\s+service|service\s+class)\b/i.test(prose) &&
+        /\bEK2120\b/.test(prose) && !/\bEK0909\b/.test(prose) &&
+        !/\b(?:no longer|never|not)\b.{0,60}\bEK2120\b|\bEK2120\b.{0,35}\b(?:no longer|never|not)\b/i.test(prose)) {
+      problems.push(file + ":" + start + ": retired service class uses error EK0909; EK2120 is the control-class editor warning")
+    }
+    paragraph = []
+  }
+  for (const [index, line] of text.split("\n").entries()) {
+    const marker = line.match(/^\s*(\x60{3,}|~{3,})/)
+    if (marker) {
+      check()
+      if (!fence) fence = marker[1]
+      else if (fence[0] === marker[1][0] && marker[1].length >= fence.length) fence = ""
+      continue
+    }
+    if (fence) continue
+    if (!line.trim()) { check(); continue }
+    if (!paragraph.length) start = index + 1
+    paragraph.push(line)
+  }
+  check()
+  return problems
+}
+
+export function checkEditorMigrationDiagnostics(root = repo): string[] {
+  const source = readFileSync(join(root, "docs/design/src/005-services.md"), "utf8").replaceAll("\x60", "")
+  if (!/service class[^\n.]*reports EK0909\b/.test(source)) {
+    throw new Error("review editor migration diagnostic policy against the service chapter")
+  }
+  return ["docs/user/src/setup/vscode.md", "docs/user/src/setup/other-editors.md"].flatMap(file =>
+    editorMigrationDiagnosticProblems(readFileSync(join(root, file), "utf8"), file))
+}
+
 if (import.meta.main) {
   const missing = checkDiagnosticDocs()
+  const claims = checkEditorMigrationDiagnostics()
+  for (const problem of claims) console.error(problem)
+  if (claims.length) process.exitCode = 1
   if (missing.length) {
     console.error("User docs have no diagnostic reference for: " + missing.join(", "))
     process.exitCode = 1
