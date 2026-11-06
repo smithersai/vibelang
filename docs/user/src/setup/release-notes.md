@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Generated declarations for native `module` bodies could fail lint with `unicorn/require-module-specifiers` or formatting checks. Migration setup now excludes these compiler outputs while continuing to check authored implementation files.
 - An indexed generic type could hide a service key from construction, inheritance and class-pattern checks. Indexed constraints now retain the key's identity and report the usual misuse diagnostics.
+- Migration's API check could report conflicting snapshot paths for native `module` declarations after an import rename. It now records those declarations as compiler outputs, while preserving handwritten declarations and detecting real API changes.
 - Build command checks reran after unrelated source or documentation edits; they now reuse successful results while still checking changed commands, timeouts and test inventories.
 - Bun scripts and tests could not load a migrated source through a `tsconfig.paths` alias ending in `.ts`; the preload now follows its `.vibe` sibling while preserving existing native files.
 

@@ -148,3 +148,5 @@ When a legacy migration adds an `effect` marker to a function, it also converts 
 An alias repair in a class `implements` clause changes only the type spelling. Independent `EK0402` callable throws errors remain, just as they do with a written `Effect.Effect<…>` type.
 
 Migration setup excludes generated declaration sidecars, including `x.vibe.platform.d.ts` and `x.vibex.platform.d.ts`, from Oxlint, ESLint, dprint and formatters that read `.prettierignore`. Authored `.platform.ts` implementations remain checked. Rerun setup to update an existing migration's configuration.
+
+The migration's canonical API comparison uses freshly emitted declarations for native `module` bodies. Existing compatibility copies can spell imports differently; they do not replace the current emit. Handwritten neighbouring declarations remain checked.

@@ -1076,3 +1076,5 @@ Verification fixtures pin their selected compiler before simulating conversion. 
 Native declaration-context tests locate the repository compiler relative to their module. They run from either the repository root or the flow directory; `VIBELANG_BINARY` still selects an explicit compiler.
 
 Setup installs its selected dependencies before running the target formatter on written files. Adding workspace packages follows the same order. Installation failures stop setup before formatting; formatter failures after installation remain warnings in the setup receipt.
+
+Declaration snapshots attribute a native `module` body's declaration to its freshly emitted parent project. A live compatibility copy is not retained as a second handwritten declaration. Unowned neighbouring declarations remain in the snapshot, and exported name, type and documentation changes still fail verification.

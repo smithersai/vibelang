@@ -1,0 +1,9 @@
+{
+  "key": "declaration:snapshot-module-companion-path-conflict",
+  "quote": "Declaration sidecars are emit outputs like `.d.ts`.",
+  "source": "module platform { export interface Value { value: number } }\nexport type Value = platform.Value;\n",
+  "entry": "export type { Value } from \"./main.vibe.platform.js\";\n",
+  "fresh": "export interface Value { value: number }\n",
+  "stale": "export interface Value { value: string }\n"
+}
+

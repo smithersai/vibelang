@@ -9,6 +9,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { compareApiIdentityInWorker as compareApiIdentity, publishedEntrypoints } from "./api-identity.mjs"
 import { apiProjection } from "./api-projection.mjs"
+import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 import { dependencyEmitPathSubstitution } from "./dependency-emit-paths.mjs"
@@ -522,6 +523,19 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
         else if (logical.endsWith("/" + tail)) layout.directory = logical.slice(0, -tail.length - 1) || "."
 
         aliases[rel(packageDir, original).replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] = declaration
+      }
+      // A named module body emits its own declaration beside the parent's.
+      // Attribute that output before retaining handwritten package declarations;
+      // a live compatibility copy can have a different import spelling.
+      if (/\.vibex?$/.test(source)) {
+        for (const companion of moduleDeclarationFiles(ts, source, readFileSync(source, "utf8"))) {
+          const stored = join(dirname(output), basename(companion))
+          if (!existsSync(stored)) continue
+          const companionDeclaration = rel(dir, stored)
+          aliases[rel(packageDir, companion)] = companionDeclaration
+          logicalPaths[companionDeclaration] ??= posix.join(posix.dirname(logicalPaths[declaration] ?? declaration), basename(companion))
+          context.files.push(companionDeclaration)
+        }
       }
     }
   }
