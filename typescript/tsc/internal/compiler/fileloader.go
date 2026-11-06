@@ -911,6 +911,13 @@ func (p *fileLoader) resolveImportsAndModuleAugmentations(t *parseTask) {
 			var trace []module.DiagAndArgs
 			var err error
 			resolvedModule, trace, err = p.resolver.ResolveModuleName(moduleName, fileName, mode, redirect)
+			// A declaration can name a module body's virtual source through an
+			// inferred import type. Load the owning source, not its previous
+			// declaration output, so a second check has the same input graph.
+			var bodyOwner tspath.RootedFilePath
+			if file.IsDeclarationFile && err == nil {
+				resolvedModule, bodyOwner = p.resolveModuleBodyImport(moduleName, fileName, resolvedModule, optionsForFile, mode)
+			}
 			// A referenced declaration uses the native twin's relative spelling.
 			// Its source directory can no longer contain that .ts/.tsx name after
 			// migration. Resolve the emitted name beside the declaration only
@@ -964,9 +971,16 @@ func (p *fileLoader) resolveImportsAndModuleAugmentations(t *parseTask) {
 				(importIndex < 0 || (importIndex < len(file.Imports()) && (ast.IsInJSFile(file.Imports()[importIndex]) || file.Imports()[importIndex].Flags&ast.NodeFlagsJSDoc == 0)))
 
 			if shouldAddFile {
+				loadPath := resolvedModule.ResolvedPath
+				if bodyOwner != "" {
+					// Parsing the owner supplies the canonical supplemental body;
+					// the virtual file has no independent text on disk.
+					resolvedFileName = bodyOwner
+					loadPath = p.toPath(bodyOwner.AsPath())
+				}
 				t.addSubTask(resolvedRef{
 					fileName:      resolvedFileName,
-					path:          resolvedModule.ResolvedPath,
+					path:          loadPath,
 					increaseDepth: resolvedModule.IsExternalLibraryImport,
 					elideOnDepth:  isJsFileFromNodeModules,
 					includeReason: &FileIncludeReason{

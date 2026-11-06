@@ -21,6 +21,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An invalid `with Live { … }` provider header suggested rewriting the provider as a callback call. It now reports ordinary syntax errors; update the header to `provide Live { … }` in effect code.
 - Breaking: `service class Name { … }` compiled with a warning. It now fails with `EK0909`; `vibelang --fix` removes `class` while keeping the service key, shape and comments.
 - The contribution guide left release-note checks until publication, so contributors could miss repeated fixes or internal wording. It now gives the strict check before submission.
+- Rechecking a module body referenced by an inferred declaration type could report `TS5055` after the first build. Declaration imports now keep reading the body source across builds.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
 - The TypeScript replacement guide told npm to install an unavailable package. It now names the version included in this release and retains the source-checkout option.
