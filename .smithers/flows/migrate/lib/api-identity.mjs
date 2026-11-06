@@ -1359,10 +1359,15 @@ function prepareComparison(ts, before, after, options, progress) {
   const sharedFile = file => !virtual.has(file) && ![before, after].some(base => file === base || file.startsWith(base + "/"))
   const sharedSymbol = symbol => symbol?.declarations?.length > 0 &&
     symbol.declarations.every(d => sharedFile(d.getSourceFile().fileName))
-  // An instantiation carries a side's arguments; only a closed type is shared.
-  const sharedDeclaration = type => type.flags & ts.TypeFlags.Object && !type.aliasTypeArguments?.length &&
-    !(type.objectFlags & ts.ObjectFlags.Instantiated) &&
-    !(type.objectFlags & ts.ObjectFlags.Reference && checker.getTypeArguments(type).length) && sharedSymbol(type.symbol)
+  // An instantiation carries a side's arguments. One whose generic and arguments
+  // are all shared is the same type on both sides, whatever errors it holds.
+  const sharedDeclaration = type => {
+    if (!(type.flags & ts.TypeFlags.StructuredOrInstantiable))
+      return !(type.flags & ts.TypeFlags.Any && ["error", "unresolved"].includes(type.intrinsicName))
+    if (type.aliasSymbol) return sharedSymbol(type.aliasSymbol) && (type.aliasTypeArguments ?? []).every(sharedDeclaration)
+    return Boolean(type.flags & ts.TypeFlags.Object) && !(type.objectFlags & ts.ObjectFlags.Instantiated) && sharedSymbol(type.symbol) &&
+      (!(type.objectFlags & ts.ObjectFlags.Reference) || checker.getTypeArguments(type).every(sharedDeclaration))
+  }
   function walkErrors(root, bounded) {
     const cache = bounded ? boundedErrorCache : errorCache
     if (cache.has(root)) { errorWalkCacheHits++; return cache.get(root) }
@@ -1371,7 +1376,7 @@ function prepareComparison(ts, before, after, options, progress) {
     while (pending.length) {
       const type = pending.pop()
     if (!type) continue
-    if (bounded && sharedDeclaration(type)) { frontier.push(type); continue }
+    if (bounded && type.flags & ts.TypeFlags.StructuredOrInstantiable && sharedDeclaration(type)) { frontier.push(type); continue }
     if (seen.has(type)) continue
     seen.add(type)
     if (cache.get(type)?.closed) { errorWalkCacheHits++; continue }
