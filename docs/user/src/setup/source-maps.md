@@ -4,7 +4,7 @@
 
 ## What works where
 
-Each row is checked by driving the tool itself. The tests are under `packages/compiler/test/source-maps/`.
+Each row is checked by driving the tool itself. The table names each test file.
 
 | Tool | What works | Test |
 | --- | --- | --- |
