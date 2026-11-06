@@ -8,6 +8,8 @@ together and emits JavaScript that runs on Effect 4. Enable `declaration`
 to emit `.d.ts` files. Documentation:
 [vibelang.sh](https://vibelang.sh).
 
+Built project references retain native exports through TypeScript barrels. Their declarations keep the native twin's relative import names, and consumers resolve the corresponding `.vibe` or `.vibex` declaration outputs.
+
 ## Start a project
 
 ```sh

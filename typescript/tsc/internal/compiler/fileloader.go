@@ -911,6 +911,23 @@ func (p *fileLoader) resolveImportsAndModuleAugmentations(t *parseTask) {
 			var trace []module.DiagAndArgs
 			var err error
 			resolvedModule, trace, err = p.resolver.ResolveModuleName(moduleName, fileName, mode, redirect)
+			// A referenced declaration uses the native twin's relative spelling.
+			// Its source directory can no longer contain that .ts/.tsx name after
+			// migration. Resolve the emitted name beside the declaration only
+			// when the reference map proves the target is a native source's output.
+			if err == nil && (resolvedModule == nil || !resolvedModule.IsResolved()) &&
+				file.IsDeclarationFile && fileName != file.FileName() && tspath.PathIsRelative(moduleName) {
+				emitted, emittedTrace, emittedErr := p.resolver.ResolveModuleName(moduleName, file.FileName(), mode, redirect)
+				trace = append(trace, emittedTrace...)
+				if emittedErr != nil {
+					err = emittedErr
+				} else if emitted != nil && emitted.IsResolved() {
+					target := p.projectReferences.getProjectReferenceFromOutputDts(emitted.ResolvedPath)
+					if target != nil && target.Source.IsVibeLangSource() {
+						resolvedModule = emitted
+					}
+				}
+			}
 			if err != nil {
 				p.moduleResolutionErrorOnce.Do(func() {
 					p.moduleResolutionError = err

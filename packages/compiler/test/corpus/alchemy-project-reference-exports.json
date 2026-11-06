@@ -1,0 +1,12 @@
+{
+  "issue": "Alchemy native utility exports disappear from a built project reference's TypeScript barrel",
+  "source": "export type Primitive = string | number;\nexport function unwrapRedacted<T>(value: T): T { return value; }\n",
+  "consumer": "import { unwrapRedacted, type Primitive } from \"core/Util\";\nconst value: Primitive = unwrapRedacted(\"ok\");\nconst concrete: 0 extends (1 & ReturnType<typeof unwrapRedacted<string>>) ? true : false = false;\nexport { value, concrete };\n",
+  "input": {
+    "extension": "vibe",
+    "nested": false,
+    "nativeConsumer": false,
+    "redirect": true,
+    "outDir": "lib"
+  }
+}
