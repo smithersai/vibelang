@@ -113,7 +113,7 @@ func errorInheritanceClassActions(ctx context.Context, fix *ls.CodeFixContext, c
 		if ast.IsIdentifier(node) && node.Flags&ast.NodeFlagsReparsed != 0 {
 			module := ""
 			switch node.Text() {
-			case "$errorSubclass", "$ErrorArgs", "$schemaErrorMember", "$schemaErrorFamily":
+			case "$errorSubclass", "$ErrorArgs", "$schemaErrorMatcher", "$schemaErrorMember", "$schemaErrorFamily":
 				module = "vibelang-runtime"
 			case "Schema":
 				// A synthesized typeof Schema.Base or a class Self named

@@ -87,7 +87,7 @@ func extractedLength(c *checker.Checker, matcher *ast.Node) (int, bool) {
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		symbol = c.GetAliasedSymbol(symbol)
 	}
-	if symbol != nil && isExtractedErrorClass(symbol.ValueDeclaration()) {
+	if symbol != nil && isExtractedErrorClass(c, symbol.ValueDeclaration()) {
 		return 1, true
 	}
 	return 0, false

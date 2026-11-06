@@ -71,7 +71,7 @@ func errorDeclarationInstance(c *checker.Checker, matcher *ast.Node) *checker.Ty
 		return nil
 	}
 	symbol := t.Symbol()
-	if symbol == nil || !isExtractedErrorClass(symbol.ValueDeclaration()) {
+	if symbol == nil || !isExtractedErrorClass(c, symbol.ValueDeclaration()) {
 		return nil
 	}
 	signatures := c.GetConstructSignatures(t)

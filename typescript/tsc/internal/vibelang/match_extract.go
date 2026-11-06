@@ -44,7 +44,7 @@ func narrowExtractedError(c *checker.Checker, reference *ast.Node, t *checker.Ty
 				// extracts [s] behind its module guard as well (chapter 004,
 				// Retained fixed patterns), so its one binding covers its case.
 				retained := isRetainedErrorMatcher(c, call.Arguments()[0])
-				if symbol := matcher.Symbol(); !retained && (symbol == nil || !isExtractedErrorClass(symbol.ValueDeclaration())) {
+				if symbol := matcher.Symbol(); !retained && (symbol == nil || !isExtractedErrorClass(c, symbol.ValueDeclaration())) {
 					return nil
 				}
 				signatures := c.GetConstructSignatures(matcher)
@@ -143,7 +143,7 @@ func extractionCall(c *checker.Checker, node *ast.Node) *ast.Node {
 
 // Only error declarations have D215's guaranteed extraction. A class may
 // override customMatcher, so extending TaggedError alone is not sufficient.
-func isExtractedErrorClass(decl *ast.Node) bool {
+func isParsedExtractedErrorClass(decl *ast.Node) bool {
 	if decl == nil || !ast.IsClassDeclaration(decl) && !ast.IsClassExpression(decl) {
 		return false
 	}

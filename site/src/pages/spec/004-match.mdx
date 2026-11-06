@@ -904,6 +904,8 @@ const genericCoverageExit = Effect.runSyncExit(Effect.sync(() => [
 const openCoverageExit = Effect.runSyncExit(Effect.sync(() => openCoverage("other"))) // Die(TypeError)
 ```
 
+An explicit class written by an error migration keeps that generated matcher's narrowing, extraction and coverage when its own matcher is installed directly by the runtime's generated tagged-error matcher, its literal instance `_tag` agrees with the registered tag, and no other static initialization can replace the matcher. Only the resolved runtime helper establishes that guarantee: a shadowed helper, a different tag or an ordinary custom matcher does not. Schema-family registration preserves the generated matcher.
+
 A generated error matcher tests the tag of the subject, including a foreign plain object with that tag:
 
 ```vibe [VibeLang]

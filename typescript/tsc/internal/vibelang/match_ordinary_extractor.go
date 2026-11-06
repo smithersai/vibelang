@@ -285,7 +285,7 @@ func hasRegisteredSchemaErrorMatcher(c *checker.Checker, constructor *checker.Ty
 				continue
 			}
 			args := call.Arguments()
-			if len(args) == 2 && ast.SkipOuterExpressions(args[0], ast.OEKAll).Kind == ast.KindThisKeyword && ast.IsStringLiteral(args[1]) {
+			if (len(args) == 2 || len(args) == 3) && ast.SkipOuterExpressions(args[0], ast.OEKAll).Kind == ast.KindThisKeyword && ast.IsStringLiteral(args[1]) {
 				return true
 			}
 		}

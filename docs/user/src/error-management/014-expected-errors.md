@@ -36,7 +36,7 @@ InvalidCode
 
 An `error` or `schema error` declaration constructs a runtime value and cannot occur in a native TypeScript ambient context. An explicit `declare` or an enclosing `declare namespace`, `declare module` or `declare global` reports `EK1307`, including for a bodyless declaration. Write a native ambient class for an erased declaration; `vibelang --fix` offers that conversion when it preserves the declaration. Native ambient classes keep their erased form and are not suggested for conversion back to `error` or `schema error`. Their class repair adds no executable static initialization. In ambient code, `EK1307` takes priority over the error declaration's member restrictions; independent field-type errors still appear.
 
-A reserved `_tag` payload in a base declaration and an `extends` clause in a second declaration are independent violations. That file reports `EK2117` at each site. A preserving class conversion must keep the payload, base, constructor and exported declaration API.
+A reserved `_tag` payload in a base declaration and an `extends` clause in a second declaration are independent violations. That file reports `EK2117` at each site. A preserving class conversion must keep the payload, base, constructor and exported declaration API. The generated matcher in that class also keeps tagged narrowing and exhaustive matching. A shadowed matcher helper, a different registered tag or other static initialization does not establish that guarantee.
 
 The ambient class conversion also covers a `schema error` with no body, an empty body or payload fields, including one nested inside ambient namespaces. The resulting native class remains erased; it does not run schema construction or register a matcher in the emitted JavaScript.
 
