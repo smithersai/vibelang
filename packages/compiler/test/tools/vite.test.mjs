@@ -2,7 +2,7 @@
 // .vibe module only with .vibe in its include, which the migrate flow's
 // setup writes (lib/react-tools.mjs, addReactCompilerInclude).
 import { strict as assert } from "node:assert"
-import { symlinkSync } from "node:fs"
+import { cpSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
@@ -10,11 +10,24 @@ import { build } from "vite"
 import react from "@vitejs/plugin-react"
 import { compilerPackage, hooks, project } from "./helpers.mjs"
 
-const vibelang = (await import(pathToFileURL(join(compilerPackage, "../vite/src/index.js")))).default
+async function fixturePlugin(root) {
+  const plugin = join(root, "node_modules/vibelang-vite")
+  mkdirSync(plugin)
+  cpSync(join(compilerPackage, "../vite/package.json"), join(plugin, "package.json"))
+  cpSync(join(compilerPackage, "../vite/src"), join(plugin, "src"), { recursive: true })
+  return (await import(pathToFileURL(join(plugin, "src/index.js")))).default
+}
+
+test("the Vite fixture resolves the compiler peer beside its private plugin", async (t) => {
+  const root = project(t, {})
+  const plugin = await fixturePlugin(root)
+  assert.equal(typeof plugin, "function")
+  assert.ok(plugin())
+})
 
 async function bundle(t, options) {
   const root = project(t, { ...hooks, "index.js": 'export { useLabel } from "./src/useLabel.vibe"\n' }, ["react", "@types/react"])
-  symlinkSync(join(compilerPackage, "../vite"), join(root, "node_modules/vibelang-vite"))
+  const vibelang = await fixturePlugin(root)
   const result = await build({
     root, configFile: false, logLevel: "silent",
     plugins: [vibelang(), react(options)],

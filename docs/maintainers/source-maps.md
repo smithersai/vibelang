@@ -89,3 +89,5 @@ A bundler can place a surrounding expression's segment and a string's segment at
 The subprocess checks record elapsed time and distinguish their own deadline from another termination signal. Rolldown progress records identify import, creation, writing and closure. A loader replay covers a multiline warning whose comment-prefixed source text previously became nonexistent watched paths; the diagnostic parser retains the excerpt and the unchanged project finishes once.
 
 While a diagnostic is continuing, nonexistent comment-shaped paths, including `//path/to/source`, stay in its source excerpt. Existing input files remain inputs, and a started file listing still accepts missing paths. The parser property covers these boundaries separately.
+
+The tool-adapter suite stages a private Vite plugin beside its compiler peer. It reads the plugin manifest and source from the checkout, so testing does not depend on a separate install in the Vite package.
