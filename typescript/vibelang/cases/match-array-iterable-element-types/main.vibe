@@ -1,0 +1,55 @@
+// expect-result: [1,"a",[2,3],"pair",1,"x"]
+import { Effect } from "effect"
+
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const same = <A, B>(_: Equal<A, B>) => undefined
+
+// Chapter 004: an array pattern binds the element type of the subject's
+// iterable, and an unknown subject's elements are unknown.
+function first(s: Iterable<number>): number {
+  return match (s) { when [let a, ...]: do { same<typeof a, number>(true); a }; default: 0; }
+}
+function letter(s: string): string {
+  return match (s) { when [let a, ...]: do { same<typeof a, string>(true); a }; default: ""; }
+}
+function tail(s: Set<number>): number[] {
+  return match (s) { when [, ...let rest]: do { same<typeof rest, number[]>(true); rest }; default: []; }
+}
+function entry(s: Map<string, number>): string {
+  return match (s) { when [let e]: do { same<typeof e, [string, number]>(true); e[0] }; default: ""; }
+}
+function open(s: unknown): number {
+  return match (s) { when [let a, ...let rest]: do { same<typeof a, unknown>(true); same<typeof rest, unknown[]>(true); rest.length + 1 }; default: 0; }
+}
+function generated(s: Generator<string, number, void>): string {
+  return match (s) { when [let a]: do { same<typeof a, string>(true); a }; default: ""; }
+}
+function mixed(s: Set<string> | number[] | number): void {
+  match (s) { when [let a]: same<typeof a, string | number>(true); default: undefined; }
+}
+function loose(s: any): void {
+  match (s) { when [let a]: same<typeof a, any>(true); default: undefined; }
+}
+function general<T>(s: Iterable<T>): void {
+  match (s) { when [let a]: same<typeof a, T>(true); default: undefined; }
+}
+function held(s: unknown): number {
+  if (s is { box: [let a] }) { same<typeof a, unknown>(true); return 1 }
+  return 0
+}
+function tagged(s: { readonly label: string }): void {
+  match (s) { when [let a, ...let rest]: do { same<typeof a, unknown>(true); same<typeof rest, unknown[]>(true); undefined }; default: undefined; }
+}
+function callable(s: () => void): void {
+  match (s) { when [let a, ...]: same<typeof a, unknown>(true); default: undefined; }
+}
+function openUnion(s: Set<number> | { readonly label: string }): void {
+  match (s) { when [let a, ...]: same<typeof a, number>(true); default: undefined; }
+}
+void [mixed, loose, general, held, tagged, callable, openUnion]
+export function main(): Effect.Effect<readonly unknown[]> {
+  return Effect.sync(() => [
+    first(new Set([1])), letter("abc"), tail(new Set([1, 2, 3])), entry(new Map([["pair", 1]])),
+    open([1]), generated((function* () { yield "x"; return 1 })()),
+  ])
+}

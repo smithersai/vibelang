@@ -4940,6 +4940,9 @@ typescript/vibelang/cases/lsrules.fail/main.vibe:92:39 lambda plain fallback
 typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:40 lambda effectFn table
 typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:48 lambda effectFn table
 typescript/vibelang/cases/match-arm-grammar.fail/main.vibe:32:12 lambda plain fallback
+typescript/vibelang/cases/match-array-iterable-element-types/main.vibe:51:22 lambda plain table
+typescript/vibelang/cases/match-array-iterable-element-types/main.vibe:53:27 lambda plain fallback
+typescript/vibelang/cases/match-array-iterable-element-types/main.vibe:5:14 lambda plain fallback
 typescript/vibelang/cases/match-builtin-own-option/main.vibe:17:9 lambda plain fallback
 typescript/vibelang/cases/match-builtin-shadowed/main.vibe:29:28 lambda program table
 typescript/vibelang/cases/match-class-dispatch/main.vibe:7:18 lambda plain annotation
@@ -5082,6 +5085,14 @@ typescript/vibelang/cases/match-handler-destructure-quickfix/main.vibe:5:33 lamb
 typescript/vibelang/cases/match-handler-destructure-quickfix/main.vibe:6:18 lambda plain table
 typescript/vibelang/cases/match-inline-extraction-once/main.vibe:18:27 lambda dual fallback
 typescript/vibelang/cases/match-inline-extraction-once/main.vibe:19:27 lambda dual fallback
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:12:49 lambda plain fallback
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:15:14 lambda plain fallback
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:16:21 lambda plain fallback
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:19:21 lambda plain table
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:5:14 lambda plain fallback
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:7:12 lambda plain fallback
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:7:33 lambda plain fallback
+typescript/vibelang/cases/match-inline-iterable-object-types/main.vibe:7:61 lambda plain fallback
 typescript/vibelang/cases/match-instanceof-repair-array/main.vibe:4:41 lambda plain table
 typescript/vibelang/cases/match-instanceof-repair-array/main.vibe:5:18 lambda plain table
 typescript/vibelang/cases/match-instanceof-repair-boolean/main.vibe:4:43 lambda plain table
@@ -5160,6 +5171,7 @@ typescript/vibelang/cases/match-operand-reads/main.vibe:58:29 lambda plain annot
 typescript/vibelang/cases/match-operand-reads/main.vibe:9:19 lambda plain table
 typescript/vibelang/cases/match-or-not-bindings/main.vibe:38:19 lambda plain fallback
 typescript/vibelang/cases/match-or-not-bindings/main.vibe:48:50 lambda plain fallback
+typescript/vibelang/cases/match-ordinary-extractor.fail/main.vibe:9:42 lambda effectFn fallback
 typescript/vibelang/cases/match-pattern-value-admission-fixed-output/main.vibe:15:20 lambda plain fallback
 typescript/vibelang/cases/match-pattern-value-admission.fail/main.vibe:3:20 lambda plain fallback
 typescript/vibelang/cases/match-patterns/main.vibe:117:28 lambda effectFn fallback

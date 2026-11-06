@@ -148,10 +148,11 @@ type matchPath func() *ast.Node
 
 // matchCompile carries the state of compiling one top-level pattern.
 type matchCompile struct {
-	coverage bool   // mark refutable combinators in finite coverage queries
-	cache    string // the private per-evaluation Iterator Record cache
-	anchor   core.TextRange
-	inline   bool // inside or, not, or an is without an if or while: no declarations
+	coverage     bool   // mark refutable combinators in finite coverage queries
+	cache        string // the private per-evaluation Iterator Record cache
+	anchor       core.TextRange
+	inline       bool         // inside or, not, or an is without an if or while: no declarations
+	inlineLocals *[]*ast.Node // captures local to a binding-free is wrapper
 	// uncovered marks refutable and/not tests, which cover nothing, in a match
 	// with no default arm, for EK4701 (chapter 004, Coverage). With a default arm
 	// no coverage is checked, and the arms narrow as TypeScript does.
@@ -1967,7 +1968,7 @@ func (p *Parser) relationTest(pat *pattern, path matchPath) *ast.Node {
 // every test and binding sees one value. An inline pattern, which can hold no
 // declaration, reads the part where each test stands.
 func (p *Parser) enterSubject(path matchPath, pat *pattern, steps *[]matchStep, ctx *matchCompile) matchPath {
-	if ctx.inline || subjectReads(pat) < 2 {
+	if subjectReads(pat) < 2 {
 		return path
 	}
 	p.vibelangMatchTemps++
@@ -2135,13 +2136,33 @@ func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) 
 	if ctx.bound == nil {
 		ctx.bound = map[string]bool{}
 	}
-	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound, cache: ctx.cache}
+	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound, cache: ctx.cache, inlineLocals: ctx.inlineLocals}
+	mark := len(p.reparseList)
 	var steps []matchStep
+	if subjectReads(pat) >= 2 {
+		original := path()
+		if !ast.IsIdentifier(ast.SkipParentheses(original)) {
+			path = p.enterSubject(func() *ast.Node { return original }, pat, &steps, inner)
+		}
+	}
 	p.compilePattern(pat, path, &steps, inner)
 	var tests []*ast.Node
 	for _, step := range steps {
-		if step.test != nil {
+		if step.decl != nil {
+			tests = append(tests, p.hoistDeclaration(step.decl, pat.anchor))
+		} else if step.test != nil {
 			tests = append(tests, step.test)
+		}
+	}
+	if ctx.inlineLocals != nil {
+		for _, hoist := range p.takeHoists(mark) {
+			decl := hoistedDeclarator(hoist)
+			if decl != nil && decl.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 {
+				*ctx.inlineLocals = append(*ctx.inlineLocals, hoist)
+				delete(p.vibelangHoists, hoist)
+			} else {
+				p.reparseList = append(p.reparseList, hoist)
+			}
 		}
 	}
 	if len(tests) == 0 {
@@ -2257,22 +2278,34 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 		// the subject more than once leaves the subject node to the call
 		// below.
 		reads := 0
-		p.inlinePattern(info.pattern, func() *ast.Node { reads++; return p.cloneIdentExpression(inner) }, ctx)
-		if reads == 1 && ctx.cache == "" {
+		var probeLocals []*ast.Node
+		probe := *ctx
+		probe.inlineLocals = &probeLocals
+		temps, counter := len(p.vibelangTemps), p.vibelangMatchTemps
+		p.inlinePattern(info.pattern, func() *ast.Node { reads++; return p.cloneIdentExpression(inner) }, &probe)
+		p.vibelangTemps = p.vibelangTemps[:temps]
+		p.vibelangMatchTemps = counter
+		if reads == 1 && ctx.cache == "" && len(probeLocals) == 0 {
 			return p.finishNode(p.mParens(p.inlinePattern(info.pattern, func() *ast.Node { return inner }, ctx), info.anchor), pos)
 		}
 	}
 	p.vibelangMatchTemps++
 	name := "$is" + strconv.Itoa(p.vibelangMatchTemps)
 	path := func() *ast.Node { return p.mTemp(name, info.anchor) }
+	var locals []*ast.Node
+	ctx.inlineLocals = &locals
 	body := p.inlinePattern(info.pattern, path, ctx)
-	if ctx.cache != "" {
+	if ctx.cache != "" || len(locals) != 0 {
 		// Parameters precede the body in native TypeScript. Anchoring this
 		// block at is would place its parameter inside the body's range,
 		// making name resolution treat it as a temporary moved into the body.
 		span := body.Loc
 		cacheAt := info.anchor
-		body = p.mBlock(p.matchCacheStatements([]*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(body), span)}, ctx.cache, cacheAt), span)
+		statements := append(locals, p.vibelangSpanning(p.factory.NewReturnStatement(body), span))
+		if ctx.cache != "" {
+			statements = p.matchCacheStatements(statements, ctx.cache, cacheAt)
+		}
+		body = p.mBlock(statements, span)
 	}
 	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, p.mTemp(name, info.anchor), nil, nil, nil), info.anchor)
 	arrow := p.vibelangProgramArrow([]*ast.Node{parameter}, body, info.anchor)

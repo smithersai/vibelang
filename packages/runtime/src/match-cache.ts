@@ -9,7 +9,14 @@ const propertyKeyString = String
 const propertyMapClear = Function.prototype.call.bind(Map.prototype.clear) as (map: Map<any, any>) => void
 
 // Private property observations and Iterator Records for VIP-7's match cache.
-type Item<S> = S extends ReadonlyArray<infer T> ? T : any
+// Prefer known iterable union members, as TypeScript's iterable guard does.
+// An open subject with no known iterable member yields unknown elements.
+type IterableSubject<S> = [S] extends [Iterable<unknown>] ? S
+  : [Extract<S, Iterable<unknown>>] extends [never] ? S
+  : Extract<S, Iterable<unknown>>
+type ItemOf<S> = S extends Iterable<infer T> ? T : unknown
+type Item<S> = 0 extends 1 & S ? any : ItemOf<IterableSubject<S>>
+type ItemAt<S, I extends number> = S extends ReadonlyArray<unknown> ? S[I] : ItemOf<S>
 interface RecordState {
   iterator: object
   next: unknown
@@ -79,8 +86,8 @@ export function $matchCache() {
       return true
     },
     has(subject: unknown, index: number): boolean { return pull(record(subject), index) },
-    at<S, I extends number>(subject: S, index: I): S extends ReadonlyArray<unknown> ? S[I] : any {
-      return record(subject).values[index] as S extends ReadonlyArray<unknown> ? S[I] : any
+    at<S, I extends number>(subject: S, index: I): ItemAt<IterableSubject<S>, I> {
+      return record(subject).values[index] as ItemAt<IterableSubject<S>, I>
     },
     end(subject: unknown, index: number): boolean { return !pull(record(subject), index) },
     rest<S>(subject: S, index: number): Item<S>[] {

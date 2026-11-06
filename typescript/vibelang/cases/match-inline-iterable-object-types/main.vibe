@@ -1,0 +1,20 @@
+// expect-result: [[true,false,true],[false,true,false],3,true,true,true]
+import { Effect } from "effect"
+type Item = { value: number } | 2
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const same = <A, B>(_: Equal<A, B>) => undefined
+function checks(s: Iterable<Item>) {
+ return [s is [{ value: 0 }], s is not [{ value: 0 }], match(s) { when ([] or [{ value: 0 }]): true; default: false; }]
+}
+function bound(s: Iterable<Item>) {
+ return match(s) { when [{ let value }] or [{ let value }]: do { same<typeof value, number>(true); value }; default: 0; }
+}
+function optional(s: Iterable<Item>) { return s is [{ value: 0 }?] }
+const values: Iterable<Item> = [{ value: 0 }]
+class Holder {
+ ok = values is [{ value: 0 }]
+ static ok = values is [{ value: 0 }]
+}
+export function main(): Effect.Effect<readonly unknown[]> {
+ return Effect.sync(() => [checks([{value:0}]),checks([2]),bound([{value:3}]),optional([]),new Holder().ok,Holder.ok])
+}

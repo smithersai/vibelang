@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` could leave independent type repairs unapplied between uses of a name whose rename was declined. It now preserves the declined binding and its uses while applying repairs between them.
 - A `using` of a plain Disposable in effect code ran its disposer when a `try` failed or the fiber was interrupted. It now keeps TypeScript's meaning, as in `Effect.gen`: a failed `try` abandons the generator, so the disposer doesn't run. Use `acquireDisposable` inside `scoped` for cleanup on every exit.
 
+- Array patterns on non-array iterables could give their bindings `any` or reject nested object tests. They now preserve the iterable's element type and narrow nested values as TypeScript does.
+
 - Vite debug output omitted project invalidations, making rebuild traces incomplete. Each invalidation now reports the new revision immediately.
 - A `for concurrent` loop over an iterable union could report a type error even when every member was iterable. It now infers the item from every member, as a native `for...of` loop does.
 - Type assertions around `import.meta` could block its `.url` read. The compiler now accepts these URL reads.
