@@ -1527,6 +1527,12 @@ const targets = {
     [],
     [bun]
   ),
+  "docs-fix-progress-guide": check(
+    "Progress advice distinguishes native standard error from the migration runner's optional log files.",
+    "node docs/tools/fix-progress-guide.mjs && bun test --timeout 60000 docs/tools/fix-progress-guide.test.ts",
+    [],
+    [bun, node]
+  ),
   "docs-shim-availability": check(
     "The TypeScript replacement guides distinguish prepared source versions from recorded npm availability and match proposal status and checker API requirements.",
     "node docs/tools/shim-availability.mjs && bun test --timeout 60000 docs/tools/shim-availability.test.ts docs/tools/checker-version-claims.test.ts docs/tools/shim-preparation.test.ts",
