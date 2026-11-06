@@ -106,6 +106,12 @@ The `//:api-identity-test` target checks [published declaration identity](api-id
 
 Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
 
+The custom pipeline stage-order property compiles all `16` combinations of
+stage count and library-stage positions in one fixture. It checks construction
+and execution traces over fixed inputs and `100` generated values, preserving
+the `120`-second test deadline. A stage record reports the program count and
+compile time so repeated compiler startup is visible separately from assertions.
+
 The run-phase binding corpus quotes Chapter 7's current requirement to preserve evaluation order, coldness, types, comments and declaration output. Contract wording updates preserve the binding-provenance cases and property counts; they do not change run-phase verification.
 
 Fixtures that bypass setup use `recordDeclarationSurface` to preserve entrypoint aliases and output layout, and record actual `packRepository` results. A hand-written root list does not contain the metadata needed to reproject the baseline independently of the candidate tree.

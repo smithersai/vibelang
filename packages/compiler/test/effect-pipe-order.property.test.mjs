@@ -26,23 +26,38 @@ test("custom pipeline stages are all constructed before any stage is applied", {
 })
 
 test("property: generated custom stage lists retain factory order around library stages", { skip, timeout: 120000 }, async t => {
-  await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 5 }), fc.boolean(), fc.boolean(), async (count, before, after) => {
+  const shapes = []
+  for (const count of [2, 3, 4, 5]) {
+    for (const before of [false, true]) {
+      for (const after of [false, true]) {
+        shapes.push({ count, before, after, name: "pipeline_" + count + "_" + Number(before) + "_" + Number(after) })
+      }
+    }
+  }
+  const input = source.slice(0, source.indexOf("export const pipeline")) + shapes.map(({ count, before, after, name }) => {
     const stages = [
       ...(before ? ["Effect.map((n: number) => n + 1)"] : []),
       ...Array.from({ length: count }, (_, i) => "stage(trace, " + JSON.stringify("stage:" + i) + ")"),
       ...(after ? ["Effect.map((n: number) => n * 2)"] : [])
     ]
-    const input = source.slice(0, source.indexOf("export const pipeline")) +
-      "export const pipeline = (trace: string[], value: number) => Effect.sync(() => { trace.push('run'); return value }).pipe(" + stages.join(", ") + ")\n"
-    const { original, changed } = await migrationPair(t, input, "EK4502")
-    for (const n of [-1, 0, 7]) {
+    return "export const " + name + " = (trace: string[], value: number) => Effect.sync(() => { trace.push('run'); return value }).pipe(" + stages.join(", ") + ")"
+  }).join("\n") + "\n"
+  t.diagnostic(JSON.stringify({ stage: "compile", event: "start", programs: shapes.length }))
+  const started = performance.now()
+  const { original, changed } = await migrationPair(t, input, "EK4502")
+  t.diagnostic(JSON.stringify({ stage: "compile", event: "end", programs: shapes.length, elapsedMs: Math.round(performance.now() - started) }))
+  assert.equal(shapes.length, 16, "cover every stage count and both library-stage positions")
+  const compare = n => {
+    for (const { name } of shapes) {
       const left = [], right = []
-      const a = original.pipeline(left, n), b = changed.pipeline(right, n)
-      assert.deepEqual(right, left, "construction trace")
-      assert.equal(Effect.runSync(b), Effect.runSync(a))
-      assert.deepEqual(right, left, "execution trace")
+      const a = original[name](left, n), b = changed[name](right, n)
+      assert.deepEqual(right, left, name + ": construction trace")
+      assert.equal(Effect.runSync(b), Effect.runSync(a), name + ": result")
+      assert.deepEqual(right, left, name + ": execution trace")
     }
-  }), { seed: 312306, numRuns: 12 })
+  }
+  for (const n of [-1, 0, 7]) compare(n)
+  fc.assert(fc.property(fc.integer({ min: -1000, max: 1000 }), compare), { seed: 312306, numRuns: 100 })
 })
 
 test("ordered catch and provide stages keep mapping, recovery and held fallback programs", { skip, timeout: 120000 }, async t => {
