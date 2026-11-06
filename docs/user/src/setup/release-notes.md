@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12
 
 ### Bugs fixed since 0.0.11
+- In the TypeScript view that editors read, `fork effect { … }` and the same block after `fork.in(scope)`, `fork.scoped` or `fork.detached` produced broken code, and a later `join` of the fiber reported that the mapper could not tell it held a fiber. These forms now project to the Effect operation they run.
 - Migration API checks took hours on large packages, because every group of entry points checked the same files again. A comparison now checks each file once for the same environment.
 
 - Test names containing Unicode line or paragraph separators could disappear from the health report. Those names are now retained.

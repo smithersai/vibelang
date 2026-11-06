@@ -69,7 +69,6 @@ Outside the test harness, provide `TestClock.layer()` yourself. Real time passin
 ## Advancing recurring computations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17, VIP-33
 import { it } from "@effect/vitest"
 
 // Output:
@@ -121,7 +120,6 @@ Application code reads time with `Clock`: `try Clock.currentTimeMillis` reads th
 ## Timed waits and deferred results
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17, VIP-33
 import { it } from "@effect/vitest"
 
 // Output:

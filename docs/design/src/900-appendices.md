@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1013 records)</summary>
+<summary>Parser and lowering hooks (1015 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1983,6 +1983,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/match_lower.go:lowering.visitCachedPatternRead ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths |
 | ` parser/vibelang_match.go:Parser.parseMatchValueExpression@pattern-member-line-break ` | ` admission:pattern-member-line-break ` | ` - ` | ` pending ` | VIP-7 pinned computed member patterns have no line restriction; splitting an incomplete access into an `is` test and array statement reports only semantic errors |
 | ` parser/vibelang_fibers.go:Parser.vibelangValueArrow ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7: capture head cells with native value readers rather than introducing an Effect program; adds no source syntax |
+| ` parser/vibelang_fibers.go:Parser.parenthesesLeadToArrow ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 recovery: reads an arrow operand after fork or a fork owner; introduces no syntax |
+| ` parser/vibelang_fibers.go:Parser.skipParentheses ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 recovery: lookahead past balanced parentheses; introduces no syntax |
 | ` parser/vibelang.go:Parser.isVibeLangFile@for-of-async-module ` | ` admission:for-of-async-module ` | ` - ` | ` pending ` | VIP-26 keeps native module syntax; the root `AwaitContext` hides `TS1106` for an ordinary `for (async of xs)` head |
 | ` vibelang/error_constructor_lower.go:lowerFieldlessErrorConstructor ` | ` admission:error ` | ` 003-failures.md ` | ` recovery ` | VIP-13 rejects error inheritance; shared generated-constructor lowering preserves legacy payload handling for diagnostics and migration without admitting subclasses |
 | ` parser/vibelang_effect.go:Parser.parseVibeLangEffectMember@optional-class-member ` | ` admission:effect-optional-class-member ` | ` 001-functions.md `, ` 002-running.md ` | ` admitted ` | VIP-1 and VIP-21 inherit native `async` class method positions; Appendix A omits the optional marker, tracked as a specification gap |
