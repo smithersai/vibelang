@@ -278,7 +278,7 @@ Set up the editor: [VS Code and Cursor](/setup/vscode), [Neovim](/setup/neovim),
 
 The source loaders compile the whole project for type-directed emit, but report
 only diagnostics for the source being loaded and project-wide errors, including
-configuration diagnostics.
+configuration diagnostics. Multiline warnings can include source excerpts; these remain diagnostic text and do not add watched files or trigger another compile.
 An unrelated file's type errors do not prevent loading a clean module. Run
 `vibelang -p tsconfig.json` to check every project file.
 

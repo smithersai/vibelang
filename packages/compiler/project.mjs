@@ -66,19 +66,29 @@ function command(compiler, args) {
 export function parseOutput(output, root) {
   const files = []
   const diagnostics = []
+  let diagnostic
   for (const line of output.split(/\r?\n/)) {
     let match
     if ((match = line.match(located))) {
-      diagnostics.push({
+      diagnostic = {
         file: resolve(root, match[1]), line: Number(match[2]), column: Number(match[3]),
         category: match[4], code: match[5], text: match[6]
-      })
+      }
+      diagnostics.push(diagnostic)
     } else if ((match = line.match(global))) {
-      diagnostics.push({ category: match[1], code: match[2], text: match[3] })
-    } else if (/^\s/.test(line) && diagnostics.length) {
-      diagnostics.at(-1).text += "\n" + line
-    } else if (isAbsolute(line.trim())) {
+      diagnostic = { category: match[1], code: match[2], text: match[3] }
+      diagnostics.push(diagnostic)
+    } else if (/^\s/.test(line)) {
+      if (diagnostic) diagnostic.text += "\n" + line
+    } else if (isAbsolute(line.trim()) &&
+      // A multiline message can quote source comments at column zero.
+      // A double slash may instead name a UNC file. Keep those and unusual
+      // existing paths in the listing, as well as ordinary missing inputs.
+      !(diagnostic && /^(?:\/\*|\/\/(?![^/\s]+\/[^/\s]+\/))/.test(line.trim()) && !existsSync(line.trim()))) {
       files.push(line.trim())
+      diagnostic = undefined
+    } else if (diagnostic && line) {
+      diagnostic.text += "\n" + line
     }
   }
   return { files, diagnostics }

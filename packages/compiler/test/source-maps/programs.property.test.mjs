@@ -127,8 +127,9 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
   const selected = programKey === undefined ? programs[program % programs.length] : programs.find(({ key }) => key === programKey)
   assert.ok(selected, `unknown generated program ${programKey ?? program}`)
   const { key, files } = selected
-  activeProgram = { program, key, variant, bundler, stage: "compile" }
-  console.log(`source-map program ${JSON.stringify(activeProgram)}`)
+  const context = { program, key, variant, bundler, stage: "compile" }
+  activeProgram = context
+  console.log(`source-map program ${JSON.stringify(context)}`)
   const apply = variants[variant]
   const texts = Object.fromEntries(Object.entries(files).map(([name, text]) => [name.startsWith("src/") ? name : `src/${name}`, name.endsWith(".vibe") ? apply(text) : text]))
   const cleanup = []
@@ -136,6 +137,7 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
   try {
     const source = texts["src/main.vibe"].replace(/^\uFEFF/, "")
     const emit = await run(compiler, ["-p", "tsconfig.json"], { cwd: root, timeout: 30000 })
+    assert.equal(emit.timedOut, false, `${key}: compiler timed out after ${emit.elapsedMs}ms\n${emit.output}`)
     assert.equal(emit.signal, null, `${key}: compiler terminated (${emit.signal})`)
     const output = join(root, "out/main.js")
     // A program with errors or a pending construct emits nothing to read.
@@ -144,9 +146,11 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
     wordsRead += await checkMap(JSON.parse(readFileSync(output + ".map", "utf8")), readFileSync(output, "utf8"), source)
     // Rollup reads JavaScript alone, and some programs import a .ts helper.
     if (bundler === "none" || bundler === "rollup" && Object.keys(files).some((name) => name.endsWith(".ts"))) return
-    activeProgram.stage = "bundle"
-    console.log(`source-map program ${JSON.stringify(activeProgram)}`)
-    const built = await run(process.execPath, [bundle, bundler], { cwd: root, timeout: 30000 })
+    context.stage = "bundle"
+    console.log(`source-map program ${JSON.stringify(context)}`)
+    const built = await run(process.execPath, [bundle, bundler], { cwd: root, timeout: 30000, env: { VIBELANG_SOURCE_MAP_TRACE: "1" } })
+    assert.equal(built.timedOut, false, `${key}: ${bundler} timed out after ${built.elapsedMs}ms\n${built.output}`)
+    assert.equal(built.signal, null, `${key}: ${bundler} terminated (${built.signal})\n${built.output}`)
     assert.equal(built.code, 0, `${key}: ${bundler}\n${built.output}`)
     const code = readFileSync(output, "utf8")
     const map = JSON.parse(readFileSync(output + ".map", "utf8"))
@@ -155,8 +159,7 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
     bundlesRead++
     bundleTokensRead += read
   } catch (error) {
-    error.message = `${JSON.stringify(activeProgram)}: ${error.message}`
-    throw error
+    throw new Error(`source-map program ${JSON.stringify(context)}: ${error.message}`, { cause: error })
   } finally {
     for (const remove of cleanup) remove()
   }

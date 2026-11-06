@@ -4,6 +4,10 @@ import { join } from "node:path"
 import { plugin as pluginFile } from "./helpers.mjs"
 
 const bundler = process.argv[2]
+const started = performance.now()
+const mark = (stage) => {
+  if (process.env.VIBELANG_SOURCE_MAP_TRACE === "1") console.error("source-map bundle " + JSON.stringify({ bundler, stage, elapsedMs: Math.round(performance.now() - started) }))
+}
 const root = process.cwd()
 const entry = join(root, "src/entry.mjs")
 const outDir = join(root, "out")
@@ -28,10 +32,15 @@ if (bundler === "esbuild") {
   await bundle.write({ dir: outDir, format: "es", sourcemap: true, entryFileNames: "main.js" })
   await bundle.close()
 } else if (bundler === "rolldown") {
+  mark("import")
   const { rolldown } = await import("rolldown")
+  mark("create")
   const bundle = await rolldown({ input: entry, platform: "node", external, plugins: [(await plugin("rolldown"))()], onLog() {} })
+  mark("write")
   await bundle.write({ dir: outDir, format: "es", sourcemap: true, entryFileNames: "main.js" })
+  mark("close")
   await bundle.close()
+  mark("done")
 } else if (bundler === "webpack") {
   const { default: webpack } = await import("webpack")
   const compiler = webpack({

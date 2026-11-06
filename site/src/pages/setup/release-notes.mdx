@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Migration API checks ignored a project's `lib`, so a global from a selected library reported `TS2304` on unchanged declarations. They now load those libraries, and `compareDeclarations` takes `profile` and `workerHeaps`, with stage records streamed as they happen.
 - A migration API check could replace an invalid declaration's missing-type error with a later checker crash. It now retains the original diagnostic and stops that comparison.
+- A multiline warning containing commented source could keep a loader recompiling forever. Source excerpts now remain diagnostic text instead of becoming watched filenames.
 
 - Checking native routes in a fresh checkout could report that the route generator was missing. Preparation now installs the required adapter.
 - A `react-jsx` project built with `vibelang-vite` gave `.vibex` modules to the React Compiler already lowered, so it could skip them silently. Plugins after `vibelang-vite` now read the JSX when the project uses React's runtime.

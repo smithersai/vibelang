@@ -89,14 +89,23 @@ export function run(command, args, options = {}) {
   const { cwd, env, input, timeout } = options
   return new Promise((done, failed) => {
     const child = spawn(command, args, {
-      cwd, timeout, killSignal: "SIGKILL", stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+      cwd, stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
       env: { ...process.env, NO_COLOR: "1", VIBELANG_BINARY: compiler, VIBELANG_CACHE_DIR: cwd && join(cwd, ".vibelang-cache"), ...env }
     })
+    const started = performance.now()
+    let timedOut = false
+    const timer = timeout === undefined ? undefined : setTimeout(() => {
+      timedOut = true
+      child.kill("SIGKILL")
+    }, timeout)
     let stdout = "", stderr = ""
     child.stdout.on("data", (chunk) => { stdout += chunk })
     child.stderr.on("data", (chunk) => { stderr += chunk })
-    child.on("error", failed)
-    child.on("close", (code, signal) => done({ code, signal, stdout, stderr, output: stdout + stderr }))
+    child.on("error", (error) => { clearTimeout(timer); failed(error) })
+    child.on("close", (code, signal) => {
+      clearTimeout(timer)
+      done({ code, signal, timedOut, elapsedMs: Math.round(performance.now() - started), stdout, stderr, output: stdout + stderr })
+    })
     if (input !== undefined) child.stdin.end(input)
   })
 }

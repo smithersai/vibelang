@@ -1,0 +1,9 @@
+{
+  "property": "source-map-programs",
+  "rule": "Multiline diagnostic source comments are not project inputs and must not trigger recompilation.",
+  "input": {
+    "key": "random-55",
+    "variant": "astral",
+    "bundler": "rolldown"
+  }
+}
