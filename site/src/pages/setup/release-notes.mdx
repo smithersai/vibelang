@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Runtime compatibility checks could time out while repeatedly starting Node. They now reuse a Node process while keeping every generated comparison and failure reduction.
 
+- Bundler plugins could crash while loading when the compiler package was missing. They now load normally and report an installation hint when a build needs the compiler.
+
 - Migrating a package could falsely report a changed public API when its exports pointed at generated declaration files. Unchanged sidecar paths now keep their original API identity.
 
 - The `using` resource action could produce invalid code for object initializers using `as`, `satisfies` or `!`; it now keeps them grouped correctly.
