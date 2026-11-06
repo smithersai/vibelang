@@ -71,7 +71,7 @@ Rule names are stable. A test cites them.
 
 | Layer | Where |
 | --- | --- |
-| Token, range, order and content rules over cases, snippets and generated programs | `FuzzSourceMapTokens` |
+| Token, range, order and content rules over cases, snippets and generated programs, including loss of complete mapping lines | `FuzzSourceMapTokens` |
 | Bounds and statements in every compile | `OutputChecker.checkSourceMap` in `FuzzCompile` |
 | Determinism | `checkDeterminism` in `FuzzCompile` |
 | Shape, Content, Units, Range and Order of `vibelangmapper.Emit` | `FuzzEmitSourceMap` |
@@ -80,6 +80,8 @@ Rule names are stable. A test cites them.
 | Metro, Babel, React Compiler and Oxc | `//packages:compiler-tools-test`, a dependency of `//packages:source-map-tools-test` |
 | Independent paused function and statement, with swapped-map controls | `inspector.test.mjs` |
 | One test per tool | `packages/compiler/test/source-maps/`, target `//packages:source-map-tools-test` |
+
+The token oracle requires positions for eligible written tokens even when their generated line has no segments. Its controls delete all mappings or either written line across each text variant. Erased declarations and generated imports may still have empty maps. The short corpus selection and CPU limits are unchanged.
 
 The generated-program run logs its replay seed, program key, text variant, bundler and active stage. Compiler and bundler children have a `30`-second bound; a terminated compiler fails the check. Runs report their composed token comparisons, and a retained string requires a source even when `main.vibe` is missing from the map. A fully eliminated module may have no comparisons.
 

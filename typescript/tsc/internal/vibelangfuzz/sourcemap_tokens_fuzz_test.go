@@ -478,10 +478,6 @@ func checkMappedTokens(g *Gaps, name, generated, mapJSON, vibe, source string) s
 	}
 	// A token each text spells once is the same token, unless the lowering
 	// wrote the spelling. Text reads back as its value, so 'a' and "a" agree.
-	lines := map[int]bool{}
-	for _, segment := range segments {
-		lines[segment.GeneratedLine] = true
-	}
 	for _, token := range generatedList {
 		if count[token.text] != 1 || countGenerated[token.text] != 1 {
 			continue
@@ -490,11 +486,9 @@ func checkMappedTokens(g *Gaps, name, generated, mapJSON, vibe, source string) s
 			continue
 		}
 		line, column := lineColumn(end, token.start)
-		// A line with no segment is code no source stands for: Imports and
-		// Generated code. FuzzCompile holds a preserved statement to a position.
-		if !lines[line] {
-			continue
-		}
+		// Surviving written tokens require a mapping even when the whole
+		// line lost its segments. Imports and known lowered spellings have
+		// separate exclusions above.
 		stats.checked++
 		// As a consumer reads a map: the last segment at or before the token
 		// on its line. Effect_1.sync reads back as a written sync this way.
@@ -577,6 +571,63 @@ func TestSourceMapOracleFindsMovedTokens(t *testing.T) {
 	for _, wrong := range []core.UTF16Offset{41, 38, 13} {
 		if g := check(wrong); !g.Any() {
 			t.Errorf("a segment at source column %d passed", wrong)
+		}
+	}
+}
+
+// Tokens: deleting all segments or one written line must fail the oracle.
+
+func TestSourceMapOracleFindsMissingTokens(t *testing.T) {
+	for _, variant := range sourceMapVariants {
+		t.Run(variant.key, func(t *testing.T) {
+			source := strings.TrimPrefix(variant.apply("export const alpha = 11;\nexport const beta = \"retained\";\n"), "\uFEFF")
+			for _, omit := range []string{"none", "all", "first-line", "last-line"} {
+				t.Run(omit, func(t *testing.T) {
+					generator := sourcemap.NewGenerator("main.js", "", "/", tspath.CaseSensitive)
+					index := generator.AddSource("/main.vibe")
+					if err := generator.SetSourceContent(index, source); err != nil {
+						t.Fatal(err)
+					}
+					tokens := sourceTokens("main.vibe", source)
+					text := newMapText(source)
+					firstLine, _ := lineColumn(text, tokens[0].start)
+					lastLine, _ := lineColumn(text, tokens[len(tokens)-1].start)
+					for _, token := range tokens {
+						line, column := lineColumn(text, token.start)
+						if omit == "all" || omit == "first-line" && line == firstLine || omit == "last-line" && line == lastLine {
+							continue
+						}
+						if err := generator.AddSourceMapping(line, core.UTF16Offset(column), index, line, core.UTF16Offset(column)); err != nil {
+							t.Fatal(err)
+						}
+					}
+					gaps := &Gaps{Target: "FuzzSourceMapTokens"}
+					stats := checkMappedTokens(gaps, "main.js", source, generator.String(), "main.vibe", source)
+					t.Logf("omission=%s gaps=%v source=%d generated=%d checked=%d", omit, gaps.Any(), stats.sourceTokens, stats.generatedTokens, stats.checked)
+					if omit == "none" && gaps.Any() {
+						t.Fatalf("correct map failed: %+v", gaps.found)
+					}
+					if omit != "none" && !gaps.Any() {
+						t.Fatal("missing written-token mappings passed")
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestSourceMapOracleAllowsOnlySyntheticOrErasedText(t *testing.T) {
+	for _, source := range []string{"", "interface Empty {}\n", "type Alias = number\n"} {
+		generated := "import { sync } from \"effect/Effect\";\n"
+		generator := sourcemap.NewGenerator("main.js", "", "/", tspath.CaseSensitive)
+		index := generator.AddSource("/main.vibe")
+		if err := generator.SetSourceContent(index, source); err != nil {
+			t.Fatal(err)
+		}
+		gaps := &Gaps{Target: "FuzzSourceMapTokens"}
+		stats := checkMappedTokens(gaps, "main.js", generated, generator.String(), "main.vibe", source)
+		if gaps.Any() || stats.checked != 0 {
+			t.Fatalf("synthetic text failed: %+v; %+v", gaps.found, stats)
 		}
 	}
 }
