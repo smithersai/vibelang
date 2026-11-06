@@ -1,0 +1,6 @@
+// expect: EK1803
+import { Effect } from "effect"
+export effect function main() {
+  return try
+    .map [Effect.succeed(1)]
+}

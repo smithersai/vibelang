@@ -1,0 +1,17 @@
+// expect-result: [[1],2,3,"Success",[4]]
+import { Effect } from "effect"
+export effect function main() {
+  const all = try
+    .all [Effect.succeed(1)]
+  const race = try .
+    race [Effect.succeed(2)]
+  const any = try // the run
+    . // the operation
+    any [Effect.succeed(3)]
+  const [settled] = try
+    /* every result */
+    .
+    allSettled [Effect.succeed(0)]
+  return [all, race, any, settled._tag, try
+    .all [Effect.succeed(4)]]
+}

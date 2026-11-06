@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrating an Effect `try` statement could fail when it returned a tagged object or a tuple. The repair now keeps the declared return type while writing the Effect handlers.
 - The CLI guide promised a progress log file after every `vibelang --fix` call. It now explains that the migration runner saves these files when logging is enabled.
 - A `for concurrent` loop could allocate fiber IDs that collided with surrounding fibers when the project and runtime loaded separate Effect copies. It now uses the project's `Effect.forEach`, as the native counterpart does.
+- A line break between `try`, the dot and the operation name, as in `try` followed by `.all [a, b]` on the next line, reported a syntax error. Line breaks and comments may now separate those tokens.
 - Migration API checks ignored a project's `lib`, so a global from a selected library reported `TS2304` on unchanged declarations. They now load those libraries, and `compareDeclarations` takes `profile` and `workerHeaps`, with stage records streamed as they happen.
 - The source-map token check ignored written code on lines with no mappings. It now reports the missing source positions.
 - A migration API check could replace an invalid declaration's missing-type error with a later checker crash. It now retains the original diagnostic and stops that comparison.

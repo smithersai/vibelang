@@ -2080,6 +2080,7 @@ typescript/vibelang/cases/cov2-002c-precedence/main.vibe:15:31 byname program ta
 typescript/vibelang/cases/cov2-002c-precedence/main.vibe:17:24 lambda effectFn table
 typescript/vibelang/cases/cov2-002c-precedence/main.vibe:17:53 lambda plain table
 typescript/vibelang/cases/cov2-002c-try-tokens/main.vibe:5:21 byname program table
+typescript/vibelang/cases/cov2-002c-try-tokens/main.vibe:7:9 byname program table
 typescript/vibelang/cases/cov2-004a-array-getv/main.vibe:4:19 lambda plain table
 typescript/vibelang/cases/cov2-004a-array-getv/main.vibe:4:30 lambda plain fallback
 typescript/vibelang/cases/cov2-004a-async-adoption/main.vibe:2:58 lambda dual fallback
@@ -7846,6 +7847,12 @@ typescript/vibelang/cases/try-nested/main.vibe:8:72 byname program table
 typescript/vibelang/cases/try-nested/main.vibe:8:73 byname program table
 typescript/vibelang/cases/try-nested/main.vibe:9:20 byname program table
 typescript/vibelang/cases/try-nested/main.vibe:9:21 byname program table
+typescript/vibelang/cases/try-operation-line-break-name.fail/main.vibe:5:10 byname program table
+typescript/vibelang/cases/try-operation-line-breaks/main.vibe:10:10 byname program table
+typescript/vibelang/cases/try-operation-line-breaks/main.vibe:14:17 byname program table
+typescript/vibelang/cases/try-operation-line-breaks/main.vibe:16:11 byname program table
+typescript/vibelang/cases/try-operation-line-breaks/main.vibe:5:11 byname program table
+typescript/vibelang/cases/try-operation-line-breaks/main.vibe:7:11 byname program table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:12:57 lambda dual fallback
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:15:30 lambda choice fallback
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:16:25 lambda choice fallback

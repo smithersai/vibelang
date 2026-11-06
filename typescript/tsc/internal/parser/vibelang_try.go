@@ -92,17 +92,18 @@ var tryOperations = map[string]string{
 	"all": "$tryAll", "race": "$tryRace", "any": "$tryAny", "allSettled": "$tryAllSettled",
 }
 
-// isVibeLangTryOperation reports whether try is followed on the same line by
-// a dot and a name: one of the four operations, or another name, which
-// parseVibeLangTryOperation reports as EK1803 (VIP-18).
+// isVibeLangTryOperation reports whether try is followed by a dot and a name:
+// one of the four operations, or another name, which
+// parseVibeLangTryOperation reports as EK1803 (VIP-18). As in new . target,
+// whitespace, comments and line breaks may separate the three tokens.
 func (p *Parser) isVibeLangTryOperation() bool {
 	return p.token == ast.KindTryKeyword && p.isVibeLangFile() && p.lookAhead(func(p *Parser) bool {
 		p.nextToken()
-		if p.token != ast.KindDotToken || p.hasPrecedingLineBreak() {
+		if p.token != ast.KindDotToken {
 			return false
 		}
 		p.nextToken()
-		return tokenIsIdentifierOrKeyword(p.token) && !p.hasPrecedingLineBreak()
+		return tokenIsIdentifierOrKeyword(p.token)
 	})
 }
 
