@@ -27,6 +27,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrating a repository with routed bundle imports could revert healthy modules: each revert dropped the routes, and the import errors that left were blamed on modules that had none. Settle now emits again before it blames a kept module.
 
 - A `for…of` in effect code called its iterator's `return` when a `try` failed or the fiber was interrupted, and joined a failing close into a thrown defect. It now behaves as the same loop in `Effect.gen`: a failed `try`, a `throw` and an interruption leave the iterator open, and a thrown error wins over a failing close.
+- A `return`, `break` or `continue` in a `do` default of an object pattern, as in `const { y = do { return 0 } } = source`, reported `EK0204`, and a `do` default over an object literal such as `const { k = do { () => 1 } } = {}` could report `TS7024`. Both now compile: the jump leaves from the default, as it does in an array pattern.
 - Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
 
 - Migrating a generator with nested pipelines could crash or corrupt the rewrite; `vibelang --fix` now preserves nested receiver and stage-callback changes when capturing the surrounding pipeline.

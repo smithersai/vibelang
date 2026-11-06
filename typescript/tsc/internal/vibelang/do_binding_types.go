@@ -13,7 +13,7 @@ func init() {
 }
 
 func doBindingReadType(c *checker.Checker, node *ast.Node, t *checker.Type) *checker.Type {
-	if !(ast.IsIdentifier(node) && node.Flags&ast.NodeFlagsReparsed != 0) &&
+	if !((ast.IsIdentifier(node) || ast.IsAccessExpression(node)) && node.Flags&ast.NodeFlagsReparsed != 0) &&
 		!(node.Kind == ast.KindCallExpression && ast.IsPropertyAccessExpression(node.Expression()) && node.Expression().Name().Flags&ast.NodeFlagsReparsed != 0) {
 		return t
 	}

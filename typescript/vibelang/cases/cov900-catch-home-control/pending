@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: A native any catch parameter incorrectly receives EK2105, preventing the do-block scope control from compiling.
-Rules: docs/design/src/900-appendices.md#e96d71bb8cea8aee
-Witness: typescript/vibelang/cases/cov900-catch-home-control/main.vibe

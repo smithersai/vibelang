@@ -792,6 +792,7 @@ parser/vibelang_do.go:isIntrinsicCall	admission:do	900-appendices.md,002-running
 parser/vibelang_do.go:isLoopChain	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:isPureRead	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:isSynthesizedArrow	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:IsVibeLangSynthesizedCall	admission:do	900-appendices.md,002-running.md	support	VIP-2: a generated call takes the context of the position its form stands in
 parser/vibelang_do.go:isTryOperation	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:isVibeLangCompletionMarker	admission:do	900-appendices.md,002-running.md	support	VIP-2/VIP-12: synthetic provider and interruption markers have empty source completion; introduces no additional syntax
 parser/vibelang_do.go:jumpTargetWithin	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
@@ -932,12 +933,16 @@ parser/vibelang_effect_assertion.go:Parser.parseVibeLangAssertionType	admission:
 parser/vibelang_effect_assertion.go:Parser.vibeLangAssertionRestComplete	admission:effect-type	900-appendices.md#EffectOperand	support	Optional requirement complete-parse priority and the native expression caller’s ASI boundary
 parser/vibelang_catch.go:Parser.parseVibeLangCatchHandlerWorker	admission:catch-handler-recovery	900-appendices.md#CatchHandler,002-running.md	support	VIP-5: parse the literal handler before reassigning only its missing-arrow diagnostic to EK0509
 vibelang/match_receiver.go:lowering.visitPatternReceiver	admission:match-builtins	004-match.md	support	VIP-7: retain a member pattern reference receiver while leaving checked pattern calls intact
-parser/vibelang_do_bindings.go:Parser.doArrayBinding	admission:do	002-running.md	support	VIP-2: find flat array defaults whose jumps must leave the enclosing activation
+parser/vibelang_do_bindings.go:Parser.doBindingPattern	admission:do	002-running.md	support	VIP-2: find flat array and object defaults whose jumps must leave the enclosing activation
 parser/vibelang_do_bindings.go:VibeLangDoBindingContext	admission:do	000-intro.md,002-running.md	support	VIP-2: retain native binding context independently of generated temporaries
 parser/vibelang_do_bindings.go:VibeLangDoBindingNormalContext	admission:do	002-running.md	support	VIP-2: outward paths supply no normal completion value
 parser/vibelang_do_bindings.go:VibeLangDoBindingRead	admission:do	000-intro.md,002-running.md	support	VIP-2: attach native binding types and tuple bounds to generated reads
 parser/vibelang_do_bindings.go:VibeLangDoBindingReads	admission:do	000-intro.md,002-running.md	support	VIP-2: retain written default constraints for native assignability checks
-parser/vibelang_do_bindings.go:doLowering.arrayBindingStatement	admission:do	002-running.md	support	VIP-2: guarded defaults preserve native evaluation order and source jumps
+parser/vibelang_do_bindings.go:doLowering.bindingStatement	admission:do	002-running.md	support	VIP-2: guarded defaults preserve native evaluation order and source jumps
+parser/vibelang_do_bindings.go:doLowering.bindingPropertyRead	admission:do	002-running.md	support	VIP-2: read an object element once, typed as the native element
+parser/vibelang_do_bindings.go:doLowering.bindingKey	admission:do	002-running.md	support	VIP-2: copy an object element name for its generated reads
+parser/vibelang_do_bindings.go:doLowering.bindingDefault	admission:do	002-running.md	support	VIP-2: lower a default that runs only for undefined
+parser/vibelang_do_bindings.go:doLowering.finishBindingDefaults	admission:do	002-running.md	support	VIP-2: keep the native pattern types of lowered defaults
 parser/vibelang_do_bindings.go:doLowering.bindingDefaultContextSite	admission:do	000-intro.md,002-running.md	support	VIP-2: contextual typing reaches the normal default result only
 parser/vibelang_do_bindings.go:doLowering.bindingTypingPattern	admission:do	000-intro.md,002-running.md	support	VIP-2: source binding context controls literal, tuple and declaration types
 parser/vibelang_do_bindings.go:doLowering.finishArrayBindings	admission:do	002-running.md	support	VIP-2: unfinished iterators close with native jump and throw precedence while lexical cells are retained

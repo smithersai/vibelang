@@ -7625,7 +7625,7 @@ func (c *Checker) getQuickTypeOfExpression(node *ast.Node) *Type {
 		return nil
 	// Optimize for the common case of a call to a function with a single non-generic call
 	// signature where we can just fetch the return type without checking the arguments.
-	case ast.IsCallExpression(expr) && expr.Expression().Kind != ast.KindSuperKeyword && !ast.IsRequireCall(expr, true /*requireStringLiteralLikeArgument*/) && !c.isSymbolOrSymbolForCall(expr) && !ast.IsImportCall(expr):
+	case ast.IsCallExpression(expr) && expr.Expression().Kind != ast.KindSuperKeyword && !ast.IsRequireCall(expr, true /*requireStringLiteralLikeArgument*/) && !c.isSymbolOrSymbolForCall(expr) && !ast.IsImportCall(expr) && !parser.IsVibeLangSynthesizedCall(expr):
 		if isCallChain(expr) {
 			return c.applyCallExpressionTypeHooks(expr, c.getReturnTypeOfSingleNonGenericSignatureOfCallChain(expr))
 		}

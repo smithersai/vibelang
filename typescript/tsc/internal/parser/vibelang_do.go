@@ -815,6 +815,13 @@ func (p *Parser) doForTryHeadJump(boundary, jump *ast.Node) bool {
 
 // isSynthesizedArrow reports whether node is an arrow the parser writes,
 // whose => token is synthesized.
+// IsVibeLangSynthesizedCall reports whether node calls a function the parser
+// wrote around a form that is an expression in the source, such as a do
+// expression kept as its function.
+func IsVibeLangSynthesizedCall(node *ast.Node) bool {
+	return ast.IsCallExpression(node) && isSynthesizedArrow(ast.SkipParentheses(node.Expression()))
+}
+
 func isSynthesizedArrow(node *ast.Node) bool {
 	return node != nil && node.Kind == ast.KindArrowFunction && node.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0
 }
@@ -968,15 +975,15 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 				return nil
 			}
 		case ast.KindBindingElement:
-			if child != n.Initializer() || !p.doArrayBinding(n.Parent) {
+			if child != n.Initializer() || !p.doBindingPattern(n.Parent) {
 				return nil
 			}
-		case ast.KindArrayBindingPattern:
-			if !p.doArrayBinding(n) {
+		case ast.KindArrayBindingPattern, ast.KindObjectBindingPattern:
+			if !p.doBindingPattern(n) {
 				return nil
 			}
 		case ast.KindVariableDeclaration:
-			if child != n.Initializer() && !(child == n.Name() && p.doArrayBinding(child) && n.Parent.Parent.Parent != nil && n.Parent.Parent.Parent.Kind == ast.KindBlock) {
+			if child != n.Initializer() && !(child == n.Name() && p.doBindingPattern(child) && n.Parent.Parent.Parent != nil && n.Parent.Parent.Parent.Kind == ast.KindBlock) {
 				return nil
 			}
 			list := n.Parent
@@ -1428,8 +1435,8 @@ func (l *doLowering) variableStatement(statement *ast.Node, pre *[]*ast.Node) *a
 		return statement
 	}
 	for _, declaration := range declarations {
-		if l.marked[declaration.Name()] && l.p.doArrayBinding(declaration.Name()) {
-			return l.arrayBindingStatement(statement, pre)
+		if l.marked[declaration.Name()] && l.p.doBindingPattern(declaration.Name()) {
+			return l.bindingStatement(statement, pre)
 		}
 	}
 	group := func(declarations []*ast.Node, at core.TextRange) *ast.Node {

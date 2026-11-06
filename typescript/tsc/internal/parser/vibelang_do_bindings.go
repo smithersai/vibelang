@@ -5,18 +5,23 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
-// Flat array binding declarations can be split into statements without
-// manufacturing a function boundary. Other binding environments retain their
-// existing diagnostic until their own initialization algorithm can be lowered.
-func (p *Parser) doArrayBinding(pattern *ast.Node) bool {
-	if pattern == nil || pattern.Kind != ast.KindArrayBindingPattern {
+// Flat array and object binding declarations can be split into statements
+// without manufacturing a function boundary. Other binding environments retain
+// their existing diagnostic until their own initialization algorithm can be
+// lowered: nesting, an object rest and a computed key.
+func (p *Parser) doBindingPattern(pattern *ast.Node) bool {
+	if pattern == nil || !ast.IsBindingPattern(pattern) {
 		return false
 	}
+	object := pattern.Kind == ast.KindObjectBindingPattern
 	for _, element := range pattern.AsBindingPattern().Elements.Nodes {
 		if element.Kind == ast.KindOmittedExpression {
 			continue
 		}
 		if element.Kind != ast.KindBindingElement || !ast.IsIdentifier(element.Name()) {
+			return false
+		}
+		if key := element.PropertyName(); object && (element.AsBindingElement().DotDotDotToken != nil || key != nil && !ast.IsIdentifier(key) && !ast.IsStringLiteral(key)) {
 			return false
 		}
 	}
@@ -50,26 +55,15 @@ func (p *Parser) doArrayBinding(pattern *ast.Node) bool {
 	return false
 }
 
-func (l *doLowering) arrayBindingStatement(statement *ast.Node, pre *[]*ast.Node) *ast.Node {
+func (l *doLowering) bindingStatement(statement *ast.Node, pre *[]*ast.Node) *ast.Node {
 	p := l.p
 	at := statement.Loc
 	parent := statement.Parent
-	if l.bindings == nil {
-		l.bindings = map[*ast.Node]*ast.Node{}
-	}
-	state := l.bindings[parent]
-	if state == nil {
-		state = l.temp("$bindings", at)
-		l.bindings[parent] = state
-	}
-	call := func(method string, args ...*ast.Node) *ast.Node {
-		return p.mCall(p.mProperty(l.ref(state, at), method, at), args, at)
-	}
 	list := statement.AsVariableStatement().DeclarationList
 	flags := list.Flags
 	var out []*ast.Node
 	for _, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
-		if !l.marked[declaration.Name()] || !p.doArrayBinding(declaration.Name()) {
+		if !l.marked[declaration.Name()] || !p.doBindingPattern(declaration.Name()) {
 			init := l.expr(declaration.Initializer(), &out)
 			declaration.AsVariableDeclaration().Initializer = init
 			dl := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(declaration.Loc, []*ast.Node{declaration}), flags), declaration.Loc)
@@ -84,30 +78,47 @@ func (l *doLowering) arrayBindingStatement(statement *ast.Node, pre *[]*ast.Node
 		p.overrideParentInImmediateChildren(sourceVariable)
 		out = append(out, sourceDecl)
 		typingPattern := l.bindingTypingPattern(declaration, sourceVariable, false)
-		type completedDefault struct {
-			index           int
-			value, fallback *ast.Node
+		object := declaration.Name().Kind == ast.KindObjectBindingPattern
+		var iterator *ast.Node
+		var call func(method string, args ...*ast.Node) *ast.Node
+		if !object {
+			if l.bindings == nil {
+				l.bindings = map[*ast.Node]*ast.Node{}
+			}
+			state := l.bindings[parent]
+			if state == nil {
+				state = l.temp("$bindings", at)
+				l.bindings[parent] = state
+			}
+			call = func(method string, args ...*ast.Node) *ast.Node {
+				return p.mCall(p.mProperty(l.ref(state, at), method, at), args, at)
+			}
+			iterator = l.temp("$bindingIterator", at)
+			out = append(out, p.mConst(l.ref(iterator, at), ast.NodeFlagsConst, call("open", l.ref(source, at)), at))
 		}
 		var completed []completedDefault
-		iterator := l.temp("$bindingIterator", at)
-		out = append(out, p.mConst(l.ref(iterator, at), ast.NodeFlagsConst, call("open", l.ref(source, at)), at))
 		for i, element := range declaration.Name().AsBindingPattern().Elements.Nodes {
 			if element.Kind == ast.KindOmittedExpression {
 				out = append(out, l.statement(p.mCall(p.mProperty(l.ref(iterator, at), "skip", at), nil, at), at))
 				continue
 			}
-			method := "value"
-			hasDefault := ast.KindFalseKeyword
-			if element.Initializer() != nil {
-				hasDefault = ast.KindTrueKeyword
-			}
-			args := []*ast.Node{p.mNumber(i, at), p.mKeyword(hasDefault, at)}
-			if element.AsBindingElement().DotDotDotToken != nil {
-				method = "rest"
-				args = nil
-			}
 			raw := l.temp("$bindingValue", element.Loc)
-			read := p.mCall(p.mProperty(l.ref(iterator, at), method, at), args, at)
+			var read *ast.Node
+			if object {
+				read = l.bindingPropertyRead(source, element)
+			} else {
+				method := "value"
+				hasDefault := ast.KindFalseKeyword
+				if element.Initializer() != nil {
+					hasDefault = ast.KindTrueKeyword
+				}
+				args := []*ast.Node{p.mNumber(i, at), p.mKeyword(hasDefault, at)}
+				if element.AsBindingElement().DotDotDotToken != nil {
+					method = "rest"
+					args = nil
+				}
+				read = p.mCall(p.mProperty(l.ref(iterator, at), method, at), args, at)
+			}
 			if l.bindingReads == nil {
 				l.bindingReads = map[*ast.Node]*DoBindingRead{}
 			}
@@ -136,18 +147,7 @@ func (l *doLowering) arrayBindingStatement(statement *ast.Node, pre *[]*ast.Node
 					out = append(out, bound)
 					continue
 				}
-				test := p.mBinary(l.ref(raw, at), ast.KindEqualsEqualsEqualsToken, l.undefined(at), at)
-				conditional := p.vibelangSpanning(p.factory.NewConditionalExpression(test, p.vibelangSynthesized(p.factory.NewToken(ast.KindQuestionToken), at), fallback, p.vibelangSynthesized(p.factory.NewToken(ast.KindColonToken), at), l.ref(raw, element.Loc)), element.Loc)
-				l.marked[conditional] = true
-				if l.bindingDefaultValues == nil {
-					l.bindingDefaultValues = map[*ast.Node]*ast.Node{}
-				}
-				if l.bindingDefaultConditions == nil {
-					l.bindingDefaultConditions = map[*ast.Node]*ast.Node{}
-				}
-				l.bindingDefaultValues[fallback] = nil
-				l.bindingDefaultConditions[conditional] = rawDeclaration
-				value = l.expr(conditional, &out)
+				value = l.bindingDefault(fallback, raw, rawDeclaration, element.Loc, &out)
 			}
 			bound := p.mConst(element.Name(), flags, value, element.Loc)
 			if fallback := element.Initializer(); fallback != nil && l.marked[fallback] {
@@ -155,23 +155,87 @@ func (l *doLowering) arrayBindingStatement(statement *ast.Node, pre *[]*ast.Node
 			}
 			out = append(out, bound)
 		}
-		if l.bindingContexts == nil {
-			l.bindingContexts = map[*ast.Node]*ast.Node{}
+		l.finishBindingDefaults(declaration, sourceVariable, typingPattern, completed)
+		if !object {
+			out = append(out, l.statement(call("close"), at))
 		}
-		contextPattern := l.bindingTypingPattern(declaration, sourceVariable, true)
-		l.bindingContexts[sourceVariable] = contextPattern
-		for _, done := range completed {
-			origin := &DoBindingRead{Element: contextPattern.Elements()[done.index], HasDefault: true}
-			if declaration.Type() != nil {
-				origin.Default = l.bindingDefaultValues[done.fallback]
-				origin.Raw = typingPattern.Elements()[done.index]
-			}
-			l.bindingReads[done.value] = origin
-		}
-		out = append(out, l.statement(call("close"), at))
 	}
 	*pre = append(*pre, out[:len(out)-1]...)
 	return out[len(out)-1]
+}
+
+// bindingPropertyRead reads an object binding element's property from source
+// once. The checker types the read as the native element (doBindingReadType),
+// which keeps the rules for a property the source lacks.
+func (l *doLowering) bindingPropertyRead(source, element *ast.Node) *ast.Node {
+	p := l.p
+	at := element.Loc
+	anyType := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindAnyKeyword), at)
+	object := p.vibelangSynthesized(p.factory.NewParenthesizedExpression(p.vibelangSynthesized(p.factory.NewAsExpression(l.ref(source, at), anyType), at)), at)
+	key := l.bindingKey(element)
+	if ast.IsIdentifier(key) {
+		return p.vibelangSynthesized(p.factory.NewPropertyAccessExpression(object, nil, key, ast.NodeFlagsNone), at)
+	}
+	return p.vibelangSynthesized(p.factory.NewElementAccessExpression(object, nil, key, ast.NodeFlagsNone), at)
+}
+
+// bindingKey is a fresh copy of an object binding element's property name.
+func (l *doLowering) bindingKey(element *ast.Node) *ast.Node {
+	key := element.PropertyName()
+	if key == nil {
+		key = element.Name()
+	}
+	if ast.IsIdentifier(key) {
+		return l.p.mIdent(key.Text(), key.Loc)
+	}
+	return l.p.vibelangSpanning(l.p.factory.NewStringLiteral(key.Text(), ast.TokenFlagsNone), key.Loc)
+}
+
+// completedDefault is a default that lowered to statements: its index in the
+// pattern, the value the binding takes, and the source default.
+type completedDefault struct {
+	index           int
+	value, fallback *ast.Node
+}
+
+// bindingDefault lowers an element's default, which runs only when the read
+// gave undefined, and returns the value the binding takes.
+func (l *doLowering) bindingDefault(fallback, raw, rawDeclaration *ast.Node, loc core.TextRange, out *[]*ast.Node) *ast.Node {
+	p := l.p
+	at := rawDeclaration.Loc
+	test := p.mBinary(l.ref(raw, at), ast.KindEqualsEqualsEqualsToken, l.undefined(at), at)
+	conditional := p.vibelangSpanning(p.factory.NewConditionalExpression(test, p.vibelangSynthesized(p.factory.NewToken(ast.KindQuestionToken), at), fallback, p.vibelangSynthesized(p.factory.NewToken(ast.KindColonToken), at), l.ref(raw, loc)), loc)
+	l.marked[conditional] = true
+	if l.bindingDefaultValues == nil {
+		l.bindingDefaultValues = map[*ast.Node]*ast.Node{}
+	}
+	if l.bindingDefaultConditions == nil {
+		l.bindingDefaultConditions = map[*ast.Node]*ast.Node{}
+	}
+	l.bindingDefaultValues[fallback] = nil
+	l.bindingDefaultConditions[conditional] = rawDeclaration
+	return l.expr(conditional, out)
+}
+
+// finishBindingDefaults gives the lowered values the types of the native
+// pattern, which also supplies the source's contextual type.
+func (l *doLowering) finishBindingDefaults(declaration, sourceVariable, typingPattern *ast.Node, completed []completedDefault) {
+	if l.bindingContexts == nil {
+		l.bindingContexts = map[*ast.Node]*ast.Node{}
+	}
+	if l.bindingReads == nil {
+		l.bindingReads = map[*ast.Node]*DoBindingRead{}
+	}
+	contextPattern := l.bindingTypingPattern(declaration, sourceVariable, true)
+	l.bindingContexts[sourceVariable] = contextPattern
+	for _, done := range completed {
+		origin := &DoBindingRead{Element: contextPattern.Elements()[done.index], HasDefault: true}
+		if declaration.Type() != nil {
+			origin.Default = l.bindingDefaultValues[done.fallback]
+			origin.Raw = typingPattern.Elements()[done.index]
+		}
+		l.bindingReads[done.value] = origin
+	}
 }
 
 // Wrap the whole original block, including statements before the binding.
@@ -268,7 +332,11 @@ func (l *doLowering) bindingTypingPattern(declaration, source *ast.Node, context
 		if element.AsBindingElement().DotDotDotToken != nil {
 			rest = p.mToken(ast.KindDotDotDotToken, element.Loc)
 		}
-		copy := p.vibelangSpanning(p.factory.NewBindingElement(rest, nil, p.mIdent(element.Name().Text(), element.Name().Loc), initializer), element.Loc)
+		var key *ast.Node
+		if declaration.Name().Kind == ast.KindObjectBindingPattern {
+			key = l.bindingKey(element)
+		}
+		copy := p.vibelangSpanning(p.factory.NewBindingElement(rest, key, p.mIdent(element.Name().Text(), element.Name().Loc), initializer), element.Loc)
 		if initializer != nil && originalParent != nil {
 			initializer.Parent = originalParent
 		}
@@ -280,7 +348,7 @@ func (l *doLowering) bindingTypingPattern(declaration, source *ast.Node, context
 		}
 		elements = append(elements, copy)
 	}
-	pattern := p.vibelangSpanning(p.factory.NewBindingPattern(ast.KindArrayBindingPattern, p.newNodeList(declaration.Name().Loc, elements)), declaration.Name().Loc)
+	pattern := p.vibelangSpanning(p.factory.NewBindingPattern(declaration.Name().Kind, p.newNodeList(declaration.Name().Loc, elements)), declaration.Name().Loc)
 	initializer := source.Initializer()
 	originalParent := initializer.Parent
 	typeNode := source.Type()

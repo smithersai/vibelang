@@ -59,7 +59,7 @@ effect function retryDelay(failure: Failure) {
 // Output: 0 millis
 ```
 
-A `do` in a destructuring assignment target, computed key or default runs at that pattern’s JavaScript evaluation step, after the right side. A default runs only for `undefined` or a missing value; a present value skips it. Getters and iterators retain their native order. As with declaration patterns, these positions currently retain a function boundary: an outward jump, `var`, `await` or `yield` in their `do` reports `EK0204`.
+A `do` in a destructuring assignment target, computed key or default runs at that pattern’s JavaScript evaluation step, after the right side. A default runs only for `undefined` or a missing value; a present value skips it. Getters and iterators retain their native order. These positions currently retain a function boundary: an outward jump, `var`, `await` or `yield` in their `do` reports `EK0204`. In a flat array or object declaration pattern, an outward `return`, `break` or `continue` in a default leaves from that default.
 
 A function named `match` still works. Only `match (value) {` followed by `when`, `default`, or `}` starts a match.
 

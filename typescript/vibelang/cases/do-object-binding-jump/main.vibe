@@ -1,0 +1,73 @@
+// expect-result: {"spec":7,"typed":1,"neighbors":[8,["a","jump"]],"later":["a"],"none":[1,2,3],"loop":[1],"renamed":"k","getter":[1,["read"]],"plain":5,"arrow":""}
+// Chapter 8: a default's suspensions and jumps stay in the enclosing function.
+effect function spec() {
+  const { x = do { try succeed(7) } } = {}
+  const { y = do { return x } } = {}
+  return 0
+}
+effect function typed(o: { y?: number }) {
+  const { y = do { return 1 } }: { y?: number } = o
+  return y + 10
+}
+effect function neighbors(trace: string[]) {
+  const read = (name: string, value: number | undefined) => { trace.push(name); return value }
+  const { a = read("a", 3), b = do { trace.push("jump"); return 8 }, c = read("c", 4) } = {} as { a?: number; b?: number; c?: number }
+  return [a, b, c]
+}
+effect function later(trace: string[]) {
+  const source = {
+    get a() { trace.push("a"); return 1 },
+    get b(): number | undefined { return undefined },
+    get c() { trace.push("c"); return 3 }
+  }
+  const { a, b = do { return 0 }, c } = source
+  return a + c
+}
+effect function none(o: { a: number; b: number; c: number }) {
+  const { a, b = do { return [] }, c = 9 } = o
+  return [a, b, c]
+}
+effect function loop() {
+  const seen: number[] = []
+  for (const row of [{ n: 1 }, {}, { n: 3 }] as Array<{ n?: number }>) {
+    const { n = do { break } } = row
+    seen.push(n)
+  }
+  return seen
+}
+effect function renamed() {
+  const { "key": value = do { return "k" } } = {} as { key?: string }
+  return value
+}
+effect function getter(trace: string[]) {
+  const source = { get v(): number | undefined { trace.push("read"); return 1 } }
+  const { v = do { return 0 } } = source
+  return v
+}
+effect function arrow() {
+  const { k = do { () => 1 } } = {}
+  return k.name
+}
+function plain() {
+  const { v = do { return 5 } } = {} as { v?: number }
+  return v
+}
+
+export effect function main() {
+  const left: string[] = [], last: string[] = [], reads: string[] = []
+  const neighborsResult = try neighbors(left)
+  try later(last)
+  const getterResult = try getter(reads)
+  return {
+    spec: try spec(),
+    typed: try typed({}),
+    neighbors: [neighborsResult, left],
+    later: last,
+    none: try none({ a: 1, b: 2, c: 3 }),
+    loop: try loop(),
+    renamed: try renamed(),
+    getter: [getterResult, reads],
+    plain: plain(),
+    arrow: try arrow()
+  }
+}
