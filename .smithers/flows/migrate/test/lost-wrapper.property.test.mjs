@@ -17,6 +17,7 @@ const armsOf = (count, at, lost) => Array.from({ length: count }, (_, i) => i ==
 const shapes = {
   concise: (results) => `(n) => ${results.reduceRight((rest, r) => rest === null ? r : `n === ${results.indexOf(r)} ? ${r} : ${rest}`, null)}`,
   block: (results) => `(n) => { ${results.map((r, i) => `if (n === ${i}) return ${r};`).join(" ")} return Effect.never; }`,
+  temporary: (results) => `(n) => { let $do1; ${results.map((r, i) => `if (n === ${i}) { const seen = n; $do1 = ${r}; }`).join(" ")} return $do1; }`,
 }
 const holders = {
   variable: (fn) => ({ text: `export const target = ${fn}\n`, name: "/target" }),

@@ -1,8 +1,0 @@
-# Static verifier gaps over actual compiler-emitted return paths.
-FuzzMigrationReturnedIIFE return:branch/Effect compiler VIP-1: compiler-produced IIFE retains the returned Effect but the migration verifier undercounts it; lane migfix-t3code
-FuzzMigrationReturnedIIFE return:branch/E compiler VIP-1: compiler-produced IIFE retains the returned Effect but the migration verifier undercounts it; lane migfix-t3code
-FuzzMigrationReturnedIIFE return:reversed/Effect compiler VIP-1: compiler-produced IIFE retains the returned Effect but the migration verifier undercounts it; lane migfix-t3code
-FuzzMigrationReturnedIIFE return:reversed/E compiler VIP-1: compiler-produced IIFE retains the returned Effect but the migration verifier undercounts it; lane migfix-t3code
-FuzzMigrationReturnedIIFE return:nested/Effect compiler VIP-1: compiler-produced IIFE retains the returned Effect but the migration verifier undercounts it; lane migfix-t3code
-FuzzMigrationReturnedIIFE return:nested/E compiler VIP-1: compiler-produced IIFE retains the returned Effect but the migration verifier undercounts it; lane migfix-t3code
-FuzzMigrationReturnedIIFE corpus:t3code-returned-effect-iife compiler VIP-1: minimized preserved success/failure return paths produce a false lost-wrapper flag; lane migfix-t3code

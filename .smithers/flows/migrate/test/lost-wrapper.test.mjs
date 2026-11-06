@@ -386,6 +386,87 @@ export const bind = (o: any) => { return Effect.fn(function* (x: string) { retur
   assert.deepEqual(result.unpaired, [])
 })
 
+test("a record of Effect.fn members returns no program: each member pairs with its own emitted function (t3code persistQuery)", () => {
+  const original = `import * as Effect from "effect/Effect";
+export function make() { return { load: Effect.fn("fixture.load")(function* () { return 1 }), save: Effect.fnUntraced(function* () { return 2 }) } }`
+  const emitted = `import * as Effect from "effect/Effect";
+export function make() { return { load: () => Effect.withSpan(Effect.gen(function* () { return 1 }), "fixture.load"), save: Effect.fnUntraced(function* () { return 2 }) }; }`
+  assert.deepEqual(lostWrappers({ ts, original, emitted }).flags, [])
+})
+
+test("a record member that lost its Effect.fn still flags at that member", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const make = () => ({ load: Effect.fnUntraced(function* () { return 1 }) })`
+  const emitted = `export const make = () => ({ load: () => 1 });`
+  assert.deepEqual(lostWrappers({ ts, original, emitted }).flags.map(f => f.function), ["/make/load"])
+})
+
+test("a record member holding a program still counts for the function that returns it", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const make = () => ({ program: Effect.succeed(1) })`
+  const emitted = `export const make = () => ({ program: 1 });`
+  assert.deepEqual(lostWrappers({ ts, original, emitted }).flags.map(f => f.function), ["/make"])
+})
+
+test("a branch emitted as an inline call keeps its program (t3code Crypto randomBytes)", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const make = (valid) => valid ? Effect.succeed(1) : Effect.fail("bad");`
+  const emitted = `import * as Effect from "effect/Effect";
+export const make = (valid) => valid ? Effect.gen(function* () { return 1 }) : (() => { const error = "bad"; return Effect.gen(function* () { throw error }); })();`
+  assert.deepEqual(lostWrappers({ ts, original, emitted }).flags, [])
+})
+
+test("an inline call that hands back a plain value, an async inline call and a throwing one still flag", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const make = () => Effect.succeed(1);`
+  for (const body of ["(() => { return 1; })()", "(async () => { return Effect.succeed(1); })()", "(() => { throw 1; })()"])
+    assert.deepEqual(lostWrappers({ ts, original, emitted: `export const make = () => ${body};` }).flags.map(f => f.function), ["/make"], body)
+})
+
+test("a do temporary hands back what it was assigned (t3code effect-acp callRpc)", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const callRpc = (effect) => Effect.mapError(effect, String);`
+  const emitted = `import * as Effect from "effect/Effect";
+export const callRpc = (effect) => { let $do1; { const caught = effect; $do1 = Effect.gen(function* () { return yield* caught }); } return $do1; };`
+  assert.deepEqual(lostWrappers({ ts, original, emitted }).flags, [])
+})
+
+test("a local hands back what it holds, and one holding a plain value or a cycle still flags", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const callRpc = () => Effect.succeed(1);`
+  const kept = `import * as Effect from "effect/Effect";
+export const callRpc = () => { const first = Effect.succeed(1); const program = first; return program; };`
+  assert.deepEqual(lostWrappers({ ts, original, emitted: kept }).flags, [])
+  for (const emitted of [`export const callRpc = () => { let $do1; { $do1 = 1; } return $do1; };`,
+    `export const callRpc = () => { const value = 1; return value; };`,
+    `export const callRpc = () => { let a, b; a = b; b = a; return a; };`])
+    assert.deepEqual(lostWrappers({ ts, original, emitted }).flags.map(f => f.function), ["/callRpc"], emitted)
+})
+
+test("a local holding what Effect.fn made is a function, not a program", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const make = () => { const run = Effect.fn("x")(function* () { return 1 }); return run; };`
+  const emitted = `import * as Effect from "effect/Effect";
+export const make = () => { const run = () => Effect.withSpan(Effect.succeed(1), "x"); return run; };`
+  assert.deepEqual(lostWrappers({ ts, original, emitted }).flags, [])
+})
+
+test("a program the function runs is no Effect return, spelled either way (t3code isRelayTracingEnabled)", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const piped = (flag) => read(flag).pipe(Effect.orDie, Effect.runSync);
+export const called = (flag) => Effect.runSync(read(flag));`
+  const emitted = `import * as Effect from "effect/Effect";
+export const piped = (flag) => (() => { const pipe$stage0 = Effect.orDie; const pipe$stage1 = Effect.runSync; return pipe$stage1(pipe$stage0(read(flag))); })();
+export const called = (flag) => (() => { const run = Effect.runSync; return run(read(flag)); })();`
+  assert.deepEqual(lostWrappers({ ts, original, emitted }).flags, [])
+})
+
+test("a pipeline that keeps its program still counts when it loses the wrapper", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const piped = (flag) => read(flag).pipe(Effect.orDie);`
+  assert.deepEqual(lostWrappers({ ts, original, emitted: `export const piped = (flag) => read(flag).pipe(orDie);` }).flags.map(f => f.function), ["/piped"])
+})
+
 test("an Effect type in a cast or type argument is no Effect return (alchemy drizzle proxyChain)", () => {
   const original = header + `declare const proxyChain: any
 export const chain = (db: unknown) => proxyChain<Effect.Effect<number>>(db as Effect.Effect<number>)

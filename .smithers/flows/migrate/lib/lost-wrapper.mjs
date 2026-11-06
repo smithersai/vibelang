@@ -17,10 +17,14 @@
 // `Effect.fnUntraced(function* …)`.
 //
 // Each arm of a returned `?:`, `??`, `||` or `&&` counts on its own, so one arm
-// losing its wrapper shows. An arm counts as an Effect when it reads, outside
-// nested functions, a member of Effect or a program from vibelang-runtime. A
-// program handed back through a local name or a helper counts on neither side:
-// the text cannot see it, and it needs types.
+// losing its wrapper shows. So do the results of an inline `(() => …)()` and
+// the values of a local, which hold what a statement-bodied branch or a `do`
+// hands back through `$do1`. An arm counts as an Effect when it reads, outside
+// nested functions, a member of Effect or a program from vibelang-runtime.
+// `Effect.fn(…)` makes a function with its own path, not a program of the
+// function holding it, and a pipeline ending in `Effect.runSync` hands back a
+// value. A program handed back through a parameter or a helper counts on
+// neither side: the text cannot see it, and it needs types.
 import { existsSync, readFileSync } from "node:fs"
 import { join, posix } from "node:path"
 const isTestFile = (path) => /\.(?:test|spec)\.[^/]+$/.test(path)
@@ -98,11 +102,24 @@ const namedMethod = (ts, node) => {
   return object.properties.find(property => ts.isMethodDeclaration(property) && property.name.getText() === node.name.text)
 }
 
+/** Whether a value is what `Effect.fn` hands back, `Effect.fn("name")(function* …)` or `Effect.fnUntraced(function* …)`: a function, not a program. */
+const holdsFactory = (ts, node, bound) => ts.isCallExpression(node) && factories.test(calleeName(ts, node.expression, bound).replace(/\(\)$/, ""))
+
+/** Whether an expression runs its program, `Effect.runSync(x)` or `x.pipe(…, Effect.runSync)`, and so hands back the program's value. */
+const runsProgram = (ts, expression, bound) => {
+  const node = unwrap(ts, expression), running = value => /^Effect\.run[A-Z]/.test(calleeName(ts, value, bound))
+  if (!ts.isCallExpression(node)) return false
+  if (running(node.expression)) return true
+  return /\.pipe$/.test(calleeName(ts, node.expression, bound)) && node.arguments.length > 0 && running(node.arguments.at(-1))
+}
+
 /** Whether an expression reads a member of Effect or calls a program from the runtime, outside nested functions. Types are never read: `x as Effect.Effect<A>` is no Effect. */
 function readsEffect(ts, expression, bound) {
+  if (runsProgram(ts, expression, bound)) return false
   let found = false
   const visit = (node) => {
     if (found || ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (holdsFactory(ts, node, bound)) return
     if (ts.isPropertyAccessExpression(node) && /^Effect\./.test(calleeName(ts, node, bound))) found = true
     else if (ts.isIdentifier(node) && /^Effect\./.test(bound.members.get(node.text) ?? "")) found = true
     else if (ts.isCallExpression(node) && /^vibelang-runtime\./.test(calleeName(ts, node.expression, bound)) && !runtimeValues.test(calleeName(ts, node.expression, bound))) found = true
@@ -112,11 +129,45 @@ function readsEffect(ts, expression, bound) {
   return found
 }
 
-/** A returned expression's arms: each result a `?:`, `??`, `||` or `&&` can hand back. */
-function arms(ts, expression) {
+/** Every node of a function's body, outside nested functions and classes, that `select` picks. */
+function ownNodes(ts, fn, select) {
+  const found = []
+  const visit = (node) => {
+    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    const picked = select(node)
+    if (picked) found.push(picked)
+    ts.forEachChild(node, visit)
+  }
+  ts.forEachChild(fn.body, visit)
+  return found
+}
+
+/** The function of a plain inline call `(() => …)()`, or undefined. An async or generator function hands back no program of its own. */
+function inlineFunction(ts, node) {
+  if (!ts.isCallExpression(node)) return undefined
+  const fn = unwrap(ts, node.expression)
+  if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return undefined
+  return fn.asteriskToken || fn.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) ? undefined : fn
+}
+
+/** A returned expression's arms: each result a `?:`, `??`, `||`, `&&`, an inline call or a local of `scope` can hand back. */
+function arms(ts, expression, scope, followed = new Set()) {
   const node = unwrap(ts, expression)
-  if (ts.isConditionalExpression(node)) return [...arms(ts, node.whenTrue), ...arms(ts, node.whenFalse)]
-  if (ts.isBinaryExpression(node) && [ts.SyntaxKind.QuestionQuestionToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.AmpersandAmpersandToken].includes(node.operatorToken.kind)) return [...arms(ts, node.left), ...arms(ts, node.right)]
+  if (ts.isConditionalExpression(node)) return [...arms(ts, node.whenTrue, scope, followed), ...arms(ts, node.whenFalse, scope, followed)]
+  if (ts.isBinaryExpression(node) && [ts.SyntaxKind.QuestionQuestionToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.AmpersandAmpersandToken].includes(node.operatorToken.kind)) return [...arms(ts, node.left, scope, followed), ...arms(ts, node.right, scope, followed)]
+  if (ts.isIdentifier(node) && !followed.has(node.text)) {
+    const names = n => ts.isIdentifier(n) && n.text === node.text
+    const values = ownNodes(ts, scope, n =>
+      ts.isVariableDeclaration(n) && names(n.name) ? n.initializer :
+      ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && names(n.left) ? n.right : undefined)
+    followed.add(node.text)
+    if (values.length) return values.flatMap(value => arms(ts, value, scope, followed))
+  }
+  const inline = inlineFunction(ts, node)
+  if (inline) {
+    const results = ts.isBlock(inline.body) ? ownNodes(ts, inline, n => ts.isReturnStatement(n) && n.expression) : [inline.body]
+    if (results.length) return results.flatMap(result => arms(ts, result, inline, new Set()))
+  }
   return [node]
 }
 
@@ -124,7 +175,7 @@ function arms(ts, expression) {
 function bodyShape(ts, fn, bound) {
   const shape = { effects: 0, returns: 0, throws: 0, castReturn: false }
   const count = (expression) => {
-    for (const arm of arms(ts, expression)) {
+    for (const arm of arms(ts, expression, fn)) {
       shape.returns++
       if (readsEffect(ts, arm, bound)) shape.effects++
     }
