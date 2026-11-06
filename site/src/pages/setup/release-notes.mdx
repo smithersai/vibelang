@@ -15,6 +15,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Runtime compatibility checks could time out while repeatedly starting Node. They now reuse a Node process while keeping every generated comparison and failure reduction.
 
+- Migration progress could label an expected `todo` test failure as an ordinary failure. Its records now retain the `todo` and `skip` flags and reasons.
+
+- The health report could omit failing compiler test names. It now reads the structured failure records and excludes skipped and todo tests.
+
 - Bundler plugins could crash while loading when the compiler package was missing. They now load normally and report an installation hint when a build needs the compiler.
 
 - Migrating a package could falsely report a changed public API when its exports pointed at generated declaration files. Unchanged sidecar paths now keep their original API identity.
