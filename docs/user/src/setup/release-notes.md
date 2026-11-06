@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Vite debug output omitted project invalidations, making rebuild traces incomplete. Each invalidation now reports the new revision immediately.
 - A `for concurrent` loop over an iterable union could report a type error even when every member was iterable. It now infers the item from every member, as a native `for...of` loop does.
 - Type assertions around `import.meta` could block its `.url` read. The compiler now accepts these URL reads.
+- Migrated packages could contain emitted imports that still named a VibeLang source file, causing installed packages to fail to load; emission now recompiles imports changed by routing.
 - A routed import in a migrated package could point at a declaration file that was never written, so TypeScript fell back to untyped JavaScript and reported TS7016 and TS7006 across the importers. A route now names the declaration the compiler wrote.
 - In a repository whose root project also compiles its packages, a routed import could point outside its package, and Bun then failed with `Cannot find module`. A package's own emitted file now wins.
 - The site's Proposals page still showed a layer as `Layer.effect(Users) { ... }`, a trailing block that `EK1101` rejects, and the contributor benchmark for `vibelang/register` generated its modules in that older syntax, so every module it wrote failed to compile. The page now shows `Layer.effect(Users, effect { ... })`, and the benchmark generates current syntax.

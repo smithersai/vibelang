@@ -1507,27 +1507,47 @@ export function recordOutputs(outputs, dir, written, ownerOf) {
 export async function emitMigratedJs(config, t, logs) {
   const artifact = compilerArtifactOf(config.toolchain)
   const emitted = [], sourceOutputs = new Map(), outputs = {}
-  for (const pkg of config.packages) {
+  const emit = async (pkg, pass = 0) => {
     const manifest = join(t, pkg.dir, "package.json")
-    if (!existsSync(manifest)) continue
+    if (!existsSync(manifest)) return
     if (!hasVibeSource(join(t, pkg.dir))) {
       let packingFiles=[]
       routeEmittedExports(join(t, pkg.dir), {}, { restore: true, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
       if(packingFiles.length) emitted.push({package:pkg.dir,files:0,code:0,packingFiles,restored:true})
-      continue
+      return
     }
     const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
-    const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
+    const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}${pass ? "-route-" + pass : ""}.log`) })
     sourceOutputs.set(pkg.dir, result.outputs)
     recordOutputs(outputs, pkg.dir, result.outputs, file => packageDirOf(t, file))
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
-    emitted.push({ package: pkg.dir, compilerArtifact: artifact ? bindCompilerArtifact({ ...config, compilerArtifact: artifact }) : null, files: result.files, generatedFiles: result.generatedFiles, layoutPlans: result.layoutPlans, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
+    const previous = emitted.findIndex(entry => !entry.restored && entry.package === pkg.dir)
+    const entry = { package: pkg.dir, emissionPass: pass + 1, compilerArtifact: artifact ? bindCompilerArtifact({ ...config, compilerArtifact: artifact }) : null, files: result.files, generatedFiles: result.generatedFiles, layoutPlans: result.layoutPlans, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics }
+    if (previous < 0) emitted.push(entry)
+    else {
+      entry.exportsChanged ||= emitted[previous].exportsChanged
+      entry.packingFiles = [...new Set([...emitted[previous].packingFiles, ...entry.packingFiles])]
+      emitted[previous] = entry
+    }
   }
-  // Routing edits TypeScript the loader records name, so it comes first.
-  const routed = bundledImports(config, { root: t, outputs })
-  const sourceDeclarations=sourceDeclarationImports(config,{emitted:sourceOutputs})
+  for (const pkg of config.packages) await emit(pkg)
+  // Routing changes native import specifiers after emission. Re-emit their
+  // owners before recording fingerprints of the final source and manifest.
+  const routingPasses = []
+  for (let pass = 0; ; pass++) {
+    const routed = bundledImports(config, { root: t, outputs })
+    const sourceDeclarations = sourceDeclarationImports(config, { emitted: sourceOutputs })
+    routingPasses.push({ routed, sourceDeclarations })
+    const changedSources = [...new Set([...routed.changed, ...sourceDeclarations.changed])]
+      .filter(file => /\.(?:[cm]?tsx?|vibex?)$/.test(file) && !/\.d\.[^.]+$/.test(file))
+    const owners = new Set(changedSources.map(file => packageDirOf(t, file)))
+    const affected = config.packages.filter(pkg => owners.has(pkg.dir) && emitted.some(entry => entry.package === pkg.dir && !entry.restored))
+    if (!affected.length) break
+    if (pass >= config.packages.length) throw new Error("Emission routing did not reach a fixed point: " + changedSources.join(", "))
+    for (const pkg of affected) await emit(pkg, pass + 1)
+  }
   // A restored package emitted nothing and gets no record, as before.
   const recorded = emitted.filter((entry) => !entry.restored)
   // Private imports can be the first route in a package. Include their output
@@ -1541,8 +1561,10 @@ export async function emitMigratedJs(config, t, logs) {
   }
   for (const entry of recorded) entry.loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t })
   for (const entry of recorded) entry.loaderRecords = await checkLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t, records: entry.loaderRecords })
-  if (routed.changed.length || routed.warnings?.length) emitted.push({ package: ".", files: 0, code: 0, restored: true, packingFiles: routed.changed, routedImports: routed.modules, ...(routed.warnings ? { warnings: routed.warnings } : {}) })
-  if(sourceDeclarations.changed.length || sourceDeclarations.warnings.length) emitted.push({package:".",files:0,code:0,restored:true,packingFiles:sourceDeclarations.changed,sourceDeclarations})
+  for (const { routed, sourceDeclarations } of routingPasses) {
+    if (routed.changed.length || routed.warnings?.length) emitted.push({ package: ".", files: 0, code: 0, restored: true, packingFiles: routed.changed, routedImports: routed.modules, ...(routed.warnings ? { warnings: routed.warnings } : {}) })
+    if(sourceDeclarations.changed.length || sourceDeclarations.warnings.length) emitted.push({package:".",files:0,code:0,restored:true,packingFiles:sourceDeclarations.changed,sourceDeclarations})
+  }
   return emitted
 }
 

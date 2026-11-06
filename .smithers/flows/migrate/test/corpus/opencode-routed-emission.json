@@ -1,0 +1,10 @@
+{
+  "key": "opencode-routed-emission",
+  "rule": "Emitted JavaScript reflects the final routed source before loader records or package verification are written.",
+  "importer": "import { value } from \"./leaf.vibe\"\nexport const answer = value\n",
+  "forms": [
+    "import { value } from \"./leaf.vibe\"\nexport const answer = value\n",
+    "export { value as answer } from \"./leaf.vibe\"\n",
+    "export const answer = (await import(\"./leaf.vibe\")).value\n"
+  ]
+}
