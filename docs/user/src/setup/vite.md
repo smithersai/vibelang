@@ -262,7 +262,8 @@ file while its owning `.vibe` source exists, keeping the served module and its
 importers cached. Changes to the source still trigger hot updates. The same rule applies to `.d.vibex.ts` beside `.vibex`.
 An authored TypeScript declaration without a companion source remains an input.
 Set `VIBELANG_VITE_DEBUG=1` to trace ignored generated declaration events along
-with project compiles and invalidations.
+with project compiles and invalidations. Each invalidation reports the new
+revision immediately, even before another module is loaded.
 
 ## Next
 

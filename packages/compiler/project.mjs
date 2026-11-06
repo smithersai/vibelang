@@ -730,6 +730,7 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
     /** Starts a new revision: every project compiles again on its next load. */
     invalidate() {
       revision++
+      debug(`invalidate: revision ${revision}`)
     },
     async load(file) {
       if (closed) throw new Error("vibelang: projects are closed")

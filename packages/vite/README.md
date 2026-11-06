@@ -177,7 +177,9 @@ that covers exported contract and control changes without duplicating compiler
 logic. Generated `.d.vibe.ts` declaration events are ignored while their
 companion `.vibe` source exists, so compiler output does not invalidate the
 module just served. Authored declarations without a companion remain inputs.
-`VIBELANG_VITE_DEBUG=1` traces ignored declaration events.
+`VIBELANG_VITE_DEBUG=1` traces ignored declaration events, project compiles
+and invalidations. Each invalidation reports the new revision immediately,
+even before another module is loaded.
 Direct HTTP requests for `.vibe` files enter Vite's module transform pipeline.
 Vitest keeps transforms between runs (`fsModuleCache`), keyed by a module's own
 text; the plugin keeps `.vibe` modules out of that cache, since their JavaScript

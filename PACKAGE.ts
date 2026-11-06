@@ -1482,6 +1482,12 @@ const targets = {
     [],
     [bun, node]
   ),
+  "docs-vite-debug": check(
+    "Project invalidation diagnostics follow the documented Vite debug contract.",
+    "node --test --test-timeout=60000 packages/compiler/test/project-debug.test.mjs",
+    [],
+    [node]
+  ),
   "docs-table-rows": check(
     "User tables retain headers and widths; platform advice qualifies queries, argument lists, byte reads and elapsed time.",
     "node docs/tools/table-rows.mjs && bun test --timeout 30000 docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
