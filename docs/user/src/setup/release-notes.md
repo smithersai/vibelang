@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12
 
 ### Bugs fixed since 0.0.11
+
+- Migrating an Effect `try` statement could fail when it returned a tagged object or a tuple. The repair now keeps the declared return type while writing the Effect handlers.
 - Migration API checks ignored a project's `lib`, so a global from a selected library reported `TS2304` on unchanged declarations. They now load those libraries, and `compareDeclarations` takes `profile` and `workerHeaps`, with stage records streamed as they happen.
 - A migration API check could replace an invalid declaration's missing-type error with a later checker crash. It now retains the original diagnostic and stops that comparison.
 - A multiline warning containing commented source could keep a loader recompiling forever. Source excerpts now remain diagnostic text instead of becoming watched filenames.

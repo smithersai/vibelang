@@ -1,0 +1,8 @@
+type Outcome = { _tag: "Ready"; selected: number } | { _tag: "Failed"; error: unknown }
+export effect function project(): Outcome!! {
+  try {
+    return { _tag: "Ready", selected: 1 }
+  } catch (error) {
+    return { _tag: "Failed", error }
+  }
+}

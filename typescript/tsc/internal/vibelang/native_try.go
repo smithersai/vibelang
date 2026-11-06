@@ -247,6 +247,14 @@ func nativeTryRewrite(c *checker.Checker, file *ast.SourceFile, n *ast.Node) *fo
 					before := rewriteComments.FindAllString(text[jumpStart:exprStart], -1)
 					after := rewriteComments.FindAllString(text[exprNode.End():j.End()], -1)
 					expr = nodeText(file, exprNode)
+					// The completion record adds a property boundary. Preserve the
+					// original return context so discriminants and tuple elements do
+					// not widen while crossing that boundary. satisfies checks the
+					// original expression without asserting a different value type.
+					if contextual := c.GetContextualType(exprNode, checker.ContextFlagsNone); contextual != nil {
+						format := checker.TypeFormatFlagsNoTruncation | checker.TypeFormatFlagsUseFullyQualifiedType | checker.TypeFormatFlagsUseSourceScope | checker.TypeFormatFlagsUseStructuralFallback
+						expr = "((" + expr + ") satisfies " + c.TypeToStringEx(contextual, exprNode, format, nil) + ")"
+					}
 					if len(before) > 0 {
 						expr = strings.Join(before, "\n") + "\n" + expr
 					}
