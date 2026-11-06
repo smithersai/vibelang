@@ -136,6 +136,8 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
 4. Open a draft for early feedback. {{merge}}
 
+Before submitting, fetch and rebase onto current \`vibe\`, then run \`VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs\` from the repository root. Describe each user-facing symptom and its corrected behavior in plain words, once. This checks duplicate fixes and internal-only wording even while the candidate is unreleased. It uses the recorded publication data; no registry query is needed for this per-change check.
+
 After publishing, finalize that release's heading and record npm's actual version with \`node docs/tools/release-history.mjs --record\`, then start a \`## <next version> (unreleased)\` section in [the release notes](docs/user/src/setup/release-notes.md), with a \`### Bugs fixed since <last published version>\` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.`
     },
     {

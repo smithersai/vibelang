@@ -83,6 +83,8 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
 4. Open a draft for early feedback. Maintainers land their own work on `vibe`. `main` advances only to a commit on `vibe` whose post-merge checks passed, with no failing commit below it. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.
 
+Before submitting, fetch and rebase onto current `vibe`, then run `VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs` from the repository root. Describe each user-facing symptom and its corrected behavior in plain words, once. This checks duplicate fixes and internal-only wording even while the candidate is unreleased. It uses the recorded publication data; no registry query is needed for this per-change check.
+
 After publishing, finalize that release's heading and record npm's actual version with `node docs/tools/release-history.mjs --record`, then start a `## <next version> (unreleased)` section in [the release notes](docs/user/src/setup/release-notes.md), with a `### Bugs fixed since <last published version>` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.
 
 ## Style
@@ -99,4 +101,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,960 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>3,053 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

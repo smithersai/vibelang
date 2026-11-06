@@ -142,3 +142,48 @@ test("Go-only mapper setup installs dependencies where execution tests resolve t
   expect(setup).toContain("`(cd experiments && bun install)`")
   expect(setup).toContain("`packages/ts-mapper/package.json`")
 })
+
+test("contributor release-note guidance runs the strict guard before submission", async () => {
+  const contributing = render(await readSources())["CONTRIBUTING.md"]!
+  const pullRequests = contributing.split("\n## Pull requests\n")[1]!.split("\n## ")[0]!
+  const command = /\x60(VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs\/tools\/release-docs\.test\.mjs)\x60/.exec(pullRequests)?.[1]
+  expect(command, "per-change guidance includes the strict offline command").toBeDefined()
+  expect(pullRequests).toContain("Before submitting")
+  expect(pullRequests).toContain("plain words")
+  expect(pullRequests).toContain("once")
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises")
+  const { tmpdir } = await import("node:os")
+  const fixture = await mkdtemp(join(tmpdir(), "release-note-guidance-"))
+  try {
+    for (const name of ["release-docs.test.mjs", "release-docs.mjs", "release-publication-checks.mjs", "release-history.mjs"]) {
+      await mkdir(join(fixture, "docs/tools"), { recursive: true })
+      await writeFile(join(fixture, "docs/tools", name), await readFile(join(repository, "docs/tools", name)))
+    }
+    await mkdir(join(fixture, "packages/compiler"), { recursive: true })
+    await mkdir(join(fixture, "docs/user/src/setup"), { recursive: true })
+    const notes = await readFile(join(repository, "docs/user/src/setup/release-notes.md"), "utf8")
+    const candidate = /^## (\S+) \(unreleased\)$/m.exec(notes)?.[1]
+    expect(candidate, "exercise the explicit override on an unreleased candidate").toBeDefined()
+    await writeFile(join(fixture, "packages/compiler/package.json"), JSON.stringify({ version: candidate }))
+    const heading = /^### Bugs fixed since .+$/m.exec(notes)![0]
+    const bullet = /^- .+$/m.exec(notes)![0]
+    const [setting, executable, ...args] = command!.split(" ")
+    const [key, value] = setting!.split("=")
+    const env = { ...process.env, [key!]: value!, VIBELANG_LAST_PUBLISHED_VERSION: undefined }
+    args.splice(1, 0, "--test-name-pattern=^current release notes describe user fixes without internal CI or fuzz bookkeeping$")
+    for (const [label, text, status] of [
+      ["valid", notes, 0],
+      ["duplicate", notes.replace(heading, heading + "\n" + bullet), 1],
+      ["internal", notes.replace(heading, heading + "\n- Added fuzz regression checks."), 1],
+    ] as const) {
+      await writeFile(join(fixture, "docs/user/src/setup/release-notes.md"), text)
+      const result = spawnSync(executable!, args, { cwd: fixture, env, encoding: "utf8", timeout: 60_000 })
+      expect({ label, status: result.status, signal: result.signal, error: result.error?.message },
+        result.stdout + result.stderr).toEqual({ label, status, signal: null, error: undefined })
+      expect(result.stdout).toContain(status === 0 ? "pass 1" : "fail 1")
+      expect(result.stdout).toContain("skipped 0")
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
