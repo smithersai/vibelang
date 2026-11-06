@@ -365,8 +365,8 @@ func grammarSchemaFieldInitializer(ts []grammarToken) bool {
 			switch {
 			case next.text == ":":
 				typed = true
-			case next.text == ";" || next.text == "," || next.nl:
-				typed = next.text == ":"
+			case next.text == ";" || next.text == ",":
+				typed = false
 			case typed && next.text == "=":
 				return true
 			}
@@ -1051,7 +1051,7 @@ func grammarAdmissionForm(source string) string {
 				return "admission:catch-value"
 			}
 		case "service":
-			if i+2 < len(ts) && ts[i+1].kind == 'w' && next(2) == ":" {
+			if i+2 < len(ts) && ts[i+1].kind == 'w' && !ts[i+1].nl && !ts[i+2].nl && next(2) == ":" {
 				return "admission:service-shape"
 			}
 		case "layer":
