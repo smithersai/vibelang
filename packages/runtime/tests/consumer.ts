@@ -1,6 +1,6 @@
 import { Context } from "effect"
 // Compile a consumer against the installed package export and emitted .d.ts files.
-import { trusted, $errors, $bind, $direct, $done, $fast, $isRun, $program, $settle, $produce, $region, $using, $yield, Effect, Layer, Scope, suspend, type Producer } from "vibelang-runtime"
+import { $forConcurrent, trusted, $errors, $bind, $direct, $done, $fast, $isRun, $program, $settle, $produce, $region, $using, $yield, Effect, Layer, Scope, suspend, type Producer } from "vibelang-runtime"
 
 const bound: Effect.Effect<number> = $bind(42)
 const program: Effect.Effect<number> = $program(() => bound)
@@ -48,3 +48,23 @@ const requiresHost: Producer<number, never, ProducerHost> = serviceProducer
 // @ts-expect-error The callback's Scope must not erase unrelated services.
 const missingHost: Producer<number> = serviceProducer
 void [scopedProducer, requiresHost, missingHost]
+
+// The internal loop helper retains every native Iterable-union element.
+declare const concurrentRows: number[] | Set<string>
+const concurrentUnion: Effect.Effect<void, "Bad", ProducerHost> = $forConcurrent(
+ concurrentRows, 1, item => Effect.gen(function*() {
+  const value: string | number = item
+  yield* ProducerHost
+  return yield* Effect.fail("Bad" as const)
+ })
+)
+const concurrentExplicit: Effect.Effect<void> = $forConcurrent<number, never, never>(
+ [1, 2], 1, item => Effect.succeed(item + 1)
+)
+// @ts-expect-error A callback must accept every possible union element.
+$forConcurrent(concurrentRows, 1, (item: number) => Effect.succeed(item))
+// @ts-expect-error A union element does not become any.
+$forConcurrent(concurrentRows, 1, item => Effect.succeed(item.toFixed()))
+// @ts-expect-error Noniterable operands remain rejected.
+$forConcurrent(5, 1, item => Effect.succeed(item))
+void [concurrentUnion, concurrentExplicit]

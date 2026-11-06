@@ -1264,6 +1264,13 @@ typescript/vibelang/cases/concurrent-source-block-labels/main.vibe:16:41 lambda 
 typescript/vibelang/cases/concurrent-source-block-labels/main.vibe:5:27 lambda effectFn table
 typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:10:38 lambda effectFn table
 typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:5:32 lambda effectFn table
+typescript/vibelang/cases/concurrent-union-items/main.vibe:10:23 lambda effectFn table
+typescript/vibelang/cases/concurrent-union-items/main.vibe:11:19 lambda plain table
+typescript/vibelang/cases/concurrent-union-items/main.vibe:5:15 lambda plain annotation
+typescript/vibelang/cases/concurrent-union-items/main.vibe:6:19 lambda plain annotation
+typescript/vibelang/cases/concurrent-union-items/main.vibe:7:23 lambda effectFn table
+typescript/vibelang/cases/concurrent-union-items/main.vibe:8:24 lambda effectFn table
+typescript/vibelang/cases/concurrent-union-items/main.vibe:9:36 lambda effectFn table
 typescript/vibelang/cases/concurrent-used-labels/main.vibe:12:34 lambda effectFn table
 typescript/vibelang/cases/concurrent-used-labels/main.vibe:3:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-used-labels/main.vibe:7:41 lambda effectFn table

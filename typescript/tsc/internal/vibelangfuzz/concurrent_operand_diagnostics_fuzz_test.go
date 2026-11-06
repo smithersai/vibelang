@@ -32,6 +32,12 @@ func FuzzConcurrentOperandDiagnostics(f *testing.F) {
 		{"set", "Set<number>", true}, {"iterable", "Iterable<number>", true},
 		{"union-arrays", "string[] | number[]", true},
 		{"union-containers", "number[] | Set<string>", true},
+		{"union-readonly", "readonly number[] | readonly string[]", true},
+		{"union-iterables", "Iterable<number> | Iterable<string>", true},
+		{"union-generators", "Generator<number> | Generator<string>", true},
+		{"union-tuples", "Array<[number,string]> | Set<[string,number]>", true},
+		{"union-objects", "Array<{n:number}> | Set<{n:string}>", true},
+		{"union-nullable-items", "Array<number|null> | Set<string|undefined>", true},
 		{"union-same-item", "number[] | Set<number>", true},
 		{"unknown-items", "Iterable<unknown>", true},
 		{"iterable-stream", "Stream.Stream<number> & Iterable<number>", true},
@@ -44,9 +50,7 @@ func FuzzConcurrentOperandDiagnostics(f *testing.F) {
 	}
 	for _, rule := range rules {
 		f.Add(rule.key)
-		if !rule.allowed {
-			f.Add(rule.key + ":2")
-		}
+		f.Add(rule.key + ":2")
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string) {

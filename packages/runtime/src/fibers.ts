@@ -1,3 +1,4 @@
+import type * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -205,10 +206,10 @@ const firstExit = (fibers: ReadonlyArray<Fiber.Fiber<unknown, unknown>>) =>
  * generated written limits pass their value unchanged. The loop joins
  * started item work, propagates its failure and discards its results.
  */
-export const $forConcurrent = <X, E, R>(
-  items: Iterable<X>,
+export const $forConcurrent = <X, E, R, I extends Iterable<X> = Iterable<X>>(
+  items: I,
   concurrency: Types.Concurrency | undefined,
-  body: (item: X) => Effect.Effect<unknown, E, R>,
+  body: (item: Arr.ReadonlyArray.Infer<I>) => Effect.Effect<unknown, E, R>,
   limitWritten = false
 ): Effect.Effect<void, E, R> =>
   Effect.forEach(items, body, { concurrency: limitWritten ? concurrency : concurrency ?? "unbounded", discard: true })
