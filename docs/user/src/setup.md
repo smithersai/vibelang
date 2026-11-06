@@ -54,7 +54,6 @@ Follow each matching page, in this order: project, build or framework, editor.
 | Zed | [Zed](setup/zed.md) |
 | Another editor with an LSP client | [Other editors](setup/other-editors.md) |
 | Claude Code, Codex, opencode, or an agent in Cursor or VS Code | [Coding agents](setup/coding-agents.md) |
-| The project must keep `.ts` file names, and nothing above fits | [Unpublished source-checkout preview](setup/typescript-shim.md) |
 
 For webpack, Rspack, Rollup, Rolldown, esbuild, and `bun build`, version 0.0.12 includes `vibelang-unplugin`: install `vibelang@0.0.12` and `vibelang-unplugin@0.0.12` as dev dependencies and follow the [plugin configuration](https://www.npmjs.com/package/vibelang-unplugin#configure) for the bundler. Vite and Vitest use `vibelang-vite`.
 
@@ -130,3 +129,7 @@ const message = Effect.runSync(greet("Astro"))
 ```
 
 Use `await Effect.runPromise(...)` for asynchronous Effects, providing required layers and handling failures first. Rendering the Effect itself can recurse through its iterator. Run `npx vibelang --noEmit` and `npx astro build`; Astro's own checker is separate and does not gain `.vibe` support from this Vite plugin.
+
+## Last resort: keep TypeScript file names
+
+After the CLI, bundler plugins, framework setup and editor integrations above, a project that cannot use `.vibe` or `.vibex` names can consider the experimental [TypeScript shim](setup/typescript-shim.md). Use this fallback only when the supported routes do not fit; stock readers can accept a marked file with different meaning.

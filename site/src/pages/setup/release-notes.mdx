@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The source checkout preview could fail with `TS2307` for `vibelang-runtime` in another project. The instructions now install the checkout's runtime there before checking.
 
+- Some integration guides introduced the TypeScript shim before supported plugins or omitted its limitations. The guides now place it last and explain the marked-file exception.
+
 - `vibelang format` silently skipped marked `.tsx` files. Default discovery and explicit paths now check and format them while leaving unmarked TypeScript unchanged.
 
 - Editor formatting rejected VibeLang syntax in marked TypeScript files. It now selects the VibeLang parser from the current buffer, including unsaved directives and JSX.

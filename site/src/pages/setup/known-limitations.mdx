@@ -7,8 +7,6 @@ description: "VibeLang is in early alpha."
 
 VibeLang is in early alpha.
 
-The `vibelang-typescript` replacement is an unpublished, experimental [source-checkout preview](/setup/typescript-shim) under open VIP-42.
-
 - Platforms: [macOS arm64/x64, Linux arm64/x64, Windows arm64/x64](/getting-started/004-installation#prerequisites). The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built.
 - Bun runtime: use `1.4.2` or newer for [complete source-loader support](/setup/vibelang-cli#run-sources-with-bun). Older versions can misresolve computed imports or corrupt Unicode import paths.
 - Effect: [`effect@4.1.1` exactly](/setup/existing-project); other versions are unsupported.
@@ -28,3 +26,5 @@ A hidden Effect can still be returned as an ordinary, unrun value. Keep the
 callee's callable type, such as `() => number!NotFound`, instead of erasing it.
 
 The experimental TypeScript mapper keeps an exported function’s written Effect contract, such as `number!!`, even when its body is pure. Its projected type has no `$plain` member.
+
+After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](/setup/typescript-shim) is a last resort for projects that cannot change TypeScript file names. It is included in the VibeLang 0.0.12 release under open VIP-42. Stock readers can accept a marked file with different meaning.

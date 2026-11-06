@@ -680,3 +680,7 @@ For `either`, `async` and `withFiberRuntime`, review the diagnostic's migration 
 Migration-only fixes also apply the foreign-call defect bridge. A supported private callback parameter or object member can retain an explicit foreign `@throws {unknown}` signature in a type-only `module` body. Calls remain defects through `Effect.orDie(Effect.try(...))`; a synchronous `Effect.map` callback becomes an `Effect.flatMap` callback returning that Effect. Unsupported or declaration-changing shapes retain their diagnostic for an explicit repair.
 
 Selected imported `floatingEffect` checks use the same file eligibility, exclusions, severity and `@effect-diagnostics` directives for `.ts` and `.vibe` inputs. The legacy `EK4801` check does not also run when that imported path is selected, even when the rule is configured `off`.
+
+## Last resort: keep TypeScript file names
+
+Use the compiler, plugins and editor integrations above with `.vibe` and `.vibex` files whenever possible. A project that cannot rename its TypeScript files can consider the experimental [TypeScript shim](../setup/typescript-shim.md) as the final fallback. Stock readers can accept marked files with different meaning; read the shim's limitations first.

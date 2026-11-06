@@ -87,7 +87,7 @@ Taken seriously, the argument is this. A new language forfeits TypeScript's comp
 
 VibeLang accepts the premise and is built on it.
 
-- **It does not leave TypeScript.** The compiler is a fork of the TypeScript 7 compiler. It checks `.vibe` and `.ts` files in one program, with TypeScript's type system, and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file. `.ts` files keep TypeScript's semantics, because VibeLang has its own extension.
+- **It does not leave TypeScript.** The compiler is a fork of the TypeScript 7 compiler. It checks `.vibe` and `.ts` files in one program, with TypeScript's type system, and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file. Unmarked `.ts` files keep TypeScript's semantics; the experimental directive described below is an explicit exception.
 - **It does not leave Effect.** The output runs on `effect` itself plus `vibelang-runtime`. `try` compiles to the `yield*` the myths page praises. To any TypeScript caller, a VibeLang function is an ordinary Effect function with an ordinary Effect type.
 - **It does not leave the ecosystem.** A `.ts` file sits beside any `.vibe` file and the two import each other. npm packages install as before. [Vite and Vitest](/setup/vite) compile `.vibe` through `vibelang-vite`, and webpack, Rspack, Rollup, Rolldown, esbuild and Bun through `vibelang-unplugin`. The editor extension runs the compiler as a language server.
 - **What changes is the surface.** VibeLang replaces the syntax of the Effect parts: the generator, `yield*`, `pipe` and the class declarations. It keeps the types, the runtime, the library and the tools. It is a syntax for Effect, not a replacement for TypeScript.
@@ -103,6 +103,8 @@ The same documentation says, in [Using Generators](https://effect.website/docs/g
 - **Platform rehearsal.** Native compilers ship for macOS, Linux and Windows on arm64 and x64. The release rehearsal runs the starter on Linux x64 only. [Installation](/getting-started/004-installation) has the table.
 
 If your team will not take an alpha compiler, write Effect TypeScript. The two interoperate, so you can try VibeLang in one file of an existing Effect project and remove it as easily. [Existing project](/setup/existing-project) shows the steps.
+
+After the CLI, plugins and editor support, the experimental [TypeScript shim](/setup/typescript-shim) is a last resort for projects that cannot change TypeScript file names. Its directive does not make stock readers safe: a file can compile successfully with different prelude bindings.
 
 ## Next
 

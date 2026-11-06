@@ -388,9 +388,9 @@ it tracks native sources, dependencies, configs and compiler changes. Await
 `close()` when finished. Module loader hooks do not change `readFile` or
 directory enumeration.
 
-`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package. `vibelang-typescript` starts it this way.
+`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package.
 
-`isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe` ([VibeLang in .ts files](https://vibelang.sh/setup/typescript-shim)). `hasVibeDirective(file, text)` answers from text you already hold. Virtual module IDs containing a NUL byte are not filesystem paths: `isVibeLangFile(file)` and `fileHasVibeDirective(file)` return `false` without reading them.
+`isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe`. `hasVibeDirective(file, text)` answers from text you already hold. Virtual module IDs containing a NUL byte are not filesystem paths: `isVibeLangFile(file)` and `fileHasVibeDirective(file)` return `false` without reading them.
 
 ## Editor support
 
@@ -623,3 +623,7 @@ through their native adapters. The preload includes `vibelang/bun` and
 shares its parsed source-import pass, so ordinary strings and type-only
 imports keep their meaning. Use the explicit adapter for computed imports
 or CommonJS calls. Literal bundle entry filenames remain unchanged.
+
+## Last resort: keep TypeScript file names
+
+Prefer the CLI, plugins, loaders and editor integrations above with `.vibe` or `.vibex` files. Only when a project cannot rename its TypeScript files, consider the experimental [TypeScript shim](https://vibelang.sh/setup/typescript-shim). It runs the compiler as `tsc`, but stock readers can accept a marked file with different meaning.

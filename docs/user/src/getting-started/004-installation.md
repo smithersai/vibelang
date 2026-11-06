@@ -169,8 +169,6 @@ bun add -d vibelang@latest vibelang-vite@latest
 
 VibeLang is v0, so a new version can change the language in breaking ways. Read the [release notes](../setup/release-notes.md) before updating.
 
-If the project must keep `.ts` file names, see [VibeLang in .ts files](../setup/typescript-shim.md), an unpublished source-checkout preview.
-
 ## Configure your editor
 
 From the project directory, after installing dependencies:
@@ -207,5 +205,9 @@ A downstream project using stock `tsc` needs **TypeScript 5.7 or later** for dec
 ## Coming from Effect
 
 Install `vibelang` to compile `.vibe` and `vibelang-runtime` beside `effect@4.1.1`. Write application logic in `.vibe` and keep ordinary TypeScript integrations in `.ts`; the compiler checks both file types as one program.
+
+## Last resort: keep TypeScript file names
+
+Prefer the compiler, plugins and editor setup above. If the project cannot use `.vibe` or `.vibex` names, the experimental [TypeScript shim](../setup/typescript-shim.md) is the fallback. Read its stock-tool limitations before using it.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/installation)

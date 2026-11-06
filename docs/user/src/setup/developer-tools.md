@@ -548,3 +548,7 @@ a migrated `.vibe` source may replace its deliberately published `.ts` twin.
 Setup preserves tests, fixtures and their package manifests.
 
 The formatter preserves comparisons after Effect type assertions, including `value as number!! < limit`, without treating `<` as a type argument list.
+
+## Last resort: keep TypeScript file names
+
+Use the compiler, plugins and editor integrations above with `.vibe` and `.vibex` files whenever possible. A project that cannot rename its TypeScript files can consider the experimental [TypeScript shim](typescript-shim.md) as the final fallback. Stock readers can accept marked files with different meaning; read the shim's limitations first.
