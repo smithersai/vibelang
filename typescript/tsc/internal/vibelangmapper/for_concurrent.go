@@ -52,15 +52,9 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 		p.plan.insert(start, "; ")
 	}
 	p.plan.mark(editRun, partOpen, start, start, "")
-	p.plan.replace(start, p.tokenStart(items), helperRef("$forConcurrent")+"(")
+	p.plan.replace(start, p.tokenStart(items), p.names.prelude("Effect")+".forEach(")
 	p.visit(items, e)
 	at := items.End()
-	p.plan.insert(at, ", ")
-	if limit.Flags&ast.NodeFlagsReparsed != 0 {
-		p.plan.insert(at, "void 0")
-	} else {
-		p.plan.insert(at, limitName)
-	}
 	p.plan.insert(at, ", (")
 	p.concurrentCopy(pattern, at, env{})
 	p.plan.insert(at, ") => ")
@@ -93,11 +87,11 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 		p.plan.replace(start, node.End(), "return")
 	}
 	p.plan.mark(editProgram, partClose, body.End(), body.End(), "")
-	closing := ")"
+	concurrency := `"unbounded"`
 	if limitName != "" {
-		closing = ", true)"
+		concurrency = limitName
 	}
-	p.plan.insert(call.End(), closing)
+	p.plan.insert(call.End(), ", { concurrency: "+concurrency+", discard: true })")
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 	if limitName != "" {
 		p.plan.insert(call.End(), "; }")

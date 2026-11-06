@@ -171,22 +171,22 @@ var projectionCases = []struct {
 	{
 		name:    "concurrent unbounded with continue",
 		source:  "function f(xs: number[]) { for concurrent (const x of xs) { if (x) continue; } }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run($forConcurrent(xs, void 0, (x) => $gen(function* () { if (x) return; })))); })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run(Effect.forEach(xs, (x) => $gen(function* () { if (x) return; }), { concurrency: \"unbounded\", discard: true }))); })}",
 	},
 	{
 		name:    "concurrent bounded single statement",
 		source:  "function f(xs: number[]) { for concurrent(2) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), true))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run(Effect.forEach(xs, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "concurrent written undefined single statement",
 		source:  "function f(xs: number[]) { for concurrent(undefined as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), true))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run(Effect.forEach(xs, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "concurrent written null single statement",
 		source:  "function f(xs: number[]) { for concurrent(null as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), true))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run(Effect.forEach(xs, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "all takes its array elements by name",
@@ -1148,7 +1148,7 @@ func TestFiberFormsInSynthesizedExpressions(t *testing.T) {
 		assertParses(t, projection.Text)
 		want := "$run($join("
 		if strings.Contains(source, "for concurrent") {
-			want = "$run($forConcurrent("
+			want = "$run(Effect.forEach("
 		}
 		assert.Assert(t, strings.Contains(projection.Text, want), "%s", projection.Text)
 	}

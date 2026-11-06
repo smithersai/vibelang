@@ -58,7 +58,7 @@ A label cannot be repeated inside the statement it labels. Reusing an enclosing 
 
 A label named by `continue` in a `for concurrent` body counts as used for `allowUnusedLabels`. In a chain, each label is checked separately.
 
-A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper.
+A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper. The traversal calls the project's `Effect.forEach`, so item fibers and surrounding `fork` operations share the same Effect instance even when the runtime has a separate installation.
 
 Group a comma expression used as a limit with extra parentheses: `for concurrent((record(), 4)) (...)`. A bare comma list in the limit reports `TS1005`; `vibelang --fix` adds the parentheses while preserving evaluation order.
 

@@ -157,18 +157,28 @@ func (tx *lowering) inOrder(operands, sources []*ast.Node, emit []int) []*ast.No
 	return emitted
 }
 
-// concurrentForCall lowers the call $forConcurrent(items, limit, body) that
-// the parser writes for `for concurrent(limit) (const x of items) body`: the
-// limit, written first, runs before the items.
+// concurrentForCall emits the project's native Effect.forEach. The runtime
+// helper remains the checker signature; executing it could allocate item fibers
+// from a different physical Effect installation than the enclosing generator.
 func (tx *lowering) concurrentForCall(node *ast.Node) *ast.Node {
 	sources := node.Arguments()
 	visited := tx.Visitor().VisitNodes(node.ArgumentList()).Nodes
-	operands := tx.inOrder([]*ast.Node{visited[1], visited[0], visited[2]}, []*ast.Node{sources[1], sources[0], sources[2]}, []int{1, 0, 2})
 	f := tx.Factory()
-	// Only an omitted limit has the parser's Reparsed marker. Written
-	// nullish values admitted through any retain Effect's native default.
+	operands := []*ast.Node{visited[0], visited[2], f.NewStringLiteral("unbounded", ast.TokenFlagsNone)}
+	// Only an omitted limit has the parser's Reparsed marker. Preserve a
+	// written limit before the iterable, even though native options come last.
+	// Written nullish values admitted through any retain Effect's default.
 	if sources[1].Flags&ast.NodeFlagsReparsed == 0 {
-		operands = append(operands, f.NewToken(ast.KindTrueKeyword))
+		operands = tx.inOrder(
+			[]*ast.Node{visited[1], visited[0], visited[2]},
+			[]*ast.Node{sources[1], sources[0], sources[2]},
+			[]int{1, 2, 0},
+		)
 	}
-	return f.UpdateCallExpression(node.AsCallExpression(), tx.Visitor().VisitNode(node.Expression()), node.QuestionDotToken(), nil /*typeArguments*/, f.NewNodeList(operands), node.Flags)
+	options := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
+		f.NewPropertyAssignment(nil, f.NewIdentifier("concurrency"), nil, nil, operands[2]),
+		f.NewPropertyAssignment(nil, f.NewIdentifier("discard"), nil, nil, f.NewToken(ast.KindTrueKeyword)),
+	}), false /*multiLine*/)
+	callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("forEach"), ast.NodeFlagsNone)
+	return f.UpdateCallExpression(node.AsCallExpression(), callee, node.QuestionDotToken(), nil /*typeArguments*/, f.NewNodeList([]*ast.Node{operands[0], operands[1], options}), node.Flags)
 }

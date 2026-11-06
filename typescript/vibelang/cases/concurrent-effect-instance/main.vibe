@@ -1,0 +1,39 @@
+import { Effect as Eff } from "effect"
+
+export effect function main() {
+  const Effect = "local Effect"
+  const anchor = fork effect {
+    const owner = try Eff.fiberId
+    const seen: boolean[] = []
+    for concurrent(2) (const item of [1, 2, 3]) {
+      void item
+      const current = try Eff.fiberId
+      const child = fork Eff.succeed(0)
+      seen.push(owner < current && current < child.id)
+      join child
+    }
+    return seen
+  }
+  const seen = join anchor
+  if (Effect !== "local Effect") throw "captured local"
+  for (const limit of [1, 2, 2.5, NaN, Infinity, "unbounded", undefined, null, -1, 0]) {
+    seen.push(...(try probe(limit)))
+  }
+  return seen
+}
+
+effect function probe(limit: any) {
+  const anchor = fork effect {
+    const owner = try Eff.fiberId
+    const seen: boolean[] = []
+    for concurrent(limit) (const item of [1, 2, 3]) {
+      void item
+      const current = try Eff.fiberId
+      const child = fork Eff.succeed(0)
+      seen.push((Math.max(1, limit ?? 1) === 1 ? owner === current : owner < current) && current < child.id)
+      join child
+    }
+    return seen
+  }
+  return join anchor
+}
