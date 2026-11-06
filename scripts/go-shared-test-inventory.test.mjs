@@ -40,6 +40,31 @@ const inputsCover = (selection, test) => covers(selection.pattern, test.pkg) &&
 const tests = ownedTests()
 const selected = selections(read("typescript/tsc/PACKAGE.ts"))
 
+function duplicateTargetNames(entries) {
+  const names = new Set(), duplicates = new Set()
+  for (const { target } of entries) {
+    if (names.has(target)) duplicates.add(target)
+    names.add(target)
+  }
+  return [...duplicates].sort()
+}
+
+test("shared Go validation declares each target name once", () => {
+  assert.deepEqual(duplicateTargetNames(selected), [],
+    "duplicate object keys hide one declaration while the source inventory sees both")
+})
+
+test("target uniqueness rejects duplicate keys even with different packages and selectors", () => {
+  for (let index = 0; index < 64; index++) {
+    const name = "go-owned-" + index
+    const first = '"' + name + '": goTest("unit", "./internal/one", "internal/one", "^TestOwned$")'
+    const second = '"' + name + '": goTest("fuzz", "./internal/two", "internal/two", "^FuzzOwned$")'
+    assert.deepEqual(duplicateTargetNames(selections(first + "\n" + second)), [name])
+    const distinct = second.replace('"' + name + '"', '"' + name + '-neighbour"')
+    assert.deepEqual(duplicateTargetNames(selections(first + "\n" + distinct)), [])
+  }
+})
+
 test("every VibeLang test in a shared Go package runs in full validation", () => {
   assert.ok(tests.length >= 6, "only " + tests.length + " tests discovered")
   assert.deepEqual(tests.filter((test) => !selected.some((selection) => selects(selection, test))), [],
