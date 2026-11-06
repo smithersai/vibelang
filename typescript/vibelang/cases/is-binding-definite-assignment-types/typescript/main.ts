@@ -1,5 +1,6 @@
+// VIP-7 array patterns extract iterable elements; an open subject supplies unknown.
 export function read(s: unknown) {
-  let value: any
+  let value: unknown
   if (Array.isArray(s) && s.length === 2 && s[0] === 1 && (value = s[1], true)) return value
   return value
 }
