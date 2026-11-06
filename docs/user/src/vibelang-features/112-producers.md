@@ -28,7 +28,7 @@ effect function firstAlert() {
 // Output: 25
 ```
 
-`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses `Stream.callback` with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it; the one-element buffer does not bound all pending offers or upstream work.
+`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses the project's `Stream.callback` and Effect instance with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it; the one-element buffer does not bound all pending offers or upstream work.
 
 A `yield` inside a `for concurrent` item body emits on the enclosing producer's queue. Nested concurrent loops keep that same producer; a nested source function or arrow owns its own `yield` rules. The inferred `Stream` element type includes the item body's yields.
 

@@ -1,0 +1,51 @@
+import { Effect as Eff, Fiber as Fib, Stream as Str } from "effect"
+effect function owns(owner: number, item: number) {
+ const current = try Eff.fiberId
+ const child = try Eff.forkChild(Eff.succeed(item))
+ const okay = owner < current && current < child.id
+ try Fib.join(child)
+ return okay
+}
+effect function* declared(owner: number) {
+ for (const item of [1,2,3]) yield try owns(owner,item)
+}
+const expression = effect function* (owner: number) {
+ for (const item of [1,2,3]) yield try owns(owner,item)
+}
+const object = {
+ marker: false,
+ effect *probeItems(owner: number) {
+  for (const item of [1,2,3]) yield (try owns(owner,item)) && this.marker
+ }
+}
+class Feed {
+ marker = false;
+ effect *probeItems(owner: number) {
+  for (const item of [1,2,3]) yield (try owns(owner,item)) && this.marker
+ }
+}
+const feed = new Feed()
+function streamFor(mode: number, owner: number): Str.Stream<boolean> {
+ object.marker = false
+ feed.marker = false
+ switch (mode) {
+  case 0: return declared(owner)
+  case 1: return expression(owner)
+  case 2: return object.probeItems(owner)
+  default: return feed.probeItems(owner)
+ }
+}
+export effect function main() {
+ const seen: boolean[] = []
+ for (const mode of [0,1,2,3]) {
+  const anchor = try Eff.forkChild(effect {
+   const owner = try Eff.fiberId
+   const stream = streamFor(mode,owner)
+   object.marker = true
+   feed.marker = true
+   return try Str.runCollect(stream)
+  })
+  seen.push(...(try Fib.join(anchor)))
+ }
+ return seen
+}

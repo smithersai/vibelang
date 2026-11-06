@@ -7,6 +7,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangprotocol"
 )
 
 // The executable rendering: the plan rendered as the code that runs. Its
@@ -132,7 +133,7 @@ func renderExec(e edit) (text string, keep bool) {
 		}
 		return pick(e.part, helperRef(helper)+"(", "", ")"), true
 	case editProducer:
-		// D26: the runtime's $produce takes the body as a function that
+		// The local producer factory takes the body as a function that
 		// returns its Effect, and runs it under its Yield handler.
 		return pick(e.part, " return "+helperRef("$produce")+"(() => "+strings.Replace(generatorText(e.arg), helperRef("$gen"), helperRef("$producerGen"), 1)+"{", "", "}))"), true
 	case editEmit:
@@ -299,6 +300,11 @@ type execSource struct {
 // or from the runtime. Every other helper that starts with $ is an export of
 // vibelang-runtime under its own name.
 var execHelpers = map[string]execSource{
+	"$streamCallback":  {"effect/Stream", "callback"},
+	"$producerAndThen": {"effect/Effect", "andThen"},
+	"$producerProvide": {"effect/Effect", "provideService"},
+	"$producerEnd":     {"effect/Queue", "end"},
+
 	"$method": {"vibelang-runtime/data-methods", "$method"},
 
 	"$gen":             {"effect/Effect", "gen"},
@@ -325,7 +331,8 @@ var execHelpers = map[string]execSource{
 // prologueHelpers are defined by the prefix of each file that uses them
 // (execRendering.prologue); temporaries are declared there too.
 var prologueHelpers = map[string]bool{
-	"$end": true, "$Jump": true, "$jump": true, "$returned": true, "$jumped": true, "$value": true, "$acquire": true,
+	"$produce": true,
+	"$end":     true, "$Jump": true, "$jump": true, "$returned": true, "$jumped": true, "$value": true, "$acquire": true,
 	"$returnRun": true, "$member": true, "$dual": true, "$asProgram": true, "$programs": true, "$each": true, "$eachStream": true, "$iterateStream": true,
 	"$t": true, "$s": true, "$scope": true, "$iterate": true, "$producerGen": true, "$adapt": true,
 }
@@ -439,6 +446,11 @@ func (r *execRendering) prologue() string {
 	if r.used["$returnRun"] {
 		returnRun = "const " + r.local("$returnRun") + " = (value: any): any => value; "
 	}
+	if r.used["$produce"] {
+		for _, helper := range []string{"$streamCallback", "$producerAndThen", "$producerProvide", "$producerEnd", "$suspend"} {
+			r.local(helper)
+		}
+	}
 	if r.used["$producerGen"] {
 		for _, helper := range []string{"$gen", "$suspend", "$onExit"} {
 			r.local(helper)
@@ -529,6 +541,9 @@ func (r *execRendering) prologue() string {
 		parts = append(parts, "const "+r.local("$iterateStream")+" = (xs, body, label) => "+mapping+"("+r.local("$runForEachWhile")+"(xs, (v) => "+mapping+"(body(v), (c) => c === "+end+" || c instanceof "+cls+" && c.k.startsWith(\"continue:\"))), () => "+end+");")
 	}
 
+	if r.used["$produce"] {
+		parts = append(parts, "const "+r.local("$produce")+" = (body) => "+r.local("$streamCallback")+"((queue) => "+r.local("$producerAndThen")+"("+r.local("$producerProvide")+"("+r.local("$suspend")+"(body), { key: "+strconv.Quote(vibelangprotocol.ProducerQueueKey)+" }, queue), "+r.local("$producerEnd")+"(queue)), { bufferSize: 1, strategy: "+strconv.Quote("suspend")+" });")
+	}
 	if r.used["$producerGen"] {
 		// Effect.gen does not close a native generator when an Effect fails
 		// or a consumer abandons it. Drain return() under onExit so native

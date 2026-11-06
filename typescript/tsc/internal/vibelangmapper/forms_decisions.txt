@@ -6676,6 +6676,10 @@ typescript/vibelang/cases/producer-coverage-lifecycle/main.vibe:6:93 lambda effe
 typescript/vibelang/cases/producer-coverage-methods/main.vibe:4:20 lambda plain fallback
 typescript/vibelang/cases/producer-coverage-native/main.vibe:7:35 lambda plain table
 typescript/vibelang/cases/producer-coverage-yield.fail/main.vibe:4:39 lambda plain fallback
+typescript/vibelang/cases/producer-effect-instance/main.vibe:12:20 lambda effectFn fallback
+typescript/vibelang/cases/producer-effect-instance/main.vibe:17:2 lambda effectFn fallback
+typescript/vibelang/cases/producer-effect-instance/main.vibe:41:36 lambda program table
+typescript/vibelang/cases/producer-effect-instance/main.vibe:4:34 byname program table
 typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:10:25 lambda effectFn table
 typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:13:28 lambda effectFn table
 typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:16:28 lambda effectFn table
