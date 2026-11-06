@@ -152,13 +152,17 @@ func (s stockSpan) String() string {
 	return fmt.Sprintf("%s[%d,%d): %s TS%d", s.File, s.Start, s.End, s.Category, s.Code)
 }
 
+func stockJavaScriptAPI(tsc string) string {
+	return filepath.Join(filepath.Dir(filepath.Dir(tsc)), "typescript/lib/typescript.js")
+}
+
 // stockSpans uses the installed compiler's API because its plain CLI omits
 // diagnostic end positions. It performs no package installation. The full
 // pre-emit diagnostics match CompileOrdered's requests, rather than the CLI's
 // early stop after syntax errors. Native TypeScript 7 uses LSP when it ships
 // no JS API; the boolean then restricts end comparisons to source files.
 func stockSpans(ctx context.Context, tsc, dir string, files ...string) ([]stockSpan, bool, error) {
-	api := filepath.Join(filepath.Dir(filepath.Dir(tsc)), "typescript/lib/typescript.js")
+	api := stockJavaScriptAPI(tsc)
 	if _, err := os.Stat(api); errors.Is(err, os.ErrNotExist) {
 		spans, err := stockLSPSpans(ctx, tsc, dir, files)
 		return spans, true, err
@@ -192,11 +196,13 @@ func spanStrings(spans []stockSpan) []string {
 	return mapKeys(seen)
 }
 
-// stockCompile runs stock tsc for a baseline, single-threaded and with collection
-// off below 1 GiB. Each compile is short and is charged to its target's CPU limit;
-// its output does not depend on the thread count.
+// stockCompile keeps native CPU settings without passing native-only options
+// to the JavaScript compiler. Both baselines retain their normal diagnostics.
 func stockCompile(ctx context.Context, tsc string, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, tsc, append(args, "--singleThreaded")...)
-	cmd.Env = append(os.Environ(), "GOGC=off", "GOMEMLIMIT=1GiB")
+	cmd := exec.CommandContext(ctx, tsc, args...)
+	if _, err := os.Stat(stockJavaScriptAPI(tsc)); errors.Is(err, os.ErrNotExist) {
+		cmd.Args = append(cmd.Args, "--singleThreaded")
+		cmd.Env = append(os.Environ(), "GOGC=off", "GOMEMLIMIT=1GiB")
+	}
 	return cmd
 }
