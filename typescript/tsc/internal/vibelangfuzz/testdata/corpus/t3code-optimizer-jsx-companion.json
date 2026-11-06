@@ -1,0 +1,4 @@
+{
+  "source": "module constants { export const value = 1; }\nimport { value } from constants\nexport function View() { return <div>{value}</div>; }\n",
+  "output": "export const value = 1;\n"
+}
