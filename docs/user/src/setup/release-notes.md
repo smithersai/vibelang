@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Build command checks reran after unrelated source or documentation edits; they now reuse successful results while still checking changed commands, timeouts and test inventories.
 - Migration could stall after emitting JavaScript while a loader cache compilation kept running; each optional record now has a deadline, reports the affected project and elapsed time, and lets later projects continue.
 
 - Quoted, numeric and template `data` variant names reported a generic identifier error. They now report `EK1606` while retaining the following variants and declarations.

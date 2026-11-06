@@ -3,6 +3,7 @@ import { fuzzTopics } from "./fuzz-topics.ts"
 import { vibelangTopics } from "./vibelang-topics.ts"
 import { migrationSources } from "./migration-inputs.ts"
 import { createApiIdentityInputs } from "./api-inputs.ts"
+import { buildContractSuites, createBuildContractInputs } from "./build-contract-inputs.ts"
 import { Package as Packages } from "./packages/PACKAGE.ts"
 import { Package as Typescript } from "./typescript/PACKAGE.ts"
 import { Package as Tsc } from "./typescript/tsc/PACKAGE.ts"
@@ -461,6 +462,7 @@ const sidecarRootContract = S.Shell.Test({
 
 const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress.mjs"])] })
 
+const buildContractInputs = createBuildContractInputs(S)
 const apiIdentityFiles = createApiIdentityInputs(S, Packages.tree)
 
 const apiIdentityTest = check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node], undefined, {}, [apiIdentityFiles])
@@ -693,10 +695,22 @@ const targets = {
   ),
   "build-contracts": check(
     "Build and test commands retain their explicit budgets and prerequisites.",
-    "node --test --test-concurrency=4 scripts/bun-test-budgets.test.mjs scripts/compiler-test-inputs.test.mjs scripts/compiler-failure-output.test.mjs scripts/compiler-shard-installs.test.mjs scripts/go-build-flags.test.mjs scripts/go-cache.test.mjs scripts/go-shared-test-inventory.test.mjs scripts/go-test-cache.test.mjs",
+    "node --test --test-concurrency=4 " + buildContractSuites.join(" "),
     [],
     [go, node],
-    "5m"
+    "5m",
+    {},
+    [buildContractInputs]
+  ),
+  "build-contract-inputs-cache": check(
+    "Build contracts retain their read inputs and reuse unrelated changes, with actual SDK controls.",
+    "node --test build-contract-inputs.test.mjs",
+    [],
+    [go, node],
+    "15m",
+    {},
+    [buildContractInputs, S.file("build-contract-inputs.test.mjs"),
+      S.file(".smithers/WORKSPACE.ts"), S.file(".smithers/bun.lock")]
   ),
   "api-inputs-cache": check(
     "Actual SDK caching retains API helper dependencies and rejects changed public declarations.",

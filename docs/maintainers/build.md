@@ -1950,6 +1950,20 @@ The `//:pipe-topic-regressions` target executes the implemented direct and neste
 
 The `//:build-contracts` target runs bounded declaration checks: Bun deadlines, compiler shard prerequisites, Go build flags, shared cache warmup, shared-package test selection and uncached Go test replay. It declares both Node and Go because cache replay verifies a real Go test against a changed external oracle.
 
+Its cache inputs are the inspected declarations, scripts, manifests and
+lockfiles in `build-contract-inputs.ts`, plus compiler test files and
+VibeLang-prefixed Go test files discovered on each plan. Acceptance cases,
+compiler implementations, user guides and site output do not rerun this
+command audit. `//:build-contract-inputs-cache` checks the actual SDK key
+across unrelated edits, every declared file and newly added inventory
+members. It also requires a changed runtime-child budget to rerun and fail
+the real contract suite before restored bytes can reuse a successful result.
+This separate check shares the inspected input group and SDK lockfiles; unrelated
+acceptance cases do not rerun its key fixtures. Each SDK invocation records its
+stage, elapsed time and process outcome, and each execution writes a unique
+results receipt.
+
+
 The `//:declaration-contract-twins` check compares ordinary, unmodified stock declaration twins with emitted declarations and sidecars. Generated never-throw contracts are the only documentation exception; exported types and authored comments remain checked. It includes function signatures, callbacks, constructors and JSX containers.
 
 The `//:trusted-callback-contracts` check verifies foreign callback contracts, native constructor shadowing and all runtime observations in the throwing-callback fixture.

@@ -16,6 +16,7 @@ const read = (path) => readFileSync(new URL(path, root), "utf8")
 
 // [test files, the file that runs them, the text in it that names them]
 const runs = [
+  ["build-contract-inputs.test.mjs", "PACKAGE.ts", "node --test build-contract-inputs.test.mjs"],
   ["site/scripts/not-found.test.mjs", "docs/tools/site-contrast.test.ts", "test:404"],
   ["site/scripts/patch-vocs-search.test.mjs", "site/package.json", "scripts/patch-vocs-search.test.mjs"],
   ["site/scripts/patch-vocs-llms.test.mjs", "site/package.json", "scripts/patch-vocs-llms.test.mjs"],
