@@ -1,0 +1,44 @@
+// expect-result: [["next","pattern","return"],["next","assign","return"],["next","loop","return"],"Die:pattern,Die:assign,Die:loop",["next"]]
+import { Cause, Effect, Exit } from "effect"
+import { explosive, quiet, rows } from "./fixture.js"
+
+const defect = (exit: Exit.Exit<unknown, unknown>) =>
+  Exit.isFailure(exit) ? exit.cause.reasons.map(reason => reason._tag + ":" + String((reason as Cause.Die).defect)).join() : "Success"
+
+effect function pattern(xs: any, bad: { value: number }) {
+  const [x = do { try Effect.void; bad.value }] = xs
+  return x
+}
+effect function assign(xs: any, bad: { value: number }) {
+  let x: number | undefined
+  ;[x = do { try Effect.void; bad.value }] = xs
+  return x
+}
+effect function loop(xs: any, bad: { value: number }) {
+  for (const _ of xs) {
+    const y = do { try Effect.void; bad.value }
+    return y
+  }
+  return 0
+}
+// A failed Effect abandons the generator, so nothing closes.
+effect function failed(xs: any) {
+  const [x = do { try Effect.fail("f"); 1 }] = xs
+  return x
+}
+const a: string[] = [], b: string[] = [], c: string[] = [], d: string[] = []
+const inputs = {
+  pattern: [rows(a), explosive(a, "pattern")],
+  assign: [rows(b), explosive(b, "assign")],
+  loop: [quiet(c), explosive(c, "loop")],
+  failed: rows(d)
+}
+export effect function main() {
+  const exits = [
+    try Effect.exit(pattern(inputs.pattern[0], inputs.pattern[1])),
+    try Effect.exit(assign(inputs.assign[0], inputs.assign[1])),
+    try Effect.exit(loop(inputs.loop[0], inputs.loop[1]))
+  ]
+  try Effect.exit(failed(inputs.failed))
+  return [a, b, c, exits.map(defect).join(), d]
+}

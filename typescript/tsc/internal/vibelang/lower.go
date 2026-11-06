@@ -519,6 +519,12 @@ func (tx *lowering) lowerFunction(node *ast.Node) *ast.Node {
 	if node.Kind == ast.KindArrowFunction {
 		tx.lexicalReceiver(generator)
 	}
+	if isDoArrow(ast.GetSourceFileOfNode(node), node) {
+		// A do runs in the enclosing activation. Delegating to a native
+		// generator lets a JavaScript throw reach the enclosing destructuring
+		// or loop, whose IteratorClose an Effect failure would abandon.
+		return generator
+	}
 	return tx.wrapGenerator("fnUntraced", node, generator)
 }
 
