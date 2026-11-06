@@ -71,6 +71,39 @@ test("setup leaves a pinned dprint configuration's plugins alone and keeps dprin
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
 })
 
+test("setup retains unpinned foreign plugins", t => {
+  const shipped = "npm:vibelang/dprint-plugin.json"
+  for (const plugins of [[shipped, "npm:other/plugin.json"],
+    [`https://plugins.dprint.dev/json-0.20.0.wasm${pin}`, "npm:other/plugin.json", shipped]]) {
+    const root = fixture(t, {
+      "package.json": JSON.stringify({ scripts: { fmt: "dprint check" } }),
+      "dprint.json": JSON.stringify({ plugins })
+    })
+    const first = wireDeveloperTools({ root, specsFor })
+    const config = JSON.parse(readFileSync(join(root, "dprint.json")))
+    for (const plugin of plugins) assert.ok(config.plugins.includes(plugin))
+    assert.equal(JSON.parse(readFileSync(join(root, "package.json"))).scripts.fmt, "dprint check")
+    assert.ok(!first.warnings.some(w => w.includes("pins every plugin by checksum")))
+    assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
+  }
+})
+
+test("an empty formatter plugin list gets a stable pinned TypeScript default", t => {
+  const shipped = "npm:vibelang/dprint-plugin.json"
+  for (const plugins of [[], [shipped], [shipped, shipped]]) {
+    const root = fixture(t, {
+      "package.json": JSON.stringify({ scripts: { fmt: "dprint check" } }),
+      "dprint.json": JSON.stringify({ plugins })
+    })
+    wireDeveloperTools({ root, specsFor })
+    const config = JSON.parse(readFileSync(join(root, "dprint.json")))
+    assert.deepEqual(config.plugins, ["https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"])
+    assert.equal(JSON.parse(readFileSync(join(root, "package.json"))).scripts.fmt,
+      "(dprint check) && vibelang-format --check")
+    assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
+  }
+})
+
 test("ast-grep registration uses the canonical grammar and extends TS rules", t => {
   const root = fixture(t, {
     "package.json": "{}",

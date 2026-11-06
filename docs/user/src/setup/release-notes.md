@@ -26,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - In the TypeScript view that editors read, `fork effect { … }` and the same block after `fork.in(scope)`, `fork.scoped` or `fork.detached` produced broken code, and a later `join` of the fiber reported that the mapper could not tell it held a fiber. These forms now project to the Effect operation they run.
 - Migration could report an empty reason when it could not read a module's imports. It now reports the native parser diagnostic and compiler exit status.
+- Rerunning migration setup could leave an unpinned formatter plugin in a checksum-pinned configuration. It now restores the pinned plugins and formats VibeLang through the companion command.
 - Migration API checks took hours on large packages, because every group of entry points checked the same files again. A comparison now checks each file once for the same environment.
 
 - Test names containing Unicode line or paragraph separators could disappear from the health report. Those names are now retained.

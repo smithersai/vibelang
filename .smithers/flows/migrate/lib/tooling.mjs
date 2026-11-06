@@ -260,14 +260,16 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   if (ts) for (const file of all.filter(f => /\.(?:[cm]?[jt]sx?|vibe|json)$/.test(f) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
     warnings.push(...extensionAllowlistWarnings(ts, readFileSync(join(root, file), "utf8"), file))
   }
-  // VibeLang's dprint plugin is an npm: specifier, which carries no checksum.
-  // A dprint configuration that pins every plugin by checksum (Smithers'
-  // DprintPlugins test requires it) keeps its plugin list, and the dprint
-  // scripts it governs run vibelang-format after dprint instead.
+  // VibeLang's npm plugin has no checksum. Pinned configurations keep their
+  // authored plugins and run vibelang-format after dprint instead. Ignore an
+  // earlier setup's own plugin when recognizing that configuration.
+  const dprintPlugin = "npm:vibelang/dprint-plugin.json"
+  const dprintTypescriptPlugin = "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"
   const dprintConfigs = all.filter(f => /(^|\/)dprint\.json$/.test(f))
   const pinned = new Set(dprintConfigs.filter(f => {
-    const plugins = JSON.parse(readFileSync(join(root, f), "utf8")).plugins ?? []
-    return plugins.length > 0 && plugins.every(p => /@[0-9a-f]{64}$/.test(p))
+    const plugins = (JSON.parse(readFileSync(join(root, f), "utf8")).plugins ?? [])
+      .filter(plugin => plugin !== dprintPlugin)
+    return plugins.every(p => /@[0-9a-f]{64}$/.test(p))
   }))
   const dprintConfigOf = dir => {
     for (let d = dir; ; d = posix.dirname(d)) {
@@ -351,9 +353,12 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   }
   for (const file of dprintConfigs) {
     const config = JSON.parse(readFileSync(join(root, file), "utf8"))
-    if (!pinned.has(file)) {
+    if (pinned.has(file)) {
+      const plugins = (config.plugins ?? []).filter(plugin => plugin !== dprintPlugin)
+      config.plugins = plugins.length ? plugins : [dprintTypescriptPlugin]
+    } else {
       const plugins = config.plugins ?? []
-      config.plugins = [...new Set([...plugins, ...plugins.some(p => /typescript.*\.wasm/.test(p)) ? [] : ["https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"], "npm:vibelang/dprint-plugin.json"])]
+      config.plugins = [...new Set([...plugins, ...plugins.some(p => /typescript.*\.wasm/.test(p)) ? [] : [dprintTypescriptPlugin], dprintPlugin])]
       config.includes = [...new Set([...(config.includes ?? ["**/*"]), "**/*.vibe"])]
       needsCompiler = true
     }
