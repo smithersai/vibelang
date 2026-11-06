@@ -256,21 +256,21 @@ try {
 
   })
 
-  await check("code action: EK2120 warns and EK2121 rejects retired layers, with preserving quick fixes", async () => {
+  await check("code action: EK0909 and EK2121 reject retired declarations, with preserving quick fixes", async () => {
     const file = "src/old-declarations.vibe"
     open(file, "vibe")
     const items = await diagnostics(file)
     const codes = items.map((d) => `${d.source} ${d.code} ${d.severity}`).sort()
-    assert(JSON.stringify(codes) === JSON.stringify(["EK 2120 2", "EK 2121 1"]), `diagnostics ${JSON.stringify(codes)}`)
+    assert(JSON.stringify(codes) === JSON.stringify(["EK 2121 1", "EK 909 1"]), `diagnostics ${JSON.stringify(codes)}`)
     const uri = fileUri(file)
-    const service = items.find((d) => d.code === 2120)
+    const service = items.find((d) => d.code === 909)
     const serviceStart = at(file, "service class Greeting")
-    assert(service.range.start.line === serviceStart.line && service.range.start.character === serviceStart.character, `EK2120 range ${JSON.stringify(service.range)}`)
+    assert(service.range.start.line === serviceStart.line && service.range.start.character === serviceStart.character, `EK0909 range ${JSON.stringify(service.range)}`)
     const serviceActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: service.range, context: { diagnostics: [service], only: ["quickfix"] } })) ?? []
     const serviceFix = serviceActions.find((a) => a.title === "Write service without class")
-    assert(serviceFix, `no EK2120 quick fix among ${JSON.stringify(serviceActions.map((a) => a.title))}`)
+    assert(serviceFix, `no EK0909 quick fix among ${JSON.stringify(serviceActions.map((a) => a.title))}`)
     const serviceEdits = serviceFix.edit?.changes?.[uri] ?? []
-    assert(serviceEdits.length === 1 && serviceEdits[0].newText === "service" && JSON.stringify(serviceEdits[0].range) === JSON.stringify(service.range), `EK2120 edits ${JSON.stringify(serviceEdits)}`)
+    assert(serviceEdits.length === 1 && serviceEdits[0].newText === "service" && JSON.stringify(serviceEdits[0].range) === JSON.stringify(service.range), `EK0909 edits ${JSON.stringify(serviceEdits)}`)
     const layer = items.find((d) => d.code === 2121)
     const layerStart = at(file, "layer GreetingLive")
     assert(layer.range.start.line === layerStart.line && layer.range.start.character === layerStart.character, `EK2121 range ${JSON.stringify(layer.range)}`)

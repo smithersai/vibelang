@@ -1,5 +1,5 @@
-// Older spellings: EK2120 and EK2121 warn, and their quick fixes write
-// service without class and the Layer.effect block.
+// Retired service class and layer declarations report EK0909 and EK2121.
+// Their quick fixes write service without class and the Layer.effect block.
 service class Greeting {
   text(): string!!
 }

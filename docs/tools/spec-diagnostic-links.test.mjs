@@ -110,7 +110,7 @@ function repairReferenceFindings(examples, readChapter = chapter) {
 
 test("retained native and mapper witnesses link their diagnostic repair definitions", () => {
   assert.deepEqual(repairExamples.map(example => example.code).sort(),
-    ["EK1011", "EK2112", "EK2113", "EK2120", "EK2121", "EK9001", "EK9002", "EK9003", "EK9004"])
+    ["EK0909", "EK1011", "EK2112", "EK2113", "EK2121", "EK9001", "EK9002", "EK9003", "EK9004"])
   for (const example of repairExamples) {
     assert.ok(example.source || example.archive || example.host, example.code + ": executable host")
     assert.ok(!example.control && !example.retired, example.code + ": active reporting witness")
