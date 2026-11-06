@@ -49,14 +49,15 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     return node
   }
   const isJS = /\.[cm]?jsx?$/.test(fileName)
-  const normalization = (expression, imports = false, entry) => {
+  const normalization = (expression, imports = false, entry, beforeVibex = false) => {
     const reserved = new Set((expression + " " + (entry ?? "")).match(/[A-Za-z_$][\w$]*/g) ?? [])
     const fresh = base => { let name=base; for(let i=2;reserved.has(name);i++)name=base+i;reserved.add(name);return name }
     const key = entry ? fresh("__vibelangKey") : imports && expression === "key" ? "__vibelangKey" : "key"
     const target = entry ? fresh("__vibelangTarget") : imports && expression === "target" ? "__vibelangTarget" : "target"
     const parameter = isJS ? "[" + key + ", " + target + "]" : "[" + key + ", " + target + "]: [string, unknown]"
     const explicit = target + ' !== null && typeof ' + target + ' === "object" && "vibelang-source" in ' + target + ' && typeof ' + target + '["vibelang-source"] === "string"'
-    const paired = target + ' !== null && typeof ' + target + ' === "object" && "default" in ' + target + ' && typeof ' + target + '.default === "string" && ' + "/\\.vibex?$/.test(" + target + '.default) && "types" in ' + target + ' && ' + target + '.types === ' + target + '.default.slice(0, -5) + ".d.vibe.ts"'
+    const vibeDefault = beforeVibex ? target + '.default.endsWith(".vibe")' : "/\\.vibex?$/.test(" + target + ".default)"
+    const paired = target + ' !== null && typeof ' + target + ' === "object" && "default" in ' + target + ' && typeof ' + target + '.default === "string" && ' + vibeDefault + ' && "types" in ' + target + ' && ' + target + '.types === ' + target + '.default.slice(0, -5) + ".d.vibe.ts"'
     let value = explicit + " ? " + target + '["vibelang-source"] : ' + paired + " ? " + target + ".default : " + target
     // Only the owning migration condition supplies a types source. Runtime
     // conditions retain the repository's own publication mapping policy.
@@ -94,7 +95,12 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     const original = entries.arguments[0], expression = original.getText(source)
     const actual = JSON.stringify(shape(call))
     const entry = importsConditions(original)
-    const candidates = [normalization(expression,false),normalization(expression,true),...(entry?[normalization(expression,true,entry)]:[])]
+    // An import map's endsWith wrapper from before VIP-39 still upgrades.
+    // Export wiring from then stays byte-identical, so only entries match it.
+    const candidates = [normalization(expression,false),normalization(expression,true),...(entry?[
+      normalization(expression,true,entry),
+      normalization(expression,false,undefined,true),normalization(expression,true,undefined,true),normalization(expression,true,entry,true)
+    ]:[])]
     return candidates.some(candidate=>actual===JSON.stringify(shape(expressionNode(candidate)))) ? original : argument
   }
   const addFunction = (name, fn, binding = fn) => {

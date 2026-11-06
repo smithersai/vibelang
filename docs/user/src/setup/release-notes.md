@@ -26,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration setup could leave rewritten files unformatted because a formatter plugin was not installed yet. Setup now installs the selected dependencies before formatting, including when adding workspace packages.
 - Converting an `async` function could produce invalid code when a nested scope shadowed `Effect`; the editor now withholds the conversion until that binding is renamed.
+- Rerunning migration setup left a publication wrapper from an earlier release in place, so packed private imports lost their declarations. Setup now upgrades both wrapper forms.
 - Migration could stall after emitting JavaScript while a loader cache compilation kept running; each optional record now has a deadline, reports the affected project and elapsed time, and lets later projects continue.
 
 - Quoted, numeric and template `data` variant names reported a generic identifier error. They now report `EK1606` while retaining the following variants and declarations.
