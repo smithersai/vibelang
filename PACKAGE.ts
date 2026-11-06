@@ -1544,8 +1544,8 @@ const targets = {
     "Go tests of internal/vibelangmapper.",
     `CGO_ENABLED=0 ${effect} VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc ` +
       "VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper " +
-      "go test -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelangmapper/...",
-    [Tsc["vibelangmapper-files"], Typescript.compiler, Typescript.mapper]
+      "node ../../scripts/go-test-progress.mjs go test -json -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelangmapper/...",
+    [Tsc["vibelangmapper-files"], Typescript.compiler, Typescript.mapper, S.file("//scripts/go-test-progress.mjs")]
   ),
   // The merge gate runs it with the compiler step, where //:go-vibelangfuzz
   // runs only post-merge: a fix that makes a pending input pass without

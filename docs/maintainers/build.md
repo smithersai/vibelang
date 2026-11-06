@@ -486,6 +486,16 @@ file; a missing file fails the tests instead of linking quietly. A plain
 `go test ./internal/vibelangmapper/...` leaves both unset and links its own,
 so it needs no graph.
 
+The scope writes `[mapper-scope]` JSON records to stderr when handing over a
+prebuilt tool, building either tool, or compiling the runtime. Each stage emits
+`start`, `progress` every 30 seconds while pending, and `pass` or `fail`, with
+process and stage IDs and elapsed milliseconds. Completion includes the captured
+output byte count and exit code; `cause` distinguishes an exit, a signal and an
+operation failure. A build stage includes any Go admission wait. Records omit
+paths, arguments, environment values and captured output. Failures still retain
+the complete command output in the test error. Use `go test -v` or `-json` to
+see these records during passing checks.
+
 The example checker reads each compiled example's `package.json` to decide
 whether to run its test script. A manifest read or parse failure fails that
 example as `test script discovery`, keeps the diagnostic in

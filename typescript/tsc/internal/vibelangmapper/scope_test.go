@@ -76,7 +76,7 @@ func buildMapperTestScope(root string) error {
 	run := func(dir, program string, args ...string) error {
 		cmd := exec.Command(program, args...)
 		cmd.Dir = dir
-		out, err := cmd.CombinedOutput()
+		out, err := observeScopeStage("runtime-compile", os.Stderr, scopeProgressInterval, cmd.CombinedOutput)
 		if err != nil {
 			return fmt.Errorf("mapper test scope: %s: %w\n%s", program, err, out)
 		}
@@ -185,11 +185,14 @@ func provideScopeTool(root, scope, tool string) error {
 		return err
 	}
 	if source != "" {
-		return os.Symlink(source, target)
+		_, err := observeScopeStage("handover-"+tool, os.Stderr, scopeProgressInterval, func() ([]byte, error) {
+			return nil, os.Symlink(source, target)
+		})
+		return err
 	}
 	cmd := exec.Command("go", "build", "-p", "8", "-trimpath", "-buildvcs=false", "-o", target, "./cmd/"+tool)
 	cmd.Dir = filepath.Join(root, "typescript/tsc")
-	if out, err := cmd.CombinedOutput(); err != nil {
+	if out, err := observeScopeStage("build-"+tool, os.Stderr, scopeProgressInterval, cmd.CombinedOutput); err != nil {
 		return fmt.Errorf("mapper test scope: go build ./cmd/%s: %w\n%s", tool, err, out)
 	}
 	return nil
