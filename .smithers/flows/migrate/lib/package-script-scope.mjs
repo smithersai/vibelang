@@ -2,6 +2,7 @@
 import { posix } from "node:path"
 import { isDeepStrictEqual } from "node:util"
 import { replaceWord } from "./codemod.mjs"
+import { routePrefix } from "./bundled-imports.mjs"
 
 export function packageScriptProofs({ files, codemod, manifestSnapshots = {} }) {
   const moved = new Map(files.filter(f => f.migrated).map(f => [f.path, f.planned]))
@@ -25,7 +26,37 @@ export function packageScriptProofs({ files, codemod, manifestSnapshots = {} }) 
       }
       // Other manifest changes need their own existing codemod authority.
       const otherAuthority = [...(codemod.exportEdits ?? []), ...(codemod.scriptEdits ?? [])].some(e => e.manifest === manifest)
-      return { manifest, ok: isDeepStrictEqual(otherAuthority ? before.scripts : before, otherAuthority ? after.scripts : after) }
+      return { manifest, ok: isDeepStrictEqual(otherAuthority ? before.scripts : withoutEmittedRoutes(before), otherAuthority ? after.scripts : withoutEmittedRoutes(after)) }
     } catch { return { manifest, ok: false } }
   })
+}
+
+// Emission (bundled-imports.mjs) adds and drops `#vibelang/emitted/<path>`
+// routes in a manifest it also edits for scripts. Its key fixes the whole
+// value: the source ./<path>.vibe or .vibex, its sidecar beside it or under
+// .vibe/declarations, and JavaScript under the package's own .vibelang/js.
+// Only such a route is the flow's output; any other change still fails.
+const sidecarRoute = /^\.\/(?:\.vibe\/declarations\/)?[^?#*]+\.d\.vibex?\.ts$/
+function isEmittedRoute(key, value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false
+  const keys = Object.keys(value).sort().join()
+  if (key === routePrefix + "*") {
+    return keys === "default,types,vibelang-source" && value.default === "./.vibelang/js/*.js" && value["vibelang-source"] === "./*.vibe" &&
+      (value.types === "./*.d.vibe.ts" || value.types === "./.vibe/declarations/*.d.vibe.ts")
+  }
+  const path = key.startsWith(routePrefix) ? key.slice(routePrefix.length) : ""
+  if (!path || /[*?#\\]|(?:^|\/)\.\.(?:\/|$)/.test(path) || keys !== "default,types,vibelang-source") return false
+  const source = /^\.\/(.+)(\.vibex?)$/.exec(value["vibelang-source"])
+  if (!source || source[1] !== path) return false
+  const types = sidecarRoute.test(value.types) && value.types.endsWith("/" + posix.basename(path) + ".d" + source[2] + ".ts")
+  const output = typeof value.default === "string" && value.default.startsWith("./.vibelang/js/") && /\.jsx?$/.test(value.default) && !/(?:^|\/)\.\.(?:\/|$)/.test(value.default)
+  return types && output
+}
+
+function withoutEmittedRoutes(json) {
+  if (json?.imports === null || typeof json?.imports !== "object" || Array.isArray(json.imports)) return json
+  // Emission deletes an imports object it empties, so an empty one is absent.
+  const imports = Object.fromEntries(Object.entries(json.imports).filter(([key, value]) => !isEmittedRoute(key, value)))
+  const { imports: _, ...rest } = json
+  return Object.keys(imports).length ? { ...rest, imports } : rest
 }

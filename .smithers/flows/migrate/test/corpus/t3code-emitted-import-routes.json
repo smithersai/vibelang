@@ -1,0 +1,25 @@
+{
+  "key": "flow-gap:generated-emitted-import-map-foreign-file",
+  "source": "drive-t3code 2026-11-06T20:32Z, stock d1d Relay one-pass: verify foreignFiles=false on infra/relay/package.json, 41 generated routes, 9 kept files",
+  "manifest": "infra/relay/package.json",
+  "script": "push:android:watch",
+  "module": "infra/relay/scripts/android-push-watch.vibe",
+  "before": "node --import vibelang/register scripts/android-push-watch.ts",
+  "routes": {
+    "#vibelang/emitted/src/Config": {
+      "types": "./src/Config.d.vibe.ts",
+      "vibelang-source": "./src/Config.vibe",
+      "default": "./.vibelang/js/src/Config.js"
+    },
+    "#vibelang/emitted/src/WebCrypto": {
+      "types": "./src/WebCrypto.d.vibe.ts",
+      "vibelang-source": "./src/WebCrypto.vibe",
+      "default": "./.vibelang/js/src/WebCrypto.js"
+    },
+    "#vibelang/emitted/src/agentActivity/FcmAssertionSigner": {
+      "types": "./src/agentActivity/FcmAssertionSigner.d.vibe.ts",
+      "vibelang-source": "./src/agentActivity/FcmAssertionSigner.vibe",
+      "default": "./.vibelang/js/src/agentActivity/FcmAssertionSigner.js"
+    }
+  }
+}
