@@ -16,9 +16,11 @@ func formatVibeLangDocument(ctx context.Context, file *ast.SourceFile) []core.Te
 	source := file.Text()
 	result, err := vibelangfmt.Format(file.FileName().AsString(), source, func(text string) (string, error) {
 		projection := parser.ParseSourceFile(ast.SourceFileParseOptions{
-			FileName: "/vibelang-format.ts", PathKey: "/vibelang-format.ts",
+			// The projection is already TypeScript. A native extension would
+			// let its retained directive select VibeLang again.
+			FileName: "/vibelang-format.projection", PathKey: "/vibelang-format.projection",
 		}, text, core.ScriptKindTS)
-		return core.ApplyBulkEdits(text, FormatDocument(ctx, projection)), nil
+		return core.ApplyBulkEdits(text, FormatSpan(ctx, core.NewTextRange(0, projection.End()), projection, FormatRequestKindFormatDocument)), nil
 	})
 	if err != nil || result == source {
 		return nil
