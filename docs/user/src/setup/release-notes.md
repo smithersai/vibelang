@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
+
 - Vite main and worker bundles could compile the same project simultaneously and exhaust memory. Matching plugin instances now share compilation, and closing one keeps the others running.
 
 - Callbacks declared `@throws {any}` could be rejected by compatible typed callback contracts. They now follow TypeScript assignability, while `unknown` and no-throw contracts keep their checks.

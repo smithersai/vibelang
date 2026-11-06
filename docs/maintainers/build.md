@@ -467,6 +467,14 @@ coverage collection keeps its ordinary behavior.
 
 ## Mapper test executables
 
+The stock projection snapshots in
+`typescript/tsc/internal/vibelangmapper/testdata/stock/` pin both checking
+and executable output. The executable snapshots follow the compiler's runtime
+helper entrypoint. After reviewing an intended projection change, regenerate
+with `UPDATE_STOCK_GOLDENS=1 go test -count=1 -run '^TestStockProjectionGoldens$' ./internal/vibelangmapper/...`
+from `typescript/tsc/`. The test also checks the checking projection with the
+pinned stock TypeScript; keep that dependency installed so the check runs.
+
 The `internal/vibelangmapper` tests run two executables: the compiler, which
 compiles a copy of `packages/runtime` for their execution scope, and the mapper
 CLI. `//typescript:compiler` and `//typescript:mapper` build both from the
