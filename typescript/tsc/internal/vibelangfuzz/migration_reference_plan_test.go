@@ -17,6 +17,7 @@ const migrationReferencePreservation = "A rewrite that can't preserve types, beh
 
 func TestMigrationReferencePlanQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", migrationReferencePreservation)
+	chapterSays(t, "007-tooling.md", "Fields retain their TypeScript meaning")
 	for _, file := range []string{".smithers/flows/migrate/README.md", "docs/user/src/setup/existing-project.md"} {
 		text, err := os.ReadFile(filepath.Join(Root(), file))
 		if err != nil {
@@ -33,7 +34,7 @@ func TestMigrationReferencePlanQuoted(t *testing.T) {
 // vendor references must leave a reference-free owned leaf and its outputs alone.
 func FuzzMigrationReferencePlan(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"unowned-direct", "unowned-transitive", "owned-direct", "owned-transitive", "unsafe-output"}
+	keys := []string{"unowned-direct", "unowned-transitive", "owned-direct", "owned-transitive", "unsafe-output", "options-base-solution", "options-base-transitive", "options-base-owned", "options-base-standalone"}
 	for _, key := range keys {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(7))
@@ -47,7 +48,11 @@ func FuzzMigrationReferencePlan(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		corpus, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", "t3code-reference-missing-child.json"))
+		corpusName := "t3code-reference-missing-child.json"
+		if strings.HasPrefix(key, "options-base-") {
+			corpusName = "t3code-reference-options-base.json"
+		}
+		corpus, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", corpusName))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,12 +80,26 @@ func FuzzMigrationReferencePlan(f *testing.F) {
 			State               string
 			Projects            []string
 			Executed, Unchanged bool
+			OK                  bool
+			Roots               []string
 		}
 		if err := json.Unmarshal(output, &result); err != nil {
 			t.Fatalf("invalid reference result: %v\n%s", err, output)
 		}
 		if result.Executed || !result.Unchanged {
 			t.Fatalf("reference plan changed source/output or ran a build: %s", output)
+		}
+		if strings.HasPrefix(key, "options-base-") {
+			gapKey := "options:" + strings.TrimPrefix(key, "options-base-")
+			if result.Error != nil {
+				t.Fatalf("options-base fixture could not be planned: %s", output)
+			}
+			if !result.OK {
+				Gap(t, migrationReferenceTarget, gapKey, "Chapter 007: %s; an options-only base is not a referenced project; a real referenced owner remains included: %s", migrationReferenceQuote, output)
+			}
+			ExpectPending(t, migrationReferenceTarget, gapKey)
+			ExpectPending(t, migrationReferenceTarget, specCorpusKey(t))
+			return
 		}
 		if key == "unsafe-output" {
 			if result.Error == nil || !strings.Contains(*result.Error, "unsafe project output") {

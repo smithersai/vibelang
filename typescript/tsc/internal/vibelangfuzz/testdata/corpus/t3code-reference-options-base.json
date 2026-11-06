@@ -1,0 +1,37 @@
+{
+  "source": "export const value = 1;\n",
+  "quote": "They follow the reverse reference closure",
+  "files": {
+    "tsconfig.base.json": {
+      "compilerOptions": {
+        "types": [],
+        "strict": true,
+        "target": "ESNext",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "outDir": "./dist"
+      }
+    },
+    "pkg/tsconfig.json": {
+      "extends": "../tsconfig.base.json",
+      "compilerOptions": {
+        "composite": true,
+        "rootDir": ".",
+        "outDir": "../dist/pkg"
+      },
+      "include": [
+        "src.ts"
+      ]
+    },
+    "solution.json": {
+      "files": [],
+      "references": [
+        {
+          "path": "./pkg"
+        }
+      ]
+    },
+    "pkg/src.ts": "export const value = 1;\n",
+    "unrelated/bad.ts": "const broken: string = 1;\n"
+  }
+}
