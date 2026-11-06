@@ -245,6 +245,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     if (!isMovable(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} cannot move to ${posix.basename(platformPath(file))}` }
   }
   const kept = declarations.filter((d) => !moved.has(d))
+  const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
+  if (inferredTypes.refused) return inferredTypes
   // A kept type that reads a moved value, `type Shape = typeof Shape.Type`,
   // would make the module's declaration import it from the sibling.
   const movedValues = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
@@ -288,7 +290,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   if (fromSibling.length) head.push(`import { ${fromSibling.map((n) => (alias.has(n) ? `${n} as ${alias.get(n)}` : n)).join(", ")} } from "${sibling}"`)
   const body = []
   for (const d of declarations) {
-    if (!moved.has(d)) body.push(statementText(source, d.statement))
+    if (!moved.has(d)) body.push(inferredTypes.text(d.statement))
     else if (d.exported) body.push(wrappers.find((w) => w.d === d).text(namespace))
     else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name}: typeof ${alias.get(name)} = ${alias.get(name)}`)
   }
@@ -704,6 +706,8 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
     if (readsImportMeta(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which a module body cannot (EK4009)` }
   }
   const kept = declarations.filter((d) => !moved.has(d))
+  const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
+  if (inferredTypes.refused) return inferredTypes
   if (!kept.some((d) => !typeOnly(d) && !reexport(d))) return { refused: platformSeed.length ? `${file} is platform code only` : `${file}: every value of the module reaches a throw, so it stays TypeScript` }
   const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
   const taken = new Set([...declared.keys(), ...imported, ...declarations.flatMap((d) => [...d.reads])])
@@ -764,11 +768,75 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (!reexports && (exports_.length || typeExports.length || reexportsDefault)) {
     return { refused: `${file}: ${[...exports_, ...typeExports, ...(reexportsDefault ? ["default"] : [])].join(", ")} would be declared by \`module ${name}\`, a new public declaration file; platformModuleBodies allows it` }
   }
-  const module = joinParts(leadingHeader(source), head, [body], from, kept.map((d) => statementText(source, d.statement)))
+  const module = joinParts(leadingHeader(source), head, [body], from, kept.map((d) => inferredTypes.text(d.statement)))
   return { module, name, moved: movedList.flatMap((d) => [...d.names]), kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]) }
 }
 
 const intersect = (a, b) => new Set([...a].filter((x) => b.has(x)))
+
+
+// An imported factory's inferred object is expanded without its member JSDoc
+// by TypeScript declaration emit. Keep its concrete return type linked to the
+// factory instead of moving the initializer, which could reorder evaluation.
+function inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file) {
+  const factories = new Map()
+  const callable = (statement, name) => {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === name) return { node: statement, contextual: false }
+    if (!ts.isVariableStatement(statement)) return null
+    const variable = statement.declarationList.declarations.find(d => ts.isIdentifier(d.name) && d.name.text === name)
+    let node = variable?.initializer
+    while (node && ts.isParenthesizedExpression(node)) node = node.expression
+    return node && (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) ? { node, contextual: !!variable.type } : null
+  }
+  const memberDocs = node => !!node && (
+    !!node.jsDoc?.length && (
+      ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node) ||
+      ts.isPropertySignature(node) || ts.isMethodDeclaration(node) ||
+      ts.isMethodSignature(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)
+    ) || !!ts.forEachChild(node, child => memberDocs(child) || undefined)
+  )
+  for (const declaration of moved) for (const name of declaration.names) {
+    const fn = callable(declaration.statement, name)
+    if (!fn || !memberDocs(fn.node)) continue
+    const overloaded = declarations.filter(d => d.names.has(name)).length !== 1
+    factories.set(name, { ...fn, unsupported: overloaded || fn.contextual || !!fn.node.typeParameters?.length || !!fn.node.asteriskToken })
+  }
+  const shadowed = imported.has("ReturnType") || declarations.some(d => d.names.has("ReturnType") && (
+    ts.isTypeAliasDeclaration(d.statement) || ts.isInterfaceDeclaration(d.statement) ||
+    ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement) || ts.isModuleDeclaration(d.statement)
+  ))
+  const insertions = new Map()
+  for (const declaration of kept) {
+    if (!ts.isVariableStatement(declaration.statement)) continue
+    for (const variable of declaration.statement.declarationList.declarations) {
+      if (variable.type || !ts.isIdentifier(variable.name)) continue
+      let call = variable.initializer
+      while (call && ts.isParenthesizedExpression(call)) call = call.expression
+      if (!call || !ts.isCallExpression(call) || call.questionDotToken) continue
+      let target = call.expression
+      while (ts.isParenthesizedExpression(target)) target = target.expression
+      if (!ts.isIdentifier(target)) continue
+      const factory = factories.get(target.text)
+      if (!factory) continue
+      if (factory.unsupported || call.typeArguments?.length) return {
+        refused: `${file}: inferred member documentation for ${variable.name.text} depends on a generic, overloaded or contextually typed factory; keep the module in TypeScript`
+      }
+      if (shadowed) return { refused: `${file}: ReturnType is shadowed, so inferred member documentation for ${variable.name.text} cannot retain its factory type` }
+      const edits = insertions.get(declaration.statement) ?? []
+      edits.push({ at: variable.name.end, text: `: ReturnType<typeof ${target.text}>` })
+      insertions.set(declaration.statement, edits)
+    }
+  }
+  return { text: statement => {
+    let text = statementText(source, statement)
+    const start = statement.end - text.length
+    for (const edit of (insertions.get(statement) ?? []).sort((a, b) => b.at - a.at)) {
+      const at = edit.at - start
+      text = text.slice(0, at) + edit.text + text.slice(at)
+    }
+    return text
+  } }
+}
 
 // The names a `typeof x` type query reads anywhere in source.
 function typeQueryNames(source, ts) {
