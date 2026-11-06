@@ -241,16 +241,25 @@ function auditNativeSource(t, source, target = "typescript/PACKAGE.ts") {
     writeFileSync(path, file === target ? source : "")
   }
   const audit = join(dir, "scripts/go-build-flags.test.mjs")
-  writeFileSync(audit, readFileSync(new URL(import.meta.url)))
+  writeFileSync(audit, readFileSync(new URL(import.meta.url), "utf8") +
+    '\nconsole.log("AUDIT_FIXTURE_PID " + process.pid)\n')
   const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync(process.execPath, [
-    "--test", "--test-name-pattern=^every go build or go test line", audit
+    "--test", "--experimental-test-isolation=none", "--test-name-pattern=^every go build or go test line", audit
   ], { encoding: "utf8", timeout: 15_000, env })
   assert.ifError(result.error)
   assert.match(result.stdout, /every go build or go test line compiles with -trimpath/)
   return result
 }
+
+test("trimpath fixtures run the actual audit in one isolated process", t => {
+  const result = auditNativeSource(t, "go test -trimpath ./fixture\n", "scripts/build-vibelang.sh")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  const pid = result.stdout.match(/AUDIT_FIXTURE_PID (\d+)/)
+  assert.ok(pid, "the real audit must report its executing process")
+  assert.equal(Number(pid[1]), result.pid, "the isolated fixture must not start another test worker")
+})
 
 const nativeSource = read("typescript/PACKAGE.ts")
 test("trimpath audit accepts the current native command declarations", t => {

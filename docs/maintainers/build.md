@@ -236,6 +236,13 @@ same file. It also checks every invocation in a mixed command chain, so one
 command's explicit flag or inline environment cannot cover a later command.
 Quoted selectors keep their shell boundaries; text inside a selector does not
 supply a compilation flag.
+
+Each generated build flag fixture runs the real audit in its own child process.
+Node runs the selected test inside that child with `--experimental-test-isolation=none`,
+avoiding an extra worker for each command. The fixture returns the audit's
+exit status. A regression records the executing process and verifies that
+it is the spawned child.
+
 Go applies repeated flags in order, and command-line flags override
 the defaults in `GOFLAGS`. The audit follows that effective setting:
 `GOFLAGS=-trimpath go test -trimpath=false ./pkg` is rejected, while

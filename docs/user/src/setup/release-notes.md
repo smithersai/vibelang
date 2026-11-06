@@ -45,6 +45,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration API checks refused any project that loaded two byte-identical copies of a package such as `@types/node`. Copies now count as one ambient origin when their bytes, dependency closures and load order prove it; differing copies and contributors loaded between them still refuse.
 - A migration API comparison that exhausted its 2 GiB worker heap failed the package. It now retries at 4 and 8 GiB where the machine has the memory, and reports the failure if the last size also fails.
 - Build checks could accept a Go command that disabled `-trimpath`; they now respect the last flag and command-line overrides.
+- Contributor build checks spent time starting an extra test worker for every generated command; each fixture now runs in one isolated process.
 - A named tuple type inside an `effect` function, arrow or method could crash the compiler. Tuple labels are now treated as type-only names, and parameter writes retain their native call-time binding.
 - Build-configuration checks could stop with a missing helper error; their fixtures now load the same input helpers as the build graph.
 - A `join` operand typed `any` or `never` could infer a collection-shaped value or impossible error type. It now infers the same result and error types as `Fiber.join`.
