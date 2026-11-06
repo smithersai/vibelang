@@ -147,3 +147,12 @@ maps check empty boundaries, finite scores and matching results.
 cd .smithers && bun flows/ci-health/eval.ts            # compare with baseline.json; exit 1 on a drop
 cd .smithers && bun flows/ci-health/eval.ts --update   # record baseline.json
 ```
+
+
+The set scorers count a repeated expected or observed name once. Separate
+targets can fail tests with the same name; reports retain those targets and
+their counters, while grading compares name membership. The `combined-reporters`
+eval joins both actual reporter histories and checks their overlapping names.
+Regenerate the joint history with
+`node .smithers/flows/ci-health/fixture-combined-reporters/record.mjs` after
+refreshing either source history.

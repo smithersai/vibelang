@@ -2435,3 +2435,10 @@ Matching empty results score `1`; empty/nonempty mismatches score `0`,
 including duration-regression expectations and their timeout counts.
 The `empty-regressions` case runs the real workflow on recorded varying-key
 runs, and generated label sets and duration maps check the score boundaries.
+
+
+CI health set scores count duplicate expected and observed names once.
+Two targets can report failures with the same name without losing points
+when the expected name set matches. The joint actual-reporter fixture keeps
+both targets and their independent counters; generated repetitions and
+permutations check that grading still penalizes missing and extra names.

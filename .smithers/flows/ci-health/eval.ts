@@ -162,8 +162,26 @@ cases.push({
   } satisfies Input
 });
 
+// Both actual reporter histories contain shared names under separate targets.
+// Expected membership is the union of the two existing fixture oracles.
+const reporterNames = [...new Set(cases
+  .filter(item => item.name === "node-reporter" || item.name === "migrate-reporter")
+  .flatMap(item => item.input.tests ?? []))];
+cases.push({
+  name: "combined-reporters",
+  input: {
+    fixture: "fixture-combined-reporters",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: reporterNames,
+    exactTests: true,
+    intermittent: reporterNames,
+    causes: { "//packages:compiler-test-2": "timeout", "//packages:migrate-test": "timeout" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
-  Scorer.make({ id: `ci-health/${id}`, version: "2", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
+  Scorer.make({ id: `ci-health/${id}`, version: "3", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
 const flaky = score("flaky", (i, o) => (i.flaky ? exactly(i.flaky, o.flaky) : 1));
 const intermittent = score("intermittent", (i, o) => (i.intermittent ? exactly(i.intermittent, o.intermittent) : 1));

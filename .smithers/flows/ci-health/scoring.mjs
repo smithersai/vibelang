@@ -1,8 +1,9 @@
-// Precision times recall for sets of distinct labels.
+// Precision times recall of label sets. Repeated names count once.
 export const exactly = (want, got) => {
-  if (want.length === 0 || got.length === 0) return Number(want.length === got.length)
-  const right = want.filter(label => got.includes(label)).length
-  return (right / want.length) * (right / got.length)
+  const expected = new Set(want), observed = new Set(got)
+  if (expected.size === 0 || observed.size === 0) return Number(expected.size === observed.size)
+  const right = [...expected].filter(label => observed.has(label)).length
+  return (right / expected.size) * (right / observed.size)
 }
 
 // A duration comparison also grades each expected target's timeout count.

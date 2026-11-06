@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A health report could lose points when several targets failed tests with the same name. Repeated names now count once when the report is graded.
+
 - Following the pnpm install guide could select a newer Node helper and report incompatible Effect peers. The guide now puts the transitive pin in `pnpm-workspace.yaml`.
 
 - Following the Yarn install guide could stop compilation with `EK3201` after selecting a newer Node helper. The guide now pins that helper with Yarn's `resolutions` setting.
