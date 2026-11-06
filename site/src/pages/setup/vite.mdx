@@ -110,6 +110,8 @@ file or the helper has no runtime source. A config graph outside the migration
 scope keeps its original loader and imports. Setup reports a config without a
 matching script so its caller can supply the same preload and flag.
 
+A migrated config helper may retain an extensionless import of an unchanged `.ts` or `.js` sibling. The Node preload resolves that sibling or its directory index in TypeScript's file order, so importing the same native file directly keeps one module instance.
+
 ## 2. Configure tsconfig.json
 
 Support for the new forms and configuration files arrives with the compiler's VIP implementation.

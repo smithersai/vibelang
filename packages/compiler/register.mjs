@@ -189,9 +189,13 @@ registerHooks({
       }
       // TypeScript resolves an extensionless import, ./archive, to
       // archive.vibe after archive.ts and archive.tsx; Node's own resolution
-      // knows no .vibe file.
+      // knows no .vibe file. From a compiled module, the same lookup also serves
+      // TypeScript and JavaScript siblings; declarations have no runtime source.
       const source = extensionlessImport(dirname(fileURLToPath(parent)), clean(specifier))
-      if (source?.endsWith(".vibe")) return resolved(nextResolve(pathToFileURL(source).href + target.search + target.hash, context))
+      const nativeSource = source && /\.(?:tsx?|jsx?)$/.test(source) && !source.endsWith(".d.ts")
+      if (source?.endsWith(".vibe") || nativeSource && compiled(parent)) {
+        return resolved(nextResolve(pathToFileURL(source).href + target.search + target.hash, context))
+      }
       if (error.code !== "ERR_MODULE_NOT_FOUND" || !compiled(parent)) throw error
       if (moduleOutput(target.href) !== undefined) return resolved({ url: target.href, format: "module", shortCircuit: true })
       const path = fileURLToPath(clean(target.href))

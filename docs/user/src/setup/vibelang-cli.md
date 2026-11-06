@@ -421,7 +421,7 @@ its `.vibe` modules loads. The cache tracks that package's nearest config,
 `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, so editing it
 invalidates the cached result. An extensionless import resolves as TypeScript's
 `Bundler` resolution does: `../src/archive` reaches `archive.vibe` when there
-is no `archive.ts` or `archive.tsx`, and `./mount` reaches `mount/index.vibe`.
+is no `archive.ts` or `archive.tsx`, and `./mount` reaches `mount/index.vibe`. A compiled `.vibe` module or module body can also import an unchanged TypeScript or JavaScript sibling without its extension, including a directory index. The hook follows the same file order and preserves the native module's identity. Declaration files do not supply a runtime module.
 
 When a package export names an emitted module under `.vibelang/js/`, both source loaders follow its source map or migration-generated source header. They distinguish `x.js` from `x.jsx` under the project’s inherited `jsx` mode. Without that metadata, a mirrored path redirects only when exactly one source can produce that output; ambiguous siblings leave the emitted module in place.
 

@@ -1,0 +1,9 @@
+{
+  "rule": "An extensionless import resolves as TypeScript's Bundler resolution does.",
+  "case": {
+    "name": "contract",
+    "layout": "file",
+    "kind": "ts",
+    "consumer": "import"
+  }
+}
