@@ -207,4 +207,6 @@ For `try.allSettled`, explicit array-literal elements keep their tuple positions
 
 Each operation runs its elements on separate fibers. Provide their service requirements around the combined `Effect`.
 
+Both a braced body and a single statement support the same head patterns and `is` bindings in the TypeScript projection.
+
 The head of `for concurrent` must declare its item with `const` or `let`. A `var`, `using`, `await using`, or assignment head reports `EK1906`, including with `--noCheck`. To assign an existing variable, declare a fresh item and assign inside the body: `for concurrent (const item of items) { current = item }`.
