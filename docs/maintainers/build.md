@@ -2250,3 +2250,5 @@ Optional object-property bindings initialize their lexical cell only after a suc
 `//:mapper-effect-block-source-ownership` checks explicit program blocks, blocks run directly by `try`, nested plain callback boundaries, resolver controls and keyed native-to-mapper diagnostic comparisons.
 
 `//:catch-completion-declaration-surface` checks nested catch runtime results, the exact declaration goldens, and keyed literal-return and normal-completion controls.
+
+The runner inventory identifies the documentation suites by their file selector. Reporting flags and option order can change without losing that identity; the Bun budget check still requires the explicit deadline. Real Bun fixtures retain the selected suites, exclusions and failure status across reporting and worker-count profiles.

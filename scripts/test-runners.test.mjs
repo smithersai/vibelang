@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readdirSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { createRequire } from "node:module"
+import { spawnSync } from "node:child_process"
 import { dirname, resolve, relative, join, basename } from "node:path"
 import { tmpdir } from "node:os"
 import { matchesGlob } from "node:path"
@@ -41,7 +42,7 @@ const runs = [
   ["site/scripts/sync-spec-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-spec-docs.test.mjs"],
   ["site/scripts/sync-user-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-user-docs.test.mjs"],
   [".smithers/flows/effect-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
-  ["docs/tools/*.test.*", "PACKAGE.ts", "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.*"],
+  ["docs/tools/*.test.*", "PACKAGE.ts", "$(ls *.test.*"],
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
   ["packages/runtime/tests/entry-exports.node.test.mjs", "packages/PACKAGE.ts", "node --test packages/runtime/tests/entry-exports.node.test.mjs"],
   // Sharded by file: each shard runs node --test --test-shard=<n>/<total> over the same glob (checked below).
@@ -119,6 +120,62 @@ test("every test file runs in a target or says why not", () => {
 test("each runner names the test files it is said to run", () => {
   assert.deepEqual(runs.filter(([, runner, text]) => !read(runner).includes(text)).map(([glob, runner]) => `${glob} in ${runner}`), [])
 })
+
+// Exercise the declared shell command with Bun, rather than requiring harmless
+// reporting flags to precede its independently checked timeout in one order.
+for (const failure of [false, true]) {
+  test("documentation runner selects its suites across flags and preserves " + (failure ? "failure" : "success"), t => {
+    const declaration = read("PACKAGE.ts")
+    const match = declaration.match(/"docs-tools": check\(\s*"[^"]*",\s*("(?:[^"\\]|\\.)*")/)
+    assert.ok(match, "docs-tools declares its literal test command")
+    const command = JSON.parse(match[1])
+    const entry = runs.find(([glob]) => glob === "docs/tools/*.test.*")
+    assert.ok(entry, "the documentation runner stays registered")
+    assert.ok(command.startsWith("cd docs/tools && bun test "))
+    const selection = command.slice(command.indexOf("$(ls "))
+    assert.ok(selection.startsWith("$(ls *.test.*"), "the command enumerates the documented suites")
+    const commands = [command]
+    for (const quiet of [false, true]) for (const reverse of [false, true]) for (const workers of [1, 3]) {
+      const flags = ["--timeout 60000", "--parallel=" + workers, "--no-isolate",
+        ...(quiet ? ["--only-failures"] : [])]
+      if (reverse) flags.reverse()
+      commands.push("cd docs/tools && bun test " + flags.join(" ") + " " + selection)
+    }
+    const dir = mkdtempSync(join(tmpdir(), "documentation-runner-"))
+    t.after(() => rmSync(dir, { recursive: true, force: true }))
+    const tools = join(dir, "docs/tools")
+    mkdirSync(tools, { recursive: true })
+    const selected = ["alpha.test.ts", "beta.test.mjs", "gamma.test.js",
+      "site-spec-links-neighbour.test.ts", "spec-lint-neighbour.test.ts"]
+    const excluded = ["site-contrast.test.ts", "site-spec-links.test.ts", "spec-lint.test.ts", "ordinary.mjs"]
+    const trace = join(dir, "trace.jsonl")
+    for (const file of [...selected, ...excluded]) {
+      const fail = excluded.includes(file) || (failure && file === selected[1])
+      writeFileSync(join(tools, file),
+        'import { test } from "bun:test"; import { appendFileSync } from "node:fs";\n' +
+        "test(" + JSON.stringify(file) + ", () => { appendFileSync(process.env.DOCS_RUNNER_TRACE, " +
+        JSON.stringify(JSON.stringify(file) + "\n") + ");" +
+        (fail ? ' throw new Error("deliberate docs runner witness");' : "") + " });\n")
+    }
+    const env = { ...process.env, DOCS_RUNNER_TRACE: trace }
+    delete env.NODE_TEST_CONTEXT
+    for (const shell of commands) {
+      rmSync(trace, { force: true })
+      const result = spawnSync("sh", ["-c", shell], {
+        cwd: dir, env, encoding: "utf8", timeout: 60_000,
+      })
+      assert.ifError(result.error)
+      assert.equal(result.signal, null, result.stdout + result.stderr)
+      assert.equal(result.status, failure ? 1 : 0, result.stdout + result.stderr)
+      assert.deepEqual(readFileSync(trace, "utf8").trim().split("\n").map(JSON.parse).sort(),
+        [...selected].sort(), "all selected suites run once and separate-target suites remain excluded")
+      if (failure) assert.match(result.stdout + result.stderr, /deliberate docs runner witness/)
+      assert.ok(shell.includes(entry[2]),
+        "the catalog must recognize each command after Bun proves equivalent suite selection")
+    }
+    assert.equal(commands.length, 9, "the declared command plus eight flag profiles ran")
+  })
+}
 
 test("each entry matches a test file, so a moved suite leaves no stale line", () => {
   const files = testFiles()
