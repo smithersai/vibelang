@@ -1,0 +1,18 @@
+{
+  "key": "opencode-bundle-input-pins",
+  "rule": "With `routeBundledImports`, such a test pins only the modules it names and every module on an import path between two of them, because routing gives the bundle a boundary it can read. The rest of the package converts.",
+  "sources": {
+    "packages/core/src/mcp/index.ts": "export const connect = () => import(\"./client.js\")\n",
+    "packages/core/src/mcp/client.ts": "export const client = 1\n",
+    "packages/core/src/session.ts": "export const session = 1\n",
+    "packages/cli/src/commands/run.ts": "import { run } from \"../run/run.ts\"\nexport { run }\n",
+    "packages/cli/src/run/run.ts": "import { error } from \"../util/middle.ts\"\nexport const run = error\n",
+    "packages/cli/src/util/middle.ts": "export { error } from \"./error.ts\"\n",
+    "packages/cli/src/util/error.ts": "export const error = 1\n",
+    "packages/cli/src/unrelated.ts": "export const other = 1\n"
+  },
+  "readers": {
+    "packages/core/test/mcp-import-boundary.test.ts": "const metadata = await Bun.file(metafile).json()\nconst imports = metadata.inputs[\"packages/core/src/mcp/index.ts\"].imports\n",
+    "packages/cli/test/import-boundaries.test.ts": "const metadata = await Bun.file(metafile).json()\nconst run = Object.keys(metadata.inputs)\nexpect(run).toContain(\"packages/cli/src/commands/run.ts\")\nexpect(run).toContain(\"packages/cli/src/util/error.ts\")\n"
+  }
+}

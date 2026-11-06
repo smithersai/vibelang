@@ -323,6 +323,39 @@ export function sourceGraph(root, { paths = {}, ts, repo = repository(root) } = 
 }
 
 /** For selected source modules, the unchanged test bundle entries and their transitive runtime graphs. */
+/**
+ * Routing gives a bundle a boundary it can read, so an assertion on input names
+ * pins only what it can see: the modules it names and every module on an import
+ * path between two of them. Anything else can convert without moving a name.
+ */
+export function pinnedBundleInputs(root, { paths, ts } = {}) {
+  const { deps } = sourceGraph(root, { paths, ts })
+  return observed => {
+    const pinned = new Set(observed)
+    for (const start of observed) {
+      const importers = new Map(), seen = new Set(), todo = [start]
+      while (todo.length) {
+        const file = todo.pop()
+        if (seen.has(file)) continue
+        seen.add(file)
+        for (const dep of deps(file)) {
+          importers.set(dep, [...(importers.get(dep) ?? []), file])
+          todo.push(dep)
+        }
+      }
+      const between = new Set(), back = [...observed].filter(file => file !== start && seen.has(file))
+      while (back.length) {
+        const file = back.pop()
+        if (between.has(file)) continue
+        between.add(file)
+        back.push(...(importers.get(file) ?? []))
+      }
+      for (const file of between) pinned.add(file)
+    }
+    return pinned
+  }
+}
+
 export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning = () => {}, routed = false } = {}) {
   // routeBundledImports gives these graphs a boundary the bundler can read, so nothing stays back.
   if (!selected.length || routed) return []

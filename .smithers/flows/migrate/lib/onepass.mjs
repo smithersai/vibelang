@@ -15,7 +15,7 @@ import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./im
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { isToolConfig } from "./plan.mjs"
 import { assertBaselineSafe } from "./baseline.mjs"
-import { assertNoTestBundleRename, testBundleDeferrals } from "./test-bundles.mjs"
+import { assertNoTestBundleRename, pinnedBundleInputs, testBundleDeferrals } from "./test-bundles.mjs"
 import { bareRunnerDeferrals } from "./bare-runners.mjs"
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
@@ -524,6 +524,8 @@ async function fix(config, p, cm, options) {
 }
 
 /** The CLI and library share commands, with no repository-specific paths or environment. */
+const pinnedInputs = config => config.routeBundledImports ? { pinned: pinnedBundleInputs(config.target) } : {}
+
 export async function onePassStep(step, options) {
   const p = paths(options.run), config = readJson(p.config), batch = String(options.batch ?? "01").padStart(2, "0")
   if (batch !== "01") throw new Error("one-pass conversion uses batch 01")
@@ -532,7 +534,7 @@ export async function onePassStep(step, options) {
     const setup = readJsonIf(p.setup, {})
     const nativeConfigs = setup.wired?.nativeViteConfigs ?? setup.nativeViteConfigs ?? []
     const plan = planScope(config.target, readFileSync(resolve(options.scope), "utf8").split(/\r?\n/), { nativeConfigs, routeBundledImports: Boolean(config.routeBundledImports) })
-    const deferred = pathReadDeferrals(config.target, plan.batches[0].files, await Jj.trackedFiles(config.target))
+    const deferred = pathReadDeferrals(config.target, plan.batches[0].files, await Jj.trackedFiles(config.target), pinnedInputs(config))
     const keep = new Set(deferred.map(d=>d.file))
     plan.batches[0].files = plan.batches[0].files.filter(f=>!keep.has(f))
     plan.deferred.push(...deferred)
@@ -565,7 +567,7 @@ export async function onePassStep(step, options) {
       const baseline = await checkProjects(config, p, options)
       if (baseline.some(p => p.crash)) throw new Error("baseline compiler did not finish: " + baseline.filter(p => p.crash).map(p => p.file + ": " + p.crash).join("; "))
       writeJson(join(p.run, "onepass-baseline.json"), baseline)
-      state = prepareState(config.target, files, await importers(config.target), { ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
+      state = prepareState(config.target, files, await importers(config.target), { ...pinnedInputs(config), ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
       state.compilerArtifact = config.compilerArtifact ?? null
       saveState(p.codemodState("01"), state)
     }

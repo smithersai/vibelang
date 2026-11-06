@@ -94,8 +94,8 @@ function observesRuntimeEnumeration(source, comments) {
   return resolver && enumerate && extension ? { at: resolver.index, names } : null
 }
 
-export function pathReadDeferrals(root, modules, files) {
-  const want = new Set(modules), available = new Set(files), causes = new Map()
+export function pathReadDeferrals(root, modules, files, { pinned } = {}) {
+  const want = new Set(modules), available = new Set(files), causes = new Map(), inputs = new Map()
   for (const file of files) {
     if (!code.test(file) || !existsSync(join(root,file))) continue
     const source = readFileSync(join(root,file),"utf8"), comments = commentRanges(source), imports = parseImports(source)
@@ -122,6 +122,10 @@ export function pathReadDeferrals(root, modules, files) {
         const targets = new Set([target, posix.normalize(m[2] + "." + m[3])])
         if (m[2].startsWith(root + "/")) targets.add(m[2].slice(root.length+1) + "." + m[3])
         for (const observed of targets) if (available.has(observed)) {
+          if (pinned) {
+            inputs.set(file, (inputs.get(file) ?? new Set()).add(observed))
+            continue
+          }
           const owner = packageDirOf(root,observed)
           for (const candidate of modules) if (packageDirOf(root,candidate) === owner) causes.set(candidate,{
             file: candidate, reason: "BUNDLE-INPUT-PATHS: " + file + ":" + source.slice(0,m.index).split("\n").length + " observes " + observed + "; keep this package native to preserve input filenames (detail 272)"
@@ -131,6 +135,9 @@ export function pathReadDeferrals(root, modules, files) {
       if (want.has(target) && readsText(source,m.index)) causes.set(target,{ file: target, reason: "PATHNAME-READS: " + file + ":" + source.slice(0,m.index).split("\n").length + " asserts on the source text; keep .ts (detail 272 addendum 4)" })
     }
   }
+  for (const [reader, observed] of inputs) for (const candidate of pinned(observed)) if (want.has(candidate) && !causes.has(candidate)) causes.set(candidate,{
+    file: candidate, reason: "BUNDLE-INPUT-PATHS: " + reader + " observes " + [...observed].sort().join(", ") + "; keep this module native to preserve input filenames (detail 272)"
+  })
   return [...causes.values()]
 }
 

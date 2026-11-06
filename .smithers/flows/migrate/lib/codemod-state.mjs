@@ -36,9 +36,9 @@ export function durableWrite(path, data, mode = 0o600) {
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
-export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], pathSources = [], catalog = scope, bareEntries = false, moduleBodies = false, globalsOf = () => [], plainGroups = [], tracked } = {}) {
+export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], pathSources = [], catalog = scope, pinned, bareEntries = false, moduleBodies = false, globalsOf = () => [], plainGroups = [], tracked } = {}) {
   for (const from of files) assertModuleBoundary(target, from)
-  const deferred = pathReadDeferrals(target, files, referenceFiles)
+  const deferred = pathReadDeferrals(target, files, referenceFiles, { pinned })
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
   const renames = files.map(from => ({ from, to: vibePath(from) }))
   assertComputedBuildEntrypoints(target, tracked ?? catalog, renames, ts)

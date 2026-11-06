@@ -227,6 +227,8 @@ test and source path, and still admits candidates in other packages. If the whol
 scope is protected, the error lists each retained module and its cause. The test,
 its expected paths and the package runtime graph remain unchanged.
 
+With `routeBundledImports`, such a test pins only the modules it names and every module on an import path between two of them, because routing gives the bundle a boundary it can read. The rest of the package converts.
+
 Pass `--after-convert "<command>"` to `upgrade-effect` (repeat per hook).
 The run stores these repository adapters in `config.json` and runs them before
 every settle check and verification, including the final verification after
