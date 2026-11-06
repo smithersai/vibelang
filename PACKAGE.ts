@@ -1559,7 +1559,7 @@ const targets = {
       `go test -short -count=1 -timeout=40m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/...`,
     [Tsc["vibelangfuzz-files"], S.file("//scripts/go-test-shards.sh"), Packages["compiler-native"], migrationSources],
     // The package's tests and seed corpora run one after another, so the
-    // binary runs as six processes at once (scripts/go-test-shards.sh); each
+    // binary runs as up to six processes at once (scripts/go-test-shards.sh); each
     // keeps the documented 40m corpus deadline. Admission and compilation
     // retain their separate 25m allowance before the task's 65m limit.
     "65m",
