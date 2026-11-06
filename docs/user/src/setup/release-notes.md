@@ -46,7 +46,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `item is { kind: "a" or "b" }` stopped narrowing `item.kind` in the true branch. It narrows as the same `||` test does in TypeScript again.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
-- The TypeScript replacement guide told npm to install an unavailable package. It now names the version included in this release and retains the source-checkout option.
+- The TypeScript replacement guide told npm to install an unavailable package. It now states that the package is not published and uses the source-checkout preview.
 
 - The `using` resource quick fix could hide later declarations from earlier closures and type references. The editor now withholds the action when moving those bindings would change their scope.
 - Breaking: old `layer Live: Service { … }` declarations compiled with a warning. They now fail with `EK2121`; `vibelang --fix` writes the equivalent `Layer.effect` or `Layer.succeed` call.
