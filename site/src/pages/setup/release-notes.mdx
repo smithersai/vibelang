@@ -15,6 +15,11 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Editor formatting could hang on a marked `.mts`, `.cts` or `.tsx` file. Formatting now returns normally and keeps the directive.
+
+- The diagnostic reference said decoding skipped schema constructor overrides. It now explains that decoding calls them, matching the warning and runtime behavior.
+- The source-map tool check omitted Metro and Babel. It now runs their real consumer checks too.
+- The debugger check could accept a breakpoint in a different function or statement. It now verifies where V8 actually paused.
+- An inferred export could fail with `TS2883` when its type came indirectly from a built `.vibe` or `.vibex` project reference. The declaration now names the type through its public package export.
 - Moving platform code could widen a unique-symbol key and break computed-property access with `TS7053`. Generated local aliases now retain the imported value type.
 - The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 
@@ -28,6 +33,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An invalid `with Live { … }` provider header suggested rewriting the provider as a callback call. It now reports ordinary syntax errors; update the header to `provide Live { … }` in effect code.
 - Breaking: `service class Name { … }` compiled with a warning. It now fails with `EK0909`; `vibelang --fix` removes `class` while keeping the service key, shape and comments.
 - The contribution guide left release-note checks until publication, so contributors could miss repeated fixes or internal wording. It now gives the strict check before submission.
+- Rechecking a module body referenced by an inferred declaration type could report `TS5055` after the first build. Declaration imports now keep reading the body source across builds.
+- The editor guides did not distinguish migration warnings from retired `layer` errors. They now document `EK2121` as an error and the preserving quick fix.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
 - The TypeScript replacement guide told npm to install an unavailable package. It now names the version included in this release and retains the source-checkout option.
