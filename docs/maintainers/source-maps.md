@@ -78,7 +78,6 @@ Rule names are stable. A test cites them.
 | Two independent consumers, and exact source, line and column checks for retained bundle strings, with mapping-loss controls | `programs.property.test.mjs` |
 | Independent paused function and statement, with swapped-map controls | `inspector.test.mjs` |
 | Metro, Babel, React Compiler and Oxc | `//packages:compiler-tools-test`, a dependency of `//packages:source-map-tools-test` |
-| Independent paused function and statement, with swapped-map controls | `inspector.test.mjs` |
 | One test per tool | `packages/compiler/test/source-maps/`, target `//packages:source-map-tools-test` |
 
 The token oracle requires positions for eligible written tokens even when their generated line has no segments. Its controls delete all mappings or either written line across each text variant. Erased declarations and generated imports may still have empty maps. The short corpus selection and CPU limits are unchanged.

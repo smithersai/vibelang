@@ -11,6 +11,7 @@ export const buildContractSuites = [
   "scripts/go-cache.test.mjs",
   "scripts/go-shared-test-inventory.test.mjs",
   "scripts/go-test-cache.test.mjs",
+  "scripts/source-map-tool-coverage.test.mjs",
 ] as const
 
 // These suites inspect commands and inventories, without compiling the compiler
@@ -27,6 +28,7 @@ export const buildContractFiles = [
   "experiments/package.json",
   "packages/runtime/package.json",
   "packages/runtime/tests/main.test.ts",
+  "docs/maintainers/source-maps.md",
   "docs/tools/package.json",
   "docs/tools/bun.lock",
   ".smithers/package.json",
@@ -42,6 +44,7 @@ export const buildContractFiles = [
   "packages/vite/test/run.sh",
   "packages/unplugin/test/run.sh",
   "packages/compiler/test/eslint/run.sh",
+  "packages/compiler/test/tools/run.sh",
   "packages/ts-mapper/test/e2e.sh",
   "packages/ts-mapper/test/parity/run.sh",
   "packages/ts-mapper/test/parity/parity.ts",

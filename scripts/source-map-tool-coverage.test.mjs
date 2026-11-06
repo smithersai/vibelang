@@ -14,3 +14,13 @@ test("the post-merge source-map target includes the Metro and Babel tool checks"
   const runner = readFileSync(new URL("../packages/compiler/test/tools/run.sh", import.meta.url), "utf8")
   assert.ok(runner.includes("./*.test.mjs"), "the dependency executes the real tool suite")
 })
+
+test("the source-map coverage table lists each check once", () => {
+  const guide = readFileSync(new URL("../docs/maintainers/source-maps.md", import.meta.url), "utf8")
+  const matrix = guide.slice(guide.indexOf("## Tests"))
+  const rows = matrix.split("\n").filter((line) => line.startsWith("| "))
+  assert.ok(rows.some((row) => row.includes("`inspector.test.mjs`")))
+  assert.ok(rows.some((row) => row.includes("`programs.property.test.mjs`")))
+  assert.ok(rows.some((row) => row.includes("`//packages:compiler-tools-test`")))
+  assert.equal(rows.length, new Set(rows).size, "the coverage table repeats a check")
+})
