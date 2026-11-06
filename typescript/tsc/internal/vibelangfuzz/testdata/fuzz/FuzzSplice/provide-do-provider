@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Layer } from \"effect\"\n\nexport effect function skipped(items: readonly number[]) {\n  const seen: number[] = []\n  for (const item of items) {\n    provide do { if (item === 2) continue; seen.push(item); Layer.empty } {\n      seen.push(item * 10)\n    }\n  }\n  return seen\n}\n\nexport effect function built() {\n  const value = do {\n    provide do { const layer = Layer.empty; layer } {\n      1\n    }\n  }\n  return value\n}\n")

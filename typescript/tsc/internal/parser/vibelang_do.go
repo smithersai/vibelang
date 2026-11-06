@@ -1024,6 +1024,7 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 // ---------------------------------------------------------------- lowering
 
 type doLowering struct {
+	providerPre              map[*ast.Node][]*ast.Node // statements a provide block's layer runs first
 	bindings                 map[*ast.Node]*ast.Node
 	bindingReads             map[*ast.Node]*DoBindingRead
 	bindingContexts          map[*ast.Node]*ast.Node
@@ -1277,7 +1278,22 @@ func setStatement(loop *ast.Node, body *ast.Node) {
 func (l *doLowering) lowerIn(n *ast.Node) {
 	switch n.Kind {
 	case ast.KindBlock:
-		n.AsBlock().Statements.Nodes = l.statements(n.AsBlock().Statements.Nodes)
+		list := n.AsBlock().Statements.Nodes
+		if n.Flags&ast.NodeFlagsVibeLang != 0 && len(list) != 0 && list[0].Kind == ast.KindExpressionStatement && list[0].Flags&ast.NodeFlagsVibeLang != 0 {
+			// A provide block's first statement holds its layer. The layer is
+			// built before the block runs, so its do expressions lift past
+			// the block: lift returns them to the list that holds it.
+			pre, layer := l.lift(list[0])
+			if len(pre) != 0 {
+				if l.providerPre == nil {
+					l.providerPre = map[*ast.Node][]*ast.Node{}
+				}
+				l.providerPre[n] = pre
+			}
+			n.AsBlock().Statements.Nodes = append([]*ast.Node{layer}, l.statements(list[1:])...)
+			break
+		}
+		n.AsBlock().Statements.Nodes = l.statements(list)
 	case ast.KindModuleBlock:
 		n.AsModuleBlock().Statements.Nodes = l.statements(n.AsModuleBlock().Statements.Nodes)
 	case ast.KindCaseClause, ast.KindDefaultClause:
@@ -1337,6 +1353,8 @@ func (l *doLowering) slot(s *ast.Node) *ast.Node {
 func (l *doLowering) lift(s *ast.Node) ([]*ast.Node, *ast.Node) {
 	var pre []*ast.Node
 	switch s.Kind {
+	case ast.KindBlock:
+		return l.providerPre[s], s
 	case ast.KindExpressionStatement:
 		e := s.AsExpressionStatement()
 		e.Expression = l.expr(e.Expression, &pre)

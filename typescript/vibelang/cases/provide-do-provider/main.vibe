@@ -1,0 +1,20 @@
+import { Layer } from "effect"
+
+export effect function skipped(items: readonly number[]) {
+  const seen: number[] = []
+  for (const item of items) {
+    provide do { if (item === 2) continue; seen.push(item); Layer.empty } {
+      seen.push(item * 10)
+    }
+  }
+  return seen
+}
+
+export effect function built() {
+  const value = do {
+    provide do { const layer = Layer.empty; layer } {
+      1
+    }
+  }
+  return value
+}
