@@ -27,6 +27,7 @@ export function assertReleasePublication(notes, version) {
   assert.doesNotMatch(publicationNotes, /Compiler\s+validation\s+treated\s+an?\s+error\s+name|CI\s+reused\s+an?\s+older/i)
   assert.doesNotMatch(publicationNotes, /editor\s+smoke\s+validation|compiler\s+fuzz\s+validation|schema\s+regression\s+check/i)
   assert.doesNotMatch(publicationNotes, /migration\s+oracle\s+regression\s+tests|(?:compiler|pin)\s+regression\s+suite|compiler[\u0027\u2019]s\s+keyword\s+coverage\s+check|CI[- ]health\s+reports|declaration[- ]oracle\s+tests|snippet\s+tools[\u0027\u2019]\s+pending[- ]output\s+test\s+fixtures|narrow\s+hosted\s+CI\s+checks/i)
+  assert.doesNotMatch(publicationNotes, /contributor\s+(?:checks|queue)|contribution\s+guide|publication\s+checks|release\s+rehearsals|release-history\s+checks|documentation\s+check|reference\s+check|Appendix\s+diagnostic\s+replay|fixtures\s+now\s+(?:load|initialize)/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
   // Preserve these shipped fixes in their owning release, even while preparing a newer one.

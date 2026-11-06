@@ -82,7 +82,10 @@ test("publication rejects test-only introductory bullets", t => {
 const internalSuiteRecords = [
   "Migration oracle regression tests", "compiler regression suite", "compiler’s keyword coverage check",
   "pin regression suite", "CI-health reports", "Declaration-oracle tests",
-  "snippet tools’ pending-output test fixtures", "narrow hosted CI checks"
+  "snippet tools’ pending-output test fixtures", "narrow hosted CI checks",
+  "contributor checks", "Contributor queue instructions", "contribution guide", "Publication checks",
+  "Release rehearsals", "Release-history checks", "documentation check", "diagnostic reference check",
+  "Appendix diagnostic replay", "fixtures now initialize"
 ]
 test("publication rejects internal suite and CI report records across spelling variants", () => {
   fc.assert(fc.property(fc.constantFrom(...internalSuiteRecords), fc.constantFrom(" ", "  ", "\t", "\n  "),
