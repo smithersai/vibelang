@@ -95,11 +95,13 @@ configuration or command: `bun --preload vibelang-unplugin/bun/register run.ts`.
 This does not change Bun's test filename discovery or configure other bundlers.
 
 For computed dynamic imports, use a relative or absolute source path, such as
-`const name = "./src/feature.vibe"; await import(name)`. Bun does not invoke
-runtime resolver hooks for computed bare aliases such as `import(alias)`
-where `alias` is `"@/feature.ts"`; use a literal alias import instead.
-This [Bun runtime limitation](https://github.com/oven-sh/bun/issues/40579)
-also affects extensionless aliases.
+`const name = "./src/feature.vibe"; await import(name)`. The preload does not
+resolve a computed bare alias such as `import(alias)` where `alias` is
+`"@/feature.ts"` to its migrated `.vibe` sibling; use a literal alias import
+instead. Bun can invoke runtime resolver hooks for computed `.ts` aliases;
+this fallback requires the preload's rewrite of literal imports. For computed
+extensionless bare aliases, Bun does not invoke runtime resolver hooks;
+see this [Bun runtime limitation](https://github.com/oven-sh/bun/issues/40579).
 
 ## Bundlers called by tests
 

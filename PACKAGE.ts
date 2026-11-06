@@ -702,6 +702,12 @@ const targets = {
     [],
     [node]
   ),
+  "docs-bun-computed-imports": check(
+    "Bun import guidance separates preload support from extensionless runtime resolver hooks.",
+    "node docs/tools/bun-computed-import-claims.mjs && bun test --timeout 60000 docs/tools/bun-computed-import-claims.test.ts",
+    [],
+    [bun, node]
+  ),
   "docs-release-history": check(
     "Release notes follow recorded npm publication and keep unpublished fixes in the compiler candidate.",
     "node docs/tools/release-history.mjs --check && bun test --timeout 60000 docs/tools/release-history.test.ts docs/tools/release-*publication.test.mjs",
