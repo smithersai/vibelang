@@ -33,12 +33,17 @@ const positive = (v, fallback, name, max = Infinity) => {
   return n
 }
 
+// TanStack Router's generator keeps only .ts, .tsx, .js, .jsx and .vue names, and
+// would take a .d.vibex.ts sidecar for the route.
+const fileRoute = text => /\bfrom\s+["']@tanstack\/[\w-]*router["']/.test(text) && /\bcreate(?:Lazy)?(?:File|Root)Route(?:WithContext)?\b/.test(text)
+
 export function planScope(root, scope, { nativeConfigs = [], routeBundledImports = false } = {}) {
   const files = [], deferred = []
   for (const file of new Set(scope.map(f => f.trim()).filter(Boolean))) {
     if (posix.isAbsolute(file) || file.split("/").includes("..") || file !== posix.normalize(file)) throw new Error("scope paths must be repository-relative: " + file)
     if (!existsSync(join(root, file))) throw new Error("scope module missing: " + file)
     if (isToolConfig(file) && !nativeConfigs.includes(file)) deferred.push({ file, reason: "tool config has no supported native loader; keep its TypeScript filename" })
+    else if (/\.tsx?$/.test(file) && !isDeclarationFile(file) && fileRoute(readFileSync(join(root, file), "utf8"))) deferred.push({ file, reason: "file route: the router's generator finds it by its TypeScript filename" })
     else if (/\.(?:ts|tsx|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
     else deferred.push({ file, reason: /\.vibex?$/.test(file) ? "already a VibeLang module; no rename needed" : isDeclarationFile(file) ? "declaration file; keep its source format" : "unsupported source kind; not a .ts, .tsx or .mts module" })
   }
