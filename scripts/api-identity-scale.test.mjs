@@ -242,6 +242,48 @@ test("an invalid entry group keeps its diagnostic when later checker work would 
   })
 })
 
+test("property: invalid input groups report native diagnostics before loading later nominal roots", async () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-invalid-entry-prefix.json", import.meta.url)))
+  await checkProperty(fc, {
+    name: "api-identity-invalid-group-before-nominal",
+    rule: ".smithers/flows/migrate/README.md: An incomplete comparison proves no identity.",
+    command: "node --test scripts/api-identity-scale.test.mjs",
+    numRuns: 24,
+    arbitrary: fc.record({
+      modules: fc.integer({ min: 5, max: 10 }),
+      entryBatchSize: fc.integer({ min: 1, max: 4 }),
+      side: fc.constantFrom("before", "after", "both"),
+      invalidSource: fc.constantFrom(...corpus.invalidSources),
+    }),
+    check: ({ modules, entryBatchSize, side, invalidSource }) => {
+      const before = {}, after = {}
+      for (let i = 0; i < modules; i++)
+        before[`m0${i}.d.ts`] = after[`m0${i}.d.ts`] = "export type Valid = string;"
+      if (side !== "after") before["m00.d.ts"] = invalidSource
+      if (side !== "before") after["m00.d.ts"] = invalidSource
+      fixture(before, after, (a, b) => {
+        let laterLoads = 0
+        const compiler = { ...ts, createProgram(...args) {
+          const roots = Array.isArray(args[0]) ? args[0] : args[0].rootNames
+          if (roots.some(file => file.endsWith(`m0${modules - 1}.d.ts`))) {
+            laterLoads++
+            throw new RangeError("later nominal checker exhausted")
+          }
+          return ts.createProgram(...args)
+        } }
+        const result = compareApiIdentity(compiler, a, b, { ...options, entryBatchSize })
+        assert.equal(result.identical, false)
+        assert.equal(result.comparisonComplete, false)
+        assert.equal(result.failure, undefined, JSON.stringify(result))
+        assert.deepEqual(result.typeDifferences, [])
+        assert.ok(result.environmentDiagnostics.some(d =>
+          d.blocking && /TS(?:2304|2344|1110):/.test(d.diagnostic)), JSON.stringify(result))
+        assert.equal(laterLoads, 0, "invalid inputs stop before unrelated nominal roots")
+      })
+    },
+  })
+})
+
 test("property: invalid prefixes stay invalid and valid mismatches still inspect later entries", async () => {
   await checkProperty(fc,{
     name:"api-identity-invalid-entry-prefix",
