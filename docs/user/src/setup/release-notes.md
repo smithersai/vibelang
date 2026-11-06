@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The source checkout preview could fail with `TS2307` for `vibelang-runtime` in another project. The instructions now install the checkout's runtime there before checking.
 
+- The TypeScript-file guide claimed stock tools always reject VibeLang or preserve its meaning. It now explains that prelude names can compile successfully with different bindings.
+
 - Editor formatting could hang on a marked `.mts`, `.cts` or `.tsx` file. Formatting now returns normally and keeps the directive.
 
 - The diagnostic reference said decoding skipped schema constructor overrides. It now explains that decoding calls them, matching the warning and runtime behavior.

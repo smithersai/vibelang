@@ -21,7 +21,7 @@ effect function greet(name: string) {
 - **The directive.** The first line is exactly `// @vibe`. A byte order mark and a `#!` line may come before it, and spaces and tabs after it. `/* @vibe */`, `// @vibes`, a line below a licence comment, and every other spelling are ordinary comments.
 - **The file kind.** With the directive, `.ts`, `.mts` and `.cts` are `.vibe`, and `.tsx` is `.vibex`. Every accepted VIP applies: VIP-30 (every source file is a module), VIP-33, VIP-14 and VIP-6, VIP-38, and the rest. A declaration file, a JavaScript file and a JSON file have no directive.
 - **No option.** Nothing in `vibe.config.json`, `tsconfig.json` or `jsconfig.json` turns the directive on or off.
-- **Stock TypeScript reads the same file.** Three things stay as `.ts` has them, because a file must not mean one thing to `vibelang` and another to stock TypeScript:
+- **Stock TypeScript reads the same file.** Three things retain TypeScript's behavior. These restrictions do not guarantee equivalent meaning when both compilers accept the source:
 
 | Form | In a `.ts` file with the directive | Why |
 | --- | --- | --- |
@@ -40,15 +40,28 @@ effect function greet(name: string) {
 
 ## Stock tools reading the same file
 
-A file with the directive either fails a stock tool's parser, or means the same to that tool, with one exception.
+The directive is an ordinary comment to stock readers. VibeLang-only syntax can produce parse errors, but successful parsing or type checking does not establish equivalent meaning.
 
-| Reader | Result |
+| Reader | Possible result |
 | --- | --- |
-| Stock `tsc` | `TS1434` and other syntax errors, exit status 2 |
-| Vite without the plugin, esbuild, tsx | A parse error naming the file |
-| Node.js type stripping | `SyntaxError` |
+| Stock `tsc` | VibeLang syntax can report `TS1434` and other errors; TypeScript-compatible syntax can compile successfully with different bindings |
+| Vite without the plugin, esbuild, `tsx` | VibeLang syntax can fail to parse; accepted syntax uses the reader's own bindings and transformations |
+| Node.js type stripping | VibeLang syntax can raise `SyntaxError`; accepted syntax runs with Node's bindings |
 
-The check is a corpus comparison. Of 3,510 `.vibe` files in the compiler cases, 627 parse as stock TypeScript, 372 of them outside failing cases. For those 372, stock transpilation and the VibeLang compiler were compared. They differ in four ways: `module` declarations, the `$entry` runner, names the compiler imports for the file (stock tools then fail with `TS2304` or a `ReferenceError`), and script or module detection. The first two are why `module` and `main` stay TypeScript's above. The third is loud. The fourth is the exception: a file with no import or export is a module to `vibelang` and a script to stock TypeScript under `moduleDetection: auto`.
+The initial corpus comparison inspected 3,510 `.vibe` files: 627 parsed as stock TypeScript, including 372 outside failing cases. Comparing those examples exposed differences in `module` declarations, the `$entry` runner, implicit imports, and script or module detection. That sample did not establish that implicit-import differences always fail loudly.
+
+## Open question: prelude bindings in marked TypeScript
+
+The current prelude can silently select another value for a name that stock TypeScript also accepts:
+
+```ts
+// @vibe
+export const request = Request
+```
+
+With `target: "ES2022"`, `module: "NodeNext"`, `moduleResolution: "NodeNext"`, `lib: ["ES2022", "DOM"]`, `strict: true`, `types: []`, `skipLibCheck: true`, `declaration: true`, and `noEmitOnError: true` in a module package, stock TypeScript `7.0.2` and VibeLang `0.0.11` both exit with status `0` without diagnostics. VibeLang emits an import of `effect/Request` and exports that module; stock TypeScript exports the global web `Request` constructor. Running the outputs gives `typeof request === "object"` and `typeof request === "function"`, respectively. Their declarations differ too.
+
+This example explicitly exports a value, so the difference is independent of script or module detection. VIP-14 currently gives the Effect module precedence over the platform global. Whether marked TypeScript keeps that prelude behavior is an open acceptance question for this proposal. This document records the behavior and counterexample; it does not change the prelude.
 
 The other direction is a twin sweep: every case compiled as written, and again with each `.vibe` renamed `.ts` behind the directive. See [the research](../../research/typescript-shim.md#twin-sweep).
 
@@ -69,4 +82,4 @@ Flow's `// @flow`, opt-in per file inside `.js`. TypeScript's `// @ts-check` and
 
 ## Recommendation
 
-Accept. It costs one line per file and one alias, it changes nothing for a project that doesn't use it, and it's the only route that keeps `.ts` names with a real type checker.
+The proposal remains open. Keeping `.ts` names with a real type checker is useful, but acceptance still requires a decision on the prelude collision above. The directive does not provide a guarantee that stock readers fail loudly or preserve meaning.

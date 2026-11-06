@@ -1,0 +1,1 @@
+stock and VibeLang accept different Request bindings

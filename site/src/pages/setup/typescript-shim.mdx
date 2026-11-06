@@ -9,7 +9,7 @@ The `vibelang-typescript` package is an experimental implementation of [open VIP
 
 The compiler recognizes VibeLang in a `.ts` file whose first line is `// @vibe`. The replacement package runs it under the name `typescript`, so existing `tsc` scripts can reach it. Files without the directive stay TypeScript.
 
-This is the last option. Use it only when you can't name files `.vibe`. The [`vibelang` CLI](/setup/vibelang-cli), [Vite and Vitest](/setup/vite) and the other plugins in [Set up VibeLang](/setup) keep every stock TypeScript tool working. Here each tool that reads a `// @vibe` file with stock TypeScript or its own parser fails.
+This is the last option. Use it only when you can't name files `.vibe`. The [`vibelang` CLI](/setup/vibelang-cli), [Vite and Vitest](/setup/vite) and the other plugins in [Set up VibeLang](/setup) keep every stock TypeScript tool working. Stock TypeScript and other parsers ignore the directive. They can reject VibeLang syntax or accept a file with different meaning.
 
 ## Install
 
@@ -75,13 +75,20 @@ A `.ts`, `.mts` or `.cts` file with the line follows every `.vibe` rule, and a `
 | webpack, Rspack, Rollup, Rolldown, esbuild | Add [`vibelang-unplugin`](https://www.npmjs.com/package/vibelang-unplugin#configure): one line in the config |
 | Node.js | `node --import vibelang/register src/main.ts` |
 | `bun build`, Bun's test runner, Metro | Not supported: use `.vibe` files |
-| `tsx`, `ts-node`, Node.js without `vibelang/register` | Stops with a syntax error |
-| A stock TypeScript, such as one a dependency installs | Stops with `TS1434` and other syntax errors. Your `tsc` stays VibeLang, unless the project also installs a stock `typescript` under another name: both then claim the `tsc` command |
-| Prettier, ESLint, Oxlint, Knip | Stops with a syntax error: ignore `// @vibe` files, and use `vibelang format` and `vibelang lint` |
+| `tsx`, `ts-node`, Node.js without `vibelang/register` | VibeLang syntax can fail to parse; accepted syntax uses the tool's own bindings |
+| A stock TypeScript, such as one a dependency installs | VibeLang syntax can report `TS1434`; TypeScript-compatible syntax can compile with different meaning. Your `tsc` stays VibeLang, unless the project also installs a stock `typescript` under another name: both then claim the `tsc` command |
+| Prettier, ESLint, Oxlint, Knip | Can reject or reinterpret the source: ignore `// @vibe` files, and use `vibelang format` and `vibelang lint` |
 | Anything that imports TypeScript's JavaScript API | Fails: the package exports only `version`. This includes `vue-tsc`, `svelte-check` and `ngc` |
 
-Bundlers need a plugin because esbuild and Oxc parse `.ts` files themselves, so there is no TypeScript for this package to replace there. A file that uses no VibeLang syntax can pass through these tools, and it means there what it means in VibeLang, except that `vibelang` always reads it as a module.
+Bundlers need a plugin because esbuild and Oxc parse `.ts` files themselves, so there is no TypeScript for this package to replace there. Successful stock compilation does not prove that a file has the same meaning:
+
+```ts
+// @vibe
+export const request = Request
+```
+
+With the DOM library available, both stock TypeScript and VibeLang accept this module. VibeLang binds `Request` to the `effect/Request` module; stock TypeScript binds it to the web `Request` constructor. The emitted JavaScript, declarations and runtime value differ even though neither compiler reports an error. This prelude behavior remains an open question in VIP-42. VibeLang also always treats marked files as modules, whereas stock TypeScript can treat a file without imports or exports as a script.
 
 ## Return to stock TypeScript
 
-Rewrite the VibeLang forms before passing a marked file to stock TypeScript. A file that retains that syntax reports parse errors such as `TS1434`.
+Rewrite the VibeLang forms and make implicit prelude bindings explicit before passing a marked file to stock TypeScript. Check the emitted behavior even when the stock compiler reports no errors. A file that retains that syntax reports parse errors such as `TS1434`.
