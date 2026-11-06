@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" role="img" aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif">
+  <title id="t">From alpha to beta</title>
+  <desc id="d">A timeline of four stages from alpha to beta: Alpha (we are here), Behaviour settles, Human review, and Beta. No dates; each stage ends when its work is done.</desc>
+  <style>
+    :root {
+      --text: #1f2430;
+      --muted: #55606e;
+      --faint: #8a94a3;
+      --line: #dde2e9;
+      --marker: #a7b0bd;
+      --accent: #635bff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #e7eaf0;
+        --muted: #a3adbb;
+        --faint: #7d8794;
+        --line: #343b47;
+        --marker: #5d6875;
+        --accent: #a39fff;
+      }
+    }
+    .title   { font-size: 38px; font-weight: 650; fill: var(--text); }
+    .sub     { font-size: 18px; fill: var(--muted); }
+    .here    { font-size: 15px; font-weight: 600; fill: var(--accent); }
+    .label   { font-size: 15px; font-weight: 600; letter-spacing: 1.5px; }
+    .label-a { fill: var(--accent); }
+    .label-b { fill: var(--faint); }
+    .head    { font-size: 21px; font-weight: 600; fill: var(--text); }
+    .body    { font-size: 16px; fill: var(--muted); }
+    .track   { stroke: var(--line); stroke-width: 2; }
+    .dot     { fill: none; stroke: var(--marker); stroke-width: 2; }
+    .dot-a   { fill: var(--accent); }
+    .ring    { fill: none; stroke: var(--accent); stroke-width: 1.5; opacity: 0.45; }
+  </style>
+
+  <text class="title" x="40" y="86">From alpha to beta</text>
+  <text class="sub" x="40" y="122">No dates. Each stage ends when its work is done.</text>
+
+  <line class="track" x1="56" y1="232" x2="272" y2="232"/>
+  <line class="track" x1="292" y1="232" x2="514" y2="232"/>
+  <line class="track" x1="534" y1="232" x2="756" y2="232"/>
+
+  <circle class="ring" cx="40" cy="232" r="13"/>
+  <circle class="dot-a" cx="40" cy="232" r="7"/>
+  <circle class="dot" cx="282" cy="232" r="6.5"/>
+  <circle class="dot" cx="524" cy="232" r="6.5"/>
+  <circle class="dot" cx="766" cy="232" r="6.5"/>
+
+  <text class="here" x="40" y="198" text-anchor="start">We are here</text>
+
+  <text class="label label-a" x="40" y="284">ALPHA</text>
+  <text class="head" x="40" y="322">It works, and</text>
+  <text class="head" x="40" y="348">it&#8217;s slop</text>
+  <text class="body" x="40" y="392">Agents write most of</text>
+  <text class="body" x="40" y="416">the code.</text>
+  <text class="body" x="40" y="440">Expect bugs and breaking</text>
+  <text class="body" x="40" y="464">changes.</text>
+
+  <text class="label label-b" x="282" y="284">BEHAVIOUR SETTLES</text>
+  <text class="head" x="282" y="322">Get it doing</text>
+  <text class="head" x="282" y="348">the right things</text>
+  <text class="body" x="282" y="392">Real projects run on it.</text>
+  <text class="body" x="282" y="416">Language changes</text>
+  <text class="body" x="282" y="440">slow down.</text>
+
+  <text class="label label-b" x="524" y="284">HUMAN REVIEW</text>
+  <text class="head" x="524" y="322">Every line gets read</text>
+  <text class="body" x="524" y="392">A person reads all the</text>
+  <text class="body" x="524" y="416">code.</text>
+  <text class="body" x="524" y="440">What isn&#8217;t good gets</text>
+  <text class="body" x="524" y="464">rewritten.</text>
+
+  <text class="label label-b" x="766" y="284">BETA</text>
+  <text class="head" x="766" y="322">It isn&#8217;t slop</text>
+  <text class="body" x="766" y="392">Code a person has read</text>
+  <text class="body" x="766" y="416">and stands behind.</text>
+</svg>
