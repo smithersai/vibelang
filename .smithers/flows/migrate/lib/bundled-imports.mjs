@@ -56,10 +56,16 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     const inPackage = file => dir === "." ? file : posix.relative(dir, file)
     const sidecars = existsSync(join(root, dir, ".vibe/declarations"))
     const targets = new Map(), used = new Set()
+    // The compiler places a sidecar by the project that wrote it: from the source
+    // root, from the package, or from above the package. Name the one that exists.
+    const sidecarOf = (source, path) => {
+      const name = ".d" + posix.extname(source) + ".ts"
+      const written = [path, path.replace(/^[^/]+\//, ""), posix.join(posix.basename(dir), path)]
+        .map(stem => ".vibe/declarations/" + stem + name).find(file => existsSync(join(root, dir, file)))
+      return "./" + (written ?? (sidecars ? ".vibe/declarations/" : "") + path + name)
+    }
     const targetFor = (source, path) => ({
-      types: /\.vibex?$/.test(source)
-        ? "./" + (sidecars ? ".vibe/declarations/" : "") + path + ".d" + posix.extname(source) + ".ts"
-        : "./" + inPackage(source),
+      types: /\.vibex?$/.test(source) ? sidecarOf(source, path) : "./" + inPackage(source),
       "vibelang-source": "./" + inPackage(source),
       default: outputs?.[source] ? "./" + posix.relative(dir, outputs[source]) : "./.vibelang/js/" + path + ".js"
     })

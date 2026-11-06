@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- A routed import in a migrated package could point at a declaration file that was never written, so TypeScript fell back to untyped JavaScript and reported TS7016 and TS7006 across the importers. A route now names the declaration the compiler wrote.
 - A project that imports through `paths` aliases and emits only declarations failed with TS5097 at every import of a migrated module, so the migration reverted modules that were fine. Setup now turns on `allowImportingTsExtensions` for such a project.
 - With bundle routing on, one test assertion about bundle input names held its whole package back from migrating. The assertion now holds only the modules it names and the imports between them, so the rest of the package converts.
 - Destructuring a function, as in `const { constructor: C } = f`, and a template-literal `data:` or `blob:` specifier in `import()` could still reach code that runs a string. Both now report `EK0107`, as `f.constructor` and a string-literal specifier do.

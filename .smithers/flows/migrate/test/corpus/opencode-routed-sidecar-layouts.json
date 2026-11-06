@@ -1,0 +1,11 @@
+{
+  "key": "opencode-routed-sidecar-layouts",
+  "rule": "A routed import names the sidecar the compiler wrote, whichever root that project used, so a routed module keeps its types.",
+  "layouts": [
+    ".vibe/declarations/src/effect/rpc.d.vibe.ts",
+    ".vibe/declarations/effect/rpc.d.vibe.ts",
+    ".vibe/declarations/client/src/effect/rpc.d.vibe.ts"
+  ],
+  "importer": "export { rpc } from \"./effect/rpc.vibe\"\n",
+  "module": "export const rpc = 1\n"
+}

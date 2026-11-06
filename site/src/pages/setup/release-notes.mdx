@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- A routed import in a migrated package could point at a declaration file that was never written, so TypeScript fell back to untyped JavaScript and reported TS7016 and TS7006 across the importers. A route now names the declaration the compiler wrote.
 - A project that imports through `paths` aliases and emits only declarations failed with TS5097 at every import of a migrated module, so the migration reverted modules that were fine. Setup now turns on `allowImportingTsExtensions` for such a project.
 - A project that couldn't rename its files couldn't use VibeLang. A `.ts`, `.tsx`, `.mts` or `.cts` file whose first line is `// @vibe` now compiles as VibeLang; every other `.ts` file keeps TypeScript's verdict.
 - `vibelang-vite`, `vibelang-unplugin`, `vibelang/register`, `vibelang format` and `vibelang lint` skipped or failed on a `.ts` file with `// @vibe`. They now compile, run, format and lint it. Bun's bundler and Metro still need `.vibe`.
