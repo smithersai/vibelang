@@ -97,7 +97,7 @@ The server exposes TypeScript completions through the VibeLang checker, service 
 
 The `EK0501` editor quick fix marks an ordinary function `effect`, so callers receive an unrun Effect. Header comments stay unchanged while the modifier is added before the declaration’s `function` keyword.
 
-For `EK0801`, the resource quick fix moves a direct `using` declaration and the rest of its Effect callable into `scoped`, with `acquireDisposable` for acquisition. It withholds the action when an earlier closure, hoisted reference or type reference needs a declaration that would move into the new block. Move the dependent code together when writing the conversion by hand.
+For `EK0801`, the resource quick fix moves a direct `using` declaration and the rest of its Effect callable into `scoped`, with `acquireDisposable` for acquisition. It withholds the action when an earlier closure, hoisted reference or type reference needs a declaration that would move into the new block. Move the dependent code together when writing the conversion by hand. The action also stays unavailable when the moved code needs the ambient `Scope`, or its requirements are still generic and could include `Scope`: the new `scoped` would consume that requirement. A `Scope` use before the declaration, a locally provided scope, or an unrun nested Effect does not prevent the edit.
 
 The `EK0801` resource action keeps initializer names: an anonymous class, function or arrow initializer has no automatic conversion when the acquisition callback would erase its inferred name. A class can observe that name while its static fields initialize, so setting `.name` afterward is insufficient.
 
