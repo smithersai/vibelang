@@ -1,0 +1,21 @@
+# Ordinary written infer return annotations keep TypeScript diagnostics.
+FuzzBareInferReturnAnnotation ts1338:arrow:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-arrow-bare compiler VIP-3: ts1338:arrow:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:class-method:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-class-method-bare compiler VIP-3: ts1338:class-method:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:curried:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-curried-bare compiler VIP-3: ts1338:curried:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:default-arrow:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-default-arrow-bare compiler VIP-3: ts1338:default-arrow:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:destructured-arrow:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-destructured-arrow-bare compiler VIP-3: ts1338:destructured-arrow:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:expression:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-expression-bare compiler VIP-3: ts1338:expression:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:function:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-function-bare compiler VIP-3: ts1338:function:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:generic-arrow:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-bare-infer-return compiler VIP-3: ts1338:generic-arrow:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:nested:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-nested-bare compiler VIP-3: ts1338:nested:bare; lane migfix-foldkit
+FuzzBareInferReturnAnnotation ts1338:object-method:bare compiler VIP-3: ordinary return annotations retain TS1338 outside the Effect-channel migration; lane migfix-foldkit
+FuzzBareInferReturnAnnotation corpus:foldkit-object-method-bare compiler VIP-3: ts1338:object-method:bare; lane migfix-foldkit
