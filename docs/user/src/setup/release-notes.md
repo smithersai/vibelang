@@ -22,6 +22,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Expected skipped or todo tests with an empty reason could appear as failures in the health report. They are now excluded.
 - The website could stay on an older release because its combined documentation included old installation commands. The combined guide now shows the current release and links to earlier release notes.
 - Returning several migrated files to TypeScript could crash after generated package imports had already been removed. It now completes the return and preserves unrelated package entries.
+- Compiling a large workspace could exhaust memory while finding relocated declarations. Parallel imports now share one probe of each project’s file layout.
 - A `for concurrent` head with a default for a missing property, as in `for concurrent (const { n = 1 } of [{}]) { … }`, reported `TS2339`. It now keeps the default, as the same `for…of` loop does.
 - `vibelang --fix` refused a throwing foreign type guard in an `if` condition, because the repair would lose its narrowing. It now bridges the call and keeps the narrowed value.
 

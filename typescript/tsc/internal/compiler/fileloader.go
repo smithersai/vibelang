@@ -148,6 +148,8 @@ type processedFiles struct {
 type compilerResolutionHost struct {
 	sidecarConfigs collections.SyncMap[tspath.PathKey, *tsoptions.ParsedCommandLine]
 	sidecarRoots   collections.SyncMap[tspath.PathKey, string]
+	sidecarRootsMu sync.Mutex
+	sidecarTrace   *tracing.Tracing
 	host           CompilerHost
 	baseDirectory  tspath.RootedDirectoryPath
 }
@@ -345,7 +347,7 @@ func (p *fileLoader) addProjectReferenceTasks(singleThreaded bool) {
 			config:                      p.opts.Config,
 			useSourceOfProjectReference: p.opts.canUseProjectReferenceSource(),
 		},
-		host: &compilerResolutionHost{host: p.host, baseDirectory: p.opts.Config.BaseDirectory()},
+		host: &compilerResolutionHost{host: p.host, baseDirectory: p.opts.Config.BaseDirectory(), sidecarTrace: p.tracing},
 	}
 	projectReferences := p.opts.Config.ResolvedProjectReferencePaths()
 	if len(projectReferences) == 0 {

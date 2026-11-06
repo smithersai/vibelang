@@ -1,7 +1,11 @@
 package compiler
 
 import (
+	"strconv"
 	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/tracing"
+	"github.com/zeebo/xxh3"
 
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -38,12 +42,28 @@ func (h *compilerResolutionHost) ResolveVibeSidecarSource(sidecar tspath.RootedF
 		options := config.CompilerOptions()
 		root, cached := h.sidecarRoots.Load(key)
 		if !cached {
-			root = options.VibeSidecarRoot(config.FileNames(), fs.CaseSensitivity())
-			if options.RootDir == "" && !options.Composite.IsTrue() {
-				layout := NewProgram(ProgramOptions{Config: config, Host: &sidecarLayoutHost{CompilerHost: h.host}})
-				root = layout.vibeSidecarSourceRoot()
-			}
-			h.sidecarRoots.Store(key, root)
+			// A cache miss can build the entire owning graph. Coalesce misses
+			// and bound simultaneous layout programs for this resolution host.
+			func() {
+				h.sidecarRootsMu.Lock()
+				defer h.sidecarRootsMu.Unlock()
+				if ready, exists := h.sidecarRoots.Load(key); exists {
+					root = ready
+					return
+				}
+				root = options.VibeSidecarRoot(config.FileNames(), fs.CaseSensitivity())
+				if options.RootDir == "" && !options.Composite.IsTrue() {
+					if h.sidecarTrace != nil {
+						defer h.sidecarTrace.Push(tracing.PhaseProgram, "vibeSidecarLayout", map[string]any{
+							"project":   strconv.FormatUint(xxh3.HashString(string(key)), 16),
+							"rootFiles": len(config.FileNames()),
+						}, false)()
+					}
+					layout := NewProgram(ProgramOptions{Config: config, Host: &sidecarLayoutHost{CompilerHost: h.host}})
+					root = layout.vibeSidecarSourceRoot()
+				}
+				h.sidecarRoots.Store(key, root)
+			}()
 		}
 		source := options.VibeSidecarSource(string(sidecar), fs.CaseSensitivity(), root)
 		candidate := tspath.RootedFilePathFromNormalized(source)
