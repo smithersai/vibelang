@@ -162,8 +162,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,700 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
-| **Resource Management** | **4,600** |
-| [Introduction](../resource-management/029-introduction.md) | 1,800 |
+| **Resource Management** | **4,700** |
+| [Introduction](../resource-management/029-introduction.md) | 1,900 |
 | [Scope](../resource-management/030-scope.md) | 2,800 |
 | **Observability** | **6,900** |
 | [Logging](../observability/031-logging.md) | 2,100 |

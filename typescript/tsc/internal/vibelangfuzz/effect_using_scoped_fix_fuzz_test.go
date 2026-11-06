@@ -9,6 +9,7 @@ import (
 )
 
 const usingScopedFixTitle = "Acquire with acquireDisposable inside scoped"
+const usingScopedNameQuote = "The naming context must be preserved or suppressed before creation, rather than repairing `.name` afterward: a class static initializer may already have observed it."
 const usingScopedBindingQuote = "Bindings and jump targets are resolved on the source before any callback is introduced."
 
 // Each form states whether EK0801's fix is context-safe there.
@@ -36,6 +37,22 @@ var usingScopedForms = map[string]struct {
 	"binding-property-name":            {"const later = 2;\nexport effect function load() { const earlier = { later: 1 }; using r = open(); const later = 2; return earlier.later + later }", true},
 	"binding-type-property-name":       {"const later = 2;\nexport effect function load() { type Before = { later: number }; using r = open(); const later = 2; const result: Before = { later }; return result.later }", true},
 	"binding-nested-block-binding":     {"const later = 2;\nexport effect function load() { const read = () => { const later = 1; return later }; using r = open(); const later = 2; return read() + later }", true},
+	"name-anonymous-class":             {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = class { static observed = this.name; static [Symbol.dispose]() {} }; return 1 }", false},
+	"name-parenthesized":               {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = (class { static observed = this.name; static [Symbol.dispose]() {} }); return 1 }", false},
+	"name-double-parenthesized":        {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = ((class { static observed = this.name; static [Symbol.dispose]() {} })); return 1 }", false},
+	"name-satisfies":                   {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = (class { static observed = this.name; static [Symbol.dispose]() {} } satisfies Disposable); return 1 }", false},
+	"name-asserted":                    {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = (class { static observed = this.name; static [Symbol.dispose]() {} } as Disposable); return 1 }", false},
+	"name-nonnull":                     {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = (class { static observed = this.name; static [Symbol.dispose]() {} })!; return 1 }", false},
+	"name-generic":                     {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = class<T> { static observed = this.name; static [Symbol.dispose]() {} }; return 1 }", false},
+	"name-extends":                     {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = class extends Base { static observed = this.name }; return 1 }", false},
+	"name-named-class":                 {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = class Kept { static observed = this.name; static [Symbol.dispose]() {} }; return 1 }", true},
+	"name-named-parenthesized":         {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = (class Kept { static observed = this.name; static [Symbol.dispose]() {} }); return 1 }", true},
+	"name-named-extends":               {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = class Kept extends Base { static observed = this.name }; return 1 }", true},
+	"name-identifier":                  {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = Known; return 1 }", true},
+	"name-factory":                     {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = make(); return 1 }", true},
+	"name-constructed":                 {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = new (class { [Symbol.dispose]() {} })(); return 1 }", true},
+	"name-conditional":                 {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = choose() ? class { static observed = this.name; static [Symbol.dispose]() {} } : class { static observed = this.name; static [Symbol.dispose]() {} }; return 1 }", true},
+	"name-object-property":             {"class Base { static [Symbol.dispose]() {} }; const Known = class { static observed = this.name; static [Symbol.dispose]() {} }; const make = () => class { static observed = this.name; static [Symbol.dispose]() {} }; const choose = () => true;\nexport effect function load() { using resource = { Nested: class { static observed = this.name; static [Symbol.dispose]() {} }, [Symbol.dispose]() {} }; return 1 }", true},
 	"function":                         {"export effect function load() { using r = open(); return 1 }", true},
 	"arrow":                            {"export const load = effect () => { using r = open(); return 1 }", true},
 	"method":                           {"export class Loader { effect load() { using r = open(); return 1 } }", true},
@@ -53,12 +70,14 @@ var usingScopedForms = map[string]struct {
 }
 
 func TestEffectUsingScopedFixQuoted(t *testing.T) {
+	chapterSays(t, "001-functions.md", usingScopedNameQuote)
 	chapterSays(t, "007-tooling.md", effectUsingWarningQuote)
 	chapterSays(t, "008-runtime.md", usingScopedBindingQuote)
 }
 
 func FuzzEffectUsingScopedFix(f *testing.F) {
 	startShortBudget(f)
+	chapterSays(f, "001-functions.md", usingScopedNameQuote)
 	chapterSays(f, "008-runtime.md", usingScopedBindingQuote)
 	for key := range usingScopedForms {
 		f.Add(key, uint8(0))

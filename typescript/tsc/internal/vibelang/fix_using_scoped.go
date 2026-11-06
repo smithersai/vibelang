@@ -70,7 +70,7 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 	for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
 		initializer := declaration.Initializer()
 		t := c.GetTypeAtLocation(declaration.Name())
-		if initializer == nil || a.runsEffect(initializer) || t.Flags()&checker.TypeFlagsAny != 0 || c.GetNonNullableType(t) != t || !c.IsSyncDisposableType(t) {
+		if initializer == nil || usingScopedLosesName(initializer) || a.runsEffect(initializer) || t.Flags()&checker.TypeFlagsAny != 0 || c.GetNonNullableType(t) != t || !c.IsSyncDisposableType(t) {
 			return nil, nil
 		}
 		value := text[nodeStart(file, initializer):initializer.End()]
@@ -134,4 +134,13 @@ func usingScopedMovesReferencedBinding(c *checker.Checker, file *ast.SourceFile,
 		}
 	}
 	return false
+}
+
+// The acquisition callback returns a value, so it cannot supply the using
+// binding's inferred name. A class static initializer can observe that name
+// before acquisition finishes; assigning .name afterward would be too late.
+func usingScopedLosesName(initializer *ast.Node) bool {
+	value := ast.SkipOuterExpressions(initializer, ast.OEKAll)
+	return ast.IsArrowFunction(value) ||
+		(ast.IsFunctionExpression(value) || ast.IsClassExpression(value)) && value.Name() == nil
 }

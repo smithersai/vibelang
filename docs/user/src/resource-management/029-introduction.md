@@ -163,6 +163,8 @@ Acquisitions inside `scoped` belong to that scope. An acquisition without an inn
 
 `acquireDisposable` registers a JavaScript Disposable or AsyncDisposable in the current Effect scope and releases it exactly once, even when an interruption is pending as acquisition gives its value. A value acquired with `acquireRelease` is released only by its release ([Releasing JavaScript Disposables](030-scope.md#releasing-javascript-disposables)). TypeScript's `using` retains its JavaScript disposal behavior. In Effect code, `using` reports warning `EK0801` because failure or interruption can bypass JavaScript disposal. Use `acquireDisposable` inside `scoped` for Effect resources. Configure this warning through `vibe.severities`; plain and `async` functions keep native `using` without this warning. The editor offers a fix for a direct declaration in an Effect callable when the rest of the body can move into `scoped` safely. It withholds the action if earlier code refers to a binding that would move, including through a closure or a type reference.
 
+The resource quick fix is withheld for an anonymous class, function or arrow initializer whose inferred name would be lost inside the acquisition callback. When converting by hand, preserve the original naming context before the value is created; a class static initializer may already have read its name.
+
 ## Coming from Effect
 
 Use `effect { … }` to build an Effect from statements. Run `ensuring`, `onExit`, `onError`, and resource brackets with `try`. Pass Effect values directly and use effect arrows for callbacks that run several operations.
