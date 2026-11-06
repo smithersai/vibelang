@@ -19,9 +19,10 @@ func lintArrowContract(self string) string { return self + lintArrowSuffix }
 // source's own code in place. It reports whether it lowered node.
 func (p *projector) lintForm(node *ast.Node, e env) bool {
 	switch {
-	case node.Kind == ast.KindImportDeclaration && parser.IsVibeLangModuleReference(node.AsImportDeclaration().ModuleSpecifier):
-		// import x from text names an inline module; a module declaration
-		// itself parses as a namespace.
+	case node.Kind == ast.KindImportDeclaration && parser.IsVibeLangModuleReference(node.AsImportDeclaration().ModuleSpecifier) ||
+		node.Kind == ast.KindExportDeclaration && parser.IsVibeLangModuleReference(node.AsExportDeclaration().ModuleSpecifier):
+		// Imports and re-exports of an inline module have no standalone
+		// TypeScript specifier. Its body itself parses as a namespace.
 		p.plan.replace(p.tokenStart(node), node.End(), "")
 		return true
 	case isBareIsTest(node, p.text):

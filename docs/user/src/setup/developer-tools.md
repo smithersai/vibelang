@@ -264,6 +264,8 @@ the virtual TypeScript; `extension`; `mappings`, the span map back to the source
 and `diagnostics`. Like `--estree`, it takes one file and exits with status 2 on
 a usage error. A form the checking projection leaves for an annotation takes its
 value reading here, because only syntax matters to a linter.
+Module bodies keep their native lint checks when their members are re-exported,
+including named, namespace and type-only re-exports.
 
 `vibelang/oxlint` writes each `x.vibe` as `x.ts` and each `x.vibex` as `x.tsx` under
 a temporary directory with the same relative paths, with the repository's

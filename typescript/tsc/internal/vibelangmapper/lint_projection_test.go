@@ -124,3 +124,23 @@ func TestLintProjectionParses(t *testing.T) {
 		}
 	}
 }
+
+func TestLintProjectionOfModuleBodyReexports(t *testing.T) {
+	for _, declaration := range []string{
+		"export { value } from platform",
+		"export { value as renamed } from platform",
+		"export * from platform",
+		"export * as shared from platform",
+		"export type { Value } from platform",
+	} {
+		source := "module platform { export const value = 1; export type Value = number }\n" + declaration + "\nexport { other } from \"./other.ts\"\n"
+		lint := Project(source, lintContext("/src/a.vibe"))
+		assertValidMap(t, lint, source)
+		if strings.Contains(lint.Text, "from platform") {
+			t.Errorf("native linter cannot parse the unquoted body re-export: %s", lint.Text)
+		}
+		if !strings.Contains(lint.Text, "export const value = 1") || !strings.Contains(lint.Text, "from \"./other.js\"") {
+			t.Errorf("projection lost body code or an ordinary re-export: %s", lint.Text)
+		}
+	}
+}

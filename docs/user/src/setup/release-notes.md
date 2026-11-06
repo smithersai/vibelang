@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Formatting a documented parenthesized assignment could fail because a semicolon took its JSDoc comment. The assignment now formats while keeping its documentation.
 
 - Linting migrated files could report an unknown rule for a TypeScript suppression comment. Native TypeScript rule aliases now name the registered ESLint rule.
+
+- Native lint checks stopped running on files that re-exported members of a module body. These files now receive the configured checks, with reports at their original source positions.
 - A `.vibex` file with a `module` body failed in Vite under `"jsx": "preserve"`, with `Failed to resolve import` for its `.jsx` output. `vibelang-vite` now serves that output.
 - Migrating a package with wildcard exports could expose generated TypeScript module helpers as new public entrypoints. Those helpers now stay private while authored exports remain available.
 - Migration `record` refused a batch whose every module had reverted for a recorded cause, even with every gate passing. It now keeps that outcome and its causes.

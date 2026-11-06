@@ -225,3 +225,36 @@ test("lineAndColumn counts lines and byte columns from a byte offset, as Oxlint 
   assert.deepEqual(lineAndColumn(source, 0), { line: 1, column: 1 })
   assert.deepEqual(lineAndColumn(source, source.indexOf("x")), { line: 2, column: 6 })
 })
+
+test("module body re-exports reach native lint rules across export forms", async (t) => {
+  const config = { plugins: ["oxc"], categories: { correctness: "off" }, rules: { "oxc/approx-constant": "error" } }
+  const witness = JSON.parse(readFileSync(new URL("./property-regressions/opencode-module-body-reexport.json", import.meta.url), "utf8"))
+  const inspect = async (file, source) => {
+    const output = await lint(t, { [file]: source }, config)
+    assert.equal(output.diagnostics.length, 1, JSON.stringify(output.diagnostics))
+    const report = output.diagnostics[0]
+    assert.equal(report.code, "oxc(approx-constant)")
+    assert.equal(report.filename, file)
+    const span = report.labels[0].span
+    assert.equal(Buffer.from(source).subarray(span.offset, span.offset + span.length).toString(), "3.141")
+  }
+  await inspect(witness.file, witness.source)
+  await fc.assert(fc.asyncProperty(
+    fc.integer({ min: 0, max: 10000 }),
+    fc.constantFrom("named", "renamed", "star", "namespace", "type"),
+    fc.constantFrom("main.vibe", "main.vibex"),
+    fc.constantFrom("", "// é source\n", "/* before the module */\n"),
+    async (id, form, file, prefix) => {
+      const module = "body" + id
+      const suffix = {
+        named: "export { value } from " + module,
+        renamed: "export { value as renamed } from " + module,
+        star: "export * from " + module,
+        namespace: "export * as shared from " + module,
+        type: "export type { Value } from " + module,
+      }[form]
+      const source = prefix + "module " + module + " {\n  export const value = 3.141\n  export type Value = number\n}\n" + suffix + "\n"
+      await inspect(file, source)
+    }
+  ), { seed: 341106, numRuns: 36 })
+})

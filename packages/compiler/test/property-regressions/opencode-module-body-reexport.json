@@ -1,0 +1,4 @@
+{
+  "file": "main.vibe",
+  "source": "module platform {\n  export const value = 3.141\n}\nexport { value } from platform\n"
+}
