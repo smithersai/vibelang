@@ -127,11 +127,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vue](../setup/vue.md) | 2,900 |
 | [Svelte](../setup/svelte.md) | 2,600 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |
-| **Editors** | **4,800** |
+| **Editors** | **4,900** |
 | [VS Code and Cursor](../setup/vscode.md) | 1,300 |
 | [Neovim](../setup/neovim.md) | 1,200 |
 | [Zed](../setup/zed.md) | 520 |
-| [Other editors](../setup/other-editors.md) | 700 |
+| [Other editors](../setup/other-editors.md) | 730 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Upgrade** | **160,000** |
 | [Release notes](../setup/release-notes.md) | 160,000 |
