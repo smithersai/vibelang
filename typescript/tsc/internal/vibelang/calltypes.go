@@ -206,6 +206,8 @@ func runningCallResultOf(c *checker.Checker, call *ast.Node, returned *checker.T
 	// Infer the same channels as the native allSettled counterpart, including
 	// the unknown requirement inferred by [].map(Effect.exit).
 	returned = trySettledType(c, call, returned)
+	// Unchecked join inputs use the native Fiber.join signature's inference.
+	returned = nativeJoinType(c, call, returned)
 	t := providedCallType(c, call, returned)
 	if !ast.IsOptionalChain(call) {
 		return t

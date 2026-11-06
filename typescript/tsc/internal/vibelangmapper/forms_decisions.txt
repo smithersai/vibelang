@@ -4704,6 +4704,13 @@ typescript/vibelang/cases/join-native-observations/main.vibe:12:5 lambda choice 
 typescript/vibelang/cases/join-native-observations/main.vibe:7:38 byname program table
 typescript/vibelang/cases/join-native-observations/main.vibe:8:39 byname program table
 typescript/vibelang/cases/join-native-observations/main.vibe:9:38 byname program table
+typescript/vibelang/cases/join-native-result-channels/main.vibe:17:21 lambda plain table
+typescript/vibelang/cases/join-native-result-channels/main.vibe:27:21 lambda plain table
+typescript/vibelang/cases/join-native-result-channels/main.vibe:37:21 lambda plain table
+typescript/vibelang/cases/join-native-result-channels/main.vibe:47:21 lambda plain table
+typescript/vibelang/cases/join-native-result-channels/main.vibe:57:21 lambda plain table
+typescript/vibelang/cases/join-native-result-channels/main.vibe:67:21 lambda plain table
+typescript/vibelang/cases/join-native-result-channels/main.vibe:7:21 lambda plain table
 typescript/vibelang/cases/join-parenthesized/main.vibe:91:18 byname program table
 typescript/vibelang/cases/join-parenthesized/main.vibe:92:18 byname program table
 typescript/vibelang/cases/join-parenthesized/main.vibe:93:17 byname program table

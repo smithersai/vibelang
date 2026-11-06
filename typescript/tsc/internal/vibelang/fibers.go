@@ -295,22 +295,21 @@ func isJoinable(c *checker.Checker, t *checker.Type, depth int) bool {
 		}
 		return true
 	}
-	if c.GetPropertyOfType(t, "~effect/Fiber") != nil {
-		// A marker alone does not implement Fiber. Use its pinned interface
-		// with the same erased channels as the operand domain in VIP-17.
-		for _, file := range c.Program().SourceFiles() {
-			if !isEffectModuleFile(file, "Fiber") || file.Symbol == nil {
-				continue
-			}
-			for _, symbol := range c.GetExportsOfModule(file.Symbol) {
-				if symbol.Name() == "Fiber" && symbol.Flags()&ast.SymbolFlagsInterface != 0 {
-					target := c.GetDeclaredTypeOfSymbol(symbol)
-					any := c.GetAnyType()
-					return c.IsTypeAssignableTo(t, c.NewTypeReference(target, []*checker.Type{any, any}))
+	// Native assignability handles constraints as well as structural members.
+	// Use the same erased channels as the operand domain in VIP-17.
+	for _, file := range c.Program().SourceFiles() {
+		if !isEffectModuleFile(file, "Fiber") || file.Symbol == nil {
+			continue
+		}
+		for _, symbol := range c.GetExportsOfModule(file.Symbol) {
+			if symbol.Name() == "Fiber" && symbol.Flags()&ast.SymbolFlagsInterface != 0 {
+				target := c.GetDeclaredTypeOfSymbol(symbol)
+				any := c.GetAnyType()
+				if c.IsTypeAssignableTo(t, c.NewTypeReference(target, []*checker.Type{any, any})) {
+					return true
 				}
 			}
 		}
-		return false
 	}
 	if depth > 0 || t.Flags()&checker.TypeFlagsObject == 0 || isEffectType(c, t) || isDeferred(c, t) || c.GetPromisedTypeOfPromise(t) != nil || len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
 		return false

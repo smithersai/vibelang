@@ -1,0 +1,76 @@
+// expect-result: 7
+import { Effect, Fiber } from "effect"
+type Empty = never
+type Unchecked = any
+
+export function native0(input: any) {
+  return Effect.gen(function*() { return yield* Fiber.join(input) })
+}
+export effect function actual0(input: any) {
+  return join (input satisfies Fiber.Fiber<any, any>)
+}
+const forward0: typeof native0 = actual0
+const backward0: typeof actual0 = native0
+void forward0; void backward0
+
+export function native1(input: never) {
+  return Effect.gen(function*() { return yield* Fiber.join(input) })
+}
+export effect function actual1(input: never) {
+  return join (input satisfies Fiber.Fiber<any, any>)
+}
+const forward1: typeof native1 = actual1
+const backward1: typeof actual1 = native1
+void forward1; void backward1
+
+export function native2(input: Unchecked) {
+  return Effect.gen(function*() { return yield* Fiber.join(input) })
+}
+export effect function actual2(input: Unchecked) {
+  return join (input satisfies Fiber.Fiber<any, any>)
+}
+const forward2: typeof native2 = actual2
+const backward2: typeof actual2 = native2
+void forward2; void backward2
+
+export function native3(input: Empty) {
+  return Effect.gen(function*() { return yield* Fiber.join(input) })
+}
+export effect function actual3(input: Empty) {
+  return join (input satisfies Fiber.Fiber<any, any>)
+}
+const forward3: typeof native3 = actual3
+const backward3: typeof actual3 = native3
+void forward3; void backward3
+
+export function native4(input: any | undefined) {
+  return Effect.gen(function*() { return yield* Fiber.join(input) })
+}
+export effect function actual4(input: any | undefined) {
+  return join (input satisfies Fiber.Fiber<any, any>)
+}
+const forward4: typeof native4 = actual4
+const backward4: typeof actual4 = native4
+void forward4; void backward4
+
+export function native5(input: number & never) {
+  return Effect.gen(function*() { return yield* Fiber.join(input) })
+}
+export effect function actual5(input: number & never) {
+  return join (input satisfies Fiber.Fiber<any, any>)
+}
+const forward5: typeof native5 = actual5
+const backward5: typeof actual5 = native5
+void forward5; void backward5
+
+export function native6<T extends never>(input: T) {
+  return Effect.gen(function*() { return yield* Fiber.join(input) })
+}
+export effect function actual6<T extends never>(input: T) {
+  return join (input satisfies Fiber.Fiber<any, any>)
+}
+const forward6: typeof native6 = actual6
+const backward6: typeof actual6 = native6
+void forward6; void backward6
+
+export effect function main() { return 7 }
