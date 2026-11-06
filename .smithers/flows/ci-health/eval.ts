@@ -19,7 +19,8 @@
 // Scorers: flaky, exactly the flaky targets; tests, the known flaky tests are
 // named; intermittent, exactly the tests that failed again after their target
 // passed (fixture-intermittent); causes, each target's top cause; slow, a replay never ranks as slow;
-// regressed, exactly the targets that got slower, with the timeouts counted.
+// regressed, exactly the targets that got slower, with the timeouts counted;
+// rendered, both Markdown tables display the original test names literally.
 // A scorer whose field a case does not state scores 1 there.
 //
 //   bun .smithers/flows/ci-health/eval.ts            run, compare with baseline.json, exit 1 on a drop
@@ -56,6 +57,7 @@ type Output = {
   readonly slow: ReadonlyArray<string>;
   readonly regressed: Readonly<Record<string, number>>;
   readonly intermittent: ReadonlyArray<string>;
+  readonly literalNames: boolean;
 };
 
 const cases: Array<{ readonly name: string; readonly input: Input }> = [{
@@ -191,6 +193,7 @@ const tests = score("tests", (i, o) => {
   if (i.exactTests) return exactly(i.tests, o.tests);
   return i.tests.filter((t) => o.tests.includes(t)).length / i.tests.length;
 });
+const rendered = score("rendered", (_, o) => Number(o.literalNames));
 const causes = score("causes", (i, o) => {
   if (!i.causes) return 1;
   const want = Object.entries(i.causes);
@@ -218,6 +221,20 @@ function results(fixture: string, scratch: string): string {
   return copy;
 }
 
+// Compare the actual Markdown renderer's cells with literal source names.
+function literalTable(markdown: string, heading: string, next: string, names: ReadonlyArray<string>): boolean {
+  const section = markdown.split(`## ${heading}\n`)[1]?.split(`## ${next}\n`)[0];
+  if (section === undefined) return false;
+  const html = Bun.markdown.html(section);
+  const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? "";
+  const cells = [...body.matchAll(/<tr>([\s\S]*?)<\/tr>/g)]
+    .map(row => [...row[1].matchAll(/<td>([\s\S]*?)<\/td>/g)][1]?.[1]);
+  const escaped: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+  const expected = names.map(name => name.replace(/[&<>"]/g, char => escaped[char])
+    .replace(/\r\n|[\r\n\u2028\u2029]/g, "<br>"));
+  return JSON.stringify(cells) === JSON.stringify(expected);
+}
+
 async function report(input: Input): Promise<Output> {
   const scratch = mkdtempSync(join(tmpdir(), "ci-health-eval-"));
   const run = join(scratch, "run");
@@ -226,11 +243,14 @@ async function report(input: Input): Promise<Output> {
     if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
     const read = (step: string) => JSON.parse(readFileSync(join(run, `${step}.json`), "utf8"));
     const result = read("report"), analysis = read("analyze");
+    const markdown = readFileSync(join(run, "report.md"), "utf8");
     const top = (c: Record<string, number>) => Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     return {
       flaky: result.flaky,
       tests: result.tests,
       intermittent: result.intermittent,
+      literalNames: literalTable(markdown, "Flaky tests", "Intermittent tests", result.tests) &&
+        literalTable(markdown, "Intermittent tests", "Slower targets", result.intermittent.slice(0, 30)),
       slow: result.slow,
       causes: Object.fromEntries(analysis.flaky.map((t: { label: string; causes: Record<string, number> }) => [t.label, top(t.causes)])),
       regressed: Object.fromEntries(analysis.regressed.map((t: { label: string; timeouts: number }) => [t.label, t.timeouts]))
@@ -253,7 +273,7 @@ const program = Effect.gen(function* () {
   const suite = yield* Suite.make({
     name: "ci-health",
     cases,
-    bindings: [flaky, tests, intermittent, causes, slow, regressed].map((scorer) => Binding.make({ scorer, appliesTo: target })),
+    bindings: [flaky, tests, intermittent, causes, slow, regressed, rendered].map((scorer) => Binding.make({ scorer, appliesTo: target })),
     concurrency: 1
   });
   const run = yield* Runner.run(suite, { runId: `ci-health-${Date.now()}`, at: new Date().toISOString() });

@@ -308,7 +308,8 @@ export const ACTIONS = {
   unknown: "Read the log"
 }
 
-const cell = (s) => String(s).replaceAll("|", "\\|").replaceAll(/\r\n|[\r\n\u2028\u2029]/g, "<br>")
+// Escape ASCII punctuation before adding the report's own line-break markup.
+const cell = (s) => String(s).replace(/[!-/:-@[-`{-~]/g, "\\$&").replaceAll(/\r\n|[\r\n\u2028\u2029]/g, "<br>")
 const day = (iso) => iso.slice(0, 16).replace("T", " ")
 
 // report writes report.md and the ranking a follow-up reads.

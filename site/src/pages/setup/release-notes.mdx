@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Test names containing Markdown formatting or HTML-like text could look different in health reports. Reports now display those names literally.
+
 - A health report could lose points when several targets failed tests with the same name. Repeated names now count once when the report is graded.
 
 - Following the pnpm install guide could select a newer Node helper and report incompatible Effect peers. The guide now puts the transitive pin in `pnpm-workspace.yaml`.

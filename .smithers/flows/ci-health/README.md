@@ -53,7 +53,9 @@ Failure counters treat every test name as a key, including `__proto__`,
 and last-failure times through saved analysis and the rendered report.
 Rendered table cells show line breaks with `<br>`, including `CRLF` as one
 break, so a multiline name cannot split a row. Saved JSON retains the original
-name. Pipes remain escaped inside the displayed cell.
+name. Markdown punctuation is escaped, so formatting, links, HTML-like text
+and entities display as literal parts of the name. Pipes and backslashes
+remain inside the displayed cell.
 
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`
@@ -130,6 +132,7 @@ excluding skip/todo controls. Regenerate with
 | `tests` | The report names the known flaky tests |
 | `intermittent` | The report names exactly the tests that failed again after their target passed |
 | `causes` | Each target's top cause matches the logs |
+| `rendered` | Both rendered test tables display the original names literally, with their line breaks inside the cells |
 | `slow` | Targets rank by run time, and a target that only replayed never ranks |
 | `regressed` | The report names exactly `//packages:compiler-test` as slower, with its two timeouts; `//:docs-tools`, 1.4 times slower under load, is not named |
 

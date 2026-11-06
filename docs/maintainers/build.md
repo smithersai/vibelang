@@ -1824,8 +1824,11 @@ including `__proto__`, `constructor` and `toString`. Real compiler and migration
 reporter fixtures check those names through saved analysis and rendered reports;
 generated runs also cover duplicate records, multiple keys and replayed passes.
 Multiline names render with `<br>` inside table cells; `CRLF` counts as one
-break. Pipes remain escaped, and saved JSON keeps the original name. Real
-reporter fixtures and generated names check both failure and returning tables.
+break. Markdown punctuation is escaped, so formatting, links, HTML-like text
+and entities display literally. Pipes and backslashes stay inside the cell,
+and saved JSON keeps the original name. Real reporter fixtures and generated
+names check both failure and returning tables through the actual Markdown
+renderer; the workflow eval also checks the rendered names.
 
 The release script glob excludes `scripts/api-identity*.test.mjs`. The release
 target depends on `//:api-identity-test`, so a focused release runs the API
