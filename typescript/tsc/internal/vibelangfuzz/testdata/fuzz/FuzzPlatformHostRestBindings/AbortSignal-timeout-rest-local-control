@@ -1,0 +1,3 @@
+go test fuzz v1
+string("AbortSignal-timeout-rest-local-control")
+byte('\x1f')

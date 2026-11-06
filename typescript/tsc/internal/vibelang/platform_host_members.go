@@ -175,6 +175,9 @@ func platformHostOrigin(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol
 			return platformHostOrigin(c, declaration.Initializer(), seen, cache, writes, values)
 		}
 		if ast.IsBindingElement(declaration) && declaration.Parent != nil && ast.IsObjectBindingPattern(declaration.Parent) {
+			if declaration.AsBindingElement().DotDotDotToken != nil {
+				return platformHostValue{}
+			}
 			variable := declaration.Parent.Parent
 			if ast.IsVariableDeclaration(variable) && platformHostStable(variable, symbol, writes) {
 				name := declaration.PropertyName()

@@ -7,6 +7,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.13 (unreleased)
 
 ### Bugs fixed since 0.0.12
+- Object-rest bindings such as `const { ...timeout } = AbortSignal` could be rejected as platform calls. They now compile as ordinary object copies.
 
 - A test name containing a line break could split its health-report table row and separate it from its failure count. The name and count now stay in the same row.
 
