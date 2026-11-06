@@ -17,7 +17,19 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	}
 	args := call.Arguments()
 	items, limit, fn := args[0], args[1], args[2]
-	body := fn.Body()
+	loopBody := fn.Body()
+	body := loopBody
+	pattern, statements := concurrentHeadPattern(fn, body)
+	// The synthetic body includes the head for editor lookup. Its inner
+	// source body owns the edits; a head position can precede the iterable.
+	if body.Pos() < items.End() && len(statements) == 1 {
+		body = statements[0]
+		if ast.IsBlock(body) {
+			statements = body.Statements()
+		} else {
+			statements = []*ast.Node{body}
+		}
+	}
 	bodyStart := p.tokenStart(body)
 	if bodyStart >= len(p.text) {
 		// An unfinished loop's synthetic body can start at EOF.
@@ -50,12 +62,11 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 		p.plan.insert(at, limitName)
 	}
 	p.plan.insert(at, ", (")
-	pattern, statements := concurrentHeadPattern(fn, body)
 	p.concurrentCopy(pattern, at, env{})
 	p.plan.insert(at, ") => ")
 	p.plan.replace(at, p.tokenStart(body), "")
-	continues := p.concurrentJumps(body)
-	p.plan.mark(editProgram, partOpen, p.tokenStart(body), p.tokenStart(body), selfArg(body))
+	continues := p.concurrentJumps(loopBody)
+	p.plan.mark(editProgram, partOpen, p.tokenStart(body), p.tokenStart(body), selfArg(loopBody))
 	// The parser gives an unbraced statement a synthetic block at the
 	// statement's own span. Supply only those braces the source lacks.
 	braced := p.text[bodyStart] == '{'
@@ -64,7 +75,7 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 		// The synthetic block may hold is-binding declarations anchored in
 		// the source pattern. Render it as a whole so their insertions cannot
 		// overlap the replacement of that pattern.
-		p.synthesizedBlock(body, statements, bodyStart, body.End(), newEffectEnv())
+		p.synthesizedBlock(loopBody, statements, bodyStart, body.End(), newEffectEnv())
 	} else {
 		p.visitList(statements, newEffectEnv())
 	}
@@ -104,11 +115,17 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 func concurrentHeadPattern(fn, body *ast.Node) (*ast.Node, []*ast.Node) {
 	name := fn.Parameters()[0].Name()
 	statements := body.Statements()
-	if name.Flags&ast.NodeFlagsReparsed == 0 || name.Kind != ast.KindIdentifier || name.Text() != "$concurrentItem" || len(statements) == 0 || statements[0].Kind != ast.KindVariableStatement {
+	if name.Flags&ast.NodeFlagsReparsed == 0 || name.Kind != ast.KindIdentifier || len(statements) == 0 || statements[0].Kind != ast.KindVariableStatement {
 		return name, statements
 	}
 	declarations := statements[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
 	if len(declarations) != 1 {
+		return name, statements
+	}
+	initializer := declarations[0].AsVariableDeclaration().Initializer
+	// The parser freshens generated names when source uses the same spelling.
+	// Identify the generated item reference by its marker and binding instead.
+	if initializer == nil || !ast.IsIdentifier(initializer) || initializer.Flags&ast.NodeFlagsVibeLangTemporary == 0 || initializer.Text() != name.Text() {
 		return name, statements
 	}
 	return declarations[0].Name(), statements[1:]
