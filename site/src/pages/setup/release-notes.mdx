@@ -14,10 +14,13 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - A routed import in a migrated package could point at a declaration file that was never written, so TypeScript fell back to untyped JavaScript and reported TS7016 and TS7006 across the importers. A route now names the declaration the compiler wrote.
+- In a repository whose root project also compiles its packages, a routed import could point outside its package, and Bun then failed with `Cannot find module`. A package's own emitted file now wins.
+- The site's Proposals page still showed a layer as `Layer.effect(Users) { ... }`, a trailing block that `EK1101` rejects, and the contributor benchmark for `vibelang/register` generated its modules in that older syntax, so every module it wrote failed to compile. The page now shows `Layer.effect(Users, effect { ... })`, and the benchmark generates current syntax.
 - A project that imports through `paths` aliases and emits only declarations failed with TS5097 at every import of a migrated module, so the migration reverted modules that were fine. Setup now turns on `allowImportingTsExtensions` for such a project.
 - With bundle routing on, one test assertion about bundle input names held its whole package back from migrating. The assertion now holds only the modules it names and the imports between them, so the rest of the package converts.
 - Destructuring a function, as in `const { constructor: C } = f`, and a template-literal `data:` or `blob:` specifier in `import()` could still reach code that runs a string. Both now report `EK0107`, as `f.constructor` and a string-literal specifier do.
 - A layer finalizer around a `provide` block could see an internal record instead of the block's result when a `return`, `break` or `continue` left the block, including through `uninterruptible`, `interruptible` and `restore` inside it. The finalizer now sees the returned value, or `undefined` for a `break` or `continue`, as with `Effect.provide`.
+- `vibelang --fix` left an older `service Prefix: string` in a named package at `EK0906`, so a project couldn't upgrade it. It now writes the empty body, `service Prefix: string {}`.
 - A project that couldn't rename its files couldn't use VibeLang. A `.ts`, `.tsx`, `.mts` or `.cts` file whose first line is `// @vibe` now compiles as VibeLang; every other `.ts` file keeps TypeScript's verdict.
 - `vibelang-vite`, `vibelang-unplugin`, `vibelang/register`, `vibelang format` and `vibelang lint` skipped or failed on a `.ts` file with `// @vibe`. They now compile, run, format and lint it. Bun's bundler and Metro still need `.vibe`.
 - A project had to change its scripts to call `vibelang`. The new `vibelang-typescript` package replaces `typescript`, so `tsc` and editors that start `tsc --lsp --stdio` read `// @vibe` files. It's the last option: see [VibeLang in .ts files](/setup/typescript-shim).
@@ -31,6 +34,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrating a repository with routed bundle imports could revert healthy modules: each revert dropped the routes, and the import errors that left were blamed on modules that had none. Settle now emits again before it blames a kept module.
 
 - A `for…of` in effect code called its iterator's `return` when a `try` failed or the fiber was interrupted, and joined a failing close into a thrown defect. It now behaves as the same loop in `Effect.gen`: a failed `try`, a `throw` and an interruption leave the iterator open, and a thrown error wins over a failing close.
+- A `return`, `break` or `continue` in a `do` default of an object pattern, as in `const { y = do { return 0 } } = source`, reported `EK0204`, and a `do` default over an object literal such as `const { k = do { () => 1 } } = {}` could report `TS7024`. Both now compile: the jump leaves from the default, as it does in an array pattern.
 - Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
 
 - Migrating a generator with nested pipelines could crash or corrupt the rewrite; `vibelang --fix` now preserves nested receiver and stage-callback changes when capturing the surrounding pipeline.
@@ -67,6 +71,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 - A TypeScript barrel in a built project reference could lose exports after a module moved to `.vibe` or `.vibex`; consumers now resolve those native modules through their emitted declarations.
 - Migration API checks could report a successfully emitted original as incomplete against itself when its project set `moduleSuffixes` and took `--outDir` on the command line. The check now reads each module's real declaration, so `TS2694` no longer appears on unchanged code.
+- Migration API checks refused an export whose type reached a broken dependency declaration through a generic applied to shared arguments, as drizzle's Effect types do. Such a type is the same on both sides, so it no longer blocks the comparison.
+- Migration API checks reported names as missing when a project's globals came from a declaration file compared in a different batch, which refused the whole package. Every batch now keeps the entries that add globals or augment a module.
 - Migration API checks refused every importer of a workspace package with a `declare module` block when the frozen original and the candidate lived in separate checkouts. The key is now the package and module, and the proof compares the ambient blocks and the local declarations they reach.
 
 - Migration could separate a throwing class from its merged namespace, breaking types such as `Asset.Input`. Type-only namespace companions now move with the declaration; namespaces with runtime initialization keep the original source unchanged.
