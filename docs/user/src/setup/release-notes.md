@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A migration's `--fix` progress waited for the compiler to exit, making a long repair appear stalled. Live phase and check counters now appear while it runs.
 - The TypeScript mapper could reject a `for concurrent` loop with an invalid or overlapping edit after reading its head binding. Braced and single-statement bodies now project correctly.
 
+- The source checkout preview could fail with `TS2307` for `vibelang-runtime` in another project. The instructions now install the checkout's runtime there before checking.
+
 - Editor formatting could hang on a marked `.mts`, `.cts` or `.tsx` file. Formatting now returns normally and keeps the directive.
 
 - The diagnostic reference said decoding skipped schema constructor overrides. It now explains that decoding calls them, matching the warning and runtime behavior.
