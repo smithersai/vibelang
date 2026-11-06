@@ -15,14 +15,17 @@
     "fast-check": "4.10.2"
   },
   "devDependencies": {
-    "marked": "18.0.12",
+    "@effect/platform-browser": "4.1.1",
+    "@effect/platform-bun": "4.1.1",
     "@effect/platform-node": "4.1.1",
     "@effect/vitest": "4.1.1",
-    "vitest": "5.0.5",
+    "@types/react": "19.2.18",
     "effect": "4.1.1",
-    "@effect/platform-bun": "4.1.1",
-    "@effect/platform-browser": "4.1.1",
     "js-tiktoken": "1.0.21",
-    "typescript": "5.9.3"
+    "marked": "18.0.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
   }
 }
