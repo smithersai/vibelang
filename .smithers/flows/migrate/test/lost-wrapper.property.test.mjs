@@ -72,3 +72,14 @@ test("every generated generator emit is clean, whatever it returns", () => {
     assert.deepEqual(lostWrappers({ ts, original: original.text, emitted }).flags, [])
   }), { numRuns: 200 })
 })
+
+test("any parameter name forwards the member an arm named, and no other body does", () => {
+  const original = `import { Effect, Option } from "effect"\nexport const f = (x) => Option.match(x, { onNone: () => Effect.interrupt, onSome: Effect.succeed })\n`
+  const emitted = onSome => original.replace("onSome: Effect.succeed", "onSome: " + onSome)
+  const name = fc.stringMatching(/^[a-z][a-zA-Z0-9]{0,8}$/).filter(text => !["do", "if", "in", "of", "for", "new", "try", "var", "let"].includes(text) && !/^(case|else|enum|this|true|null|void|with|class|const|false|super|throw|while|yield|async|await|break|catch|delete|export|import|return|static|switch|typeof|default|extends|finally|function|continue|debugger|instanceof)$/.test(text))
+  fc.assert(fc.property(name, parameter => {
+    assert.deepEqual(lostWrappers({ ts, original, emitted: emitted(`(${parameter}) => Effect.succeed(${parameter})`) }).flags, [])
+    assert.equal(lostWrappers({ ts, original, emitted: emitted(`(${parameter}) => ${parameter}`) }).flags.length, 1)
+    assert.equal(lostWrappers({ ts, original, emitted: emitted(`(${parameter}) => Effect.fail(${parameter})`) }).flags.length, 1)
+  }), { numRuns: 100, seed: 40713 })
+})

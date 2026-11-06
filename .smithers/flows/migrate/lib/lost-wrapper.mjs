@@ -24,7 +24,10 @@
 // `Effect.fn(…)` makes a function with its own path, not a program of the
 // function holding it, and a pipeline ending in `Effect.runSync` hands back a
 // value. A program handed back through a parameter or a helper counts on
-// neither side: the text cannot see it, and it needs types.
+// neither side: the text cannot see it, and it needs types. A member named in
+// an arm, `{ onSome: Effect.succeed }`, reads as Effect there and sits inside a
+// nested function once the codemod writes `(value) => Effect.succeed(value)`,
+// so that spelling of the same member counts for the original's arm.
 import { existsSync, readFileSync } from "node:fs"
 import { join, posix } from "node:path"
 const isTestFile = (path) => /\.(?:test|spec)\.[^/]+$/.test(path)
@@ -129,6 +132,50 @@ function readsEffect(ts, expression, bound) {
   return found
 }
 
+/** The members an arm names without calling, `Effect.succeed` in `{ onSome: Effect.succeed }`; none when it also calls Effect or the runtime. */
+function namedMembers(ts, arm, bound) {
+  const named = []
+  let calls = false
+  const visit = (node) => {
+    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    const name = ts.isCallExpression(node) ? calleeName(ts, node.expression, bound) : undefined
+    if (name !== undefined && /^(Effect|vibelang-runtime)\./.test(name)) calls = true
+    else if (ts.isPropertyAccessExpression(node) && /^Effect\./.test(calleeName(ts, node, bound))) named.push(calleeName(ts, node, bound))
+    else if (ts.isIdentifier(node) && /^Effect\./.test(bound.members.get(node.text) ?? "")) named.push(bound.members.get(node.text))
+    else ts.forEachChild(node, visit)
+  }
+  visit(arm)
+  return calls ? [] : named
+}
+
+/** The member `(a, b) => Effect.member(a, b)` only forwards to, or undefined. */
+function forwardedMember(ts, fn, bound) {
+  if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return undefined
+  if (fn.asteriskToken || fn.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword)) return undefined
+  const only = ts.isBlock(fn.body) ? fn.body.statements.length === 1 && ts.isReturnStatement(fn.body.statements[0]) && fn.body.statements[0].expression : fn.body
+  const call = only && unwrap(ts, only)
+  if (!call || !ts.isCallExpression(call) || call.arguments.length !== fn.parameters.length || !fn.parameters.length) return undefined
+  const forwards = fn.parameters.every((parameter, index) => {
+    const argument = call.arguments[index]
+    return ts.isIdentifier(parameter.name) && !parameter.initializer && !parameter.dotDotDotToken && ts.isIdentifier(argument) && argument.text === parameter.name.text
+  })
+  const name = calleeName(ts, call.expression, bound)
+  return forwards && /^Effect\./.test(name) ? name : undefined
+}
+
+/** The members the functions directly inside an arm forward to. */
+function forwardsIn(ts, arm, bound) {
+  const members = []
+  const visit = (node) => {
+    if (ts.isClassLike(node)) return
+    if (!ts.isFunctionLike(node)) { ts.forEachChild(node, visit); return }
+    const member = forwardedMember(ts, node, bound)
+    if (member) members.push(member)
+  }
+  visit(arm)
+  return members
+}
+
 /** Every node of a function's body, outside nested functions and classes, that `select` picks. */
 function ownNodes(ts, fn, select) {
   const found = []
@@ -173,11 +220,16 @@ function arms(ts, expression, scope, followed = new Set()) {
 
 /** What a function's body hands back and does at the call. */
 function bodyShape(ts, fn, bound) {
-  const shape = { effects: 0, returns: 0, throws: 0, castReturn: false }
+  const shape = { effects: 0, returns: 0, throws: 0, castReturn: false, named: [], forwards: [] }
   const count = (expression) => {
     for (const arm of arms(ts, expression, fn)) {
       shape.returns++
-      if (readsEffect(ts, arm, bound)) shape.effects++
+      if (readsEffect(ts, arm, bound)) {
+        shape.effects++
+        const named = namedMembers(ts, arm, bound)
+        if (named.length) shape.named.push(named)
+      }
+      shape.forwards.push(...forwardsIn(ts, arm, bound))
     }
     let inner = expression
     while (ts.isParenthesizedExpression(inner)) inner = inner.expression
@@ -265,6 +317,8 @@ export function functionsOf(ts, text, file = "module.ts") {
 
 /** Whether the emitted function still hands a program back on every path: a generator, or nothing but Effect returns and no throw at the call. */
 const keepsProgram = fn => fn.generator || fn.factory || (fn.returns > 0 && fn.effects === fn.returns && fn.throws === 0)
+/** The original's arms whose named members the emitted function forwards to, each the same read of Effect. */
+const forwardedArms = (fn, counterpart) => fn.named.filter(members => members.every(member => counterpart.forwards.includes(member))).length
 
 /** The functions the original had that return Effect values and the emitted text lost, and those it has no function for. */
 export function lostWrappers({ ts, original, originalPath = "original.ts", emitted, emittedPath = "emitted.js" }) {
@@ -277,7 +331,7 @@ export function lostWrappers({ ts, original, originalPath = "original.ts", emitt
     if (counterpart) paired++
     if (returned === 0) continue
     if (!counterpart) unpaired.push({ function: name, line: fn.line, effectReturns: returned })
-    else if (!keepsProgram(counterpart) && counterpart.effects < returned) flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, cast: fn.cast })
+    else if (!keepsProgram(counterpart) && counterpart.effects + forwardedArms(fn, counterpart) < returned) flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, cast: fn.cast })
   }
   return { flags, unpaired, paired }
 }

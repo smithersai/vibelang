@@ -473,3 +473,20 @@ export const chain = (db: unknown) => proxyChain<Effect.Effect<number>>(db as Ef
 `
   assert.deepEqual(flagged(original, jsHeader + `export const chain = (db) => proxyChain(db);\n`), [])
 })
+
+// t3code DesktopWindow: the codemod spells `onSome: Effect.succeed` as a forwarding arrow.
+const flagsOf = (original, emitted) => lostWrappers({ ts, original, emitted }).flags.map(flag => flag.function)
+const matched = onSome => `import { Effect, Option } from "effect"\nexport const f = (x: Option.Option<number>) => Option.match(x, { onNone: () => Effect.interrupt, onSome: ${onSome} })\n`
+test("a member named in an arm and forwarded in the emit is one read (t3code requireWindow)", () => {
+  assert.deepEqual(flagsOf(matched("Effect.succeed"), matched("(value) => Effect.succeed(value)").replace("(x: Option.Option<number>)", "(x)")), [])
+  assert.deepEqual(flagsOf(matched("Effect.succeed"), matched("function (value) { return Effect.succeed(value) }").replace("(x: Option.Option<number>)", "(x)")), [])
+  assert.deepEqual(flagsOf(matched("(value: number) => Effect.succeed(value)"), matched("(value) => Effect.succeed(value)").replace("(x: Option.Option<number>)", "(x)")), [])
+  assert.deepEqual(flagsOf(matched("Effect.succeed"), matched("Effect.succeed").replace("(x: Option.Option<number>)", "(x)")), [])
+})
+test("a dropped member, another member or a changed forward still flags", () => {
+  const emitted = onSome => matched(onSome).replace("(x: Option.Option<number>)", "(x)")
+  for (const onSome of ["(value) => value", "(value) => Effect.fail(value)", "(value) => Effect.succeed(1)", "(value, other) => Effect.succeed(other, value)", "(value = 1) => Effect.succeed(value)", "async (value) => Effect.succeed(value)", "(...value) => Effect.succeed(value)"])
+    assert.deepEqual(flagsOf(matched("Effect.succeed"), emitted(onSome)), ["/f"], onSome)
+  assert.deepEqual(flagsOf(`import { Effect } from "effect"\nexport const f = (x: number) => Effect.succeed(x)\n`, `import { Effect } from "effect"\nexport const f = (x) => (value) => Effect.succeed(value)\n`), ["/f"])
+  assert.deepEqual(flagsOf(`import { Effect } from "effect"\nexport const f = (x: boolean) => x ? Effect.void : 1\n`, `import { Effect } from "effect"\nexport const f = (x) => x ? 0 : 1\n`), ["/f"])
+})
