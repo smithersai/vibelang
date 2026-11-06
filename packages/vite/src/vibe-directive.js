@@ -25,9 +25,9 @@ function head(file) {
 
 /** Whether the file on disk at `file` is a TypeScript source with the `// @vibe` directive. */
 export function fileHasVibeDirective(file) {
-  if (!typeScriptSource.test(file) || typeScriptDeclaration.test(file) || !statSync(file, { throwIfNoEntry: false })?.isFile()) return false
+  if (file.includes("\0") || !typeScriptSource.test(file) || typeScriptDeclaration.test(file) || !statSync(file, { throwIfNoEntry: false })?.isFile()) return false
   return directive.test(head(file))
 }
 
 /** Whether `file` is VibeLang source: a .vibe or .vibex file, or a TypeScript source with the directive. */
-export const isVibeLangFile = (file) => /\.vibex?$/.test(file) || fileHasVibeDirective(file)
+export const isVibeLangFile = (file) => !file.includes("\0") && (/\.vibex?$/.test(file) || fileHasVibeDirective(file))

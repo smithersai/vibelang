@@ -390,7 +390,7 @@ directory enumeration.
 
 `findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package. `vibelang-typescript` starts it this way.
 
-`isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe` ([VibeLang in .ts files](https://vibelang.sh/setup/typescript-shim)). `hasVibeDirective(file, text)` answers from text you already hold.
+`isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe` ([VibeLang in .ts files](https://vibelang.sh/setup/typescript-shim)). `hasVibeDirective(file, text)` answers from text you already hold. Virtual module IDs containing a NUL byte are not filesystem paths: `isVibeLangFile(file)` and `fileHasVibeDirective(file)` return `false` without reading them.
 
 ## Editor support
 

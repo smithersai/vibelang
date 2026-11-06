@@ -425,6 +425,8 @@ When a package export names an emitted module under `.vibelang/js/`, both source
 
 ## Tools that read source files
 
+Virtual module IDs containing a NUL byte are not filesystem paths: `isVibeLangFile(file)` and `fileHasVibeDirective(file)` return `false` without reading them.
+
 A snippet builder or documentation tool reads source text with `vibelang/source`:
 
 ```js
