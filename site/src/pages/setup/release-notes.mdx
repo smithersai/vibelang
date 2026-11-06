@@ -16,6 +16,15 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Generated declarations for native `module` bodies could fail lint with `unicorn/require-module-specifiers` or formatting checks. Migration setup now excludes these compiler outputs while continuing to check authored implementation files.
 - An indexed generic type could hide a service key from construction, inheritance and class-pattern checks. Indexed constraints now retain the key's identity and report the usual misuse diagnostics.
+- Migration's API check could report conflicting snapshot paths for native `module` declarations after an import rename. It now records those declarations as compiler outputs, while preserving handwritten declarations and detecting real API changes.
+- Computed alias imports can fail before Bun calls a loader; the Bun guides now show literal aliases or computed relative and absolute source paths.
+- Migration API checks refused any project that loaded two byte-identical copies of a package such as `@types/node`. Copies now count as one ambient origin when their bytes, dependency closures and load order prove it; differing copies and contributors loaded between them still refuse.
+- A migration API comparison that exhausted its 2 GiB worker heap failed the package. It now retries at 4 and 8 GiB where the machine has the memory, and reports the failure if the last size also fails.
+- Build checks could accept a Go command that disabled `-trimpath`; they now respect the last flag and command-line overrides.
+- A named tuple type inside an `effect` function, arrow or method could crash the compiler. Tuple labels are now treated as type-only names, and parameter writes retain their native call-time binding.
+- Build-configuration checks could stop with a missing helper error; their fixtures now load the same input helpers as the build graph.
+- A `join` operand typed `any` or `never` could infer a collection-shaped value or impossible error type. It now infers the same result and error types as `Fiber.join`.
+- Build checks could miss a compiler command after an environment setting with spaces; they now check it and detect missing build flags.
 - Build command checks reran after unrelated source or documentation edits; they now reuse successful results while still checking changed commands, timeouts and test inventories.
 - Bun scripts and tests could not load a migrated source through a `tsconfig.paths` alias ending in `.ts`; the preload now follows its `.vibe` sibling while preserving existing native files.
 
