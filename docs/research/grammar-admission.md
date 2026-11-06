@@ -561,3 +561,27 @@ misses because its lookahead stops at the assertion. `error is` before a line
 that can continue an `is` pattern looks like a third form but is a declaration,
 because a `DeclarationStart` begins a declaration wherever one can start, so
 the lab no longer holds that statement open.
+
+A sweep that stacks up to two mutations on every seed and keyed program found
+four more kinds of result. A repeated `readonly` on a schema field is
+`admission:schema-duplicate-readonly`: `Field` admits one `readonly`, and an
+unresolved field type reports only `EK2109`, which covers TS1030. In an
+object-type alias the family includes an untyped name, a method signature
+and an object type behind a type operator such as `readonly { … }`. An
+object-type alias field written `async async` before a line break is an
+untyped field named `async` with an `async` modifier, and joins
+`admission:schema-async-field`. The key scanner had read the line after an
+unfinished `>`, `>>`, `>>>`, `<<`, `as` or `satisfies` as a declaration
+position, so `x >` newline `schema is 1 + 1` now keeps its
+`admission:is-operand-precedence` key; a `>` that may close a type argument
+list still ends the statement. The checker's index-signature grammar errors
+(TS1017 to TS1022, TS1025 and TS1096) count as syntax rejections. Five lab
+gaps were TypeScript the lab had left out: a class expression's type
+parameters, a class field's definite assignment `!`, an exported import
+alias, a type parameter list's trailing comma, and a relational `<` whose right operand starts a type operator,
+as in `C < readonly` before a block on the next line. TypeScript parses
+expression type arguments speculatively and rewinds a list that does not
+close (`tryParseTypeArgumentsInExpression`), but an Earley set keeps that
+reading alive, and a token it can scan blocks automatic semicolon insertion
+for the reading TypeScript keeps. A sentence with no derivation is read again
+without the instantiation alternatives of `MemberExpression`.

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-async-untyped-alias\nschema S = { async async\nid : Missing\n}")

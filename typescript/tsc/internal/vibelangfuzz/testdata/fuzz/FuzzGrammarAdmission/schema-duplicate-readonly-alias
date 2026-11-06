@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-duplicate-readonly-alias\nschema S = { readonly readonly id: Missing };")

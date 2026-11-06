@@ -27,7 +27,17 @@ func grammarSchemaStaticField(ts []grammarToken) bool {
 	return grammarSchemaModifiedField(ts, "static")
 }
 
+// Field admits one optional readonly; a repeated readonly is native TS1030,
+// which the same unresolved-reference EK2109 covers.
+func grammarSchemaDuplicateReadonlyField(ts []grammarToken) bool {
+	return grammarSchemaRepeatedModifierField(ts, "readonly", 2)
+}
+
 func grammarSchemaModifiedField(ts []grammarToken, modifier string) bool {
+	return grammarSchemaRepeatedModifierField(ts, modifier, 1)
+}
+
+func grammarSchemaRepeatedModifierField(ts []grammarToken, modifier string, need int) bool {
 	for i, tok := range ts {
 		if tok.kind != 'w' || tok.text != "schema" || i+2 >= len(ts) ||
 			ts[i+1].kind != 'w' || ts[i+1].nl ||
@@ -38,69 +48,107 @@ func grammarSchemaModifiedField(ts []grammarToken, modifier string) bool {
 		if ts[name].text == "error" && name+1 < len(ts) && ts[name+1].kind == 'w' && !ts[name+1].nl {
 			continue // Schema-error members retain their separate static rejection.
 		}
-		open := name + 1
-		if open < len(ts) && ts[open].text == "=" {
-			open++
-			for open < len(ts) && ts[open].text == "(" {
-				open++
+		if ts[name+1].text != "=" {
+			if ts[name+1].text == "{" && grammarSchemaBodyModifier(ts, name+1, modifier, need, false) {
+				return true
 			}
-		}
-		if open >= len(ts) || ts[open].text != "{" {
 			continue
 		}
-		depth := 1
-		for k := open + 1; k < len(ts) && depth > 0; k++ {
-			at := k
-			start := k == open+1 || ts[k].nl || ts[k-1].text == ";" || ts[k-1].text == ","
-			if depth == 1 && start {
-				hasModifier := false
-			modifiers:
-				// Native static modifiers may span a line break; the other modifiers may not.
-				// Mixed effect modifiers retain the same mapped-field diagnostic gap.
-				for at+1 < len(ts) && (!ts[at+1].nl || ts[at].text == "static") && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static" || ts[at].text == "effect") {
-					// The last keyword may itself be the property name.
-					switch ts[at+1].text {
-					case ":", "?", "(", "<":
-						break modifiers
-					}
-					hasModifier = hasModifier || ts[at].text == modifier
-					at++
-				}
-				if hasModifier {
-					if ts[at].text == "[" {
-						brackets := 1
-						for at++; at < len(ts) && brackets > 0; at++ {
-							if ts[at].text == "[" {
-								brackets++
-							}
-							if ts[at].text == "]" {
-								brackets--
-							}
-						}
-					} else if ts[at].kind == 'w' || ts[at].kind == 's' || ts[at].kind == 'n' {
-						at++
-					} else {
-						continue // A field named async has no separate property name.
-					}
-					if at < len(ts) && ts[at].text == "?" {
-						at++
-					}
-					if at < len(ts) && ts[at].text == ":" {
-						return true
-					}
-					// An untyped static member before another field reports only
-					// the same mapped-field diagnostic.
-					if modifier == "static" && at+1 < len(ts) && ts[at].text != "}" && (ts[at].nl || ts[at].text == "," || ts[at].text == ";") {
-						return true
-					}
-				}
+		// An alias's type may hold its object types behind parentheses or a
+		// type operator (`readonly { … }`, `E ! { … }`); each top-level one
+		// is a schema body. Nested object types are field types.
+		depth := 0
+		for k := name + 2; k < len(ts); k++ {
+			if depth == 0 && (ts[k].text == ";" || ts[k].text == "schema" || ts[k].nl && ts[k-1].text == "}") {
+				break
 			}
 			switch ts[k].text {
-			case "{", "(", "[":
+			case "{":
+				if depth == 0 && grammarSchemaBodyModifier(ts, k, modifier, need, true) {
+					return true
+				}
 				depth++
-			case "}", ")", "]":
+			case "[", "<":
+				depth++
+			case "}", "]", ">":
 				depth--
 			}
+		}
+	}
+	return false
+}
+
+// grammarSchemaBodyModifier reports a field in the schema body opening at
+// ts[open] whose modifier prefix holds modifier at least need times.
+func grammarSchemaBodyModifier(ts []grammarToken, open int, modifier string, need int, alias bool) bool {
+	depth := 1
+	for k := open + 1; k < len(ts) && depth > 0; k++ {
+		at := k
+		start := k == open+1 || ts[k].nl || ts[k-1].text == ";" || ts[k-1].text == ","
+		if depth == 1 && start {
+			seen := 0
+		modifiers:
+			// Native static modifiers may span a line break; the other modifiers may not.
+			// Mixed effect modifiers retain the same mapped-field diagnostic gap.
+			for at+1 < len(ts) && (!ts[at+1].nl || ts[at].text == "static") && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static" || ts[at].text == "effect") {
+				// The last keyword may itself be the property name, typed or
+				// ended by a separator.
+				switch ts[at+1].text {
+				case ":", "?", "(", "<", ";", ",":
+					break modifiers
+				}
+				if ts[at].text == modifier {
+					seen++
+				}
+				at++
+			}
+			if seen >= need {
+				if ts[at].text == "[" {
+					brackets := 1
+					for at++; at < len(ts) && brackets > 0; at++ {
+						if ts[at].text == "[" {
+							brackets++
+						}
+						if ts[at].text == "]" {
+							brackets--
+						}
+					}
+				} else if ts[at].kind == 'w' || ts[at].kind == 's' || ts[at].kind == 'n' {
+					at++
+				} else {
+					continue // A field named async has no separate property name.
+				}
+				if at < len(ts) && ts[at].text == "?" {
+					at++
+				}
+				if at < len(ts) && ts[at].text == ":" {
+					return true
+				}
+				// An untyped static member before another field reports only
+				// the same mapped-field diagnostic, as does an untyped async or
+				// repeated-readonly member of an object-type alias. A named
+				// body rejects the untyped member as syntax.
+				untyped := modifier == "static" || alias && (modifier == "async" || need > 1)
+				if untyped && at+1 < len(ts) && ts[at].text != "}" && (ts[at].nl || ts[at].text == "," || ts[at].text == ";") {
+					return true
+				}
+				// An alias's last untyped repeated-readonly member may end the
+				// object type. A last untyped async member keeps native TS1070.
+				if alias && need > 1 && at < len(ts) && ts[at].text == "}" {
+					return true
+				}
+				// TS1030 rejects a repeated modifier on any member, so an
+				// alias method signature shares the cover.
+				if alias && need > 1 && at < len(ts) && ts[at].text == "(" {
+					return true
+				}
+			}
+		}
+		switch ts[k].text {
+		case "{", "(", "[":
+			depth++
+		case "}", ")", "]":
+			depth--
 		}
 	}
 	return false

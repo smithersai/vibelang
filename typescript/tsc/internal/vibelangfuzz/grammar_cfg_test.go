@@ -510,7 +510,7 @@ ClassElement = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? Op
 OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd
 ClassMemberModifiers = ClassMemberModifier | ClassMemberModifiers ClassMemberModifier
 ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here]
-FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? "=" "throw" UnaryExpression LineTerminator [lookahead ∈ { "*" }]
+FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName [no LineTerminator here] "!" TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? "=" "throw" UnaryExpression LineTerminator [lookahead ∈ { "*" }]
 MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
 GetAccessor = "get" [no LineTerminator here] PropertyName "(" ")" TypeAnnotation? Block
 NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
@@ -527,7 +527,7 @@ NamespaceImport = "*" "as" BindingIdentifier
 NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | ModuleExportName "as" BindingIdentifier | "type" BindingIdentifier | "type" ModuleExportName "as" BindingIdentifier
-ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd
+ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd
 DefaultExportDeclaration = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
 ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
@@ -584,7 +584,7 @@ PropertyDefinitionList = PropertyDefinition | PropertyDefinitionList "," Propert
 PropertyDefinition = IdentifierReference | PropertyName ":" AssignmentExpression | MethodDefinition | "..." AssignmentExpression
 PropertyName = IdentifierName | StringLiteral | NumericLiteral | "[" AssignmentExpression "]"
 FunctionExpression = "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
-ClassExpression = "class" BindingIdentifier? ClassHeritage? "{" ClassElement* "}"
+ClassExpression = "class" BindingIdentifier? TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ParenthesizedExpression = "(" Expression ")"
 ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" TypeAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody
 ArrowParameters = BindingIdentifier | "(" FormalParameters ")"
@@ -596,7 +596,7 @@ FormalParameter = ParameterModifier? BindingIdentifier "?"? TypeAnnotation? Init
 ParameterModifier = "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here]
 TypeAnnotation = ":" Type
 ReturnType = ":" Type
-TypeParameters = "<" TypeParameterList ">"
+TypeParameters = "<" TypeParameterList ","? ">"
 TypeParameterList = TypeParameter | TypeParameterList "," TypeParameter
 TypeParameter = BindingIdentifier | BindingIdentifier "extends" Type
 TypeArguments = "<" TypeList ">"
@@ -789,6 +789,10 @@ type grammarAppendixData struct {
 	keywords []grammarKeywordRule
 	rules    []grammarProseRule
 	text     string // Appendix A's prose
+	// relational drops the expression type-argument alternatives of
+	// MemberExpression: the reading TypeScript's parser falls back to when
+	// tryParseTypeArgumentsInExpression rewinds a list that does not close.
+	relational bool
 }
 
 // A grammarExample is a line of a text block in Appendix A that is not a
@@ -906,6 +910,28 @@ func grammarReadAppendix(text, file string) (*grammarAppendixData, error) {
 	return a, nil
 }
 
+// grammarWithoutExpressionTypeArguments removes MemberExpression's
+// `MemberExpression TypeArguments ...` alternatives, the instantiation
+// expression readings.
+func grammarWithoutExpressionTypeArguments(d grammarNdef) grammarNdef {
+	var alts [][]grammarNelem
+	var prose []string
+	for k, alt := range d.alts {
+		if len(alt) > 1 && alt[0].name == "MemberExpression" && alt[1].name == "TypeArguments" {
+			continue
+		}
+		alts = append(alts, alt)
+		if k < len(d.prose) {
+			prose = append(prose, d.prose[k])
+		}
+	}
+	d.alts = alts
+	if d.prose != nil {
+		d.prose = prose
+	}
+	return d
+}
+
 // grammarBuildGrammar resolves an appendix against the subset into one grammar.
 func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	g := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, effectWords: map[string]bool{}, comments: map[string][]string{}}
@@ -916,6 +942,9 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 			d := grammarParseDef(m[1], strings.TrimSpace(l[strings.Index(l, "=")+1:]), 0)
 			tsDefs[d.name] = d
 		}
+	}
+	if a.relational {
+		tsDefs["MemberExpression"] = grammarWithoutExpressionTypeArguments(tsDefs["MemberExpression"])
 	}
 	defined := map[string]bool{}
 	for _, d := range a.defs {
