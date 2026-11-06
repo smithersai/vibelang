@@ -17,3 +17,5 @@ test("Unicode \u2028 and \u2029 separators", () => assert.equal(failing, false))
 for (const name of ["__proto__", "constructor", "toString"]) {
   test(name, () => assert.equal(failing, false))
 }
+
+test("multiline\nname\r\nwith\rcontrols | tail", () => assert.equal(failing, false))

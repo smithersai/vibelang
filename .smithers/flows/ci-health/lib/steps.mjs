@@ -308,7 +308,7 @@ export const ACTIONS = {
   unknown: "Read the log"
 }
 
-const cell = (s) => String(s).replaceAll("|", "\\|")
+const cell = (s) => String(s).replaceAll("|", "\\|").replaceAll(/\r\n|[\r\n\u2028\u2029]/g, "<br>")
 const day = (iso) => iso.slice(0, 16).replace("T", " ")
 
 // report writes report.md and the ranking a follow-up reads.

@@ -51,6 +51,9 @@ actual executions of these empty-reason controls.
 Failure counters treat every test name as a key, including `__proto__`,
 `constructor` and other inherited property names. They retain independent counts
 and last-failure times through saved analysis and the rendered report.
+Rendered table cells show line breaks with `<br>`, including `CRLF` as one
+break, so a multiline name cannot split a row. Saved JSON retains the original
+name. Pipes remain escaped inside the displayed cell.
 
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`

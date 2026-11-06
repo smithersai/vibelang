@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A test name containing a line break could split its health-report table row and separate it from its failure count. The name and count now stay in the same row.
+
 - The `for concurrent` tooltip said every item used its own fiber, even with a limit of `1`. It now explains sequential execution, and jump errors no longer give that incorrect reason.
 
 - Migration could stop before fixing files when a dependency was outside `rootDir`. It now reads the complete source list while preserving the diagnostic for checking.
