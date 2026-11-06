@@ -1,8 +1,0 @@
-# Byte-identical idempotent ambient declarations still need a closure proof.
-FuzzMigrationAmbientOrigins origin:equivalent/0 compiler VIP-1: byte-identical same-side ambient type origins make unchanged API comparison unavailable; lane api-identity-check
-FuzzMigrationAmbientOrigins origin:equivalent/1 compiler VIP-1: byte-identical same-side ambient type origins make unchanged API comparison unavailable; lane api-identity-check
-FuzzMigrationAmbientOrigins origin:reversed/0 compiler VIP-1: byte-identical same-side ambient type origins make unchanged API comparison unavailable; lane api-identity-check
-FuzzMigrationAmbientOrigins origin:reversed/1 compiler VIP-1: byte-identical same-side ambient type origins make unchanged API comparison unavailable; lane api-identity-check
-FuzzMigrationAmbientOrigins origin:alias/0 compiler VIP-1: byte-identical same-side ambient type origins make unchanged API comparison unavailable; lane api-identity-check
-FuzzMigrationAmbientOrigins origin:alias/1 compiler VIP-1: byte-identical same-side ambient type origins make unchanged API comparison unavailable; lane api-identity-check
-FuzzMigrationAmbientOrigins corpus:t3code-same-side-ambient-origins compiler VIP-1: minimized NodeJS.ProcessEnv consumer has duplicate identical installed origins on one side; lane api-identity-check

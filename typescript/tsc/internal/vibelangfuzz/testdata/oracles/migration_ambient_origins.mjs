@@ -33,7 +33,7 @@ try {
   }
   const compared = compareApiIdentity(ts, join(fixture, "before"), join(fixture, "after"), { compilerOptions: options })
   const expected = !["type-change", "docs-change"].includes(key)
-  const ok = expected ? compared.identical && compared.comparisonComplete : !compared.identical
+  const ok = compared.comparisonComplete && (expected ? compared.identical : !compared.identical)
   console.log(JSON.stringify({ ok, expected, stockVersion: ts.version, stockDiagnostics: [], key, mode,
     identical: compared.identical, comparisonComplete: compared.comparisonComplete,
     nameDifferences: compared.nameDifferences, typeDifferences: compared.typeDifferences, docDifferences: compared.docDifferences,
