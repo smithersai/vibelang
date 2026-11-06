@@ -1805,3 +1805,50 @@ export async function initAgents({ root, packageDir, log }) {
   const { stdout } = await must(`node node_modules/vibelang/bin/vibelang agents init ${quote(root)}`, { cwd, log })
   return { files: stdout.split("\n").filter((line) => line.startsWith(wrote)).map((line) => line.slice(wrote.length)) }
 }
+
+
+/** Vite+ embeds its formatter and Oxlint options in the Vite configuration. */
+export function addVitePlusIgnores(text, ts) {
+  if (!/vite-plus/.test(text)) return text
+  const source = ts.createSourceFile("vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  if (!source.statements.some(node => ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
+    && /^(?:@voidzero-dev\/)?vite-plus$/.test(node.moduleSpecifier.text))) return text
+  const exported = source.statements.find(node => ts.isExportAssignment(node) && !node.isExportEquals)
+  const config = exported && defineConfigObject(exported.expression, ts)
+  if (!config) return null
+  const edits = [], additions = [], patterns = [...declarationIgnores.map(pattern => "**/" + pattern), emittedIgnore]
+  const effective = (object, name) => [...object.properties].reverse().find(property =>
+    property.name && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) && property.name.text === name)
+  const shadowed = (object, property) => object.properties.some(node => ts.isSpreadAssignment(node)
+    && (!property || node.pos > property.pos))
+  const indentation = node => /(?:^|\n)([ \t]*)[^\n]*$/.exec(text.slice(0, node.getStart(source)))?.[1] ?? ""
+  const insertProperty = (object, value) => {
+    const last = object.properties.at(-1), multiline = text.slice(object.getStart(source), object.end).includes("\n")
+    const indent = last ? indentation(last) : indentation(object) + "  "
+    edits.push({ start: last ? last.end : object.getStart(source) + 1, end: last ? last.end : object.getStart(source) + 1,
+      text: (last ? "," : "") + (multiline ? "\n" + indent : last ? " " : "") + value })
+  }
+  for (const name of ["fmt", "lint"]) {
+    const property = effective(config, name)
+    if (shadowed(config, property)) return null
+    if (!property) { additions.push(name + ": { ignorePatterns: [" + patterns.map(pattern => stringIn(text, pattern)).join(", ") + "] }"); continue }
+    const object = ts.isPropertyAssignment(property) ? unwrapped(property.initializer, ts) : undefined
+    if (!object || !ts.isObjectLiteralExpression(object)) return null
+    const ignores = effective(object, "ignorePatterns")
+    if (shadowed(object, ignores)) return null
+    const list = ignores && ts.isPropertyAssignment(ignores) ? unwrapped(ignores.initializer, ts) : undefined
+    if (ignores && (!list || !ts.isArrayLiteralExpression(list))) return null
+    const missing = patterns.filter(pattern => !list?.elements.some(node => ts.isStringLiteralLike(node) && node.text === pattern))
+    if (!missing.length) continue
+    if (!list) {
+      insertProperty(object, "ignorePatterns: [" + missing.map(pattern => stringIn(text, pattern)).join(", ") + "]")
+      continue
+    }
+    const last = list.elements.at(-1), multiline = text.slice(list.getStart(source), list.end).includes("\n")
+    const separator = multiline ? ",\n" + (last ? indentation(last) : indentation(ignores) + "  ") : ", "
+    const at = last ? last.end : list.getStart(source) + 1
+    edits.push({ start: at, end: at, text: (last ? separator : "") + missing.map(pattern => stringIn(text, pattern)).join(separator) })
+  }
+  if (additions.length) insertProperty(config, additions.join(", "))
+  return applyEdits(text, edits)
+}

@@ -1,0 +1,9 @@
+{
+  "key": "migrate:vite-plus-module-declaration-ignores",
+  "quote": "Declaration sidecars are emit outputs like `.d.ts`.",
+  "config": "import { defineConfig } from \"vite-plus\";\nexport default defineConfig({\n  fmt: { ignorePatterns: [\"**/.vibelang/**\", \"**/*.d.vibe.ts\", \"owned/**\"] },\n  lint: { plugins: [\"unicorn\"], ignorePatterns: [\"**/.vibelang/**\", \"**/*.d.vibe.ts\", \"owned/**\"], rules: { \"unicorn/require-module-specifiers\": \"error\" } },\n  test: { exclude: [\"fixture/**\"] },\n});\n",
+  "generated": "src/MediaFile.vibe.platform.d.ts",
+  "authored": "src/MediaFile.platform.ts",
+  "declaration": "export {};\n"
+}
+

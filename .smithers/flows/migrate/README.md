@@ -1078,3 +1078,5 @@ Native declaration-context tests locate the repository compiler relative to thei
 Setup installs its selected dependencies before running the target formatter on written files. Adding workspace packages follows the same order. Installation failures stop setup before formatting; formatter failures after installation remain warnings in the setup receipt.
 
 Declaration snapshots attribute a native `module` body's declaration to its freshly emitted parent project. A live compatibility copy is not retained as a second handwritten declaration. Unowned neighbouring declarations remain in the snapshot, and exported name, type and documentation changes still fail verification.
+
+For Vite+ configurations, setup also updates the exported `defineConfig` object's `fmt.ignorePatterns` and `lint.ignorePatterns`. Literal sections keep their existing patterns and rules and gain the declaration and emitted-JavaScript exclusions. Computed sections or later overriding spreads remain unchanged with a warning. Ordinary Vite configurations and nested test settings are unaffected.

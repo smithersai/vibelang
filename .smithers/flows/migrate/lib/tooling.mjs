@@ -5,7 +5,7 @@ import { wireSourceChildren } from "./source-children.mjs"
 import { wireRolldownSources } from "./rolldown-builds.mjs"
 import { wireOxlint } from "./oxlint.mjs"
 import { preloadRegister } from "./oxlint-plugins.mjs"
-import { addEslintIgnore, addEslintImportParsers, addEslintVibe, declarationIgnores, emittedIgnore, jsxSidecarIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
+import { addVitePlusIgnores, addEslintIgnore, addEslintImportParsers, addEslintVibe, declarationIgnores, emittedIgnore, jsxSidecarIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
 
@@ -335,6 +335,12 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
       pkg.devDependencies = { ...pkg.devDependencies, vibelang: specsFor(dir).vibelang }
     }
     if (JSON.stringify(pkg) !== original) write(file, JSON.stringify(pkg, null, 2) + "\n")
+  }
+  if (ts) for (const file of all.filter(file => /(^|\/)vite\.config\.[cm]?[jt]s$/.test(file))) {
+    const text = readFileSync(join(root, file), "utf8")
+    const next = addVitePlusIgnores(text, ts)
+    if (next === null) warnings.push(file + ": Vite+ formatter/linter ignores are computed; add generated declaration patterns to fmt.ignorePatterns and lint.ignorePatterns by hand")
+    else if (next !== text) write(file, next)
   }
   // JSON Prettier configurations cover editor invocations too.
   for (const file of all.filter(f => /(^|\/)(?:\.prettierrc(?:\.json)?|prettier\.config\.json)$/.test(f))) {

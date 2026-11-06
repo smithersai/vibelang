@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 
+- Vite+ projects could still lint or format generated VibeLang declarations because their ignores live inside `vite.config.ts`. Migration setup now updates the embedded `fmt.ignorePatterns` and `lint.ignorePatterns` settings while preserving checks on authored implementations.
+
 - Contributor release checks repeated build command validation; they now share the checked result while preserving failures.
 
 - A choice between service keys could bypass the usual construction, inheritance and pattern checks. A union made entirely of service keys now reports the same misuse diagnostics as each key on its own.
