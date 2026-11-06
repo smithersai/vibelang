@@ -142,7 +142,9 @@ const debug = process.env.VIBELANG_VITE_DEBUG ? (text) => console.error(`vibelan
 // whose plugin context has meta.rolldownVersion) run before the scanner's own.
 // A .vibe module's source names none of the imports its JavaScript adds, such
 // as effect/Schema for a schema, so the scan reads that JavaScript.
-const scannedId = /\.(?:vibex?(?:\.jsx|\.[^./\\]+\.js)?|tsx?|[cm]ts)$/
+// A module declaration of a .vibex file outputs .jsx under preserved JSX, as in
+// isModuleOutput; without it the scanner reads the absent file and fails.
+const scannedId = /\.(?:vibex?(?:\.jsx|\.[^./\\]+\.jsx?)?|tsx?|[cm]ts)$/
 function scanConfig(config, meta, load) {
   const extensions = [".vibe", ".vibex"].filter(extension => !config.optimizeDeps?.extensions?.includes(extension))
   const scan = async (file) => isCompiled(file) ? load(file) : undefined

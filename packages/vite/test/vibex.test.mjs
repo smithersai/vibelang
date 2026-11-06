@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
 import fc from "fast-check"
-import { build } from "vite"
+import { build, optimizeDeps, resolveConfig } from "vite"
 import { devServer } from "./dev-server.mjs"
 import vibelang from "../src/index.js"
 
@@ -149,6 +149,42 @@ test("Vite serves a .vibex module output only for a module query and only beside
       assert.equal(await plugin.resolveId.call(context, "./real.vibex.text" + extension + query, importer), undefined)
       if (query === "?raw" || query === "?url") assert.equal(await plugin.load.call({ addWatchFile() {}, error(error) { throw error } }, join(root, output) + query), undefined)
   }), { numRuns: 40, seed: 18140 })
+})
+
+// drive-t3code-apps 21:51Z (Web58 on SDK 616): the dependency scan runs no
+// plugin load, so its own filter must admit a .vibex module body's .jsx output,
+// or the scanner reads the absent file and fails before any test starts.
+for (const name of ["constants", "$throw$ts"]) {
+  test(`Vite's dependency scan loads a .vibex module body ${name} output`, async t => {
+    const root = await moduleBodyFixture(t, "preserve", name)
+    // The scan compiles JSX for React's automatic runtime, which it must resolve.
+    await mkdir(join(root, "node_modules/react"))
+    await writeFile(join(root, "node_modules/react/package.json"), '{"name":"react","version":"19.0.0","exports":{"./jsx-dev-runtime":"./jsx.js","./jsx-runtime":"./jsx.js"}}')
+    await writeFile(join(root, "node_modules/react/jsx.js"), "export const jsxDEV = () => null, jsx = jsxDEV, jsxs = jsxDEV, Fragment = null\n")
+    const config = await resolveConfig({ root, configFile: false, logLevel: "silent", plugins: [vibelang()],
+      cacheDir: join(root, ".vite"), optimizeDeps: { entries: ["view.vibex"] } }, "serve")
+    const metadata = await optimizeDeps(config, true, true)
+    assert.ok(Object.keys(metadata.optimized).some(id => /^react\/jsx(?:-dev)?-runtime$/.test(id)), JSON.stringify(Object.keys(metadata.optimized)))
+  })
+}
+
+test("both dependency scan engines admit every module output and keep its loader", async t => {
+  const root = await moduleBodyFixture(t, "preserve", "$throw$ts")
+  const plugin = vibelang()
+  plugin.configResolved({ root, logger: console })
+  const rolldown = plugin.config.call({ meta: { rolldownVersion: "1.0.0" } }, { root }).optimizeDeps.rolldownOptions.plugins[0].load
+  let esbuild
+  plugin.config.call({ meta: {} }, { root }).optimizeDeps.esbuildOptions.plugins[0].setup({ onLoad: (options, load) => { esbuild = { ...options, load } } })
+  for (const file of ["view.vibex", "view.vibex.jsx", "view.vibex.-24-throw-24-ts.jsx", "view.vibex.-24-throw-24-ts.js", "view.vibe", "view.vibe.text.js"]) {
+    assert.ok(rolldown.filter.id.test(join(root, file)), "rolldown " + file)
+    assert.ok(esbuild.filter.test(join(root, file)), "esbuild " + file)
+  }
+  const output = join(root, "view.vibex.-24-throw-24-ts.jsx")
+  const loaded = await rolldown.handler(output)
+  assert.equal(loaded.moduleType, "jsx")
+  assert.match(loaded.code, /throw value/)
+  assert.equal((await esbuild.load({ path: output })).loader, "jsx")
+  assert.equal(await rolldown.handler(join(root, "absent.vibex.-24-throw-24-ts.jsx")), undefined)
 })
 
 test("Vite development loads native JSX and maps it to its authored source", async t => {
