@@ -55,7 +55,7 @@ await Bun.build({ entrypoints: ["src/main.ts"], outdir: "out", plugins: [vibelan
 
 ### Bun builds inside tools and tests
 
-Use Bun `1.4.2` or newer for complete runtime loader support. Bun `1.3.13` can return an asset path instead of a module for computed imports that a plugin resolves, and Bun `1.4.0` can corrupt Unicode import paths.
+Use Bun `1.4.2` or newer for the runtime loader. Bun `1.3.13` can return an asset path instead of a module for computed imports that a plugin resolves, and Bun `1.4.0` can corrupt Unicode import paths.
 
 A runtime preload alone does not configure `Bun.build`. To load source
 modules in `bun run`, `bun test`, and builds inside those processes,
@@ -87,6 +87,13 @@ Register the preload before application modules capture `Bun.build` or
 import `build` from `bun`. Child processes need the preload in their own
 configuration or command: `bun --preload vibelang-unplugin/bun/register run.ts`.
 This does not change Bun's test filename discovery or configure other bundlers.
+
+For computed dynamic imports, use a relative or absolute source path, such as
+`const name = "./src/feature.vibe"; await import(name)`. Bun does not invoke
+runtime resolver hooks for computed bare aliases such as `import(alias)`
+where `alias` is `"@/feature.ts"`; use a literal alias import instead.
+This [Bun runtime limitation](https://github.com/oven-sh/bun/issues/40579)
+also affects extensionless aliases.
 
 ## Bundlers called by tests
 

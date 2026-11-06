@@ -495,11 +495,12 @@ test("Bun resolves a migrated literal TypeScript paths alias in original native 
     "src/Migrate.vibe": "export const marker = 42\n",
     "main.ts": 'import { marker } from "@/Migrate.ts"; console.log(marker)\n',
     "dynamic.ts": 'console.log((await import("@/Migrate.ts")).marker)\n',
+    "computed.ts": 'const name = "./src/Migrate.vibe"; console.log((await import(name)).marker)',
     "main.cjs": 'console.log(require("@/Migrate.ts").marker)\n',
     "main.test.ts": 'import { test, expect } from "bun:test"; import { marker } from "@/Migrate.ts"; test("original alias", () => expect(marker).toBe(42))\n',
     "bunfig.toml": 'preload = ["vibelang/bun"]\n[test]\npreload = ["vibelang/bun"]\n'
   })
-  for (const entry of ["main.ts", "dynamic.ts", "main.cjs"]) {
+  for (const entry of ["main.ts", "dynamic.ts", "computed.ts", "main.cjs"]) {
     const result = bun(["run", entry])
     assert.equal(result.status, 0, entry + "\n" + result.stderr)
     assert.equal(result.stdout, "42\n", entry)
@@ -507,4 +508,25 @@ test("Bun resolves a migrated literal TypeScript paths alias in original native 
   const result = bun(["test", "main.test.ts"])
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stderr, /1 pass/)
+})
+
+test("Bun guides provide an executable computed source-path import", { skip }, (t) => {
+  const guides = [
+    "packages/compiler/README.md",
+    "packages/unplugin/README.md",
+    "docs/user/src/setup/vibelang-cli.md",
+    "docs/user/src/setup/developer-tools.md"
+  ]
+  for (const guide of guides) {
+    const text = readFileSync(join(repo, guide), "utf8")
+    const code = text.match(/const name = "\.\/src\/feature\.vibe"; await import\(name\)/)?.[0]
+    assert.ok(code, guide + " must show a computed source-path alternative")
+    const { bun } = project(t, {
+      "src/feature.vibe": "export const marker = 42\n",
+      "main.ts": code + "; console.log('loaded')\n"
+    })
+    const result = bun(["--preload", preload, "main.ts"])
+    assert.equal(result.status, 0, guide + "\n" + result.stderr)
+    assert.equal(result.stdout, "loaded\n")
+  }
 })

@@ -366,11 +366,18 @@ Migration recognizes TypeScript/TSX aliases without case sensitivity. With a JSX
 
 The Bun preload resolves a missing `.ts` import to its sibling `.vibe` source
 when the import is relative, absolute or mapped by `paths` in `tsconfig.json`.
-A native launcher or test can retain the import after migration. Existing native files keep their priority.
+A native launcher or test can retain a literal import after migration. Existing native files keep their priority.
 Alias lookup keeps the config's inherited paths and substitution order. This
 runtime fallback does not change the compiler's handling of written `.ts` imports.
 The command-line entry itself must name an existing file; update that path when
 migrating the entry.
+
+For computed dynamic imports, use a relative or absolute source path, such as
+`const name = "./src/feature.vibe"; await import(name)`. Bun does not invoke
+runtime resolver hooks for computed bare aliases such as `import(alias)`
+where `alias` is `"@/feature.ts"`; use a literal alias import instead.
+This [Bun runtime limitation](https://github.com/oven-sh/bun/issues/40579)
+also affects extensionless aliases.
 
 ## Bundlers inside unchanged tests
 
