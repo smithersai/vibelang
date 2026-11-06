@@ -1683,8 +1683,13 @@ Node-only check. Other root checks retain their existing inputs.
 The real SDK fixtures in `.smithers/flows/test/api-inputs.test.mjs` check the
 actual root key, 64 generated unrelated path neighbours, each selected input
 family, cache replay and a failing declaration through the real TypeScript
-comparator. They also audit current relative API imports and specification
-lookups. When an API test gains another repository read, extend the input
+comparator. The whole-tree control runs `smthrs affected ci --list` on the
+actual root, which reads the declarations without digesting the tree: all 64
+neighbours must reach `//:release` through its direct `//:tree` input and must
+not select `//:api-identity-test`. A narrowed declaration must fail that guard,
+and the cache fixture proves a whole-tree input changes its consumer's key. The
+fixtures also audit current relative API imports and specification lookups.
+When an API test gains another repository read, extend the input
 group and its selected-input control before relying on cached results. The
 target command, source-sync guard, property counts and failure rules are
 unchanged.

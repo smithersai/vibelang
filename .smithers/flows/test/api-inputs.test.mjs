@@ -39,6 +39,20 @@ function key(root, label = "//:api-identity-test") {
   assert.equal(result.status, 0, output(result))
   return JSON.parse(result.stdout).cache.key
 }
+// Path selection reads the declarations without digesting the tree, so it fits the command budget on a busy box.
+function assertWholeTreeInput(root, files) {
+  const result = invoke(root, "affected", "ci", "//:release", "//:api-identity-test",
+    ...files.flatMap(file => ["--files", file]), "--list", "--format", "json")
+  assert.equal(result.status, 0, output(result))
+  const { conservative, targets } = JSON.parse(result.stdout)
+  assert.equal(conservative, false, "these paths must select by declared input")
+  assert.ok(!targets.some(target => target.label === "//:api-identity-test"), "API identity must not select unrelated paths")
+  const release = targets.find(target => target.label === "//:release")
+  const direct = release?.reasonDetails.filter(reason => reason.kind === "declared-input"
+    && reason.input?.pattern === "**" && reason.dependencyPath.join(" ") === "//:release //:tree") ?? []
+  assert.deepEqual(direct.map(reason => reason.file).sort(), [...files].sort(), "release must retain the whole-tree input")
+}
+
 function copyTree(t) {
   const started = performance.now()
   console.error("API_INPUT_COPY_BEGIN")
@@ -113,14 +127,15 @@ test("relative API fixture inputs retain transitive helpers and URL assets", t =
 test("the actual root API key ignores unrelated files and retains every input family", t => {
   const root = copyTree(t)
   const before = key(root)
-  const releaseBefore = key(root, "//:release")
+  const neighbours = []
   // Include additions at several depths: exclusion must not depend on one witness.
   for (let i = 0; i < 64; i++) {
     const dir = ["typescript/tsc/internal/vibelangfuzz", "typescript/vibelang/cases", "docs/user/src", "site/src/pages"][i % 4]
-    put(root, dir + "/api-input-neighbour-" + i + [".go", ".vibe", ".md", ".mdx"][i % 4], "// unrelated fixture\n")
+    neighbours.push(dir + "/api-input-neighbour-" + i + [".go", ".vibe", ".md", ".mdx"][i % 4])
+    put(root, neighbours[i], "// unrelated fixture\n")
   }
   assert.equal(key(root), before, "Go, compiler cases, user prose and generated site output must not invalidate API identity")
-  assert.notEqual(key(root, "//:release"), releaseBefore, "other root checks must retain their whole-tree inputs")
+  assertWholeTreeInput(root, neighbours)
 
   const selected = [
     "scripts/api-identity.mjs",
@@ -154,6 +169,19 @@ test("the actual root API key ignores unrelated files and retains every input fa
   assert.equal(key(root), before, "restoring all selected bytes must restore the original API key")
 })
 
+test("whole-tree input guard rejects a narrowed release declaration", t => {
+  const root = copyTree(t)
+  const probe = ["docs/user/src/api-input-neighbour.md"]
+  assertWholeTreeInput(root, probe)
+  const packageFile = join(root, "PACKAGE.ts")
+  const declaration = readFileSync(packageFile, "utf8")
+  const wholeTree = "inputs: ReadonlyArray<unknown> = [tree]"
+  assert.equal(declaration.split(wholeTree).length, 2)
+  writeFileSync(packageFile, declaration.replace(wholeTree,
+    'inputs: ReadonlyArray<unknown> = [S.Filegroup({ srcs: [S.glob("scripts/**")] })]'))
+  assert.throws(() => assertWholeTreeInput(root, probe), /release must retain the whole-tree input/)
+})
+
 test("real SDK caching reuses API results across Go edits and rejects a changed declaration", t => {
   const root = temp(t, "vibelang-api-inputs-cache-")
   const outside = temp(t, "vibelang-api-inputs-trace-")
@@ -183,7 +211,10 @@ test("real SDK caching reuses API results across Go edits and rejects a changed 
     'import {Smithers as S} from "@smthrs/targets"',
     'import {createApiIdentityInputs} from "./api-inputs.ts"',
     'const packages=S.Filegroup({srcs:[S.glob("packages/**")]})',
-    'export const Package=S.Package({targets:{"api-identity-test":S.Shell.Test({',
+    'const tree=S.Filegroup({srcs:[...S.glob(["**","!.jj/**"])]})',
+    'export const Package=S.Package({targets:{',
+    '"whole-tree-consumer":S.Shell.Test({shell:"true",data:[tree],tools:[],sandbox:"none"}),',
+    '"api-identity-test":S.Shell.Test({',
     'shell:"node scripts/proof.mjs",data:[createApiIdentityInputs(S,packages)],tools:[S.Host.bin("node")],sandbox:"none",',
     "env:" + JSON.stringify({ TRACE: trace, PROOF: outside }),
     "})}})",
@@ -196,8 +227,12 @@ test("real SDK caching reuses API results across Go edits and rejects a changed 
     assert.equal(result.status, 0, output(result))
     assert.deepEqual(calls(), ["api"], "unchanged successful results replay")
   }
+  const wholeTree = () => key(root, "//:whole-tree-consumer")
+  const wholeTreeBefore = wholeTree()
+  assert.equal(wholeTree(), wholeTreeBefore, "the whole-tree key is stable without a source change")
   for (let i = 0; i < 64; i++)
     put(root, "typescript/tsc/internal/vibelangfuzz/deep/witness-" + i + ".go", "// unrelated\n")
+  assert.notEqual(wholeTree(), wholeTreeBefore, "a whole-tree input must change its consumer's key")
   let result = run()
   assert.equal(result.status, 0, output(result))
   assert.deepEqual(calls(), ["api"], "Go edits retain the real checker result")
