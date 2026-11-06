@@ -118,3 +118,28 @@ test("sibling imports compare equally and real type and documentation changes st
     }
   })
 })
+
+// x.d.vibe.ts sits beside x.d.ts, and under moduleSuffixes `./x.js` tries the
+// sidecar name first, so a forwarder spelled that way would export itself.
+for (const moduleSuffixes of [["", ".d.vibe"], [".d.vibe", ""]]) {
+  test("sidecar alias reaches its declaration under moduleSuffixes " + JSON.stringify(moduleSuffixes), () => {
+    const ts = require("typescript")
+    const root = mkdtempSync(join(resolve(tmpdir()), "api-projection-suffix-"))
+    const snapshot = join(root, "snapshot"), packageDir = join(root, "repo/app")
+    mkdirSync(join(snapshot, "src"), { recursive: true })
+    writeFileSync(join(snapshot, "src/a.d.ts"), "export declare class Failure { private brand; }\n")
+    writeFileSync(join(snapshot, "src/index.d.ts"), 'import * as A from "./a.ts";\nexport declare const factory: () => A.Failure;\n')
+    const surface = { apiMetadata: { packageDir, manifest: { private: true, type: "module" }, layouts: [],
+      aliases: { "src/a.ts": "src/a.d.ts", "src/a.d.vibe.ts": "src/a.d.ts", "src/index.ts": "src/index.d.ts" },
+      logicalPaths: { "src/a.d.ts": "src/a.d.ts", "src/index.d.ts": "src/index.d.ts" } } }
+    const projection = apiProjection(ts, snapshot, surface, ["src/a.d.ts", "src/index.d.ts"], { published: false })
+    try {
+      const entry = join(projection.directory, "src/index.d.ts")
+      const program = ts.createProgram([entry], { module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        target: ts.ScriptTarget.ESNext, strict: true, noEmit: true, types: [], allowImportingTsExtensions: true, moduleSuffixes })
+      const reported = ts.getPreEmitDiagnostics(program).filter(item => item.file)
+        .map(item => "TS" + item.code + " " + ts.flattenDiagnosticMessageText(item.messageText, "\n"))
+      assert.deepEqual(reported, [])
+    } finally { projection.cleanup(); rmSync(root, { recursive: true, force: true }) }
+  })
+}

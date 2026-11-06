@@ -29,7 +29,12 @@ func migrationDeclarationAliasDependencies(t testing.TB) {
 
 func checkMigrationDeclarationAlias(t *testing.T, binary, key string, shape uint8, controls bool) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	// The strict controls compile seven more programs than one self-comparison.
+	limit := HangLimit
+	if controls {
+		limit *= 4
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), limit)
 	defer cancel()
 	input, err := json.Marshal(map[string]any{"key": key, "shape": shape, "compiler": binary, "controls": controls})
 	if err != nil {

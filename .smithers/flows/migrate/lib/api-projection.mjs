@@ -12,7 +12,9 @@ const declaration = path => {
     extension === ".mts" || extension === ".mjs" ? ".d.mts" : extension === ".cts" || extension === ".cjs" ? ".d.cts" : ".d.ts")
 }
 const specifier = path => {
-  const output = slash(path).replace(/\.d\.(vibex?)\.ts$/, ".$1").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs").replace(/\.d\.ts$/, ".js")
+  // Keep the `.d` in the stem: under moduleSuffixes, `./x.js` tries the sidecar
+  // x.d.vibe.ts before x.d.ts, so a forwarder there would export itself.
+  const output = slash(path).replace(/\.d\.(vibex?)\.ts$/, ".$1").replace(/\.d\.mts$/, ".d.mjs").replace(/\.d\.cts$/, ".d.cjs").replace(/\.d\.ts$/, ".d.js")
   return output.startsWith(".") ? output : "./" + output
 }
 export function apiProjection(ts, directory, surface, files, { published = true } = {}) {
