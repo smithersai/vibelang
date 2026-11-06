@@ -467,6 +467,11 @@ coverage collection keeps its ordinary behavior.
 
 ## Mapper test executables
 
+The data-method execution tests compile the current runtime sources. Before
+running the mapper Go suites, install the runtime dependencies with
+`(cd packages/runtime && bun install)`, as well as the Effect and stock
+TypeScript prerequisites in `CONTRIBUTING.md`.
+
 The stock projection snapshots in
 `typescript/tsc/internal/vibelangmapper/testdata/stock/` pin both checking
 and executable output. The executable snapshots follow the compiler's runtime

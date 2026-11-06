@@ -129,3 +129,16 @@ test("grammar admission projections match their source", () => {
   const result = spawnSync("node", [join(repository, "scripts/generate-grammar-admission.mjs"), "--check"], { encoding: "utf8" });
   expect(result.status, result.stderr).toBe(0);
 });
+
+test("Go-only mapper setup installs dependencies where execution tests resolve them", async () => {
+  const helper = await readFile(join(repository, "typescript/tsc/internal/vibelangmapper/data_methods_test.go"), "utf8")
+  const runtime = /effect := filepath.Join\(root, "([^"]+)\/node_modules\/effect"\)/.exec(helper)?.[1]
+  expect(runtime, "derive the install directory from the real runtime test helper").toBeDefined()
+  const manifest = JSON.parse(await readFile(join(repository, runtime!, "package.json"), "utf8"))
+  expect(manifest.devDependencies.effect).toBe(manifest.peerDependencies.effect)
+  const contributing = render(await readSources())["CONTRIBUTING.md"]!
+  const setup = contributing.split("The Go suites run from")[1]!.split("\n\n")[0]!
+  expect(setup).toContain("`(cd " + runtime + " && bun install)`")
+  expect(setup).toContain("`(cd experiments && bun install)`")
+  expect(setup).toContain("`packages/ts-mapper/package.json`")
+})
