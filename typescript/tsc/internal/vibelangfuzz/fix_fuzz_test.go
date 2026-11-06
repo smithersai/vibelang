@@ -52,24 +52,6 @@ func FuzzFix(f *testing.F) {
 	if !strings.Contains(SpecText("007-tooling.md"), "the selected project's own files") {
 		f.Fatal("missing current --fix write boundary")
 	}
-	// Under -short every pending reproduction runs, with six of the
-	// tsforms cases, the TypeScript forms --fix rewrites, and four other
-	// cases: running all 22 tsforms cases took two minutes of seed CPU.
-	// Campaigns take every tsforms case and 240 others; the nightly takes
-	// every seed.
-	isTSForms := func(s Seed) bool { return s.Pending == "" && strings.HasPrefix(s.Name, "tsforms-") }
-	cases := CaseSeeds()
-	tsforms := slices.DeleteFunc(slices.Clone(cases), func(s Seed) bool { return !isTSForms(s) })
-	others := slices.DeleteFunc(slices.Clone(cases), isTSForms)
-	for _, seed := range toolsSample(others, 4, 240, func(s Seed) bool { return s.Pending != "" }) {
-		f.Add(Archive(seed.Files))
-	}
-	for _, seed := range toolsSample(tsforms, 6, 0, nil) {
-		f.Add(Archive(seed.Files))
-	}
-	for _, seed := range toolsSample(SnippetSeeds(), 4, 60, nil) {
-		f.Add(Archive(seed.Files))
-	}
 	// Imported dependencies remain read-only while an owned type rewrite runs.
 	f.Add(Archive(map[string]string{
 		"main.vibe":                            "import type { Foreign } from \"dependency\"; export type Local = Effect.Effect<number>; export type Imported = Foreign;\n",
@@ -108,6 +90,33 @@ func FuzzFix(f *testing.F) {
 				f.Add(callbackSatisfiesFixKey + source + ":" + layout + ":" + names)
 			}
 		}
+	}
+	fuzzFixProjects(f, "FuzzFix")
+}
+
+// FuzzFixCases runs FuzzFix's oracle over the sampled cases and snippets, under
+// FuzzFix's name so its pending entries still apply. The two targets share one
+// CPU limit's worth of inputs between them; every input still runs.
+// Chapter 007 / trailing-block codemod and documented refusal boundaries preserve programs: docs/design/src/007-tooling.md#e8fbaefe60690b11
+func FuzzFixCases(f *testing.F) {
+	startShortBudget(f)
+	// Under -short every pending reproduction runs, with six of the
+	// tsforms cases, the TypeScript forms --fix rewrites, and four other
+	// cases: running all 22 tsforms cases took two minutes of seed CPU.
+	// Campaigns take every tsforms case and 240 others; the nightly takes
+	// every seed.
+	isTSForms := func(s Seed) bool { return s.Pending == "" && strings.HasPrefix(s.Name, "tsforms-") }
+	cases := CaseSeeds()
+	tsforms := slices.DeleteFunc(slices.Clone(cases), func(s Seed) bool { return !isTSForms(s) })
+	others := slices.DeleteFunc(slices.Clone(cases), isTSForms)
+	for _, seed := range toolsSample(others, 4, 240, func(s Seed) bool { return s.Pending != "" }) {
+		f.Add(Archive(seed.Files))
+	}
+	for _, seed := range toolsSample(tsforms, 6, 0, nil) {
+		f.Add(Archive(seed.Files))
+	}
+	for _, seed := range toolsSample(SnippetSeeds(), 4, 60, nil) {
+		f.Add(Archive(seed.Files))
 	}
 	fuzzFixProjects(f, "FuzzFix")
 }

@@ -7,7 +7,8 @@
 49 FuzzEditor
 36 FuzzEditorConsistency
 32 FuzzCommandLine
-28 FuzzFix
+16 FuzzFixCases
+12 FuzzFix
 27 TestCompileLargeLiteralMatch
 27 TestFailuresSpec
 21 TestDataSpecRules
