@@ -1,0 +1,2 @@
+go test fuzz v1
+string("#!/usr/bin/env node\n// @vibe\nexport service Named { name(): string!! }\n")

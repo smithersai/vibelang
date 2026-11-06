@@ -96,13 +96,14 @@ func parseGaps(g *Gaps, source string) {
 		// diagnostics print at its spans (D61), source maps carry them (D34),
 		// and the editor finds the node at a position by descending through
 		// children in order (Chapter 28, The editor).
-		if where == ".vibe" || where == ".vibex" {
+		if file.IsVibeLang() {
 			// The VibeLang parser writes each abbreviation as the TypeScript
 			// it stands for, placing the long form's nodes at the source
 			// spans they come from, which may overlap; Chapter 27 and 28 hold
-			// only the spans themselves to the text.
+			// only the spans themselves to the text. VIP-42 gives a .ts or
+			// .tsx file with the directive the same reading.
 			if kind, problem := spanProblem(file, source); problem != "" {
-				g.Add("feature:parse-span-"+kind, "parsed as .vibe: %s", problem)
+				g.Add("feature:parse-span-"+kind, "parsed as %s: %s", where, problem)
 			}
 		} else if problem := treeProblem(file, source); problem != "" {
 			// The key names the node at fault, so one known gap does not
