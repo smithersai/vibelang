@@ -1136,6 +1136,21 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   const ambient = isolateAmbientSnapshots(ts, [{ base: before, entries: left }, { base: after, entries: right }], compilerOptions, host, program,
     (isolated, entries, files) => collectInputDiagnostics(ts, entries, compilerOptions, host, files, options, progress, "input-diagnostics", isolated))
   const originalDiagnostics = ambient.diagnostics
+  // Input errors already make this entry group unavailable. Preserve their
+  // native diagnostics before nominal alignment loads unrelated public roots.
+  // Equal references into recorded absent declarations remain export-scoped.
+  const originalAbsentReferences = attributeAbsentReferences(ts, program, program.getTypeChecker(),
+    originalDiagnostics, before, after, absent,
+    { ...compilerOptions, ...options.compilerOptions, allowArbitraryExtensions: true }, host)
+  const originalInputRecords = originalDiagnostics.map(({ start, length, code, ...d }) => {
+    const absentDeclaration = originalAbsentReferences.attributed.get(d.file + "\0" + start + "\0" + code)?.declaration
+    return absentDeclaration ? { ...d, blocking: false, absentDeclaration } : { ...d, blocking: !d.file ||
+      [before, after].some(base => (d.file === base || d.file.startsWith(base + "/")) && !d.file.includes("/node_modules/")) }
+  })
+  const inputGroupBlocked = originalInputRecords.some(d => d.blocking) || originalAbsentReferences.mismatches.length > 0
+  if (inputGroupBlocked) progress("input-group-blocked", { inputDiagnostics: originalInputRecords.length,
+    blockingDiagnostics: originalInputRecords.filter(d => d.blocking).length,
+    absentReferenceMismatches: originalAbsentReferences.mismatches.length })
   for (const [path, text] of ambient.virtual) virtual.set(path, text)
   if (ambient.virtual.size) {
     moduleResolutions.clear()
@@ -1283,7 +1298,10 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   // public forwarding entry may belong to another probe batch, but still
   // establishes the identity shared by both snapshots. Load that export graph
   // only for nominal alignment; input diagnostics and probes keep their bounds.
-  const nominalRoots = [...new Set([...roots, ...nominalEntries.flatMap(entries => Object.values(entries))])]
+  // Finish the current group's export diagnostics even when it is invalid,
+  // while leaving unrelated nominal roots unloaded.
+  const nominalRoots = inputGroupBlocked ? roots :
+    [...new Set([...roots, ...nominalEntries.flatMap(entries => Object.values(entries))])]
   progress("nominal-identity", { publicEntries: nominalRoots.length, batchEntries: roots.length })
   const nominalProgram = nominalRoots.every(file => program.getSourceFile(file))
     ? program : ts.createProgram(nominalRoots, compilerOptions, host, program)
