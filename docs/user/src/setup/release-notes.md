@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The source checkout preview could fail with `TS2307` for `vibelang-runtime` in another project. The instructions now install the checkout's runtime there before checking.
 
+- A long ordinary comment beginning with `// @vibe` could make loaders or the formatter treat an unmarked TypeScript file as VibeLang. They now check the complete directive line and leave that file unchanged.
+
 - The TypeScript-file guide claimed stock tools always reject VibeLang or preserve its meaning. It now explains that prelude names can compile successfully with different bindings.
 
 - Editor formatting could hang on a marked `.mts`, `.cts` or `.tsx` file. Formatting now returns normally and keeps the directive.

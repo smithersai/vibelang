@@ -16,8 +16,11 @@ function head(file) {
   const buffer = Buffer.alloc(4096)
   const descriptor = openSync(file, "r")
   try {
-    const text = buffer.toString("utf8", 0, readSync(descriptor, buffer, 0, buffer.length, 0))
-    return text.replace(/^\uFEFF/, "").startsWith("#!") ? readFileSync(file, "utf8") : text
+    const bytes = readSync(descriptor, buffer, 0, buffer.length, 0)
+    const text = buffer.toString("utf8", 0, bytes)
+    // A full buffer is not EOF. Finish a long first line before accepting it.
+    const incomplete = bytes === buffer.length && !/[\r\n]/.test(text)
+    return incomplete || text.replace(/^\uFEFF/, "").startsWith("#!") ? readFileSync(file, "utf8") : text
   } finally {
     closeSync(descriptor)
   }

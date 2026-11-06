@@ -40,7 +40,7 @@ Pass the project's normal compiler options to the launcher. This route uses the 
 
 ## Write a file
 
-The first line is exactly `// @vibe`. Only a `#!` line can come before it.
+The first line is exactly `// @vibe`, optionally followed by spaces or tabs. A byte order mark and a `#!` line can come before it. Other text on the directive line makes it an ordinary comment, even on a line longer than `4096` bytes; loaders and the formatter leave that file as TypeScript.
 
 ```ts
 // @vibe
