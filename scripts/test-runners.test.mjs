@@ -57,6 +57,7 @@ const runs = [
   [".smithers/flows/first-bad/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/first-bad/test/*.test.mjs"],
   [".smithers/flows/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/test/*.test.mjs"],
   ["packages/vite/test/*.test.mjs", "packages/vite/test/run.sh", "test/*.test.mjs"],
+  ["packages/typescript-shim/test/*.test.mjs", "packages/PACKAGE.ts", "node --test packages/typescript-shim/test/*.test.mjs"],
   ["packages/create-vibelang/test/create.test.mjs", "PACKAGE.ts", "node --test packages/create-vibelang/test/create.test.mjs"],
   // A fixture project: coverage.test.mjs runs Vitest over it.
   ["packages/vite/test/coverage/test/*.test.ts", "packages/vite/test/coverage.test.mjs", "test/coverage"],

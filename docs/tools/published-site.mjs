@@ -82,7 +82,8 @@ export function installReferences(body) {
   const tables = [...body.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>|^\s*\|[^\n]+/gm)].map(match => match[0])
   for (const line of visibleSiteText(body).split("\n")) {
     if (!/\b(?:npm|pnpm|bun|yarn)\s+(?:add|install|i|create)\b/.test(line)) continue
-    for (const [, name, version] of line.matchAll(/(?<![\w/-])((?:@smthrs\/cli-[a-z0-9-]+|(?:create-)?vibelang(?:-[a-z0-9-]+)?))@([^\s\x60"\x27<>),;]+)/g)) {
+    // vibelang-typescript publishes a TypeScript-shaped version beside the release's, so npm's compiler version can't check it.
+    for (const [, name, version] of line.matchAll(/(?<![\w/-])((?:@smthrs\/cli-[a-z0-9-]+|(?:create-)?vibelang(?:-(?!typescript@)[a-z0-9-]+)?))@([^\s\x60"\x27<>),;]+)/g)) {
       refs.push({ name: /\b(?:npm|bun) create vibelang/.test(line) && name === "vibelang" ? "create-vibelang" : name, version })
     }
     for (const name of native(line)) if (!line.includes(name + "@")) refs.push({ name })

@@ -42,8 +42,8 @@ function assemble(root) {
   return spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 120_000 })
 }
 function archive(root, name, path) {
-  const version = json(join(root, "packages/compiler/package.json")).version
-  return execFileSync("tar", ["-xOzf", join(root, "dist-npm/tarballs", `${name.replace("@", "").replace("/", "-")}-${version}.tgz`), `package/${path}`], { maxBuffer: 64 * 1024 * 1024 })
+  const { file } = json(join(root, "dist-npm/tarballs/manifest.json")).packages.find((pkg) => pkg.name === name)
+  return execFileSync("tar", ["-xOzf", join(root, "dist-npm/tarballs", file), `package/${path}`], { maxBuffer: 64 * 1024 * 1024 })
 }
 
 test("packs every file the compiler package lists and every target its exports name", { timeout: 120_000 }, (t) => {
@@ -72,7 +72,7 @@ test("assembles every package in publish order with pinned versions, platform bi
     assert.ok(pkg.files > 0)
     const packed = JSON.parse(archive(root, pkg.name, "package.json"))
     assert.equal(packed.name, pkg.name)
-    assert.equal(packed.version, manifest.version)
+    assert.equal(packed.version, pkg.version)
   }
   for (const platform of platforms) {
     const [os, cpu] = platform.split("-")

@@ -29,7 +29,7 @@ function metadataFixture(t) {
   for (const path of [
     "scripts/release/make-packages.mjs", "docs/tools/release-docs.mjs",
     "typescript/tsc/internal/vibelang/identity.go",
-    ...["compiler", "runtime", "vite", "unplugin", "create-vibelang"].map(name => "packages/" + name + "/package.json"),
+    ...["compiler", "runtime", "vite", "unplugin", "create-vibelang", "typescript-shim"].map(name => "packages/" + name + "/package.json"),
     "templates/app/package.json",
   ]) {
     mkdirSync(dirname(join(root, path)), { recursive: true })
