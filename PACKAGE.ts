@@ -317,7 +317,7 @@ const vibelangTopicTargets = Object.fromEntries(
 // Specification checks share the normal graph and cache. The existing forms
 // gate selection reaches these dependencies without a pre-gate change.
 const specInputs = S.Filegroup({ srcs: [...S.glob([
-  "docs/design/**", "typescript/vibelang/cases/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*", "docs/tools/spec-pipe-arrows*", "docs/tools/spec-native-source-resolution*", "docs/tools/spec-diagnostic-*",
+  "docs/design/**", "typescript/vibelang/cases/**", "docs/tools/spec-rules*", "docs/tools/spec-schema-constructor*", "docs/tools/spec-examples*", "docs/tools/spec-lint*", "docs/tools/spec-pipe-arrows*", "docs/tools/spec-native-source-resolution*", "docs/tools/spec-diagnostic-*",
   "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
   "docs/tools/diagnostic-identity*", "docs/tools/diagnostic-archive-examples*", "docs/tools/diagnostic-examples*", "docs/tools/diagnostic-native-projects*", "typescript/vibelang/cases/appendix-diagnostic-identities/examples.json", "scripts/diagnostic-inventory.mjs", "docs/tools/factory-diagnostic-retirement.test.mjs", "docs/tools/retirement-gate*", "scripts/mq-retirement-precheck*",
   "typescript/tsc/internal/vibelangfuzz/testdata/fuzz/**", "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "typescript/tsc/internal/vibelang/diagnostics.go",
@@ -384,6 +384,11 @@ const specExamples = S.Shell.Test({
   data: [specInputs, Typescript.compiler, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
   tools: [node], sandbox: "none", timeout: "15m"
 })
+const specSchemaConstructor = check(
+  "Schema constructor documentation matches decoding in the pinned Effect version.",
+  "node docs/tools/spec-schema-constructor.mjs && node --test docs/tools/spec-schema-constructor.test.mjs",
+  [], [node], "1m"
+)
 const specLinterTests = S.Shell.Test({
   summary: "Historical spec defects, VIP links and supersession, module extraction scope and projection source kinds, seeded properties and native example checks reject regressions.",
   shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/spec-rules-import-grammar.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/diagnostic-examples.test.mjs docs/tools/diagnostic-archive-examples.test.mjs docs/tools/diagnostic-native-projects.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs docs/tools/retirement-gate.test.mjs && python3 -B scripts/mq-retirement-precheck.test.py && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts spec-native-source-resolution.test.ts",
@@ -457,7 +462,7 @@ const grammarAdmissionCheck = check(
 const specLint = S.Shell.Test({
   summary: "Static specification contracts and their regression tests.",
   shell: "echo 'spec-lint: static contracts passed'",
-  data: [specRegistry, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows, specCatchDiagnostics, specAppendixExamples, specDiagnosticIdentity, specAppendixHostExamples],
+  data: [specRegistry, specSchemaConstructor, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows, specCatchDiagnostics, specAppendixExamples, specDiagnosticIdentity, specAppendixHostExamples],
   sandbox: "none", timeout: "1m"
 })
 
@@ -624,6 +629,7 @@ const targets = {
     timeout: "2m"
   }),
   "spec-linters-test": specLinterTests,
+  "spec-schema-constructor": specSchemaConstructor,
   "grammar-admission": grammarAdmission,
   "grammar-admission-check": grammarAdmissionCheck,
   "grammar-authority": grammarAuthority,

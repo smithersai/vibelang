@@ -394,6 +394,8 @@ The existing Effect language-service configuration in `compilerOptions.plugins` 
 
 Compiler builds, the language server and `vibelang lint` use the same activation and selection: a resolved plugin entry named `@effect/language-service` enables the rules; `diagnostics: false` or `diagnosticSeverity: null` disables its diagnostics. Inheritance and native options follow the pinned upstream. A `vibe.severities` entry never re-enables disabled diagnostics. Until the [severity-key activation migration](#severity-key-activation-migration) retires the legacy shortcut, an assigned `EK38xx` key in a config without a resolved plugin entry still activates the whole default plugin, as the legacy release did, and reports `EK3012`; after that retirement, such a key alone activates nothing. Once enabled, severity resolves from `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). An override can enable a default-off rule; every assigned imported code accepts all four severity values, even `"off"` for a default-error rule.
 
+In `.vibe` code, `EK4814` warns when a `Schema.Class` subclass overrides its constructor. Decoding invokes the override. Move work that should happen only during explicit construction to a separate factory function.
+
 ### Reporting and exit status
 
 | Host | Imported diagnostic behavior |

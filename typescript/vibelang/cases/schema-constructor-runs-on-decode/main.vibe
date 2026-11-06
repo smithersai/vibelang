@@ -1,6 +1,7 @@
-// expect-result: [1,"set-by-constructor"]
-// EK4814's message says decoding runs an overriding constructor. This case
-// fails when an Effect upgrade makes that untrue (lints-smithers R2).
+// expect-result: [2,"set-by-constructor","set-by-constructor",true]
+// Decoding invokes a Schema constructor override after successful validation.
+// rule-evidence: docs/design/src/007-tooling.md#effects-type-aware-lint
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics
 let calls = 0
 
 class Overridden extends Schema.Class<Overridden>("Overridden")({ a: Schema.String }) {
@@ -15,6 +16,7 @@ class Overridden extends Schema.Class<Overridden>("Overridden")({ a: Schema.Stri
 
 export effect function main() {
   const decoded = try Schema.decodeUnknownEffect(Overridden)({ a: "x" })
-  return [calls, decoded.extra]
+  const again = try Schema.decodeUnknownEffect(Overridden)({ a: "y" })
+  return [calls, decoded.extra, again.extra, decoded !== again]
 }
 // Chapter 900: EK4814 diagnostic - spec-rule: docs/design/src/900-appendices.md#81078a4a6930da0f
