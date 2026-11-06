@@ -16,6 +16,8 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 > [!NOTE]
 > The latest code is on the [`vibe`](https://github.com/smithersai/vibelang/tree/vibe) branch. `main` holds accepted code.
 
+<p align="center"><img src="site/public/alpha-to-beta.svg" alt="From alpha to beta, with no dates: alpha works and is slop, behaviour settles, a person reads every line, then beta isn't slop." width="100%"></p>
+
 <!-- compatibility:start -->
 > **Compatibility.** Use exactly `effect@4.1.1`; keep `@effect/platform-node` and `@effect/vitest` at `4.1.1` when used.
 >
