@@ -215,6 +215,20 @@ func fixSiteSpan(f fileFix) (int, int) {
 	return start, end
 }
 
+// fixSiteSpans returns the diagnostic span, or the separate edit spans of
+// a rename. Unrelated text between a binding's uses is not part of its site.
+func fixSiteSpans(f fileFix) [][2]int {
+	if !f.scattered {
+		start, end := fixSiteSpan(f)
+		return [][2]int{{start, end}}
+	}
+	spans := make([][2]int, 0, len(f.edits))
+	for _, e := range f.edits {
+		spans = append(spans, [2]int{e.start, e.end})
+	}
+	return spans
+}
+
 // spanTouches reports whether the range [es, ee) an edit replaces touches
 // the site [s, e): it overlaps it, or inserts inside it. An edit that ends
 // where the site starts, or starts where it ends, leaves its bytes.

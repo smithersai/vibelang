@@ -763,8 +763,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 					if code == "" {
 						code = fixCodeName(f.code)
 					}
-					start, end := fixSiteSpan(f)
-					sites.add(name, text, start, end, code, fmt.Sprintf("its fix would edit the refused site %s at %d:%d", by[i].Code, by[i].StartLine, by[i].StartColumn))
+					for _, span := range fixSiteSpans(f) {
+						sites.add(name, text, span[0], span[1], code, fmt.Sprintf("its fix would edit the refused site %s at %d:%d", by[i].Code, by[i].StartLine, by[i].StartColumn))
+					}
 				}
 				p.fixes = kept
 			}
@@ -1764,6 +1765,9 @@ type fileFix struct {
 	siteStart int
 	siteEnd   int
 	sited     bool
+	// scattered edits are separate sites, as a rename's uses are. A refusal
+	// holds each of them, not the text between them.
+	scattered bool
 }
 
 // A declinedSite is a diagnostic fileFixes found no fix for, or whose fix

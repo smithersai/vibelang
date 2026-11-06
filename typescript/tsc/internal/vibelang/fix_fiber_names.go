@@ -403,7 +403,7 @@ func fiberNameMigrationFixes(ctx context.Context, program *compiler.Program, fil
 		if len(r.edits) == 0 || refused[key] || slices.ContainsFunc(r.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
 			continue
 		}
-		p.fixes = append(p.fixes, fileFix{code: reservedFiberName.Code, edits: r.edits, key: key, label: fiberNameRenameLabel})
+		p.fixes = append(p.fixes, fileFix{code: reservedFiberName.Code, edits: r.edits, key: key, label: fiberNameRenameLabel, scattered: true})
 		taken = append(taken, r.edits...)
 	}
 	return p

@@ -122,9 +122,10 @@ func (r *gateRound) finish(class []int, refuse func(FixRefusal, string)) []propo
 	for _, refusal := range r.refusals {
 		p := r.proposals[refusal.at[0]]
 		fix := p.fixes[refusal.at[1]]
-		line, _ := scannerLineOf(p.file, firstEdit(fix.edits))
-		start, end := fixSiteSpan(fix)
-		refuse(FixRefusal{File: p.file.FileName(), Line: line + 1, Code: fix.code, Native: fix.native, Label: fix.label, Error: refusal.error, Start: start, End: end, Spanned: true}, fix.key)
+		for _, span := range fixSiteSpans(fix) {
+			line, _ := scannerLineOf(p.file, span[0])
+			refuse(FixRefusal{File: p.file.FileName(), Line: line + 1, Code: fix.code, Native: fix.native, Label: fix.label, Error: refusal.error, Start: span[0], End: span[1], Spanned: true}, fix.key)
+		}
 	}
 	var accepted []proposal
 	for i := range r.proposals {
