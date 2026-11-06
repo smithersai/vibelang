@@ -23,7 +23,8 @@ function plugin() {
       const { toolSource, remapLocations } = vibelangEmit()
       const source = toolSource(file, code)
       if (source === undefined) return undefined
-      return remapLocations(parse(source.code, parserOpts), source.map)
+      const options = file.endsWith(".vibex") ? { ...parserOpts, plugins: [...(parserOpts.plugins ?? []), "jsx"] } : parserOpts
+      return remapLocations(parse(source.code, options), source.map)
     }
   }
 }

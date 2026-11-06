@@ -6,7 +6,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
 import { transform } from "oxc-transform-react"
-import { compilerPackage, hooks, project, tools } from "./helpers.mjs"
+import { compilerPackage, hooks, project, refHandler, tools } from "./helpers.mjs"
 
 const { toolArguments } = await import(join(compilerPackage, "emit.mjs"))
 // apps/web/src/reactCompilerCoverage.test.ts's options in t3code.
@@ -30,6 +30,21 @@ for (const [name, expected] of [["useLabel", []], ["useLatest", ["Cannot access 
     assert.equal(vibe.code, twin.code)
   })
 }
+
+test("the React Compiler checks a .vibex module's JSX as it checks its .tsx twin (t3code Web)", async (t) => {
+  const root = project(t, { "src/Counter.vibex": refHandler }, ["react", "@types/react"])
+  const file = join(root, "src/Counter.vibex")
+  const vibex = await transform(...toolArguments(file, refHandler, options))
+  const twin = await transform(file.replace(/\.vibex$/, ".tsx"), refHandler, options)
+  assert.deepEqual(messages(twin), [])
+  assert.deepEqual(messages(vibex), [])
+  assert.equal(vibex.code, twin.code)
+})
+
+test("a .vibex module that does not compile under preserved JSX keeps its diagnostic", (t) => {
+  const root = project(t, { "src/Bad.vibex": 'export const n: number = "x"\n' }, ["react", "@types/react"])
+  assert.throws(() => toolArguments(join(root, "src/Bad.vibex"), 'export const n: number = "x"\n', options), /TS2322/)
+})
 
 test("toolArguments passes other files and compiled text through", (t) => {
   const root = project(t, hooks, ["react", "@types/react"])

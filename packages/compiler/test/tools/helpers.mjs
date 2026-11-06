@@ -35,6 +35,16 @@ export function project(t, files, linked = []) {
   return root
 }
 
+// A ref written in an event handler: the React Compiler accepts it only while
+// it can see the handler is a JSX prop.
+export const refHandler = `import { useRef } from "react";
+
+export function Counter() {
+  const count = useRef(0);
+  return <button onClick={() => { count.current++; }}>Go</button>;
+}
+`
+
 // Hooks with and without a React Compiler violation. The types before each
 // body shift the emitted JavaScript's lines away from the source's.
 export const hooks = {

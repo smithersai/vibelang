@@ -42,17 +42,19 @@ export function projectOf(file) {
  * The JavaScript and source map that `file`'s project compile emits for the
  * .vibe module `file`. Throws an Error with code ERR_VIBELANG_COMPILE and the
  * module's diagnostics when it has errors, and one with code
- * ERR_VIBELANG_PROJECT when the project does not include it.
+ * ERR_VIBELANG_PROJECT when the project does not include it. `preserveJsx`
+ * leaves JSX in the output of a project that otherwise lowers it, at the cost
+ * of a second project compile.
  */
-export function emitModule(file) {
+export function emitModule(file, { preserveJsx = false } = {}) {
   file = resolve(file)
   const project = projectOf(file)
-  const result = compileProjectSync({ project, [loaderScope]: true })
+  const result = compileProjectSync({ project, preserveJsx, [loaderScope]: true })
   if (!result.outputs.has(file) && !owners.has(file)) {
     const other = findProject(file, { tried: project, compiler: findCompiler(dirname(project)), programs }).project
     if (other !== undefined) {
       owners.set(file, other)
-      return emitModule(file)
+      return emitModule(file, { preserveJsx })
     }
   }
   const errors = diagnosticsForFile(result.errors, file, result.files)
@@ -71,12 +73,13 @@ export function emitModule(file) {
  * emitted { code, map } when `file` is a VibeLang module and `text` is its
  * source as on disk (or omitted), else undefined. Such a path with other text holds
  * JavaScript a bundler plugin already compiled, as vibelang-vite hands it to
- * the plugins after it, so the tool parses that text as it is.
+ * the plugins after it, so the tool parses that text as it is. A .vibex module
+ * keeps its JSX, which a tool reads as it reads a .tsx twin's.
  */
 export function toolSource(file, text) {
   if (typeof file !== "string" || !isVibeLangFile(file)) return undefined
   if (text !== undefined && String(text) !== readFileSync(file, "utf8")) return undefined
-  return emitModule(file)
+  return emitModule(file, { preserveJsx: file.endsWith(".vibex") })
 }
 
 /**

@@ -121,10 +121,10 @@ test("withVibeLang keeps the app's transformer and config, and accepts a promise
   }))
   const { resolveRequest, ...resolver } = config.resolver
   assert.equal(typeof resolveRequest, "function")
-  assert.deepEqual(resolver, { sourceExts: ["ts", "js", "vibe"], extraNodeModules: { a: "b" } })
+  assert.deepEqual(resolver, { sourceExts: ["ts", "js", "vibe", "vibex"], extraNodeModules: { a: "b" } })
   assert.equal(config.transformer.babelTransformerPath, join(compilerPackage, "metro.cjs"))
   assert.equal(config.transformer.minifierPath, "m")
   assert.equal(process.env.VIBELANG_METRO_TRANSFORMER, "/app/transformer.js")
-  assert.deepEqual((await withVibeLang(config)).resolver.sourceExts, ["ts", "js", "vibe"])
+  assert.deepEqual((await withVibeLang(config)).resolver.sourceExts, ["ts", "js", "vibe", "vibex"])
   assert.equal(process.env.VIBELANG_METRO_TRANSFORMER, "/app/transformer.js")
 })

@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import { test } from "node:test"
-import { compilerPackage, hooks, project, refReadLine } from "./helpers.mjs"
+import { compilerPackage, hooks, project, refHandler, refReadLine } from "./helpers.mjs"
 
 const require = createRequire(import.meta.url)
 const babel = require("@babel/core")
@@ -24,6 +24,13 @@ function compile(root, file, presets = [join(compilerPackage, "babel.cjs")]) {
 test("without the preset Babel cannot parse a .vibe module", (t) => {
   const root = project(t, hooks, ["react", "@types/react"])
   assert.throws(() => compile(root, "src/useLabel.vibe", []), SyntaxError)
+})
+
+test("the React Compiler sees a .vibex module's JSX, not its lowered calls (t3code Web)", (t) => {
+  const root = project(t, { "src/Counter.vibex": refHandler }, ["react", "@types/react"])
+  const { code, bailouts } = compile(root, "src/Counter.vibex")
+  assert.deepEqual(bailouts, [])
+  assert.match(code, /useMemoCache|_c\(/)
 })
 
 test("the preset reads a .vibex module", (t) => {

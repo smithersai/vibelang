@@ -186,8 +186,8 @@ export function formatDiagnostic(diagnostic) {
 // privately narrow checking and emission to their own Vibe sources.
 const emitRoot = (root) => parse(resolve(root)).root
 
-const emitArgs = (project, root, out, loader) => [
-  "--project", project, "--project-emit", ...(loader ? ["--loader-root", resolve(root)] : []),
+const emitArgs = (project, root, out, loader, extra = []) => [
+  ...extra, "--project", project, "--project-emit", ...(loader ? ["--loader-root", resolve(root)] : []),
   "--pretty", "false", "--listFiles", "true", "--rootDir", emitRoot(root),
   "--outDir", out, "--sourceMap", "true", "--inlineSources", "true",
   "--inlineSourceMap", "false", "--sourceRoot", slash(emitRoot(root)).replace(/\/?$/, "/"), "--declaration", "false", "--declarationMap", "false",
@@ -297,10 +297,10 @@ function stopwatch() {
 // Serves a compile from the cache, or runs it and caches its result. The
 // debug report names the time of each stage: the cache lookup, the snapshot of
 // the inputs, the compiler process, reading its outputs, and the cache write.
-function cached({ project, root, compiler, cache, debug, loader }, run) {
+function cached({ project, root, compiler, cache, debug, loader, scope = loader ? "loader" : "project" }, run) {
   const started = performance.now()
   const stages = stopwatch()
-  const store = projectCache({ project, root, compiler, cache, debug, scope: loader ? "loader" : "project" })
+  const store = projectCache({ project, root, compiler, cache, debug, scope })
   const hit = stages.time("lookup", () => store?.lookup())
   if (hit?.result) {
     debug(`${project} from the cache in ${elapsed(started)}`)
@@ -308,7 +308,7 @@ function cached({ project, root, compiler, cache, debug, loader }, run) {
   }
   // A cold cache: the project's committed loader record (cache.mjs) serves the
   // compile when every input it names still holds, and the cache keeps it.
-  const recorded = loader && store && existsSync(loaderRecordFile(project))
+  const recorded = scope === "loader" && store && existsSync(loaderRecordFile(project))
     ? stages.time("record", () => loaderRecord({ project, root, compiler }).lookup()) : undefined
   if (recorded?.result) {
     stages.time("store", () => store.store(store.begin(), recorded.result, recorded.files))
@@ -412,15 +412,32 @@ export function projectBackend({ root, compiler, cache, debug = () => {}, [loade
  * compileProjectSync is projectBackend's compile for callers that cannot wait,
  * such as Node's synchronous module hooks.
  */
-export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {}, [loaderScope]: loader = false }) {
+export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {}, preserveJsx = false, [loaderScope]: loader = false }) {
+  const extra = preserveJsx ? preservedJsxArgs(project, compiler) : []
+  if (extra.length) return cached({ project, root, compiler, cache, debug, loader, scope: "tool-jsx" }, (stages) => compileOnce(project, root, compiler, stages, loader, extra))
   return cached({ project, root, compiler, cache, debug, loader }, (stages) => compileOnce(project, root, compiler, stages, loader))
 }
 
+// The options that leave JSX in a project's output for a tool that reads JSX,
+// as the React Compiler must: lowered, an event handler is an argument to an
+// unknown call. A project's own automatic runtime still types its JSX, so the
+// project checks as it does when lowered. Nothing when it already keeps JSX.
+function preservedJsxArgs(project, compiler) {
+  const [file, argv] = command(compiler, ["--project", project, "--showConfig"])
+  const run = spawnSync(file, argv, { cwd: dirname(project), encoding: "utf8", maxBuffer: 1 << 30 })
+  if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
+  let options
+  try { options = JSON.parse(run.stdout).compilerOptions ?? {} } catch { return [] } // the project compile reports invalid config
+  if (options.jsx === undefined || options.jsx === "preserve") return []
+  const automatic = options.jsx === "react-jsx" || options.jsx === "react-jsxdev"
+  return ["--jsx", "preserve", ...(automatic ? ["--jsxImportSource", options.jsxImportSource ?? "react"] : [])]
+}
+
 // One compiler run over a project, as a loader runs it.
-function compileOnce(project, root, compiler, stages = stopwatch(), loader = true) {
+function compileOnce(project, root, compiler, stages = stopwatch(), loader = true, extra = []) {
   const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
   try {
-    const [file, argv] = command(compiler, emitArgs(project, root, out, loader))
+    const [file, argv] = command(compiler, emitArgs(project, root, out, loader, extra))
     const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, env: compilerEnvironment(), encoding: "utf8", maxBuffer: 1 << 30 }))
     if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
     return stages.time("collect", () => collect({ status: run.status, signal: run.signal, output: run.stdout + run.stderr }, root, out))
