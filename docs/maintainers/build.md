@@ -812,7 +812,8 @@ A runner without a line also never gets less than the sum of the stage
 deadlines written in it and its helpers, so a new case cannot fall short.
 `//:harness-deadlines` holds an explicit line to that sum. It reads files only,
 so a line that would get a runner killed as a whole, without naming a stage,
-fails in under a second.
+fails in under a second. `//:release` runs the same test, so post-merge, which
+names its targets, keeps the rule too.
 
 The Chapter 15 failure case uses `TestClock.layer()` and advances virtual time
 with `TestClock.adjust` before joining its scenario. This checks timeout,
