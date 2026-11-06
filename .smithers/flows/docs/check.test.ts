@@ -162,26 +162,31 @@ test("contributor release-note guidance runs the strict guard before submission"
     await mkdir(join(fixture, "packages/compiler"), { recursive: true })
     await mkdir(join(fixture, "docs/user/src/setup"), { recursive: true })
     const notes = await readFile(join(repository, "docs/user/src/setup/release-notes.md"), "utf8")
-    const candidate = /^## (\S+) \(unreleased\)$/m.exec(notes)?.[1]
-    expect(candidate, "exercise the explicit override on an unreleased candidate").toBeDefined()
-    await writeFile(join(fixture, "packages/compiler/package.json"), JSON.stringify({ version: candidate }))
-    const heading = /^### Bugs fixed since .+$/m.exec(notes)![0]
-    const bullet = /^- .+$/m.exec(notes)![0]
+    const releaseHeader = /^## .+$/m.exec(notes)![0].replace(/ \(unreleased\)$/, "")
     const [setting, executable, ...args] = command!.split(" ")
     const [key, value] = setting!.split("=")
     const env = { ...process.env, [key!]: value!, VIBELANG_LAST_PUBLISHED_VERSION: undefined }
     args.splice(1, 0, "--test-name-pattern=^current release notes describe user fixes without internal CI or fuzz bookkeeping$")
-    for (const [label, text, status] of [
-      ["valid", notes, 0],
-      ["duplicate", notes.replace(heading, heading + "\n" + bullet), 1],
-      ["internal", notes.replace(heading, heading + "\n- Added fuzz regression checks."), 1],
-    ] as const) {
-      await writeFile(join(fixture, "docs/user/src/setup/release-notes.md"), text)
-      const result = spawnSync(executable!, args, { cwd: fixture, env, encoding: "utf8", timeout: 60_000 })
-      expect({ label, status: result.status, signal: result.signal, error: result.error?.message },
-        result.stdout + result.stderr).toEqual({ label, status, signal: null, error: undefined })
-      expect(result.stdout).toContain(status === 0 ? "pass 1" : "fail 1")
-      expect(result.stdout).toContain("skipped 0")
+    for (const profile of ["unreleased", "finalized"] as const) {
+      const sourceNotes = notes.replace(/^## .+$/m, releaseHeader + (profile === "unreleased" ? " (unreleased)" : ""))
+      const candidate = /^## (\S+)(?: \(unreleased\))?$/m.exec(sourceNotes)?.[1]
+      expect(candidate, "derive the version independently of release finalization").toBeDefined()
+      const fixtureNotes = sourceNotes.replace(/^## .+$/m, "## " + candidate + " (unreleased)")
+      await writeFile(join(fixture, "packages/compiler/package.json"), JSON.stringify({ version: candidate }))
+      const heading = /^### Bugs fixed since .+$/m.exec(fixtureNotes)![0]
+      const bullet = /^- .+$/m.exec(fixtureNotes)![0]
+      for (const [label, text, status] of [
+        ["valid", fixtureNotes, 0],
+        ["duplicate", fixtureNotes.replace(heading, heading + "\n" + bullet), 1],
+        ["internal", fixtureNotes.replace(heading, heading + "\n- Added fuzz regression checks."), 1],
+      ] as const) {
+        await writeFile(join(fixture, "docs/user/src/setup/release-notes.md"), text)
+        const result = spawnSync(executable!, args, { cwd: fixture, env, encoding: "utf8", timeout: 60_000 })
+        expect({ profile, label, status: result.status, signal: result.signal, error: result.error?.message },
+          result.stdout + result.stderr).toEqual({ profile, label, status, signal: null, error: undefined })
+        expect(result.stdout).toContain(status === 0 ? "pass 1" : "fail 1")
+        expect(result.stdout).toContain("skipped 0")
+      }
     }
   } finally {
     await rm(fixture, { recursive: true, force: true })
