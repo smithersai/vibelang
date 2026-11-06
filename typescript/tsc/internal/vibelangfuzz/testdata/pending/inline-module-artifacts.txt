@@ -1,0 +1,9 @@
+FuzzInlineModuleArtifacts consumer:brand/platform/vibe compiler VIP-40: a source-owned body declaration reached through imports makes compatibility output overwrite an input; lane drive-opencode
+FuzzInlineModuleArtifacts consumer:brand/platform/vibex compiler VIP-40: a source-owned body declaration reached through imports makes compatibility output overwrite an input; lane drive-opencode
+FuzzInlineModuleArtifacts consumer:brand/throwing/vibe compiler VIP-40: a source-owned body declaration reached through imports makes compatibility output overwrite an input; lane drive-opencode
+FuzzInlineModuleArtifacts consumer:brand/throwing/vibex compiler VIP-40: a source-owned body declaration reached through imports makes compatibility output overwrite an input; lane drive-opencode
+FuzzInlineModuleArtifacts identity:brand/platform/vibe compiler VIP-40: source and generated body declarations have distinct private or unique-symbol identities; lane drive-opencode
+FuzzInlineModuleArtifacts identity:brand/platform/vibex compiler VIP-40: source and generated body declarations have distinct private or unique-symbol identities; lane drive-opencode
+FuzzInlineModuleArtifacts identity:brand/throwing/vibe compiler VIP-40: source and generated body declarations have distinct private or unique-symbol identities; lane drive-opencode
+FuzzInlineModuleArtifacts identity:brand/throwing/vibex compiler VIP-40: source and generated body declarations have distinct private or unique-symbol identities; lane drive-opencode
+FuzzInlineModuleArtifacts corpus:opencode-inline-throwing-brand compiler VIP-40: minimized inline module identity or imported-body output gap; lane drive-opencode

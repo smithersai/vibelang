@@ -1,0 +1,9 @@
+module throwing {
+export namespace Replacement {
+export const ReplacementTypeId: unique symbol = Symbol('Replacement');
+export class ReplacementValue { readonly [ReplacementTypeId] = true; }
+export function make(): ReplacementValue { return new ReplacementValue(); }
+}
+export const version = 1 as const;
+}
+export {Replacement, version} from throwing

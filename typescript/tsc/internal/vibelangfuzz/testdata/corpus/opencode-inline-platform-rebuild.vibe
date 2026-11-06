@@ -1,0 +1,7 @@
+module platform {
+export const ReplacementTypeId: unique symbol = Symbol('Replacement');
+export class ReplacementValue { readonly [ReplacementTypeId] = true; }
+export function make(): ReplacementValue { return new ReplacementValue(); }
+export const version = 1 as const;
+}
+export {ReplacementTypeId, ReplacementValue, make, version} from platform

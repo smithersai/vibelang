@@ -1,0 +1,9 @@
+module throwing {
+export * as LayerNode from './main.vibe';
+const ReplacementTypeId = Symbol('LayerNode.Replacement');
+class ReplacementValue { declare private readonly checked: void; readonly [ReplacementTypeId]: true = true; }
+export type Replacement = ReplacementValue;
+export function make(): Replacement { return new ReplacementValue(); }
+}
+export {LayerNode, make} from throwing
+export type {Replacement} from throwing
