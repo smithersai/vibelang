@@ -23,13 +23,15 @@ test("rehearsal publishes both scoped Windows packages to its isolated registry"
   for (const file of ["rehearse.sh", "repack.mjs"]) copyFileSync(join(repo, "scripts/release", file), join(scripts, file))
   // This fixture checks registry routing; the real starter is exercised by rehearse.sh.
   writeFileSync(join(scripts, "check-app.sh"), "#!/bin/sh\necho registry-fixture-app-check\n")
-  const names = ["@smthrs/cli-win32-x64", "@smthrs/cli-win32-arm64", "vibelang"]
+  writeFileSync(join(scripts, "check-typescript-shim.sh"), '#!/bin/sh\necho "registry-fixture-shim-check $2 $3"\n')
+  const names = ["@smthrs/cli-win32-x64", "@smthrs/cli-win32-arm64", "vibelang", "vibelang-typescript"]
   const version = "0.0.0"
   const packages = names.map(name => {
-    writeFileSync(join(source, "package.json"), JSON.stringify({ name, version }))
-    const file = name.replace("@", "").replace("/", "-") + "-" + version + ".tgz"
+    const packageVersion = name === "vibelang-typescript" ? "7.1.0" : version
+    writeFileSync(join(source, "package.json"), JSON.stringify({ name, version: packageVersion }))
+    const file = name.replace("@", "").replace("/", "-") + "-" + packageVersion + ".tgz"
     execFileSync("tar", ["-czf", join(tarballs, file), "-C", join(root, "source"), "package"])
-    return { name, version, file }
+    return { name, version: packageVersion, file }
   })
   writeFileSync(join(tarballs, "manifest.json"), JSON.stringify({ version, packages }))
   const result = spawnSync("sh", [join(scripts, "rehearse.sh")], {
@@ -38,6 +40,7 @@ test("rehearsal publishes both scoped Windows packages to its isolated registry"
   })
   const evidence = result.stdout + result.stderr
   assert.equal(result.status, 0, evidence + String(result.error ?? ""))
-  for (const name of names) assert.ok(evidence.includes("rehearse: published " + name + "@" + version), evidence)
+  for (const pkg of packages) assert.ok(evidence.includes("rehearse: published " + pkg.name + "@" + pkg.version), evidence)
+  assert.match(evidence, /registry-fixture-shim-check 0\.0\.0 7\.1\.0/)
   assert.match(evidence, /rehearse: PASS/)
 })

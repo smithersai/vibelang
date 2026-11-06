@@ -80,8 +80,8 @@ token=$(curl -fsS -X PUT -H 'content-type: application/json' \
   "${registry}-/user/org.couchdb.user:rehearsal" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).token')
 printf '//127.0.0.1:%s/:_authToken=%s\n' "$port" "$token" >"$scratch/publish.npmrc"
 
-node -e 'for (const p of require(process.argv[1]).packages) console.log(p.name, p.file)' "$tarballs/manifest.json" |
-  while read -r name file; do
+node -e 'for (const p of require(process.argv[1]).packages) console.log(p.name, p.version, p.file)' "$tarballs/manifest.json" |
+  while read -r name package_version file; do
     skip=""
     for pattern in $(printf '%s' "${VIBELANG_SKIP:-}" | tr ',' ' '); do
       case $name in *"$pattern"*) skip=1 ;; esac
@@ -89,7 +89,7 @@ node -e 'for (const p of require(process.argv[1]).packages) console.log(p.name, 
     [ -z "$skip" ] || { echo "rehearse: left out $name (VIBELANG_SKIP)"; continue; }
     npm publish "$tarballs/$file" --registry "$registry" --userconfig "$scratch/publish.npmrc" --access public --ignore-scripts >/dev/null 2>"$scratch/publish.err" ||
       { cat "$scratch/publish.err" >&2; echo "rehearse: publishing $name failed" >&2; exit 1; }
-    echo "rehearse: published $name@$version"
+    echo "rehearse: published $name@$package_version"
   done
 
 sh "$root/scripts/release/check-app.sh" "$registry" "$version" npm bun

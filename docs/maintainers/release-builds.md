@@ -15,6 +15,11 @@ Read `dist-npm/bin/<platform>.log` beside its receipt before retrying. A new
 matrix run replaces `dist-npm/bin/`, including the old receipts and outputs.
 Successful matrix runs keep the receipts and remove the temporary logs.
 
+Release rehearsals report each package’s manifest version. The
+`vibelang-typescript` shim follows TypeScript’s major and minor version, so its
+version differs from the compiler’s. The isolated registry check includes both
+Windows packages and the shim before the packed-install rehearsal.
+
 Windows package names and package verification are described in
 [Windows release additions](windows-release.md).
 
