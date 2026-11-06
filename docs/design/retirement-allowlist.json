@@ -1818,5 +1818,35 @@
       "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
     },
     "reason": "An indexed generic constraint on the key's value type retains service-key identity. Selecting an implementation, a shape test or a different constructor requires application intent; there is no general preserving mechanical rewrite. This extends the existing generic-constraint exception to its indexed-access form."
+  },
+  {
+    "code": "EK3002",
+    "case": "typescript/vibelang/cases/service-union-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "Every alternative is a service key, so the existing misuse rule applies regardless of which key is selected. Choosing an implementation or a shape check requires application intent. The guard preserves distinct declaration identities and mixed ordinary-constructor unions; no preserving mechanical replacement can select one service for the user."
+  },
+  {
+    "code": "EK3003",
+    "case": "typescript/vibelang/cases/service-union-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "Every alternative is a service key, so the existing misuse rule applies regardless of which key is selected. Choosing an implementation or a shape check requires application intent. The guard preserves distinct declaration identities and mixed ordinary-constructor unions; no preserving mechanical replacement can select one service for the user."
+  },
+  {
+    "code": "EK3004",
+    "case": "typescript/vibelang/cases/service-union-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "Every alternative is a service key, so the existing misuse rule applies regardless of which key is selected. Choosing an implementation or a shape check requires application intent. The guard preserves distinct declaration identities and mixed ordinary-constructor unions; no preserving mechanical replacement can select one service for the user."
   }
 ]

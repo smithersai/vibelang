@@ -27,18 +27,18 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 			checkServiceDeclaration(c, node)
 			checkExtendsService(c, node)
 		case ast.IsNewExpression(node):
-			if service := serviceNamedBy(c, node.Expression()); service != nil {
-				report(c, node, EK3003, service.Name().Text())
+			if name, ok := serviceKeyMisuseName(c, node.Expression()); ok {
+				report(c, node, EK3003, name)
 				cover(c, node) // TS2511: an abstract class cannot be instantiated
 			}
 		case ast.IsBinaryExpression(node) && node.AsBinaryExpression().OperatorToken.Kind == ast.KindInstanceOfKeyword:
-			if service := serviceNamedBy(c, node.AsBinaryExpression().Right); service != nil {
-				report(c, node, EK3004, service.Name().Text())
+			if name, ok := serviceKeyMisuseName(c, node.AsBinaryExpression().Right); ok {
+				report(c, node, EK3004, name)
 			}
 		case isPatternCall(node, "$is") || isPatternCall(node, "$extract"):
 			// A class pattern, when Users: or when Users(…):, tests the subject
 			// as instanceof does (chapter 005's static rules table).
-			if matcher := node.Arguments()[0]; serviceNamedBy(c, matcher) != nil {
+			if matcher := node.Arguments()[0]; serviceNamedBy(c, matcher) != nil || serviceKeyOperand(c, c.GetTypeAtLocation(matcher)) {
 				report(c, matcher, ek3004Pattern, scanner.GetTextOfNode(matcher))
 			}
 		}
@@ -291,20 +291,67 @@ func checkExtendsService(c *checker.Checker, class *ast.Node) {
 		return
 	}
 	service := serviceNamedBy(c, extends.Expression())
-	if service == nil {
+	if service == nil && !serviceKeyOperand(c, c.GetTypeAtLocation(extends.Expression())) {
 		return
 	}
 	d := report(c, extends.Expression(), EK3002)
-	name := "Implementation"
-	if class.Name() != nil {
-		name = class.Name().Text()
+	if service != nil {
+		name := "Implementation"
+		if class.Name() != nil {
+			name = class.Name().Text()
+		}
+		note(d, "Implement it instead: class {0} implements {1}.Shape { … }", name, service.Name().Text())
 	}
-	note(d, "Implement it instead: class {0} implements {1}.Shape { … }", name, service.Name().Text())
 	// TypeScript's complaints about inherited abstract members restate this.
 	cover(c, extends.Parent)
 	if class.Name() != nil {
 		cover(c, class.Name())
 	}
+}
+
+// serviceKeyOperand recognizes key-only alternatives without assigning a
+// single declaration identity to a union of distinct keys. Consumers that
+// rewrite source continue to require serviceNamedBy's unambiguous identity.
+func serviceKeyOperand(c *checker.Checker, t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Flags()&(checker.TypeFlagsTypeParameter|checker.TypeFlagsIndexedAccess) != 0 {
+		bound := c.GetBaseConstraintOfType(t)
+		if bound == nil || bound == t {
+			return false
+		}
+		return serviceKeyOperand(c, bound)
+	}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		if len(t.Types()) == 0 {
+			return false
+		}
+		for _, part := range t.Types() {
+			if !serviceKeyOperand(c, part) {
+				return false
+			}
+		}
+		return true
+	}
+	if symbol := t.Symbol(); symbol != nil && classKindOf(symbol.ValueDeclaration()) != ordinaryClass &&
+		t != c.GetTypeOfSymbol(symbol) {
+		return false
+	}
+	return serviceNamedByType(c, t) != nil
+}
+
+func serviceKeyMisuseName(c *checker.Checker, expr *ast.Node) (string, bool) {
+	if expr == nil {
+		return "", false
+	}
+	if service := serviceNamedBy(c, expr); service != nil {
+		return service.Name().Text(), true
+	}
+	if serviceKeyOperand(c, c.GetTypeAtLocation(expr)) {
+		return scanner.GetTextOfNode(expr), true
+	}
+	return "", false
 }
 
 // serviceNamedBy returns the declaration of the service or control class

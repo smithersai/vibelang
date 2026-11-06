@@ -42,7 +42,7 @@ func checkClassPatternDispatch(c *checker.Checker, matcher *ast.Node, extractor 
 	if _, fixed := builtinMatcherOf(c, matcher); fixed || isRetainedErrorMatcher(c, matcher) {
 		return
 	}
-	if _, _, variant := dataVariantOf(c, matcher); variant || serviceNamedBy(c, matcher) != nil {
+	if _, _, variant := dataVariantOf(c, matcher); variant || serviceNamedBy(c, matcher) != nil || serviceKeyOperand(c, c.GetTypeAtLocation(matcher)) {
 		return // their own diagnostics and forms
 	}
 	t := c.TypeOfPatternMatcher(matcher)

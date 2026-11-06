@@ -39,7 +39,7 @@ func ordinaryExtractorType(c *checker.Checker, call *ast.Node) *checker.Type {
 	if _, known := builtinMatcherOf(c, matcher); known {
 		return nil
 	}
-	if serviceNamedBy(c, matcher) != nil {
+	if serviceNamedBy(c, matcher) != nil || serviceKeyOperand(c, c.GetTypeAtLocation(matcher)) {
 		return nil // EK3004 reports a class pattern naming a service
 	}
 	constructor := c.TypeOfPatternMatcher(matcher)

@@ -1,0 +1,8 @@
+// expect: EK3002 EK3003 EK3004
+service First { static readonly key = "union/First"; value: number }
+service Second { static readonly key = "union/Second"; value: number }
+export function inspect<Key extends typeof First | typeof Second>(key: Key, value: unknown) { return value instanceof key }
+export function construct<Key extends typeof First | typeof Second>(key: Key) { return new key() }
+export function inherit<Key extends typeof First | typeof Second>(key: Key) { class Child extends key {}; return Child }
+export function pattern<Key extends typeof First | typeof Second>(key: Key, value: unknown) { return match (value) { when key: 1; default: 0; } }
+export function extractor<Key extends typeof First | typeof Second>(key: Key, value: unknown) { return match (value) { when key(): 1; default: 0; } }
