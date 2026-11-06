@@ -244,6 +244,9 @@ function emittedSpelling(ts, text) {
   return text
 }
 
+const absentFrom = (before, after) => before?.apiMetadata?.absentDeclarations || after?.apiMetadata?.absentDeclarations
+  ? { before: before?.apiMetadata?.absentDeclarations ?? {}, after: after?.apiMetadata?.absentDeclarations ?? {} } : undefined
+
 export function sidecarChanges(ts, sidecars, outDir) {
   const emitted = listDeclarations(outDir), changed = [], missing = []
   const pairs = []
@@ -274,9 +277,14 @@ export function sidecarChanges(ts, sidecars, outDir) {
       beforeEntrypoints: entries(left), afterEntrypoints: entries(right),
       projectContexts: [...left.projectContexts, ...right.projectContexts],
       moduleRoots: [dirname(dirname(dirname(ts.sys.getExecutingFilePath())))],
+      absentDeclarations: absentFrom(surface, surface),
     })
-    if (!api.comparisonComplete) return { files: Object.keys(sidecars).length, changed, missing,
+    // An export that reaches an absent declaration stays unavailable by name.
+    // It does not stop the modules that can still be compared.
+    const stopping = api.environmentDiagnostics.filter(d => d.blocking && d.scope !== "export")
+    if (!api.comparisonComplete && stopping.length) return { files: Object.keys(sidecars).length, changed, missing,
       comparisonComplete: false, environmentDiagnostics: api.environmentDiagnostics }
+    const unavailable = api.environmentDiagnostics.filter(d => d.blocking && d.scope === "export")
     for (const pair of pairs) {
       const differences = Object.fromEntries(["nameDifferences", "typeDifferences", "docDifferences"]
         .map(kind => [kind, api[kind].filter(d => d.entrypoint === pair.sidecar)]))
@@ -286,7 +294,7 @@ export function sidecarChanges(ts, sidecars, outDir) {
           ...apiDiffLines(differences)],
       })
     }
-    return { files: Object.keys(sidecars).length, changed, missing }
+    return { files: Object.keys(sidecars).length, changed, missing, ...(unavailable.length ? { unavailable } : {}) }
   } finally { left?.cleanup(); right?.cleanup(); rmSync(before, { recursive: true, force: true }) }
 }
 
@@ -472,8 +480,12 @@ function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
 }
 
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
-export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten } = {}) {
+export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir } = {}) {
   const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map()
+  // Why a declaration was not emitted is known only at emit; a later record keeps it.
+  const recorded = join(dir, "public-surface.json")
+  const absentDeclarations = emitDiagnostics || !existsSync(recorded) ? {}
+    : JSON.parse(readFileSync(recorded, "utf8")).apiMetadata?.absentDeclarations ?? {}
   const shippedDir = ".migrate-shipped"
   rmSync(join(dir, shippedDir), { recursive: true, force: true })
   for (const { tsconfig, prefix } of projects) {
@@ -506,6 +518,14 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     projectDeclarations.set(context, new Set(parsed.fileNames.filter(file => /\.d\.[cm]?ts$/.test(file)).map(file => rel(packageDir, file))))
     const emitted = recordedOutputLayout(ts, parsed, resolve(dir, prefix), path, tsconfig)
     context.outputLayout = emitted.receipt
+    const present = new Set(emitted.present.map(({ output }) => output))
+    for (const { source, output, originals } of emitted.outputs) {
+      if (present.has(output)) continue
+      const reasons = (emitDiagnostics ?? []).filter(d => d.category === "error" && d.file && resolve(emitRoot, d.file) === resolve(source))
+      const logical = originals.find(file => /\.d\.[cm]?ts$/.test(file))
+      if (reasons.length && logical) absentDeclarations[rel(packageDir, logical)] =
+        reasons.map(({ code, file, line, column }) => ({ code, file, line, column }))
+    }
     for (const { source, output, originals } of emitted.present) {
       const declaration = rel(dir, output)
       context.files.push(declaration)
@@ -552,7 +572,8 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     logicalPaths[stored] = file
     for (const context of projectContexts) if (projectDeclarations.get(context).has(file)) context.files.push(stored)
   }
-  const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir) } }
+  const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir),
+    ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}) } }
   writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
   return surface
 }
@@ -721,6 +742,7 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     api = compareApiIdentity(ts, left.directory, right.directory, {
       beforeEntrypoints: aEntries, afterEntrypoints: bEntries,
       projectContexts: [...left.projectContexts, ...right.projectContexts], moduleRoots: [...new Set(modules)], includeComparedFiles: true,
+      absentDeclarations: absentFrom(aSurface, bSurface),
     })
     const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
       [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>

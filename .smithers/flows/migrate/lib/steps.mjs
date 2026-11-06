@@ -482,7 +482,7 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   const projects = Wire.projectsOf(ts, cwd, pkg.dtsTsconfig)
   if (projects.length === 1) {
     const result = await emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t, typescript: ts })
-    recordDeclarationSurface(ts, outDir, cwd, [{ tsconfig: projects[0], prefix: "." }])
+    recordDeclarationSurface(ts, outDir, cwd, [{ tsconfig: projects[0], prefix: "." }], undefined, { emitDiagnostics: result.diagnostics, emitRoot: t })
     return result
   }
   rmSync(outDir, { recursive: true, force: true })
@@ -497,7 +497,7 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
     diagnostics.push(...emitted.diagnostics)
     moduleReferences.push(...emitted.moduleReferences)
   }
-  recordDeclarationSurface(ts, outDir, cwd, projects.map(tsconfig => ({ tsconfig, prefix: slug(tsconfig) })))
+  recordDeclarationSurface(ts, outDir, cwd, projects.map(tsconfig => ({ tsconfig, prefix: slug(tsconfig) })), undefined, { emitDiagnostics: diagnostics, emitRoot: t })
   return { code, files, diagnostics, moduleReferences }
 }
 
@@ -1389,7 +1389,8 @@ export async function setup(options) {
     declarations[pkg.dir] = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
     // The modules earlier runs migrated keep the declarations their compiler committed.
     const earlier = await earlierDeclarationChanges({ ts, t, revision: upgrade.jj.baseCommit, pkg, outDir })
-    declarations[pkg.dir].earlier = { files: earlier.files, changed: earlier.changed.map((c) => c.file), missing: earlier.missing }
+    declarations[pkg.dir].earlier = { files: earlier.files, changed: earlier.changed.map((c) => c.file), missing: earlier.missing,
+      ...(earlier.unavailable ? { unavailable: earlier.unavailable.map((u) => u.entrypoint + "#" + u.export) } : {}) }
     if (earlier.changed.length) appendJsonl(p.issues, earlierDeclarationsIssue({ version: version.trim(), revision: upgrade.jj.baseCommit, outDir, changes: earlier.changed }))
   }
 
