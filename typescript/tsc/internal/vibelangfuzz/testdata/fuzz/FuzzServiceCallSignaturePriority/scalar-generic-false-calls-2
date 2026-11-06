@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("scalar/generic-false/calls-2\u0000\u0000")

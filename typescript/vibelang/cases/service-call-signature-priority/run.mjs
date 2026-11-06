@@ -1,0 +1,18 @@
+import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
+
+const compiler = process.env.VIBELANG_BINARY ?? fileURLToPath(new URL("../../../built/local/tsc", import.meta.url))
+const result = spawnSync(compiler, ["-p", fileURLToPath(new URL("input/tsconfig.json", import.meta.url)), "--noEmit", "--pretty", "false"], { encoding: "utf8", timeout: 120000 })
+assert.equal(result.error, undefined)
+assert.equal(result.signal, null)
+assert.notEqual(result.status, 0)
+const output = result.stdout + result.stderr
+const rows = [...output.matchAll(/main[.]vibe[(]([0-9]+),[0-9]+[)]: error ([A-Z]+[0-9]+):/g)]
+const expected = [["EK0902", "TS2322"], ["EK0901", "EK0902", "EK0902", "TS2322"], ["EK0902", "EK3005", "TS2322"], ["EK0901", "EK0902", "EK0902", "EK3005", "TS2322"], ["EK0902", "TS2322"], ["EK0901", "EK0902", "EK0902", "TS2322"], ["EK0902", "EK3005", "TS2322"], ["EK0901", "EK0902", "EK0902", "EK3005", "TS2322"], ["EK0902", "TS2322"], ["EK0901", "EK0902", "EK0902", "TS2322"], ["EK0902", "EK3005", "TS2322"], ["EK0901", "EK0902", "EK0902", "EK3005", "TS2322"]]
+
+assert.equal(rows.length, expected.flat().length, output)
+for (let line = 1; line <= expected.length; line++) {
+  assert.deepEqual(rows.filter(row => Number(row[1]) === line).map(row => row[2]).sort(), expected[line-1], output)
+}
+console.log("service call signature priority diagnostics validated")

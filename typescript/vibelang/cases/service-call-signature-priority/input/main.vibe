@@ -1,0 +1,12 @@
+namespace Probe1 { type Shape=number; service SProbe1 { static readonly key="priority/Probe1"; (): number; }; const invalid:number="wrong" }
+namespace Probe2 { type Shape=number; service SProbe2 { static key="priority/Probe2"; (): number;(value: string): string; }; const invalid:number="wrong" }
+namespace Probe3 { type Shape=number; service SProbe3<T> { static readonly key="priority/Probe3"; (): number; }; const invalid:number="wrong" }
+namespace Probe4 { type Shape=number; service SProbe4<T> { static key="priority/Probe4"; (): number;(value: string): string; }; const invalid:number="wrong" }
+namespace Probe5 { type Shape=number; service SProbe5: Shape { static readonly key="priority/Probe5"; (): number; }; const invalid:number="wrong" }
+namespace Probe6 { type Shape=number; service SProbe6: Shape { static key="priority/Probe6"; (): number;(value: string): string; }; const invalid:number="wrong" }
+namespace Probe7 { type Shape=number; service SProbe7<T>: Shape { static readonly key="priority/Probe7"; (): number; }; const invalid:number="wrong" }
+namespace Probe8 { type Shape=number; service SProbe8<T>: Shape { static key="priority/Probe8"; (): number;(value: string): string; }; const invalid:number="wrong" }
+namespace Probe9 { type Shape=number; service SProbe9: number { static readonly key="priority/Probe9"; (): number; }; const invalid:number="wrong" }
+namespace Probe10 { type Shape=number; service SProbe10: number { static key="priority/Probe10"; (): number;(value: string): string; }; const invalid:number="wrong" }
+namespace Probe11 { type Shape=number; service SProbe11<T>: number { static readonly key="priority/Probe11"; (): number; }; const invalid:number="wrong" }
+namespace Probe12 { type Shape=number; service SProbe12<T>: number { static key="priority/Probe12"; (): number;(value: string): string; }; const invalid:number="wrong" }

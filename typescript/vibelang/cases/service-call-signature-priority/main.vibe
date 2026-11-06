@@ -1,0 +1,2 @@
+export interface Callable { (): number; (value: string): string }
+export service Valid: Callable { static readonly key = "priority/Valid" }

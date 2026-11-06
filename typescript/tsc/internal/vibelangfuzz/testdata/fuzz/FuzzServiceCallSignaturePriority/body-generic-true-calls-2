@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("body/generic-true/calls-2\u0000\u0000")
