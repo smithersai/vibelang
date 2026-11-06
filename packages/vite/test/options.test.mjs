@@ -40,7 +40,8 @@ test("discovers the installed compiler, honors the project option, shares compil
   assert.ok(a.map.sources.includes(first))
   assert.ok(a.map.sourcesContent.some((source) => source.includes("answer: number")))
   assert.deepEqual(watched, [config, config])
-  const invocations = () => readFileSync(calls, "utf8").trim().split("\n").map((line) => JSON.parse(line))
+  // Reading the project's jsx setting compiles nothing.
+  const invocations = () => readFileSync(calls, "utf8").trim().split("\n").map((line) => JSON.parse(line)).filter((args) => !args.includes("--showConfig"))
   assert.equal(invocations().length, 1, "concurrent module requests share one whole-project compile")
   assert.deepEqual(invocations()[0].slice(0, 2), ["--project", config])
   writeFileSync(first, "export const answer: number = 43\n")

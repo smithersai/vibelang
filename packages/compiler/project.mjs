@@ -187,7 +187,7 @@ export function formatDiagnostic(diagnostic) {
 const emitRoot = (root) => parse(resolve(root)).root
 
 const emitArgs = (project, root, out, loader, extra = []) => [
-  ...extra, "--project", project, "--project-emit", ...(loader ? ["--loader-root", resolve(root)] : []),
+  "--project", project, "--project-emit", ...(loader ? ["--loader-root", resolve(root)] : []),
   "--pretty", "false", "--listFiles", "true", "--rootDir", emitRoot(root),
   "--outDir", out, "--sourceMap", "true", "--inlineSources", "true",
   "--inlineSourceMap", "false", "--sourceRoot", slash(emitRoot(root)).replace(/\/?$/, "/"), "--declaration", "false", "--declarationMap", "false",
@@ -197,7 +197,7 @@ const emitArgs = (project, root, out, loader, extra = []) => [
   "--rewriteRelativeImportExtensions", "true",
   // The loaders emit JavaScript alone, which a composite project refuses
   // (TS6304, TS6379); its references are not built here either.
-  "--composite", "false", "--incremental", "false"
+  "--composite", "false", "--incremental", "false", ...extra
 ]
 
 const realpath = (path) => {
@@ -334,7 +334,7 @@ function cached({ project, root, compiler, cache, debug, loader, scope = loader 
  * compile(project) resolves to the result described above. `cache` is false to
  * turn the cache off, or { directory } to move it.
  */
-export function projectBackend({ root, compiler, cache, debug = () => {}, [loaderScope]: loader = false }) {
+export function projectBackend({ root, compiler, cache, debug = () => {}, preserveJsx = false, [loaderScope]: loader = false }) {
   const children = new Set()
   const pending = new Set()
   let closed = false, closing
@@ -386,13 +386,15 @@ export function projectBackend({ root, compiler, cache, debug = () => {}, [loade
 
   function compile(project) {
     if (closed) return Promise.reject(new Error("vibelang: compiler backend is closed"))
-    const work = Promise.resolve().then(() => {
+    const work = Promise.resolve().then(async () => {
       if (closed) throw new Error("vibelang: compiler backend is closed")
-      return cached({ project, root, compiler, cache, debug, loader }, async (stages) => {
+      const extra = preserveJsx ? preservedJsxArgs((await run(showConfigArgs(project))).output, preserveJsx) : []
+      if (closed) throw new Error("vibelang: compiler backend is closed")
+      return cached({ project, root, compiler, cache, debug, loader, ...(extra.length ? { scope: "tool-jsx" } : {}) }, async (stages) => {
         // Outside the project: webpack and esbuild rebuild when a directory they resolved through changes.
         const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
         try {
-          const output = await stages.time("compiler", () => run(emitArgs(project, root, out, loader)))
+          const output = await stages.time("compiler", () => run(emitArgs(project, root, out, loader, extra)))
           return stages.time("collect", () => collect(output, root, out))
         } finally {
           // Outputs are in memory now. The next compile starts from an empty directory.
@@ -413,24 +415,32 @@ export function projectBackend({ root, compiler, cache, debug = () => {}, [loade
  * such as Node's synchronous module hooks.
  */
 export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {}, preserveJsx = false, [loaderScope]: loader = false }) {
-  const extra = preserveJsx ? preservedJsxArgs(project, compiler) : []
+  let extra = []
+  if (preserveJsx) {
+    const [file, argv] = command(compiler, showConfigArgs(project))
+    const run = spawnSync(file, argv, { cwd: dirname(project), encoding: "utf8", maxBuffer: 1 << 30 })
+    if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
+    extra = preservedJsxArgs(run.stdout, preserveJsx)
+  }
   if (extra.length) return cached({ project, root, compiler, cache, debug, loader, scope: "tool-jsx" }, (stages) => compileOnce(project, root, compiler, stages, loader, extra))
   return cached({ project, root, compiler, cache, debug, loader }, (stages) => compileOnce(project, root, compiler, stages, loader))
 }
 
+const showConfigArgs = (project) => ["--project", project, "--showConfig"]
+
 // The options that leave JSX in a project's output for a tool that reads JSX,
 // as the React Compiler must: lowered, an event handler is an argument to an
 // unknown call. A project's own automatic runtime still types its JSX, so the
-// project checks as it does when lowered. Nothing when it already keeps JSX.
-function preservedJsxArgs(project, compiler) {
-  const [file, argv] = command(compiler, ["--project", project, "--showConfig"])
-  const run = spawnSync(file, argv, { cwd: dirname(project), encoding: "utf8", maxBuffer: 1 << 30 })
-  if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
+// project checks as it does when lowered. Nothing for any other jsx setting: a
+// classic project's factory is its compile's to apply. `preserveJsx: "react"`
+// is for a host that lowers JSX to React's runtime alone, as Vite's Oxc does: a
+// project on another runtime keeps its lowered output there.
+function preservedJsxArgs(config, preserveJsx) {
   let options
-  try { options = JSON.parse(run.stdout).compilerOptions ?? {} } catch { return [] } // the project compile reports invalid config
-  if (options.jsx === undefined || options.jsx === "preserve") return []
-  const automatic = options.jsx === "react-jsx" || options.jsx === "react-jsxdev"
-  return ["--jsx", "preserve", ...(automatic ? ["--jsxImportSource", options.jsxImportSource ?? "react"] : [])]
+  try { options = JSON.parse(config).compilerOptions ?? {} } catch { return [] } // the project compile reports invalid config
+  if (options.jsx !== "react-jsx" && options.jsx !== "react-jsxdev") return []
+  const source = options.jsxImportSource ?? "react"
+  return preserveJsx === "react" && source !== "react" ? [] : ["--jsx", "preserve", "--jsxImportSource", source]
 }
 
 // One compiler run over a project, as a loader runs it.
@@ -667,7 +677,7 @@ const failed = "throw new Error(\"vibelang: this module did not compile; see the
  * says that no project includes the module. `cache` is as for
  * projectBackend: a compile a revision needs may come from the cache.
  */
-export function projects({ root, project, compiler, cache, debug = () => {} }) {
+export function projects({ root, project, compiler, cache, debug = () => {}, preserveJsx = false }) {
   const states = new Map()
   let revision = 0
   let closed = false, closing
@@ -693,7 +703,7 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
     let state = states.get(tsconfig)
     if (state === undefined) {
       const projectRoot = tsconfig === project ? root : packageRoot(tsconfig)
-      state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
+      state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug, preserveJsx, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
       states.set(tsconfig, state)
     }
     return state

@@ -170,7 +170,7 @@ async function acquireProjects(backend, options) {
   while ((entry = managers.get(key))?.closing) await entry.closing
   if (!entry) {
     const id = ++nextManager
-    entry = { id, users: 0, projects: backend.projects({
+    entry = { id, users: 0, projects: backend.projects({ preserveJsx: "react",
       ...options, debug: text => debug(`manager ${id}: ${text}`)
     }) }
     managers.set(key, entry)

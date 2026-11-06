@@ -133,7 +133,7 @@ writeFileSync(${JSON.stringify(ready)}, String(process.pid))
     await writeFile(join(root, "tsconfig.json"), '{"files":["main.vibe"]}')
     await writeFile(compiler, `
 import { appendFileSync } from "node:fs"
-appendFileSync(${JSON.stringify(calls)}, "compile\\n")
+if (!process.argv.includes("--showConfig")) appendFileSync(${JSON.stringify(calls)}, "compile\\n")
 console.log(${JSON.stringify(source)})
 `)
     const plugin = create({ root, compiler })

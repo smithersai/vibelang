@@ -85,6 +85,8 @@ export function projectBackend(options: {
   root: string
   compiler: string
   cache?: CacheOption
+  /** Leave JSX in a `react-jsx` project's output for a tool that reads it; the tool then lowers it. `"react"`: only for a project on React's runtime. */
+  preserveJsx?: boolean | "react"
   debug?: (text: string) => void
 }): {
   compile(project: string): Promise<Result>
@@ -96,6 +98,8 @@ export function compileProjectSync(options: {
   root?: string
   compiler?: string
   cache?: CacheOption
+  /** Leave JSX in a `react-jsx` project's output for a tool that reads it; the tool then lowers it. `"react"`: only for a project on React's runtime. */
+  preserveJsx?: boolean | "react"
   debug?: (text: string) => void
 }): Result
 /**
@@ -142,6 +146,8 @@ export function projects(options: {
   project: string
   compiler: string
   cache?: CacheOption
+  /** Leave JSX in a `react-jsx` project's output for a tool that reads it; the tool then lowers it. `"react"`: only for a project on React's runtime. */
+  preserveJsx?: boolean | "react"
   debug?: (text: string) => void
 }): {
   projectOf(file: string): string
