@@ -178,7 +178,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Scheduling work with cron](../scheduling/039-cron.md) | 1,300 |
 | [Schedule cookbook](../scheduling/040-cookbook.md) | 1,300 |
 | **State Management** | **2,700** |
-| [Ref](../state-management/041-ref.md) | 1,100 |
+| [Ref](../state-management/041-ref.md) | 1,000 |
 | [SynchronizedRef](../state-management/042-synchronizedref.md) | 810 |
 | [SubscriptionRef](../state-management/043-subscriptionref.md) | 830 |
 | [Batching](../044-batching.md) | 2,500 |
@@ -186,7 +186,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Caching Effects](../caching/045-caching-effects.md) | 950 |
 | [Cache](../caching/046-cache.md) | 1,100 |
 | **Concurrency** | **9,900** |
-| [Fibers](../concurrency/047-fibers.md) | 4,700 |
+| [Fibers](../concurrency/047-fibers.md) | 4,600 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,400 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,300 |
