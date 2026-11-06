@@ -481,7 +481,7 @@ function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
 
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir } = {}) {
-  const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map()
+  const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), companions = new Set()
   // Why a declaration was not emitted is known only at emit; a later record keeps it.
   const recorded = join(dir, "public-surface.json")
   const absentDeclarations = emitDiagnostics || !existsSync(recorded) ? {}
@@ -554,6 +554,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
           if (!existsSync(stored)) continue
           const companionDeclaration = rel(dir, stored)
           aliases[rel(packageDir, companion)] = companionDeclaration
+          companions.add(companionDeclaration)
           logicalPaths[companionDeclaration] ??= posix.join(posix.dirname(logicalPaths[declaration] ?? declaration), basename(companion))
           context.files.push(companionDeclaration)
         }
@@ -573,7 +574,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     for (const context of projectContexts) if (projectDeclarations.get(context).has(file)) context.files.push(stored)
   }
   const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir),
-    ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}) } }
+    ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}), ...(companions.size ? { companions: [...companions].sort() } : {}) } }
   writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
   return surface
 }
@@ -716,7 +717,9 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
         : null
       if (includePrivate && published && !Object.keys(published).length) {
         if (!saved?.apiMetadata) throw new Error("Private declaration snapshot lacks its original source entrypoints; refresh setup")
-        const modules = [...new Set(Object.values(saved.apiMetadata.aliases))]
+        // A module body's companion is emitted support; its parent's exports reach it.
+        const internal = new Set(saved.apiMetadata.companions ?? [])
+        const modules = [...new Set(Object.values(saved.apiMetadata.aliases))].filter(file => !internal.has(file))
         return Object.fromEntries(modules.map(file => [originalName.get(file) ?? file,
           join(projection.directory, projection.destinations.get(file))]))
       }
