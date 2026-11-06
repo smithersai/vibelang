@@ -720,7 +720,7 @@ func (p *Parser) concurrentHeadEnvironment(statement, binding, headDeclaration *
 			statements = append(statements, cell)
 		} else if ast.IsBindingPattern(name) {
 			for _, element := range name.AsBindingPattern().Elements.Nodes {
-				if element.Kind != ast.KindOmittedExpression {
+				if !isOmittedBindingElement(element) {
 					cells(element)
 				}
 			}
@@ -730,7 +730,7 @@ func (p *Parser) concurrentHeadEnvironment(statement, binding, headDeclaration *
 		cells(headDeclaration)
 	} else {
 		for _, element := range binding.AsBindingPattern().Elements.Nodes {
-			if element.Kind != ast.KindOmittedExpression {
+			if !isOmittedBindingElement(element) {
 				cells(element)
 			}
 		}

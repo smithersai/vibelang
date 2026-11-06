@@ -1,0 +1,54 @@
+// expect-result: [[2,4,6,8],[10,"early"],12,[1,2,"close"]]
+// Chapter 2, "Destructuring and parameter defaults": an array pattern's hole
+// binds nothing and still takes one value from the iterator, in a for
+// concurrent head, a native loop head inside a do, and a do default.
+function pairs(): Array<[number, number]> { return [[1, 2]] }
+
+function jump(flag: boolean): number | string {
+  const pair: [number, number?] = [1]
+  const [, rest = do {
+    if (flag) { return "early" }
+    10
+  }] = pair
+  return rest
+}
+
+function* counted(log: unknown[]) {
+  try {
+    log.push(1)
+    yield 1
+    log.push(2)
+    yield 2
+    log.push(3)
+    yield 3
+  } finally {
+    log.push("close")
+  }
+}
+
+function read(log: unknown[]): number {
+  const [, value = do {
+    if (log.length > 9) { return -1 }
+    0
+  }] = counted(log)
+  return value
+}
+
+export effect function main() {
+  const seen: number[] = []
+  for concurrent (const [, b] of [[1, 2]] as Array<[number, number]>) { seen.push(b * 1) }
+  for concurrent (const [[, c]] of [[[3, 4]]] as Array<[[number, number]]>) { seen.push(c) }
+  for concurrent (const [, , d = 6] of [[1, 2]] as Array<[number, number, number?]>) { seen.push(d) }
+  for concurrent (const [, ...[, e]] of [[7, 0, 8]] as Array<[number, number, number]>) { seen.push(e) }
+  const twelve = do {
+    let total = 0
+    for (const [, n] of [[0, 12]] as Array<[number, number]>) {
+      total = n
+      if (n > 0) { break }
+    }
+    total
+  }
+  const log: unknown[] = []
+  read(log)
+  return [seen.sort((x, y) => x - y), [jump(false), jump(true)], twelve, log]
+}

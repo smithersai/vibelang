@@ -2338,7 +2338,7 @@ func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, 
 			body = append(body, cell)
 		} else if ast.IsBindingPattern(name) {
 			for _, element := range name.AsBindingPattern().Elements.Nodes {
-				if element.Kind != ast.KindOmittedExpression {
+				if !isOmittedBindingElement(element) {
 					bindings(element)
 				}
 			}

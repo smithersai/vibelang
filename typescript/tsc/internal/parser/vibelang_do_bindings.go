@@ -5,6 +5,14 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
+// isOmittedBindingElement reports a hole in an array binding pattern, as in
+// const [, b] = pair. The parser writes one as a BindingElement with no name;
+// an array literal's elision is an OmittedExpression, which only a synthesized
+// pattern carries here.
+func isOmittedBindingElement(element *ast.Node) bool {
+	return element.Kind == ast.KindOmittedExpression || element.Kind == ast.KindBindingElement && element.Name() == nil
+}
+
 // Flat array and object binding declarations can be split into statements
 // without manufacturing a function boundary. Other binding environments retain
 // their existing diagnostic until their own initialization algorithm can be
@@ -15,7 +23,7 @@ func (p *Parser) doBindingPattern(pattern *ast.Node) bool {
 	}
 	object := pattern.Kind == ast.KindObjectBindingPattern
 	for _, element := range pattern.AsBindingPattern().Elements.Nodes {
-		if element.Kind == ast.KindOmittedExpression {
+		if isOmittedBindingElement(element) {
 			continue
 		}
 		if element.Kind != ast.KindBindingElement || !ast.IsIdentifier(element.Name()) {
@@ -98,7 +106,7 @@ func (l *doLowering) bindingStatement(statement *ast.Node, pre *[]*ast.Node) *as
 		}
 		var completed []completedDefault
 		for i, element := range declaration.Name().AsBindingPattern().Elements.Nodes {
-			if element.Kind == ast.KindOmittedExpression {
+			if isOmittedBindingElement(element) {
 				out = append(out, l.statement(p.mCall(p.mProperty(l.ref(iterator, at), "skip", at), nil, at), at))
 				continue
 			}
@@ -316,7 +324,7 @@ func (l *doLowering) bindingTypingPattern(declaration, source *ast.Node, context
 	p := l.p
 	var elements []*ast.Node
 	for _, element := range declaration.Name().Elements() {
-		if element.Kind == ast.KindOmittedExpression {
+		if isOmittedBindingElement(element) {
 			elements = append(elements, p.vibelangSynthesized(p.factory.NewOmittedExpression(), element.Loc))
 			continue
 		}

@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration API checks ignored a project's `lib`, so a global from a selected library reported `TS2304` on unchanged declarations. They now load those libraries, and `compareDeclarations` takes `profile` and `workerHeaps`, with stage records streamed as they happen.
 - The source-map token check ignored written code on lines with no mappings. It now reports the missing source positions.
 - A warning quoting a `//path/to/source` comment could repeatedly recompile a loader project. Path-like line comments now stay in the warning, while listed source files remain watched.
+- A hole in an array pattern, as in `for concurrent (const [, b] of pairs)`, crashed the compiler when the pattern sat in a `for concurrent` head, a loop head inside `do`, or a binding with a jumping `do` default. These patterns now compile and skip that value, as they do in a plain `for...of` loop.
 - A migration API check could replace an invalid declaration's missing-type error with a later checker crash. It now retains the original diagnostic and stops that comparison.
 - A multiline warning containing a `/* ... */` source comment could keep a loader recompiling forever. Block-comment excerpts now remain diagnostic text instead of becoming watched filenames.
 
