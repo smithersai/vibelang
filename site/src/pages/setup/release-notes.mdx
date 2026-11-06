@@ -13,14 +13,27 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migration could stop before fixing files when a dependency was outside `rootDir`. It now reads the complete source list while preserving the diagnostic for checking.
+
+- A failed test named `__proto__` could disappear from the health report, and names such as `constructor` could have invalid failure counts. These names now keep their own counts.
+
 - A throwing call in an `enum` initializer could be rejected even when a surrounding `try`/`catch` handled it; the handler is now recognized.
 
+- An object tag pattern could incorrectly count primitive literal cases as covered when their wrapper interface declared `_tag`, letting an incomplete match compile. These cases now remain uncovered, and `--fix` can preserve the previous no-match error with an explicit default.
 - A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
+
+### Upgrade from 0.0.12
+
+| Before | After and repair |
+| --- | --- |
+| An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
 
 ## 0.0.12
 
 ### Bugs fixed since 0.0.11
+- In the TypeScript view that editors read, `fork effect { … }` and the same block after `fork.in(scope)`, `fork.scoped` or `fork.detached` produced broken code, and a later `join` of the fiber reported that the mapper could not tell it held a fiber. These forms now project to the Effect operation they run.
 - Migration could report an empty reason when it could not read a module's imports. It now reports the native parser diagnostic and compiler exit status.
+- Rerunning migration setup could leave an unpinned formatter plugin in a checksum-pinned configuration. It now restores the pinned plugins and formats VibeLang through the companion command.
 - Migration API checks took hours on large packages, because every group of entry points checked the same files again. A comparison now checks each file once for the same environment.
 
 - Test names containing Unicode line or paragraph separators could disappear from the health report. Those names are now retained.
@@ -28,6 +41,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Expected skipped or todo tests with an empty reason could appear as failures in the health report. They are now excluded.
 - The website could stay on an older release because its combined documentation included old installation commands. The combined guide now shows the current release and links to earlier release notes.
 - Returning several migrated files to TypeScript could crash after generated package imports had already been removed. It now completes the return and preserves unrelated package entries.
+- Compiling a large workspace could exhaust memory while finding relocated declarations. Parallel imports now share one probe of each project’s file layout.
 - A `for concurrent` head with a default for a missing property, as in `for concurrent (const { n = 1 } of [{}]) { … }`, reported `TS2339`. It now keeps the default, as the same `for…of` loop does.
 - `vibelang --fix` refused a throwing foreign type guard in an `if` condition, because the repair would lose its narrowing. It now bridges the call and keeps the narrowed value.
 

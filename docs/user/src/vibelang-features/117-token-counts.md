@@ -178,14 +178,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Scheduling work with cron](../scheduling/039-cron.md) | 1,300 |
 | [Schedule cookbook](../scheduling/040-cookbook.md) | 1,300 |
 | **State Management** | **2,700** |
-| [Ref](../state-management/041-ref.md) | 1,100 |
+| [Ref](../state-management/041-ref.md) | 1,000 |
 | [SynchronizedRef](../state-management/042-synchronizedref.md) | 810 |
 | [SubscriptionRef](../state-management/043-subscriptionref.md) | 830 |
 | [Batching](../044-batching.md) | 2,500 |
 | **Caching** | **2,000** |
 | [Caching Effects](../caching/045-caching-effects.md) | 950 |
 | [Cache](../caching/046-cache.md) | 1,100 |
-| **Concurrency** | **10,000** |
+| **Concurrency** | **9,900** |
 | [Fibers](../concurrency/047-fibers.md) | 4,700 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,400 |
@@ -276,7 +276,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 12,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,500 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 8 pages** | **55,000** |
+| **All 8 pages** | **56,000** |
 
 ### Specification
 
