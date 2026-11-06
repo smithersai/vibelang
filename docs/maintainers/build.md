@@ -1,5 +1,13 @@
 # The build graph
 
+The Vite plugin packages a copy of the compiler's alias resolver. After changing
+`packages/compiler/paths-imports.mjs`, copy it to
+`packages/vite/src/paths-imports.js`, changing only its relative import of
+`relative-imports.mjs` to `relative-imports.js`. Run
+`node --test packages/vite/test/paths.test.mjs` to verify source parity and
+resolution through the plugin. The compiler's optional native-launcher and
+in-memory-file settings keep their defaults for Vite callers.
+
 When editing a `PACKAGE.ts` or `WORKSPACE.ts` declaration, run
 `node --test scripts/build-declarations.test.mjs` before the longer checks.
 The test loads the real workspace through `smthrs graph` without executing

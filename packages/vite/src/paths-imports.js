@@ -99,15 +99,19 @@ function matchingPattern(paths, specifier) {
 // itself when it names a .vibe or .ts-family extension, the declaration file
 // of a .vibe name with no source, as in a published package, the .vibe or
 // TypeScript source of a .js name (D298), else extensionlessImport's rule.
-function loadFile(path) {
-  if (/\.vibex?$/.test(path)) return [path, path.replace(/\.vibex?$/, ".d.ts")].find(isFile)
-  if (/\.(?:d\.[cm]?ts|[cm]?ts|tsx|json)$/.test(path)) return isFile(path) ? path : undefined
+function loadFile(path, migratedTypeScript = false, fileExists = isFile) {
+  if (/\.vibex?$/.test(path)) return [path, path.replace(/\.vibex?$/, ".d.ts")].find(fileExists)
+  if (migratedTypeScript && path.endsWith(".ts") && !path.endsWith(".d.ts")) {
+    const stem = path.slice(0, -3)
+    return [path, stem + ".tsx", stem + ".d.ts", stem + ".vibe"].find(fileExists)
+  }
+  if (/\.(?:d\.[cm]?ts|[cm]?ts|tsx|json)$/.test(path)) return fileExists(path) ? path : undefined
   if (/\.jsx?$/.test(path)) {
     const stem = path.replace(/\.jsx?$/, "")
-    return (path.endsWith(".jsx") ? [".tsx", ".ts", ".vibex", ".vibe", ".d.ts", ".jsx", ".js"] : [".ts", ".tsx", ".vibe", ".vibex", ".d.ts", ".js"]).map((extension) => stem + extension).find(isFile)
+    return (path.endsWith(".jsx") ? [".tsx", ".ts", ".vibex", ".vibe", ".d.ts", ".jsx", ".js"] : [".ts", ".tsx", ".vibe", ".vibex", ".d.ts", ".js"]).map((extension) => stem + extension).find(fileExists)
   }
-  if (/\.(?:[cm]js|jsx)$/.test(path)) return isFile(path) ? path : undefined
-  return extensionlessImport(dirname(path), "./" + basename(path) + (/[\\/]$/.test(path) ? "/" : ""))
+  if (/\.(?:[cm]js|jsx)$/.test(path)) return fileExists(path) ? path : undefined
+  return extensionlessImport(dirname(path), "./" + basename(path) + (/[\\/]$/.test(path) ? "/" : ""), fileExists)
 }
 
 /**
@@ -117,8 +121,11 @@ function loadFile(path) {
  * no pattern matches or no substitution resolves, where TypeScript goes on to
  * node_modules. A loader that finds .vibe only for relative imports misses a
  * `@/x` alias to x.vibe; this is the alias half of extensionlessImport.
+ * The Bun runtime opts into migrated TypeScript names for native launchers;
+ * ordinary resolver callers keep their written TypeScript extension rules.
+ * A build adapter can include in-memory files through fileExists.
  */
-export function aliasImport(config, specifier) {
+export function aliasImport(config, specifier, { migratedTypeScript = false, fileExists = isFile } = {}) {
   if (config === undefined || specifier.startsWith("./") || specifier.startsWith("../") || isAbsolute(specifier)) return undefined
   const options = pathsOf(config)
   if (options?.paths === undefined) return undefined
@@ -127,7 +134,7 @@ export function aliasImport(config, specifier) {
   const base = options.baseUrl ?? options.pathsBase
   for (const substitution of [options.paths[match.key]].flat()) {
     if (typeof substitution !== "string") continue
-    const found = loadFile(resolve(base, substitution.replace("*", match.star)))
+    const found = loadFile(resolve(base, substitution.replace("*", match.star)), migratedTypeScript, fileExists)
     if (found !== undefined) return found
   }
   return undefined
