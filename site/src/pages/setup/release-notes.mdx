@@ -142,6 +142,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Rerunning migration setup left a publication wrapper from an earlier release in place, so packed private imports lost their declarations. Setup now upgrades both wrapper forms.
 - Migration could stall after emitting JavaScript while a loader cache compilation kept running; each optional record now has a deadline, reports the affected project and elapsed time, and lets later projects continue.
 
+- Fixed extractors could infer `any` for payloads from open subjects. `Option`, `Exit` and `Result` patterns now give those payloads the `unknown` type from their native guards.
 - Quoted, numeric and template `data` variant names reported a generic identifier error. They now report `EK1606` while retaining the following variants and declarations.
 - A payload after a malformed `data` variant name, such as `"Bad" { value: string }`, cascaded into unrelated errors and lost the following variants. The payload now stays with its variant, so the name reports only `EK1606`.
 - A `schema error` inside a namespace reported its `Schema` import as unused under `noUnusedLocals`. The import now counts at every namespace depth, as it does at the top level.

@@ -513,6 +513,7 @@ vibelang/match_builtins.go:lowering.visitBuiltinTest	admission:match-builtins	00
 vibelang/match_builtins.go:builtinExtractionType	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
 vibelang/match_builtins.go:narrowBuiltinExtraction	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
 vibelang/match_builtins.go:builtinGuardType	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:builtinGuardPredicate	admission:match-builtins	004-match.md	support	VIP-7 fixed guard predicates use their TypeScript constraints
 vibelang/match_lower.go:newExhaustivePlan	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
 vibelang/match_lower.go:exhaustivePlan.planExhaustiveMatch	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
 vibelang/match_lower.go:exhaustivePlan.withoutUnusedNoMatch	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests

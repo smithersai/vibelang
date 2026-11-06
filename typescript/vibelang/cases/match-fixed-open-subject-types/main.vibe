@@ -1,0 +1,41 @@
+// expect-result: [1,2,3,4,5,0]
+import { Cause, Effect, Exit, Option, Result } from "effect"
+
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const same = <A, B>(_: Equal<A, B>) => undefined
+
+// Chapter 004: a fixed pattern binds `unknown` on an `unknown` subject, as its
+// guards do in the TypeScript counterpart, and keeps a declared variant's type.
+function open(s: unknown): number {
+  return match (s) {
+    when Option.Some(let v): do { same<typeof v, unknown>(true); 1 };
+    when Result.Success(let v): do { same<typeof v, unknown>(true); 2 };
+    when Result.Failure(let v): do { same<typeof v, unknown>(true); 3 };
+    when Exit.Success(let v): do { same<typeof v, unknown>(true); 4 };
+    when Exit.Failure(let c): do { same<typeof c, Cause.Cause<unknown>>(true); 5 };
+    default: 0;
+  }
+}
+function looseSubject(s: any): number {
+  return match (s) { when Option.Some(let v): do { same<typeof v, unknown>(true); 1 }; default: 0; }
+}
+function declared(s: Option.Option<number>): number {
+  return match (s) { when Option.Some(let v): do { same<typeof v, number>(true); v }; when Option.None: 0; }
+}
+function looseArgument(s: Option.Option<any>): number {
+  return match (s) { when Option.Some(let v): do { same<typeof v, unknown>(true); 1 }; when Option.None: 0; }
+}
+function mixed(s: string | Exit.Exit<string, boolean>): number {
+  return match (s) {
+    when Exit.Failure(let c): do { same<typeof c, Cause.Cause<boolean>>(true); 1 };
+    when Exit.Success(let v): do { same<typeof v, string>(true); 2 };
+    default: do { same<typeof s, string>(true); 3 };
+  }
+}
+void [looseSubject, declared, looseArgument, mixed]
+export function main(): Effect.Effect<number[]> {
+  return Effect.sync(() => [
+    open(Option.some(1)), open(Result.succeed(1)), open(Result.fail(1)),
+    open(Exit.succeed(1)), open(Exit.fail(1)), open("other"),
+  ])
+}

@@ -234,16 +234,10 @@ func narrowBuiltinPattern(c *checker.Checker, reference *ast.Node, t *checker.Ty
 	case "symbol":
 		candidate = c.GetESSymbolType()
 	default:
-		// The guard's predicate, its type parameters erased: Some<any>.
-		signatures := c.GetSignaturesOfType(builtinGuardType(c, matcher, builtin), checker.SignatureKindCall)
-		if len(signatures) == 0 {
+		candidate = builtinGuardPredicate(c, matcher, builtin, assumeTrue)
+		if candidate == nil {
 			return nil
 		}
-		predicate := c.GetTypePredicateOfSignature(c.GetErasedSignature(signatures[0]))
-		if predicate == nil || predicate.Type() == nil {
-			return nil
-		}
-		candidate = predicate.Type()
 	}
 	return c.NarrowTypeTo(t, candidate, assumeTrue)
 }
@@ -307,15 +301,11 @@ func builtinExtractionType(c *checker.Checker, call *ast.Node, t *checker.Type) 
 	if !ok || builtin.Guard == "" {
 		return t
 	}
-	signatures := c.GetSignaturesOfType(builtinGuardType(c, call.Arguments()[0], builtin), checker.SignatureKindCall)
-	if len(signatures) == 0 {
+	predicate := builtinGuardPredicate(c, call.Arguments()[0], builtin, true)
+	if predicate == nil {
 		return t
 	}
-	predicate := c.GetTypePredicateOfSignature(c.GetErasedSignature(signatures[0]))
-	if predicate == nil || predicate.Type() == nil {
-		return t
-	}
-	candidate := c.NarrowTypeTo(c.GetTypeAtLocation(call.Arguments()[1]), predicate.Type(), true)
+	candidate := c.NarrowTypeTo(c.GetTypeAtLocation(call.Arguments()[1]), predicate, true)
 	var fields []*checker.Type
 	for _, name := range builtin.Values {
 		field := candidate
@@ -377,16 +367,31 @@ func narrowBuiltinExtraction(c *checker.Checker, reference *ast.Node, t *checker
 		return t
 	}
 	if !length && binary.Right.Kind == ast.KindFalseKeyword && binary.OperatorToken.Kind == ast.KindExclamationEqualsEqualsToken {
-		signatures := c.GetSignaturesOfType(builtinGuardType(c, call.Arguments()[0], builtin), checker.SignatureKindCall)
-		if len(signatures) == 0 {
-			return nil
-		}
-		predicate := c.GetTypePredicateOfSignature(c.GetErasedSignature(signatures[0]))
-		if predicate != nil && predicate.Type() != nil {
-			return c.NarrowTypeTo(t, predicate.Type(), assumeTrue)
+		if predicate := builtinGuardPredicate(c, call.Arguments()[0], builtin, assumeTrue); predicate != nil {
+			return c.NarrowTypeTo(t, predicate, assumeTrue)
 		}
 	}
 	return nil
+}
+
+// builtinGuardPredicate is the type the guard's predicate asserts. Where the
+// test succeeds, its type parameters are at their constraints, Some<unknown>,
+// as after the counterpart's Option.isOption(s) && Option.isSome(s). Where it
+// fails they are erased, so that Some<any> falls out of Option<any> as well.
+func builtinGuardPredicate(c *checker.Checker, matcher *ast.Node, builtin parser.BuiltinMatcher, assumeTrue bool) *checker.Type {
+	signatures := c.GetSignaturesOfType(builtinGuardType(c, matcher, builtin), checker.SignatureKindCall)
+	if len(signatures) == 0 {
+		return nil
+	}
+	signature := c.GetErasedSignature(signatures[0])
+	if assumeTrue {
+		signature = c.GetBaseSignature(signatures[0])
+	}
+	predicate := c.GetTypePredicateOfSignature(signature)
+	if predicate == nil {
+		return nil
+	}
+	return predicate.Type()
 }
 
 // builtinGuardType resolves the actual guard, including a directly imported constructor.
