@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - A `for concurrent` head with a default for a missing property, as in `for concurrent (const { n = 1 } of [{}]) { … }`, reported `TS2339`. It now keeps the default, as the same `for…of` loop does.
 - `vibelang --fix` refused a throwing foreign type guard in an `if` condition, because the repair would lose its narrowing. It now bridges the call and keeps the narrowed value.
+
+- The health report could omit failing migration test names. It now lists those failures and ignores skipped and todo tests.
 - A `.vibex` file with a `module` body failed in Vite under `"jsx": "preserve"`, with `Failed to resolve import` for its `.jsx` output. `vibelang-vite` now serves that output.
 - Migration `record` refused a batch whose every module had reverted for a recorded cause, even with every gate passing. It now keeps that outcome and its causes.
 - Migration verify reported a lost wrapper when a conversion wrote `onSome: Effect.succeed` as `onSome: (value) => Effect.succeed(value)`.

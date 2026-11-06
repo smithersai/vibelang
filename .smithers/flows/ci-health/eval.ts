@@ -140,6 +140,20 @@ cases.push({
   } satisfies Input
 });
 
+// Real migration reporter executions alternate controlled failure/success.
+cases.push({
+  name: "migrate-reporter",
+  input: {
+    fixture: "fixture-migrate-reporter",
+    split: "",
+    flaky: ["//packages:migrate-test"],
+    tests: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    exactTests: true,
+    intermittent: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check"],
+    causes: { "//packages:migrate-test": "timeout" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "1", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 

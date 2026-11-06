@@ -1,0 +1,10 @@
+{
+  "results": [
+    {
+      "label": "//packages:migrate-test",
+      "status": "ran",
+      "key": "ff66df9b1925fe0e48a3ba14db8b220e49b1e272130b66f5eb22ebfb56a65867",
+      "durationMs": 133.395051
+    }
+  ]
+}
