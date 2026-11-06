@@ -14,9 +14,7 @@ export declare class Validated extends Validated_base<{
     #private;
     static readonly docs = "https://example.com/errors";
     private readonly prefix;
-    /** @throws {never} */
     constructor(code: string, attempts?: number);
-    /** @throws {never} */
     static make(code: string): Validated;
     get label(): string;
     /** @throws {never} */

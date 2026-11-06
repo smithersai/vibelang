@@ -741,7 +741,11 @@ func returnsEffectful(c *checker.Checker, call *ast.Node) bool {
 }
 
 // isEffectfulType reports whether every value of t is an Effect, a Stream or
-// a Layer. any, unknown and a union with another member are not.
+// a Layer. any, unknown and a union with another member are not. An Effect
+// here is chapter 3's test, assignability to Effect<any, any, any>, so an
+// Exit, a Config, an error instance or a service key is one too. The Effect
+// interface itself counts even when the program has a second copy of effect,
+// whose Effect the assignability test would not accept.
 func isEffectfulType(c *checker.Checker, t *checker.Type) bool {
 	if t != nil && t.Flags()&checker.TypeFlagsTypeParameter != 0 {
 		t = c.GetBaseConstraintOfType(t)
@@ -760,7 +764,7 @@ func isEffectfulType(c *checker.Checker, t *checker.Type) bool {
 	if t.Flags()&(checker.TypeFlagsObject|checker.TypeFlagsIntersection) == 0 {
 		return false
 	}
-	return isEffectType(c, t) || c.GetPropertyOfType(t, streamTypeID) != nil || isLayerType(c, t)
+	return isEffectType(c, t) || isEffectOperandType(c, t) || c.GetPropertyOfType(t, streamTypeID) != nil || isLayerType(c, t)
 }
 
 // trustedNote is EK0403's other fix: declare the function's failures with

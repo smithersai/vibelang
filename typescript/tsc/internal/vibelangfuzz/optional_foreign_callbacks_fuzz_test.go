@@ -6,12 +6,16 @@ import (
 	"testing"
 )
 
+const optionalEffectfulQuote = "For example, in Effect 4.1.1 this includes `Exit` values, `Config` programs, `error` instances, service keys and references"
+
 func TestOptionalForeignCallbacksQuoted(t *testing.T) {
-	r4Quoted(t, "003-failures.md", foreignVariableQuote, foreignVariableAdmissionQuote, foreignVariableAliasQuote)
+	r4Quoted(t, "003-failures.md", foreignVariableQuote, foreignVariableAdmissionQuote, foreignVariableAliasQuote, optionalEffectfulQuote)
 }
 
-// Config and Exit are data results; neither grants an unannotated foreign
-// callback the never-throw contract of a fresh VibeLang function type.
+// Config and Exit are Effects (chapter 3, Effectful callables), so an
+// unannotated foreign callback returning one is effectful and throws never,
+// as one returning Effect does: a fresh VibeLang function type admits it.
+// An unannotated scalar callback throws unknown, which that type rejects.
 func FuzzOptionalForeignCallbacks(f *testing.F) {
 	startShortBudget(f)
 	for _, shape := range []string{"scalar", "config", "exit"} {
@@ -61,12 +65,12 @@ func FuzzOptionalForeignCallbacks(f *testing.F) {
 			got++
 		}
 		want := 1
-		if tagged {
+		if tagged || key != "scalar" {
 			want = 0
 		}
 		if got != want {
 			Gap(t, "FuzzOptionalForeignCallbacks", fmt.Sprintf("%s/tagged=%t/variation=%d", key, tagged, variation&3),
-				"VIP-4: %s; %s; got %d EK0402, want %d\n%s", foreignVariableQuote, foreignVariableAdmissionQuote, got, want, source)
+				"VIP-4: %s; %s; %s; got %d EK0402, want %d\n%s", foreignVariableQuote, foreignVariableAdmissionQuote, optionalEffectfulQuote, got, want, source)
 		}
 	})
 }

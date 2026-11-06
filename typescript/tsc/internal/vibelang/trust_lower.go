@@ -105,7 +105,9 @@ func (p *plan) unshadowedClass(c *checker.Checker, call *ast.Node, f failure, re
 
 // expectedFailures returns the exceptions of call that are expected failures
 // and join E: those its trusted contract lists, or those of a built-in's
-// shipped contract. A call that runs an Effect has none.
+// shipped contract. A call that runs an Effect has none, and neither has a
+// call of an effectful callable: its written @throws does not apply, and a
+// throw before it returns is a defect (chapter 3, Effectful callables).
 func (a *analyzer) expectedFailures(call *ast.Node) []failure {
 	if !isVibeLangFile(ast.GetSourceFileOfNode(call)) {
 		return nil
@@ -113,7 +115,7 @@ func (a *analyzer) expectedFailures(call *ast.Node) []failure {
 	// Trust first: a call to VibeLang code has no contract of its own, so
 	// this never asks whether a .vibe callee is an Effect.
 	t := callTrust(a.checker, call)
-	if len(t.failures) == 0 || t.promise || a.performs(call) {
+	if len(t.failures) == 0 || t.promise || a.performs(call) || !t.value && returnsEffectful(a.checker, call) {
 		return nil
 	}
 	if a.hasPlainContract(enclosingFunction(call)) && !inCatchingTry(call) {

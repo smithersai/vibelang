@@ -17,6 +17,20 @@ func failuresExtraCases() []*failCase {
 	add(&failCase{Name: "effectful-service-key", Quote: effectful, Decls: "service Store { static readonly key = \"fuzz/failures/key\"; value: number }\nfunction key() { return Store }", Body: "const value = key()"})
 	add(&failCase{Name: "effectful-service-reference", Quote: effectful, Decls: "service Store {\n static readonly key = \"fuzz/failures/reference\"\n static readonly defaultValue = () => ({ value: 1 })\n value: number\n}\nfunction key() { return Store }", Body: "const value = key()"})
 	add(&failCase{Name: "effectful-service-member", Quote: "a service member typed as an Effect", Lib: "import { Effect } from \"effect\"\nexport declare const store: { load(): Effect.Effect<number> }", Body: "const value = store.load()"})
+	// Effect subtypes: assignability, not the Effect interface's identity,
+	// makes a callable effectful, so its written @throws does not apply in
+	// effect code or in plain code. A union with undefined is not effectful.
+	for _, subtype := range []struct{ name, ret string }{
+		{"exit", "Exit.Exit<number>"},
+		{"config", "Config.Config<string>"},
+		{"error", "Cause.NoSuchElementError"},
+		{"union", "Exit.Exit<number> | Effect.Effect<string>"},
+	} {
+		lib := "import type { Cause, Config, Effect, Exit } from \"effect\"\n/** @throws {RangeError} */\nexport declare function subtype(): " + subtype.ret
+		add(&failCase{Name: "effectful-subtype-" + subtype.name, Quote: effectful, Lib: lib, Body: "const value = subtype()"})
+		add(&failCase{Name: "effectful-subtype-" + subtype.name + "-plain", Quote: effectful, Host: "plain", Lib: lib, Body: "const value = subtype()"})
+	}
+	add(&failCase{Name: "effectful-subtype-optional", Quote: effectful, Code: 403, Lib: "import type { Exit } from \"effect\"\n/** @throws {RangeError} */\nexport declare function subtype(): Exit.Exit<number> | undefined", Body: "const value = ⟦subtype()⟧"})
 	for _, decl := range []struct{ name, body string }{
 		{"key", "service Store { static readonly key = \"fuzz/failures/key\"; value: number }"},
 		{"reference", "service Store {\n static readonly key = \"fuzz/failures/reference\"\n static readonly defaultValue = () => ({ value: 1 })\n value: number\n}"},

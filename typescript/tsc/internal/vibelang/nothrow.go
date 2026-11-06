@@ -106,6 +106,11 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 	if a.performs(node) {
 		return nil
 	}
+	// An effectful callable throws never: its written @throws does not apply
+	// (chapter 3, Effectful callables). An explicit trusted value keeps its list.
+	if !t.value && returnsEffectful(a.checker, node) {
+		return nil
+	}
 	if bound, written := foreignThrowsContract(a.checker, node); written && bound == "" {
 		return nil
 	}
