@@ -131,7 +131,7 @@ Files containing the Unicode line and paragraph separators, `U+2028` and `U+2029
 
 ## The editor
 
-VibeLang has one formatter (VIP-34).
+VibeLang has one formatter (VIP-34). A JSDoc comment before a parenthesized assignment stays attached to that expression; an automatically inserted `;` does not take the comment.
 
 The language server's `textDocument/formatting`, `textDocument/rangeFormatting` and `textDocument/onTypeFormatting` requests format the current editor text, saved or not, through the same formatter as `vibelang format`, `vibelang-format` and `vibelang/prettier`. All of them read the nearest Oxfmt, Prettier or dprint configuration for the file's quote style and print width ([Developer tools](/setup/developer-tools)), and the package supplies the VibeLang plugin itself; without a configuration they use double quotes and width 120. A file the formatter refuses is left as it is and the editor shows the error.
 

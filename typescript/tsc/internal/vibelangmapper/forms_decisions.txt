@@ -2966,6 +2966,15 @@ typescript/vibelang/cases/do-this-initialization/main.vibe:58:16 lambda plain an
 typescript/vibelang/cases/do-this-initialization/main.vibe:64:22 lambda plain annotation
 typescript/vibelang/cases/do-this-initialization/main.vibe:76:16 lambda plain annotation
 typescript/vibelang/cases/do-this-initialization/main.vibe:82:22 lambda plain annotation
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:14:12 lambda dual fallback
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:26:17 lambda dual fallback
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:38:21 byname program table
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:39:21 byname program table
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:40:21 byname program table
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:42:19 byname program table
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:5:16 lambda plain table
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:6:49 lambda choice fallback
+typescript/vibelang/cases/do-throw-closes-iterator/main.vibe:9:17 lambda dual fallback
 typescript/vibelang/cases/do-try-element/main.vibe:13:27 lambda program keyword
 typescript/vibelang/cases/do-try-element/main.vibe:14:5 lambda program table
 typescript/vibelang/cases/do-try-element/main.vibe:15:27 lambda program keyword
@@ -7842,7 +7851,7 @@ typescript/vibelang/cases/trusted-workspace-package/main.vibe:7:38 lambda plain 
 typescript/vibelang/cases/trusted-workspace-package/main.vibe:7:62 lambda plain table
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:14:18 lambda plain fallback
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:3:36 lambda program table
-typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda choice fallback
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda plain annotation
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:7:51 lambda plain table
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:7:59 lambda program keyword
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:9:39 byname program table

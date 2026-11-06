@@ -342,6 +342,32 @@ func (d *decoder) node(node *ast.Node) error {
 		// Remove its whole prefix, including that trivia, or every pass adds
 		// a space before the original semicolon.
 		d.replace(start, d.start(parent.AsLabeledStatement().Statement), "")
+	case placeholderDocumentedGroup:
+		assertion := parent
+		for assertion != nil && assertion.Kind != ast.KindAsExpression {
+			assertion = assertion.Parent
+		}
+		if assertion == nil || assertion.Parent == nil || assertion.Parent.Kind != ast.KindParenthesizedExpression ||
+			assertion.Expression().Kind != ast.KindIdentifier {
+			return lost()
+		}
+		// No original comments occur in this gap: the encoder only marks a
+		// parenthesized identifier with whitespace around it.
+		d.replace(assertion.Expression().End(), assertion.End(), "")
+	case placeholderDocumentedExpression:
+		if parent.Kind != ast.KindCallExpression || parent.Expression() != node ||
+			parent.AsCallExpression().Arguments == nil || len(parent.AsCallExpression().Arguments.Nodes) != 1 {
+			return lost()
+		}
+		expression := parent.AsCallExpression().Arguments.Nodes[0]
+		if holder.parenthesized {
+			if expression.Kind != ast.KindParenthesizedExpression {
+				return lost()
+			}
+			expression = expression.Expression()
+		}
+		d.replace(start, d.start(expression), "")
+		d.replace(expression.End(), parent.End(), "")
 	case placeholderEmptyClassElement:
 		if parent.Kind != ast.KindPropertyDeclaration || parent.Name() != node ||
 			parent.Initializer() != nil || parent.Type() != nil || parent.PostfixToken() != nil || parent.Modifiers() != nil {

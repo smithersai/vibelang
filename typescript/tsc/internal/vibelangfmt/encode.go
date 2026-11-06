@@ -73,6 +73,8 @@ const (
 	placeholderGenericComma                                // a temporary second arrow type parameter
 	placeholderEmptyClassElement                           // a JSDoc-owning empty class element
 	placeholderEmptyStatement                              // a JSDoc-owning empty statement
+	placeholderDocumentedExpression                        // an expression whose JSDoc an ASI guard would take
+	placeholderDocumentedGroup                             // parentheses that keep an identifier apart from JSDoc
 	placeholderClassMemberSeparator                        // a temporary method standing for a service comma
 )
 
@@ -233,6 +235,7 @@ func encode(fileName, source string) (*encoding, error) {
 		return nil, fmt.Errorf("vibelang format: the file contains every placeholder prefix (%s)", strings.Join(sentinels, ", "))
 	}
 	e := &encoder{file: file, source: source, sentinel: sentinel}
+	e.keepJSDocExpressions()
 	e.keepJSDocEmptyStatements()
 	e.keepJSDocEmptyClassElements()
 	forms = uniqueForms(forms)
@@ -299,6 +302,55 @@ func missingSeparator(file *ast.SourceFile, source string) error {
 	}
 	line, column := lineColumn(source, scanner.SkipTrivia(source, gap.Pos()))
 	return fmt.Errorf("vibelang format: %d:%d: two members need a separator: write ; or a line break before this one", line, column)
+}
+
+// keepJSDocExpressions prevents an ASI guard from taking an expression's
+// documentation. A temporary call starts with an identifier, so no guard
+// is needed. Its argument still formats; decode removes only the call, preserving
+// the written expression grouping and its JSDoc attachment.
+func (e *encoder) keepJSDocExpressions() {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindExpressionStatement {
+			documented := false
+			var factory ast.NodeFactory
+			for comment := range scanner.GetLeadingCommentRanges(&factory, e.source, node.Pos()) {
+				if strings.HasPrefix(e.source[comment.Pos():comment.End()], "/**") {
+					documented = true
+				}
+			}
+			start := scanner.SkipTrivia(e.source, node.Pos())
+			if documented && start < len(e.source) && (e.source[start] == '(' || e.source[start] == '[') {
+				var protect func(*ast.Node) bool
+				protect = func(inner *ast.Node) bool {
+					if ast.IsFunctionLike(inner) {
+						return false
+					}
+					if inner.Kind == ast.KindParenthesizedExpression && inner.Expression().Kind == ast.KindIdentifier {
+						at := scanner.SkipTrivia(e.source, inner.Pos())
+						if strings.TrimSpace(e.source[at+1:inner.End()-1]) == inner.Expression().Text() {
+							marker := e.hold(placeholderDocumentedGroup, "", at, 0)
+							e.add(edit{pos: inner.End() - 1, end: inner.End() - 1, text: " as " + marker})
+						}
+					}
+					return inner.ForEachChild(protect)
+				}
+				protect(node.Expression())
+				name := e.hold(placeholderDocumentedExpression, "", start, 0)
+				prefix, suffix := name+"(", ")"
+				expression := node.Expression()
+				if expression.Kind == ast.KindBinaryExpression && expression.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
+					prefix, suffix = name+"((", "))"
+					e.holders[len(e.holders)-1].parenthesized = true
+				}
+				e.add(edit{pos: start, end: start, text: prefix})
+				end := expression.End()
+				e.add(edit{pos: end, end: end, text: suffix})
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	e.file.AsNode().ForEachChild(visit)
 }
 
 // keepJSDocEmptyClassElements protects comment attachment. Removing such

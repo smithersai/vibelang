@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` refused a throwing foreign type guard in an `if` condition, because the repair would lose its narrowing. It now bridges the call and keeps the narrowed value.
 
 - The health report could omit failing migration test names. It now lists those failures and ignores skipped and todo tests.
+
+- Formatting a documented parenthesized assignment could fail because a semicolon took its JSDoc comment. The assignment now formats while keeping its documentation.
 - A `.vibex` file with a `module` body failed in Vite under `"jsx": "preserve"`, with `Failed to resolve import` for its `.jsx` output. `vibelang-vite` now serves that output.
 - Migration `record` refused a batch whose every module had reverted for a recorded cause, even with every gate passing. It now keeps that outcome and its causes.
 - Migration verify reported a lost wrapper when a conversion wrote `onSome: Effect.succeed` as `onSome: (value) => Effect.succeed(value)`.
