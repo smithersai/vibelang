@@ -87,16 +87,35 @@ function shellCommands(source) {
   return commands
 }
 
-const hasTrimpath = value => /(?:^|[\s}])-trimpath(?:=true)?(?:\s|$)/.test(value)
+function trimpathSetting(word) {
+  const flag = word.match(/^--?trimpath(?:=(.*))?$/)
+  if (!flag) return undefined
+  return flag[1] === undefined || /^(?:1|t|T|true|TRUE|True)$/.test(flag[1])
+}
+
+// GOFLAGS supplies defaults in order. Its quotes surround whole arguments;
+// quoted linker payloads cannot change a compilation flag. The inherited
+// GOFLAGS expansion supplies no proof; its appended literal setting does.
+function hasTrimpath(value) {
+  let enabled = false
+  const literal = value.replace(/\$\{GOFLAGS:\+\$GOFLAGS \}/g, "")
+  for (const [word] of literal.matchAll(/'[^']*'|"[^"]*"|[^\t\n\r ]+/g)) {
+    const field = /^['"]/.test(word) ? word.slice(1, -1) : word
+    enabled = trimpathSetting(field) ?? enabled
+  }
+  return enabled
+}
 const valueFlags = new Set(["-run", "-bench", "-fuzz", "-gcflags", "-ldflags", "-tags",
   "-o", "-p", "-timeout", "-count", "-cpu", "-coverpkg", "-mod", "-modfile", "-overlay"])
 
-function hasExplicitTrimpath(words) {
+function explicitTrimpath(words) {
+  let enabled
   for (let i = 0; i < words.length; i++) {
-    if (/^-trimpath(?:=true)?$/.test(words[i])) return true
-    if (valueFlags.has(words[i])) i++
+    if (words[i] === "--" || words[i] === "-args" || words[i] === "--args") break
+    enabled = trimpathSetting(words[i]) ?? enabled
+    if (valueFlags.has(words[i].replace(/^--/, "-"))) i++
   }
-  return false
+  return enabled
 }
 
 test("every go build or go test line compiles with -trimpath", () => {
@@ -168,7 +187,9 @@ test("every go build or go test line compiles with -trimpath", () => {
         const flags = words.slice(native ? nativeProgram + 3 : program + 2)
         if (go || native) {
           invocation++
-          if (!inline && !hasExplicitTrimpath(flags)) {
+          // CLI options override GOFLAGS defaults, even when they disable a
+          // setting. An omitted CLI flag retains the effective environment.
+          if (!(explicitTrimpath(flags) ?? inline)) {
             const name = go ? "go " + words[program + 1] : "native-output.sh build"
             failed.push(file + ":" + (i + 1) + ": " + name + " invocation " + invocation +
               " requires -trimpath or exported GOFLAGS")
@@ -279,6 +300,28 @@ for (const [name, source, status] of [
   ["same-line reset", "export GOFLAGS=-trimpath; unset GOFLAGS; go test ./one", 1],
   ["quoted selector is not a flag", "go test -run '-trimpath' ./one", 1],
   ["flag assignment disabled", "go test -trimpath=false ./one", 1],
+  ["export cannot override explicit false", "export GOFLAGS=-trimpath; go test -trimpath=false ./one", 1],
+  ["inline environment cannot override explicit false", "GOFLAGS=-trimpath go test -trimpath=false ./one", 1],
+  ["last explicit false wins", "go test -trimpath -trimpath=false ./one", 1],
+  ["last explicit true wins", "go test -trimpath=false -trimpath ./one", 0],
+  ["last explicit true assignment wins", "go test -trimpath=false -trimpath=true ./one", 0],
+  ["zero disables an environment default", "GOFLAGS=-trimpath go test -trimpath=0 ./one", 1],
+  ["capital false disables an environment default", "GOFLAGS=-trimpath go test -trimpath=FALSE ./one", 1],
+  ["single letter false disables an environment default", "GOFLAGS=-trimpath go test -trimpath=F ./one", 1],
+  ["capital true enables trimpath", "go test -trimpath=TRUE ./one", 0],
+  ["single letter true enables trimpath", "go test -trimpath=T ./one", 0],
+  ["one enables trimpath", "go test -trimpath=1 ./one", 0],
+  ["double dash disables an environment default", "GOFLAGS=-trimpath go test --trimpath=false ./one", 1],
+  ["double dash enables trimpath", "go test --trimpath ./one", 0],
+  ["last environment false wins", "GOFLAGS='-trimpath -trimpath=false' go test ./one", 1],
+  ["last environment true wins", "GOFLAGS='-trimpath=false -trimpath' go test ./one", 0],
+  ["explicit true overrides environment false", "GOFLAGS=-trimpath=false go test -trimpath ./one", 0],
+  ["selector false is data", "go test -trimpath -run '-trimpath=false' ./one", 0],
+  ["double dash selector false is data", "go test -trimpath --run '-trimpath=false' ./one", 0],
+  ["test binary arguments are data", "go test -trimpath ./one -args -trimpath=false", 0],
+  ["double dash test binary arguments are data", "go test -trimpath ./one --args -trimpath=false", 0],
+  ["end of options retains flags", "go test -trimpath ./one -- -trimpath=false", 0],
+  ["linker false is data", "go test -trimpath -ldflags '-X=fixture.trimpath=false' ./one", 0],
   ["quoted separators remain selector data", "go test -trimpath -run 'one&&two;three|four' ./one", 0],
   ["quoted selector retains later omission", "go test -trimpath -run 'one&&two' ./one && go test ./two", 1],
   ["quoted flags stay in their argument", "go test -run 'name -trimpath' ./one", 1],
@@ -352,4 +395,42 @@ test("trimpath audit retains the real template command's flag coverage", t => {
   const result = auditNativeSource(t, source.replace(entry, entry.replace(" -trimpath", "")), "PACKAGE.ts")
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.match(result.stdout, /go test invocation 1 requires -trimpath/)
+})
+
+// Cross environment defaults with ordered CLI overrides in independent build,
+// test and native-helper commands. A later fully flagged command is a control:
+// it must never rescue a disabled trimpath setting in the preceding command.
+test("trimpath audit follows effective flag precedence across generated commands", t => {
+  const environments = [[], [true], [false], [true, false], [false, true]]
+  const overrides = [[], [true], [false], [true, false], [false, true], [true, false, true]]
+  const failures = []
+  let samples = 0
+  for (const command of ["go build", "go test", "sh scripts/native-output.sh build out"]) {
+    for (const defaults of environments) {
+      for (const explicit of overrides) {
+        const flags = values => values.map(value => "-trimpath=" + value).join(" ")
+        const shell = "export GOFLAGS='" + flags(defaults) + "'; " + command +
+          " " + flags(explicit) + " ./fixture && go build -trimpath ./control"
+        const source = "const target = { shell: " + JSON.stringify(shell) + " }\n"
+        const enabled = (explicit.at(-1) ?? defaults.at(-1) ?? false)
+        const result = auditNativeSource(t, source)
+        if (result.status !== (enabled ? 0 : 1)) failures.push({ command, defaults, explicit, status: result.status })
+        samples++
+      }
+    }
+  }
+  assert.equal(samples, 90)
+  assert.deepEqual(failures, [])
+})
+
+for (const [name, flags, status] of [
+  ["quoted flag enables", "'-trimpath'", 0],
+  ["quoted final false wins", "-trimpath '-trimpath=false'", 1],
+  ["quoted final true wins", "-trimpath=false '-trimpath=true'", 0],
+  ["linker payload cannot disable", "-trimpath \"-ldflags=-X 'main.value=keep -trimpath=false'\"", 0],
+  ["linker payload cannot enable", "\"-ldflags=-X 'main.value=keep -trimpath'\"", 1],
+]) test("trimpath audit retains Go environment argument boundaries: " + name, t => {
+  const shell = "GOFLAGS=" + JSON.stringify(flags) + " go build ./fixture"
+  const result = auditNativeSource(t, shell + "\n", "scripts/build-vibelang.sh")
+  assert.equal(result.status, status, result.stdout + result.stderr)
 })

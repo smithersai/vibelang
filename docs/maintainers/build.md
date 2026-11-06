@@ -217,6 +217,10 @@ same file. It also checks every invocation in a mixed command chain, so one
 command's explicit flag or inline environment cannot cover a later command.
 Quoted selectors keep their shell boundaries; text inside a selector does not
 supply a compilation flag.
+Go applies repeated flags in order, and command-line flags override
+the defaults in `GOFLAGS`. The audit follows that effective setting:
+`GOFLAGS=-trimpath go test -trimpath=false ./pkg` is rejected, while
+`GOFLAGS=-trimpath=false go test -trimpath ./pkg` is accepted.
 A shell script can export `GOFLAGS` before running its commands; a later
 assignment or `unset GOFLAGS` ends that allowance. Regression mutations remove
 `-trimpath` from the actual native build declarations and insert independent
