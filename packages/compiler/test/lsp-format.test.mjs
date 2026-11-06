@@ -36,7 +36,7 @@ test("formatSource follows the repository's quote style for unsaved source", t =
   assert.equal(readFileSync(path, "utf8"), 'export const disk = "leave unchanged"\n')
 })
 
-function connection(dir) {
+function connection(dir, timeoutMs = 60_000) {
   const child = spawn(binary, ["--lsp", "--stdio"], { cwd: dir, stdio: ["pipe", "pipe", "pipe"] })
   const decoder = new FrameDecoder()
   let next = 1, stderr = ""
@@ -63,7 +63,7 @@ function connection(dir) {
     request(method, params) {
       const id = next++
       return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(id); reject(new Error(method + " timed out: " + stderr)) }, 60_000)
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error(method + " timed out: " + stderr)) }, timeoutMs)
         pending.set(id, { resolve, reject, timer })
         send({ id, method, params })
       })
@@ -150,3 +150,22 @@ test("format command explains its options and rejects unknown switches without w
   assert.match(result.stderr, /unknown option.*--unknown/)
   assert.equal(readFileSync(path, "utf8"), before)
 })
+
+
+for (const ext of ["ts", "mts", "cts", "tsx"]) {
+  test(`LSP formatting terminates for marked .${ext} documents`, async t => {
+    const { dir } = fixture(t)
+    const path = join(dir, "src/main." + ext)
+    const source = "// @vibe\nexport   const n = 1\n"
+    writeFileSync(path, source)
+    const client = connection(dir, 10_000)
+    t.after(() => client.kill())
+    await client.request("initialize", { processId: process.pid, rootUri: pathToFileURL(dir).href, capabilities: {} })
+    client.notify("initialized", {})
+    const uri = pathToFileURL(path).href
+    client.notify("textDocument/didOpen", { textDocument: { uri, languageId: ext === "tsx" ? "typescriptreact" : "typescript", version: 1, text: source } })
+    const edits = await client.request("textDocument/formatting", { textDocument: { uri }, options: { tabSize: 2, insertSpaces: true } })
+    assert.equal(applyEdits(source, edits), "// @vibe\nexport const n = 1\n")
+    assert.equal(readFileSync(path, "utf8"), source)
+  })
+}

@@ -76,7 +76,7 @@ A `.ts`, `.mts` or `.cts` file with the line follows every `.vibe` rule, and a `
 | Tool | With the shim |
 | --- | --- |
 | `tsc`, `tsc --watch`, `tsc -b` | Checks and emits both kinds of file |
-| An editor that starts `tsc --lsp --stdio` from the project | Diagnostics, hover and the rest, in both kinds of file. In VS Code set `"js/ts.tsdk.path": "node_modules/typescript/lib"` and accept the workspace version |
+| An editor that starts `tsc --lsp --stdio` from the project | Diagnostics, hover and formatting in both kinds of file, including marked `.mts`, `.cts` and `.tsx` files. In VS Code set `"js/ts.tsdk.path": "node_modules/typescript/lib"` and accept the workspace version |
 | Vite and Vitest | Add [`vibelang-vite`](/setup/vite): one line in the config |
 | webpack, Rspack, Rollup, Rolldown, esbuild | Add [`vibelang-unplugin`](https://www.npmjs.com/package/vibelang-unplugin#configure): one line in the config |
 | Node.js | `node --import vibelang/register src/main.ts` |
