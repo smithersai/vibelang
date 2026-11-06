@@ -33,6 +33,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execute } from "./run.ts";
 import { stepKey } from "../step-key.mjs";
+import { exactly, regressionScore } from "./scoring.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const baselineFile = join(here, "baseline.json");
@@ -88,6 +89,13 @@ cases.push({
     flaky: [],
     intermittent: ["a direct command deadline retains partial output and names the timeout"]
   } satisfies Input
+});
+
+// Real varying-key runs have no duration regression; an explicit empty
+// expectation must receive a usable perfect score.
+cases.push({
+  name: "empty-regressions",
+  input: { fixture: "fixture-intermittent", split: "", flaky: [], regressed: {} } satisfies Input
 });
 
 // A real Go compilation failure, followed by a successful same-key retry.
@@ -155,13 +163,8 @@ cases.push({
 });
 
 const score = (id: string, f: (input: Input, output: Output) => number) =>
-  Scorer.make({ id: `ci-health/${id}`, version: "1", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
+  Scorer.make({ id: `ci-health/${id}`, version: "2", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
-// Precision times recall of a set of labels.
-const exactly = (want: ReadonlyArray<string>, got: ReadonlyArray<string>) => {
-  const right = want.filter((t) => got.includes(t)).length;
-  return got.length === 0 ? (want.length === 0 ? 1 : 0) : (right / want.length) * (right / got.length);
-};
 const flaky = score("flaky", (i, o) => (i.flaky ? exactly(i.flaky, o.flaky) : 1));
 const intermittent = score("intermittent", (i, o) => (i.intermittent ? exactly(i.intermittent, o.intermittent) : 1));
 const tests = score("tests", (i, o) => {
@@ -178,9 +181,7 @@ const causes = score("causes", (i, o) => {
 const slow = score("slow", (_, o) => o.slow.length > 0 && !o.slow.includes("//:cached") ? 1 : 0);
 const regressed = score("regressed", (i, o) => {
   if (!i.regressed) return 1;
-  const want = Object.keys(i.regressed), got = Object.keys(o.regressed);
-  const timeouts = want.filter((t) => o.regressed[t] === i.regressed![t]).length / want.length;
-  return exactly(want, got) * timeouts;
+  return regressionScore(i.regressed, o.regressed);
 });
 
 // A checkout gives every fixture file one mtime; a fixture's times.json, when

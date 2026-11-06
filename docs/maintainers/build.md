@@ -2428,3 +2428,10 @@ Optional object-property bindings initialize their lexical cell only after a suc
 The runner inventory identifies the documentation suites by their file selector. Reporting flags and option order can change without losing that identity; the Bun budget check still requires the explicit deadline. Real Bun fixtures retain the selected suites, exclusions and failure status across reporting and worker-count profiles.
 
 The module sidecar property uses the stock TypeScript API to check every generated consumer, including expected-error directives and re-exported JSDoc. Its fixed example also invokes the stock `tsc` command. Stage timing records include the generated case and child-process status so a timeout identifies the compiler phase.
+
+
+The CI health evaluation gives explicit empty expectations usable scores.
+Matching empty results score `1`; empty/nonempty mismatches score `0`,
+including duration-regression expectations and their timeout counts.
+The `empty-regressions` case runs the real workflow on recorded varying-key
+runs, and generated label sets and duration maps check the score boundaries.

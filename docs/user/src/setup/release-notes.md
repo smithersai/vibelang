@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An exhaustive `match` could report a missing case when its tag key was computed, including in generic functions. Computed keys that identify one property now take part in the coverage check.
 
+- A health report could receive no usable score when an expectation was empty. Matching empty results now receive a full score, and an unexpected result receives zero.
+
 - The `for concurrent` tooltip said every item used its own fiber, even with a limit of `1`. It now explains sequential execution, and jump errors no longer give that incorrect reason.
 
 - Migration could stop before fixing files when a dependency was outside `rootDir`. It now reads the complete source list while preserving the diagnostic for checking.

@@ -135,6 +135,14 @@ excluding skip/todo controls. Regenerate with
 
 A scorer whose field a case does not state scores 1 there.
 
+An explicit empty expectation still receives a finite score: matching empty
+results score `1`, and an empty/nonempty mismatch scores `0`. Duration
+comparisons apply the same rule before comparing timeout counts.
+The `empty-regressions` eval replays the real `fixture-intermittent/` runs
+with an explicit empty duration expectation. Generated label sets and duration
+maps check empty boundaries, finite scores and matching results.
+
+
 ```sh
 cd .smithers && bun flows/ci-health/eval.ts            # compare with baseline.json; exit 1 on a drop
 cd .smithers && bun flows/ci-health/eval.ts --update   # record baseline.json
