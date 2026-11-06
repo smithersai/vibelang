@@ -1653,7 +1653,32 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       // Original diagnostics, error taint, meaning, names and docs remain
       // checked; a generated assertion cannot strengthen this identity.
       if (sharedModule) { sharedExportProofs++; continue }
-      if (aspect === "value") recordCheck(entrypoint, name, "typeof " + apath, "typeof " + bpath, aspect)
+      if (aspect === "value") {
+        // Imported module namespace bindings are readonly, including re-exports.
+        // Materialize that view without changing ordinary objects or declared
+        // namespaces. Individual member meanings, types and docs stay checked.
+        const moduleNamespace = symbol => !!(symbol.flags & ts.SymbolFlags.Namespace) && symbol.declarations?.length &&
+          symbol.declarations.every(node => ts.isSourceFile(node) && ts.isExternalModule(node) &&
+            !node.statements.some(statement => ts.isExportAssignment(statement) && statement.isExportEquals))
+        const namespaceViews = (left, right, leftPath, rightPath, seen = new Set()) => {
+          if (!moduleNamespace(left) || !moduleNamespace(right) || seen.has(left) || seen.has(right))
+            return ["typeof " + leftPath, "typeof " + rightPath]
+          const next = new Set([...seen, left, right])
+          const rightExports = new Map(checker.getExportsOfModule(right).map(member => [member.name, unalias(member)]))
+          const nested = []
+          for (const member of checker.getExportsOfModule(left)) {
+            const target = unalias(member), other = rightExports.get(member.name)
+            if (!other || !moduleNamespace(target) || !moduleNamespace(other)) continue
+            const key = JSON.stringify(member.name)
+            nested.push([key, namespaceViews(target, other, leftPath + "[" + key + "]", rightPath + "[" + key + "]", next)])
+          }
+          return [leftPath, rightPath].map((path, side) =>
+            `{ readonly [__api_key in keyof typeof ${path}]: ${nested.map(([key, views]) =>
+              `__api_key extends ${key} ? ${views[side]} : `).join("")}(typeof ${path})[__api_key] }`)
+        }
+        const [aview, bview] = namespaceViews(a, b, apath, bpath)
+        recordCheck(entrypoint, name, aview, bview, aspect)
+      }
       else {
         const bridge = (symbol, path) => {
           const decl = symbol.declarations?.find(d => d.typeParameters?.length)

@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The debugger check could accept a breakpoint in a different function or statement. It now verifies where V8 actually paused.
 - An inferred export could fail with `TS2883` when its type came indirectly from a built `.vibe` or `.vibex` project reference. The declaration now names the type through its public package export.
 - Source-file helpers could throw on virtual TypeScript module IDs or accept virtual `.vibe` IDs as paths. The compiler and Vite helpers now reject them consistently.
+- Moving a helper into a native module could make migration report a changed namespace API even when every export was unchanged. Declaration checks now recognize those re-exports and retain checks for changed members and documentation.
 - Moving platform code could widen a unique-symbol key and break computed-property access with `TS7053`. Generated local aliases now retain the imported value type.
 - The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 

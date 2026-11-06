@@ -140,6 +140,8 @@ Code written for an earlier VibeLang release can use forms that are now retired,
 
 Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
 
+Declaration identity checks follow namespace re-exports through native module bodies. Forwarding an unchanged binding keeps its API; changed member types, export names and documentation still fail the check. Ordinary object values and declared mutable namespaces retain their mutability checks.
+
 ## Next
 
 If you use a coding agent, run `npx vibelang agents init` to give it the VibeLang skill, the language server and a check after each edit ([Coding agents](/setup/coding-agents)).
