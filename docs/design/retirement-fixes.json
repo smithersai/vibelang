@@ -205,5 +205,14 @@
         "output": "typescript/vibelang/cases/join-collection-legacy-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK0401",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/generator-admitted-throws.fail",
+        "output": "typescript/vibelang/cases/generator-admitted-throws-fixed-output"
+      }
+    ]
   }
 ]

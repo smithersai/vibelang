@@ -1,0 +1,6 @@
+// expect: EK0401
+import { accept, risky } from "./foreign.js"
+export const wrapped = Effect.try(function* () { yield risky() })
+export const admitted = accept(function* () { yield risky() })
+export const options = Effect.try({ try: function* () { yield risky() }, catch: (e) => e })
+export const executor = new Promise<unknown>(function* (_resolve) { yield risky() })

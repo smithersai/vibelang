@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Contributor checks rejected the documentation runner after a harmless reporting flag change; they now recognize its selected suites while retaining deadline checks.
 - Services beside a nested `Context` namespace could emit declarations that TypeScript rejected. Their generated imports now use an unshadowed name.
+- Calls known to throw inside a synchronous generator passed to `Effect.try` or another callback wrapper could compile unchecked. They now report `EK0401`, and `vibelang --fix` preserves the iterator's behavior.
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 - A TypeScript barrel in a built project reference could lose exports after a module moved to `.vibe` or `.vibex`; consumers now resolve those native modules through their emitted declarations.
 - Migration API checks refused every importer of a workspace package with a `declare module` block when the frozen original and the candidate lived in separate checkouts. The key is now the package and module, and the proof compares the ambient blocks and the local declarations they reach.
@@ -495,6 +496,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| A synchronous generator passed to a wrapper, with a call known to throw in its body | `EK0401`: run `vibelang --fix` to retain a supported call in a local TypeScript invocation helper. The generator stays lazy and throws the same value when iterated; parameter defaults keep their original call-time evaluation. |
 | `join [a, b]`, `join record` or an effect-body `await` of a fiber collection | `EK1704` / `EK0102`: `join` takes a single fiber. Run `vibelang --fix` to preserve the old collection behavior through an explicit compatibility helper, including reads and failure cleanup. |
 | A generic parameter constrained to a service key's value type, such as `Key extends typeof Users` | `EK3002`, `EK3003` and `EK3004` apply through the constraint. Obtain the implementation with `try ServiceName`, implement its shape or inspect its members; choosing that behavior requires a manual repair. |
 | Constructing, extending or matching a service key through an intersection-typed alias | `EK3003`, `EK3002` or `EK3004` applies as for the original service. Obtain the implementation with `try ServiceName`; implement its shape or inspect its members. Choosing the implementation or test requires a manual repair. |

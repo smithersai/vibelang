@@ -65,7 +65,7 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 			}
 		}
 		if failures := a.knownThrows(node); failures != nil {
-			if home := a.plainHomeOf(node); home != nil && !a.throwsBelongToCall(home) {
+			if home := a.plainHomeOf(node); home != nil && !a.throwsBelongToCall(home, node) {
 				if ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(node, home) {
 					report(c, node, foreignCallInEffectParameters, nodeText(file, ast.GetInvokedExpression(node)))
 				} else {
@@ -135,7 +135,12 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 // own plain code and keeps its own check (PREVIEW-5), since a returned
 // callback runs after Effect.try has finished. A throw statement in such a
 // literal is still EK0401.
-func (a *analyzer) throwsBelongToCall(home *ast.Node) bool {
+func (a *analyzer) throwsBelongToCall(home, site *ast.Node) bool {
+	// Calling a generator creates an iterator; its body runs later, outside
+	// the wrapper's activation. Parameter initialization still runs at call time.
+	if ast.GetFunctionFlags(home)&ast.FunctionFlagsGenerator != 0 && !inParameterListOf(site, home) {
+		return false
+	}
 	return ast.IsFunctionExpressionOrArrowFunction(home) && (isWrappedCode(home) || isRetiredHatchFunction(a.checker, home) || admitsThrows(a.checker, home))
 }
 

@@ -19,7 +19,7 @@ func checkKnownRethrows(c *checker.Checker, file *ast.SourceFile) {
 		}
 		if (ast.IsCallExpression(node) || ast.IsNewExpression(node) || ast.IsTaggedTemplateExpression(node)) &&
 			!inCatchingTry(node) && !(ast.IsCallExpression(node) && (ast.IsSuperCall(node) || ast.IsImportCall(node))) {
-			if home := a.plainHomeOf(node); home != nil && !a.throwsBelongToCall(home) {
+			if home := a.plainHomeOf(node); home != nil && !a.throwsBelongToCall(home, node) {
 				if thrown := a.rethrownThrows(node); len(thrown) > 0 && a.knownThrows(node) == nil {
 					report(c, node, throwingCallOutsideEffect, nodeText(file, ast.GetInvokedExpression(node)), typeListText(c, thrown))
 				}
