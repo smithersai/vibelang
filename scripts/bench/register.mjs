@@ -105,34 +105,31 @@ export service Store${name} {
   size: number
 }
 
-export const Store${name}Live = Layer.effect(Store${name}) {
+export const Store${name}Live = Layer.effect(Store${name}, effect {
   const items = new Map<string, number>([["k1", ${i}]])
   return {
-    get(id) {
+    effect get(id: string): number!Missing${name} {
       const item = items.get(id)
       if (item === undefined) throw new Missing${name}({ id })
       return item
     },
     size: 1
   }
-}
+})
 
-export function load${name}(id: string) {
-  try {
-    return Store${name}.get(id) + 1
-  } catch (e) {
-    return match (e) {
-      when Missing${name}: 0;
-    }
+export effect function load${name}(id: string) {
+  const store = try Store${name}
+  return (store.get(id) |> Effect.map(%, (count) => count + 1)) catch (e) => match (e) {
+    when Missing${name}: 0;
   }
 }
 
-export function run${name}(): number!! {
-  const before = ${previous ? `${previous.run}()` : "0"}
+export effect function run${name}(): number!! {
+  const before = ${previous ? `try ${previous.run}()` : "0"}
   provide Store${name}Live {
     const left = fork load${name}("k1")
     const right = fork load${name}("k2")
-    return before + left.join() + right.join() + step${name}("k1")
+    return before + (join left) + (join right) + (try step${name}("k1"))
   }
 }
 `

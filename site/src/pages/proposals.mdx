@@ -667,7 +667,7 @@ These features from the earlier design exist in VibeLang today, most with new sy
 | Defects | `Reflect.panic(...)` and the `panic` channel | `die(...)`; defects and interruption bypass `catch` |
 | Foreign calls | `Result.try(...)`, `Result.tryPromise(...)`, `@throws {never}`, `@throws {T}` | `sync(...)`, `try(...)`, and `callback(...)` hatches; trusted contracts |
 | Capabilities | `abstract class Clock extends Context`, `Clock.context()` | `service Clock { ... }`, `Clock.now()` |
-| Layers | `Layer.succeed`, `Layer.merge`, `Layer.provide(App, () => ...)` | `Layer.succeed`, `Layer.effect(Users) { ... }`, `wire(...)`, `provide App { ... }` |
+| Layers | `Layer.succeed`, `Layer.merge`, `Layer.provide(App, () => ...)` | `Layer.succeed`, `Layer.effect(Users, effect { ... })`, `wire(...)`, `provide App { ... }` |
 | Platform as a capability | No ambient `process`, filesystem, network, clock, or randomness | The same, enforced by EK4402 and EK4403; use `FileSystem`, `Clock`, `Random` |
 | Absence | `Optional<T>`, later `T \| undefined` | `T \| undefined`, and Effect's `Option` with methods and `match` |
 | Expression `if` and `switch` | `if (c) a else b`, switch in expression position | `do { ... }` and `match (x) { when ...: ...; }` |
