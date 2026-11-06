@@ -1135,3 +1135,9 @@ Iterable `is` cache declarations use the source pattern span but are generated s
 The `FuzzMatchTagDestructure` corpus includes `Match.tagsExhaustive` with `Match.withReturnType`, block handlers, destructuring, and mutated fallback strings. Each input reaches the existing before/after runtime and declaration oracle.
 
 The `t3code-node-ambient-process-env` property checks declaration API identity using the real pinned `@types/node` package. A minimized `NodeJS.ProcessEnv` corpus drives explicit and automatic types, inherited settings, custom `typeRoots`, nested declaration paths and public type mutations. Stock TypeScript validates both inputs; missing packages and explicit empty type lists remain unavailable, and comparison options retain their override behavior.
+
+The shared-package inventory includes `TestHasVibeLangDirective` and
+`FuzzHasVibeLangDirective` through `//typescript/tsc:go-ast-vibelang`.
+Selection and cache-input controls reject dropped targets, narrowed selectors
+and sibling packages, so compiling the AST as a dependency cannot stand in for
+running its directive regressions.

@@ -70,7 +70,7 @@ test("recursive target inputs cover child tests without accepting sibling or mis
 })
 
 test("filtered shared targets run all owned tests without selecting upstream fixtures", () => {
-  for (const pkg of ["./internal/project", "./internal/tsoptions", "./internal/tspath"]) {
+  for (const pkg of ["./internal/ast", "./internal/project", "./internal/tsoptions", "./internal/tspath"]) {
     const targets = selected.filter((selection) => covers(selection.pattern, pkg))
     assert.ok(targets.length > 0, pkg + " has no validation target")
     for (const selection of targets) {
@@ -83,7 +83,7 @@ test("filtered shared targets run all owned tests without selecting upstream fix
 })
 
 test("inventory detects a dropped or narrowed target and respects package boundaries", () => {
-  const witnesses = tests.filter(({ pkg }) => /\/(?:project|tsoptions|tspath)$/.test(pkg))
+  const witnesses = tests.filter(({ pkg }) => /\/(?:ast|project|tsoptions|tspath)$/.test(pkg))
   assert.ok(witnesses.length >= 6)
   for (const witness of witnesses) {
     assert.equal(selected.filter((selection) => selects(selection, witness)).length, 1, witness.name)
@@ -97,7 +97,7 @@ test("inventory detects a dropped or narrowed target and respects package bounda
 
 test("generated package neighbours cannot steal an owned test selection", () => {
   let neighbours = 0
-  for (const witness of tests.filter(({ pkg }) => /\/(?:project|tsoptions|tspath)$/.test(pkg))) {
+  for (const witness of tests.filter(({ pkg }) => /\/(?:ast|project|tsoptions|tspath)$/.test(pkg))) {
     for (let index = 0; index < 16; index++) {
       const wrong = { ...witness, pkg: witness.pkg + (index % 2 ? "/child" : "-sibling") + index }
       assert.equal(selected.some(selection => selects(selection, wrong)), false)
