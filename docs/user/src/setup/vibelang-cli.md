@@ -653,6 +653,8 @@ The migrate flow keeps packed runtime exports reachable: when `default` names `.
 
 A migration batch retains the packing files its emit creates, including when verification first creates them. Repeated verification, recording and revert recognize those exact files as the batch's output.
 
+The migrate flow resolves each owning declaration layout before returning files to TypeScript. Bulk returns share that layout, remove its recorded outputs and preserve unrelated declarations. Even when a config names converted files in `files`, cleanup uses the layout those files owned before restoration. `batches/NN/logs/revert-progress.jsonl` records the stages and preparation count.
+
 The migrate flow discovers the compiler program before each fixing pass. Errors in source files, such as `EK0301` or `EK1702` in modules outside the batch, can accompany the file list without stopping that pass. Its `.scope.log` receipt lists their codes and records that semantic checking is deferred; normal checks after fixing still report them. Configuration failures, errors with no file, crashes and empty file lists stop discovery.
 
 During migration, a generated source-child helper that cannot safely move to a platform sibling stays private in a TypeScript `module` body. The spawning module passes its `import.meta.url`, so loader resolution still starts in the parent package. This avoids platform imports in VibeLang and extra public exports. The `sourceChildModules` receipt lists conversions and warnings for helpers the flow cannot safely adopt.

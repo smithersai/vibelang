@@ -1914,7 +1914,9 @@ export async function revertMany(options) {
   if (!requests.length) throw new Error("revert needs at least one file")
   sourceDeclarationImports(config,{restore:true})
   bundledImports(config, { restore: true })
-  const seen = new Set(), prepared = []
+  const seen = new Set(), prepared = [], layouts = new Map()
+  const progress = (stage, fields = {}) => appendJsonl(join(p.batch(b), "logs", "revert-progress.jsonl"), { at: new Date().toISOString(), stage, ...fields })
+  progress("prepare", { files: requests.length })
   for (const item of requests) {
     const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item
     if (typeof file !== "string" || !/\.(?:ts|tsx|mts|vibe|vibex)$/.test(file) || isDeclarationFile(file) || !reason) throw new Error("revert needs module paths and a cause")
@@ -1929,11 +1931,17 @@ export async function revertMany(options) {
     const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
     const project = owner && join(config.target, owner.dir, owner.tsconfig)
     const api = loadTypeScript([config.target, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))])
-    const settings = project && existsSync(project) ? Enumerations.sidecarSettings(project, api, undefined, { sourceRootOnly: true }) : null
-    const bodyDeclarations = moduleDeclarationFiles(api, join(config.target, vibe), readFileSync(join(config.target, vibe), "utf8"),
-      settings ? sidecarPath(join(config.target, vibe), settings) : undefined)
-    prepared.push({ ts, vibe, reason, source, original, bodyDeclarations })
+    // Resolve the owning layout while every converted source still exists.
+    // Restoring an explicit files entry can change inferred roots immediately.
+    if (project && !layouts.has(project)) layouts.set(project, existsSync(project)
+      ? Enumerations.sidecarSettings(project, api, undefined, { sourceRootOnly: true }) : null)
+    const settings = layouts.get(project)
+    const declaration = settings ? sidecarPath(join(config.target, vibe), settings) : undefined
+    const bodyDeclarations = moduleDeclarationFiles(api, join(config.target, vibe), readFileSync(join(config.target, vibe), "utf8"), declaration)
+    prepared.push({ ts, vibe, reason, source, original, bodyDeclarations, declaration })
+    progress("prepared", { file: vibe, completed: prepared.length, files: requests.length })
   }
+  progress("restore", { files: prepared.length, projects: layouts.size })
   const groups = new Map()
   for (const item of prepared) {
     if (item.source.original) {
@@ -1949,18 +1957,14 @@ export async function revertMany(options) {
     await Jj.restore(config.target, revision, items.slice(i, i + 100).flatMap(x => [x.ts, x.vibe]))
   }
   // Check before rewriting: jj may exit successfully without restoring a missing path.
-  for (const { ts, vibe, original, bodyDeclarations } of prepared) {
+  progress("cleanup", { files: prepared.length })
+  for (const { ts, vibe, original, bodyDeclarations, declaration } of prepared) {
     if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || !readFileSync(join(config.target, ts)).equals(Buffer.from(original))) throw new Error("revert did not restore " + vibe)
     // Body declarations are compiler outputs owned by this source's parsed
     // module declarations. Keep similarly named declarations with no such body.
     for (const declaration of bodyDeclarations) rmSync(declaration, { force: true })
     rmSync(join(config.target, vibe.replace(/\.(vibex?)$/, ".d.$1.ts")), { force: true })
-    const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
-    const file = owner && join(config.target, owner.dir, owner.tsconfig)
-    if (file && existsSync(file)) {
-      const settings = Enumerations.sidecarSettings(file, loadTypeScript([config.target, fileURLToPath(new URL("../../../", import.meta.url))]), undefined, { sourceRootOnly: true })
-      if (settings) rmSync(sidecarPath(join(config.target, vibe), settings), { force: true })
-    }
+    if (declaration) rmSync(declaration, { force: true })
   }
   await Jj.trackFiles(config.target, prepared.map(item => item.ts))
   const results = []
@@ -2008,6 +2012,7 @@ export async function revertMany(options) {
     }
     results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, ...(buildEntryEdits.length ? { buildEntryEdits } : {}), importEdits, scriptEdits, ...(packageScriptEdits.length ? { packageScriptEdits } : {}), referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
   }
+  progress("rewrite", { files: results.length })
   const restored = results.flatMap(result => result.importEdits)
   const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases, { preserve: restored })
   for (const result of results) result.importEdits.push(...importEdits.filter(e => {
@@ -2019,6 +2024,7 @@ export async function revertMany(options) {
       .flatMap(edits => (edits ?? []).map(edit => edit.file)).filter(Boolean)
   ))].filter(file => !isProtectedFile(file))
   const revertFormatLog = join(p.batch(b), "logs", "revert-format.log")
+  progress("format", { files: rewritten.length })
   const revertedFormat = await formatWritten(config.target, rewritten, revertFormatLog)
   for (const result of results) result.formatted = { ...revertedFormat, log: revertedFormat.files.length ? posix.relative(p.run, revertFormatLog) : null }
   // The lint configuration names the modules by their TypeScript paths again (foldkit-107).
@@ -2028,9 +2034,11 @@ export async function revertMany(options) {
   // at a time, and its next check reports what remains.
   const sourceSnippets = refreshSourceSnippets(config.target, snippets, { ts: () => typeScriptOf(config), renames: prepared.map(({ vibe, ts }) => ({ from: vibe, to: ts })) })
   for (const result of results) result.sourceSnippets = sourceSnippets
+  progress("references", { files: results.length })
   const referenceRefresh = await refreshReferences(config, results.map(result => result.file), join(p.batch(b), "logs", "reference-refresh-revert.log"), { diagnosticsAllowed: true })
   for (const result of results) result.referenceRefresh = referenceRefresh
   writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
+  progress("complete", { files: results.length })
   return results
 }
 

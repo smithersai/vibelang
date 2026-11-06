@@ -1,0 +1,11 @@
+{
+  "file": "src/value.vibe",
+  "source": "export const value = 1\n",
+  "sidecarDir": "types",
+  "files": [
+    "src/value.vibe"
+  ],
+  "ownedOutput": "types/value.d.vibe.ts",
+  "unrelatedOutput": "types/src/value.d.vibe.ts",
+  "rule": "A revert keeps the owning declaration layout from before restoring the source and removes only outputs owned by that converted source."
+}

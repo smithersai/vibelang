@@ -129,6 +129,10 @@ renamed modules and checked hand repairs and runs the current compiler to a
 fixed point. Only the completed `codemod.json` advances the flow. `revert`
 can use the saved original and import/export bookkeeping before the compiler
 finishes, even if the parent commit no longer contains the TypeScript source.
+A revert keeps the owning declaration layout from before restoring the source and removes only outputs owned by that converted source.
+Bulk returns share each owning layout. `batches/NN/logs/revert-progress.jsonl`
+records preparation, restoration, cleanup, rewriting, formatting, reference
+refresh and completion.
 Keep the run directory private: its journal contains original source bytes.
 Runs interrupted by an older flow before any journal was written still need
 a fresh run from their saved TypeScript sources; no receipt is inferred.
