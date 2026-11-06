@@ -7482,6 +7482,7 @@ typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda effectFn
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda program keyword
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:63 lambda effectFn table
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:97 lambda effectFn table
+typescript/vibelang/cases/service-namespace-hygiene/main.vibe:11:36 lambda plain fallback
 typescript/vibelang/cases/service-reference-identifier.fail/flags.vibe:3:34 lambda plain fallback
 typescript/vibelang/cases/service-reference-identifier.fail/main.vibe:4:34 lambda plain fallback
 typescript/vibelang/cases/service-reserved-headers/input/main.vibe:10:69 lambda plain fallback

@@ -1,0 +1,27 @@
+import * as Context from "effect/Context"
+
+export namespace N {
+  export namespace Context { export const marker = 10 }
+  export namespace Context_1 { export const marker = 20 }
+  export namespace Context_2 { export const marker = 30 }
+  export service S { static readonly key = "hygiene/S"; value: number }
+  export service W: { value: number } { static readonly key = "hygiene/W" }
+  export service R {
+    static readonly key = "hygiene/R"
+    static readonly defaultValue = () => ({ value: 3 })
+    value: number
+  }
+}
+export namespace Outer.Inner {
+  export type Context = { readonly marker: number }
+  export service S { static readonly key = "hygiene/Nested"; value: number }
+}
+export const observations = [
+  N.S.of({ value: 1 }).value,
+  N.W.of({ value: 2 }).value,
+  N.R.of({ value: 3 }).value,
+  Outer.Inner.S.of({ value: 4 }).value,
+  N.Context.marker,
+  N.Context_1.marker,
+  N.Context_2.marker
+]

@@ -1,0 +1,1 @@
+service declarations keep native qualifiers and authored namespace members

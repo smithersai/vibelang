@@ -90,6 +90,8 @@ Service members form an object type, so a written `this` type there gets TypeScr
 
 A custom `service` has one key across every instantiation of its enclosing function or class. Its implementation contract must therefore use concrete types: capturing an enclosing type parameter reports `EK3005`, including in a whole-shape annotation such as `service S: { value: T } { ... }`. For generic operations, give individual members their own generic parameters. A rejected member does not create a service contract; capture checks continue on the other valid contracts.
 
+Declaration output gives generated `Context` imports a free local name when a nested namespace or type shadows `Context`. Authored namespace members keep their names.
+
 ## Declaring a service of any shape
 
 Only the written shape participates in generic-capture checking; rejected body members add no contract.

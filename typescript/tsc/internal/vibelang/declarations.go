@@ -701,6 +701,7 @@ func ambientWritten(ec *printer.EmitContext, declarations *ast.SourceFile, refs 
 // the Context of `import * as Context from "effect/Context"`.
 func preludeAliases(declarations *ast.SourceFile, names []string, ambient map[string]bool) (map[string]string, map[string]bool) {
 	bound := map[string]bool{}
+	nestedBound := map[string]bool{}
 	imported := map[string]bool{}
 	for _, statement := range declarations.Statements.Nodes {
 		forEachTopLevelName(statement, func(name string) { bound[name] = true })
@@ -718,6 +719,15 @@ func preludeAliases(declarations *ast.SourceFile, names []string, ambient map[st
 	used := map[string]bool{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if ast.IsModuleBlock(node) {
+			for _, statement := range node.AsModuleBlock().Statements.Nodes {
+				switch statement.Kind {
+				case ast.KindClassDeclaration, ast.KindEnumDeclaration, ast.KindInterfaceDeclaration,
+					ast.KindTypeAliasDeclaration, ast.KindModuleDeclaration, ast.KindImportEqualsDeclaration:
+					forEachTopLevelName(statement, func(name string) { nestedBound[name] = true })
+				}
+			}
+		}
 		if ast.IsIdentifier(node) {
 			used[node.Text()] = true
 		}
@@ -726,9 +736,12 @@ func preludeAliases(declarations *ast.SourceFile, names []string, ambient map[st
 	declarations.AsNode().ForEachChild(visit)
 	aliases := map[string]string{}
 	for _, name := range names {
-		if (!bound[name] && !ambient[name]) || imported[name] {
+		if !nestedBound[name] && ((!bound[name] && !ambient[name]) || imported[name]) {
 			continue
 		}
+		// A namespace can shadow an otherwise reusable file import. Its
+		// generated types need a fresh import visible in that namespace.
+		delete(imported, name)
 		for i := 1; ; i++ {
 			if alias := name + "_" + strconv.Itoa(i); !bound[alias] && !used[alias] {
 				aliases[name] = alias
