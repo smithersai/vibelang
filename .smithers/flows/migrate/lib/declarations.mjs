@@ -2,7 +2,7 @@
 // Text canonicalization remains available for syntax/formatting utilities;
 // public API decisions never depend on its printed spelling.
 import { createHash } from "node:crypto"
-import { existsSync, lstatSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, lstatSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path"
@@ -244,8 +244,8 @@ function emittedSpelling(ts, text) {
   return text
 }
 
-const absentFrom = (before, after) => before?.apiMetadata?.absentDeclarations || after?.apiMetadata?.absentDeclarations
-  ? { before: before?.apiMetadata?.absentDeclarations ?? {}, after: after?.apiMetadata?.absentDeclarations ?? {} } : undefined
+const absentFrom = (before, after, sources) => before?.apiMetadata?.absentDeclarations || after?.apiMetadata?.absentDeclarations
+  ? { before: before?.apiMetadata?.absentDeclarations ?? {}, after: after?.apiMetadata?.absentDeclarations ?? {}, sources } : undefined
 
 export function sidecarChanges(ts, sidecars, outDir) {
   const emitted = listDeclarations(outDir), changed = [], missing = []
@@ -267,6 +267,7 @@ export function sidecarChanges(ts, sidecars, outDir) {
       writeFileSync(join(before, file), readFileSync(join(outDir, file)))
     }
     for (const pair of pairs) writeFileSync(join(before, pair.file), emittedSpelling(ts, pair.text))
+    if (existsSync(join(outDir, absentSourceDir))) cpSync(join(outDir, absentSourceDir), join(before, absentSourceDir), { recursive: true })
     const metadata = join(outDir, "public-surface.json")
     const surface = existsSync(metadata) ? JSON.parse(readFileSync(metadata,"utf8")) : null
     left = apiProjection(ts,before,surface,emitted)
@@ -277,7 +278,7 @@ export function sidecarChanges(ts, sidecars, outDir) {
       beforeEntrypoints: entries(left), afterEntrypoints: entries(right),
       projectContexts: [...left.projectContexts, ...right.projectContexts],
       moduleRoots: [dirname(dirname(dirname(ts.sys.getExecutingFilePath())))],
-      absentDeclarations: absentFrom(surface, surface),
+      absentDeclarations: absentFrom(surface, surface, { before: left.absentSources, after: right.absentSources }),
     })
     // An export that reaches an absent declaration stays unavailable by name.
     // It does not stop the modules that can still be compared.
@@ -480,12 +481,17 @@ function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
 }
 
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
+const absentSourceDir = ".migrate-absent-sources"
+
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir } = {}) {
   const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), companions = new Set()
   // Why a declaration was not emitted is known only at emit; a later record keeps it.
   const recorded = join(dir, "public-surface.json")
   const absentDeclarations = emitDiagnostics || !existsSync(recorded) ? {}
     : JSON.parse(readFileSync(recorded, "utf8")).apiMetadata?.absentDeclarations ?? {}
+  const absentSources = emitDiagnostics || !existsSync(recorded) ? {}
+    : JSON.parse(readFileSync(recorded, "utf8")).apiMetadata?.absentSources ?? {}
+  if (emitDiagnostics) rmSync(join(dir, absentSourceDir), { recursive: true, force: true })
   const shippedDir = ".migrate-shipped"
   rmSync(join(dir, shippedDir), { recursive: true, force: true })
   for (const { tsconfig, prefix } of projects) {
@@ -528,6 +534,17 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       const logical = originals.find(file => /\.d\.[cm]?ts$/.test(file))
       if (reasons.length && logical) absentDeclarations[rel(packageDir, logical)] =
         reasons.map(({ code, file, line, column }) => ({ code, file, line, column }))
+      const absent = logical && rel(packageDir, logical)
+      if (absent && absentDeclarations[absent] && !absentSources[absent] && !/\.vibex?$/.test(source) && existsSync(source)) {
+        // The checker can still read what declaration emit refused to write.
+        const extension = source.slice(source.lastIndexOf("."))
+        const original = absent.replace(/\.d\.[cm]?ts$/, extension)
+        const stored = posix.join(absentSourceDir, encodeURIComponent(original))
+        mkdirSync(join(dir, absentSourceDir), { recursive: true })
+        writeFileSync(join(dir, stored), readFileSync(source))
+        absentSources[absent] = { source: original, stored }
+        context.files.push(stored)
+      }
     }
     for (const { source, output, originals } of emitted.present) {
       const declaration = rel(dir, output)
@@ -599,7 +616,8 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     for (const context of projectContexts) if (projectDeclarations.get(context).has(file)) context.files.push(stored)
   }
   const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir),
-    ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}), ...(companions.size ? { companions: [...companions].sort() } : {}) } }
+    ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}),
+    ...(Object.keys(absentSources).length ? { absentSources } : {}), ...(companions.size ? { companions: [...companions].sort() } : {}) } }
   writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
   return surface
 }
@@ -728,8 +746,10 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
   let left, right, api
   const semantic = []
   try {
-    left = apiProjection(ts, baselineDir, aSurface, before, { published: !includePrivate })
-    right = apiProjection(ts, currentDir, bSurface, after, { published: !includePrivate })
+    // A source saved on one side compares against nothing: leave both absent.
+    const absentSources = Object.keys(aSurface?.apiMetadata?.absentSources ?? {}).filter(name => bSurface?.apiMetadata?.absentSources?.[name])
+    left = apiProjection(ts, baselineDir, aSurface, before, { published: !includePrivate, absentSources })
+    right = apiProjection(ts, currentDir, bSurface, after, { published: !includePrivate, absentSources })
     const entries = (projection, saved) => {
       if (saved?.snapshotVersion !== undefined && saved.snapshotVersion < 3)
         throw new Error("Legacy declaration snapshot may omit shipped deep entrypoints; refresh setup before comparing APIs")
@@ -745,8 +765,10 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
         // A module body's companion is emitted support; its parent's exports reach it.
         const internal = new Set(saved.apiMetadata.companions ?? [])
         const modules = [...new Set(Object.values(saved.apiMetadata.aliases))].filter(file => !internal.has(file))
-        return Object.fromEntries(modules.map(file => [originalName.get(file) ?? file,
-          join(projection.directory, projection.destinations.get(file))]))
+        // A saved source has no alias, and its own exports count like any module's.
+        return Object.fromEntries([...modules.map(file => [originalName.get(file) ?? file,
+          join(projection.directory, projection.destinations.get(file))]),
+          ...Object.values(projection.absentSources ?? {}).map(file => [rel(projection.directory, file), file])])
       }
       if (published) {
         const manifest = saved?.apiMetadata?.manifest ?? JSON.parse(readFileSync(join(projection.directory, "package.json"), "utf8"))
@@ -770,7 +792,7 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     api = compareApiIdentity(ts, left.directory, right.directory, {
       beforeEntrypoints: aEntries, afterEntrypoints: bEntries,
       projectContexts: [...left.projectContexts, ...right.projectContexts], moduleRoots: [...new Set(modules)], includeComparedFiles: true,
-      absentDeclarations: absentFrom(aSurface, bSurface), profile, ...(workerHeaps ? { workerHeaps } : {}),
+      absentDeclarations: absentFrom(aSurface, bSurface, { before: left.absentSources, after: right.absentSources }), profile, ...(workerHeaps ? { workerHeaps } : {}),
     })
     const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
       [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>

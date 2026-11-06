@@ -298,11 +298,40 @@ differences of the exports it did compare. A blocking record without
 `scope: "export"` still makes its whole group unavailable and clears the
 receipt's type differences.
 
-The checker does not model a missing module's exports. Their own API belongs
-to the package that failed to emit them; their names are not compared, even
-when their source differs between the snapshots. The t3code corpus pair
+The checker does not model a missing module's exports. Without a saved source,
+their own API belongs to the package that failed to emit them; their names are
+not compared, even when their source differs between the snapshots. The t3code corpus pair
 `scripts/api-identity-corpus/t3code-absent-on-both-sides.json` keeps the mobile
 (`TS2883`) and server/contracts (`TS7056`) shapes.
+
+### Comparing an absent module from its source
+
+`TS7056` means the emitter refused to write a type, not that the type is wrong.
+So `recordDeclarationSurface` saves the source of each absent module under
+`.migrate-absent-sources/` and lists it in `apiMetadata.absentSources`. A later
+record without emit diagnostics keeps the saved source, and fills it in from the
+tree for a snapshot that lacks it.
+
+When both snapshots saved a module's source, the projection places that source
+at its package path, so the importers' `TS2307` is gone and the checker reads
+the module's real types without serializing them. The export is compared like
+any other:
+
+| Case | Result |
+| --- | --- |
+| A type changed inside the module | A type difference on the export that reaches it. |
+| A name added to or removed from the module's entry point | A name difference. |
+| A class of the module | Keeps its nominal identity across the snapshots. |
+| An error in the module's body | Blocking, as for any input file. |
+| Source saved on one side only | Neither side is projected; the rules above apply. |
+
+`result.absentDeclarations` marks such a record with `comparedFromSource: true`.
+Its `equal` field still reports the emit diagnostics, but it decides nothing:
+the source comparison is stronger than equal reasons.
+
+A snapshot frozen before this rule has no saved source, so its exports stay
+unavailable until it is recorded again. `.vibe` modules save no source, because
+their sidecar is exempt from `TS7056`.
 
 ## Error types in an export's closure
 

@@ -17,7 +17,7 @@ const specifier = path => {
   const output = slash(path).replace(/\.d\.(vibex?)\.ts$/, ".$1").replace(/\.d\.mts$/, ".d.mjs").replace(/\.d\.cts$/, ".d.cjs").replace(/\.d\.ts$/, ".d.js")
   return output.startsWith(".") ? output : "./" + output
 }
-export function apiProjection(ts, directory, surface, files, { published = true } = {}) {
+export function apiProjection(ts, directory, surface, files, { published = true, absentSources: comparable } = {}) {
   const metadata = surface?.apiMetadata
   const original = resolve(directory)
   const direct = { directory: original, originals: new Map(files.map(file => [file, file])),
@@ -86,6 +86,14 @@ export function apiProjection(ts, directory, surface, files, { published = true 
         : `export * from ${reference};\n` + (hasDefault ? `export { default } from ${reference};\n` : ""))
       originals.set(destination, target)
     }
+    // A module that emitted no declaration is read from its saved source.
+    const absentSources = {}
+    for (const [absent, { source, stored }] of Object.entries(metadata.absentSources ?? {})) {
+      if (comparable && !comparable.includes(absent)) continue
+      put(source, readFileSync(join(original, stored), "utf8"))
+      originals.set(source, stored)
+      absentSources[absent] = path(source)
+    }
     // Native source targets in conditional exports are exact paths. Resolve
     // only recorded source aliases through the declarations reconstructed
     // above, retaining condition order and the rest of the package manifest.
@@ -136,7 +144,7 @@ export function apiProjection(ts, directory, surface, files, { published = true 
       const projectedFiles = [...originals].filter(([, owner]) => owners.has(owner)).map(([file]) => path(file))
       if (projectedFiles.length) projectContexts.push({ directory, compilerOptions: parsed.options, files: projectedFiles })
     }
-    return { directory: root, originals, destinations, projectContexts,
+    return { directory: root, originals, destinations, projectContexts, absentSources,
       cleanup() { rmSync(temporary, { recursive: true, force: true }) } }
   } catch (error) { rmSync(temporary, { recursive: true, force: true }); throw error }
 }

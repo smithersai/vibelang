@@ -1,9 +1,10 @@
-// TS7056 leaves a module with no declaration on both sides. Setup must not stop
-// on it, the exports that reach it stay unavailable, and nothing else is excused.
+// TS7056 leaves a module with no declaration on both sides. A snapshot without
+// its saved source (see absent-source-oracle) must not stop setup, the exports
+// that reach it stay unavailable, and nothing else is excused.
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createRequire } from "node:module"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { compareDeclarations, recordDeclarationSurface, sidecarChanges } from "../lib/declarations.mjs"
@@ -19,6 +20,9 @@ function snapshot(root, name, text, diagnostics) {
   put(join(dir, "src/a.d.ts"), text)
   recordDeclarationSurface(ts, dir, join(root, "pkg"), [{ tsconfig: "tsconfig.json", prefix: "." }], manifest,
     { emitDiagnostics: diagnostics, emitRoot: root })
+  const recorded = join(dir, "public-surface.json"), surface = JSON.parse(readFileSync(recorded, "utf8"))
+  delete surface.apiMetadata.absentSources
+  writeFileSync(recorded, JSON.stringify(surface))
   return dir
 }
 

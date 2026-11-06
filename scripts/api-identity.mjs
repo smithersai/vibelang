@@ -679,7 +679,7 @@ const declarationTwins = path => [path, ...(/\.d\.vibex?\.ts$/.test(path)
   : [path.replace(/\.d\.ts$/, ".d.vibe.ts"), path.replace(/\.d\.ts$/, ".d.vibex.ts")])]
 
 function planAbsentDeclarations(before, after, supplied, exists) {
-  const plan = { declarations: new Map(), paths: new Map(), diagnostics: [] }
+  const plan = { declarations: new Map(), paths: new Map(), sources: new Map(), diagnostics: [] }
   if (!supplied) return plan
   const sides = { before: supplied.before ?? {}, after: supplied.after ?? {} }
   const names = new Map()
@@ -705,7 +705,14 @@ function planAbsentDeclarations(before, after, supplied, exists) {
       : "absent on both sides with different emit diagnostics: before " + a.join(", ") + "; after " + b.join(", ")
     const record = { declaration, equal, reason, before: a, after: b }
     plan.declarations.set(declaration, record)
-    for (const path of Object.values(paths)) plan.paths.set(path, record)
+    // Both sides kept the source: the checker reads it, so its exports compare
+    // like any other module's and the emit diagnostics decide nothing.
+    const sources = { before: supplied.sources?.before?.[declaration], after: supplied.sources?.after?.[declaration] }
+    if (sources.before && sources.after) {
+      record.comparedFromSource = true
+      plan.sources.set(paths.before, sources.before)
+      plan.sources.set(paths.after, sources.after)
+    } else for (const path of Object.values(paths)) plan.paths.set(path, record)
   }
   return plan
 }
@@ -1111,6 +1118,8 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   if (options.absentDeclarations) result.absentDeclarations = [...absent.declarations.values()]
   // An entry point absent on both sides has no program root. An equal absence
   // compares equal; a different one makes only that entry point unavailable.
+  for (const entries of [left, right, ...nominalEntries]) for (const [key, path] of Object.entries(entries))
+    if (absent.sources.has(path)) entries[key] = absent.sources.get(path)
   const absentEntries = new Set()
   for (const key of keys) {
     const record = left[key] && absent.paths.get(left[key])

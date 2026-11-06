@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - A JavaScript exception in a `do` that ran an Effect could skip an iterator's `return` method when the `do` stood in an array destructuring default or a `for…of` body. The iterator now closes, and the exception wins over an error from closing.
+- Migration API checks could not compare an export that reached a module stopped by `TS7056`, so a package stayed unavailable. A snapshot now saves that module's source and the check reads it, so the export compares normally. Record older snapshots again to get this.
 - `fork.in(scope) e`, `fork.scoped e` and `fork.detached e` reported syntax errors. They now start a fiber with that owner, with `EK1705` for another owner name and `EK1706` for a `fork.in` scope that is not a `Scope`.
 - `try.all` could allocate fiber IDs that collided with surrounding fibers when the project and runtime loaded separate Effect copies. It now uses the project's `Effect.all`.
 - Runtime compatibility checks could time out while repeatedly starting Node. They now reuse a Node process while keeping every generated comparison and failure reduction.
