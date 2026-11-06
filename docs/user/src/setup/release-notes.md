@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The diagnostic reference said decoding skipped schema constructor overrides. It now explains that decoding calls them, matching the warning and runtime behavior.
 - The debugger check could accept a breakpoint in a different function or statement. It now verifies where V8 actually paused.
+- An inferred export could fail with `TS2883` when its type came indirectly from a built `.vibe` or `.vibex` project reference. The declaration now names the type through its public package export.
 - Moving platform code could widen a unique-symbol key and break computed-property access with `TS7053`. Generated local aliases now retain the imported value type.
 - The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 

@@ -1,0 +1,1 @@
+native project reference declarations match stock TypeScript

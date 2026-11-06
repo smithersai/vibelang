@@ -1019,6 +1019,26 @@ func tryGetModuleNameFromExports(
 	exports packagejson.ExportsOrImports,
 	conditions []string,
 ) tspath.ModuleSpecifier {
+	// Match the module itself before a compatibility-sidecar alias. An earlier
+	// TypeScript wildcard may name the sidecar but must not hide the source's
+	// exact public export (or add a sidecar suffix to its declaration name).
+	result := tryGetModuleNameFromExportsWorker(options, host, targetFileName, packageDirectory, packageName, exports, conditions, false)
+	if result != "" || !isVibeSource(targetFileName) {
+		return result
+	}
+	return tryGetModuleNameFromExportsWorker(options, host, targetFileName, packageDirectory, packageName, exports, conditions, true)
+}
+
+func tryGetModuleNameFromExportsWorker(
+	options *core.CompilerOptions,
+	host ModuleSpecifierGenerationHost,
+	targetFileName tspath.RootedFilePath,
+	packageDirectory tspath.RootedDirectoryPath,
+	packageName string,
+	exports packagejson.ExportsOrImports,
+	conditions []string,
+	allowSidecar bool,
+) tspath.ModuleSpecifier {
 	if exports.IsSubpaths() {
 		// sub-mappings
 		// 3 cases:
@@ -1033,13 +1053,13 @@ func tryGetModuleNameFromExports(
 			} else if strings.Contains(k, "*") {
 				mode = MatchingModePattern
 			}
-			result := tryGetModuleNameFromExportsOrImports(options, host, targetFileName, packageDirectory, subPackageName, subk, conditions, mode /*isImports*/, false /*preferTsExtension*/, false)
+			result := tryGetModuleNameFromExportsOrImportsWorker(options, host, targetFileName, packageDirectory, subPackageName, subk, conditions, mode /*isImports*/, false /*preferTsExtension*/, false, allowSidecar)
 			if len(result) > 0 {
 				return tspath.ToModuleSpecifier(result)
 			}
 		}
 	}
-	return tspath.ToModuleSpecifier(tryGetModuleNameFromExportsOrImports(
+	return tspath.ToModuleSpecifier(tryGetModuleNameFromExportsOrImportsWorker(
 		options,
 		host,
 		targetFileName,
@@ -1050,6 +1070,7 @@ func tryGetModuleNameFromExports(
 		MatchingModeExact,
 		/*isImports*/ false,
 		/*preferTsExtension*/ false,
+		allowSidecar,
 	))
 }
 
@@ -1249,6 +1270,22 @@ func tryGetModuleNameFromExportsOrImports(
 	isImports bool,
 	preferTsExtension bool,
 ) string {
+	return tryGetModuleNameFromExportsOrImportsWorker(options, host, targetFileName, packageDirectory, packageName, exports, conditions, mode, isImports, preferTsExtension, true)
+}
+
+func tryGetModuleNameFromExportsOrImportsWorker(
+	options *core.CompilerOptions,
+	host ModuleSpecifierGenerationHost,
+	targetFileName tspath.RootedFilePath,
+	packageDirectory tspath.RootedDirectoryPath,
+	packageName string,
+	exports packagejson.ExportsOrImports,
+	conditions []string,
+	mode MatchingMode,
+	isImports bool,
+	preferTsExtension bool,
+	allowSidecar bool,
+) string {
 	packageSpecifier := tspath.ToModuleSpecifier(packageName)
 	switch exports.Type {
 	case packagejson.JSONValueTypeNotPresent:
@@ -1271,8 +1308,9 @@ func tryGetModuleNameFromExportsOrImports(
 		// A .vibe module's declaration sidecar, which a `types` target names
 		// (VIP-27), stands for the module, as a .d.ts does for its .ts source.
 		var vibeSidecar tspath.RootedFilePath
-		if isVibeSource(targetFileName) {
-			vibeSidecar = tspath.RootedFilePath(strings.TrimSuffix(targetFileName.AsString(), ".vibe") + ".d.vibe.ts")
+		if allowSidecar && isVibeSource(targetFileName) {
+			extension := tspath.VibeLangSourceExtension(targetFileName.AsString())
+			vibeSidecar = tspath.RootedFilePath(strings.TrimSuffix(targetFileName.AsString(), extension) + ".d" + extension + ".ts")
 		}
 		canTryTsExtension := preferTsExtension && targetFileName.HasImplementationTSFileExtension()
 
@@ -1357,7 +1395,7 @@ func tryGetModuleNameFromExportsOrImports(
 	case packagejson.JSONValueTypeArray:
 		arr := exports.AsArray()
 		for _, e := range arr {
-			result := tryGetModuleNameFromExportsOrImports(options, host, targetFileName, packageDirectory, packageName, e, conditions, mode, isImports, preferTsExtension)
+			result := tryGetModuleNameFromExportsOrImportsWorker(options, host, targetFileName, packageDirectory, packageName, e, conditions, mode, isImports, preferTsExtension, allowSidecar)
 			if len(result) > 0 {
 				return result
 			}
@@ -1371,7 +1409,7 @@ func tryGetModuleNameFromExportsOrImports(
 			// (opencode-32); that target is the module itself (opencode-45).
 			if key == "default" || slices.Contains(conditions, key) || slices.Contains(conditions, "types") && module.IsApplicableVersionedTypesKey(key) ||
 				key == vibeSourceCondition && isVibeSource(targetFileName) {
-				result := tryGetModuleNameFromExportsOrImports(options, host, targetFileName, packageDirectory, packageName, value, conditions, mode, isImports, preferTsExtension)
+				result := tryGetModuleNameFromExportsOrImportsWorker(options, host, targetFileName, packageDirectory, packageName, value, conditions, mode, isImports, preferTsExtension, allowSidecar)
 				if len(result) > 0 {
 					return result
 				}

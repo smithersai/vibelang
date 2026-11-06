@@ -1,0 +1,2 @@
+// Chapter 1: Synthesized import types use TypeScript’s spelling for the twin under the same imports and tsconfig.
+export const marker = 1;

@@ -234,6 +234,12 @@ func (p *Program) GetSourceOfProjectReferenceIfOutputIncluded(file ast.HasFileNa
 	if source, ok := p.outputFileToProjectReferenceSource[file.PathKey()]; ok {
 		return source
 	}
+	// A declaration can import another output directly, without a source
+	// resolution task. Use that output's owning reference when matching public
+	// source exports, just as for an output reached through its source.
+	if reference := p.projectReferenceFileMapper.getProjectReferenceFromOutputDts(file.PathKey()); reference != nil {
+		return reference.Source
+	}
 	return file.FileName()
 }
 
