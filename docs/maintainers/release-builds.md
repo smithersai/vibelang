@@ -17,3 +17,8 @@ Successful matrix runs keep the receipts and remove the temporary logs.
 
 Windows package names and package verification are described in
 [Windows release additions](windows-release.md).
+
+Before packaging a new version, finalize its release-notes heading and keep each
+fix in the version that ships it. Publication checks validate the candidate's
+bug list and preserve required historical fixes in their original release;
+a version bump does not require copying those fixes into the new list.

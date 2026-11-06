@@ -102,3 +102,18 @@ test("a released heading enforces publication hygiene without an environment fla
   const bad = f.check(witness, "bugs", true)
   assert.equal(bad.status, 1, bad.stdout + bad.stderr)
 })
+
+test("a new release keeps previously published fixes in their original version", () => {
+  fc.assert(fc.property(fc.integer({ min: 12, max: 999 }), fc.boolean(), (patch, unreleased) => {
+    const version = "0.0." + patch
+    const notes = "# Release notes\n\n## " + version + (unreleased ? " (unreleased)" : "") +
+      "\n\n### Bugs fixed since 0.0.11\n\n" + publicFix + "\n\n" +
+      goodNotes.replace("# Release notes\n\n", "").replace("0.0.11 (unreleased)", "0.0.11")
+    assert.doesNotThrow(() => assertReleasePublication(notes, version))
+    assert.throws(() => assertReleasePublication(notes.replace(publicFix, publicFix + "\n" + publicFix), version),
+      /each user-facing fix appears once/)
+    assert.throws(() => assertReleasePublication(notes.replace(publicFix, witness), version))
+    assert.throws(() => assertReleasePublication(notes.replace("Editor parsing rejected", "Editor formerly rejected"), version),
+      /retain the user fix once/)
+  }), { numRuns: 80, seed: 120012, examples: [[12, false], [12, true]] })
+})

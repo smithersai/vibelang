@@ -29,8 +29,12 @@ export function assertReleasePublication(notes, version) {
   assert.doesNotMatch(publicationNotes, /migration\s+oracle\s+regression\s+tests|(?:compiler|pin)\s+regression\s+suite|compiler[\u0027\u2019]s\s+keyword\s+coverage\s+check|CI[- ]health\s+reports|declaration[- ]oracle\s+tests|snippet\s+tools[\u0027\u2019]\s+pending[- ]output\s+test\s+fixtures|narrow\s+hosted\s+CI\s+checks/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
-  for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper", "compiler output with Windows line endings"]) {
-    assert.equal(bullets.filter(line => line.includes(symptom)).length, 1, "retain the user fix once: " + symptom)
+  // Preserve these shipped fixes in their owning release, even while preparing a newer one.
+  const previous = releases.find(release => releaseVersion(release) === "0.0.11")
+  const previousBugs = previous?.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0]
+  const previousBullets = previousBugs?.split("\n").filter(line => line.startsWith("- ")) ?? []
+  if (previous) for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper", "compiler output with Windows line endings"]) {
+    assert.equal(previousBullets.filter(line => line.includes(symptom)).length, 1, "retain the user fix once: " + symptom)
   }
 }
 
