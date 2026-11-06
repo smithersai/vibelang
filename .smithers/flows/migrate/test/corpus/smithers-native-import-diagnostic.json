@@ -1,0 +1,5 @@
+{
+  "file": "packages/ui/src/wiki.vibe",
+  "source": "import \"./native.vibe\"\n",
+  "message": "The native parser cannot read this module body"
+}

@@ -28,15 +28,29 @@ export function sourceTypeEdges(text, file, ts, compiler, root) {
   return moduleEdges(text,file,ts,compiler,root,true)
 }
 
+function nativeImportError(file, parsed, envelope, protocol) {
+  const status = ["exit " + (parsed.status ?? "none"), ...(parsed.signal ? ["signal " + parsed.signal] : []), ...(parsed.error?.code ? [parsed.error.code] : [])].join(", ")
+  const message = typeof envelope?.error === "string" ? envelope.error : envelope?.error?.message
+  const stdout = typeof parsed.stdout === "string" ? parsed.stdout : ""
+  // A failing process may return a partial tree. Never print that source payload.
+  const diagnostic = !envelope && !["{", "["].some(prefix => stdout.trimStart().startsWith(prefix))
+    ? stdout.split(/\r?\n/).find(line => /^(?:.*\(\d+,\d+\): )?(?:error (?:TS|EK)\d+:|Unknown compiler option|native compiler:)/.test(line)) : undefined
+  const reason = message || parsed.error?.message || parsed.stderr?.trim() || diagnostic || protocol || "native compiler returned no diagnostic output"
+  return new Error(file + ": cannot read native imports (" + status + "): " + String(reason).slice(0, 2048))
+}
+
 function moduleEdges(text, file, ts, compiler, root, includeTypes) {
   if (!/\bimport\b|\bexport\b[\s\S]*?\bfrom\b/.test(text)) return []
   const edges = []
   if (/\.vibex?$/.test(file)) {
     if (!compiler) throw new Error(file + ": the native compiler is required to read VibeLang imports")
     const parsed = spawnSync(compiler, ["--estree", join(root, file)], { input: text, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
-    if (parsed.status !== 0 || parsed.error) throw new Error(file + ": cannot read native imports: " + (parsed.error?.message ?? parsed.stderr))
-    const { ast, error } = JSON.parse(parsed.stdout)
-    if (error) throw new Error(file + ": " + error.message)
+    let envelope
+    try { envelope = JSON.parse(parsed.stdout) } catch {}
+    if (parsed.status !== 0 || parsed.error || envelope?.error) throw nativeImportError(file, parsed, envelope)
+    if (!envelope || !envelope.ast || envelope.ast.type !== "Program" || !Array.isArray(envelope.ast.body))
+      throw nativeImportError(file, parsed, envelope, "native compiler returned invalid or missing AST JSON")
+    const { ast } = envelope
     const typeOnly = new Set(parseImports(text).filter(edge => edge.typeOnly).map(edge => edge.start + ":" + edge.end))
     const visit = node => {
       if (!node || typeof node !== "object") return

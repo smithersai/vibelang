@@ -61,6 +61,8 @@ Migration setup preserves the authored `rewriteRelativeImportExtensions` option,
 
 When migrating an exported Effect value, keep it as a value: `export const stocked = effect { return try available("TEA") }`. A function such as `export effect function stocked()` exports a callable API and requires consumers to add a call. Compare the emitted declarations to keep the original export type and lazy behavior.
 
+If migration cannot read a module's imports, its error includes the native parser diagnostic and compiler exit status. A failed compiler invocation never supplies import edges.
+
 ## Call VibeLang from TypeScript
 
 Compile both files with `vibelang`, rather than ordinary `tsc`. In a `.ts` source, import the relative `.vibe` path **with its extension**:
