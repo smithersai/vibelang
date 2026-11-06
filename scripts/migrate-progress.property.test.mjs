@@ -1,4 +1,8 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { fileURLToPath } from "node:url"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import test from "node:test"
@@ -55,5 +59,48 @@ test("migration progress preserves late failures and aggregate counts across lar
       })
       assert.equal(final.success, false)
     },
+  })
+})
+
+test("actual migration progress keeps todo and skip semantics over generated mixed checks", async t => {
+  const dir = mkdtempSync(join(tmpdir(), "migrate-progress-flags-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const reporter = fileURLToPath(new URL("./testing/migrate-progress.mjs", import.meta.url))
+  await checkProperty(fc, {
+    name: "migration-progress-failure-flags",
+    rule: "Real Node failure records retain their todo reason and skip state; skipped or todo checks never change the command's successful exit into a failure.",
+    command: "node --test scripts/migrate-progress.property.test.mjs",
+    numRuns: 24,
+    arbitrary: fc.array(fc.record({
+      suffix: fc.constantFrom('quoted "name"', "newline\nname", "Unicode ☃", "backslash\\name"),
+      todo: fc.constantFrom(false, true, 'future "reason"\n☃'),
+      skip: fc.constantFrom(false, true, "skip control"),
+      fails: fc.boolean()
+    }), { minLength: 1, maxLength: 12 }),
+    async check(items) {
+      const file = join(dir, "flags.test.mjs")
+      const cases = items.map((item, i) => ({ ...item, name: i + " " + item.suffix }))
+      writeFileSync(file, 'import { test } from "node:test"\nimport assert from "node:assert/strict"\n' +
+        cases.map(item => 'test(' + JSON.stringify(item.name) + ', ' + JSON.stringify({ todo: item.todo, skip: item.skip }) +
+          ', () => ' + (item.fails ? 'assert.fail("GENERATED_FAILURE")' : '{}') + ')').join("\n"))
+      const env = { ...process.env }; delete env.NODE_TEST_CONTEXT
+      const result = spawnSync(process.execPath, ["--test", "--test-reporter=" + reporter, file], { env, encoding: "utf8", timeout: 10000 })
+      assert.ifError(result.error)
+      assert.equal(result.signal, null)
+      const failed = parse(result.stdout).filter(record => record.event === "test-failed")
+      const want = cases.filter(item => item.fails && !item.skip)
+      assert.deepEqual(failed.map(record => record.name), want.map(item => item.name))
+      for (let i = 0; i < want.length; i++) {
+        assert.equal(!!failed[i].todo, !!want[i].todo)
+        if (want[i].todo) assert.equal(failed[i].todo, want[i].todo)
+        assert.equal(!!failed[i].skip, false)
+        assert.ok(failed[i].error.includes("GENERATED_FAILURE"))
+      }
+      const ordinaryFailures = want.filter(item => !item.todo).length
+      const final = parse(result.stdout).at(-1)
+      assert.equal(final.counts.failed, ordinaryFailures)
+      assert.equal(final.success, ordinaryFailures === 0)
+      assert.equal(result.status, ordinaryFailures > 0 ? 1 : 0)
+    }
   })
 })

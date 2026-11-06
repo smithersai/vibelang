@@ -31,7 +31,7 @@ export default async function* progress(events) {
           yield line("failure-output", { file, output: output.get(file) })
           output.delete(file)
         }
-        yield line("test-failed", { file, name: data.name,
+        yield line("test-failed", { file, name: data.name, todo: data.todo, skip: data.skip,
           error: inspect(data.details.error, { depth: Infinity, maxArrayLength: Infinity, maxStringLength: Infinity, customInspect: false }) })
       }
       if (event.type === "test:summary" && !finished.has(file)) {

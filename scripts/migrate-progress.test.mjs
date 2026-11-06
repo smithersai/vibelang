@@ -131,3 +131,26 @@ test("the compact reporter alone preserves assertion and loader failures", { tim
   assert.equal(result.records.at(-1).event, "incomplete")
   assert.equal(result.records.at(-1).success, false)
 })
+
+test("migration progress distinguishes todo failures in an otherwise successful execution", { timeout: 20_000 }, async t => {
+  const reason = 'future "quoted" control\nUnicode ☃'
+  const files = fixture(t, { a: [
+    'test("passing", () => {})',
+    'test("skipped", { skip: "skip control" }, () => assert.fail("SKIP_BODY"))',
+    'test("todo reason", { todo: ' + JSON.stringify(reason) + ' }, () => assert.fail("TODO_REASON"))',
+    'test("todo boolean", { todo: true }, () => assert.fail("TODO_BOOLEAN"))'
+  ].join("\n") })
+  const result = await run(t, files, undefined, true, false)
+  assert.equal(result.code, 0, result.stderr)
+  const failed = result.records.filter(record => record.event === "test-failed")
+  assert.deepEqual(failed.map(record => ({ name: record.name, todo: record.todo, skip: !!record.skip })), [
+    { name: "todo reason", todo: reason, skip: false },
+    { name: "todo boolean", todo: true, skip: false }
+  ])
+  assert.ok(failed.every(record => record.error.includes("TODO_")))
+  assert.ok(!result.stderr.includes("SKIP_BODY"))
+  assert.equal(result.records.at(-1).counts.failed, 0)
+  assert.equal(result.records.at(-1).counts.todo, 2)
+  assert.equal(result.records.at(-1).counts.skipped, 1)
+  assert.equal(result.records.at(-1).success, true)
+})
