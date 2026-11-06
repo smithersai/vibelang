@@ -24,6 +24,12 @@ func main() {
 }
 
 func runMain() int {
+	stopParent, parentError := watchCompilerParent()
+	if parentError != nil {
+		fmt.Fprintln(os.Stderr, "vibelang:", parentError)
+		return 1
+	}
+	defer stopParent()
 	core.ApplyDebugStackLimit()
 	args := osutil.Args()[1:]
 	if len(args) > 0 {

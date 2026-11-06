@@ -273,6 +273,9 @@ function collect({ status, signal, output }, root, out) {
   return { result: { outputs, inputs, files, errors, warnings }, files }
 }
 
+// A compiler belongs to the caller even when a launcher sits between them.
+const compilerEnvironment = () => ({ ...process.env, VIBELANG_COMPILER_PARENT_PID: String(process.pid) })
+
 const elapsed = (started) => `${Math.round(performance.now() - started)}ms`
 
 // Times a compile's stages, in order, for the debug report.
@@ -367,7 +370,7 @@ export function projectBackend({ root, compiler, cache, debug = () => {}, [loade
     const [file, argv] = command(compiler, args)
     return new Promise((accept, reject) => {
       let output = "", error
-      const child = spawn(file, argv, { cwd: root, stdio: ["ignore", "pipe", "pipe"] })
+      const child = spawn(file, argv, { cwd: root, env: compilerEnvironment(), stdio: ["ignore", "pipe", "pipe"] })
       children.add(child)
       child.stdout.setEncoding("utf8").on("data", (data) => { output += data })
       child.stderr.setEncoding("utf8").on("data", (data) => { output += data })
@@ -418,7 +421,7 @@ function compileOnce(project, root, compiler, stages = stopwatch(), loader = tru
   const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
   try {
     const [file, argv] = command(compiler, emitArgs(project, root, out, loader))
-    const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 }))
+    const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, env: compilerEnvironment(), encoding: "utf8", maxBuffer: 1 << 30 }))
     if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
     return stages.time("collect", () => collect({ status: run.status, signal: run.signal, output: run.stdout + run.stderr }, root, out))
   } finally {

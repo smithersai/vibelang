@@ -1,0 +1,5 @@
+{
+  "property": "loader-owner-lifetime",
+  "rule": "docs/user/src/setup/vite.md: Closing the last instance waits for the compiler and closes its output pipes.",
+  "input": { "runtime": "bun", "synchronous": true, "ownerExits": true }
+}
