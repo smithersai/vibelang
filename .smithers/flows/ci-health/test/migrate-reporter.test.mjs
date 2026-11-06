@@ -5,7 +5,7 @@ import { test } from "node:test"
 import { failedTests, targetLines } from "../lib/steps.mjs"
 
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
-const expected = ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"]
+const expected = ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators", "__proto__", "constructor", "toString"]
 const record = item => "[migrate-test] " + JSON.stringify(item)
 
 test("real migration reporter names nested and cancelled failures while excluding todos", () => {

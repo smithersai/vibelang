@@ -265,7 +265,7 @@ export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
   const found = flakes(runs)
   const targets = new Map()
   for (const f of found) {
-    const t = targets.get(f.label) ?? { label: f.label, keys: 0, failures: 0, passes: 0, last: "", causes: {}, tests: {} }
+    const t = targets.get(f.label) ?? { label: f.label, keys: 0, failures: 0, passes: 0, last: "", causes: {}, tests: Object.create(null) }
     t.keys++
     t.passes += f.passed
     if (f.last > t.last) t.last = f.last

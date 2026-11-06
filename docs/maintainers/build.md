@@ -1819,6 +1819,11 @@ covers a real compiler error before testing. The observer tests also check
 mixed test/build events, 128 stream partitions, oversized output recovery
 and a real native Go compilation failure.
 
+The CI health analyzer keeps independent failure counts for every test name,
+including `__proto__`, `constructor` and `toString`. Real compiler and migration
+reporter fixtures check those names through saved analysis and rendered reports;
+generated runs also cover duplicate records, multiple keys and replayed passes.
+
 The release script glob excludes `scripts/api-identity*.test.mjs`. The release
 target depends on `//:api-identity-test`, so a focused release runs the API
 prerequisite and full CI shares its result. The exclusion is a quoted Node glob,

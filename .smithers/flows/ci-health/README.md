@@ -47,6 +47,11 @@ string characters even though JavaScript also treats them as line separators.
 A `skip` or `todo` reason string marks a test even when it is `""`, matching
 Node's successful exit and skipped/todo counts. Both reporter fixtures include
 actual executions of these empty-reason controls.
+
+Failure counters treat every test name as a key, including `__proto__`,
+`constructor` and other inherited property names. They retain independent counts
+and last-failure times through saved analysis and the rendered report.
+
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`
 events with the same name, skip and todo rules. Legacy Bun, Node, Go and
