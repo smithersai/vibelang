@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A test name containing a line break could split its health-report table row and separate it from its failure count. The name and count now stay in the same row.
 
+- An exhaustive `match` could report a missing case when its tag key was computed, including in generic functions. Computed keys that identify one property now take part in the coverage check.
+
 - The `for concurrent` tooltip said every item used its own fiber, even with a limit of `1`. It now explains sequential execution, and jump errors no longer give that incorrect reason.
 
 - Migration could stop before fixing files when a dependency was outside `rootDir`. It now reads the complete source list while preserving the diagnostic for checking.

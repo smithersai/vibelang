@@ -73,23 +73,42 @@ func memberArmCovers(c *checker.Checker, arm parser.MatchMemberArm, member, tag 
 		}
 		return false
 	}
-	if tag == nil || len(arm.Tags) == 0 {
+	if tag == nil || len(arm.Properties) == 0 {
 		return false
 	}
-	for _, name := range arm.Required {
-		property := c.GetPropertyOfType(member, name)
-		if property == nil || property.Flags()&ast.SymbolFlagsOptional != 0 {
+	hasTag := false
+	for _, property := range arm.Properties {
+		name := ""
+		if property.Computed {
+			key := c.GetTypeAtLocation(property.Key)
+			if key == nil || key == c.GetErrorType() {
+				return false
+			}
+			if constraint := c.GetBaseConstraintOfType(key); constraint != nil {
+				key = constraint
+			}
+			if !checker.IsTypeUsableAsPropertyName(key) {
+				return false
+			}
+			name = checker.GetPropertyNameFromType(key)
+		} else {
+			name = property.Key.Text()
+		}
+		field := c.GetPropertyOfType(member, name)
+		if field == nil || field.Flags()&ast.SymbolFlagsOptional != 0 {
 			return false
 		}
-	}
-	for _, literal := range arm.Tags {
-		if parser.IsSignedNumberZero(literal) {
+		if property.Value == nil {
+			continue
+		}
+		if name != "_tag" || parser.IsSignedNumberZero(property.Value) {
 			return false
 		}
-		value := c.GetTypeAtLocation(literal)
+		value := c.GetTypeAtLocation(property.Value)
 		if value == nil || value.Flags()&checker.TypeFlagsUnion != 0 || !isLiteralTagType(value) || !c.IsTypeAssignableTo(tag, value) {
 			return false
 		}
+		hasTag = true
 	}
-	return true
+	return hasTag
 }

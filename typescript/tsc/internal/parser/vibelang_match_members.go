@@ -2,13 +2,18 @@ package parser
 
 import "github.com/microsoft/TypeScript/tsc/internal/ast"
 
-// MatchMemberArm is the coverage projection of an unguarded finite-case pattern.
-// It retains source pattern structure, independently of TypeScript's narrowing
-// of the generated conditionals. Unsupported patterns contribute no proof.
+// MatchMemberProperty retains a source key and its finite-case sub-pattern.
+type MatchMemberProperty struct {
+	Key      *ast.Node
+	Computed bool
+	Value    *ast.Node // nil for a presence test or irrefutable capture
+}
+
+// MatchMemberArm retains coverage independently of generated flow narrowing.
+// Unsupported patterns contribute no proof.
 type MatchMemberArm struct {
 	Value        *ast.Node
-	Tags         []*ast.Node
-	Required     []string
+	Properties   []MatchMemberProperty
 	Alternatives []MatchMemberArm
 }
 
@@ -42,22 +47,18 @@ func memberCoverageArm(pat *pattern) MatchMemberArm {
 	}
 	out := MatchMemberArm{}
 	for _, clause := range pat.clauses {
-		if clause.computed || clause.key == nil {
+		if clause.key == nil {
 			return MatchMemberArm{}
 		}
-		name := clause.key.Text()
-		out.Required = append(out.Required, name)
+		property := MatchMemberProperty{Key: clause.key, Computed: clause.computed}
 		sub := coveragePattern(clause.pattern)
-		if sub == nil || sub.kind == patternBinding {
-			continue
+		if sub != nil && sub.kind != patternBinding {
+			if sub.kind != patternLiteral && sub.kind != patternValue {
+				return MatchMemberArm{}
+			}
+			property.Value = sub.expr
 		}
-		if name != "_tag" || sub.kind != patternLiteral && sub.kind != patternValue {
-			return MatchMemberArm{}
-		}
-		out.Tags = append(out.Tags, sub.expr)
-	}
-	if len(out.Tags) == 0 {
-		return MatchMemberArm{}
+		out.Properties = append(out.Properties, property)
 	}
 	return out
 }
