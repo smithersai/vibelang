@@ -221,9 +221,14 @@ func (p *grammarEarley) process(i int) {
 		// An opening brace cannot continue a completed statement. Another
 		// prefix may still scan it as an object literal (C<T> versus C < T >),
 		// but that incomplete relational reading must not suppress the
-		// completed instantiation's native line-break boundary. Reuse the ASI
-		// path instead of adding another StatementEnd alternative.
-		p.asiOK[i] = i == n || p.toks[i].text == "}" || p.toks[i].nl && (p.toks[i].text == "{" || len(p.sets[i+1]) == 0)
+		// completed instantiation's native line-break boundary, whatever
+		// token starts the next line. Only a type argument list ends a
+		// statement at ">". The same holds for Appendix A's declaration
+		// keywords: `error is` is a declaration wherever one can start, so a
+		// rival is-expression reading can't hold the statement open, and a
+		// reserved `export` can't continue a type member. Reuse the ASI path
+		// instead of adding another StatementEnd alternative.
+		p.asiOK[i] = i == n || p.toks[i].text == "}" || p.toks[i].nl && (p.toks[i].text == "{" || p.toks[i].text == "export" || i > 0 && p.toks[i-1].text == ">" || i > 1 && p.toks[i-2].text == "error" || len(p.sets[i+1]) == 0)
 		if !p.asiOK[i] {
 			return
 		}

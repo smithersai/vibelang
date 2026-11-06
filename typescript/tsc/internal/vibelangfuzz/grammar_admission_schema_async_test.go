@@ -88,6 +88,11 @@ func grammarSchemaModifiedField(ts []grammarToken, modifier string) bool {
 					if at < len(ts) && ts[at].text == ":" {
 						return true
 					}
+					// An untyped static member before another field reports only
+					// the same mapped-field diagnostic.
+					if modifier == "static" && at+1 < len(ts) && ts[at].text != "}" && (ts[at].nl || ts[at].text == "," || ts[at].text == ";") {
+						return true
+					}
 				}
 			}
 			switch ts[k].text {

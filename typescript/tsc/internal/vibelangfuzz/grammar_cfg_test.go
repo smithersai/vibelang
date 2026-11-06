@@ -450,7 +450,11 @@ func grammarSplitLookahead(set string) []string {
 // type name takes a following "<" as its type arguments, and "(" … ")"
 // followed by "=>" is a function type. An instantiation expression `f<T>`
 // stands where TypeScript's canFollowTypeArgumentsInExpression allows it: before
-// a binary operator (not < > + -) or a token that starts no expression. TypeScript's parser keeps its binary
+// a line break or the end of the file, a binary operator (not < > + -) or a
+// token that starts no expression. A keyword type takes no type arguments, and
+// a type name takes none across a line break, so "<" there is relational.
+// "{ p = 1 }" is ECMAScript's CoverInitializedName, written only as an assignment
+// target so an object literal still has no initializer. TypeScript's parser keeps its binary
 // loop going after "as T" or "satisfies T", so any operator may follow one:
 // `x as number % 2` is `(x as number) % 2`. The subset puts both on
 // UpdateExpression, which derives the same sentences. A statement may end before
@@ -502,11 +506,11 @@ ContinueStatement = "continue" StatementEnd | "continue" [no LineTerminator here
 FunctionDeclaration = "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd) | "async" [no LineTerminator here] "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd)
 ClassDeclaration = "class" BindingIdentifier TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ClassHeritage = "extends" LeftHandSideExpression
-ClassElement = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? OptionalClassMethod | FieldDefinition | ";"
-OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
+ClassElement = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? OptionalClassMethod | FieldDefinition | "static" Block | ";"
+OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd
 ClassMemberModifiers = ClassMemberModifier | ClassMemberModifiers ClassMemberModifier
 ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here]
-FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd
+FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? "=" "throw" UnaryExpression LineTerminator [lookahead ∈ { "*" }]
 MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
 GetAccessor = "get" [no LineTerminator here] PropertyName "(" ")" TypeAnnotation? Block
 NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
@@ -532,7 +536,7 @@ ExportSpecifiers = ExportSpecifier | ExportSpecifiers "," ExportSpecifier
 ExportSpecifier = ModuleExportName | ModuleExportName "as" ModuleExportName | "type" ModuleExportName | "type" ModuleExportName "as" ModuleExportName
 ModuleExportName = IdentifierName | StringLiteral
 Expression = AssignmentExpression | Expression "," AssignmentExpression
-AssignmentExpression = ConditionalExpression | ArrowFunction | AsyncArrowFunction | YieldExpression | LeftHandSideExpression "=" AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression
+AssignmentExpression = ConditionalExpression | ArrowFunction | AsyncArrowFunction | YieldExpression | LeftHandSideExpression "=" AssignmentExpression | ObjectAssignmentPattern "=" AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression
 AssignmentOperator = "+=" | "-=" | "??="
 ConditionalExpression = ShortCircuitExpression | ShortCircuitExpression "?" AssignmentExpression ":" AssignmentExpression
 ShortCircuitExpression = LogicalORExpression | CoalesceExpression
@@ -557,7 +561,7 @@ YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator h
 UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression | UpdateExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | UpdateExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }]
 LeftHandSideExpression = NewExpression | CallExpression | OptionalExpression
 NewExpression = MemberExpression | "new" NewExpression
-MemberExpression = MemberExpression TypeArguments LineTerminator [lookahead ∈ { "{" }] | MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
+MemberExpression = MemberExpression TypeArguments LineTerminator [lookahead ∉ { "<", ">", "+", "-" }] | MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
 MetaProperty = "import" "." "meta" | "new" "." "target"
 CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!"
 ImportCall = "import" "(" AssignmentExpression ","? ")" | "import" "(" AssignmentExpression "," AssignmentExpression ","? ")"
@@ -572,6 +576,10 @@ ArrayElision = "," | ArrayElision ","
 ElementList = ArrayItem | ElementList "," ArrayElision? ArrayItem
 ArrayItem = AssignmentExpression | "..." AssignmentExpression
 ObjectLiteral = "{" "}" | "{" PropertyDefinitionList ","? "}"
+ObjectAssignmentPattern = "{" ObjectPatternHead? CoverInitializedName ObjectPatternTail* ","? "}"
+ObjectPatternHead = PropertyDefinition "," | ObjectPatternHead PropertyDefinition ","
+ObjectPatternTail = "," PropertyDefinition | "," CoverInitializedName
+CoverInitializedName = IdentifierReference Initializer
 PropertyDefinitionList = PropertyDefinition | PropertyDefinitionList "," PropertyDefinition
 PropertyDefinition = IdentifierReference | PropertyName ":" AssignmentExpression | MethodDefinition | "..." AssignmentExpression
 PropertyName = IdentifierName | StringLiteral | NumericLiteral | "[" AssignmentExpression "]"
@@ -597,9 +605,10 @@ Type = UnionType | FunctionType
 TypeNoEffect = UnionType | FunctionType
 UnionType = "|"? IntersectionType | UnionType "|" IntersectionType
 IntersectionType = "&"? PostfixType | IntersectionType "&" PostfixType
-PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" [no LineTerminator here] PostfixType | "keyof" [no LineTerminator here] PostfixType
+PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" PostfixType | "keyof" PostfixType
 PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" IdentifierReference
-TypeReference = TypeName [lookahead ∉ { "<" }] | TypeName [no LineTerminator here] TypeArguments
+TypeReference = TypeName [lookahead ∉ { "<" }] | TypeName [no LineTerminator here] TypeArguments | TypeName LineTerminator [lookahead ∈ { "<" }] | KeywordType [lookahead ∈ { "<" }]
+KeywordType = "any" | "unknown" | "never" | "number" | "bigint" | "boolean" | "string" | "symbol" | "undefined" | "object"
 TypeName = IdentifierName | TypeName "." IdentifierName
 TupleType = "[" "]" | "[" TupleElementList ","? "]"
 TupleElementList = TupleElement | TupleElementList "," TupleElement
@@ -989,9 +998,14 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	}
 	// VIP-41 imports the pinned throw-expression draft: one UnaryExpression
 	// alternative whose lookahead is Appendix A's ThrowExpressionInvalidPunctuator.
+	// The lookahead makes such a token offending, so after a line break ASI ends
+	// the expression when the token can start a statement (ECMA-262 ASI rule 1).
+	// The lab's ASI symbol sits after the expression and can't be reached from a
+	// failed lookahead, so the second alternative carries that case. A "*" after
+	// a class field starts a generator method; FieldDefinition carries that one.
 	if defined["ThrowExpressionInvalidPunctuator"] {
 		set := grammarQuotedToken.FindAllString(grammarThrowPunctuators(a.text), -1)
-		d := grammarParseDef("ThrowExpression", `"throw" UnaryExpression [lookahead ∉ { `+strings.Join(set, ", ")+` }]`, 0)
+		d := grammarParseDef("ThrowExpression", `"throw" UnaryExpression [lookahead ∉ { `+strings.Join(set, ", ")+` }] | "throw" UnaryExpression LineTerminator [lookahead ∈ { "+", "-", "/", "/=", "<" }]`, 0)
 		d.vibe = true
 		d.source = "vips/tc39-throw-expressions/spec.emu"
 		defs = append(defs, d)

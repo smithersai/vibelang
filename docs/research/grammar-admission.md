@@ -539,3 +539,25 @@ The key scanner follows the whole modifier prefix, including duplicates and
 `readonly` or `static` prefixes, before checking for a typed field. Methods,
 modifier words used as field names and nested native members remain separate
 controls. The keyed witness and original token mutation retain this boundary.
+
+`FuzzGrammarAdmission` mutates one seed, so a long campaign rarely reaches a
+second gap inside an already mutated program. `FuzzGrammarAdmissionDeep`
+stacks two mutations on the seeds and the keyed corpus. Its first sweep found
+three kinds of result. Native TypeScript the lab had left out now derives:
+class static blocks, instantiation expressions before a line break or the end
+of the file, relational `<` after a keyword type or across a line break, and
+`CoverInitializedName`. A throw expression before a line break and a token
+that can start a statement ends by automatic semicolon insertion, because
+`ThrowExpressionInvalidPunctuator` makes that token offending, which is what
+the compiler already did. Checker grammar errors TS1091, TS1097, TS1098,
+TS1188, TS1189, TS1190 and TS5086 count as syntax rejections. The remaining
+programs belonged to known families whose keys were narrower than the family,
+and they keep those keys. Two forms are new.
+`admission:schema-field-initializer` is a field initializer whose unresolved
+type reports only `EK2109` and covers TS1247.
+`admission:throw-assertion-lookahead` is `throw e as T` before a
+`ThrowExpressionInvalidPunctuator`, which VIP-41 forbids and the compiler
+misses because its lookahead stops at the assertion. `error is` before a line
+that can continue an `is` pattern looks like a third form but is a declaration,
+because a `DeclarationStart` begins a declaration wherever one can start, so
+the lab no longer holds that statement open.

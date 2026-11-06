@@ -30,7 +30,7 @@ func grammarOptionalEffectClassMember(file *ast.SourceFile, source string) bool 
 		}
 		if n.Kind == ast.KindMethodDeclaration && parent != nil &&
 			(parent.Kind == ast.KindClassDeclaration || parent.Kind == ast.KindClassExpression) &&
-			n.Flags&ast.NodeFlagsVibeLangEffect != 0 && n.Body() != nil {
+			n.Flags&ast.NodeFlagsVibeLangEffect != 0 {
 			if token := n.PostfixToken(); token != nil && token.Kind == ast.KindQuestionToken {
 				at := token.End() - 1
 				if at >= 0 && at < len(source) && source[at] == '?' {

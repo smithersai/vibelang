@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -41,6 +42,22 @@ func grammarPatternMemberLineBreak(source string, forms []parser.VibeSyntax) boo
 		if tail[0].text == "[" && tail[0].nl && (tail[1].text == "]" || tail[1].text == "," || tail[1].text == "...") {
 			return true
 		}
+		// An Expression has no trailing comma, so `[ a , ]` is no member access.
+		depth := 0
+		for k, tok := range tail {
+			switch tok.text {
+			case "[", "(", "{":
+				depth++
+			case "]", ")", "}":
+				depth--
+			}
+			if depth == 0 {
+				if tail[0].text == "[" && tail[0].nl && k > 0 && tail[k-1].text == "," {
+					return true
+				}
+				break
+			}
+		}
 	}
 	return false
 }
@@ -69,6 +86,10 @@ func grammarPatternMemberTail(ts []grammarToken) bool {
 }
 
 func grammarPurePatternMember(ts []grammarToken) bool {
+	// A relational pattern's operand is the same member expression.
+	if len(ts) > 0 && slices.Contains([]string{"<", "<=", ">", ">=", "==", "===", "!=", "!=="}, ts[0].text) {
+		ts = ts[1:]
+	}
 	if len(ts) == 0 || ts[0].kind != 'w' || ts[0].text == "true" || ts[0].text == "false" || ts[0].text == "null" {
 		return false
 	}

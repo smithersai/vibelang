@@ -20,8 +20,13 @@ func TestGrammarAdmissionImportMetaSpecifierQuoted(t *testing.T) {
 // where its platform diagnostic covers the native grammar diagnostic.
 func grammarImportMetaSpecifier(file *ast.SourceFile) bool {
 	unwrap := func(n *ast.Node) *ast.Node {
-		for n != nil && ast.IsParenthesizedExpression(n) {
-			n = n.Expression()
+		for n != nil {
+			switch n.Kind {
+			case ast.KindParenthesizedExpression, ast.KindNonNullExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindExpressionWithTypeArguments:
+				n = n.Expression()
+				continue
+			}
+			break
 		}
 		return n
 	}

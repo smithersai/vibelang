@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:throw-assertion-lookahead\nconst b = throw 1 as 1 ?? 1")

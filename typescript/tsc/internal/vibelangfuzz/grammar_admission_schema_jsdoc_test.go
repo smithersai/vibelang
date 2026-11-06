@@ -31,7 +31,7 @@ func TestGrammarAdmissionSchemaJSDocQuoted(t *testing.T) {
 // optional property markers and Effect type bangs remain separate.
 func grammarSchemaJSDocFieldType(ts []grammarToken) bool {
 	prefixes := map[string]bool{"?": true, "??": true, "!": true, "*": true}
-	beforeType := map[string]bool{":": true, "[": true, "(": true, ",": true, "<": true, "|": true, "&": true, "=>": true}
+	beforeType := map[string]bool{":": true, "[": true, "(": true, ",": true, "<": true, "|": true, "&": true, "=>": true, "readonly": true}
 	for i, tok := range ts {
 		if tok.kind != 'w' || tok.text != "schema" || i+2 >= len(ts) ||
 			ts[i+1].kind != 'w' || ts[i+1].nl {

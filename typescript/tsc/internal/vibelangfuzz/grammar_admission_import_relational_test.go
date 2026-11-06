@@ -23,7 +23,7 @@ func grammarImportRelationalRecovery(file *ast.SourceFile) bool {
 		if n == nil {
 			return false
 		}
-		if n.Kind == ast.KindImportKeyword && parent != nil && parent.Kind == ast.KindBinaryExpression {
+		if n.Kind == ast.KindImportKeyword && parent != nil && (parent.Kind == ast.KindBinaryExpression || parent.Kind == ast.KindPrefixUnaryExpression) {
 			return true
 		}
 		return n.ForEachChild(func(child *ast.Node) bool { return visit(child, n) })

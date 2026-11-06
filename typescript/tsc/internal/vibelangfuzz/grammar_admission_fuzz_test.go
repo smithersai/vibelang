@@ -227,6 +227,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-interruption-name", "schema uninterruptible { effect id : join }"},
 	{"provide-identifier-head", "provide is is is is as join\n[\n]"},
 	{"schema-mixed-async-effect-field", "schema S { async async effect id : Missing }"},
+	{"throw-assertion-lookahead", "const b = throw 1 as 1 ?? 1"},
+	{"schema-field-initializer", "schema S { key : Missing = \"k\" }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -263,7 +265,8 @@ func grammarIsOperandPrecedence(ts []grammarToken) bool {
 			continue
 		}
 		at := i + 1
-		for at < len(ts) && ts[at].text == "not" {
+		// A const, let or var pattern binds the next word, whatever its spelling.
+		for at < len(ts) && (ts[at].text == "not" || ts[at].text == "const" || ts[at].text == "let" || ts[at].text == "var") {
 			at++
 		}
 		if at >= len(ts) {
@@ -279,8 +282,25 @@ func grammarIsOperandPrecedence(ts []grammarToken) bool {
 			at++
 		}
 		depth := 0
+		asserted := false
 	scan:
 		for k, next := range ts[at:] {
+			// A pattern combinator takes its own leading operator or sign, and
+			// a type after `as` its own `&` or `|`.
+			if k > 0 {
+				// The pattern's first token is an operand, whatever its spelling.
+				prior := grammarToken{}
+				if k > 2 {
+					prior = ts[at+k-2]
+				}
+				switch {
+				case k > 1 && grammarPatternCombinator(ts[at+k-1], prior) && slices.Contains([]string{"<", "<=", ">", ">=", "==", "===", "!=", "!==", "in", "instanceof", "+", "-"}, next.text):
+					continue
+				case asserted && (next.text == "&" || next.text == "|"):
+					continue
+				}
+			}
+			asserted = asserted || depth == 0 && (next.text == "as" || next.text == "satisfies")
 			// The lab lexes << and >> as two tokens; two in a row are a shift.
 			if depth == 0 && (next.text == "<" || next.text == ">") && at+k+1 < len(ts) && ts[at+k+1].text == next.text {
 				return true
@@ -302,6 +322,89 @@ func grammarIsOperandPrecedence(ts []grammarToken) bool {
 					return true
 				}
 			}
+		}
+	}
+	return false
+}
+
+// grammarPatternCombinator reports whether word combines two patterns. After an
+// operator or another combinator, `and`, `or` and `not` are the pattern's name.
+func grammarPatternCombinator(word, before grammarToken) bool {
+	if word.text != "and" && word.text != "or" && word.text != "not" {
+		return false
+	}
+	switch before.text {
+	case "and", "or", "not", "is", "<", "<=", ">", ">=", "==", "===", "!=", "!==", "in", "instanceof", "+", "-":
+		return false
+	}
+	return true
+}
+
+// grammarSchemaFieldInitializer reports a field type followed by `=` in a
+// schema body. Field has no initializer, and an unresolved type's EK2109 covers
+// the native TS1247 rejection.
+func grammarSchemaFieldInitializer(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.text != "schema" || i+2 >= len(ts) || ts[i+1].kind != 'w' || ts[i+2].text != "{" {
+			continue
+		}
+		depth, typed := 0, false
+		for _, next := range ts[i+2:] {
+			switch next.text {
+			case "{", "(", "[":
+				depth++
+			case "}", ")", "]":
+				depth--
+			}
+			if depth == 0 {
+				break
+			}
+			if depth != 1 {
+				continue
+			}
+			switch {
+			case next.text == ":":
+				typed = true
+			case next.text == ";" || next.text == "," || next.nl:
+				typed = next.text == ":"
+			case typed && next.text == "=":
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// grammarThrowAssertionLookahead reports `throw e as T` before a token in
+// ThrowExpressionInvalidPunctuator. The compiler's lookahead stops at the
+// assertion, so only a type or nested bracket lies between them.
+func grammarThrowAssertionLookahead(ts []grammarToken) bool {
+	invalid := []string{"?", "??", "||", "&&", "==", "===", "!=", "!==", "<", ">", "<=", ">=", "+", "-", "*", "/", "%", "**", ","}
+	for i, tok := range ts {
+		if tok.text != "throw" {
+			continue
+		}
+		depth := 0
+		asserted := false
+		for _, next := range ts[i+1:] {
+			if next.text == ";" {
+				break
+			}
+			switch next.text {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				depth--
+			}
+			if depth < 0 {
+				break
+			}
+			// A line break does not end the scan: only a token that can start a
+			// statement ends a throw expression there.
+			if depth == 0 && asserted && slices.Contains(invalid, next.text) && !(next.nl && slices.Contains([]string{"+", "-", "/", "<"}, next.text)) {
+				return true
+			}
+			asserted = asserted || depth == 0 && (next.text == "as" || next.text == "satisfies")
 		}
 	}
 	return false
@@ -568,7 +671,7 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			if grammarDeclarationExpressionPrefix(ts, i) {
 				break
 			}
-			if i > 0 && !tok.nl && ts[i-1].text != ";" && ts[i-1].text != "}" && ts[i-1].text != "{" {
+			if i > 0 && !tok.nl && ts[i-1].text != ";" && ts[i-1].text != "}" && ts[i-1].text != "{" && ts[i-1].text != "export" && ts[i-1].text != ")" {
 				break
 			}
 			at := i + 1
@@ -621,20 +724,31 @@ func grammarDeclarationExpressionPrefix(ts []grammarToken, i int) bool {
 		"&=", "|=", "^=", "&&=", "||=", "??=", "=>",
 		"(", "[", ",", ".", "?.", "?", ":",
 		"+", "-", "*", "/", "%", "**", "&", "|", "^", "&&", "||", "??", "|>",
-		"typeof", "void", "delete", "new", "in", "instanceof":
+		"typeof", "void", "delete", "new", "in", "instanceof", "throw", "~",
+		"<", "<=", ">=", "==", "!=", "===", "!==":
 		return true
+	case "!":
+		// Prefix negation needs an operand; a postfix assertion ends one.
+		if i == 1 {
+			return true
+		}
+		before := i - 2
+		for before > 0 && ts[before].text == "!" {
+			before--
+		}
+		return ts[before].kind == 'p' && ts[before].text != "!" && ts[before].text != ")" && ts[before].text != "]" && ts[before].text != "}"
 	}
 	return false
 }
 
 // grammarInTypeAlias reports whether ts[i] is in the type of a `type Name =`
-// alias, so a bang there is EffectType's and not a non-null assertion.
+// or `schema Name =` alias, so a bang there is EffectType's and not a non-null assertion.
 func grammarInTypeAlias(ts []grammarToken, i int) bool {
 	for k := i - 1; k >= 2; k-- {
 		if ts[k].text == ";" {
 			return false
 		}
-		if ts[k].text == "=" && ts[k-2].text == "type" {
+		if ts[k].text == "=" && (ts[k-2].text == "type" || ts[k-2].text == "schema") {
 			return true
 		}
 	}
@@ -781,6 +895,12 @@ func grammarAdmissionForm(source string) string {
 	if grammarParenthesizedEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
 	}
+	if grammarThrowAssertionLookahead(ts) {
+		return "admission:throw-assertion-lookahead"
+	}
+	if grammarSchemaFieldInitializer(ts) {
+		return "admission:schema-field-initializer"
+	}
 	if grammarSchemaAsyncField(ts) {
 		return "admission:schema-async-field"
 	}
@@ -802,7 +922,12 @@ func grammarAdmissionForm(source string) string {
 	if grammarOrBindingReservedName(ts) {
 		return "admission:or-binding-reserved-name"
 	}
-	if form := grammarAdmissionDeclarationForm(ts); form != "" {
+	// A regular expression has no operator tokens before a declaration line.
+	declarationTokens := ts
+	if tokens, ok := grammarValidatedRegExpTokens(source); ok {
+		declarationTokens = tokens
+	}
+	if form := grammarAdmissionDeclarationForm(declarationTokens); form != "" {
 		return form
 	}
 	for i, tok := range ts {
@@ -1770,8 +1895,8 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 		1530, 1531, 1532, 1533, 1534, 1535, 1536, 1537, 1538:
 		return true
 	case 1024, 1028, 1029, 1030, 1031, 1038, 1040, 1042, 1044,
-		1070, 1071, 1079, 1089, 1090, 1120, 1123, 1184, 1187, 1191, 1193, 1242, 1243, 1248,
-		1273, 1274, 1275, 1277, 1317, 1433, 1491, 1495, 18010, 18019:
+		1070, 1071, 1079, 1089, 1090, 1091, 1097, 1098, 1120, 1123, 1184, 1187, 1188, 1189, 1190, 1191, 1193, 1242, 1243, 1248,
+		1273, 1274, 1275, 1277, 1317, 1433, 1491, 1495, 5086, 18010, 18019:
 		return true
 	// checkGrammarModuleElementContext (checker/grammarchecks.go): an import,
 	// export, export assignment, namespace or ambient module declaration
@@ -2190,7 +2315,12 @@ func grammarSchemaEffectField(ts []grammarToken) bool {
 			if depth != 1 || ts[k].kind != 'w' || ts[k].text != "effect" || k+2 >= len(ts) {
 				continue
 			}
-			start := ts[k].nl || ts[k-1].text == "{" || ts[k-1].text == ";" || ts[k-1].text == ","
+			// A readonly or static prefix keeps the field's effect modifier.
+			first := k
+			for first > open+1 && !ts[first].nl && (ts[first-1].text == "readonly" || ts[first-1].text == "static") {
+				first--
+			}
+			start := ts[first].nl || ts[first-1].text == "{" || ts[first-1].text == ";" || ts[first-1].text == ","
 			if start && ts[k+1].kind != 'p' && !ts[k+1].nl && (ts[k+2].text == ":" || ts[k+2].text == "?") {
 				return true
 			}
