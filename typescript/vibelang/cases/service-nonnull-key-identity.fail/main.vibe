@@ -1,0 +1,8 @@
+// expect: EK3002 EK3003 EK3004
+service First { static readonly key = "nonnull/First"; value: number }
+service Second { static readonly key = "nonnull/Second"; value: number }
+export function inspect<Key extends typeof First | typeof Second | null | undefined>(key: Key, value: unknown) { if(key) { return value instanceof key }; return false }
+export function construct<Key extends typeof First | typeof Second | null | undefined>(key: NonNullable<Key>) { return new key() }
+export function inherit<Key extends typeof First | typeof Second | null | undefined>(key: Key) { if(key!=null) { class Child extends key {}; return 1 }; return 0 }
+export function pattern<Key extends typeof First | typeof Second | null | undefined>(key: Key, value: unknown) { const selected=key!; return match(value) { when selected: 1; default: 0; } }
+export function extractor<Key extends typeof First | typeof Second | null | undefined>(key: NonNullable<Key>, value: unknown) { return match(value) { when key(): 1; default: 0; } }

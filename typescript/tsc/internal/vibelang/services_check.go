@@ -312,6 +312,11 @@ func serviceKeyOperand(c *checker.Checker, t *checker.Type) bool {
 	if t == nil {
 		return false
 	}
+	if t.Flags()&checker.TypeFlagsIntersection != 0 {
+		if bound := c.GetBaseConstraintOfType(t); bound != nil && bound != t {
+			return serviceKeyOperand(c, bound)
+		}
+	}
 	if t.Flags()&(checker.TypeFlagsTypeParameter|checker.TypeFlagsIndexedAccess|checker.TypeFlagsConditional) != 0 {
 		bound := c.GetBaseConstraintOfType(t)
 		if bound == nil || bound == t {
@@ -371,6 +376,15 @@ func serviceNamedBy(c *checker.Checker, expr *ast.Node) *ast.Node {
 func serviceNamedByType(c *checker.Checker, t *checker.Type) *ast.Node {
 	if t == nil {
 		return nil
+	}
+	if t.Flags()&checker.TypeFlagsIntersection != 0 {
+		if bound := c.GetBaseConstraintOfType(t); bound != nil && bound != t {
+			if symbol := bound.Symbol(); symbol != nil && classKindOf(symbol.ValueDeclaration()) != ordinaryClass &&
+				bound != c.GetTypeOfSymbol(symbol) {
+				return nil // narrowing an identifier does not make it the key value
+			}
+			return serviceNamedByType(c, bound)
+		}
 	}
 	if t.Flags()&(checker.TypeFlagsTypeParameter|checker.TypeFlagsIndexedAccess|checker.TypeFlagsConditional) != 0 {
 		bound := c.GetBaseConstraintOfType(t)
