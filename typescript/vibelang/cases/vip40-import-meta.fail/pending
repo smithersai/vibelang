@@ -1,1 +1,0 @@
-vip40 import.meta in a module body compiles without EK4009. Rules: docs/design/vips/0040-module-declarations.md#407f7f26fc0bf7a6 docs/design/vips/0040-module-declarations.md#04586ac03b89c5ad
