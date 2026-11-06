@@ -101,7 +101,7 @@ For `EK0801`, the resource quick fix moves a direct `using` declaration and the 
 
 The `EK0801` resource action keeps initializer names: an anonymous class, function or arrow initializer has no automatic conversion when the acquisition callback would erase its inferred name. A class can observe that name while its static fields initialize, so setting `.name` afterward is insufficient.
 
-The resource action groups object initializers through `as`, `satisfies` and non-null `!` wrappers, so the acquisition callback still returns the object.
+The resource action groups object initializers through `as`, `satisfies` and non-null `!` wrappers, so acquisition still returns the object. Acquisition uses an explicit `effect { … }` block, preserving `try` in computed names and heritage and retaining nested Effect bodies. A local name `sync` does not prevent this repair.
 
 ### Move a TypeScript module body to a file
 

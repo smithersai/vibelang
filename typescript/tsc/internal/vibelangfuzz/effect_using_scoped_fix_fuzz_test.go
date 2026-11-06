@@ -18,6 +18,23 @@ var usingScopedForms = map[string]struct {
 	source  string
 	offered bool
 }{
+	"head-object-method":               {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ [try Effect.succeed(\"key\" as const)]() {}, [Symbol.dispose]() {} }); return 1 }", true},
+	"head-object-getter":               {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ get [try Effect.succeed(\"key\" as const)]() { return 1 }, [Symbol.dispose]() {} }); return 1 }", true},
+	"head-object-setter":               {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ set [try Effect.succeed(\"key\" as const)](value: number) {}, [Symbol.dispose]() {} }); return 1 }", true},
+	"head-class-heritage":              {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class extends (try Effect.succeed(Base)) {})(); return 1 }", true},
+	"head-class-method":                {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class { [try Effect.succeed(\"key\" as const)]() {}; [Symbol.dispose]() {} })(); return 1 }", true},
+	"head-class-static-method":         {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class { static [try Effect.succeed(\"key\" as const)]() {}; [Symbol.dispose]() {} })(); return 1 }", true},
+	"head-class-getter":                {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class { get [try Effect.succeed(\"key\" as const)]() { return 1 }; [Symbol.dispose]() {} })(); return 1 }", true},
+	"head-nested-object-method":        {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ nested: { [try Effect.succeed(\"key\" as const)]() {} }, [Symbol.dispose]() {} }); return 1 }", true},
+	"head-object-effect-body":          {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ work: effect (): number!! => { try Effect.succeed(1); return try resource.work() }, [Symbol.dispose]() {} }); return try resource.work() }", true},
+	"head-class-effect-body":           {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class { effect work(): number!! { try Effect.succeed(1); return try resource.work() }; [Symbol.dispose]() {} })(); return try resource.work() }", true},
+	"head-object-plain-body":           {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ work() { return 1 }, [Symbol.dispose]() {} }); return 1 }", true},
+	"head-class-plain-body":            {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class { work() { return 1 }; [Symbol.dispose]() {} })(); return 1 }", true},
+	"head-class-effect-field":          {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class { program = effect { return try Effect.succeed(1) }; [Symbol.dispose]() {} })(); return try resource.program }", true},
+	"head-class-static-effect-field":   {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class Local { static program = effect { return try Effect.succeed(1) }; get program() { return Local.program }; [Symbol.dispose]() {} })(); return try resource.program }", true},
+	"head-plain-heritage":              {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = new (class extends Base {})(); return 1 }", true},
+	"head-plain-computed-name":         {"class Base { [Symbol.dispose]() {} };\nexport effect function load(): number!! { using resource = ({ [\"key\"]() {}, [Symbol.dispose]() {} }); return 1 }", true},
+	"head-shadowed-sync":               {"const sync = 0;\nexport effect function load(): number!! { using resource = open(); return 1 }", true},
 	"object-asserted":                  {"export effect function load() { using resource = { [Symbol.dispose]() {} } as Disposable; return 1 }", true},
 	"object-satisfies":                 {"export effect function load() { using resource = { [Symbol.dispose]() {} } satisfies Disposable; return 1 }", true},
 	"object-nonnull":                   {"export effect function load() { using resource = { [Symbol.dispose]() {} }!; return 1 }", true},
@@ -172,7 +189,7 @@ func FuzzEffectUsingScopedFix(f *testing.F) {
 					t.Fatal(err)
 				}
 				defer checked.Remove()
-				if !toolsErrorFree(checked) || !strings.Contains(edited["main.vibe"], "try acquireDisposable(sync(() =>") {
+				if !toolsErrorFree(checked) || !strings.Contains(edited["main.vibe"], "try acquireDisposable(") || !strings.Contains(edited["main.vibe"], "return try scoped(effect {") {
 					Gap(t, "FuzzEffectUsingScopedFix", gapKey, "%s must typecheck: %v\n%s", effectUsingWarningQuote, checked.Diagnostics, edited["main.vibe"])
 				}
 				for _, d := range checked.Diagnostics {

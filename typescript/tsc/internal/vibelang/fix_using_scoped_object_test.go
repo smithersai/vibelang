@@ -63,7 +63,7 @@ func TestUsingScopedFixWrappedObjects(t *testing.T) {
 								t.Errorf("invalid scoped conversion: %s\n%s", d.String(), got)
 							}
 						}
-						if !strings.Contains(got, "try acquireDisposable(sync(() =>") {
+						if !strings.Contains(got, "try acquireDisposable(") || !strings.Contains(got, "return try scoped(effect {") {
 							t.Errorf("missing acquisition: %s", got)
 						}
 					}

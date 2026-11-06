@@ -21,7 +21,7 @@ func init() {
 // released on every Exit:
 //
 //	using f = openFile()                 return try scoped(effect {
-//	return try read(f)                     const f = try acquireDisposable(sync(() => openFile()))
+//	return try read(f)                     const f = try acquireDisposable(effect { return openFile() })
 //	                                       return try read(f)
 //	                                     })
 //
@@ -57,7 +57,7 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 		return nil, nil
 	}
 	a := analyzerFor(c)
-	for _, name := range []string{"scoped", "acquireDisposable", "sync"} {
+	for _, name := range []string{"scoped", "acquireDisposable"} {
 		if !isEffectGlobalAt(c, name, block) {
 			return nil, nil
 		}
@@ -77,7 +77,7 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 		if ast.IsObjectLiteralExpression(ast.SkipOuterExpressions(initializer, ast.OEKAll)) {
 			value = "(" + value + ")"
 		}
-		body.WriteString(indent + "  const " + declaration.Name().Text() + " = try acquireDisposable(sync(() => " + value + "))\n")
+		body.WriteString(indent + "  const " + declaration.Name().Text() + " = try acquireDisposable(effect { return " + value + " })\n")
 	}
 	end := block.End() - 1
 	rest := strings.TrimRight(text[statement.End():end], " \t\r\n")

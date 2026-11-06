@@ -1,0 +1,3 @@
+go test fuzz v1
+string("head-class-method")
+byte(0)
