@@ -43,7 +43,7 @@ if(area==="home"){
 }else if(area==="container"){
  const {lostWrappers}=await import(pathToFileURL(join(root,".smithers/flows/migrate/lib/lost-wrapper.mjs")))
  const before=`${namespace}.fnUntraced(function*(){return 1;})`,after=`()=>${namespace}.succeed(1)`
- let original,emitted,expectedFlag=false
+ let original,emitted,expectedFlag=false,modelHead=head,expectedName="/make"
  const traced = key.startsWith("traced-")
  const traceLabel = rawMode&4 ? "task.run" : "fixture.load"
  const tracedBefore = `${namespace}.fn(${JSON.stringify(traceLabel)})(function*(){return 1;})`
@@ -58,18 +58,43 @@ if(area==="home"){
  else if(key==="traced-nested"){original=`export function make(){return {child:{load:${tracedBefore}}};}`;emitted=`export function make(){return {child:{load:${tracedAfter}}};}`;}
  else if(key==="traced-direct"){original=`export const make=${tracedBefore};`;emitted=`export const make=${tracedAfter};`;}
  else if(key==="traced-drop-direct"){original=`export const make=${tracedBefore};`;emitted="export const make=()=>1;";expectedFlag=true;}
+ else if(key.startsWith("constructor-")){
+  expectedName="/f"
+  modelHead=head+"import * as Option from \"effect/Option\";\n"
+  const value="value"+(rawMode>>3),call=`${namespace}.succeed(${value})`
+  const arrow=rawMode&2?`(${value})=>{return ${call};}`:`(${value})=>${call}`
+  const callback=key==="constructor-alias"?"success":`${namespace}.succeed`
+  const prefix=key==="constructor-alias"?`const success=${namespace}.succeed;\n`:""
+  const first=key==="constructor-same-arrow"?arrow:callback
+  const second=key==="constructor-same-reference"?callback:key==="constructor-alias"?(rawMode&2?`(${value})=>{return success(${value});}`:`(${value})=>success(${value})`):arrow
+  const expression=some=>`Option.match(x,{onNone:()=>${namespace}.interrupt,onSome:${some}})`
+  const factory=(some,typed)=>{
+   let body=expression(some)
+   if(rawMode&16)body=`(${body})`
+   const parameter=typed?"x:Option.Option<number>":"x"
+   return rawMode&32?`export function f(${parameter}){return ${body};}`
+    :rawMode&4?`export const f=(${parameter})=>{return ${body};};`
+    :`export const f=(${parameter})=>${body};`
+  }
+  original=prefix+factory(first,true);emitted=prefix+factory(second,false)
+  if(key==="constructor-drop"){
+   original=`export const f=(x:number)=>${namespace}.succeed(x);`
+   emitted="export const f=x=>x;";expectedFlag=true
+  }
+ }
  else throw Error("unknown container model")
- original=head+original;emitted=head+emitted
+ original=modelHead+original;emitted=modelHead+emitted
  if(key==="object"&&!mode)original=readFileSync(join(root,"typescript/tsc/internal/vibelangfuzz/testdata/corpus/t3code-effect-valued-object-members.ts"),"utf8")
+ if(key==="constructor-reference"&&rawMode===0){const corpus=JSON.parse(readFileSync(join(root,"typescript/tsc/internal/vibelangfuzz/testdata/corpus/t3code-option-constructor-reference.json"),"utf8"));original=corpus.original;emitted=corpus.emitted}
  if(key==="traced-object"&&rawMode===0)original=readFileSync(join(root,"typescript/tsc/internal/vibelangfuzz/testdata/corpus/t3code-traced-effect-fn-record.ts"),"utf8")
- if(traced && rawMode&2){original=original.replaceAll("\n","\r\n");emitted=emitted.replaceAll("\n","\r\n")}
+ if((traced && rawMode&2)||(key.startsWith("constructor-")&&rawMode&8)){original=original.replaceAll("\n","\r\n");emitted=emitted.replaceAll("\n","\r\n")}
  for(const text of [original,emitted]){const errors=syntax(text);if(errors.length)throw Error("invalid model syntax: "+errors.join(","))}
- const stockDiagnostics=(key==="object"&&!mode)||(key==="traced-object"&&rawMode===0)?stockControl(original):undefined
+ const stockDiagnostics=(key==="object"&&!mode)||(key==="traced-object"&&rawMode===0)||(key==="constructor-reference"&&rawMode===0)?stockControl(original):undefined
  const checked=lostWrappers({ts,original,emitted})
  const names=checked.flags.map(f=>f.function)
- const verdict=expectedFlag?names.length===1&&names[0]==="/make":names.length===0
+ const verdict=expectedFlag?names.length===1&&names[0]===expectedName:names.length===0
  const expectedPaired=(key==="traced-object"||key==="traced-nested")?2:1
- const pairing=!traced||(checked.paired===expectedPaired&&checked.unpaired.length===0)
+ const pairing=key.startsWith("constructor-")?checked.paired>=1&&checked.unpaired.length===0:!traced||(checked.paired===expectedPaired&&checked.unpaired.length===0)
  const ok=verdict&&pairing
  result={ok,stockDiagnostics,expectedFlag,pairing,expectedPaired,rawMode,flags:checked.flags,unpaired:checked.unpaired,paired:checked.paired,original,emitted}
 }else throw Error("unknown model area")
