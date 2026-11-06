@@ -43,9 +43,13 @@ func fixProjectIn(t *testing.T, ctx context.Context, files map[string]string) *F
 	}
 	var names []string
 	for name := range files {
-		names = append(names, `"`+name+`"`)
+		if name != "package.json" {
+			names = append(names, `"`+name+`"`)
+		}
 	}
-	files["package.json"] = `{"type":"module"}`
+	if _, ok := files["package.json"]; !ok {
+		files["package.json"] = `{"type":"module"}`
+	}
 	if _, ok := files["tsconfig.json"]; !ok {
 		files["tsconfig.json"] = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"files":[` + strings.Join(names, ",") + `]}`
 	}

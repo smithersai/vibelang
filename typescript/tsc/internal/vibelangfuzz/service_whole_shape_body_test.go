@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const serviceWholeShapeBodyQuote = "A recognized service header missing its required body is `EK0906`."
@@ -79,6 +81,40 @@ func FuzzServiceWholeShapeBody(f *testing.F) {
 			Gap(t, "FuzzServiceWholeShapeBody", fmt.Sprintf("%s/%d", shape.key, variant),
 				"%s expected %d missing-body errors only; got %v\n%s", serviceWholeShapeBodyQuote, expected,
 				SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
+		}
+		if variant&1 != 0 {
+			return
+		}
+		// A migration meets this header in code an older compiler accepted, so --fix owns it.
+		config := toolsConfig(w, result.Dir)
+		if result.Program == nil || config == nil || len(config.Errors) != 0 {
+			t.Fatal("invalid generated project")
+		}
+		var fixed *vibelang.FixResult
+		within(t, "fix", func() {
+			fixed = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
+		})
+		text := ""
+		for name, file := range fixed.Files {
+			if strings.HasSuffix(name.AsString(), "main.vibe") {
+				text = file.Text
+			}
+		}
+		if fixed.Err != nil || !strings.Contains(text, "export service WholeShape: "+shape.text+" {}") {
+			Gap(t, "FuzzServiceWholeShapeBody", "fix:"+shape.key, "--fix left the header: err=%v\n%s", fixed.Err, text)
+			return
+		}
+		after, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": text, "package.json": servicesPackage}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer after.Remove()
+		for _, diagnostic := range after.Diagnostics {
+			if diagnostic.Category() == diagnostics.CategoryError {
+				Gap(t, "FuzzServiceWholeShapeBody", "fix-result:"+shape.key, "the fixed declaration fails: %v\n%s",
+					SortedKeys(Keys(after.Dir, after.Diagnostics)), text)
+				return
+			}
 		}
 	})
 }
