@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Formatting a `match` arm without its `;` stopped with an internal `formatting changed the program` error; it now reports `EK0701` at the arm and leaves the file unchanged.
 - The contributor release target could time out on a four-CPU machine because it ran eight test files at once. It now runs four.
 - The editor warned that a written `effect { }` block passed as the last argument needed a form annotation, with no fix to offer. The `effect` keyword now decides its form, so the warning no longer appears.
 - ESLint could treat a generated concurrency-limit cache as a source variable; the tree now marks that temporary while retaining user-written names and the original limit expression.

@@ -94,7 +94,7 @@ Commas between fields in `error` and `schema error` declarations remain commas a
 
 The plugin reports the file and leaves it unchanged when:
 
-- the file has a syntax error, reported as `vibelang format: line:column: message`;
+- the file has a syntax error, reported as `vibelang format: line:column: message`. This includes a `match` arm without its `;` (`EK0701`), because formatting would otherwise remove the error;
 - formatting would attach or remove JSDoc metadata, such as making an inline `@internal` comment hide a payload from a `.d.ts` file; choose whether the comment should apply before formatting.
 - formatting would change the program, a plugin bug: report it with the file.
 

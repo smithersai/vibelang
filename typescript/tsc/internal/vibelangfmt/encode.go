@@ -219,6 +219,9 @@ func encode(fileName, source string) (*encoding, error) {
 	if err := checkServiceCallSignatures(file, source); err != nil {
 		return nil, err
 	}
+	if err := checkMatchArmSeparators(file, source); err != nil {
+		return nil, err
+	}
 	sentinel := ""
 	for _, candidate := range sentinels {
 		if !strings.Contains(source, candidate) {
@@ -348,6 +351,29 @@ func checkServiceCallSignatures(file *ast.SourceFile, source string) error {
 	}
 	line, column := lineColumn(source, scanner.SkipTrivia(source, found.Pos()))
 	return fmt.Errorf("vibelang format: %d:%d: a call signature cannot be a service member (EK0902); declare a named method instead", line, column)
+}
+
+// checkMatchArmSeparators refuses a match arm without its ;. The parser keeps
+// the arm so the checker can report EK0701, but printing supplies the missing
+// separator, which would remove the error from the program.
+func checkMatchArmSeparators(file *ast.SourceFile, source string) error {
+	var found *ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsCallExpression(node) && node.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 &&
+			node.Expression().Text() == "$patternError" {
+			if arguments := node.Arguments(); len(arguments) > 0 && arguments[0].Text() == "701" {
+				found = node
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	if !file.AsNode().ForEachChild(visit) {
+		return nil
+	}
+	line, column := lineColumn(source, found.Pos())
+	return fmt.Errorf("vibelang format: %d:%d: each match arm ends in ;, the last one included (EK0701)", line, column)
 }
 
 // syntaxError reports a parse diagnostic with its line and column.

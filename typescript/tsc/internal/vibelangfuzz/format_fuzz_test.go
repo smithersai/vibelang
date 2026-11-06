@@ -409,6 +409,12 @@ func formatSyntaxError(source string) string {
 				at = node.Pos()
 				return true
 			}
+			// Appendix A: every arm ends with ;, the last one included.
+			if arguments := node.Arguments(); len(arguments) > 0 && arguments[0].Text() == "701" {
+				at = node.Pos()
+				reason = "EK0701, missing match arm separator"
+				return true
+			}
 		}
 		return node.ForEachChild(visit)
 	}
