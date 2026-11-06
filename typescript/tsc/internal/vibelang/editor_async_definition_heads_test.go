@@ -25,6 +25,17 @@ func TestEditorAsyncAwaitedDefinitions(t *testing.T) {
 		{"nested-async-class-control", "class Inner { async method() { return await input } }; return 1", 1},
 		{"nested-async-arrow-control", "const inner = async () => await input; return 1", 1},
 		{"computed-inner-async-control", "const item = { [(async () => await input).name]() { return 1 } }; return 1", 1},
+		{"operand-object-method", "const item = await Promise.resolve({ [await input]() { return 1 } }); return 1", 0},
+		{"operand-object-getter", "const item = await Promise.resolve({ get [await input]() { return 1 } }); return 1", 0},
+		{"operand-object-setter", "const item = await Promise.resolve({ set [await input](value: number) {} }); return 1", 0},
+		{"operand-class-method", "const item = await Promise.resolve(class { [await input]() { return 1 } }); return 1", 0},
+		{"operand-class-static-method", "const item = await Promise.resolve(class { static [await input]() { return 1 } }); return 1", 0},
+		{"operand-class-heritage", "const item = await Promise.resolve(class extends (await base) {}); return 1", 0},
+		{"operand-nested-heritage", "const item = await Promise.resolve(class extends (class extends (await base) {}) {}); return 1", 0},
+		{"operand-nested-async-method-control", "const item = await Promise.resolve({ async method() { return await input } }); return 1", 2},
+		{"operand-nested-async-class-control", "const item = await Promise.resolve(class { async method() { return await input } }); return 1", 2},
+		{"operand-nested-async-arrow-control", "const item = await Promise.resolve(async () => await input); return 1", 2},
+		{"operand-computed-inner-async-control", "const item = await Promise.resolve({ [(async () => await input).name]() { return 1 } }); return 1", 2},
 		{"outer-await-control", "const key = await input; const item = { [key]() { return 1 } }; return key", 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

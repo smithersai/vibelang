@@ -339,13 +339,14 @@ func asyncReturnsPromiseValue(c *checker.Checker, body *ast.Node) bool {
 	return visit(body)
 }
 
-// containsAwait reports whether node holds an await outside nested functions.
+// containsAwait includes definition heads evaluated in the enclosing function,
+// while nested callable bodies keep their own await context.
 func containsAwait(node *ast.Node) bool {
 	if node.Kind == ast.KindAwaitExpression {
 		return true
 	}
 	if isFunctionBoundary(node) {
-		return false
+		return asyncBoundaryHeadHasAwait(node)
 	}
 	return node.ForEachChild(containsAwait)
 }

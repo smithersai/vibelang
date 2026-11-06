@@ -279,7 +279,7 @@ A service-class fix requires a literal key. A dynamic key stays as written, incl
 
 Async conversion is not offered for a body containing a JavaScript `try` statement, `using` or `await using`. Rewrite its handlers and cleanup explicitly with Effect before converting; nested functions keep their own completion and disposal rules.
 
-Async conversion is withheld when an `await` evaluates a computed member name or a class’s `extends` expression. Those expressions run in the enclosing function; nested `async` bodies keep their own awaits. Simplify the definition’s awaited expressions before converting.
+Async conversion is withheld when an `await` evaluates a computed member name or a class’s `extends` expression. Those expressions run in the enclosing function; nested `async` bodies keep their own awaits. This also applies when the definition is inside another `await` operand, such as an object or class passed to `Promise.resolve`. Simplify the definition’s awaited expressions before converting.
 
 Async conversion requires each `await` operand to contain no further `await` from the same function. Simplify code such as `return await await input` before converting; nested functions keep their own `await` expressions.
 
