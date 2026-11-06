@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 
+- Contributor release checks repeated build command validation; they now share the checked result while preserving failures.
+
 - A choice between service keys could bypass the usual construction, inheritance and pattern checks. A union made entirely of service keys now reports the same misuse diagnostics as each key on its own.
 - Generated declarations for native `module` bodies could fail lint with `unicorn/require-module-specifiers` or formatting checks. Migration setup now excludes these compiler outputs while continuing to check authored implementation files.
 - An indexed generic type could hide a service key from construction, inheritance and class-pattern checks. Indexed constraints now retain the key's identity and report the usual misuse diagnostics.
@@ -27,14 +29,17 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Build-configuration checks could stop with a missing helper error; their fixtures now load the same input helpers as the build graph.
 - A `join` operand typed `any` or `never` could infer a collection-shaped value or impossible error type. It now infers the same result and error types as `Fiber.join`.
 - Build checks could miss a compiler command after an environment setting with spaces; they now check it and detect missing build flags.
+- Formatting a `match` arm without its `;` stopped with an internal `formatting changed the program` error; it now reports `EK0701` at the arm and leaves the file unchanged.
 - Build command checks reran after unrelated source or documentation edits; they now reuse successful results while still checking changed commands, timeouts and test inventories.
 - Bun scripts and tests could not load a migrated source through a `tsconfig.paths` alias ending in `.ts`; the preload now follows its `.vibe` sibling while preserving existing native files.
 
 - Migration setup could leave rewritten files unformatted because a formatter plugin was not installed yet. Setup now installs the selected dependencies before formatting, including when adding workspace packages.
 - Converting an `async` function could produce invalid code when a nested scope shadowed `Effect`; the editor now withholds the conversion until that binding is renamed.
+- Rerunning migration setup left a publication wrapper from an earlier release in place, so packed private imports lost their declarations. Setup now upgrades both wrapper forms.
 - Migration could stall after emitting JavaScript while a loader cache compilation kept running; each optional record now has a deadline, reports the affected project and elapsed time, and lets later projects continue.
 
 - Quoted, numeric and template `data` variant names reported a generic identifier error. They now report `EK1606` while retaining the following variants and declarations.
+- A payload after a malformed `data` variant name, such as `"Bad" { value: string }`, cascaded into unrelated errors and lost the following variants. The payload now stays with its variant, so the name reports only `EK1606`.
 - A service inside a namespace could lose native key helpers or report a required `Context` import as unused. Namespace services now resolve their runtime types and keep the imports their declarations use.
 - The contributor release target could time out on a four-CPU machine because it ran eight test files at once. It now runs four.
 - Tests using lazy Rolldown or esbuild imports on Bun `1.4.1` and `1.4.2` could not load native bundle graphs; their bundler preloads now route those imports through temporary modules.
