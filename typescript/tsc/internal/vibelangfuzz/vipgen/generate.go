@@ -324,10 +324,13 @@ func (g *Gen) finish(s *Scope, body []Stmt) []Stmt {
 	// Until the compiler types the success of a body that can only throw as
 	// never rather than void (vip04.throw-only-body), a body other than
 	// main's that ends in anything but a return ends inside `if (1 > 0)`,
-	// so that the return below follows it.
-	if !s.Fn.Void && !g.plain && ends(body) && (s.Fn.Name != "main" || s.Depth > 0) && !g.On("vip04.throw-only-body") {
-		if _, ok := body[len(body)-1].(*Return); !ok {
-			last := &If{Cond: &Compare{Op: ">", A: &Num{Value: 1}, B: &Num{Value: 0}}, Then: []Stmt{body[len(body)-1]}}
+	// so that the return below follows it. With that construct on, a throw
+	// may end the body, but a statement that only reads as ending it, such
+	// as a probe block, still needs the return.
+	if !s.Fn.Void && !g.plain && ends(body) && (s.Fn.Name != "main" || s.Depth > 0) {
+		final := body[len(body)-1]
+		if _, returned := final.(*Return); !returned && !(g.On("vip04.throw-only-body") && isThrow(final)) {
+			last := &If{Cond: &Compare{Op: ">", A: &Num{Value: 1}, B: &Num{Value: 0}}, Then: []Stmt{final}}
 			body = append(body[:len(body)-1:len(body)-1], last)
 		}
 	}
@@ -335,6 +338,14 @@ func (g *Gen) finish(s *Scope, body []Stmt) []Stmt {
 		body = append(body, &Return{Value: g.Num(s), Succeed: g.plain})
 	}
 	return body
+}
+
+func isThrow(st Stmt) bool {
+	switch st.(type) {
+	case *Throw, *PlainThrow:
+		return true
+	}
+	return false
 }
 
 func ends(body []Stmt) bool {

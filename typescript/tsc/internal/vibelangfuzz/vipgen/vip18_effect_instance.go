@@ -24,7 +24,7 @@ func init() {
 			if s.Depth >= maxDepth {
 				return nil
 			}
-			return g.finishProbe(s, allProjectInstance(g, g.Intn(8)))
+			return allProjectInstance(g, g.Intn(8))
 		},
 	})
 }

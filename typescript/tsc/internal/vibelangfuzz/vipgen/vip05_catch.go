@@ -275,8 +275,7 @@ func (t *PlainThrow) print(w *Writer) {
 
 // A catchEdge is a scoped block of fixed probe code. It prints a leading `;`
 // so its block always starts a new statement, whatever the statement before
-// it ends in. The generator reads it as ending its block, so a probe that can
-// reach its end needs finishProbe.
+// it ends in.
 type catchEdge struct {
 	vibe, ref string
 	n         int
@@ -287,15 +286,6 @@ func (p *catchEdge) Effect(w *Writer) {
 	w.Write(fmt.Sprintf(";{ ev(%q); %s }", fmt.Sprint(p.n), p.ref))
 }
 func (p *catchEdge) Ends() bool { return true }
-
-// finishProbe gives a probe that reaches its end the return its function needs.
-// The value is a constant, so the rest of the generated program is unchanged.
-func (g *Gen) finishProbe(s *Scope, probe Stmt) Stmt {
-	if s.Fn.Void || s.NoReturn {
-		return probe
-	}
-	return &Seq{Stmts: []Stmt{probe, &Return{Value: &Num{Value: 0}, Succeed: g.plain}}}
-}
 
 func init() {
 	Register(&Construct{

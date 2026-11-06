@@ -19,24 +19,19 @@ func TestConcurrentProjectEffectReferenceSyntax(t *testing.T) {
 	}
 }
 
-// Neither Effect-instance probe returns, but the generator reads it as ending
-// its block. A numeric function around one finished with void, and the caller's
-// arithmetic on the result did not compile.
-func TestEffectInstanceProbesReturnTheirFunctionValue(t *testing.T) {
+// A probe reads as ending its block but reaches its end. Under the throw-only
+// construct, a function around one finished with void, and the caller's arithmetic
+// on the result did not compile. Only a real throw may end a body without a value.
+func TestFinishKeepsTheValueOfABodyThatEndsInAProbe(t *testing.T) {
 	g := &Gen{c: chooser{data: []byte{1, 2, 3}}, used: map[string]bool{}, modules: map[string]bool{}, files: map[string]string{}, imports: map[string][]string{}, narrowed: map[string]int{}}
-	for _, probe := range []Stmt{allProjectInstance(g, 0), concurrentProjectInstance(g, 0)} {
-		seq, ok := g.finishProbe(&Scope{Fn: &Func{}}, probe).(*Seq)
-		if !ok {
-			t.Fatal("a numeric function needs a return after its probe")
-		}
-		if _, ok := seq.Stmts[len(seq.Stmts)-1].(*Return); !ok {
-			t.Fatalf("last statement is %T, want a return", seq.Stmts[len(seq.Stmts)-1])
-		}
-		if g.finishProbe(&Scope{Fn: &Func{Void: true}}, probe) != probe {
-			t.Error("a void function needs no value")
-		}
-		if g.finishProbe(&Scope{Fn: &Func{}, NoReturn: true}, probe) != probe {
-			t.Error("a scope that forbids return must keep the bare probe")
-		}
+	g.on = []*Construct{Lookup("vip04.throw-only-body")}
+	s := &Scope{Fn: &Func{Name: "f"}}
+	body := g.finish(s, []Stmt{allProjectInstance(g, 0)})
+	if _, ok := body[len(body)-1].(*Return); !ok {
+		t.Fatalf("a probe's body ends in %T, want a return", body[len(body)-1])
+	}
+	thrown := g.finish(s, []Stmt{&Throw{Value: &Num{Value: 1}}})
+	if len(thrown) != 1 {
+		t.Fatalf("a throw-only body must stay as written, got %d statements", len(thrown))
 	}
 }
