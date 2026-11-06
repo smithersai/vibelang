@@ -509,6 +509,19 @@ func reportValuePattern(c *checker.Checker, matcher *ast.Node) bool {
 	return true
 }
 
+// isValuePattern reports whether reportValuePattern rejects matcher. EK0702
+// already names the mistake, so its arm takes no instanceof narrowing, which
+// would add a second error for each field the arm reads.
+func isValuePattern(c *checker.Checker, matcher *ast.Node) bool {
+	if matcher == nil || !(ast.IsIdentifier(matcher) || ast.IsPropertyAccessExpression(matcher)) {
+		return false
+	}
+	if _, _, variant := dataVariantOf(c, matcher); variant {
+		return true
+	}
+	return isDataConstructors(c, c.TypeOfPatternMatcher(matcher)) || isDeclaredSchemaReference(c, matcher) || isContextReference(c, matcher)
+}
+
 // isContextReference reports whether matcher's type is Effect's
 // Context.Reference, which carries the "~effect/Context/Reference" key.
 func isContextReference(c *checker.Checker, matcher *ast.Node) bool {

@@ -19,7 +19,7 @@ import (
 
 func init() {
 	checker.RegisterPatternInstanceofHook(func(c *checker.Checker, matcher *ast.Node) bool {
-		return !hasOwnPatternMatcher(c, c.TypeOfPatternMatcher(matcher))
+		return !isValuePattern(c, matcher) && !hasOwnPatternMatcher(c, c.TypeOfPatternMatcher(matcher))
 	})
 	checker.RegisterFlowNarrowingHook(narrowOpenClassArm)
 	checker.RegisterFlowNarrowingHook(narrowUncoveredArm)
