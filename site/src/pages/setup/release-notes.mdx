@@ -35,6 +35,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The TypeScript-file guide claimed stock tools always reject VibeLang or preserve its meaning. It now explains that prelude names can compile successfully with different bindings.
 
 - Preparing a release could report the upcoming TypeScript replacement package as unavailable. It now recognizes the prepared source version without treating it as published.
+- Hosted contributor checks had to prepare compiler tests absent from the warm cache. Cache preparation now includes those tests.
 
 - Editor formatting could hang on a marked `.mts`, `.cts` or `.tsx` file. Formatting now returns normally and keeps the directive.
 
