@@ -586,6 +586,11 @@ The `//:spec-tests` target runs `go test -json` through
 failures, and `go-progress` records appear immediately, every ten seconds, at
 package boundaries and on exit. Each record includes a run identifier,
 elapsed time and counts of started and finished packages and tests.
+The target uses the shared graph check deadline. Its regression reads that
+default from the actual check factory and verifies the target retains it;
+changing the default does not leave a stale deadline assertion. Missing,
+unbounded and mismatched deadlines still fail the check.
+
 
 On Linux, a bounded sample of the child process tree reports executable kinds:
 `launcher`, `go`, `compile`, `link`, `test` and `other`. A `launcher` phase with no
