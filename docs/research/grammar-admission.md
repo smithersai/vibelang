@@ -532,3 +532,10 @@ assertion. Provider expressions, commas, nested object literals and
 line-break restrictions keep their original production rules. The probe
 disables keyword marking to avoid recursively classifying its own prefix;
 the complete program still derives with all prose restrictions.
+
+Mixed `async` and `effect` schema-field modifiers share the existing
+`admission:schema-async-field` gap when schema mapping reports only `EK2109`.
+The key scanner follows the whole modifier prefix, including duplicates and
+`readonly` or `static` prefixes, before checking for a typed field. Methods,
+modifier words used as field names and nested native members remain separate
+controls. The keyed witness and original token mutation retain this boundary.

@@ -148,6 +148,8 @@ const specTests = [
   "TestGrammarAdmissionSchemaStaticRegression",
   "TestGrammarAdmissionSchemaAsyncKeys",
   "TestGrammarAdmissionSchemaAsyncRegression",
+  "TestGrammarAdmissionSchemaMixedModifierKeys",
+  "TestGrammarAdmissionSchemaMixedModifierRegression",
   "TestGrammarAdmissionMetaPropertyKeys",
   "TestGrammarAdmissionMetaPropertyNative",
   "TestGrammarAdmissionMetaPropertyRegression",

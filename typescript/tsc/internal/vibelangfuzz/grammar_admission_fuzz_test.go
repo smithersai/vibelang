@@ -226,6 +226,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-instantiation-block-asi", "schema\nC < T >\n{ a :\nT\nT }"},
 	{"schema-interruption-name", "schema uninterruptible { effect id : join }"},
 	{"provide-identifier-head", "provide is is is is as join\n[\n]"},
+	{"schema-mixed-async-effect-field", "schema S { async async effect id : Missing }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

@@ -55,8 +55,9 @@ func grammarSchemaModifiedField(ts []grammarToken, modifier string) bool {
 			if depth == 1 && start {
 				hasModifier := false
 			modifiers:
-				// Native static modifiers may span a line break; async and readonly may not.
-				for at+1 < len(ts) && (!ts[at+1].nl || ts[at].text == "static") && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static") {
+				// Native static modifiers may span a line break; the other modifiers may not.
+				// Mixed effect modifiers retain the same mapped-field diagnostic gap.
+				for at+1 < len(ts) && (!ts[at+1].nl || ts[at].text == "static") && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static" || ts[at].text == "effect") {
 					// The last keyword may itself be the property name.
 					switch ts[at+1].text {
 					case ":", "?", "(", "<":
