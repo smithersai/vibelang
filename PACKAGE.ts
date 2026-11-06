@@ -443,10 +443,15 @@ const grammarAdmission = S.Generate({
   data: [tree],
   sandbox: "none"
 })
+const grammarAuthority = check(
+  "Whole-shape service census entries retain their accepted grammar authority.",
+  "node scripts/check-grammar-authority.mjs && node --test scripts/grammar-authority.test.mjs",
+  [], [node], "1m"
+)
 const grammarAdmissionCheck = check(
   "Every grammar admission table matches its reviewed census source.",
   "node scripts/generate-grammar-admission.mjs --check",
-  [], [node]
+  [grammarAuthority], [node]
 )
 
 const specLint = S.Shell.Test({
@@ -615,6 +620,7 @@ const targets = {
   "spec-linters-test": specLinterTests,
   "grammar-admission": grammarAdmission,
   "grammar-admission-check": grammarAdmissionCheck,
+  "grammar-authority": grammarAuthority,
   "spec-retirement-gate": retirementGate,
   "go-vibelangfuzz-hangs": pendingHangs,
   "docs-schema-defaults": check(

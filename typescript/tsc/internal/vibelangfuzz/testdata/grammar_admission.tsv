@@ -17,7 +17,7 @@ parser/vibelang.go:Parser.vibelangReadonly	admission:mutable-default	-	pending	V
 parser/vibelang.go:Parser.parseVibeLangEffectType	admission:effect-type	900-appendices.md#EffectType	support	VIP-3 type shorthand and slots
 parser/vibelang.go:Parser.parseVibeLangSlot	admission:effect-type	900-appendices.md#EffectOperand	support	Appendix A: EffectOperand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang.go:Parser.parseVibeLangSlotType	admission:effect-type	900-appendices.md#EffectOperand	support	Appendix A: EffectOperand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
-parser/vibelang.go:Parser.parseServiceDeclaration	admission:service	900-appendices.md#ServiceDeclaration	admitted	VIP-9; legacy control and custom shape branches remain pending
+parser/vibelang.go:Parser.parseServiceDeclaration	admission:service	900-appendices.md#ServiceDeclaration	admitted	VIP-9 member-body and written whole-shape services; legacy control branches remain pending
 parser/vibelang.go:Parser.parseLayerDeclaration	admission:layer-declaration	-	pending	No accepted VIP adopts layer declarations
 parser/vibelang.go:Parser.parseVibeLangEntityExpression	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
 parser/vibelang.go:Parser.scanLayerValueStart	admission:layer-declaration	-	pending	No accepted VIP adopts layer declarations
@@ -268,7 +268,7 @@ parser/vibelang_schema_tuple.go:Parser.schemaTupleUnion	admission:schema	900-app
 parser/vibelang_schema_tuple.go:Parser.schemaTupleUndefined	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
 parser/vibelang_schema_tuple.go:vibelangSchemaRestElement	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
 parser/vibelang_service_heritage.go:Parser.skipVibeLangServiceHeritage	admission:service-heritage	900-appendices.md#ServiceDeclaration	recovery	VIP-9 forbidden heritage diagnostic recovery
-parser/vibelang_service_type.go:Parser.parseServiceShapeDeclaration	admission:service-shape	-	pending	VIP-9 admits member body only, not service Name: Shape
+parser/vibelang_service_type.go:Parser.parseServiceShapeDeclaration	admission:service-shape	900-appendices.md#ServiceDeclaration	admitted	VIP-9 accepts a written whole shape with a required body containing only `key` and `defaultValue` members
 parser/vibelang_syntax.go:ParseVibeLangSyntax	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
 parser/vibelang_syntax.go:Parser.recordVibeSyntax	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
 parser/vibelang_syntax.go:Parser.vibelangSyntaxCount	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
