@@ -181,6 +181,8 @@ export function intermittent(runs, testsOf) {
 // runners the graph uses: bun, node --test, go test and the compiler case
 // harness (typescript/vibelang/harness.mjs).
 export function failedTests(lines) {
+  // Node marks a test even when its skip or todo reason is an empty string.
+  const marked = flag => typeof flag === "string" || Boolean(flag)
   const out = new Set()
   for (const line of lines) {
     // Compiler and migration reporters retain nested and cancelled failures.
@@ -190,7 +192,7 @@ export function failedTests(lines) {
       try {
         const item = JSON.parse(record[2])
         const event = record[1] === "node-test" ? "failure" : "test-failed"
-        if (item?.event === event && !item.todo && !item.skip &&
+        if (item?.event === event && !marked(item.todo) && !marked(item.skip) &&
             typeof item.name === "string" && item.name.trim()) out.add(item.name)
       } catch { /* A truncated record must not invent a failed test. */ }
       continue

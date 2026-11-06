@@ -10,3 +10,5 @@ test("nested group", async t => {
 test("bounded unfinished check", { timeout: 25 }, () => failing ? new Promise(() => {}) : undefined)
 test("skipped control", { skip: "intentional skip" }, () => { throw new Error("SKIP_CONTROL") })
 test("todo control", { todo: "intentional todo" }, () => { throw new Error("TODO_CONTROL") })
+test("empty todo reason", { todo: "" }, () => { throw new Error("EMPTY_TODO_CONTROL") })
+test("empty skip reason", { skip: "" }, () => { throw new Error("EMPTY_SKIP_CONTROL") })

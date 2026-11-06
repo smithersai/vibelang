@@ -11,6 +11,8 @@ const record = item => "[node-test] " + JSON.stringify(item)
 test("real compiler reporter names nested and cancelled failures while excluding todos", () => {
   const lines = targetLines(readFileSync(new URL("../fixture-node-reporter/run-01-graph.log", import.meta.url), "utf8"), "//packages:compiler-test-2")
   assert.ok(lines.some(line => line.includes('"event":"failure"')), "use actual reporter output")
+  assert.ok(lines.some(line => line.includes('"todo":""')), "actual empty todo reason")
+  assert.ok(lines.some(line => line.includes('"skip":""')), "actual empty skip reason")
   assert.deepEqual(failedTests(lines), expected)
   const passing = targetLines(readFileSync(new URL("../fixture-node-reporter/run-02-graph.log", import.meta.url), "utf8"), "//packages:compiler-test-2")
   assert.ok(passing.some(line => line.includes("TODO_CONTROL")), "a todo failure is still in the real output")
@@ -21,11 +23,11 @@ test("structured failure names survive generated JSON escapes, duplicates and sk
   fc.assert(fc.property(fc.array(fc.record({
     name: fc.string({ minLength: 1, maxLength: 80 }).filter(name => name.trim().length > 0),
     event: fc.constantFrom("failure", "progress", "diagnostic", "summary"),
-    todo: fc.constantFrom(false, true, "future control"),
-    skip: fc.constantFrom(false, true, "skip control")
+    todo: fc.constantFrom(false, true, "", "future control"),
+    skip: fc.constantFrom(false, true, "", "skip control")
   }), { minLength: 1, maxLength: 30 }), items => {
     const lines = items.flatMap(item => [record(item), record(item)])
-    const want = [...new Set(items.filter(item => item.event === "failure" && !item.todo && !item.skip).map(item => item.name))]
+    const want = [...new Set(items.filter(item => item.event === "failure" && item.todo === false && item.skip === false).map(item => item.name))]
     assert.deepEqual(failedTests(lines), want)
   }), { seed: 322, numRuns: 100 })
 })

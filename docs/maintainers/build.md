@@ -1083,7 +1083,7 @@ tests and causes behind each flaky target, and names each test that failed
 again after its target passed, which catches post-merge flakes whose keys
 change every run: `.smithers/flows/ci-health/README.md`.
 
-Migration failure names come from the `[migrate-test]` reporter's `test-failed` records. Health reports include nested and cancelled tests, retain escaped names, and exclude skipped and todo failures. The `migrate-reporter` eval executes the actual flow on four real reporter runs with exact expected failure and returning-test names.
+Migration failure names come from the `[migrate-test]` reporter's `test-failed` records. Health reports include nested and cancelled tests, retain escaped names, and exclude skipped and todo failures. A `skip` or `todo` reason of `""` still marks an expected failure, as it does in Node. The `migrate-reporter` eval executes the actual flow on four real reporter runs with exact expected failure and returning-test names.
 
 ## Finding the commit that broke a target
 

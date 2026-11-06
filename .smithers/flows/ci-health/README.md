@@ -42,6 +42,9 @@ Compiler shards emit `[node-test]` JSON records through
 `scripts/testing/node-failures.mjs`. The analyzer reads their failure names,
 including nested and cancelled tests, while excluding skipped and todo tests.
 Escaped names retain their original text; incomplete records supply no test name.
+A `skip` or `todo` reason string marks a test even when it is `""`, matching
+Node's successful exit and skipped/todo counts. Both reporter fixtures include
+actual executions of these empty-reason controls.
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`
 events with the same name, skip and todo rules. Legacy Bun, Node, Go and
