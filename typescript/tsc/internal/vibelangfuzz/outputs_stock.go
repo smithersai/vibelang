@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -39,8 +40,23 @@ var stockTypeScript = sync.OnceValues(func() (string, error) {
 	if _, err := os.Stat(tsc); err != nil {
 		return "", fmt.Errorf("stock TypeScript %s is not installed at %s; see CONTRIBUTING.md for the existing optional stock-compiler setup: %w", version, tsc, err)
 	}
-	return tsc, nil
+	return stockExecutable(tsc), nil
 })
+
+// stockExecutable returns the platform binary that the installed tsc launcher
+// replaces itself with, or tsc when the install has none. A target starts stock
+// tsc hundreds of times, and each Node start is charged to its CPU limit.
+func stockExecutable(tsc string) string {
+	arch := runtime.GOARCH
+	if arch == "amd64" {
+		arch = "x64"
+	}
+	native := filepath.Join(filepath.Dir(filepath.Dir(tsc)), "@typescript", "typescript-"+runtime.GOOS+"-"+arch, "lib", "tsc")
+	if _, err := os.Stat(native); err != nil {
+		return tsc
+	}
+	return native
+}
 
 var stockCode = regexp.MustCompile(`\b(?:error|warning) TS(\d+):`)
 
