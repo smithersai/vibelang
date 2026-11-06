@@ -78,4 +78,5 @@ Rule names are stable. A test cites them.
 | Two independent consumers, and bundlers, over generated programs | `programs.property.test.mjs` |
 | Independent paused function and statement, with swapped-map controls | `inspector.test.mjs` |
 | Metro, Babel, React Compiler and Oxc | `//packages:compiler-tools-test`, a dependency of `//packages:source-map-tools-test` |
+| Independent paused function and statement, with swapped-map controls | `inspector.test.mjs` |
 | One test per tool | `packages/compiler/test/source-maps/`, target `//packages:source-map-tools-test` |
