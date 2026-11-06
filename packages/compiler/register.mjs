@@ -1,3 +1,4 @@
+import { inlineSourceMap } from "./inline-source-map.mjs"
 import { rememberSourceMap } from "./source-map-frames.mjs"
 import { loaderScope } from "./loader-scope.mjs"
 import { extensionlessImport } from "./relative-imports.mjs"
@@ -213,13 +214,11 @@ registerHooks({
     const sources = map.sources.map((source) => pathToFileURL(source).href)
     const payload = { ...map, sources }
     rememberSourceMap(url, payload)
-    const inline = Buffer.from(JSON.stringify(payload)).toString("base64")
     spent.modules++
     spent.load += since(started) - (spent.compile - compile)
     return {
       format: "module",
-      // Split, so tools that read this file for its own source map skip the template.
-      source: `${code}\n//# sourceMapping${"URL"}=data:application/json;base64,${inline}\n`,
+      source: `${code}\n${inlineSourceMap(payload)}\n`,
       shortCircuit: true
     }
   }

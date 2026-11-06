@@ -1,6 +1,7 @@
 import { loaderScope } from "./loader-scope.mjs"
 import Module, { createRequire } from "node:module"
 import { exportsDefault } from "./bun-export-surface.mjs"
+import { inlineSourceMap } from "./inline-source-map.mjs"
 import { extensionlessImport, pathSpecifier } from "./relative-imports.mjs"
 import { reexportOf, sourceOfEmitted } from "./emitted-js.mjs"
 import { aliasImport } from "./paths-imports.mjs"
@@ -243,8 +244,7 @@ function needsTranspiler(code) {
 function withSourceMap({ contents, loader }, map) {
   if (map === undefined || needsTranspiler(contents)) return { contents, loader }
   // The mark is a line above the code the map describes.
-  const inline = Buffer.from(JSON.stringify({ ...map, mappings: ";" + map.mappings })).toString("base64")
-  return { contents: `// @bun\n${contents}\n//# sourceMappingURL=data:application/json;base64,${inline}\n`, loader: "js" }
+  return { contents: `// @bun\n${contents}\n${inlineSourceMap({ ...map, mappings: ";" + map.mappings })}\n`, loader: "js" }
 }
 
 Bun.plugin({

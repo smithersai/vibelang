@@ -357,7 +357,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           const id = resolveId(args.path, entry ? undefined : args.importer)
           return id === undefined ? undefined : { path: id }
         })
-        // Bun ignores plugin source maps, so the module is its JavaScript alone.
+        // Bun.build ignores a plugin's source map, so the module is its JavaScript alone.
         build.onLoad({ filter: /\.vibe(?:\.[^./\\]+\.js)?(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
           const { code, errors, warnings, error } = await loadModule(path)

@@ -60,6 +60,7 @@
     "temporary.mjs",
     "diagnostics.mjs",
     "loader-scope.mjs",
+    "inline-source-map.mjs",
     "dprint-plugin.json",
     "eslint.mjs",
     "oxlint.mjs",
