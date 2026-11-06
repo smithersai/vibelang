@@ -2289,6 +2289,17 @@ export async function verify(options) {
   return result
 }
 
+/**
+ * A batch whose every module went back to TypeScript for a recorded cause. Verify
+ * passed all but `migrated`, which no such batch can pass, so record keeps its
+ * outcome. Nothing is excused: any other failed gate leaves it unrecorded.
+ */
+function revertedWhole(verified, files, reverted) {
+  return Boolean(verified?.checks) && files.length > 0 &&
+    files.every(file => !file.migrated && reverted.some(entry => entry.file === file.planned)) &&
+    Object.entries(verified.checks).every(([name, passed]) => passed || name === "migrated")
+}
+
 /** record: commit the batch with jj and record its tokens before and after. */
 export async function record(options) {
   assertBaselineSafe(paths(options.run))
@@ -2297,9 +2308,10 @@ export async function record(options) {
   if (existsSync(p.record(b))) return readJson(p.record(b))
   bindCompilerArtifact(config, p, { resume: true })
   let verified = readJsonIf(p.verify(b))
-  if (!verified?.ok && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
   const t = config.target
   const files = batchFiles(config, thePlan, b)
+  const nothingKept = result => revertedWhole(result, files, readJsonIf(p.reverted(b), []))
+  if (!verified?.ok && !nothingKept(verified) && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
   // A journal's originals are what the conversion read. A run with no journal has no record to compare: the push gate refuses those modules.
   const originals = readJsonIf(p.codemodState(b))?.originals
   const manifest = originals ? manifestOf(originals, producerOf(config.toolchain)) : null
@@ -2330,8 +2342,8 @@ export async function record(options) {
     const testDiffBeforeCertification = await testEdits(config, p, thePlan, b, typeScriptOf(config))
     if (!testDiffBeforeCertification.ok) throw new Error(`batch ${b}: forbidden test/fixture edits; see ${join(p.batch(b), "test-diff.md")}; revert the edit or leave its module TypeScript`)
     verified = await verify({ run: options.run, batch: b })
-    if (thePlan.mode === "one-pass" && (!verified.ok || !verified.measurement?.ok)) throw new Error("record refused: final candidate fails tests against main/previous or another verify gate")
-    if (!verified.ok && !options.force) {
+    if (thePlan.mode === "one-pass" && ((!verified.ok && !nothingKept(verified)) || !verified.measurement?.ok)) throw new Error("record refused: final candidate fails tests against main/previous or another verify gate")
+    if (!verified.ok && !nothingKept(verified) && !options.force) {
       throw new Error(`batch ${b} failed verify after formatting; inspect ${p.verify(b)} before recording`)
     }
   }
@@ -2351,7 +2363,7 @@ export async function record(options) {
     "",
     ...migrated.flatMap(r => r.warningExceptions.map(e => `Exception ${e.name}: ${e.code} ${e.file}:${e.line}:${e.column}: ${e.reason}`)),
     `Tokens (o200k) of the migrated files: ${before} -> ${now} (${tokens.percent ?? 0}%).`,
-    `Verify: ${verified?.ok ? verificationDescription(verified) : `forced: ${options.force}`}.`
+    `Verify: ${verified?.ok ? verificationDescription(verified) : nothingKept(verified) ? "every gate passed; no module kept" : `forced: ${options.force}`}.`
   ]
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   // Formatters and sidecar emission run after verify. Recheck the exact tree
@@ -2376,7 +2388,8 @@ export async function record(options) {
     verificationRefreshed,
     testDiff,
     sourceDigests: manifest ? manifest.modules.length : null,
-    forced: verified?.ok ? null : options.force
+    forced: verified?.ok || nothingKept(verified) ? null : options.force,
+    ...(nothingKept(verified) ? { nothingKept: true, causes: rows.map(row => ({ file: row.planned, reason: reverted.find(entry => entry.file === row.planned).reason })) } : {})
   }
   writeJson(p.record(b), result)
   return result

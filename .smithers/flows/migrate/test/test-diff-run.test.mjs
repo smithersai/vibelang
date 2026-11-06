@@ -1,6 +1,6 @@
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
@@ -99,6 +99,36 @@ test("recorded selector/import proof is included in the PR body artifact", async
   assert.equal(data.testDiffs.length, 1)
   assert.match(readFileSync(p.prBody, "utf8"), /test\/x.test.ts/)
   assert.match(readFileSync(p.prBody, "utf8"), /specifier/)
+}))
+
+// Every module of the batch went back to TypeScript, as settle leaves it.
+async function revertedBatch(target, p) {
+  renameSync(join(target, "src/X.vibe"), join(target, "src/X.ts"))
+  put(target, "test/x.test.ts", 'import { f } from "../src/X.ts"\nexpect(f()).toBe(1)\n')
+  writeJson(p.reverted("01"), [{ file: "src/X.ts", reason: "compile error: EK0402 a function that may throw" }])
+  writeJson(p.codemod("01"), { ...readJson(p.codemod("01")), renames: [] })
+}
+const onlyMigrated = { tests: true, packs: true, newErrors: true, migrated: false }
+test("record keeps a batch settle reverted whole, with its causes and no forced reason", async () => fixture(async ({ target, run, p }) => {
+  await revertedBatch(target, p)
+  writeJson(p.verify("01"), { ok: false, checks: onlyMigrated })
+  const result = await record({ run, batch: "01" })
+  assert.equal(result.nothingKept, true)
+  assert.equal(result.forced, null)
+  assert.deepEqual(result.causes, [{ file: "src/X.ts", reason: "compile error: EK0402 a function that may throw" }])
+  assert.deepEqual(result.files.map(file => file.migrated), [false])
+  assert.equal(readJson(p.record("01")).tokens.after, 0)
+}))
+test("record refuses a kept-nothing batch with another failed gate or no recorded cause", async () => fixture(async ({ target, run, p }) => {
+  await revertedBatch(target, p)
+  for (const failed of ["tests", "packs", "newErrors"]) {
+    writeJson(p.verify("01"), { ok: false, checks: { ...onlyMigrated, [failed]: false } })
+    await assert.rejects(record({ run, batch: "01" }), /has not passed verify/, failed)
+  }
+  writeJson(p.verify("01"), { ok: false, checks: onlyMigrated })
+  writeJson(p.reverted("01"), [])
+  await assert.rejects(record({ run, batch: "01" }), /has not passed verify/)
+  assert.equal(existsSync(p.record("01")), false)
 }))
 
 test("verify fails a batch even when all target tests and compiler checks pass", async () => fixture(async ({ target, run, p }) => {
