@@ -448,6 +448,28 @@ test("a timed-out config is not retried after restarting the same pass", async (
   } finally {rmSync(f.root,{recursive:true,force:true})}
 })
 
+test("settle refreshes the routes a revert dropped before it blames a kept module", async () => {
+  const f = await fixture()
+  try {
+    const config = readJson(paths(f.run).config)
+    config.routeBundledImports = true
+    writeJson(paths(f.run).config, config)
+    await onePassStep("plan", { run: f.run, scope: f.scope })
+    await onePassStep("rename", { run: f.run, jobs: 2 })
+    const routes = join(f.target, "node_modules/routes.current")
+    writeFileSync(f.compiler, readFileSync(f.compiler, "utf8").replace('if (pkg === "consumer")', `
+if (args.join(" ").includes("--noEmit false")) fs.writeFileSync(${JSON.stringify(routes)}, "current")
+else if (pkg === "app" && !core && !fs.existsSync(${JSON.stringify(routes)})) { console.log("src/extra.ts(1,20): error TS5097: An import path can only end with a '.vibe' extension when 'allowImportingTsExtensions' is enabled."); process.exitCode = 1 }
+if (pkg === "consumer")`))
+    const settled = await onePassStep("settle", { run: f.run, jobs: 2 })
+    assert.equal(settled.settled, true)
+    assert.deepEqual(Object.keys(settled.causes), ["core/src/index.vibe"])
+    assert.deepEqual(settled.rounds.map(round => round.attribution), ["own-file", "routes-refreshed", "dependencies"])
+    assert.equal(existsSync(join(f.target, "app/src/index.vibe")), true)
+    assert.equal(existsSync(routes), true)
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
 test("repository regeneration hooks run before each settle check and fail loudly",async()=>{
   const f=await fixture()
   try {

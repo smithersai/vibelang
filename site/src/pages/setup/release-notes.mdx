@@ -19,6 +19,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A test or build killed while a `.vibe` module compiled could leave a native compiler running, each holding gigabytes of memory. The compiler now stops when the process that started it exits.
 
+- Migrating a repository with routed bundle imports could revert healthy modules: each revert dropped the routes, and the import errors that left were blamed on modules that had none. Settle now emits again before it blames a kept module.
+
 - Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
 
 - Migrating a generator with nested pipelines could crash or corrupt the rewrite; `vibelang --fix` now preserves nested receiver and stage-callback changes when capturing the surrounding pipeline.

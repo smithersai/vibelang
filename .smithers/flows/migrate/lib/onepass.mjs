@@ -6,7 +6,7 @@ import { applyState, prepareState, saveState, durableWrite } from "./codemod-sta
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { platformCausesOf } from "./platform.mjs"
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
@@ -20,7 +20,7 @@ import { bareRunnerDeferrals } from "./bare-runners.mjs"
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
 import { bindCompilerArtifact, readToolchain } from "./toolchain.mjs"
-import { aliasesOf, paths, importers, plainGroupsOf, revertMany } from "./steps.mjs"
+import { aliasesOf, emitMigratedJs, paths, importers, plainGroupsOf, revertMany } from "./steps.mjs"
 import { regenerate } from "./hooks.mjs"
 import * as Jj from "./jj.mjs"
 import { appendJsonl, isDeclarationFile, quote, readJson, readJsonIf, run, slug, writeJson } from "./util.mjs"
@@ -288,6 +288,10 @@ async function settle(config, p, cm, options) {
   const maxRounds = positive(options.rounds, 12, "rounds")
   const causes = readJsonIf(join(p.batch("01"), "settle-causes.json"), {})
   const history = [], reverted = new Set()
+  // A revert restores every routed TypeScript import, so foreign diagnostics
+  // after it say nothing about the modules that remain until emission routes
+  // them again.
+  let routesStale = false
   for (let round = 1; round <= maxRounds; round++) {
     await regenerate(config, p, "settle-" + round)
     const checks = await checkProjects(config, p, options)
@@ -299,8 +303,20 @@ async function settle(config, p, cm, options) {
       return [...newErrors(base.diagnostics, c.diagnostics).filter(d => !/\.vibex?$/.test(d.file ?? "")), ...c.diagnostics.filter(d => d.category === "error" && /\.vibex?$/.test(d.file ?? "")), ...styleProblems(c.diagnostics, [...new Set(c.diagnostics.map(d => d.file).filter(f => /\.vibex?$/.test(f ?? "")))])]
     })
     const live = new Set(cm.renames.map(r => r.to).filter(f => existsSync(join(config.target, f))))
+    const own = added.filter(d => live.has(d.file))
+    if (routesStale && !own.length && added.length) {
+      const logs = join(p.batch("01"), "logs")
+      mkdirSync(logs, { recursive: true })
+      const packages = config.packages.filter((pkg, i, all) => all.findIndex(other => other.dir === pkg.dir) === i)
+      await emitMigratedJs({ ...config, packages }, config.target, logs)
+      routesStale = false
+      const receipt = { round, errors: added.length, own: 0, attribution: "routes-refreshed", reverting: [] }
+      history.push(receipt)
+      appendJsonl(join(p.batch("01"), "progress.jsonl"), { at: new Date().toISOString(), stage: "settle", ...receipt })
+      if (round < maxRounds) continue
+    }
     const graph = await moduleGraph(config, p)
-    const bad = new Map(), own = added.filter(d => live.has(d.file))
+    const bad = new Map()
     const same = own.length ? new Set() : identicalDeclarations(config, p, cm)
     // Retry every direct diagnostic owner before inferring foreign fallout.
     // A TS root can cause EK lint fallout in its importers, so code prefixes
@@ -333,6 +349,7 @@ async function settle(config, p, cm, options) {
     }
     writeJson(join(p.batch("01"), "settle-causes.json"), causes)
     await revertMany({ run: p.run, batch: "01", files: requests })
+    routesStale = Boolean(config.routeBundledImports)
     for (const file of roots) {
       if (existsSync(join(config.target, file)) || !existsSync(join(config.target, (cm.renames.find(r => r.to === file)?.from ?? file.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts"))))) throw new Error("settle revert did nothing: " + file)
       reverted.add(file)
