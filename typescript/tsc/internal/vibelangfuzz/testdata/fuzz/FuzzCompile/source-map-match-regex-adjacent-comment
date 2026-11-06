@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function f(n: 0) { return match (n) { when 0: /x//* tail */ } }\n")

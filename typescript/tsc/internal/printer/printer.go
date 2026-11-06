@@ -1639,7 +1639,7 @@ func (p *Printer) emitFunctionBody(body *ast.Block) {
 
 	// !!! Emit comment after Strada migration
 	////p.emitTokenEx(ast.KindCloseBraceToken, body.Statements.End(), WriteKindPunctuation, body.AsNode(), tefNone)
-	p.emitTokenEx(ast.KindCloseBraceToken, body.Statements.End(), WriteKindPunctuation, body.AsNode(), tefNoComments)
+	p.emitBlockCloseBrace(body.AsNode(), body.Statements, tefNoComments)
 
 	if p.OnAfterEmitNode != nil {
 		p.OnAfterEmitNode(body.AsNode())
@@ -3438,6 +3438,21 @@ func (p *Printer) isEmptyBlock(block *ast.Node, statements *ast.StatementList) b
 		(p.currentSourceFile == nil || rangeEndIsOnSameLineAsRangeStart(block.Loc, block.Loc, p.currentSourceFile))
 }
 
+// emitBlockCloseBrace keeps a block the parser or a lowering made from borrowing
+// a token past its source form: only a written brace inside the block supplies
+// a position and comments. A function body has its own emitter and this rule.
+func (p *Printer) emitBlockCloseBrace(block *ast.Node, statements *ast.StatementList, flags tokenEmitFlags) {
+	pos := statements.End()
+	if p.currentSourceFile != nil && pos >= 0 && block.End() >= 0 {
+		sourcePos := scanner.SkipTrivia(p.currentSourceFile.Text(), pos)
+		if sourcePos >= block.End() || !p.sourceHasTokenAt(ast.KindCloseBraceToken, sourcePos) {
+			pos = -1
+			flags |= tefNoComments
+		}
+	}
+	p.emitTokenEx(ast.KindCloseBraceToken, pos, WriteKindPunctuation, block, flags)
+}
+
 func (p *Printer) emitBlock(node *ast.Block) {
 	state := p.enterNode(node.AsNode())
 	p.generateNames(node.AsNode())
@@ -3448,7 +3463,7 @@ func (p *Printer) emitBlock(node *ast.Block) {
 		LFMultiLineBlockStatements)
 	p.emitList((*Printer).emitStatement, node.AsNode(), node.Statements, format)
 
-	p.emitTokenEx(ast.KindCloseBraceToken, node.Statements.End(), WriteKindPunctuation, node.AsNode(), core.IfElse(format&LFMultiLine != 0, tefIndentLeadingComments, tefNone))
+	p.emitBlockCloseBrace(node.AsNode(), node.Statements, core.IfElse(format&LFMultiLine != 0, tefIndentLeadingComments, tefNone))
 	p.exitNode(node.AsNode(), state)
 }
 
@@ -3947,7 +3962,7 @@ func (p *Printer) emitModuleBlock(node *ast.ModuleBlock) {
 		LFSingleLineBlockStatements,
 		LFMultiLineBlockStatements)
 	p.emitList((*Printer).emitStatement, node.AsNode(), node.Statements, format)
-	p.emitTokenEx(ast.KindCloseBraceToken, node.Statements.End(), WriteKindPunctuation, node.AsNode(), core.IfElse(format&LFMultiLine != 0, tefIndentLeadingComments, tefNone))
+	p.emitBlockCloseBrace(node.AsNode(), node.Statements, core.IfElse(format&LFMultiLine != 0, tefIndentLeadingComments, tefNone))
 	p.exitNode(node.AsNode(), state)
 }
 

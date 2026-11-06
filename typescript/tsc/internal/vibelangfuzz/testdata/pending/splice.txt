@@ -8,8 +8,6 @@ FuzzSplice  feature:parse-span-CallExpression  compiler  D61: a schema error's e
 FuzzSplice  feature:estree-range-CallExpression  compiler  Chapter 28 Linting (D277): a schema error's extends clause converts to a CallExpression whose range ends before it starts (FuzzParse feature:estree-range-CallExpression in compile.txt)
 FuzzSplice  feature:declaration-consumer-TS2306  compiler  Chapter 27 rule 4 (D312, D366): a .vibe file whose only statement is its platform import, import "vibelang/platform/node", emits JavaScript that is a module (export {}) and an empty .d.ts that is not, so a TypeScript consumer that imports it is TS2306
 FuzzSplice  corpus:declaration-platform-import-only  compiler  Chapter 27 rule 4 (D312, D366): the minimal reproduction of feature:declaration-consumer-TS2306
-FuzzSplice  feature:source-map-range:one-past-end  compiler  D34: a top-level match's source map has a segment one character past the end of the .vibe text (FuzzCompile feature:source-map-range:one-past-end in compile.txt)
-FuzzSplice  corpus:source-map-match-end  compiler  D34: the minimal reproduction of feature:source-map-range:one-past-end
 
 # Current Appendix B registry/default gaps, each with a reduced witness.
 FuzzSplice ek:EK9204 compiler Appendix B: "warning: an old Effect `try`/`catch` statement has no expected errors". The retired `compilerOptions.vibelang.diagnostics` still raises it to error; lane del-rest.

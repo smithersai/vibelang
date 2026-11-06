@@ -57,6 +57,9 @@ var CompileSeeds = sync.OnceValue(func() []string {
 	for i, seed := range literalMatchSeeds() {
 		add(seed, fmt.Sprintf("literal match neighbourhood %d", i))
 	}
+	for _, seed := range shortWitnessSeeds(sourceMapBlockSeeds(), 8) {
+		add(Archive(seed.Files), seed.Name)
+	}
 	for _, seed := range shortWitnessSeeds(CaseSeeds(), 32) {
 		files := map[string]string{}
 		for name, text := range seed.Files {
