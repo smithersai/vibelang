@@ -1,0 +1,5 @@
+{
+  "entry": "export const run = () => 1;\n",
+  "leaf": "export const value = 1;\n",
+  "output": "export const value = 1;\n"
+}
