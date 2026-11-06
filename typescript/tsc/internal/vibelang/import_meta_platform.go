@@ -16,7 +16,7 @@ func checkImportMetaPlatform(c *checker.Checker, file *ast.SourceFile) {
 	visit = func(node *ast.Node) bool {
 		if ast.IsMetaProperty(node) && node.AsMetaProperty().KeywordToken == ast.KindImportKeyword && !ast.IsPartOfTypeNode(node) {
 			value := node
-			for value.Parent != nil && ast.IsParenthesizedExpression(value.Parent) {
+			for value.Parent != nil && ast.IsOuterExpression(value.Parent, ast.OEKAll) && value.Parent.Expression() == value {
 				value = value.Parent
 			}
 			parent := value.Parent

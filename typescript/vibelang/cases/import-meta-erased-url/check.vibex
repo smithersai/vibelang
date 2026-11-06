@@ -1,0 +1,1 @@
+export const reads=[import.meta.url,(import.meta).url,(import.meta as ImportMeta).url,(import.meta as any).url,(import.meta satisfies ImportMeta).url,import.meta!.url,(((import.meta as unknown) as ImportMeta)!).url];

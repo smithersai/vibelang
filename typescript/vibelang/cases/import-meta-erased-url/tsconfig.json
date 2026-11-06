@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "skipLibCheck": true,
+    "declaration": true,
+    "jsx": "preserve",
+    "outDir": "out"
+  },
+  "files": [
+    "main.vibe",
+    "check.vibex"
+  ]
+}
