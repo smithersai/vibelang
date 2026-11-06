@@ -20,7 +20,20 @@ const stock = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/no
 const rule = "VIP-40: a body's TypeScript declaration and JSDoc are available beside the source to stock tsc"
 let diagnostics = ""
 
-function check(input) {
+function check(input, { cli = false } = {}) {
+  const stages = []
+  const started = performance.now()
+  const run = (stage, command, args, root) => {
+    const start = performance.now()
+    const result = spawnSync(command, args, {cwd:root, encoding:"utf8", timeout:60000})
+    stages.push({stage, elapsedMs:Math.round(performance.now() - start), status:result.status,
+      signal:result.signal, error:result.error?.code, stdoutChars:result.stdout?.length ?? 0,
+      stderrChars:result.stderr?.length ?? 0})
+    diagnostics = JSON.stringify({input, typescript:ts.version, stages})
+    if (result.error) throw new Error("module sidecar stage failed: " + diagnostics, {cause:result.error})
+    assert.equal(result.status, 0, diagnostics + "\n" + result.stdout + result.stderr)
+    return result
+  }
   const root = mkdtempSync(join(tmpdir(), "vibelang-module-sidecars-"))
   try {
     const sourceDir = join(root, "src")
@@ -47,17 +60,12 @@ function check(input) {
       compilerOptions: options, ...(input.discovery ? { include:["src/**/*"] } : { files:["src/main.vibe"] }),
       vibe: { effectGlobals: false, effectModules: false, ...(input.layout ? {sidecarDir: input.layout} : {}) }
     }))
-    const compile = spawnSync(binary, ["-p", "tsconfig.json", "--pretty", "false"], {cwd:root, encoding:"utf8", timeout:60000})
-    diagnostics = compile.stdout + compile.stderr
-    assert.ifError(compile.error)
-    assert.equal(compile.status, 0, diagnostics)
+    run("emit", binary, ["-p", "tsconfig.json", "--pretty", "false"], root)
     // Names here use lowercase ASCII, whose generated filenames VIP-40 keeps.
     const declaration = join(sourceDir, "main.vibe." + input.name + ".d.ts")
     assert.ok(existsSync(declaration), "missing declaration beside source: " + input.name)
     assert.match(readFileSync(declaration, "utf8"), /@throws \{RangeError\}/)
-    const repeated = spawnSync(binary, ["-p", "tsconfig.json", "--pretty", "false"], {cwd:root, encoding:"utf8", timeout:60000})
-    assert.ifError(repeated.error)
-    assert.equal(repeated.status, 0, repeated.stdout + repeated.stderr)
+    run("repeat-emit", binary, ["-p", "tsconfig.json", "--pretty", "false"], root)
     // A consumer names the source; stock TypeScript finds its sidecar through
     // allowArbitraryExtensions and, for a mirrored layout, rootDirs.
     const sidecar = "./src/main.vibe"
@@ -76,16 +84,36 @@ function check(input) {
       compilerOptions:{...options, noEmit:true, declaration:false, allowImportingTsExtensions:true, ...(rootDirs ? {rootDirs} : {})},
       files:["consumer.ts"]
     }))
-    // Stock tsc reads only declarations, without the VibeLang source in its program.
-    const result = spawnSync(process.execPath, [stock, "-p", "consumer.json", "--pretty", "false"], {cwd:root, encoding:"utf8", timeout:60000})
-    diagnostics = result.stdout + result.stderr
-    assert.ifError(result.error)
-    assert.equal(result.status, 0, diagnostics)
-    const program = ts.createProgram([join(root, "consumer.ts")], {
-      strict:true, noEmit:true, allowArbitraryExtensions:true, allowImportingTsExtensions:true,
-      target:ts.ScriptTarget.ESNext, module:ts.ModuleKind.ESNext, moduleResolution:ts.ModuleResolutionKind.Bundler,
-      types:[], ...(rootDirs ? {rootDirs:rootDirs.map(dir => join(root, dir))} : {})
+    // Exercise the stock command once; generated layouts use the same stock
+    // checker in-process, including all diagnostics and @ts-expect-error checks.
+    if (cli) run("stock-cli", process.execPath, [stock, "-p", "consumer.json", "--pretty", "false"], root)
+    const parsed = ts.getParsedCommandLineOfConfigFile(join(root, "consumer.json"), {}, {
+      ...ts.sys, onUnRecoverableConfigFileDiagnostic: diagnostic => {
+        throw new Error(ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))
+      }
     })
+    assert.ok(parsed)
+    const checkStarted = performance.now()
+    const program = ts.createProgram(parsed.fileNames, parsed.options)
+    const errors = [...parsed.errors, ...ts.getPreEmitDiagnostics(program)]
+    stages.push({stage:"stock-checker", elapsedMs:Math.round(performance.now() - checkStarted),
+      diagnostics:errors.length})
+    diagnostics = JSON.stringify({input, typescript:ts.version, stages})
+    assert.ok(stages.at(-1).elapsedMs < 60000, "stock checker exceeded its 60-second budget: " + diagnostics)
+    assert.deepEqual(errors.map(error => ({code:error.code,
+      message:ts.flattenDiagnosticMessageText(error.messageText, "\n")})), [], diagnostics)
+    if (cli) {
+      // A failing consumer proves that the API path checks types rather than
+      // merely loading declarations or inspecting their JSDoc.
+      const consumer = join(root, "consumer.ts")
+      const source = readFileSync(consumer, "utf8")
+      writeFileSync(consumer, source.replace('const n: number = ' + access + '("80")',
+        "const n: number = " + access + "(80)"))
+      const invalid = ts.createProgram(parsed.fileNames, parsed.options)
+      assert.ok(ts.getPreEmitDiagnostics(invalid).some(error => error.code === 2345),
+        "stock checker must reject a number passed to the declared string parameter")
+      writeFileSync(consumer, source)
+    }
     const checker = program.getTypeChecker()
     let signature
     const visit = node => {
@@ -95,11 +123,13 @@ function check(input) {
     visit(program.getSourceFile(join(root, "consumer.ts")))
     assert.ok(signature?.getJsDocTags().some(tag => tag.name === "throws" && tag.text?.some(part => part.text.includes("RangeError"))),
       "stock TypeScript must see the foreign @throws tag through the re-export")
+    process.stderr.write("module-sidecars " + JSON.stringify({input, stages,
+      elapsedMs:Math.round(performance.now() - started)}) + "\n")
   } finally { rmSync(root, {recursive:true, force:true}) }
 }
 
 test("stock TypeScript reads a module body's re-export and throws contract", () => {
-  check({name:"parse", form:"named", layout:"", noEmit:true})
+  check({name:"parse", form:"named", layout:"", noEmit:true}, {cli:true})
 })
 
 test("module declarations accompany sidecars across layouts and re-export forms", async () => {
@@ -113,6 +143,6 @@ test("module declarations accompany sidecars across layouts and re-export forms"
       noEmit:fc.boolean(), discovery:fc.boolean(), inPlace:fc.boolean(), arrow:fc.boolean()
     }),
     regressions:new URL("./property-regressions/", import.meta.url),
-    numRuns:40, diagnostics:()=>diagnostics, check
+    numRuns:40, diagnostics:()=>diagnostics, check:input => check(input)
   })
 })
