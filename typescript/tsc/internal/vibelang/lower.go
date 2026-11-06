@@ -465,8 +465,16 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 		call = tx.runtimeCall("$catch", value, tx.visit(node.Arguments()[1]))
 	} else if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
 		call = tx.concurrentForCall(node) // its limit runs before its items (order.go)
-	} else if tryOperationName(node) == "try.all" {
+	} else if name := tryOperationName(node); name == "try.all" || name == "try.allSettled" {
 		call = tx.nativeTryAllCall(node)
+	} else if name == "try.race" || name == "try.any" {
+		f := tx.Factory()
+		method := "raceAllFirst"
+		if name == "try.any" {
+			method = "raceAll"
+		}
+		callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier(method), ast.NodeFlagsNone)
+		call = f.UpdateCallExpression(node.AsCallExpression(), callee, node.QuestionDotToken(), nil, f.NewNodeList([]*ast.Node{tx.Visitor().VisitNode(node.Arguments()[0])}), node.Flags)
 	} else if isNativeFork(node) {
 		f := tx.Factory()
 		fork := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("forkChild"), ast.NodeFlagsNone)

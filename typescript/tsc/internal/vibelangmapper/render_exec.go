@@ -54,12 +54,12 @@ func renderExec(e edit) (text string, keep bool) {
 		return e.arg, true
 	case editSettledCall:
 		if e.arg == "literal" {
-			return pick(e.part, helperRef("Effect")+".all(", "", ", { concurrency: \"unbounded\" })"), true
+			return pick(e.part, settledEffect(e)+".all(", "", ", { concurrency: \"unbounded\" })"), true
 		}
-		return pick(e.part, helperRef("$tryAllSettled")+"(", "", ")"), true
+		return pick(e.part, settledEffect(e)+".all((", "", ").map("+settledEffect(e)+".exit), { concurrency: \"unbounded\" })"), true
 	case editSettledElement:
 		if e.arg == "literal" {
-			return pick(e.part, helperRef("Effect")+".exit(", "", ")"), true
+			return pick(e.part, settledEffect(e)+".exit(", "", ")"), true
 		}
 		return "", false
 	case editSettledMap:

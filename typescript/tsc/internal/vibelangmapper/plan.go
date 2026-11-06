@@ -255,15 +255,15 @@ func (r checking) text(e edit) (string, bool) {
 	case editPatternFlow:
 		text = e.fields[0]
 	case editSettledCall:
-		text = pick(e.part, helperRef("Effect")+".all(", "", ", { concurrency: \"unbounded\" })")
+		text = pick(e.part, settledEffect(e)+".all(", "", ", { concurrency: \"unbounded\" })")
 	case editSettledMap:
 		if e.arg == "spread" {
-			text = pick(e.part, "([...(", "", ")].map("+helperRef("Effect")+".exit))")
+			text = pick(e.part, "([...(", "", ")].map("+settledEffect(e)+".exit))")
 		} else {
-			text = pick(e.part, "(", "", ").map("+helperRef("Effect")+".exit)")
+			text = pick(e.part, "(", "", ").map("+settledEffect(e)+".exit)")
 		}
 	case editSettledElement:
-		text = pick(e.part, helperRef("Effect")+".exit(", "", ")")
+		text = pick(e.part, settledEffect(e)+".exit(", "", ")")
 	case editSyntax, editWitness, editRegion, editDispatch:
 		text = e.text
 	case editRegionVar:

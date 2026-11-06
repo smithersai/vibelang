@@ -8,7 +8,7 @@ import (
 
 func TestTryOperations(t *testing.T) {
 	for _, operation := range []struct{ word, want string }{
-		{"all", `Effect.all(xs, { concurrency: "unbounded" })`}, {"race", "$tryRace(xs)"}, {"any", "$tryAny(xs)"},
+		{"all", `Effect.all(xs, { concurrency: "unbounded" })`}, {"race", "Effect.raceAllFirst(xs)"}, {"any", "Effect.raceAll(xs)"},
 	} {
 		source := "function f(xs: ReadonlyArray<Effect.Effect<number>>) { return try." + operation.word + " xs }"
 		projection := Project(source, testContext)

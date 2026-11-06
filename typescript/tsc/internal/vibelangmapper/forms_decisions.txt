@@ -7908,6 +7908,13 @@ typescript/vibelang/cases/try-operation-line-breaks/main.vibe:14:17 byname progr
 typescript/vibelang/cases/try-operation-line-breaks/main.vibe:16:11 byname program table
 typescript/vibelang/cases/try-operation-line-breaks/main.vibe:5:11 byname program table
 typescript/vibelang/cases/try-operation-line-breaks/main.vibe:7:11 byname program table
+typescript/vibelang/cases/try-operations-effect-instance/main.vibe:17:96 lambda plain table
+typescript/vibelang/cases/try-operations-effect-instance/main.vibe:18:101 lambda plain table
+typescript/vibelang/cases/try-operations-effect-instance/main.vibe:19:117 lambda plain table
+typescript/vibelang/cases/try-operations-effect-instance/main.vibe:3:36 lambda program table
+typescript/vibelang/cases/try-operations-effect-instance/main.vibe:7:51 lambda plain table
+typescript/vibelang/cases/try-operations-effect-instance/main.vibe:7:59 lambda program keyword
+typescript/vibelang/cases/try-operations-effect-instance/main.vibe:9:39 byname program table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:12:57 lambda dual fallback
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:15:30 lambda choice fallback
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:16:25 lambda choice fallback

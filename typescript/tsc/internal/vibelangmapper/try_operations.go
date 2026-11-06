@@ -38,9 +38,14 @@ func (p *projector) tryOperation(call *ast.Node, e env) {
 	}
 	p.plan.mark(editRun, partOpen, start, start, "")
 	target, close := helperRef(tryOperationHelper(call)), ")"
-	if tryOperationHelper(call) == "$tryAll" {
+	switch tryOperationHelper(call) {
+	case "$tryAll":
 		target = p.names.prelude("Effect") + ".all"
 		close = ", { concurrency: \"unbounded\" })"
+	case "$tryRace":
+		target = p.names.prelude("Effect") + ".raceAllFirst"
+	case "$tryAny":
+		target = p.names.prelude("Effect") + ".raceAll"
 	}
 	p.plan.replace(start, p.tokenStart(operand), target+"(")
 	operandEnv := e
@@ -168,16 +173,21 @@ func restoreTryOperandMarks(file *ast.SourceFile, text string, marks []tryOperan
 }
 
 // No-spread literals use the direct VIP-18 wrappers in both renderings.
-// Held and spread operands keep the helper to avoid extra array iteration.
+// Execution maps a held or spread operand once after constructing its source array.
 func (p *projector) trySettledOperation(call, operand *ast.Node, start int, e env) {
 	p.plan.mark(editRun, partOpen, start, start, "")
+	namespace := p.names.prelude("Effect")
+	mark := func(kind editKind, which part, pos, end int, mode string) {
+		p.plan.mark(kind, which, pos, end, mode)
+		p.plan.edits[len(p.plan.edits)-1].fields = []string{namespace}
+	}
 	inner := ast.SkipParentheses(operand)
 	literal := ast.IsArrayLiteralExpression(inner) && !slices.ContainsFunc(inner.Elements(), ast.IsSpreadElement)
 	mode := ""
 	if literal {
 		mode = "literal"
 	}
-	p.plan.mark(editSettledCall, partOpen, start, p.tokenStart(operand), mode)
+	mark(editSettledCall, partOpen, start, p.tokenStart(operand), mode)
 	e.holdCalls = true
 	if ast.IsArrayLiteralExpression(inner) {
 		for _, element := range inner.Elements() {
@@ -186,15 +196,23 @@ func (p *projector) trySettledOperation(call, operand *ast.Node, start int, e en
 			if ast.IsSpreadElement(element) {
 				kind, arg, value = editSettledMap, "spread", element.Expression()
 			}
-			p.plan.mark(kind, partOpen, p.tokenStart(value), p.tokenStart(value), arg)
+			mark(kind, partOpen, p.tokenStart(value), p.tokenStart(value), arg)
 			p.visit(value, e)
-			p.plan.mark(kind, partClose, value.End(), value.End(), arg)
+			mark(kind, partClose, value.End(), value.End(), arg)
 		}
 	} else {
-		p.plan.mark(editSettledMap, partOpen, p.tokenStart(operand), p.tokenStart(operand), "")
+		mark(editSettledMap, partOpen, p.tokenStart(operand), p.tokenStart(operand), "")
 		p.visit(operand, e)
-		p.plan.mark(editSettledMap, partClose, operand.End(), operand.End(), "")
+		mark(editSettledMap, partClose, operand.End(), operand.End(), "")
 	}
-	p.plan.mark(editSettledCall, partClose, call.End(), call.End(), mode)
+	mark(editSettledCall, partClose, call.End(), call.End(), mode)
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
+}
+
+// Settled operations share their hygienic namespace across both renderings.
+func settledEffect(e edit) string {
+	if len(e.fields) != 0 {
+		return e.fields[0]
+	}
+	return helperRef("Effect")
 }

@@ -127,7 +127,7 @@ func tryOperationImportPosition(file *ast.SourceFile) int {
 }
 
 // trySettledLiteral returns a no-spread source literal. Spread operands keep
-// the helper's single source-array construction and native iterator behavior.
+// one native source-array construction before mapping its elements.
 func trySettledLiteral(node *ast.Node) *ast.Node {
 	if tryOperationName(node) != "try.allSettled" {
 		return nil
@@ -192,9 +192,15 @@ func filterRejectedTryOperationArgumentDiagnostics(c *checker.Checker, call *ast
 // nativeTryAllCall keeps branch allocation in the project's Effect instance.
 func (tx *lowering) nativeTryAllCall(node *ast.Node) *ast.Node {
 	f := tx.Factory()
+	operand := tx.Visitor().VisitNode(node.Arguments()[0])
+	if tryOperationName(node) == "try.allSettled" {
+		mapMember := f.NewPropertyAccessExpression(operand, nil, f.NewIdentifier("map"), ast.NodeFlagsNone)
+		exit := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("exit"), ast.NodeFlagsNone)
+		operand = f.NewCallExpression(mapMember, nil, nil, f.NewNodeList([]*ast.Node{exit}), ast.NodeFlagsNone)
+	}
 	callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("all"), ast.NodeFlagsNone)
 	options := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
 		f.NewPropertyAssignment(nil, f.NewIdentifier("concurrency"), nil, nil, f.NewStringLiteral("unbounded", ast.TokenFlagsNone)),
 	}), false /*multiLine*/)
-	return f.UpdateCallExpression(node.AsCallExpression(), callee, node.QuestionDotToken(), nil /*typeArguments*/, f.NewNodeList([]*ast.Node{tx.Visitor().VisitNode(node.Arguments()[0]), options}), node.Flags)
+	return f.UpdateCallExpression(node.AsCallExpression(), callee, node.QuestionDotToken(), nil /*typeArguments*/, f.NewNodeList([]*ast.Node{operand, options}), node.Flags)
 }

@@ -123,7 +123,7 @@ func tryOperationCall(js string) string {
 		if ast.IsCallExpression(node) {
 			callee := node.Expression()
 			helper := ast.IsIdentifier(callee) && (strings.HasPrefix(callee.Text(), "$tryAll") || strings.HasPrefix(callee.Text(), "$tryRace") || strings.HasPrefix(callee.Text(), "$tryAny"))
-			direct := ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "all" && ast.IsIdentifier(callee.Expression()) && modules[callee.Expression().Text()]
+			direct := ast.IsPropertyAccessExpression(callee) && (callee.Name().Text() == "all" || callee.Name().Text() == "raceAllFirst" || callee.Name().Text() == "raceAll") && ast.IsIdentifier(callee.Expression()) && modules[callee.Expression().Text()]
 			if helper || direct {
 				call = node
 				return true

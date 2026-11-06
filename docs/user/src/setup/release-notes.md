@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
 - The editor and TypeScript mapper treated producer function expressions as JavaScript generators. They now preserve their lazy `Stream` behavior for anonymous, named and nested expressions.
+- `try.race`, `try.any` and `try.allSettled` could reuse surrounding fiber IDs when the project and runtime loaded separate Effect copies. They now use the project's Effect instance, and settled operations keep working when a local variable is named `Effect`.
 
 - A producer method after a class field without a semicolon could disappear from the editor's TypeScript output or fail to emit. The mapper now keeps the field and method separate.
 
