@@ -39,6 +39,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Quoted, numeric and template `data` variant names reported a generic identifier error. They now report `EK1606` while retaining the following variants and declarations.
 - A payload after a malformed `data` variant name, such as `"Bad" { value: string }`, cascaded into unrelated errors and lost the following variants. The payload now stays with its variant, so the name reports only `EK1606`.
+- A `schema error` inside a namespace reported its `Schema` import as unused under `noUnusedLocals`. The import now counts at every namespace depth, as it does at the top level.
 - A service inside a namespace could lose native key helpers or report a required `Context` import as unused. Namespace services now resolve their runtime types and keep the imports their declarations use.
 - The contributor release target could time out on a four-CPU machine because it ran eight test files at once. It now runs four.
 - Tests using lazy Rolldown or esbuild imports on Bun `1.4.1` and `1.4.2` could not load native bundle graphs; their bundler preloads now route those imports through temporary modules.

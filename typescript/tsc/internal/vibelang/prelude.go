@@ -184,6 +184,22 @@ func declaresService(file *ast.SourceFile) bool {
 	return file.AsNode().ForEachChild(visit)
 }
 
+// declaresSchemaError reports whether file has a schema error root at any
+// depth outside ambient modules, whose declaration emits Schema.
+func declaresSchemaError(file *ast.SourceFile) bool {
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsModuleDeclaration(node) && (node.Flags&ast.NodeFlagsAmbient != 0 || ast.IsAmbientModule(node)) {
+			return false
+		}
+		if form, _ := errorFormOf(node); form == errorFormSchemaRoot {
+			return true
+		}
+		return node.ForEachChild(visit)
+	}
+	return file.AsNode().ForEachChild(visit)
+}
+
 // mayUsePrelude reports whether file has an identifier with a prelude name,
 // and one with the name of an effect root export, that no top-level
 // value declaration or import of file declares, and returns the packages of the

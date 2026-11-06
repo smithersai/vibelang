@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -53,10 +52,7 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 // writes Context, and a schema error's writes Schema.
 func markDeclarationImports(c *checker.Checker, file *ast.SourceFile) {
 	service := declaresService(file)
-	schemaError := core.Some(file.Statements.Nodes, func(statement *ast.Node) bool {
-		form, _ := errorFormOf(statement)
-		return form == errorFormSchemaRoot
-	})
+	schemaError := declaresSchemaError(file)
 	for _, statement := range file.Statements.Nodes {
 		if name := namespaceImportOfModule(statement); name == "Context" && service || name == "Schema" && schemaError {
 			c.MarkSymbolReferenced(statement.ImportClause().AsImportClause().NamedBindings.Symbol())

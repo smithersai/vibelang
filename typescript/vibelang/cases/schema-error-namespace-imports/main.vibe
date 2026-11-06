@@ -1,0 +1,21 @@
+// expect-result: 3
+// The declaration file of a schema error inside a namespace writes Schema, so
+// the file's own import of it is used at every namespace depth.
+import * as Schema from "effect/Schema"
+
+export namespace N {
+  export schema error E { id: string }
+}
+export namespace A {
+  export namespace B {
+    export schema error F { id: string }
+  }
+}
+export namespace C.D {
+  export schema error G { id: string }
+}
+
+export const errors = [new N.E({ id: "x" }), new A.B.F({ id: "y" }), new C.D.G({ id: "z" })]
+export effect function main(): number!never {
+  return errors.length
+}
