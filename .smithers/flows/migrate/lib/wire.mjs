@@ -934,6 +934,16 @@ export function addCompilerOptions(text, options) {
 }
 
 /**
+ * A paths alias reaches a migrated module only by its source name, and TypeScript
+ * accepts a source name in a project that emits no JavaScript once it says so (TS5097).
+ */
+export function aliasSourceNameOptions(text, ts) {
+  const options = ts.parseConfigFileTextToJson("tsconfig.json", text).config?.compilerOptions ?? {}
+  if (!options.paths || !(options.noEmit || options.emitDeclarationOnly) || options.rewriteRelativeImportExtensions) return {}
+  return { allowImportingTsExtensions: true }
+}
+
+/**
  * Removes a retired VibeLang setting from a tsconfig (JSON with comments):
  * key in its top-level `vibelang` or `vibe` object or in
  * `compilerOptions.vibelang` or `compilerOptions.vibe`, the places

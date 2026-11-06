@@ -1094,3 +1094,5 @@ A revert accepts a reference rebuild that finishes with diagnostics, because set
 With `routeBundledImports`, a revert restores every routed TypeScript import. When only foreign diagnostics remain after a revert, settle emits again before it blames a kept module, because those diagnostics describe the dropped routes.
 
 A revert spells an unrecorded `.vibe` import by the project's emission policy: `./x.js` where TypeScript rejects source extensions, and `./x.ts` where the project allows them.
+
+Setup turns on `allowImportingTsExtensions` in a project that has `paths` aliases and emits no JavaScript, because an alias can name a migrated module only by its source name. An explicit setting stays as written.

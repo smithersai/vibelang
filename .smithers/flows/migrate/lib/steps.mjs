@@ -1091,7 +1091,8 @@ export async function wireTarget(config, log) {
   for (const tsconfig of Wire.rootTsconfigs(t, ts)) {
     const file = join(t, tsconfig)
     const text = readFileSync(file, "utf8")
-    writeIfChanged(file, text, Wire.addCompilerOptions(Wire.removeVibeLangSetting(text, ts, "declarationSidecars"), { allowArbitraryExtensions: true }))
+    const settled = Wire.removeVibeLangSetting(text, ts, "declarationSidecars")
+    writeIfChanged(file, text, Wire.addCompilerOptions(settled, { allowArbitraryExtensions: true, ...Wire.aliasSourceNameOptions(settled, ts) }))
     // rootDirs maps one tree; a checker config above the packages needs each package's pair.
     if (layout.enumerations.length && !layout.wiredTsconfigs.has(posix.normalize(tsconfig))) warnings.push(`${tsconfig}: if stock TypeScript checks a migrated package's sources through it, add that package's folder and its ${Enumerations.sidecarDirectory} to its rootDirs by hand`)
   }
