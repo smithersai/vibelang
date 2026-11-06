@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The `for concurrent` tooltip said every item used its own fiber, even with a limit of `1`. It now explains sequential execution, and jump errors no longer give that incorrect reason.
+
 - Migration could stop before fixing files when a dependency was outside `rootDir`. It now reads the complete source list while preserving the diagnostic for checking.
 
 - A failed test named `__proto__` could disappear from the health report, and names such as `constructor` could have invalid failure counts. These names now keep their own counts.
@@ -20,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A throwing call in an `enum` initializer could be rejected even when a surrounding `try`/`catch` handled it; the handler is now recognized.
 
 - An object tag pattern could incorrectly count primitive literal cases as covered when their wrapper interface declared `_tag`, letting an incomplete match compile. These cases now remain uncovered, and `--fix` can preserve the previous no-match error with an explicit default.
+- Migration `verify` reported a `package.json` as a foreign file when the codemod moved one of its scripts to a renamed module and emission added `#vibelang/emitted/*` routes to it. Those routes are now in the batch's scope; any other change to the manifest still fails.
+- Vite's dependency scan failed with `UNLOADABLE_DEPENDENCY` on a `.vibex` file with a `module` body under `"jsx": "preserve"`, because the scan read the absent `.jsx` output from disk. `vibelang-vite` now loads that output from the compile.
 - A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
 
 ### Upgrade from 0.0.12
@@ -34,6 +38,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - In the TypeScript view that editors read, `fork effect { … }` and the same block after `fork.in(scope)`, `fork.scoped` or `fork.detached` produced broken code, and a later `join` of the fiber reported that the mapper could not tell it held a fiber. These forms now project to the Effect operation they run.
 - Migration could report an empty reason when it could not read a module's imports. It now reports the native parser diagnostic and compiler exit status.
 - Rerunning migration setup could leave an unpinned formatter plugin in a checksum-pinned configuration. It now restores the pinned plugins and formats VibeLang through the companion command.
+- Migrating a platform factory could drop documentation from an inferred exported value's members. The migration now preserves that member documentation.
+
+- Following the pnpm install guide could select a newer Node helper and report incompatible Effect peers. The guide now puts the transitive pin in `pnpm-workspace.yaml`.
 - Migration API checks took hours on large packages, because every group of entry points checked the same files again. A comparison now checks each file once for the same environment.
 
 - Test names containing Unicode line or paragraph separators could disappear from the health report. Those names are now retained.
