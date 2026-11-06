@@ -474,6 +474,9 @@ func TestFormatRejects(t *testing.T) {
 		{"module declaration below the top level", "function f() {\n  module inner {\n    export const a = 1\n  }\n}\n", "vibelang format: 2:3: module inner is not at the file's top level"},
 		{"nested module declaration without a name", "function f() {\n  module {\n    export const a = 1\n  }\n}\n", "vibelang format: 2:3: a module declaration needs a name"},
 		{"module declared twice", "module text {\n  export const a = 1\n}\nmodule text {\n  export const b = 2\n}\n", "vibelang format: 4:1: module text is declared twice"},
+		{"last match arm without a separator", "function last(x: \"a\") { return match (x) { when \"a\": 1 } }\n", "vibelang format: 1:55: each match arm ends in ;, the last one included (EK0701)"},
+		{"match arm before a line break", "function newline(x: \"a\" | \"b\") { return match (x) {\n  when \"a\": 1\n  when \"b\": 2;\n} }\n", "vibelang format: 2:14: each match arm ends in ;, the last one included (EK0701)"},
+		{"comma between match arms", "function comma(x: \"a\" | \"b\") { return match (x) { when \"a\": 1, when \"b\": 2; } }\n", "(EK0701)"},
 		{"call signature in a service", "service Format {\n  static readonly key = \"f\";\n  (value: string): string\n}\n", "vibelang format: 3:3: a call signature cannot be a service member (EK0902)"},
 	}
 	for _, c := range cases {

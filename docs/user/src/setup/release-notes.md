@@ -20,6 +20,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Build-configuration checks could stop with a missing helper error; their fixtures now load the same input helpers as the build graph.
 - A `join` operand typed `any` or `never` could infer a collection-shaped value or impossible error type. It now infers the same result and error types as `Fiber.join`.
 - Build checks could miss a compiler command after an environment setting with spaces; they now check it and detect missing build flags.
+- Formatting a `match` arm without its `;` stopped with an internal `formatting changed the program` error; it now reports `EK0701` at the arm and leaves the file unchanged.
 - Build command checks reran after unrelated source or documentation edits; they now reuse successful results while still checking changed commands, timeouts and test inventories.
 - Bun scripts and tests could not load a migrated source through a `tsconfig.paths` alias ending in `.ts`; the preload now follows its `.vibe` sibling while preserving existing native files.
 
