@@ -338,6 +338,13 @@ func pipeStagesNeedCapture(c *checker.Checker, stages []*ast.Node) bool {
 // its extraction of stage functions. An immediately called plain arrow captures
 // them at the original construction site, without delaying them into an Effect.
 func capturedEffectPipe(file *ast.SourceFile, call *ast.Node) *formRewrite {
+	return capturedEffectPipeWithEdits(file, call, nil)
+}
+
+// capturedEffectPipeWithEdits carries already planned child changes through the
+// receiver and stage text copied by the capture. The outer replacement consumes
+// these edits; applying their old offsets afterwards would corrupt that text.
+func capturedEffectPipeWithEdits(file *ast.SourceFile, call *ast.Node, edits []sourceEdit) *formRewrite {
 	receiver := call.Expression().Expression()
 	kept := [][2]int{{nodeStart(file, receiver), receiver.End()}}
 	for _, stage := range call.Arguments() {
@@ -346,15 +353,36 @@ func capturedEffectPipe(file *ast.SourceFile, call *ast.Node) *formRewrite {
 	if hasComment(withoutRanges(file.Text(), nodeStart(file, call), call.End(), kept)) {
 		return &formRewrite{why: "No quick fix: comments between custom stages need their original association."}
 	}
+	for _, edit := range edits {
+		if !slices.ContainsFunc(kept, func(span [2]int) bool {
+			return edit.start >= span[0] && edit.end <= span[1]
+		}) {
+			return &formRewrite{why: "No quick fix: a nested edit crosses a captured pipeline component."}
+		}
+	}
+	edits = joinEditsAt(slices.Clone(edits))
+	if !orderedEditRangesValid(edits, 0, len(file.Text())) {
+		return &formRewrite{why: "No quick fix: nested pipeline edits overlap."}
+	}
+	editedText := func(node *ast.Node) string {
+		start, end := nodeStart(file, node), node.End()
+		var inner []sourceEdit
+		for _, edit := range edits {
+			if edit.start >= start && edit.end <= end {
+				inner = append(inner, sourceEdit{edit.start - start, edit.end - start, edit.text})
+			}
+		}
+		return applyEdits(file.Text()[start:end], joinEditsAt(inner))
+	}
 	names := freshNames{file: file}
 	program := names.freshName("pipe$program")
 	indent := lineIndent(file.Text(), nodeStart(file, call))
 	var text strings.Builder
-	text.WriteString("(() => {\n" + indent + "  const " + program + " = " + nodeText(file, receiver) + ";\n")
+	text.WriteString("(() => {\n" + indent + "  const " + program + " = " + editedText(receiver) + ";\n")
 	var stages []string
 	for i, stage := range call.Arguments() {
 		name := names.freshName("pipe$stage" + strconv.Itoa(i))
-		text.WriteString(indent + "  const " + name + " = " + nodeText(file, stage) + ";\n")
+		text.WriteString(indent + "  const " + name + " = " + editedText(stage) + ";\n")
 		stages = append(stages, name)
 	}
 	text.WriteString(indent + "  return " + program)
@@ -366,6 +394,19 @@ func capturedEffectPipe(file *ast.SourceFile, call *ast.Node) *formRewrite {
 		edits:       []sourceEdit{{nodeStart(file, call), call.End(), text.String()}},
 		description: "the pipeline with |> and captured stages",
 	}
+}
+
+// orderedEditRangesValid checks the source-coordinate ranges after edits at
+// the same offset have been joined. A replacement cannot contain another edit.
+func orderedEditRangesValid(edits []sourceEdit, start, end int) bool {
+	previousEnd := start
+	for _, edit := range edits {
+		if edit.start < previousEnd || edit.end < edit.start || edit.end > end {
+			return false
+		}
+		previousEnd = edit.end
+	}
+	return true
 }
 
 // pipeStageAliasContext reports when uncurrying would discard an alias choice

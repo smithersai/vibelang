@@ -60,6 +60,8 @@ Calls whose callee or receiver is a type parameter, indexed type, conditional ty
 
 Native `module name { … }` bodies keep the original TypeScript spelling of their imports and re-exports, including `./leaf.js`, when a dependency migrates. They follow the project's TypeScript extension options. Imports at the containing `.vibe` file's top level continue to follow the existing migration extension policy.
 
+Generator migration carries nested `.pipe` repairs through the surrounding pipeline, including calls in its receiver and stage callbacks. Custom stages retain their original construction order and each nested program keeps its execution boundary.
+
 ## Stale `.ts` specifiers
 
 The migration ships before enforcement: `vibelang --fix` repairs stale relative `.ts` names in the selected project's own VibeLang sources. `node scripts/migrate-stale-specifiers.mjs` repairs the repository corpus, including foreign importers, without renaming modules or applying other language migrations. Native TypeScript implementations stay native. Emitted JavaScript and declarations do not mask an available VibeLang source. The repair honors `rootDirs` and `moduleSuffixes`, so a migrated `user.native.vibe` is found through the same configured suffixes and native matches still win. With `rewriteRelativeImportExtensions`, the repair names `.vibe` or `.vibex`; a type-only project allowing source extensions can also use those names. Otherwise it names the actual runtime output, `.js` (or `.jsx` for a JSX-preserving target). The migrate flow uses the same project policy for newly renamed modules. An unresolved name without a migrated sibling stays unresolved. Run the repair before upgrading to the resolver that rejects stale native extensions.

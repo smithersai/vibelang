@@ -2,6 +2,8 @@ package vibelang
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -362,10 +364,45 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		edits = append(edits, keepThrowDefect(file, thrower)...)
 	}
 	// A .pipe in the body changes with it: try f().pipe(g) is EK4502.
-	for _, pipe := range scan.pipes {
-		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() && !keepPipes {
-			edits = append(edits, rewrite.edits...)
+	// Plan children before parents. A captured pipe replaces its whole call,
+	// including nested pipelines in the receiver or a stage callback.
+	pipes := slices.Clone(scan.pipes)
+	slices.SortStableFunc(pipes, func(left, right *ast.Node) int {
+		if left.End() != right.End() {
+			return left.End() - right.End()
 		}
+		return nodeStart(file, right) - nodeStart(file, left)
+	})
+	seenPipes := map[*ast.Node]bool{}
+	for _, pipe := range pipes {
+		if keepPipes || seenPipes[pipe] {
+			continue
+		}
+		seenPipes[pipe] = true
+		rewrite := planEffectPipe(c, file, pipe)
+		if !rewrite.fixable() {
+			continue
+		}
+		start, end := nodeStart(file, pipe), pipe.End()
+		if len(rewrite.edits) == 1 && rewrite.edits[0].start == start && rewrite.edits[0].end == end {
+			var nested, outside []sourceEdit
+			for _, edit := range edits {
+				if edit.start >= start && edit.end <= end && !(edit.start == edit.end && (edit.start == start || edit.start == end)) {
+					nested = append(nested, edit)
+				} else {
+					outside = append(outside, edit)
+				}
+			}
+			if os.Getenv("VIBELANG_FIX_EDIT_TRACE") == "1" && len(nested) != 0 {
+				fmt.Fprintf(os.Stderr, "[fix-edit-plan] compose file=%s call=%d:%d nested=%d\n", file.FileName(), start, end, len(nested))
+			}
+			rewrite = capturedEffectPipeWithEdits(file, pipe, nested)
+			if !rewrite.fixable() {
+				return refuse("nested pipeline changes cannot retain their original source positions")
+			}
+			edits = outside
+		}
+		edits = append(edits, rewrite.edits...)
 	}
 	for _, statement := range scan.throws {
 		start := nodeStart(file, statement)
@@ -433,6 +470,12 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 	edits = joinEditsAt(edits)
 	edits = append(edits, dedentEdits(file, block, len(lineIndent(text, blockStart))-len(lineIndent(text, opening)), edits)...)
 	edits = joinEditsAt(edits)
+	if !orderedEditRangesValid(edits, blockStart, blockEnd) {
+		if os.Getenv("VIBELANG_FIX_EDIT_TRACE") == "1" {
+			fmt.Fprintf(os.Stderr, "[fix-edit-plan] refused file=%s body=%d:%d keepPipes=%t edits=%d reason=overlapping-or-out-of-bounds\n", file.FileName(), blockStart, blockEnd, keepPipes, len(edits))
+		}
+		return refuse("generator body edits overlap or leave its source range")
+	}
 	body := applyEdits(text[:blockEnd], edits)[blockStart:]
 
 	switch {
