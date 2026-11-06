@@ -1,0 +1,100 @@
+package vibelang
+
+import (
+	"context"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/ls"
+)
+
+func init() {
+	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{
+		Source: diagnosticSource, ErrorCodes: []int32{EK0801.Code},
+		GetCodeActions: usingScopedActions,
+	})
+}
+
+// usingScopedActions is EK0801's fix: the rest of an Effect callable's body
+// moves into scoped, and each value is acquired with acquireDisposable, so it is
+// released on every Exit:
+//
+//	using f = openFile()                 return try scoped(effect {
+//	return try read(f)                     const f = try acquireDisposable(sync(() => openFile()))
+//	                                       return try read(f)
+//	                                     })
+//
+// This changes what a failure does, which is the point of the warning, so the
+// fix is an editor action and never runs under vibelang --fix. It applies where
+// the move keeps every jump: directly in the body of a non-producer Effect
+// callable, whose return the new block can carry.
+func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+	file := fix.SourceFile
+	var statement *ast.Node
+	var find func(*ast.Node) bool
+	find = func(node *ast.Node) bool {
+		if node.End() < fix.Span.Pos() || node.Pos() > fix.Span.End() {
+			return false
+		}
+		if isBlockUsing(node) && nodeStart(file, node.AsVariableStatement().DeclarationList) == fix.Span.Pos() {
+			statement = node
+			return true
+		}
+		return node.ForEachChild(find)
+	}
+	file.AsNode().ForEachChild(find)
+	if statement == nil {
+		return nil, nil
+	}
+	block, callable := statement.Parent, statement.Parent.Parent
+	if callable == nil || !ast.IsFunctionLike(callable) || callable.Body() != block || markedForm(callable) != formEffect || isProducer(callable) {
+		return nil, nil
+	}
+	c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
+	defer done()
+	a := analyzerFor(c)
+	for _, name := range []string{"scoped", "acquireDisposable", "sync"} {
+		if !isEffectGlobalAt(c, name, block) {
+			return nil, nil
+		}
+	}
+	text := file.Text()
+	start := nodeStart(file, statement)
+	indent := lineIndent(text, start)
+	var body strings.Builder
+	body.WriteString("return try scoped(effect {\n")
+	for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+		initializer := declaration.Initializer()
+		t := c.GetTypeAtLocation(declaration.Name())
+		if initializer == nil || a.runsEffect(initializer) || t.Flags()&checker.TypeFlagsAny != 0 || c.GetNonNullableType(t) != t || !c.IsSyncDisposableType(t) {
+			return nil, nil
+		}
+		value := text[nodeStart(file, initializer):initializer.End()]
+		if ast.IsObjectLiteralExpression(ast.SkipParentheses(initializer)) {
+			value = "(" + value + ")"
+		}
+		body.WriteString(indent + "  const " + declaration.Name().Text() + " = try acquireDisposable(sync(() => " + value + "))\n")
+	}
+	end := block.End() - 1
+	rest := strings.TrimRight(text[statement.End():end], " \t\r\n")
+	rest = strings.TrimPrefix(strings.TrimLeft(rest, " \t\r\n;"), ";")
+	if rest != "" {
+		body.WriteString(indent + "  " + rest + "\n")
+	}
+	body.WriteString(indent + "})\n" + lineIndent(text, end))
+	return []*ls.CodeAction{{
+		Description: "Acquire with acquireDisposable inside scoped",
+		Changes:     replaceRange(fix, start, end, body.String()),
+	}}, nil
+}
+
+// isEffectGlobalAt reports whether name at location resolves to the export of
+// effect/Effect that VIP-6 puts in scope.
+func isEffectGlobalAt(c *checker.Checker, name string, location *ast.Node) bool {
+	symbol := c.ResolveName(name, location, ast.SymbolFlagsValue, false /*excludeGlobals*/)
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	return symbol != nil && len(symbol.Declarations()) > 0 && effectModuleOfFile(ast.GetSourceFileOfNode(symbol.Declarations()[0])) == "Effect"
+}
