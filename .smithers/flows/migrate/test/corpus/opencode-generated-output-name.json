@@ -1,0 +1,6 @@
+{
+  "key": "opencode-generated-output-name",
+  "rule": "A bare filename held as data is not a source reference; rewriting it requires a source-input context.",
+  "file": "packages/generator/src/index.ts",
+  "source": "export function files() { return [{ path: \"index.ts\", content: \"export const value = 1;\" }] }\n"
+}

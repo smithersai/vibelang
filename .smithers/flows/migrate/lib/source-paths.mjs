@@ -3,7 +3,7 @@ import { posix, join } from "node:path"
 import { Minimatch } from "./vendor/minimatch.mjs"
 import { isFixtureFile } from "./inventory.mjs"
 import { isDeclarationFile } from "./util.mjs"
-import { expectationLiteral, joinedLiteralPath, packageContext, processArgument, remoteUrlPart, resolveRenamed, twinListed, viteEntryRoot } from "./converted-paths.mjs"
+import { expectationLiteral, joinedLiteralPath, literalSourceInput, packageContext, processArgument, remoteUrlPart, resolveRenamed, twinListed, viteEntryRoot } from "./converted-paths.mjs"
 import { compileRegex, disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
 
 
@@ -322,8 +322,11 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
   const renameByPath = new Map(renames.map(r => [r.from, r]))
   const live = new Set(inventory ?? [])
   // A key of an object literal is data: only an exact path from the file or the root moves it.
-  const targetOf = (node, key) => resolveRenamed(node.text, file, renameByPath, key ? { live } :
-    { packages, live, urlRoot: viteEntryRoot(ts, node, file, source, packages) }).move
+  const targetOf = (node, key) => {
+    if (!node.text.includes("/") && /\.(?:[cm]?[jt]sx?|vibex?)$/.test(file) && !literalSourceInput(ts, node)) return undefined
+    return resolveRenamed(node.text, file, renameByPath, key ? { live } :
+      { packages, live, urlRoot: viteEntryRoot(ts, node, file, source, packages) }).move
+  }
   const pathPattern = value => value.length < 200 && (value.includes("/") || /\.(?:[cm]?[jt]sx?|vibe)(?:$|[,}])|\.\{(?:[cm]?[jt]sx?|vibe)[,}]/.test(value))
   const matcherOf = pattern => compiledSelector(pattern, matcherCache)
   const moduleMap = node => {

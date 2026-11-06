@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrating a package could report a changed API when an unchanged class with private members or enum moved behind a re-export; the comparison now retains its public identity while checking member and alias changes.
 - Site checks waited for video metadata requests to time out. The local build router now honors byte ranges, so those checks finish loading media promptly.
 - Bundling a project with virtual TypeScript modules could fail while VibeLang checked a virtual identifier as a file. Virtual modules now stay with the plugin that generates them.
+- Migrating a code generator could change an output filename from `index.ts` to `index.vibe`; bare filename data now stays unchanged while source inputs follow renamed modules.
 - `effect` on an index signature or after a modifier in an interface or type literal, as in `interface I { readonly effect value: number }`, reported syntax errors. It now reports `EK0108`, with its quick fix.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
 

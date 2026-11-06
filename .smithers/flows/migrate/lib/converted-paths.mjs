@@ -27,6 +27,7 @@ const toolConfig = /(?:^|\/)[^/]*\.config\.(?:[cm]?[jt]sx?|vibe)$/
 // A lint glob stays as written: the repository's parsers do not read .vibe, and setup adds its own pass.
 const lintConfig = /(?:^|\/)\.?(?:eslint|oxlint|oxfmt|prettier|biome|dprint)[^/]*$/
 const pathCalls = new Set(["join", "resolve"])
+const fileReadCalls = new Set(["readFile", "readFileSync", "readFileString", "readFileStringSync", "createReadStream"])
 const unwrapCalls = new Set(["fileURLToPath", "pathToFileURL", "String", "toFileUrl", "fromFileUrl", "normalize"])
 // A child process does not inherit a loader the way fork and Worker inherit
 // execArgv, so naming x.vibe there is not a safe rewrite: refuse it.
@@ -413,6 +414,20 @@ function sinksOf(ts, node, keys = entryKeys) {
     return [{ expr: value, kind: "config" }]
   }
   return []
+}
+
+// A bare name may describe an output or label. Only an actual input operand
+// gives the codemod evidence to change it; qualified paths retain their policy.
+export function literalSourceInput(ts, node) {
+  for (let parent = node.parent; parent && !ts.isStatement(parent); parent = parent.parent) {
+    if ((ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) && parent.moduleSpecifier === node) return true
+    if (sinksOf(ts, parent).some(({ expr, kind }) => kind !== "process" && node.pos >= expr.pos && node.end <= expr.end)) return true
+    if (ts.isCallExpression(parent) && fileReadCalls.has(calleeName(ts, parent.expression))) {
+      const input = parent.arguments[0]
+      if (input && node.pos >= input.pos && node.end <= input.end) return true
+    }
+  }
+  return false
 }
 
 const REMEDY = "keep the module TypeScript with `revert`, or change the caller in its own commit first"
