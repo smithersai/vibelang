@@ -997,11 +997,11 @@ export async function wireNewPackages(config, log) {
   changed.push(...publication.changed)
   changed.push(...wireSidecarPacking(t))
 
-  const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
-  if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
   const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
   await must(install, { cwd: t, log: join(log, "install.log") })
+  const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
+  if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   return { toolchainPublication: publication, manager, sidecarDir, added: added.map((pkg) => pkg.dir), specs: Object.fromEntries(added.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), formatted, changed, warnings, install }
 }
 
@@ -1191,11 +1191,11 @@ export async function wireTarget(config, log) {
     if (refreshed.text !== before) writeFileSync(join(t, path), refreshed.text)
     for (const spec of refreshed.stale) warnings.push(`${path}: ${spec} names a tarball this toolchain does not have; setup removed ${Wire.toolchainDirectory}, so point it at a VibeLang package by hand`)
   }
-  const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
-  if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
   const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
   await must(install, { cwd: t, log: join(log, "install.log") })
+  const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
+  if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
   const emittedImports = await wireEmittedProjects(config, ts, join(log, "emitted-imports"))
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))

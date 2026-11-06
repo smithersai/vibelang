@@ -1,0 +1,5 @@
+{
+  "pattern": "Setup selects a new VibeLang Prettier plugin while the previous toolchain is unavailable.",
+  "viteConfig": "import { defineConfig } from 'vite'; export default defineConfig({plugins:[]});\n",
+  "oracle": "Files written by setup are formatted using the dependencies setup installs."
+}
