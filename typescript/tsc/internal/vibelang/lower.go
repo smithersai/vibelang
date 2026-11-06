@@ -465,6 +465,8 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 		call = tx.runtimeCall("$catch", value, tx.visit(node.Arguments()[1]))
 	} else if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
 		call = tx.concurrentForCall(node) // its limit runs before its items (order.go)
+	} else if tryOperationName(node) == "try.all" {
+		call = tx.nativeTryAllCall(node)
 	} else if isNativeFork(node) {
 		f := tx.Factory()
 		fork := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("forkChild"), ast.NodeFlagsNone)

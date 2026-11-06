@@ -1,0 +1,39 @@
+import { Effect as Eff, Fiber as Fib } from "effect"
+effect function check(mode: number) {
+  const anchor = try Eff.forkChild(effect {
+    const Effect = { all(): boolean[] { return [] } }
+    void Effect
+    const owner = try Eff.fiberId
+    const jobs = [1,2,3].map<Eff.Effect<boolean>>(item => effect {
+      const current = try Eff.fiberId
+      const child = try Eff.forkChild(Eff.succeed(item))
+      const okay = owner < current && current < child.id
+      try Fib.join(child)
+      return okay
+    })
+    const make = () => jobs
+    let evaluations = 0
+    switch (mode) {
+      case 0: return try.all [jobs[0], jobs[1], jobs[2]]
+      case 1: return try.all jobs
+      case 2: return try.all ([jobs[0], jobs[1], jobs[2]] as const)
+      case 3: return try.all [...jobs]
+      case 4: return try.all (jobs as ReadonlyArray<Eff.Effect<boolean>>)
+      case 5: return try.all make()
+      case 6: return try.all []
+      default: {
+        const result = try.all (evaluations++, jobs)
+        return [...result, evaluations === 1]
+      }
+    }
+  })
+  return try Fib.join(anchor)
+}
+export effect function main() {
+  const seen: boolean[] = []
+  for (const mode of [0,1,2,3,4,5,6,7]) {
+    const values = try check(mode)
+    seen.push(...values)
+  }
+  return seen
+}

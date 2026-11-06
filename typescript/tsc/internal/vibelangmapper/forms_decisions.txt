@@ -7840,6 +7840,12 @@ typescript/vibelang/cases/trusted-workspace-package/main.vibe:4:60 lambda plain 
 typescript/vibelang/cases/trusted-workspace-package/main.vibe:7:20 byname program table
 typescript/vibelang/cases/trusted-workspace-package/main.vibe:7:38 lambda plain table
 typescript/vibelang/cases/trusted-workspace-package/main.vibe:7:62 lambda plain table
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:14:18 lambda plain fallback
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:3:36 lambda program table
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda choice fallback
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:7:51 lambda plain table
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:7:59 lambda program keyword
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:9:39 byname program table
 typescript/vibelang/cases/try-all-settled-literal-map/main.vibe:14:21 lambda effectFn fallback
 typescript/vibelang/cases/try-all-settled-literal-map/main.vibe:14:74 lambda plain table
 typescript/vibelang/cases/try-all-settled-literal-map/main.vibe:15:18 lambda program table

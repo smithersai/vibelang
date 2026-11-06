@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - `fork.in(scope) e`, `fork.scoped e` and `fork.detached e` reported syntax errors. They now start a fiber with that owner, with `EK1705` for another owner name and `EK1706` for a `fork.in` scope that is not a `Scope`.
+- `try.all` could allocate fiber IDs that collided with surrounding fibers when the project and runtime loaded separate Effect copies. It now uses the project's `Effect.all`.
 - Runtime compatibility checks could time out while repeatedly starting Node. They now reuse a Node process while keeping every generated comparison and failure reduction.
 
 - Migration progress could label an expected `todo` test failure as an ordinary failure. Its records now retain the `todo` and `skip` flags and reasons.

@@ -37,11 +37,16 @@ func (p *projector) tryOperation(call *ast.Node, e env) {
 		return
 	}
 	p.plan.mark(editRun, partOpen, start, start, "")
-	p.plan.replace(start, p.tokenStart(operand), helperRef(tryOperationHelper(call))+"(")
+	target, close := helperRef(tryOperationHelper(call)), ")"
+	if tryOperationHelper(call) == "$tryAll" {
+		target = p.names.prelude("Effect") + ".all"
+		close = ", { concurrency: \"unbounded\" })"
+	}
+	p.plan.replace(start, p.tokenStart(operand), target+"(")
 	operandEnv := e
 	operandEnv.holdCalls = true
 	p.visit(operand, operandEnv)
-	p.plan.insert(call.End(), ")")
+	p.plan.insert(call.End(), close)
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
 
