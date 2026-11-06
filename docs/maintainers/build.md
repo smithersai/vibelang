@@ -662,6 +662,16 @@ The `//:spec-tests` target runs `go test -json` through
 failures, and `go-progress` records appear immediately, every ten seconds, at
 package boundaries and on exit. Each record includes a run identifier,
 elapsed time and counts of started and finished packages and tests.
+
+On exit, a bounded failure summary repeats up to 32 failing test roots so a
+long successful tail cannot hide which tests failed. Records use the usual
+`--- FAIL: TestName` prefix so existing failure collectors retain them. Each
+includes the run identifier, a hash of the package identity, the root test name and its
+failed-event count. Subtest names and test output are excluded because they
+can contain input data. The summary reports omitted events when more roots
+fail or a name cannot be represented safely; it does not imply the omitted
+failures passed. The original JSON stream and exit status remain unchanged.
+
 The target uses the shared graph check deadline. Its regression reads that
 default from the actual check factory and verifies the target retains it;
 changing the default does not leave a stale deadline assertion. Missing,

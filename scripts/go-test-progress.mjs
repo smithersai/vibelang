@@ -1,6 +1,7 @@
 // Keep Go's JSON output intact; add bounded metadata before Go starts and while it is quiet.
 // No command arguments, environment values, source text or process paths enter these records.
 import { spawn } from "node:child_process"
+import { createHash } from "node:crypto"
 import { readFileSync, readlinkSync, readdirSync } from "node:fs"
 import { basename, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -40,9 +41,24 @@ export function processKinds(pid, proc = "/proc") {
 
 export function progressState() {
   let buffer = "", discard = false
+  let failedEvents = 0, omittedEvents = 0
+  const failedRoots = new Map()
+  const rememberFailure = item => {
+    if (typeof item.Test !== "string") return
+    failedEvents++
+    const test = item.Test.split("/", 1)[0]
+    if (!/^(?:Test|Fuzz|Example)[A-Za-z0-9_]{1,127}$/.test(test)) { omittedEvents++; return }
+    const packageId = createHash("sha256").update(typeof item.Package === "string" ? item.Package : "").digest("hex").slice(0, 16)
+    const key = packageId + ":" + test, existing = failedRoots.get(key)
+    if (existing) existing.failedEvents++
+    else if (failedRoots.size < 32) failedRoots.set(key, { packageId, test, failedEvents: 1 })
+    else omittedEvents++
+  }
   const state = { packagesStarted: 0, packagesFinished: 0, testsStarted: 0, testsFinished: 0, buildFailures: 0 }
   return {
     state,
+    // Keep only source-level test identities. Subtest names can contain input data.
+    failureSummary: () => ({ failedEvents, omittedEvents, roots: [...failedRoots.values()].map(root => ({ ...root })) }),
     consume(text, event) {
       for (const part of text.split(/(?<=\n)/)) {
         const newline = part.endsWith("\n")
@@ -59,6 +75,7 @@ export function progressState() {
             }
             if (item.Action === "start" && !item.Test) { state.packagesStarted++; event("package-start") }
             if (item.Action === "run" && item.Test) state.testsStarted++
+            if (item.Action === "fail" && item.Test) rememberFailure(item)
             if (["pass", "fail", "skip"].includes(item.Action)) {
               if (item.Test) state.testsFinished++
               else { state.packagesFinished++; event("package-" + item.Action) }
@@ -124,6 +141,15 @@ export function run(args) {
     clearInterval(heartbeat)
     for (const [name, handler] of handlers) process.off(name, handler)
     observer.consume(decoder.end(), event => record(event))
+    const failures = observer.failureSummary()
+    for (const root of failures.roots) {
+      process.stderr.write("--- FAIL: " + root.test + " (go-failure run=" + process.pid +
+        " package_id=" + root.packageId + " failed_events=" + root.failedEvents + ")\n")
+    }
+    if (failures.failedEvents) {
+      process.stderr.write("go-failure-summary run=" + process.pid + " failed_events=" + failures.failedEvents +
+        " listed_roots=" + failures.roots.length + " omitted_events=" + failures.omittedEvents + "\n")
+    }
     record("finish", spawnError ? "cause=spawn code=" + spawnError :
       "cause=" + (signal || interrupted ? "signal" : "exit") + " code=" + code +
       (signal || interrupted ? " signal=" + (signal || interrupted) : ""))

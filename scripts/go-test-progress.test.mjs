@@ -436,3 +436,66 @@ func main() {
   assert.ok(secondaryChildren.length >= 1, "the native subprocess must exist in a secondary thread")
   assert.deepEqual(sampled, { launcher: 0, go: 0, compile: 0, link: 0, test: 1, other: 1 })
 })
+
+test("Go progress retains a failure summary after a long successful tail", t => {
+  const rows = [
+    { Action: "start", Package: "private-fixture-path" },
+    { Action: "run", Package: "private-fixture-path", Test: "TestMiddle/private-fixture-value" },
+    { Action: "output", Output: "private-fixture-value" },
+    { Action: "fail", Package: "private-fixture-path", Test: "TestMiddle/private-fixture-value" },
+    ...Array.from({ length: 2000 }, (_, i) => ({ Action: "pass", Package: "private-fixture-path", Test: "TestLater/row" + i })),
+    { Action: "fail", Package: "private-fixture-path" }
+  ]
+  const output = rows.map(row => JSON.stringify(row) + "\n").join("")
+  const env = fixture(t, "process.stdout.write(" + JSON.stringify(output) + "); process.exitCode=1")
+  const result = spawnSync(process.execPath, args, { env, encoding: "utf8", timeout: 10000, maxBuffer: 2 * 1024 * 1024 })
+  assert.equal(result.status, 1)
+  assert.equal(result.stdout, output)
+  assert.match(result.stderr.slice(-4096), /^--- FAIL: TestMiddle \(go-failure run=\d+ package_id=[a-f0-9]{16} failed_events=1\)/m)
+  assert.match(result.stderr.slice(-4096), /go-failure-summary run=\d+ failed_events=1 listed_roots=1 omitted_events=0/)
+  assert.doesNotMatch(result.stderr, /private-fixture-(value|argument|path)/)
+})
+
+test("Go progress bounds failure identities and distinguishes packages without printing them", () => {
+  const observer = progressState()
+  const rows = [
+    { Action: "fail", Package: "one", Test: "TestSame/private-fixture-value" },
+    { Action: "fail", Package: "two", Test: "TestSame/private-fixture-value" },
+    { Action: "fail", Package: "one", Test: "TestSame" },
+    { Action: "fail", Package: "one", Test: "private-fixture-value" },
+    ...Array.from({ length: 80 }, (_, i) => ({ Action: "fail", Package: "one", Test: "TestExtra" + i }))
+  ]
+  for (const row of rows) observer.consume(JSON.stringify(row) + "\n", () => {})
+  const summary = observer.failureSummary()
+  assert.equal(summary.failedEvents, 84)
+  assert.equal(summary.roots.length, 32)
+  assert.equal(summary.omittedEvents, 51)
+  assert.deepEqual(summary.roots.slice(0, 2).map(root => [root.test, root.failedEvents]), [["TestSame", 2], ["TestSame", 1]])
+  assert.notEqual(summary.roots[0].packageId, summary.roots[1].packageId)
+  assert.doesNotMatch(JSON.stringify(summary), /private-fixture-value|"one"|"two"/)
+})
+
+test("Go failure summaries survive seeded chunk boundaries and ignore oversized records", () => {
+  const stream = [
+    '{"Action":"output","Output":"' + "x".repeat(70000) + '"}\n',
+    ...Array.from({ length: 40 }, (_, i) => JSON.stringify({
+      Action: i % 3 ? "fail" : "pass", Package: "package" + i % 2, Test: "FuzzCase" + i % 5 + "/private-fixture-value"
+    }) + "\n"),
+    'null\n{"Action":"fail","Test":7}\nnot-json\n'
+  ].join("")
+  const control = progressState()
+  control.consume(stream, () => {})
+  assert.equal(control.failureSummary().failedEvents, 26)
+  for (let seed = 1; seed <= 128; seed++) {
+    const observer = progressState()
+    let offset = 0, random = seed
+    while (offset < stream.length) {
+      random = (Math.imul(random, 1664525) + 1013904223) >>> 0
+      const width = 1 + random % 4093
+      observer.consume(stream.slice(offset, offset + width), () => {})
+      offset += width
+    }
+    assert.deepEqual(observer.failureSummary(), control.failureSummary(), "seed " + seed)
+  }
+})
+
