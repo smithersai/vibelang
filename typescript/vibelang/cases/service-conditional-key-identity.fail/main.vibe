@@ -1,0 +1,9 @@
+// expect: EK3002 EK3003 EK3004
+service First { static readonly key = "conditional/First"; value: number }
+service Second { static readonly key = "conditional/Second"; value: number }
+type Key<Flag extends boolean> = Flag extends true ? typeof First : typeof Second
+export function inspect<Flag extends boolean>(key: Key<Flag>, value: unknown) { return value instanceof key }
+export function construct<Flag extends boolean>(key: Key<Flag>) { return new key() }
+export function inherit<Flag extends boolean>(key: Key<Flag>) { class Child extends key {}; return 1 }
+export function pattern<Flag extends boolean>(key: Key<Flag>, value: unknown) { return match(value) { when key: 1; default: 0; } }
+export function extractor<Flag extends boolean>(key: Key<Flag>, value: unknown) { return match(value) { when key(): 1; default: 0; } }

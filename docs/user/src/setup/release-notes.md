@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Bundling native error declarations could pull in unused experimental platform services; generated language helpers now keep those services out of the bundle graph.
 
+- A service key hidden behind a conditional type alias could be treated as an ordinary class. It now reports the same errors as a directly named key.
 - Contributor checks rejected the documentation runner after a harmless reporting flag change; they now recognize its selected suites while retaining deadline checks.
 - Services beside a nested `Context` namespace could emit declarations that TypeScript rejected. Their generated imports now use an unshadowed name.
 - Calls known to throw inside a synchronous generator passed to `Effect.try` or another callback wrapper could compile unchecked. They now report `EK0401`, and `vibelang --fix` preserves the iterator's behavior.

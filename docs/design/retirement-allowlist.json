@@ -1848,5 +1848,35 @@
       "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
     },
     "reason": "Every alternative is a service key, so the existing misuse rule applies regardless of which key is selected. Choosing an implementation or a shape check requires application intent. The guard preserves distinct declaration identities and mixed ordinary-constructor unions; no preserving mechanical replacement can select one service for the user."
+  },
+  {
+    "code": "EK3002",
+    "case": "typescript/vibelang/cases/service-conditional-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "Every possible branch denotes a service key. A conditional alias must retain the existing misuse checks; selecting an implementation or replacing a class pattern requires application intent. Native constructors, identifier-only types and distinct declaration identities remain separate, so a mechanical replacement cannot choose a service."
+  },
+  {
+    "code": "EK3003",
+    "case": "typescript/vibelang/cases/service-conditional-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "Every possible branch denotes a service key. A conditional alias must retain the existing misuse checks; selecting an implementation or replacing a class pattern requires application intent. Native constructors, identifier-only types and distinct declaration identities remain separate, so a mechanical replacement cannot choose a service."
+  },
+  {
+    "code": "EK3004",
+    "case": "typescript/vibelang/cases/service-conditional-key-identity.fail",
+    "vip": "VIP-9",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted VIP-9 misuse checks prohibit construction, inheritance and instanceof on a service key; docs/design/src/005-services.md applies the same identity rule to class patterns."
+    },
+    "reason": "Every possible branch denotes a service key. A conditional alias must retain the existing misuse checks; selecting an implementation or replacing a class pattern requires application intent. Native constructors, identifier-only types and distinct declaration identities remain separate, so a mechanical replacement cannot choose a service."
   }
 ]
