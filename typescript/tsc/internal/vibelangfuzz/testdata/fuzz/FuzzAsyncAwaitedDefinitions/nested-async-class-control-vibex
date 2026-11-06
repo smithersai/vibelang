@@ -1,0 +1,3 @@
+go test fuzz v1
+string("nested-async-class-control")
+byte(1)

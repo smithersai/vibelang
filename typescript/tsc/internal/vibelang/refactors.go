@@ -196,6 +196,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if isFunctionBoundary(n) {
+			nested = nested || asyncBoundaryHeadHasAwait(n)
 			return false
 		}
 		if n.Kind == ast.KindAwaitExpression {
