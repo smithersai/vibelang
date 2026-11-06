@@ -1488,6 +1488,12 @@ const targets = {
     [],
     [node]
   ),
+  "docs-warning-exit": check(
+    "Warning-only build advice distinguishes imported Effect diagnostics from own warnings and standalone lint.",
+    "node docs/tools/warning-exit-claims.mjs && bun test --timeout 60000 docs/tools/warning-exit-claims.test.ts",
+    [],
+    [bun, node]
+  ),
   "docs-table-rows": check(
     "User tables retain headers and widths; platform advice qualifies queries, argument lists, byte reads and elapsed time.",
     "node docs/tools/table-rows.mjs && bun test --timeout 30000 docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
