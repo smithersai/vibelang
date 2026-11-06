@@ -1,0 +1,10 @@
+import * as Effect from "effect/Effect";
+let built = 0, ran = 0;
+export function build() {
+  return do {
+    const stamp = ++built;
+    const program = Effect.sync(() => { ran++; return stamp; });
+    effect { return try program; }
+  };
+}
+export const state = () => [built, ran];
