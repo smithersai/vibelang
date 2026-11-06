@@ -61,6 +61,16 @@ func isWrittenTrailingBlock(file *ast.SourceFile, call *ast.Node) bool {
 	if !isBlockParamCall(call) || call.Expression().Flags&ast.NodeFlagsReparsed != 0 {
 		return false
 	}
+	// A missing "(" after native with is a retired provider header, not a
+	// callback call. Keep TypeScript's syntax errors and visit any genuine
+	// trailing calls inside its body independently.
+	if parent := call.Parent; parent != nil && parent.Kind == ast.KindWithStatement && parent.AsWithStatement().Expression == call {
+		lex := scanner.NewScanner()
+		lex.SetText(file.Text()[nodeStart(file, parent):nodeStart(file, call)])
+		if lex.Scan() == ast.KindWithKeyword && lex.Scan() == ast.KindEndOfFile {
+			return false
+		}
+	}
 	arguments := call.Arguments()
 	arrow := arguments[len(arguments)-1]
 	token := arrow.AsArrowFunction().EqualsGreaterThanToken

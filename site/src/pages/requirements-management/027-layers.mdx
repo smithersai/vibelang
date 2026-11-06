@@ -267,6 +267,8 @@ The codemod passes a captured tuple to an immediately called arrow that composes
 
 The migration leaves a candidate unchanged if it adds a compiler error, even when its declaration text would match.
 
+To update an old `with Live { … }` provider block, replace `with` with `provide` in effect code. The old header reports ordinary syntax errors.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/requirements-management/layers](https://effect.website/docs/v4/requirements-management/layers/)

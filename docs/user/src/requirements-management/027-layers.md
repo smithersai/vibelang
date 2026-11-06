@@ -271,3 +271,5 @@ The codemod uses aliased native imports when introducing a namespace would chang
 The codemod passes a captured tuple to an immediately called arrow that composes the layers. Argument expressions stay in their original scope, including inside a `provide wire(...) { ... }` header.
 
 The migration leaves a candidate unchanged if it adds a compiler error, even when its declaration text would match.
+
+To update an old `with Live { … }` provider block, replace `with` with `provide` in effect code. The old header reports ordinary syntax errors.

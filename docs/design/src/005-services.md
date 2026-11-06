@@ -343,6 +343,8 @@ class Users extends Context.Service<Users, {}>()("tools/Users") {}
 
 ## `provide` blocks
 
+The retired `with Provider { … }` spelling is invalid syntax; it has no trailing-block migration.
+
 ### Syntax
 
 [ProvideStatement](900-appendices.md#providestatement), a list of [Provider](900-appendices.md#provider)s. A top-level comma separates providers. A top-level `=` whose left side is a `LeftHandSideExpression` makes `Key = value`; any other `=` belongs to the expression, so `provide flag ? A : B = x { }` provides `flag ? A : (B = x)`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.

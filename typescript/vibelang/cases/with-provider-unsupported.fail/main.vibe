@@ -1,4 +1,4 @@
-// expect: TS1005 EK1101
+// expect: TS1005
 export function probe(): number!! {
   with Layer.empty { return 1 }
 }
