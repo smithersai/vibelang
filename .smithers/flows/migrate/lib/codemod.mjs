@@ -69,7 +69,7 @@ export function pathAliases(ts, root) {
     if (!options) return sourceExt
     if (options.rewriteRelativeImportExtensions ||
         options.allowImportingTsExtensions && (options.noEmit || options.emitDeclarationOnly)) return sourceExt
-    return sourceExt === ".vibex" && options.jsx === ts.JsxEmit.Preserve ? ".jsx" : ".js"
+    return /x$/.test(sourceExt) && options.jsx === ts.JsxEmit.Preserve ? ".jsx" : ".js"
   }
   return aliasesFor
 }
@@ -725,6 +725,13 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
       // relative name of a migrated source, including a newly renamed file.
       if (next.startsWith(".") && /\.vibex?$/.test(next) && /\.vibex?$/.test(target)) {
         const sourceExt = posix.extname(target)
+        const chosen = aliases?.migratedSourceExtension?.(file, sourceExt) ?? sourceExt
+        next = next.slice(0, -sourceExt.length) + chosen
+      }
+      // A revert meets the same policy for a .vibe name no edit recorded, such as
+      // one emission routing wrote: ./x.ts is TS5097 where ./x.js is the native name.
+      if (next.startsWith(".") && /\.vibex?$/.test(modulePath) && /\.tsx?$/.test(next) && /\.tsx?$/.test(target)) {
+        const sourceExt = posix.extname(next)
         const chosen = aliases?.migratedSourceExtension?.(file, sourceExt) ?? sourceExt
         next = next.slice(0, -sourceExt.length) + chosen
       }

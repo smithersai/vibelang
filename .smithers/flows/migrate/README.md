@@ -1092,3 +1092,5 @@ Reference refresh excludes independent checking projects even when they share ch
 A revert accepts a reference rebuild that finishes with diagnostics, because settle returns failing modules one round at a time and its next check reports what remains. A rebuild killed by a signal, or one that exits with any other status, still stops the revert. A migration compile keeps requiring a clean rebuild.
 
 With `routeBundledImports`, a revert restores every routed TypeScript import. When only foreign diagnostics remain after a revert, settle emits again before it blames a kept module, because those diagnostics describe the dropped routes.
+
+A revert spells an unrecorded `.vibe` import by the project's emission policy: `./x.js` where TypeScript rejects source extensions, and `./x.ts` where the project allows them.

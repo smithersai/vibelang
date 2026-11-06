@@ -1,0 +1,6 @@
+{
+  "key": "opencode-revert-unrecorded-specifier",
+  "importer": "export { LLMClient } from \"./route/client.vibe\"\n",
+  "module": "export const LLMClient = 1\n",
+  "rule": "A revert spells an unrecorded `.vibe` import by the project's emission policy: `./x.js` where TypeScript rejects source extensions, and `./x.ts` where the project allows them."
+}
