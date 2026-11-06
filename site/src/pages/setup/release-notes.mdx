@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - Moving platform code could widen a unique-symbol key and break computed-property access with `TS7053`. Generated local aliases now retain the imported value type.
+- The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
 - The TypeScript replacement guide told npm to install an unavailable package. It now identifies the unpublished preview and shows the source-checkout route.
@@ -25,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Focused contributor checks could fail with missing packages on a fresh checkout. The documented preparation step now installs all pinned prerequisites before the chosen check.
 - Contributor checks for changed files downloaded a compiler unnecessarily and failed offline. Their temporary projects now include both required compiler baselines.
 - Migrating an inherited error could stop at a match that already handled its tag. The class repair now retains that tagged matcher, narrowing and coverage.
+- Rest bindings from tuple patterns lost their remaining element positions. They now keep the tuple tail, including optional and variadic elements.
 - The migrate flow renamed TanStack Router file routes, and the generator then took the `.d.vibex.ts` sidecar for the route. A one-pass plan now keeps those files as `.ts` or `.tsx`.
 - Migration API checks counted a native module body's declaration as a new entry point, so a module with an internal body never compared identical. Its parent's exports now decide the API.
 - `vibelang/babel` and `vibelang/metro` read only `.vibe`, so a `.vibex` module failed to parse or was left out of the bundle. Both now read `.vibex`.
