@@ -218,7 +218,6 @@ A written `for concurrent(limit())` limit is evaluated once, before the iterable
 ## Supervising child lifetimes
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try request()
 effect function request() {
   try ensuring(scoped(effect {
@@ -246,7 +245,6 @@ A service declared inside a function or block needs an explicit `static readonly
 ## Selecting scoped or detached lifetimes
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
 // run: const owner = try Scope.make(); const background = try inCallerScope(owner); try Scope.close(owner, Exit.succeed(undefined)); const stopped = try Fiber.await(background); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause)); try detachedExample(); try Console.log("detached finished")
 effect function inCallerScope(owner: Scope.Scope) {
   const started = try Deferred.make<void>()

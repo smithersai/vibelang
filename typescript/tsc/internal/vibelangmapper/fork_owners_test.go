@@ -14,6 +14,10 @@ func TestForkOwnerProjection(t *testing.T) {
 		{"detached", "fork.detached Effect.succeed(1)", ".forkDetach(Effect.succeed(1))"},
 		{"detached-lines", "fork\n.detached Effect.succeed(1)", ".forkDetach(Effect.succeed(1))"},
 		{"try-in-scope", "fork.in(try make()) Effect.succeed(1)", ".forkIn("},
+		{"in-block", "fork.in(s) effect { return 1 }", ".forkIn(s)("},
+		{"scoped-block", "fork.scoped effect { return 1 }", ".forkScoped("},
+		{"detached-block", "fork.detached effect { return 1 }", ".forkDetach("},
+		{"keyword-block", "fork effect { return 1 }", "$gen(function* ()"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			source := `import { Effect } from "effect"; export effect function sample(s, make) { const f = ` + c.form + `; return join f }`

@@ -51,8 +51,19 @@ func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
 		return p.lookAhead((*Parser).nextTokenIsOpenBraceOnSameLine)
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindNewKeyword, ast.KindSuperKeyword, ast.KindOpenBraceToken, ast.KindAwaitKeyword:
 		return true
+	case ast.KindOpenParenToken:
+		return p.parenthesesLeadToArrow()
 	}
 	return false
+}
+
+// parenthesesLeadToArrow reports whether the parentheses at the current token
+// are an arrow's parameters. After fork or a fork owner, that is a TypeScript
+// syntax error, and it is how the mapper's parse sees a written effect block
+// once it blanks the keyword: effect { … } reads as ()=> { … } at the same
+// offsets.
+func (p *Parser) parenthesesLeadToArrow() bool {
+	return p.skipParentheses() && p.token == ast.KindEqualsGreaterThanToken
 }
 
 // forkOwners maps each owner of fork.owner (VIP-17) to the runtime helper that
@@ -76,24 +87,8 @@ func (p *Parser) legacyForkOwnerHasOperand() bool {
 		return false
 	}
 	p.nextToken()
-	if owner == "in" {
-		if p.token != ast.KindOpenParenToken {
-			return false
-		}
-		for depth := 0; ; {
-			switch p.token {
-			case ast.KindOpenParenToken:
-				depth++
-			case ast.KindCloseParenToken:
-				depth--
-			case ast.KindEndOfFile:
-				return false
-			}
-			p.nextToken()
-			if depth == 0 {
-				break
-			}
-		}
+	if owner == "in" && (p.token != ast.KindOpenParenToken || !p.skipParentheses()) {
+		return false
 	}
 	if p.hasPrecedingLineBreak() {
 		return false
@@ -101,8 +96,29 @@ func (p *Parser) legacyForkOwnerHasOperand() bool {
 	switch p.token {
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindNewKeyword, ast.KindSuperKeyword, ast.KindAwaitKeyword:
 		return true
+	case ast.KindOpenParenToken:
+		return p.parenthesesLeadToArrow()
 	}
 	return false
+}
+
+// skipParentheses moves past the balanced parentheses at the current token, and
+// reports false at the end of the file.
+func (p *Parser) skipParentheses() bool {
+	for depth := 0; ; {
+		switch p.token {
+		case ast.KindOpenParenToken:
+			depth++
+		case ast.KindCloseParenToken:
+			depth--
+		case ast.KindEndOfFile:
+			return false
+		}
+		p.nextToken()
+		if depth == 0 {
+			return true
+		}
+	}
 }
 
 // parseVibeLangForkOwner parses the rest of fork.in(scope), fork.scoped or
@@ -197,7 +213,11 @@ func (p *Parser) parseVibeLangFork() *ast.Node {
 		p.recordVibeSyntaxBlock(VibeSyntaxForkBlock, keyword, body)
 		program = p.vibelangProgramArrow(nil, body, keyword)
 	} else {
-		program = p.parseSimpleUnaryExpression()
+		if !p.vibelangFiberContext && p.token == ast.KindOpenParenToken && p.lookAhead((*Parser).parenthesesLeadToArrow) {
+			program = p.parseAssignmentExpressionOrHigher()
+		} else {
+			program = p.parseSimpleUnaryExpression()
+		}
 		p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: word, Range: core.NewTextRange(keyword.Pos(), program.End())})
 	}
 	arguments := []*ast.Node{program}
