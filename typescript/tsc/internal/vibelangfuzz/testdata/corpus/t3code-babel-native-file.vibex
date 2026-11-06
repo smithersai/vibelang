@@ -1,0 +1,2 @@
+export interface Props { readonly value: string }
+export const text = (props: Props): string => props.value;

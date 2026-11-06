@@ -1,0 +1,6 @@
+{
+  "root": "import { createRootRoute } from \"@tanstack/react-router\"; export const Route = createRootRoute({});\n",
+  "route": "import { createFileRoute } from \"@tanstack/react-router\"; export const Route = createFileRoute(\"/welcome\")({component: () => <div>Welcome</div>});\n",
+  "declaration": "export declare const Route: unknown;\n",
+  "declarationRole": "Representative generated compatibility output for a static discovery probe, not an assertion about its emitted public type."
+}

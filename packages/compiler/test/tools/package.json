@@ -8,6 +8,7 @@
   },
   "devDependencies": {
     "@babel/core": "7.29.0",
+    "@tanstack/router-generator": "1.167.12",
     "@types/react": "19.2.2",
     "@vitejs/plugin-react": "6.1.2",
     "babel-plugin-react-compiler": "1.0.0",

@@ -1,9 +1,0 @@
-FuzzMigrationGeneratedOutputNames output:array/ts compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames output:array/tsx compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames output:object/ts compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames output:object/tsx compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames output:returned/ts compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames output:returned/tsx compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames output:nested/ts compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames output:nested/tsx compiler VIP-34; Chapter 7: migration source wiring changes generated output descriptor data; lane drive-opencode
-FuzzMigrationGeneratedOutputNames corpus:opencode-generated-output-descriptor compiler VIP-34; Chapter 7: minimized generated output basename is mistaken for a source reference; lane drive-opencode
