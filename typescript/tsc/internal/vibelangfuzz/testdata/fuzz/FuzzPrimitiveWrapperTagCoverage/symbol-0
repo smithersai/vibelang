@@ -1,0 +1,4 @@
+go test fuzz v1
+string("Symbol")
+byte(0)
+byte(0)

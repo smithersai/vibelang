@@ -10,7 +10,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A throwing call in an `enum` initializer could be rejected even when a surrounding `try`/`catch` handled it; the handler is now recognized.
 
+- An object tag pattern could incorrectly count primitive literal cases as covered when their wrapper interface declared `_tag`, letting an incomplete match compile. These cases now remain uncovered, and `--fix` can preserve the previous no-match error with an explicit default.
 - A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
+
+### Upgrade from 0.0.12
+
+| Before | After and repair |
+| --- | --- |
+| An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
 
 ## 0.0.12
 

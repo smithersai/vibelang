@@ -122,6 +122,10 @@
       {
         "input": "typescript/vibelang/cases/diag-nested-exhaustive.fail",
         "output": "typescript/vibelang/cases/diag-nested-exhaustive-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/match-primitive-wrapper-tag.fail",
+        "output": "typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output"
       }
     ]
   },

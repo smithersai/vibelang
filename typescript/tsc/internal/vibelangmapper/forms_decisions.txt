@@ -5268,6 +5268,11 @@ typescript/vibelang/cases/match-predicate-receiver/main.vibe:8:28 lambda dual fa
 typescript/vibelang/cases/match-predicate-source-narrowing/main.vibe:9:63 lambda plain fallback
 typescript/vibelang/cases/match-predicate-source-narrowing/main.vibe:9:75 lambda plain fallback
 typescript/vibelang/cases/match-primitive-coverage-controls/main.vibe:8:25 lambda plain table
+typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:12:103 lambda dual fallback
+typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:13:99 lambda dual fallback
+typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:14:104 lambda dual fallback
+typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:15:101 lambda dual fallback
+typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:16:113 lambda dual fallback
 typescript/vibelang/cases/match-primitive-wrappers/main.vibe:49:22 lambda plain table
 typescript/vibelang/cases/match-property-cache-neighborhood/main.vibe:101:19 lambda effectFn fallback
 typescript/vibelang/cases/match-property-cache-neighborhood/main.vibe:10:19 lambda plain fallback

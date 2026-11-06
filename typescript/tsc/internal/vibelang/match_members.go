@@ -16,7 +16,12 @@ func remainingPatternMembers(c *checker.Checker, call *ast.Node, left *checker.T
 	}
 	var remaining []*checker.Type
 	for _, member := range members(left) {
-		tag := c.GetTypeOfPropertyOfType(member, "_tag")
+		// Primitive wrapper declarations can expose _tag, but object patterns
+		// reject primitive values before reading any property.
+		var tag *checker.Type
+		if isFiniteMatchObjectType(member) {
+			tag = c.GetTypeOfPropertyOfType(member, "_tag")
+		}
 		covered := tag != nil && isLiteralTagType(tag)
 		if tag == nil && member.Flags()&checker.TypeFlagsUnit != 0 {
 			for _, arm := range arms {
@@ -68,7 +73,7 @@ func memberArmCovers(c *checker.Checker, arm parser.MatchMemberArm, member, tag 
 		}
 		return false
 	}
-	if len(arm.Tags) == 0 {
+	if tag == nil || len(arm.Tags) == 0 {
 		return false
 	}
 	for _, name := range arm.Required {
