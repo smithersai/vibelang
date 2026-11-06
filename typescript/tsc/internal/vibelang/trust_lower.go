@@ -350,6 +350,10 @@ func inCatchingTry(node *ast.Node) bool {
 		if classExtendsChild(parent, n) {
 			continue
 		}
+		// Enum initializers run during their enclosing activation.
+		if parent.Kind == ast.KindEnumDeclaration {
+			continue
+		}
 		if isFunctionBoundary(parent) {
 			break
 		}
