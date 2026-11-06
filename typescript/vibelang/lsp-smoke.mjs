@@ -256,12 +256,12 @@ try {
 
   })
 
-  await check("code action: EK2120 and EK2121 warn at the old service and layer spellings, and their quick fixes write the current ones", async () => {
+  await check("code action: EK2120 warns and EK2121 rejects retired layers, with preserving quick fixes", async () => {
     const file = "src/old-declarations.vibe"
     open(file, "vibe")
     const items = await diagnostics(file)
     const codes = items.map((d) => `${d.source} ${d.code} ${d.severity}`).sort()
-    assert(JSON.stringify(codes) === JSON.stringify(["EK 2120 2", "EK 2121 2"]), `diagnostics ${JSON.stringify(codes)}`)
+    assert(JSON.stringify(codes) === JSON.stringify(["EK 2120 2", "EK 2121 1"]), `diagnostics ${JSON.stringify(codes)}`)
     const uri = fileUri(file)
     const service = items.find((d) => d.code === 2120)
     const serviceStart = at(file, "service class Greeting")

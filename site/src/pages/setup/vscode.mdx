@@ -65,6 +65,8 @@ These are language-server capabilities, not a guarantee that every construct off
 
 Select a TypeScript `module` declaration and request **Move module to a .ts file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](/getting-started/012-devtools#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.
 
+Retired `layer` declarations report `EK2121` as an error, while `EK2120` is a migration warning for a class-only service. Both diagnostics offer a quick fix when the rewrite preserves the declaration; changing warning settings does not make retired `layer` syntax valid.
+
 ## Server settings and troubleshooting
 
 | Setting | Default | Purpose |
