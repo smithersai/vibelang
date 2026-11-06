@@ -1264,8 +1264,8 @@ cross-file barrier, per-file ordering checks and a failing worker.
 `//:site-spec-links` checks the generated specification and VIP pages for unconverted `.md` links, missing pages and missing anchors. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `site/src/pages/spec/**`, `site/src/pages/vips/**` and `docs/tools/site-spec-links.test.ts`; unrelated changes reuse its cached result.
 
 The contrast test emits `site contrast stage result:` JSON after each of its
-five commands: dependency installation, infrastructure tests, typecheck,
-production build and browser audit. Each record includes the command,
+six commands: dependency installation, infrastructure tests, typecheck,
+production build, 404 checks and browser audit. Each record includes the command,
 `elapsedMs`, exit `code` and `signal`; a command that cannot start records
 its error and a null code. Records appear before the exit assertion, so a
 failed stage retains its cost. Compare these costs before changing the audit's
@@ -1280,6 +1280,16 @@ available memory and cgroup memory events distinguish resource exhaustion
 from an audit assertion. Failed requests include their path and error, with
 query strings omitted. `CONTRAST_ARTIFACTS` additionally saves screenshots
 and the completed contrast observations.
+
+Local media requests additionally emit `media-request`, `media-response` and
+`media-finished` or `media-failed` records. A request still open when its page
+closes emits `media-pending-at-close`. The request sequence and original operation
+sequence correlate its header and terminal timings with navigation. These
+records retain the path, numeric byte-range metadata, media content type and
+response status; query strings and other headers are omitted. Each page traces
+at most 16 local media requests, including retries. Compare header arrival with
+completion or cancellation before changing response handling or navigation
+readiness; an aborted metadata request alone does not establish a failure.
 
 The contrast audit uses `axe.run` in the current document rather than the
 partial-results adapter, which opens a blank helper page and transfers a

@@ -63,9 +63,10 @@ function resources() {
 
 // Report the exact operation before entering Chromium. A renderer crash may
 // happen between completed metrics, so completed observations alone lose it.
-export function contrastDiagnostics({ log = console.log, snapshot = resources } = {}) {
+export function contrastDiagnostics({ log = console.log, snapshot = resources, now = () => performance.now() } = {}) {
   let current = { phase: 'launch', active: false }
   let sequence = 0
+  let requestSequence = 0
   const report = (event, extra = {}) => {
     log('site contrast diagnostic:', JSON.stringify({ event, ...current, ...extra, resources: snapshot() }))
   }
@@ -77,24 +78,69 @@ export function contrastDiagnostics({ log = console.log, snapshot = resources } 
       await session.send('Target.setDiscoverTargets', { discover: true })
     },
     watch(page, details) {
+      // Trace only a bounded number of local media requests. Asset traffic and
+      // arbitrary headers would add noise and could expose credentials.
+      const media = new Map()
+      let observed = 0
+      const finish = (request, event) => {
+        const record = media.get(request)
+        if (!record) return
+        media.delete(request)
+        const { started, ...fields } = record
+        report(event, { ...fields, elapsedMs: Math.round(now() - started) })
+      }
+      page.on('request', request => {
+        if (observed >= 16 || request.resourceType() !== 'media') return
+        const url = new URL(request.url())
+        if (url.origin !== 'https://vibelang.sh') return
+        const range = request.headers().range
+        const fields = {
+          ...details, requestSequence: ++requestSequence, requestOperationSequence: current.sequence,
+          requestPath: url.pathname,
+          requestRange: range === undefined ? undefined : /^bytes=(?:\d+-\d*|-\d+)$/.test(range) && range.length <= 96 ? range : 'invalid',
+        }
+        observed++
+        media.set(request, { ...fields, started: now() })
+        report('media-request', fields)
+      })
+      page.on('response', response => {
+        const record = media.get(response.request())
+        if (!record) return
+        const { started, ...fields } = record
+        const headers = response.headers()
+        const type = headers['content-type']?.split(';')[0]
+        const range = headers['content-range']
+        const length = headers['content-length']
+        report('media-response', {
+          ...fields, status: response.status(), elapsedMs: Math.round(now() - started),
+          contentType: /^(?:video|audio)\/[a-z0-9.+-]+$/.test(type) ? type : 'other',
+          contentRange: range === undefined ? undefined : /^bytes (?:\d+-\d+|\*)\/\d+$/.test(range) && range.length <= 96 ? range : 'invalid',
+          contentLength: /^\d{1,15}$/.test(length) ? Number(length) : undefined,
+        })
+      })
+      page.on('requestfinished', request => finish(request, 'media-finished'))
+      page.on('close', () => {
+        for (const request of media.keys()) finish(request, 'media-pending-at-close')
+      })
       page.on('crash', () => report('renderer-crash', details))
       page.on('requestfailed', request => {
+        finish(request, 'media-failed')
         const url = new URL(request.url())
         report('request-failed', { ...details, requestPath: url.pathname, error: request.failure()?.errorText })
       })
     },
     async run(phase, details, operation) {
       current = { sequence: ++sequence, phase, ...details, active: true }
-      const started = performance.now()
+      const started = now()
       report('start')
       try {
         const result = await operation()
         current.active = false
-        report('complete', { elapsedMs: Math.round(performance.now() - started) })
+        report('complete', { elapsedMs: Math.round(now() - started) })
         return result
       } catch (error) {
         current.active = false
-        report('failed', { elapsedMs: Math.round(performance.now() - started), error: error.message })
+        report('failed', { elapsedMs: Math.round(now() - started), error: error.message })
         throw error
       }
     },
