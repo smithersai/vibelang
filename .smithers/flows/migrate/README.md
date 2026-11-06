@@ -941,6 +941,8 @@ An upgrade commit lists the predecessor's VIP migrations in a separate paragraph
 
 Generated JavaScript source-child helpers retain their TypeScript parameter, generic and tuple contracts through JSDoc, so strict `checkJs` and declaration emit accept the same native launcher. Setup refreshes the canonical untyped helper without changing its runtime code, retains manually edited documentation with a located warning, and keeps structural blank lines after transpilation.
 
+A global `TS6059` diagnostic does not prevent fix scope discovery when the compiler returns the complete source list. The diagnostic can name a compiler-only namespace input. The `*.scope.log` receipt retains the source error, and normal checking still reports it. Unreadable configurations and incomplete output stop discovery.
+
 Temporary fixing projects list only roots from the original project; imported TypeScript and VibeLang dependencies remain imports. This preserves `rootDir` checks and declaration-backed views. If retained roots cannot reach a selected module, the flow keeps the original project. Each shard receipt lists its `roots` separately from its dependency closure.
 
 Before a fixing pass, the flow discovers every `.vibe` file in the compiler program. The pass needs only the file list, so errors in source files (such as `EK0301` or `EK1702` in recorded modules outside the batch, or a syntax or type error) never stop it; an error with no file or in a JSON configuration, a crash, unknown output and an empty list still stop discovery. The `.scope.log` receipt records that semantic checking is deferred. After fixing, the normal checks report previously hidden type errors.

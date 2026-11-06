@@ -14,9 +14,13 @@ export async function fixProgramFiles({ compiler, tsconfig, cwd, log, timeoutMs 
   // The scope needs only the file list. --listFilesOnly prints the complete
   // program even when source files have errors (EK0301, EK1702, a syntax or a
   // type error), and --fix may be the run that repairs them, so those never
-  // stop discovery. An error with no file or in a JSON config means the
-  // compiler could not read the project, so its list is not trusted.
-  const configErrors = errors.filter(d => !d.file || /\.json$/i.test(d.file))
+  // stop discovery. TS6059 is a source-layout diagnostic even when it has
+  // no source location, including compiler-only namespace inputs. It does
+  // not make the file list unreadable. Other global/configuration errors
+  // still stop discovery.
+  const outsideRootSource = diagnostic => !diagnostic.file && diagnostic.code === "TS6059" &&
+    /^File '.+' is not under 'rootDir' '.+'\./.test(diagnostic.message)
+  const configErrors = errors.filter(d => (!d.file || /\.json$/i.test(d.file)) && !outsideRootSource(d))
   let inDiagnostic = false
   const unexpected = output.split(/\r?\n/).filter(line => {
     if (!line.trim()) return false
