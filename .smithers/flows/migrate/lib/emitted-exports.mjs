@@ -4,6 +4,7 @@ import { join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { pathAliases } from "./codemod.mjs"
+import { excludePrivateModules } from "./private-module-exports.mjs"
 import { syncPackPolicy } from "./pack-policy.mjs"
 import { resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 
@@ -254,7 +255,7 @@ function emittedTarget(source, outputs) {
 }
 
 /** Route native entries only to files the package's actual compile produced. */
-export function routeEmittedExports(packageDir, outputs, { restore = false, onGraph, onPacking, typescript } = {}) {
+export function routeEmittedExports(packageDir, outputs, { restore = false, onGraph, onPacking, typescript, moduleOutputs } = {}) {
   const path = join(packageDir, "package.json")
   if (!existsSync(path)) return false
   const before = readFileSync(path, "utf8")
@@ -295,9 +296,10 @@ export function routeEmittedExports(packageDir, outputs, { restore = false, onGr
     }
     pkg[field]=next
   }
+  const privateModules = excludePrivateModules(packageDir, pkg, moduleOutputs, { restore })
   const packing = syncPackPolicy(packageDir, pkg)
-  onPacking?.(packing.files)
-  if (JSON.stringify(JSON.parse(before)) === JSON.stringify(pkg)) return packing.changed
+  onPacking?.([...packing.files, ...privateModules.files])
+  if (JSON.stringify(JSON.parse(before)) === JSON.stringify(pkg)) return packing.changed || privateModules.changed
   writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
   return true
 }

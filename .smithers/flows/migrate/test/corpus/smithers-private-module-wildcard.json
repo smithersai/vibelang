@@ -1,0 +1,4 @@
+{
+  "name": "Route",
+  "source": "module $throw$ts { export function invoke(): number { return 42 } }\nimport { invoke } from $throw$ts\nexport const value = invoke()\n"
+}

@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Linting migrated files could report an unknown rule for a TypeScript suppression comment. Native TypeScript rule aliases now name the registered ESLint rule.
 - A `.vibex` file with a `module` body failed in Vite under `"jsx": "preserve"`, with `Failed to resolve import` for its `.jsx` output. `vibelang-vite` now serves that output.
+- Migrating a package with wildcard exports could expose generated TypeScript module helpers as new public entrypoints. Those helpers now stay private while authored exports remain available.
 - Migration `record` refused a batch whose every module had reverted for a recorded cause, even with every gate passing. It now keeps that outcome and its causes.
 - Migration verify reported a lost wrapper when a conversion wrote `onSome: Effect.succeed` as `onSome: (value) => Effect.succeed(value)`.
 - A JavaScript exception in a `do` that ran an Effect could skip an iterator's `return` method when the `do` stood in an array destructuring default or a `for…of` body. The iterator now closes, and the exception wins over an error from closing.

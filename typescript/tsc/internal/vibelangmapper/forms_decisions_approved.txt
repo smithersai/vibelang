@@ -2350,3 +2350,4 @@ typescript/vibelang/cases/cov2-002b-owner-syntax/main.vibe:6:30 lambda: program 
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The shadowing all(): boolean[] method explicitly returns an ordinary array, so its written return annotation selects a plain method.
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The shadowed object method has an explicit boolean[] return annotation, so it is plain regardless of its all name.
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # the local all method declares boolean[], so its annotation decides plain
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The ordinary object method has a written boolean[] return annotation and no effect modifier.

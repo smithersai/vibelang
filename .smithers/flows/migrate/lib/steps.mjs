@@ -1523,7 +1523,7 @@ export async function emitMigratedJs(config, t, logs) {
     recordOutputs(outputs, pkg.dir, result.outputs, file => packageDirOf(t, file))
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
-    const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
+    const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { moduleOutputs:result.moduleOutputs, typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
     const previous = emitted.findIndex(entry => !entry.restored && entry.package === pkg.dir)
     const entry = { package: pkg.dir, emissionPass: pass + 1, compilerArtifact: artifact ? bindCompilerArtifact({ ...config, compilerArtifact: artifact }) : null, files: result.files, generatedFiles: result.generatedFiles, layoutPlans: result.layoutPlans, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics }
     if (previous < 0) emitted.push(entry)
