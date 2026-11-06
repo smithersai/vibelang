@@ -109,5 +109,5 @@ func foreignUnionSignatureThrows(c *checker.Checker, signature *checker.Signatur
 			return throwContract{}
 		}
 	}
-	return writtenThrows(c, decl)
+	return writtenSourceSignatureThrows(c, decl)
 }

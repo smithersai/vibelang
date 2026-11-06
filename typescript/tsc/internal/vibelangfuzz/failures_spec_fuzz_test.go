@@ -1247,6 +1247,9 @@ func failuresCases() []*failCase {
 	for _, c := range failuresGeneratorParameterCases() {
 		add(c)
 	}
+	for _, c := range failuresReturnedSignatureCases() {
+		add(c)
+	}
 	for _, c := range failuresAliasedThrowsCases() {
 		add(c)
 	}

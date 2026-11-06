@@ -202,7 +202,7 @@ func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signatu
 		return thrown
 	}
 	var thrown []*checker.Type
-	for _, host := range jsdocHosts(decl) {
+	for _, host := range sourceSignatureHosts(decl) {
 		if ast.IsTypeAliasDeclaration(host) {
 			continue
 		}

@@ -129,8 +129,12 @@ type throwContract struct {
 
 // writtenThrows reads the @throws tags on decl's JSDoc hosts.
 func writtenThrows(c *checker.Checker, decl *ast.Node) throwContract {
+	return writtenThrowsOnHosts(c, jsdocHosts(decl))
+}
+
+func writtenThrowsOnHosts(c *checker.Checker, hosts []*ast.Node) throwContract {
 	var contract throwContract
-	for _, host := range jsdocHosts(decl) {
+	for _, host := range hosts {
 		// Chapter 3: tags on aliases of function types do not attach.
 		// A function type's own signature and interface/property hosts keep
 		// their contracts; the enclosing type alias supplies none.
@@ -296,7 +300,7 @@ func foreignAliasThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool
 			return throwContract{}, false
 		}
 	}
-	contract := writtenThrows(c, decl)
+	contract := writtenSourceSignatureThrows(c, decl)
 	return contract, contract.tagged && (contract.unknown || len(contract.types) != 0)
 }
 

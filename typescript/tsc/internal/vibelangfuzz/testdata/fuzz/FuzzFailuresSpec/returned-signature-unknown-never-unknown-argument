@@ -1,0 +1,3 @@
+go test fuzz v1
+string("returned-signature-unknown-never-unknown-argument")
+byte(0)

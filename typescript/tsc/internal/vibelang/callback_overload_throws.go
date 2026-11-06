@@ -117,5 +117,5 @@ func foreignOverloadThrows(c *checker.Checker, signature *checker.Signature) thr
 			return throwContract{}
 		}
 	}
-	return writtenThrows(c, decl)
+	return writtenSourceSignatureThrows(c, decl)
 }

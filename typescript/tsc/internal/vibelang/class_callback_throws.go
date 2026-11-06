@@ -219,7 +219,11 @@ func implementedCallbackContract(c *checker.Checker, signature *checker.Signatur
 		}
 	}
 	var contract throwContract
-	for _, host := range jsdocHosts(decl) {
+	hosts := jsdocHosts(decl)
+	if foreignOnly {
+		hosts = sourceSignatureHosts(decl)
+	}
+	for _, host := range hosts {
 		if ast.IsTypeAliasDeclaration(host) {
 			continue
 		}

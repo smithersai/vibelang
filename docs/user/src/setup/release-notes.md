@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The replacement guide ruled out supported TypeScript 5 setups for `vue-tsc` and `svelte-check`. It now explains their reliance on TypeScript's JavaScript API.
 - Contributor queue instructions named the wrong base branch and required checks that run after landing. They now describe work on `vibe`, green commits on `main`, and the supplied base for hosted checks.
 - A migrated build-config helper could fail to load an unchanged TypeScript sibling imported without an extension. The Node preload now resolves that sibling and directory indexes while preserving module identity.
+
+- A callback returned by a throwing factory could inherit the factory's errors and be rejected as an argument or assignment; its own explicit throw contract now stays separate.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
 - The TypeScript replacement guide told npm to install an unavailable package. It now names the version included in this release and retains the source-checkout option.
