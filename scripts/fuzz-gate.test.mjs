@@ -104,7 +104,7 @@ test("real target declarations run exact saved seeds with bounded time and compl
   }
 })
 
-function fixture(t) {
+function fixture(t, ciSource = process.env.CI_SCRIPT_SOURCE ? readFileSync(process.env.CI_SCRIPT_SOURCE, "utf8") : read("scripts/ci.sh")) {
   const root = mkdtempSync(join(tmpdir(), "vibe-fuzz-gate-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const write = (path, text, executable = false) => {
@@ -113,12 +113,13 @@ function fixture(t) {
     writeFileSync(file, text)
     if (executable) chmodSync(file, 0o755)
   }
-  write("scripts/ci.sh", process.env.CI_SCRIPT_SOURCE ?
-    readFileSync(process.env.CI_SCRIPT_SOURCE) : read("scripts/ci.sh"))
+  write("scripts/ci.sh", ciSource)
   for (const file of ["select.mjs", "map.json"]) write("scripts/fuzz-gate/" + file, read("scripts/fuzz-gate/" + file))
   write("scripts/check-effect-install.mjs", "process.exit(0)\n")
   write("scripts/share-effect.mjs", read("scripts/share-effect.mjs"))
-  for (const dir of [".smithers", "packages/runtime", "packages/compiler", "experiments", "docs/tools"]) {
+  const installs = /^for dir in ([^;\n]+); do install "\$dir"; done$/m.exec(ciSource)
+  assert.ok(installs, "the CI selection fixture needs explicit install directories")
+  for (const dir of installs[1].trim().split(/\s+/)) {
     mkdirSync(join(root, dir, "node_modules"), { recursive: true })
   }
   write("packages/ts-mapper/package.json", JSON.stringify({ devDependencies: { typescript: "fixture" } }))
@@ -140,6 +141,16 @@ function fixture(t) {
     })
   }, args() { return JSON.parse(readFileSync(join(root, "args.json"), "utf8")) } }
 }
+
+test("selection fixtures prepare newly declared package prerequisites", t => {
+  const source = read("scripts/ci.sh")
+  const extended = source.replace("for dir in ", "for dir in packages/extra-prerequisite ")
+  assert.notEqual(extended, source)
+  const f = fixture(t, extended)
+  const run = f.run()
+  assert.equal(run.status, 0, run.stderr)
+  assert.deepEqual(f.args().slice(0, 4), ["ci", "//packages:compiler-test", "--jobs", "8"])
+})
 
 test("the actual CI shell appends selected labels from a mirror's paths file", t => {
   const f = fixture(t)
