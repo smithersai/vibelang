@@ -974,7 +974,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 \<details>
-\<summary>Parser and lowering hooks (1003 records)\</summary>
+\<summary>Parser and lowering hooks (1012 records)\</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1102,6 +1102,13 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_fibers.go:Parser.tokenRange ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17/19 fork and concurrent-loop helpers; legacy paths below |
 | ` parser/vibelang_fibers.go:Parser.isStartOfVibeLangFork ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17/19 fork and concurrent-loop helpers; legacy paths below |
 | ` parser/vibelang_fibers.go:Parser.parseVibeLangFork ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17/19 fork and concurrent-loop helpers; legacy paths below |
+| ` parser/vibelang_fibers.go:Parser.parseVibeLangForkOwner ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 named owners fork.in, fork.scoped and fork.detached, with EK1705 for another name |
+| ` vibelang/fork_owners.go:checkForkOwner ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 reports EK1703 and EK1706 for named fork owners |
+| ` vibelang/fork_owners.go:forkOwnerRejected ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 lets EK1703 and EK1706 own a generated call's argument error |
+| ` vibelang/fork_owners.go:forkScopeRejected ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 fork.in scope assignability, EK1706 |
+| ` vibelang/fork_owners.go:init ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 registers EK1705 and EK1706 |
+| ` vibelang/fork_owners.go:isForkOwner ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 recognizes fork.in, fork.scoped and fork.detached calls |
+| ` vibelang/fork_owners.go:lowering.forkOwnerCall ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 writes Effect.forkIn, forkScoped or forkDetach, with the scope first |
 | ` parser/vibelang_fibers.go:Parser.forkBraceIsObjectOperand ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17 brace after fork in Effect code is an object UnaryExpression, as after await |
 | ` parser/vibelang_fibers.go:Parser.isStartOfVibeLangJoin ` | ` admission:join ` | ` 900-appendices.md#JoinExpression ` | ` support ` | VIP-17 single Fiber operand; aggregate meaning not admitted |
 | ` parser/vibelang_fibers.go:Parser.parseVibeLangJoin ` | ` admission:join ` | ` 900-appendices.md#JoinExpression ` | ` support ` | VIP-17 single Fiber operand; aggregate meaning not admitted |
@@ -1715,6 +1722,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration ` | ` admission:control-declaration ` | ` - ` | ` pending ` | Open VIP-35 does not admit control declarations |
 | ` parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-aggregate ` | ` admission:join-aggregate ` | ` - ` | ` pending ` | VIP-17 admits grammar operand but not aggregate Fiber join semantics |
 | ` parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyForkOperand ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` recovery ` | VIP-1/17: outside source Effect context, legacy fork operands are recognized only for their diagnostics and migration |
+| ` parser/vibelang_fibers.go:Parser.legacyForkOwnerHasOperand ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` recovery ` | VIP-1/17: outside source Effect context, a named owner with an operand recovers for EK1701; a valid member access keeps its reading |
 | ` parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyJoinOperand ` | ` admission:join ` | ` 900-appendices.md#JoinExpression ` | ` recovery ` | VIP-1/17: outside source Effect context, legacy join operands are recognized only for their diagnostics and migration |
 | ` parser/vibelang_fiber_context.go:Parser.setVibeLangFiberContext ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` support ` | Appendix A source Effect parameter for the reserved fork and join operators (VIP-1/17) |
 | ` parser/vibelang_fiber_context.go:Parser.parseVibeLangOrdinaryInitializer ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` support ` | Appendix A source Effect parameter for the reserved fork and join operators (VIP-1/17) |
@@ -1914,6 +1922,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_effect_assertion.go:Parser.vibeLangAssertionRestComplete ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
 | ` parser/vibelang_catch.go:Parser.parseVibeLangCatchHandlerWorker ` | ` admission:catch-handler-recovery ` | ` 900-appendices.md#CatchHandler `, ` 002-running.md ` | ` support ` | VIP-5: parse the literal handler before reassigning only its missing-arrow diagnostic to EK0509 |
 | ` vibelang/match_receiver.go:lowering.visitPatternReceiver ` | ` admission:match-builtins ` | ` 004-match.md ` | ` support ` | VIP-7: retain a member pattern reference receiver while leaving checked pattern calls intact |
+| ` parser/vibelang_do_bindings.go:isOmittedBindingElement ` | ` admission:do ` | ` 002-running.md ` | ` support ` | Recognizes an array pattern hole in lowered bindings; no additional syntax |
 | ` parser/vibelang_do_bindings.go:Parser.doBindingPattern ` | ` admission:do ` | ` 002-running.md ` | ` support ` | VIP-2: find flat array and object defaults whose jumps must leave the enclosing activation |
 | ` parser/vibelang_do_bindings.go:VibeLangDoBindingContext ` | ` admission:do ` | ` 000-intro.md `, ` 002-running.md ` | ` support ` | VIP-2: retain native binding context independently of generated temporaries |
 | ` parser/vibelang_do_bindings.go:VibeLangDoBindingNormalContext ` | ` admission:do ` | ` 002-running.md ` | ` support ` | VIP-2: outward paths supply no normal completion value |
