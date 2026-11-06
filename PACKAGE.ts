@@ -601,6 +601,12 @@ const targets = {
   "spec-registry": specRegistry,
   "spec-diagnostic-identity": specDiagnosticIdentity,
   "spec-appendix-examples": specAppendixExamples,
+  "spec-appendix-replays": S.Shell.Test({
+    summary: "Every Appendix replay of a failing case names a diagnostic the case expects, with no compiler.",
+    shell: "node --test docs/tools/appendix-case-replays.test.mjs",
+    data: [specInputs, S.file("docs/tools/appendix-case-replays.test.mjs")],
+    tools: [node], sandbox: "none", timeout: "2m"
+  }),
   "spec-appendix-host-examples": specAppendixHostExamples,
   "spec-tables": specTables,
   "spec-pipe-arrows": specPipeArrows,

@@ -355,6 +355,7 @@ queue:
 | `//:docs-check` | Public spec sources or generated pages and the provenance checker; rejects internal review attribution while keeping the public policy text. |
 | `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
 | `//:mapper-scripts` | `scripts/mapper-*`, `packages/ts-mapper/`, the compiler's `cache.mjs` or the LSP fixture |
+| `//:spec-appendix-replays` | Appendix B and failing-case changes; checks that each replay of a failing case names a diagnostic the case expects, without a compiler build. |
 | `//:spec-lint-unit` | Public chapters/VIPs and spec-linter sources or tests; checks diagnostic ownership and mutation properties without a compiler build. |
 | `//typescript/vibelang:lsp-smoke` | `typescript/vibelang/lsp-*`, its `PACKAGE.ts`, or the compiler's `format.mjs` |
 | `//:go-vibelangfuzz-editor` | the language service, `typescript/tsc/internal/ls/` |
@@ -668,6 +669,7 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :go-vibelangfmt               VibeLang formatter Go tests; required by :compiler-test-1
   :go-project-vibelang          VibeLang manifest-change invalidation tests
   :go-tsoptions-vibelang        VibeLang configuration and diagnostic tests
+  :go-ast-vibelang              VibeLang // @vibe directive recognition tests
   :go-tspath-vibelang           VibeLang and .vibex extension recognition tests
   :vibelang-files ...           Filegroups: one Go package's tests and testdata
 //typescript
