@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 
@@ -45,7 +45,7 @@ function fixture(t) {
     assert.ok(key, run.stdout)
     return key
   }
-  return { put, key }
+  return { root, put, key }
 }
 
 test("native build keys ignore fuzz-only changes while test inputs retain them", t => {
@@ -97,4 +97,74 @@ test("decision snapshots stay in test inputs without changing native build keys"
   for (let index = 0; index < nativeTargets.length; index++) {
     assert.notEqual(tableChanged[index], before[index], "embedded table must re-key " + nativeTargets[index])
   }
+})
+
+// Exercise the installed SDK and a real Go linker, not a simulated cache. The
+// small command uses the production forms target declaration and native input
+// group, so this checks artifact transport without compiling the whole compiler.
+test("native producer artifacts replay across clean checkouts and reject stale inputs", { timeout: 300_000 }, t => {
+  const first = fixture(t)
+  first.put("typescript/tsc/cmd/vibelang-forms/main.go", [
+    "package main", "import (", '  _ "embed"', '  "fmt"', ")",
+    "//go:embed version.txt", "var version string", "func main() { fmt.Print(version) }", ""
+  ].join("\n"))
+  first.put("typescript/tsc/cmd/vibelang-forms/version.txt", "producer-one\n")
+  const binary = root => join(root, "typescript/built/local/vibelang-forms")
+  const build = root => {
+    const result = join(root, "result.json")
+    rmSync(result, { force: true })
+    const run = spawnSync(cli, ["build", "//typescript:forms-generator", "--jobs", "8", "--ui", "plain", "--results-file", result], {
+      cwd: root, encoding: "utf8", timeout: 120_000, maxBuffer: 16 * 1024 * 1024
+    })
+    assert.ifError(run.error)
+    assert.equal(run.status, 0, run.stdout + run.stderr)
+    const summary = JSON.parse(readFileSync(result, "utf8"))
+    const entry = summary.results.find(entry => entry.label === "//typescript:forms-generator")
+    assert.ok(entry, JSON.stringify(summary))
+    return entry.status
+  }
+  const execute = root => {
+    const run = spawnSync(binary(root), [], { encoding: "utf8", timeout: 10_000 })
+    assert.ifError(run.error)
+    assert.equal(run.status, 0, run.stderr)
+    return run.stdout
+  }
+  assert.equal(build(first.root), "ran")
+  assert.equal(execute(first.root), "producer-one\n")
+  const bytes = readFileSync(binary(first.root))
+
+  const second = mkdtempSync(join(tmpdir(), "vibelang-native-replay-"))
+  t.after(() => rmSync(second, { recursive: true, force: true }))
+  // Copy the SDK-owned cache unchanged, including its artifact store; never
+  // interpret its records or treat a copied executable as proof of replay.
+  cpSync(first.root, second, { recursive: true, filter: path =>
+    !["node_modules", ".jj", ".git"].includes(basename(path)) })
+  for (const path of ["node_modules", ".smithers/node_modules"]) {
+    symlinkSync(join(repo, ".smithers/node_modules"), join(second, path), "dir")
+  }
+  rmSync(join(second, "typescript/built"), { recursive: true })
+  assert.equal(existsSync(binary(second)), false)
+  assert.equal(build(second), "hit", "the transferred cache must restore the absent executable")
+  assert.ok(existsSync(binary(second)), "cache hit must restore its declared native output")
+  assert.deepEqual(readFileSync(binary(second)), bytes)
+  assert.equal(execute(second), "producer-one\n")
+
+  writeFileSync(join(second, "README.md"), "documentation change\n")
+  writeFileSync(join(second, "typescript/tsc/internal/vibelangfuzz/spec.go"), "package vibelangfuzz\n// oracle change\n")
+  writeFileSync(binary(second), "damaged output\n")
+  assert.equal(build(second), "hit", "docs and fuzz-only edits retain the native artifact")
+  assert.deepEqual(readFileSync(binary(second)), bytes)
+  assert.equal(execute(second), "producer-one\n")
+
+  writeFileSync(join(second, "typescript/tsc/cmd/vibelang-forms/version.txt"), "producer-two\n")
+  assert.equal(build(second), "ran", "an embedded production input must invalidate the producer")
+  assert.equal(execute(second), "producer-two\n")
+  assert.notDeepEqual(readFileSync(binary(second)), bytes)
+
+  // Result records alone are insufficient: missing artifact bytes must cause
+  // a rebuild rather than reporting a hit with an absent executable.
+  rmSync(join(second, ".flows/cas"), { recursive: true, force: true })
+  rmSync(binary(second))
+  assert.equal(build(second), "ran")
+  assert.equal(execute(second), "producer-two\n")
 })
