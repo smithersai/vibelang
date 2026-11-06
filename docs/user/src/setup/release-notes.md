@@ -4,6 +4,12 @@ VibeLang is v0, so a new version can change the language in breaking ways.
 Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
+## 0.0.13 (unreleased)
+
+### Bugs fixed since 0.0.12
+
+- A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
+
 ## 0.0.12
 
 ### Bugs fixed since 0.0.11

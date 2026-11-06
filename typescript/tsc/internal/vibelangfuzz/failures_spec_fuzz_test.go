@@ -1250,6 +1250,9 @@ func failuresCases() []*failCase {
 	for _, c := range failuresReturnedSignatureCases() {
 		add(c)
 	}
+	for _, c := range failuresHeritageCatchCases() {
+		add(c)
+	}
 	for _, c := range failuresAliasedThrowsCases() {
 		add(c)
 	}
