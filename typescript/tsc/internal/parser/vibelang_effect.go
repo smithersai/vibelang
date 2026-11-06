@@ -349,6 +349,9 @@ func (p *Parser) isStartOfVibeLangEffectTypeMember() bool {
 		if p.hasPrecedingLineBreak() {
 			return false
 		}
+		if p.isIndexSignature() {
+			return true
+		}
 		if p.token == ast.KindOpenBracketToken {
 			p.parseComputedPropertyName()
 		} else {

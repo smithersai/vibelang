@@ -3616,6 +3616,9 @@ func (p *Parser) parseTypeMember() *ast.Node {
 	modifiers := p.parseModifiers()
 	if p.isStartOfVibeLangEffectTypeMember() {
 		word := p.parseVibeLangEffectMember()
+		if p.isIndexSignature() {
+			return p.markEffect(p.parseIndexSignatureDeclaration(pos, jsdoc, modifiers), word)
+		}
 		return p.markEffect(p.parsePropertyOrMethodSignature(pos, jsdoc, modifiers), word)
 	}
 	if p.parseContextualModifier(ast.KindGetKeyword) {
@@ -6563,6 +6566,9 @@ func (p *Parser) scanTypeMemberStart() bool {
 	for ast.IsModifierKind(p.token) {
 		idToken = true
 		p.nextToken()
+	}
+	if p.isStartOfVibeLangEffectTypeMember() {
+		return true
 	}
 	// Index signatures and computed property names are type members
 	if p.token == ast.KindOpenBracketToken {

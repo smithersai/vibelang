@@ -25,7 +25,7 @@ const serviceEffectBodylessQuote = "A bodyless `effect find(id: string): User!No
 
 func FuzzEffectBodylessAdmission(f *testing.F) {
 	startShortBudget(f)
-	forms := []string{"ambient-function", "ambient-method", "ambient-namespace", "abstract", "interface-method", "literal-method", "interface-property", "literal-property", "overload", "identifier", "service", "shape-service", "service-identifier"}
+	forms := []string{"interface-index", "literal-index", "interface-after-readonly", "literal-after-readonly", "ambient-function", "ambient-method", "ambient-namespace", "abstract", "interface-method", "literal-method", "interface-property", "literal-property", "overload", "identifier", "service", "shape-service", "service-identifier"}
 	for _, form := range forms {
 		f.Add(form, uint8(0))
 	}
@@ -72,6 +72,14 @@ func FuzzEffectBodylessAdmission(f *testing.F) {
 			source = "interface C { effect value?: number }"
 		case "literal-property":
 			source = "type C = { effect value: number }"
+		case "interface-index":
+			source = "interface C { effect [key: string]: number }"
+		case "literal-index":
+			source = "type C = { effect [key: string]: number }"
+		case "interface-after-readonly":
+			source = "interface C { readonly effect value: number }"
+		case "literal-after-readonly":
+			source = "type C = { readonly effect value: number }"
 		case "overload":
 			source = "effect function read(): number!!; effect function read() { return 1 }"
 			want = 0

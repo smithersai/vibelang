@@ -1,0 +1,7 @@
+// expect: EK0108
+// Chapter 1: a recognized effect modifier on an interface or type literal member
+// is EK0108, in TypeScript's recovery positions too.
+export interface Index { effect [key: string]: number }
+export type Literal = { effect [key: string]: number }
+export interface After { readonly effect value: number }
+export type Value = { readonly effect value: number }

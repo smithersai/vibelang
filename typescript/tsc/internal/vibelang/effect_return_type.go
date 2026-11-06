@@ -59,7 +59,7 @@ func checkEffectReturnTypes(c *checker.Checker, file *ast.SourceFile) {
 	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if t := node.Type(); t != nil && ast.IsFunctionLike(node) && isWrittenReturnTypeOfEffectFunction(t) {
+		if t := node.Type(); t != nil && ast.IsFunctionLike(node) && !ast.IsIndexSignatureDeclaration(node) && isWrittenReturnTypeOfEffectFunction(t) {
 			if written := c.GetTypeFromTypeNode(t); !isEffectType(c, written) && written != c.GetErrorType() {
 				text := nodeText(file, t)
 				rewrite := effectReturnTypeRewrite(c, file, t)
