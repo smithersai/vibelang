@@ -1139,6 +1139,6 @@ The `t3code-node-ambient-process-env` property checks declaration API identity u
 
 The shared-package inventory includes `TestHasVibeLangDirective` and
 `FuzzHasVibeLangDirective` through `//typescript/tsc:go-ast-vibelang`.
-Selection and cache-input controls reject dropped targets, narrowed selectors
-and sibling packages, so compiling the AST as a dependency cannot stand in for
+Selection and cache-input controls reject dropped targets, duplicate target names,
+narrowed selectors and sibling packages, so compiling the AST as a dependency cannot stand in for
 running its directive regressions.

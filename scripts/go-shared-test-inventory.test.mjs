@@ -65,6 +65,18 @@ test("target uniqueness rejects duplicate keys even with different packages and 
   }
 })
 
+test("generated equivalent target appends expose duplicates without matching comments", () => {
+  for (let index = 0; index < 128; index++) {
+    const name = "go-directive-" + index
+    const first = '"'+name+'": goTest("directive recognition", "./internal/ast", "internal/ast", "^(Test|Fuzz)HasVibeLangDirective$")'
+    const second = " ".repeat(index % 5) + '"'+name+'": goTest("source directive", "./internal/ast", "internal/ast", "^(TestHasVibeLangDirective|FuzzHasVibeLangDirective)$")'
+    const newline = index % 2 ? "\r\n" : "\n"
+    assert.deepEqual(duplicateTargetNames(selections(first + newline + second)), [name])
+    assert.deepEqual(duplicateTargetNames(selections(first + newline + "// " + second)), [])
+    assert.deepEqual(duplicateTargetNames(selections(first + newline + second.replace('"'+name+'"', '"'+name+'-other"'))), [])
+  }
+})
+
 test("every VibeLang test in a shared Go package runs in full validation", () => {
   assert.ok(tests.length >= 6, "only " + tests.length + " tests discovered")
   assert.deepEqual(tests.filter((test) => !selected.some((selection) => selects(selection, test))), [],
