@@ -195,6 +195,8 @@ An `error` or `schema error` class has a `Symbol.customMatcher` that tests `_tag
 
 Instance methods and getters do not change an `error` or `schema error` declaration's one-element extraction or tag coverage. An extracted binding keeps the matched subject member's type, including additional fields on an object with the same tag. Patterns with an impossible number of bindings still report `EK0703`.
 
+A local `const` alias of an `error` or `schema error` constructor keeps its known extraction length. This includes an explicit `typeof` annotation and a chain of aliases, such as `const Alias = NotFound`. An opaque constructor type by itself does not establish its runtime matcher.
+
 An own matcher returning `boolean` narrows neither the matching arm nor the `default` or a negated arm. `Symbol.hasInstance` does not replace that matcher.
 
 A legacy concrete error root still tests its own tag, so a child with a different tag misses that root's arm. A legacy abstract plain-error root retains native instance matching. Preserving migration keeps that distinction.

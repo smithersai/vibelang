@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Adding a method or getter to an `error` or `schema error` declaration could cause false missing-case errors, reject valid extracted fields, and hide warnings for patterns with the wrong number of bindings. Those checks now keep working when an error has instance members.
 
+- A local `const` alias of an error constructor could hide warnings for extractor patterns with the wrong number of bindings. Aliases now keep the constructor's known extraction length.
+
 - The `for concurrent` tooltip said every item used its own fiber, even with a limit of `1`. It now explains sequential execution, and jump errors no longer give that incorrect reason.
 
 - Migration could stop before fixing files when a dependency was outside `rootDir`. It now reads the complete source list while preserving the diagnostic for checking.
