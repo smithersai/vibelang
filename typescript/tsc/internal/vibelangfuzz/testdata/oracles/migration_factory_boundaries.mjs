@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs"
 import {join} from "node:path"
 import {pathToFileURL} from "node:url"
 const root=process.cwd(),require=createRequire(join(root,"docs/tools/package.json")),ts=require("typescript")
-const [area,key,modeText]=process.argv.slice(2),mode=Number(modeText)&1
+const [area,key,modeText]=process.argv.slice(2),rawMode=Number(modeText),mode=rawMode&1
 const namespace=mode?"E":"Effect",head=`import * as ${namespace} from "effect/Effect";\n`
 const syntax=text=>ts.createSourceFile("input.ts",text,ts.ScriptTarget.Latest,true).parseDiagnostics.map(d=>d.code)
 function stockControl(text){
@@ -44,20 +44,33 @@ if(area==="home"){
  const {lostWrappers}=await import(pathToFileURL(join(root,".smithers/flows/migrate/lib/lost-wrapper.mjs")))
  const before=`${namespace}.fnUntraced(function*(){return 1;})`,after=`()=>${namespace}.succeed(1)`
  let original,emitted,expectedFlag=false
+ const traced = key.startsWith("traced-")
+ const traceLabel = rawMode&4 ? "task.run" : "fixture.load"
+ const tracedBefore = `${namespace}.fn(${JSON.stringify(traceLabel)})(function*(){return 1;})`
+ const tracedAfter = `()=>${namespace}.succeed(1)`
  if(key==="object"){original=`export const make=()=>({run:${before}});`;emitted=`export const make=()=>({run:${after}});`}
  else if(key==="nested"){original=`export const make=()=>({child:{run:${before}}});`;emitted=`export const make=()=>({child:{run:${after}}});`}
  else if(key==="array"){original=`export const make=()=>[${before}];`;emitted=`export const make=()=>[${after}];`}
  else if(key==="identity"){original=`const Service={of:<A>(value:A)=>value};export const make=()=>Service.of({run:${before}});`;emitted=`const Service={of:value=>value};export const make=()=>Service.of({run:${after}});`}
  else if(key==="class"){original=`class Box {run=${before};} export const make=()=>new Box();`;emitted=`class Box {run=${after};} export const make=()=>new Box();`}
  else if(key==="drop-array"){original=`export const make=()=>${namespace}.succeed([1]);`;emitted='export const make=()=>[1];';expectedFlag=true}
+ else if(key==="traced-object"){original=`export function make(){return {load:${tracedBefore}};}`;emitted=`export function make(){return {load:${tracedAfter}};}`;}
+ else if(key==="traced-nested"){original=`export function make(){return {child:{load:${tracedBefore}}};}`;emitted=`export function make(){return {child:{load:${tracedAfter}}};}`;}
+ else if(key==="traced-direct"){original=`export const make=${tracedBefore};`;emitted=`export const make=${tracedAfter};`;}
+ else if(key==="traced-drop-direct"){original=`export const make=${tracedBefore};`;emitted="export const make=()=>1;";expectedFlag=true;}
  else throw Error("unknown container model")
  original=head+original;emitted=head+emitted
  if(key==="object"&&!mode)original=readFileSync(join(root,"typescript/tsc/internal/vibelangfuzz/testdata/corpus/t3code-effect-valued-object-members.ts"),"utf8")
+ if(key==="traced-object"&&rawMode===0)original=readFileSync(join(root,"typescript/tsc/internal/vibelangfuzz/testdata/corpus/t3code-traced-effect-fn-record.ts"),"utf8")
+ if(traced && rawMode&2){original=original.replaceAll("\n","\r\n");emitted=emitted.replaceAll("\n","\r\n")}
  for(const text of [original,emitted]){const errors=syntax(text);if(errors.length)throw Error("invalid model syntax: "+errors.join(","))}
- const stockDiagnostics=key==="object"&&!mode?stockControl(original):undefined
+ const stockDiagnostics=(key==="object"&&!mode)||(key==="traced-object"&&rawMode===0)?stockControl(original):undefined
  const checked=lostWrappers({ts,original,emitted})
  const names=checked.flags.map(f=>f.function)
- const ok=expectedFlag?names.length===1&&names[0]==="/make":names.length===0
- result={ok,stockDiagnostics,expectedFlag,flags:checked.flags,unpaired:checked.unpaired,paired:checked.paired,original,emitted}
+ const verdict=expectedFlag?names.length===1&&names[0]==="/make":names.length===0
+ const expectedPaired=(key==="traced-object"||key==="traced-nested")?2:1
+ const pairing=!traced||(checked.paired===expectedPaired&&checked.unpaired.length===0)
+ const ok=verdict&&pairing
+ result={ok,stockDiagnostics,expectedFlag,pairing,expectedPaired,rawMode,flags:checked.flags,unpaired:checked.unpaired,paired:checked.paired,original,emitted}
 }else throw Error("unknown model area")
 console.log(JSON.stringify(result))

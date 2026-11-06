@@ -29,11 +29,15 @@ func migrationFactoryModel(t *testing.T, area, key string, mode uint8) (bool, st
 	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
 	defer cancel()
 	script := filepath.Join(repoTestdata(), "oracles", "migration_factory_boundaries.mjs")
-	cmd := exec.CommandContext(ctx, "node", script, area, key, strconv.Itoa(int(mode&1)))
+	encodedMode := mode & 1
+	if strings.HasPrefix(key, "traced-") {
+		encodedMode = mode & 7
+	}
+	cmd := exec.CommandContext(ctx, "node", script, area, key, strconv.Itoa(int(encodedMode)))
 	cmd.Dir = Root()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("static migration model %s/%s/%d: %v; context=%v\n%s", area, key, mode&1, err, ctx.Err(), output)
+		t.Fatalf("static migration model %s/%s/%d: %v; context=%v\n%s", area, key, encodedMode, err, ctx.Err(), output)
 	}
 	var record struct {
 		OK bool `json:"ok"`
@@ -72,9 +76,13 @@ func FuzzMigrationThrowCallHome(f *testing.F) {
 
 func FuzzMigrationEffectContainers(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"object", "nested", "array", "identity", "class", "drop-array"}
+	keys := []string{"object", "nested", "array", "identity", "class", "drop-array", "traced-object", "traced-nested", "traced-direct", "traced-drop-direct"}
 	for _, key := range keys {
-		for mode := uint8(0); mode < 2; mode++ {
+		modes := []uint8{0, 1}
+		if strings.HasPrefix(key, "traced-") {
+			modes = []uint8{0, 1, 2, 5}
+		}
+		for _, mode := range modes {
 			f.Add(key, mode)
 		}
 	}

@@ -13,3 +13,8 @@ FuzzMigrationEffectContainers container:array/1 compiler VIP-1: returned contain
 FuzzMigrationEffectContainers container:identity/0 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
 FuzzMigrationEffectContainers container:identity/1 compiler VIP-1: returned containers are miscounted as Effect wrappers because a nested method constructs a program; lane migfix-t3code
 FuzzMigrationEffectContainers corpus:t3code-effect-valued-object-members compiler VIP-1: minimized object-returning factory gets a false lost-wrapper flag; lane migfix-t3code
+FuzzMigrationEffectContainers container:traced-object/0 compiler VIP-1: named curried Effect.fn members of returned records are counted as programs returned by the plain factory; lane migfix-t3code
+FuzzMigrationEffectContainers container:traced-object/1 compiler VIP-1: named curried Effect.fn members of returned records are counted as programs returned by the plain factory; lane migfix-t3code
+FuzzMigrationEffectContainers container:traced-nested/0 compiler VIP-1: named curried Effect.fn members of returned records are counted as programs returned by the plain factory; lane migfix-t3code
+FuzzMigrationEffectContainers container:traced-nested/1 compiler VIP-1: named curried Effect.fn members of returned records are counted as programs returned by the plain factory; lane migfix-t3code
+FuzzMigrationEffectContainers corpus:t3code-traced-effect-fn-record compiler VIP-1: minimized named curried Effect.fn record factory gets a false lost-wrapper flag; lane migfix-t3code
