@@ -13,7 +13,7 @@ import { quote, must } from "../lib/util.mjs"
 const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))
 const require = createRequire(join(runtime, "package.json"))
 const ts = require("typescript")
-const reactRequire = createRequire(new URL("../../../../site/package.json", import.meta.url))
+const reactRequire = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))
 const compiler = process.env.VIBELANG_COMPILER ?? fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-card-tsx.json", import.meta.url)))
 
