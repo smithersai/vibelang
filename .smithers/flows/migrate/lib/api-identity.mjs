@@ -1083,14 +1083,18 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   // One program checks both sides, so a project's checker option applies to
   // all of it. Any project enabling it wins: the migration keeps tsconfig, and
   // a snapshot from an older flow carries no record of the option.
-  const exactOptionalPropertyTypes = (options.projectContexts ?? [])
-    .some(context => context.compilerOptions?.exactOptionalPropertyTypes)
+  const contexts = options.projectContexts ?? []
+  const exactOptionalPropertyTypes = contexts.some(context => context.compilerOptions?.exactOptionalPropertyTypes)
+  // Project libraries add to the default one, so a dependency's declaration
+  // that names DOM types under a project's skipLibCheck stays comparable.
+  const libraries = [...new Set(contexts.flatMap(context => context.compilerOptions?.lib ?? []))]
   const compilerOptions = {
     target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
     noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true, allowArbitraryExtensions: true,
     resolveJsonModule: projectJsonModules(ts, before) && projectJsonModules(ts, after),
     ...(exactOptionalPropertyTypes ? { exactOptionalPropertyTypes } : {}),
+    ...(libraries.length ? { lib: [ts.getDefaultLibFileName({ target: ts.ScriptTarget.ESNext }), ...libraries] } : {}),
     ...options.compilerOptions,
     strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
     noEmit: true, skipLibCheck: false, noCheck: false, allowSyntheticDefaultImports: true,
@@ -1984,11 +1988,12 @@ export function compareApiIdentityInWorker(ts, before, after, options = {}) {
     const compilerOptions = options.compilerOptions && { ...options.compilerOptions, configFile: undefined }
     child = spawnSync(process.versions.bun ? "node" : process.execPath,
       [...preload, "--max-old-space-size=" + heap, fileURLToPath(import.meta.url), "--api-identity-worker"], {
+        // Profiled stage records arrive as they happen, so a lost box keeps them.
+        ...(options.profile ? { stdio: ["pipe", "pipe", "inherit"] } : {}),
         input: JSON.stringify({ compiler: ts.sys.getExecutingFilePath(), before, after,
           options: { ...options, compilerOptions } }),
         encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
       })
-    if (options.profile && child.stderr) process.stderr.write(child.stderr)
     if (!child.signal && !child.error && [0, 1, 2].includes(child.status)) {
       const result = JSON.parse(child.stdout)
       const valid = typeof result.identical === "boolean" && typeof result.comparisonComplete === "boolean" &&

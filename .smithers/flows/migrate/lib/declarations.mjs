@@ -504,8 +504,9 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       "module", "moduleResolution", "customConditions", "moduleSuffixes",
       "resolveJsonModule", "allowArbitraryExtensions", "allowImportingTsExtensions",
       "preserveSymlinks", "noResolve", "resolvePackageJsonExports", "resolvePackageJsonImports",
-      // Declarations mean something else under this checker option.
-      "exactOptionalPropertyTypes"]
+      // Declarations mean something else under this checker option, and
+      // name globals the selected libraries declare.
+      "exactOptionalPropertyTypes", "lib"]
     const resolutionOptions = Object.fromEntries(resolutionNames
       .filter(name => parsed.options[name] !== undefined).map(name => [name, parsed.options[name]]))
     // Automatic package selection is part of the setup environment too.
@@ -637,7 +638,7 @@ function publishedEquivalent(ts, a, b, sides) {
   return excused
 }
 
-export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false } = {}) {
+export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false, profile, workerHeaps } = {}) {
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
   const surface = dir => {
@@ -747,7 +748,7 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     api = compareApiIdentity(ts, left.directory, right.directory, {
       beforeEntrypoints: aEntries, afterEntrypoints: bEntries,
       projectContexts: [...left.projectContexts, ...right.projectContexts], moduleRoots: [...new Set(modules)], includeComparedFiles: true,
-      absentDeclarations: absentFrom(aSurface, bSurface),
+      absentDeclarations: absentFrom(aSurface, bSurface), profile, ...(workerHeaps ? { workerHeaps } : {}),
     })
     const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
       [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>
