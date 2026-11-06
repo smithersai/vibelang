@@ -21,8 +21,39 @@ export function proposalIsOpen(text) {
   return /^\*\*Status:\*\*\s+open\b/im.test(text)
 }
 
-export function shimAvailabilityProblems(text, { versions = [], open = true, file = "document" } = {}) {
+// vue-tsc 3.3.13 admits TypeScript >=5.0.0; svelte-check 4.7.7 admits
+// ^5.0.0 || ^6.0.0. Both run with TypeScript 5.9.3. The replacement
+// boundary is their use of the JavaScript API, not an unqualified major-6 floor.
+export function checkerVersionProblems(text, { file = "document" } = {}) {
   const problems = []
+  let fence
+  for (const [index, source] of text.split("\n").entries()) {
+    const marker = source.match(/^\s*(\x60{3,}|~{3,})/)
+    if (marker) {
+      if (!fence) fence = marker[1]
+      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = undefined
+      continue
+    }
+    if (fence) continue
+    for (const clause of source.replaceAll("\x60", "").split(/(?<=[.!?;])\s+/)) {
+      for (const claim of clause.matchAll(/\b(?:needs?|requires?)\s+(?:at\s+least\s+)?TypeScript\s+(\d+)(?:\.\d+)*/gi)) {
+        const prefix = clause.slice(0, claim.index)
+        if (Number(claim[1]) <= 5 || /\b(?:not|never)\s*$/i.test(prefix) || /\b(?:neither|none\s+of)\b/i.test(prefix)) continue
+        const subject = prefix.replace(/,\s*which\s*$/i, "").replace(/\b(?:both|all|each)\s*$/i, "")
+          .match(/\b(?:vue-tsc|svelte-check|ngc)(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)(?:vue-tsc|svelte-check|ngc))*\s*$/i)?.[0] ?? ""
+        const tools = [...subject.matchAll(/\b(vue-tsc|svelte-check)\b/g)].map(match => match[1])
+        if (!tools.length) continue
+        problems.push(file + ":" + (index + 1) + ": " + [...new Set(tools)].join(" and ") +
+          " support a TypeScript 5 setup; explain the JavaScript API boundary or qualify the checker version")
+        break
+      }
+    }
+  }
+  return problems
+}
+
+export function shimAvailabilityProblems(text, { versions = [], open = true, file = "document" } = {}) {
+  const problems = checkerVersionProblems(text, { file })
   if (open && !/\b(?:preview|experimental)\b/i.test(text)) {
     problems.push(file + ": identify the open proposal as a preview")
   }

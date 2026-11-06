@@ -84,7 +84,7 @@ A `.ts`, `.mts` or `.cts` file with the line follows every `.vibe` rule, and a `
 | `tsx`, `ts-node`, Node.js without `vibelang/register` | Stops with a syntax error |
 | A stock TypeScript, such as one a dependency installs | Stops with `TS1434` and other syntax errors. Your `tsc` stays VibeLang, unless the project also installs a stock `typescript` under another name: both then claim the `tsc` command |
 | Prettier, ESLint, Oxlint, Knip | Stops with a syntax error: ignore `// @vibe` files, and use `vibelang format` and `vibelang lint` |
-| Anything that imports TypeScript's JavaScript API | Fails: the package exports only `version`. This includes `vue-tsc`, `svelte-check` and `ngc`, which need TypeScript 6 |
+| Anything that imports TypeScript's JavaScript API | Fails: the package exports only `version`. This includes `vue-tsc`, `svelte-check` and `ngc` |
 
 Bundlers need a plugin because esbuild and Oxc parse `.ts` files themselves, so there is no TypeScript for this package to replace there. A file that uses no VibeLang syntax can pass through these tools, and it means there what it means in VibeLang, except that `vibelang` always reads it as a module.
 
