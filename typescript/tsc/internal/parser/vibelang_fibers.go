@@ -51,17 +51,14 @@ func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
 		return p.lookAhead((*Parser).nextTokenIsOpenBraceOnSameLine)
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindNewKeyword, ast.KindSuperKeyword, ast.KindOpenBraceToken, ast.KindAwaitKeyword:
 		return true
-	case ast.KindOpenParenToken:
-		return p.parenthesesLeadToArrow()
 	}
 	return false
 }
 
 // parenthesesLeadToArrow reports whether the parentheses at the current token
-// are an arrow's parameters. After fork or a fork owner, that is a TypeScript
-// syntax error, and it is how the mapper's parse sees a written effect block
-// once it blanks the keyword: effect { … } reads as ()=> { … } at the same
-// offsets.
+// are an arrow's parameters. The mapper's parse sees a written effect block
+// that way once it blanks the keyword: effect { … } reads as ()=> { … } at the
+// same offsets, so fork's operand there is an arrow, not a unary expression.
 func (p *Parser) parenthesesLeadToArrow() bool {
 	return p.skipParentheses() && p.token == ast.KindEqualsGreaterThanToken
 }
@@ -96,8 +93,6 @@ func (p *Parser) legacyForkOwnerHasOperand() bool {
 	switch p.token {
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindNewKeyword, ast.KindSuperKeyword, ast.KindAwaitKeyword:
 		return true
-	case ast.KindOpenParenToken:
-		return p.parenthesesLeadToArrow()
 	}
 	return false
 }
