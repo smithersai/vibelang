@@ -1,0 +1,9 @@
+{
+  "key": "opencode-root-emission-output",
+  "rule": "A parent project's emission never replaces the output a nested package wrote for its own module, because a package import cannot leave its package.",
+  "package": "packages/schema",
+  "source": "src/schema.vibe",
+  "packageOutput": ".vibelang/js/src/schema.js",
+  "rootSource": "packages/schema/src/schema.vibe",
+  "rootOutput": ".vibelang/js/packages/schema/src/schema.js"
+}

@@ -1093,6 +1093,8 @@ Reference refresh excludes independent checking projects even when they share ch
 
 A routed import names the sidecar the compiler wrote, whichever root that project used, so a routed module keeps its types.
 
+A parent project's emission never replaces the output a nested package wrote for its own module, because a package import cannot leave its package.
+
 A revert accepts a reference rebuild that finishes with diagnostics, because settle returns failing modules one round at a time and its next check reports what remains. A rebuild killed by a signal, or one that exits with any other status, still stops the revert. A migration compile keeps requiring a clean rebuild.
 
 With `routeBundledImports`, a revert restores every routed TypeScript import. When only foreign diagnostics remain after a revert, settle emits again before it blames a kept module, because those diagnostics describe the dropped routes.

@@ -26,7 +26,7 @@ import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inve
 import * as Enumerations from "./enumerations.mjs"
 import { sidecarPath, sidecarProjectLayout } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { refreshSidecarExports, sidecarOf, bareVibeExports, fixToFixedPoint, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { packageDirOf, refreshSidecarExports, sidecarOf, bareVibeExports, fixToFixedPoint, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -1492,6 +1492,18 @@ export function aliasesOf(config) {
  * recording A made A's record miss on B/package.json). Each final record is
  * then checked against the final tree; an entry whose record misses says why.
  */
+/**
+ * A parent project can emit a nested package's modules too. The owning package's
+ * output wins whichever ran last: a package import cannot leave its package.
+ */
+export function recordOutputs(outputs, dir, written, ownerOf) {
+  for (const [source, output] of Object.entries(written)) {
+    const file = posix.join(dir, source)
+    if (outputs[file] === undefined || ownerOf(file) === dir) outputs[file] = posix.join(dir, output)
+  }
+  return outputs
+}
+
 export async function emitMigratedJs(config, t, logs) {
   const artifact = compilerArtifactOf(config.toolchain)
   const emitted = [], sourceOutputs = new Map(), outputs = {}
@@ -1507,7 +1519,7 @@ export async function emitMigratedJs(config, t, logs) {
     const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
     const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
     sourceOutputs.set(pkg.dir, result.outputs)
-    for (const [source, output] of Object.entries(result.outputs)) outputs[posix.join(pkg.dir, source)] = posix.join(pkg.dir, output)
+    recordOutputs(outputs, pkg.dir, result.outputs, file => packageDirOf(t, file))
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
