@@ -15,7 +15,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 
 - Migration emission could retain a large TypeScript declaration graph while compiling, exhausting the coordinator heap. Declaration layout planning now finishes in a separate process before compilation and records its duration.
+- Service-key checks could be skipped after a nullable generic key was narrowed or asserted non-null. Those narrowed values now receive the same errors as direct keys.
 - Bundling native error declarations could pull in unused experimental platform services; generated language helpers now keep those services out of the bundle graph.
+
+- Contributor release checks still expected the old specification-test deadline after its limit changed; they now check the current shared limit and reject missing or mismatched deadlines.
+
+- Build checks could miss a missing Go build flag when a progress logger wrapped the command; they now check the wrapped command too.
 
 - A throwing default on a generator callback could be rejected even when its caller caught it. Synchronous and async generators now check that default at the invoking `@rethrows` call; deferred bodies keep their own checks.
 
