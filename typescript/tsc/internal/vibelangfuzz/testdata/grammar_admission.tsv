@@ -193,6 +193,7 @@ parser/vibelang_match.go:Parser.matcherTest	admission:match	900-appendices.md#Ma
 parser/vibelang_match.go:Parser.compilePattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:IsSignedNumberZero	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.enterSubject	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:isPropertyChain	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:subjectReads	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.compileList	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.inlinePattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
