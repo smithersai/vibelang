@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Release rehearsals showed `vibelang-typescript` with the compiler’s version. They now report the shim’s own version.
 
 - A migrated package could report different exported types depending on how its entrypoints were grouped; API comparison now follows public declaration identities across groups.
+
+- A `for concurrent` head over an `any` operand could infer `unknown` and reject item properties. Identifier heads now retain the native item type and TypeScript narrowing.
 - `effect` on an index signature or after a modifier in an interface or type literal, as in `interface I { readonly effect value: number }`, reported syntax errors. It now reports `EK0108`, with its quick fix.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
 
@@ -536,6 +538,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| An unused named `for concurrent` head with `noUnusedLocals` enabled | `TS6133`, as for native `for...of`. Run `vibelang --fix` to prefix an unused head with `_`; a captured or shadowed head name needs a scope-preserving manual rename. |
 | A synchronous generator passed to a wrapper, with a call known to throw in its body | `EK0401`: run `vibelang --fix` to retain a supported call in a local TypeScript invocation helper. The generator stays lazy and throws the same value when iterated; parameter defaults keep their original call-time evaluation. |
 | `join [a, b]`, `join record` or an effect-body `await` of a fiber collection | `EK1704` / `EK0102`: `join` takes a single fiber. Run `vibelang --fix` to preserve the old collection behavior through an explicit compatibility helper, including reads and failure cleanup. |
 | A generic parameter constrained to a service key's value type, such as `Key extends typeof Users` | `EK3002`, `EK3003` and `EK3004` apply through the constraint. Obtain the implementation with `try ServiceName`, implement its shape or inspect its members; choosing that behavior requires a manual repair. |

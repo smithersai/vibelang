@@ -1,0 +1,4 @@
+// expect: TS6133
+export effect function main(rows: number[]) {
+  for concurrent (const item of rows) {}
+}

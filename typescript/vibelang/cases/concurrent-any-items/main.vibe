@@ -1,0 +1,13 @@
+// expect-result: [1,2,3,4,5,6,7]
+// Identifier heads use native declaration typing, scope and narrowing.
+export effect function main() {
+ const seen:number[]=[]
+ const rows:any=[{n:1},{n:2}]
+ for concurrent(const item of rows){seen.push(item.n)}
+ for concurrent(1)(let item of ([{n:3}] as any)){item=item.n;seen.push(item)}
+ const $concurrentItem=4
+ for concurrent(const item of [{n:5}]){seen.push($concurrentItem);seen.push(item.n)}
+ for concurrent(const $concurrentItem of [{n:6}]){seen.push($concurrentItem.n)}
+ for concurrent(const item of ([{n:99}] as any)){const item=7;seen.push(item)}
+ return seen.sort((a,b)=>a-b)
+}

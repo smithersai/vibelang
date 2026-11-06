@@ -96,14 +96,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Installation](../getting-started/004-installation.md) | 3,000 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,300 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
-| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,500 |
+| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,600 |
 | **Core Concepts** | **30,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,600 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,100 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,100 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,000 |
 | [Devtools](../getting-started/012-devtools.md) | 21,000 |
-| **All 13 pages** | **50,000** |
+| **All 13 pages** | **51,000** |
 
 ### Setup
 

@@ -1138,6 +1138,12 @@ typescript/vibelang/cases/class-computed-member-keys/main.vibe:8:13 lambda plain
 typescript/vibelang/cases/class-computed-member-keys/main.vibe:8:70 lambda plain table
 typescript/vibelang/cases/compiler-and-tooling-concurrent-code.fail/main.vibe:12:25 lambda effectFn table
 typescript/vibelang/cases/compiler-and-tooling-concurrent-code/main.vibe:5:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-any-items/main.vibe:10:23 lambda effectFn table
+typescript/vibelang/cases/concurrent-any-items/main.vibe:11:23 lambda effectFn table
+typescript/vibelang/cases/concurrent-any-items/main.vibe:12:19 lambda plain table
+typescript/vibelang/cases/concurrent-any-items/main.vibe:6:23 lambda effectFn table
+typescript/vibelang/cases/concurrent-any-items/main.vibe:7:24 lambda effectFn table
+typescript/vibelang/cases/concurrent-any-items/main.vibe:9:23 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:12:28 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:4:28 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:8:26 lambda effectFn table
@@ -1275,6 +1281,8 @@ typescript/vibelang/cases/concurrent-union-items/main.vibe:6:19 lambda plain ann
 typescript/vibelang/cases/concurrent-union-items/main.vibe:7:23 lambda effectFn table
 typescript/vibelang/cases/concurrent-union-items/main.vibe:8:24 lambda effectFn table
 typescript/vibelang/cases/concurrent-union-items/main.vibe:9:36 lambda effectFn table
+typescript/vibelang/cases/concurrent-unused-head-fixed-output/main.vibe:3:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-unused-head.fail/main.vibe:3:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-used-labels/main.vibe:12:34 lambda effectFn table
 typescript/vibelang/cases/concurrent-used-labels/main.vibe:3:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-used-labels/main.vibe:7:41 lambda effectFn table

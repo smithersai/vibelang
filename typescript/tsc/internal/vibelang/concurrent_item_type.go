@@ -15,9 +15,8 @@ func concurrentItemSourceTypes(c *checker.Checker) map[*ast.Node]*checker.Type {
 
 func init() { checker.RegisterExpressionTypeHook(concurrentItemType) }
 
-// A source head destructures the iterated value directly. Generic callback
-// inference erases object-literal identity, which TypeScript uses to allow a
-// missing property with a binding default.
+// A source head declares from the native iterated value. Generic callback
+// inference can erase any or object-literal identity before that declaration.
 func concurrentItemType(c *checker.Checker, node *ast.Node, fallback *checker.Type) *checker.Type {
 	if call := node.Parent; fiberHelper(call) == "$forConcurrent" && len(call.Arguments()) == 3 && call.Arguments()[0] == node {
 		// Observe the ordinary argument check, before generic inference widens
@@ -25,15 +24,19 @@ func concurrentItemType(c *checker.Checker, node *ast.Node, fallback *checker.Ty
 		// when a RHS closure captures that same source binding.
 		concurrentItemSourceTypes(c)[call] = fallback
 	}
-	if !ast.IsIdentifier(node) || node.Flags&ast.NodeFlagsReparsed == 0 || node.Text() != "$concurrentItem" {
+	if !ast.IsIdentifier(node) || node.Flags&ast.NodeFlagsVibeLangTemporary == 0 {
 		return fallback
 	}
 	declaration := node.Parent
-	if declaration == nil || !ast.IsVariableDeclaration(declaration) || declaration.Initializer() != node || !ast.IsBindingPattern(declaration.Name()) {
+	if declaration == nil || !ast.IsVariableDeclaration(declaration) || declaration.Initializer() != node {
 		return fallback
 	}
 	fn := ast.FindAncestor(declaration, isConcurrentBody)
-	if fn == nil {
+	if fn == nil || len(fn.Parameters()) != 1 {
+		return fallback
+	}
+	parameter := fn.Parameters()[0].Name()
+	if !ast.IsIdentifier(parameter) || parameter.Flags&ast.NodeFlagsVibeLangTemporary == 0 || parameter.Text() != node.Text() {
 		return fallback
 	}
 	if iterated := concurrentItemSourceTypes(c)[fn.Parent]; iterated != nil {

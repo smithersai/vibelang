@@ -7493,7 +7493,7 @@ func (c *Checker) isUnreferencedVariableDeclaration(node *ast.Node) bool {
 		}
 	}
 	if (ast.IsParameterDeclaration(node) ||
-		ast.IsVariableDeclaration(node) && (ast.IsForInOrOfStatement(node.Parent.Parent) || c.getCombinedNodeFlagsCached(node)&ast.NodeFlagsUsing != 0) ||
+		ast.IsVariableDeclaration(node) && (ast.IsForInOrOfStatement(node.Parent.Parent) || isVibeLangConcurrentItemDeclaration(node) || c.getCombinedNodeFlagsCached(node)&ast.NodeFlagsUsing != 0) ||
 		ast.IsBindingElement(node) && !(ast.IsObjectBindingPattern(node.Parent) && node.PropertyName() == nil)) &&
 		isIdentifierThatStartsWithUnderscore(name) {
 		return false

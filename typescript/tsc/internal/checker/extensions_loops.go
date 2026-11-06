@@ -27,3 +27,27 @@ func (c *Checker) iteratedElementTypeFromHooks(node *ast.Node, iterated *Type) *
 	}
 	return nil
 }
+
+// isVibeLangConcurrentItemDeclaration recognizes the source head declared
+// from a generated item parameter. It keeps native for-of underscore rules
+// without exempting ordinary declarations in the written body.
+func isVibeLangConcurrentItemDeclaration(node *ast.Node) bool {
+	if node == nil || !ast.IsVariableDeclaration(node) {
+		return false
+	}
+	value := node.Initializer()
+	if value == nil || !ast.IsIdentifier(value) || value.Flags&ast.NodeFlagsVibeLangTemporary == 0 {
+		return false
+	}
+	fn := ast.FindAncestor(node, func(n *ast.Node) bool { return ast.IsArrowFunction(n) && n.Flags&ast.NodeFlagsVibeLang != 0 })
+	if fn == nil || len(fn.Parameters()) != 1 {
+		return false
+	}
+	parameter := fn.Parameters()[0].Name()
+	call := fn.Parent
+	if parameter == nil || !ast.IsIdentifier(parameter) || parameter.Flags&ast.NodeFlagsVibeLangTemporary == 0 || parameter.Text() != value.Text() || call == nil || !ast.IsCallExpression(call) {
+		return false
+	}
+	callee := call.Expression()
+	return ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && callee.Text() == "$forConcurrent"
+}

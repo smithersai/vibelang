@@ -623,26 +623,25 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	// declaration may shadow the iteration binding.
 	body = p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(body.Loc, []*ast.Node{body}), true /*multiLine*/), body.Loc)
 	p.rewriteConcurrentJumps(body, false /*inSwitch*/, "")
-	name := binding
-	if binding.Kind != ast.KindIdentifier {
-		// A head pattern binds inside the item, as a for...of pattern binds
-		// inside its body: its defaults and computed keys may run Effects
-		// (chapter 2, "Destructuring and parameter defaults"), which a
-		// parameter list cannot. The item arrives as a synthesized parameter,
-		// and the pattern declares from it as the body's first statement.
-		name = p.vibelangSynthesized(p.factory.NewIdentifier("$concurrentItem"), ofKeyword)
-		item := p.vibelangSynthesized(p.factory.NewIdentifier("$concurrentItem"), ofKeyword)
-		declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(binding, nil /*exclamationToken*/, nil /*type*/, item), binding.Loc)
-		list := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(binding.Loc, []*ast.Node{declaration}), declarationKind), binding.Loc)
-		statement := p.vibelangSpanning(p.factory.NewVariableStatement(nil /*modifiers*/, list), binding.Loc)
-		// The block is finished already, so the new statement's parents are set here.
-		p.overrideParentInImmediateChildren(declaration)
-		p.overrideParentInImmediateChildren(list)
-		p.overrideParentInImmediateChildren(statement)
-		statement.Parent = body
-		statements := body.AsBlock().Statements
-		body.AsBlock().Statements = p.newNodeList(statements.Loc, append([]*ast.Node{statement}, statements.Nodes...))
-	}
+	// The source head is a declaration from the native iterated value, not
+	// a contextually typed callback parameter. This preserves any and lets
+	// TypeScript narrow the head normally. Pattern defaults and computed
+	// keys also run in this item region.
+	name := p.mTemp("$concurrentItem", ofKeyword)
+	item := p.mTemp("$concurrentItem", ofKeyword)
+	headDeclaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(binding, nil /*exclamationToken*/, nil /*type*/, item), binding.Loc)
+	headList := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(binding.Loc, []*ast.Node{headDeclaration}), declarationKind), binding.Loc)
+	headStatement := p.vibelangSpanning(p.factory.NewVariableStatement(nil /*modifiers*/, headList), binding.Loc)
+	// The block is finished already, so the new headStatement's parents are set here.
+	p.overrideParentInImmediateChildren(headDeclaration)
+	p.overrideParentInImmediateChildren(headList)
+	p.overrideParentInImmediateChildren(headStatement)
+	headStatement.Parent = body
+	bodyStatements := body.AsBlock().Statements
+	// The generated block also owns the source head. Navigation must be able
+	// to descend to that declaration before the written body begins.
+	body.Loc = core.NewTextRange(binding.Pos(), body.End())
+	body.AsBlock().Statements = p.newNodeList(body.Loc, append([]*ast.Node{headStatement}, bodyStatements.Nodes...))
 	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, name, nil, nil, nil), binding.Loc)
 	// The item's binding keeps the kind its head declares: a const binding,
 	// destructured or not, is a constant, so assigning it is TS2588, as in
@@ -661,13 +660,13 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	if p.opts.VibeLangDoAsFunction {
 		return statement
 	}
-	return p.concurrentHeadEnvironment(statement, binding, parameter, declarationKind, &forEachIsHome{head: headBindings, defaults: defaults})
+	return p.concurrentHeadEnvironment(statement, binding, headDeclaration, declarationKind, &forEachIsHome{head: headBindings, defaults: defaults})
 }
 
 // concurrentHeadEnvironment reuses the native-loop TDZ cells from do
 // lowering (VIP-19). The item callback shadows these never-initialized
 // cells. A written limit runs in the enclosing scope, before entering them.
-func (p *Parser) concurrentHeadEnvironment(statement, binding, parameter *ast.Node, kind ast.NodeFlags, home *forEachIsHome) *ast.Node {
+func (p *Parser) concurrentHeadEnvironment(statement, binding, headDeclaration *ast.Node, kind ast.NodeFlags, home *forEachIsHome) *ast.Node {
 	call := statement.Expression()
 	args := call.Arguments()
 	p.vibelangMatchTemps++
@@ -728,7 +727,7 @@ func (p *Parser) concurrentHeadEnvironment(statement, binding, parameter *ast.No
 		}
 	}
 	if ast.IsIdentifier(binding) {
-		cells(parameter)
+		cells(headDeclaration)
 	} else {
 		for _, element := range binding.AsBindingPattern().Elements.Nodes {
 			if element.Kind != ast.KindOmittedExpression {

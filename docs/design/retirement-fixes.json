@@ -214,5 +214,14 @@
         "output": "typescript/vibelang/cases/generator-admitted-throws-fixed-output"
       }
     ]
+  },
+  {
+    "code": "TS6133",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/concurrent-unused-head.fail",
+        "output": "typescript/vibelang/cases/concurrent-unused-head-fixed-output"
+      }
+    ]
   }
 ]
