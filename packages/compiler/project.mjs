@@ -243,7 +243,9 @@ function collect({ status, signal, output }, root, out) {
     const map = JSON.parse(readFileSync(emitted + ".map", "utf8"))
     map.sources = map.sources.map((entry) => slash(resolve(dirname(emitted), map.sourceRoot || "", entry)))
     map.sourceRoot = ""
-    const result = { code: readFileSync(emitted, "utf8").replace(/\/\/# sourceMappingURL=.*$/m, ""), map }
+    // The compiler's directive is the file's last line. A string or comment
+    // earlier in the file may spell the same text, and it stays.
+    const result = { code: readFileSync(emitted, "utf8").replace(/\/\/# sourceMappingURL=[^\r\n]*\s*$/, ""), map }
     outputs.set(join(dirname(source), name), result)
     outputs.set(join(dirname(realpath(source)), name), result)
   }
