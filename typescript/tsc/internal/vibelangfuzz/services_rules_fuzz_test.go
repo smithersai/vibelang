@@ -18,6 +18,15 @@ import (
 // signatures, as in an interface.
 // Local failures use Effect error types; foreign throw contracts remain in
 // the TypeScript helper and their local interface wrappers.
+// Valid controls use the supported factory member. An uninitialized retired
+// cached default is still an invalid static member; its migration and preserving
+// native-class semantics have independent declaration and runtime oracles.
+const servicesDefaultControlQuote = "the required body admits only the existing `key` and `defaultValue` members."
+
+func TestServicesDefaultControlsQuoted(t *testing.T) {
+	chapterSays(t, "005-services.md", servicesDefaultControlQuote)
+}
+
 const servicesLocalFailureQuote = "remove it and declare failures in the Effect's error type."
 
 var servicesRules = []struct{ key, quote, good, bad string }{
@@ -112,10 +121,10 @@ var servicesRules = []struct{ key, quote, good, bad string }{
 	{"member-static-shaped-object", "or another `static`", "export service Users: { n: number } { static readonly key = \"static/Object\" }", "export service Users: { n: number } { static readonly key = \"static/Object\"; static readonly extra = 1 }"},
 	{"member-static-shaped-scalar", "or another `static`", "export service Users: number { static readonly key = \"static/Scalar\" }", "export service Users: number { static readonly key = \"static/Scalar\"; static extra() { return 1 } }"},
 	{"member-static-shaped-shadow", "or another `static`", "export service Users: { read(): number } { static readonly key = \"static/Shadow\" }", "export service Users: { read(): number } { static readonly key = \"static/Shadow\"; static read() { return 1 } }"},
-	{"member-static-legacy-no-value-body", "or another `static`", "export service S { static readonly key = \"legacy/Body\"; static readonly default: S.Shape = { n: 1 }; n: number }", "export service S { static readonly key = \"legacy/Body\"; static readonly default: S.Shape; n: number }"},
-	{"member-static-legacy-no-value-object", "or another `static`", "export service S: { n: number } { static readonly key = \"legacy/Object\"; static readonly defaultValue = () => ({ n: 1 }) }", "export service S: { n: number } { static readonly key = \"legacy/Object\"; static readonly default: S.Shape }"},
-	{"member-static-legacy-no-value-scalar", "or another `static`", "export service S: number { static readonly key = \"legacy/Scalar\"; static readonly defaultValue = () => 1 }", "export service S: number { static readonly key = \"legacy/Scalar\"; static readonly default: number }"},
-	{"member-static-legacy-no-value-function", "or another `static`", "export service S: (n: number) => number { static readonly key = \"legacy/Function\"; static readonly defaultValue = () => (n: number) => n }", "export service S: (n: number) => number { static readonly key = \"legacy/Function\"; static readonly default: S.Shape }"},
+	{"member-static-legacy-no-value-body", "or another `static`", "export service S { static readonly key = \"legacy/Body\"; static readonly defaultValue: () => S.Shape = () => ({ n: 1 }); n: number }", "export service S { static readonly key = \"legacy/Body\"; static readonly default: S.Shape; n: number }"},
+	{"member-static-legacy-no-value-object", "or another `static`", "export service S: { n: number } { static readonly key = \"legacy/Object\"; static readonly defaultValue: () => S.Shape = () => ({ n: 1 }) }", "export service S: { n: number } { static readonly key = \"legacy/Object\"; static readonly default: S.Shape }"},
+	{"member-static-legacy-no-value-scalar", "or another `static`", "export service S: number { static readonly key = \"legacy/Scalar\"; static readonly defaultValue: () => number = () => 1 }", "export service S: number { static readonly key = \"legacy/Scalar\"; static readonly default: number }"},
+	{"member-static-legacy-no-value-function", "or another `static`", "export service S: (n: number) => number { static readonly key = \"legacy/Function\"; static readonly defaultValue: () => S.Shape = () => (n: number) => n }", "export service S: (n: number) => number { static readonly key = \"legacy/Function\"; static readonly default: S.Shape }"},
 	{"member-static-legacy-value-object", "the annotation is the whole shape", "export service S: { n: number } { static readonly key = \"legacy/WholeObject\"; static readonly defaultValue = () => ({ n: 1 }) }", "export service S: { n: number } { static readonly key = \"legacy/WholeObject\"; static readonly default: S.Shape = { n: 1 } }"},
 	{"member-static-legacy-value-scalar", "the annotation is the whole shape", "export service S: number { static readonly key = \"legacy/WholeScalar\"; static readonly defaultValue = () => 1 }", "export service S: number { static readonly key = \"legacy/WholeScalar\"; static readonly default: number = 1 }"},
 	{"outer-annotation-object", "a written member contract depending on an outer type parameter", "export function f<T>():number { service S: {readonly value:number} {static readonly key=\"shape104/object\"}; return 1}", "export function f<T>():number { service S: {readonly value:T} {static readonly key=\"shape104/object\"}; return 1}"},
