@@ -1,4 +1,6 @@
-import { Cause, Effect, Runtime } from "effect"
+import * as Cause from "effect/Cause"
+import * as Effect from "effect/Effect"
+import * as Runtime from "effect/Runtime"
 import { dual } from "effect/Function"
 
 // The part of a host's process object that the runner uses: Node.js, Bun,

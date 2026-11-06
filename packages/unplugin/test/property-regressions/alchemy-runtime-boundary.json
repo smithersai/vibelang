@@ -1,0 +1,9 @@
+{
+  "key": "alchemy-sql-migrations-runtime-boundary",
+  "input": {
+    "extension": "vibe",
+    "directory": "src/Migrations",
+    "barrel": true,
+    "source": "export error MigrationError {\n  message: string;\n  cause?: unknown;\n}\n"
+  }
+}

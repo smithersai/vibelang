@@ -1,4 +1,7 @@
-import { type Context, Effect, type Exit, Scope } from "effect"
+import type * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import * as Scope from "effect/Scope"
 
 /**
  * What acquisitions recorded (D401): for each Scope, the values whose release

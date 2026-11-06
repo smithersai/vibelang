@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import { $expected } from "./regions.js"
 
 /** A class whose instances a trusted call throws as expected failures. */

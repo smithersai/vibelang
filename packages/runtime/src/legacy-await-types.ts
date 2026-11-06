@@ -1,4 +1,6 @@
-import type { Deferred, Effect, Fiber } from "effect"
+import type * as Deferred from "effect/Deferred"
+import type * as Effect from "effect/Effect"
+import type * as Fiber from "effect/Fiber"
 
 // Type-only recorder for vibelang --fix; no runtime implementation.
 /** An element of an await operation's operand. */

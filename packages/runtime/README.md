@@ -96,6 +96,8 @@ const interrupted = Effect.interrupt
 const yielded = Effect.andThen(Effect.yieldNow, Effect.succeed(1))
 ```
 
+Generated modules import compiler helpers from `vibelang-runtime/internal`. This compiler-owned entry preserves the Effect version check and helper identities without loading the optional `Experimental` namespace. Core helpers import the Effect subpaths they use, so unrelated Effect modules also stay out of their dependency graph. The public package root and experimental subpaths retain their existing exports. Keep the compiler and runtime versions aligned.
+
 ## Effect version guard
 
 At module load, `version.js` statically imports the public `effect/package.json`

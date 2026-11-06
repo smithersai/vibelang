@@ -1,4 +1,5 @@
-import { Effect, Exit } from "effect"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 
 // The boundary hatches (D148): `sync` and `callback` run plain
 // TypeScript inside VibeLang. In a .vibe file a hatch's first argument is not

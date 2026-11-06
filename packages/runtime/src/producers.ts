@@ -1,4 +1,10 @@
-import { Context, Effect, Exit, Pull, Queue, Scope, Stream } from "effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Pull from "effect/Pull"
+import * as Queue from "effect/Queue"
+import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import { $normal } from "./regions.js"
 import { $iteratorFrame } from "./iterators.js"
 

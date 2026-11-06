@@ -6,7 +6,8 @@
 // (package.json maps it to null), so this module reaches them structurally
 // through `Effect.withFiber` and the string-keyed primitive protocol
 // (internal/core.ts:31-61). Every access is pinned to the exact version.
-import type { Cause, Context } from "effect"
+import type * as Cause from "effect/Cause"
+import type * as Context from "effect/Context"
 import "../version.js"
 export { PINNED_EFFECT_VERSION } from "../version.js"
 

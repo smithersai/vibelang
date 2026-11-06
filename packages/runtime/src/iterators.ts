@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 
 // Legacy compiler ABI, retained for already-emitted frames. Current compilers
 // preserve native generator abandonment (VIP-31) instead of resuming a failed

@@ -303,11 +303,11 @@ var execHelpers = map[string]execSource{
 
 	"$gen":             {"effect/Effect", "gen"},
 	"$fail":            {"effect/Effect", "fail"},
-	"$plain":           {"vibelang-runtime", "$plainOf"},
+	"$plain":           {"vibelang-runtime/internal", "$plainOf"},
 	"$promise":         {"effect/Effect", "promise"},
 	"$sync":            {"effect/Effect", "sync"},
-	"$resume":          {"vibelang-runtime", "resume"},
-	"$resumeWith":      {"vibelang-runtime", "resumeWith"},
+	"$resume":          {"vibelang-runtime/internal", "resume"},
+	"$resumeWith":      {"vibelang-runtime/internal", "resumeWith"},
 	"$onExit":          {"effect/Effect", "onExit"},
 	"$map":             {"effect/Effect", "map"},
 	"$fnUntraced":      {"effect/Effect", "fnUntraced"},
@@ -359,7 +359,7 @@ func sourceOf(name string) execSource {
 	}
 	switch {
 	case runtimePreludeNames[name], strings.HasPrefix(name, "$"):
-		return execSource{"vibelang-runtime", name}
+		return execSource{"vibelang-runtime/internal", name}
 	case d151Names[name]:
 		return execSource{"effect/Effect", name}
 	}

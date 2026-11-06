@@ -1,5 +1,6 @@
 // Tracing helpers: name compiled-function frames and print machine state.
-import { Context, Effect } from "effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import { asInternals, contA, contAll, contE, type FiberInternals, identifier } from "./internals.js"
 
 const generatorNames = new WeakMap<object, string>()

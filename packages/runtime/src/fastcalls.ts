@@ -10,7 +10,9 @@
 // L2 and L3 are language changes of decision (B), the move of code
 // generation to the projector. None of these helpers changes what a call
 // computes, only how fast it gets there.
-import { Context, Effect, Exit } from "effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import { pipeArguments } from "effect/Pipeable"
 import { SingleShotGen } from "effect/Utils"

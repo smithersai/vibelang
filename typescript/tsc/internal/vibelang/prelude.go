@@ -42,6 +42,10 @@ import (
 // generated code calls.
 const runtimeModule = "vibelang-runtime"
 
+// Generated helpers omit the optional Experimental namespace from their dependency graph.
+// Source lookup and declarations retain the public package root.
+const generatedRuntimeModule = "vibelang-runtime/internal"
+
 // preludeModules maps each prelude name to the module the emitted JavaScript
 // imports it from. A name from an effect module is imported as that module's
 // namespace (import * as Effect from "effect/Effect").
@@ -900,6 +904,9 @@ func preludeImports(f *ast.NodeFactory, names []string) []*ast.Node {
 		} else if module == "" {
 			root := effectRootNames[name]
 			module, namespace = root.module, root.namespace
+		}
+		if module == runtimeModule && name != "Experimental" {
+			module, namespace = generatedRuntimeModule, false
 		}
 		if module == runtimeModule || !namespace {
 			if named[module] == nil {

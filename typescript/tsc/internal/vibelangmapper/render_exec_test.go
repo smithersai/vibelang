@@ -216,7 +216,7 @@ var emitCases = []struct {
 		name:   "catch expressions run operands inside lazy generators",
 		source: "effect function f() { return a() catch e => recover(e) }",
 		contains: []string{
-			`import { $catch, $done, $isRun, $settle } from "vibelang-runtime";`,
+			`import { $catch, $done, $isRun, $settle } from "vibelang-runtime/internal";`,
 			"$catch($gen(function* () { return (($t = $value(a)()), $isRun($t) ? (yield* $t) : $t); }), e => $gen(function* () { return (($t = recover(e)), $isRun($t) ? (yield* $t) : $t); }))",
 		},
 		absent: []string{"$catchExpression", "f$direct"},
@@ -237,7 +237,7 @@ var emitCases = []struct {
 			"export function double(...$args) { return $plainSync(double$direct, this, $args); }",
 			"double[$direct] = double$direct;",
 			"function double$direct(n) {\n    return n * 2;\n}",
-			`import { $direct, $plainSync } from "vibelang-runtime";`,
+			`import { $direct, $plainSync } from "vibelang-runtime/internal";`,
 		},
 		absent: []string{"export function double$direct", "$isRun", "sync as $sync"},
 	},

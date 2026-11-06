@@ -1,4 +1,7 @@
-import { Cause, Effect, Exit, Scope } from "effect"
+import * as Cause from "effect/Cause"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Scope from "effect/Scope"
 import * as K from "./kernel/kernel.js"
 import { $direct } from "./fastcalls.js"
 import { isRecorded } from "./resources.js"

@@ -353,7 +353,7 @@ func (tx *lowering) visitSourceFile(file *ast.SourceFile) *ast.Node {
 		imports = append(imports, tx.namespaceImport(tx.effect, "effect/Effect"))
 	}
 	if tx.runtime != nil {
-		imports = append(imports, tx.namespaceImport(tx.runtime, "vibelang-runtime"))
+		imports = append(imports, tx.namespaceImport(tx.runtime, generatedRuntimeModule))
 	}
 	for _, module := range tx.moduleOrder {
 		imports = append(imports, tx.namespaceImport(tx.modules[module], module))

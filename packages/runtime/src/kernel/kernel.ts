@@ -13,7 +13,11 @@
 // operate on Effect's real continuation frames, so any code that leaves its
 // state in those frames (generators, flatMap chains, TS-authored Effect
 // combinators running on the same fiber) can be captured.
-import { Cause, Context, Effect, Exit, Scope } from "effect"
+import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Scope from "effect/Scope"
 import {
   asInternals,
   contA,

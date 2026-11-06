@@ -1,4 +1,8 @@
-import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
+import * as Scope from "effect/Scope"
 import type * as Types from "effect/Types"
 
 // The fiber forms of a .vibe file (D166-D170). The parser writes `await x`

@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 
 // Generated calls capture their target before operands run, and invoke it
 // after those operands. Reading method.bind/call/apply would run user code.

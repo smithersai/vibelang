@@ -1,4 +1,6 @@
-import { Effect, Fiber, Scope } from "effect"
+import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import * as Scope from "effect/Scope"
 
 /** The options `fork` passes on to Effect's `forkIn`. */
 type ForkOptions = Parameters<typeof Effect.forkScoped>[1]

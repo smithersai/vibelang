@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Bundling native error declarations could pull in unused experimental platform services; generated language helpers now keep those services out of the bundle graph.
 
 - Contributor checks rejected the documentation runner after a harmless reporting flag change; they now recognize its selected suites while retaining deadline checks.
 - Services beside a nested `Context` namespace could emit declarations that TypeScript rejected. Their generated imports now use an unshadowed name.

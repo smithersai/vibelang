@@ -27,6 +27,13 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./internal": {
+      "types": "./dist/core.d.ts",
+      "module-sync": "./dist/core-entry.js",
+      "bun": "./dist/core-entry.js",
+      "import": "./dist/core.js",
+      "default": "./dist/core.js"
+    },
     "./kernel": {
       "types": "./dist/kernel/kernel.d.ts",
       "import": "./dist/kernel/kernel.js",
