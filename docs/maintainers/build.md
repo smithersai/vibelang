@@ -1310,6 +1310,16 @@ never logged; unreadable or disappearing processes are counted and skipped.
 RSS sums can count shared pages more than once, so compare the classes with
 memory availability and cgroup accounting before choosing a resource bound.
 
+The built-site router serves MP4 files as `video/mp4` and honors a single
+`Range` request with a `206` response and the requested bytes. Closed,
+open-ended and suffix ranges retain their byte boundaries; an unsatisfiable
+range returns an empty `416` response with the full size in `Content-Range`.
+Malformed or unsupported multiple ranges fall back to the full `200` response.
+This lets Chromium finish metadata navigation without waiting for its media
+request to time out. The audit keeps its `networkidle` wait, every page and
+theme, and all contrast assertions. A real-video browser regression checks
+metadata loading through the same router.
+
 ## Specification contracts
 
 Both `//:forms` and `//:docs-tools` require the static `//:spec-lint` aggregate, which selects `//:spec-registry`,

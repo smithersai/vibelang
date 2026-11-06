@@ -1,6 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
+import { mkdtemp, mkdir, copyFile, writeFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { routeBuiltSite } from './built-site.mjs'
 import { auditPageContrast } from './contrast-audit.mjs'
 import { checkSiteContrast } from './contrast.mjs'
 
@@ -49,3 +53,32 @@ test('single document contrast audits need no helper page', async t => {
 
 // Run "bun run build" and "bunx playwright install chromium" in site/ first.
 test('built home, onboarding and cheat sheet have zero contrast violations in both themes', { timeout: 600_000 }, checkSiteContrast)
+
+test('built media routes finish metadata navigation with the real video', { timeout: 60_000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'built-media-'))
+  let browser
+  try {
+    await mkdir(join(root, 'videos'))
+    await copyFile(new URL('../public/videos/runthrough.mp4', import.meta.url), join(root, 'videos/clip.mp4'))
+    await writeFile(join(root, 'index.html'), '<!doctype html><html lang="en"><title>Media metadata</title><video controls preload="metadata"><source src="/videos/clip.mp4" type="video/mp4"></video></html>')
+    browser = await chromium.launch({
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+      headless: true, args: ['--disable-dev-shm-usage'],
+    })
+    const context = await browser.newContext()
+    await routeBuiltSite(context, root)
+    const page = await context.newPage()
+    const statuses = []
+    page.on('response', response => { if (response.request().resourceType() === 'media') statuses.push(response.status()) })
+    await page.goto('https://vibelang.sh/', { waitUntil: 'networkidle', timeout: 10_000 })
+    assert(statuses.length > 0)
+    assert(statuses.every(status => status === 206), JSON.stringify(statuses))
+    const state = await page.locator('video').evaluate(video => ({ ready: video.readyState, duration: video.duration, error: video.error?.code ?? null }))
+    assert(state.ready >= 1)
+    assert(Number.isFinite(state.duration) && state.duration > 0)
+    assert.equal(state.error, null)
+  } finally {
+    await browser?.close()
+    await rm(root, { recursive: true, force: true })
+  }
+})
