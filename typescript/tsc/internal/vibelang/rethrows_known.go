@@ -244,9 +244,10 @@ func (a *analyzer) rethrownThrows(call *ast.Node) []*checker.Type {
 		if !ast.IsFunctionExpressionOrArrowFunction(literal) || !rethrowsArgument(a.checker, call, index) {
 			continue
 		}
-		// Async activations reject their Promise; generator and Effect bodies
-		// do not execute when the callback is invoked.
-		if ast.GetFunctionFlags(literal)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) != 0 || a.runsAsEffect(literal) {
+		// Ordinary async initialization rejects its Promise. Generator
+		// initialization still runs at the call; only its body is deferred.
+		flags := ast.GetFunctionFlags(literal)
+		if flags&ast.FunctionFlagsAsync != 0 && flags&ast.FunctionFlagsGenerator == 0 || a.runsAsEffect(literal) {
 			continue
 		}
 		if signature := a.checker.GetSignatureFromDeclaration(literal); signature != nil && isEffectfulType(a.checker, a.checker.GetReturnTypeOfSignature(signature)) {
@@ -258,7 +259,7 @@ func (a *analyzer) rethrownThrows(call *ast.Node) []*checker.Type {
 			// enum initializers and transparent expressions execute here;
 			// nested callable bodies and class fields keep their own owners.
 			if (ast.IsCallExpression(n) || ast.IsNewExpression(n) || ast.IsTaggedTemplateExpression(n)) &&
-				a.plainHomeOf(n) == literal && !caughtWithinLiteral(n, literal) {
+				a.plainHomeOf(n) == literal && (flags&ast.FunctionFlagsGenerator == 0 || inParameterListOf(n, literal)) && !caughtWithinLiteral(n, literal) {
 				thrown = append(thrown, a.knownThrows(n)...)
 				thrown = append(thrown, a.rethrownThrows(n)...)
 			}

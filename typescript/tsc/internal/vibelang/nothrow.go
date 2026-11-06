@@ -211,9 +211,9 @@ func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 			}
 		}
 	}
-	// A generator body runs on iteration, outside the invoking call. It
-	// keeps its own plain-code check rather than this rethrows admission.
-	if ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator != 0 || isMarkedEffect(fn) {
+	// Effectful parameter initialization keeps its own stricter contract.
+	// Generator bodies are excluded at their source site by throwsBelongToCall.
+	if isMarkedEffect(fn) {
 		return false
 	}
 	// An effectful callable cannot synchronously throw, including while its

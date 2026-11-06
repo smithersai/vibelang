@@ -1,0 +1,22 @@
+// expect-result: [0,true,true,true,true,["default","default","default","default"]]
+import { events, sentinel, risky, invoke } from "./foreign.js"
+function plainSync() {
+  try { invoke(function*(x = risky()) { events.push("body"); yield x }); return false }
+  catch (e) { return e === sentinel }
+}
+function plainAsync() {
+  try { invoke(async function*(x = risky()) { events.push("body"); yield x }); return false }
+  catch (e) { return e === sentinel }
+}
+function exact(value: Exit.Exit<unknown, unknown>) {
+  if (value._tag !== "Failure") return false
+  const reason = value.cause.reasons[0]
+  return reason?._tag === "Fail" && reason.error === sentinel
+}
+
+export effect function main(){
+const before = events.length
+const first = try exit(Effect.try({ try: () => invoke(function*(x = risky()) { events.push("body"); yield x }), catch: e => e }))
+const second = try exit(Effect.try({ try: () => invoke(async function*(x = risky()) { events.push("body"); yield x }), catch: e => e }))
+return [before, plainSync(), plainAsync(), exact(first), exact(second), events.slice()]
+}

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("generator-parameter-async-unknown-effect")
+byte(0)
