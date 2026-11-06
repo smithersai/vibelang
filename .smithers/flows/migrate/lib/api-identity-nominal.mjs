@@ -77,6 +77,70 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     if (!brands.has(key)) brands.set(key, "b" + brands.size)
     return brands.get(key)
   }
+  // tsc never calls two `infer` declarations identical, so an unchanged generic
+  // alias using one fails strict identity unless its whole file is proved equal,
+  // and so does every generic export over it. Each side states such an alias in
+  // a form without `infer`, where a signature's own type parameters compare by
+  // position. The strict probe of those forms is the proof; the after side then
+  // forwards to the before side, so one alias serves both.
+  const inferProofs = [], forwarded = new Map(), appended = new Map()
+  const usesInfer = node => ts.isInferTypeNode(node) || Boolean(ts.forEachChild(node, usesInfer))
+  const typeParameters = ({ statement, source }) => statement.typeParameters.map(parameter => printer.printNode(ts.EmitHint.Unspecified,
+    factory.updateTypeParameterDeclaration(parameter, undefined, parameter.name, parameter.constraint, parameter.default), source)).join(", ")
+  const withoutInfer = ({ statement, source }) => {
+    const form = context => {
+      const conditional = node => {
+        if (!ts.isConditionalTypeNode(node)) return ts.visitEachChild(node, conditional, context)
+        const scoped = new Map()
+        const extended = child => {
+          if (ts.isConditionalTypeNode(child)) return conditional(child)
+          if (!ts.isInferTypeNode(child)) return ts.visitEachChild(child, extended, context)
+          const parameter = child.typeParameter, name = parameter.name.text
+          // `infer` takes a constraint from its position; a parameter needs it written.
+          const implied = !parameter.constraint && checker.getBaseConstraintOfType(checker.getTypeAtLocation(child))
+          if (!scoped.has(name)) scoped.set(name, implied ? factory.updateTypeParameterDeclaration(parameter, undefined, parameter.name,
+            checker.typeToTypeNode(implied, statement, ts.NodeBuilderFlags.NoTruncation), undefined) : parameter)
+          return factory.createTypeReferenceNode(name)
+        }
+        // Still a conditional: its true branch keeps the narrowing of the check.
+        const stated = factory.updateConditionalTypeNode(node, ts.visitNode(node.checkType, conditional),
+          ts.visitNode(node.extendsType, extended), ts.visitNode(node.trueType, conditional), ts.visitNode(node.falseType, conditional))
+        return scoped.size ? factory.createParenthesizedType(factory.createFunctionTypeNode([...scoped.values()], [], stated)) : stated
+      }
+      return node => ts.visitNode(node, conditional)
+    }
+    const transformed = ts.transform(statement.type, [form])
+    const text = printer.printNode(ts.EmitHint.Unspecified, transformed.transformed[0], source)
+    transformed.dispose()
+    return text
+  }
+  const inferAliases = base => {
+    const found = new Map()
+    for (const source of program.getSourceFiles()) {
+      if (!source.fileName.startsWith(base + "/") || source.fileName.includes("/node_modules/") || !ts.isExternalModule(source)) continue
+      if (snapshots.find(([, root]) => source.fileName.startsWith(root + "/"))[1] !== base) continue
+      if (source.statements.some(node => ts.isExportAssignment(node) && node.isExportEquals)) continue
+      const path = relative(base, source.fileName).replace(/\.d\.vibex?\.ts$/, ".d.ts")
+      for (const statement of source.statements)
+        if (ts.isTypeAliasDeclaration(statement) && statement.typeParameters && usesInfer(statement.type))
+          found.set(path + ":" + statement.name.text, { path, statement, source })
+    }
+    return found
+  }
+  const append = (source, text) => appended.set(source.fileName, (appended.get(source.fileName) ?? "") + text)
+  const afterAliases = inferAliases(after)
+  for (const [key, a] of inferAliases(before)) {
+    const b = afterAliases.get(key)
+    // Different parameters stay with the strict probe, which reports them.
+    if (!b || b.source === a.source || typeParameters(a) !== typeParameters(b)) continue
+    const id = "__api_infer_" + inferProofs.length, parameters = typeParameters(a), name = a.statement.name.text
+    const args = a.statement.typeParameters.map(parameter => parameter.name.text).join(", ")
+    append(a.source, `export type ${id}<${parameters}> = ${name}<${args}>;\nexport type ${id}_form = <${parameters}>() => ${withoutInfer(a)};\n`)
+    append(b.source, `export type ${id}_form = <${parameters}>() => ${withoutInfer(b)};\n`)
+    forwarded.set(b.statement, { file: a.source.fileName, id })
+    inferProofs.push({ entrypoint: a.path, export: name, a: `import(${JSON.stringify(a.source.fileName)}).${id}_form`,
+      b: `import(${JSON.stringify(b.source.fileName)}).${id}_form` })
+  }
   const brandKey = id => factory.createComputedPropertyName(factory.createPropertyAccessExpression(factory.createIdentifier("__api_nominal"), id))
   const brandType = id => factory.createTypeLiteralNode([factory.createPropertySignature(
     [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], brandKey(id), undefined, factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword))])
@@ -86,6 +150,13 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     let changed = false
     const transform = context => {
       const visit = node => {
+        if (forwarded.has(node)) {
+          const { file, id } = forwarded.get(node)
+          changed = true
+          return factory.updateTypeAliasDeclaration(node, node.modifiers, node.name, node.typeParameters,
+            factory.createImportTypeNode(factory.createLiteralTypeNode(literal(file)), undefined, factory.createIdentifier(id),
+              node.typeParameters.map(parameter => factory.createTypeReferenceNode(parameter.name))))
+        }
         if (ts.isTypeOperatorNode(node) && node.operator === ts.SyntaxKind.KeyOfKeyword) {
           const resolved = checker.typeToTypeNode(checker.getTypeFromTypeNode(node), undefined, ts.NodeBuilderFlags.NoTruncation)
           const literalKeys = n => ts.isLiteralTypeNode(n) || n.kind === ts.SyntaxKind.NeverKeyword ||
@@ -182,15 +253,16 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
       return node => ts.visitNode(node, visit)
     }
     const transformed = ts.transform(source, [transform])
-    if (changed) {
+    if (changed || appended.has(source.fileName)) {
       const prelude = ts.isExternalModule(source)
         ? `import type * as __api_nominal from ${JSON.stringify(brandFile.replaceAll("\\", "/"))};\n`
         : `declare var __api_nominal: typeof import(${JSON.stringify(brandFile.replaceAll("\\", "/"))});\n`
       // Triple-slash directives must precede every statement, including imports.
-      output.set(resolve(source.fileName), printer.printFile(transformed.transformed[0]) + "\n" + prelude)
+      output.set(resolve(source.fileName), printer.printFile(transformed.transformed[0]) + "\n" + prelude + (appended.get(source.fileName) ?? ""))
     }
     transformed.dispose()
   }
+  output.inferProofs = inferProofs
   output.set(brandFile, "export {};\n" + [...brands.values()].map(id => `export declare const ${id}: unique symbol;`).join("\n"))
   return output
 }

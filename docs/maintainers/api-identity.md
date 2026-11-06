@@ -325,6 +325,10 @@ any other:
 | An error in the module's body | Blocking, as for any input file. |
 | Source saved on one side only | Neither side is projected; the rules above apply. |
 
+In a package without `exports`, where every module is an entry point, the saved
+module is an entry point too. In a package with `exports`, it counts through the
+entry points that reach it, as a private module does.
+
 `result.absentDeclarations` marks such a record with `comparedFromSource: true`.
 Its `equal` field still reports the emit diagnostics, but it decides nothing:
 the source comparison is stronger than equal reasons.
@@ -332,6 +336,30 @@ the source comparison is stronger than equal reasons.
 A snapshot frozen before this rule has no saved source, so its exports stay
 unavailable until it is recorded again. `.vibe` modules save no source, because
 their sidecar is exempt from `TS7056`.
+
+## Generic aliases that use `infer`
+
+`tsc` never calls two `infer` declarations identical. An unchanged
+`type Inner<R> = R extends Box<infer A> ? A : never` therefore fails strict
+identity when its file is not proved equal, and so does every generic export
+that mentions `Inner<T>`. Mutual assignability cannot settle it, because a branch
+changed to `any` stays assignable both ways.
+
+Nominal alignment handles a top-level generic alias with `infer` when both sides
+have it at the same path with the same type parameters. Each side states the
+alias in a form without `infer`:
+
+```ts
+// R extends Box<infer A> ? A : never
+<R>() => (<A>() => R extends Box<A> ? A : never)
+```
+
+A signature's own type parameters compare by position, so the strict probe of
+these forms is the proof, reported as a type difference on the alias. The after
+side's alias then forwards to the before side's, so instantiations and generic
+exports over it see one alias. An alias whose type parameters differ keeps the
+ordinary strict probe. `infer` written directly in an exported function's
+signature is not covered and fails strict identity.
 
 ## Error types in an export's closure
 

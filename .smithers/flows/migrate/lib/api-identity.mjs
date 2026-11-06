@@ -1581,6 +1581,8 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     }
     return runtime
   }
+  // Alignment adds these names to the virtual program, not to the package.
+  const authored = name => !name.startsWith("__api_infer_")
   function recordCheck(entrypoint, name, a, b, aspect) {
     checks.push({ entrypoint, export: name, aspect, a, b })
   }
@@ -1802,7 +1804,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       trail = new Set([...trail, a, b])
       const ae = new Map(checker.getExportsOfModule(a).map(s => [s.name, s]))
       const be = new Map(checker.getExportsOfModule(b).map(s => [s.name, s]))
-      for (const child of [...new Set([...ae.keys(), ...be.keys()])].sort()) {
+      for (const child of [...new Set([...ae.keys(), ...be.keys()])].filter(authored).sort()) {
         if (!ae.has(child) || !be.has(child)) result.nameDifferences.push({ entrypoint, export: name + "." + child, side: ae.has(child) ? "before" : "after" })
         else {
           // A namespace export can merge with a type alias of the same name.
@@ -1819,6 +1821,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     }
   }
   progress("export-surface")
+  for (const proof of nominal.inferProofs ?? []) recordCheck(proof.entrypoint, proof.export, proof.a, proof.b, "type")
   for (const key of keys) {
     if (absentEntries.has(key)) continue
     if (!left[key] || !right[key]) {
@@ -1826,7 +1829,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       continue
     }
     const a = sourceExports(left[key], key, "before"), b = sourceExports(right[key], key, "after")
-    for (const name of [...new Set([...a.keys(), ...b.keys()])].sort()) {
+    for (const name of [...new Set([...a.keys(), ...b.keys()])].filter(authored).sort()) {
       if (!a.has(name) || !b.has(name)) result.nameDifferences.push({ entrypoint: key, export: name, side: a.has(name) ? "before" : "after" })
       else {
         if (a.runtime?.has(name) !== b.runtime?.has(name))
