@@ -1784,7 +1784,7 @@ const targets = {
     data: [design, goTestProgress, migrationSources, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",
-    timeout: "15m"
+    timeout: "30m"
   })
 }
 
