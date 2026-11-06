@@ -28,6 +28,35 @@ function rewriteProse(markdown: string, transform: (prose: string) => string): s
   return out.join("\n")
 }
 
+function headingOffsets(markdown: string) {
+  let cursor = 0
+  return new Marked({ gfm: true }).lexer(markdown).flatMap(token => {
+    const offset = markdown.indexOf(token.raw, cursor)
+    if (offset < 0) throw new Error("Cannot locate a Markdown token in the full bundle")
+    cursor = offset + token.raw.length
+    return token.type === "heading" ? [{ offset, depth: token.depth, text: token.text }] : []
+  })
+}
+
+// The aggregate is a current-installation reference. Keep older release notes
+// on their own page, where their versioned upgrade commands retain context.
+export function currentReleaseNotes(markdown: string): string {
+  const versions = headingOffsets(markdown).filter(heading => heading.depth === 2 &&
+    /^\d+\.\d+\.\d+(?:-[\w.-]+)?(?: \(unreleased\))?$/.test(heading.text))
+  if (!versions.length) throw new Error("Release notes have no version heading")
+  return markdown.slice(0, versions[1]?.offset ?? markdown.length).trimEnd() +
+    "\n\n[Earlier release notes](https://vibelang.sh/setup/release-notes.md).\n"
+}
+
+export function updateFullBundle(bundle: string, notes: string): string {
+  const headings = headingOffsets(bundle).filter(heading => heading.depth === 1)
+  const releases = headings.filter(heading => heading.text === "Release notes")
+  if (releases.length !== 1) throw new Error("Full bundle must contain exactly one release-notes page")
+  const start = releases[0]!.offset
+  const end = headings.find(heading => heading.offset > start)?.offset ?? bundle.length
+  return bundle.slice(0, start) + currentReleaseNotes(notes).trimEnd() + "\n\n" + bundle.slice(end)
+}
+
 export function buildMarkdown(site: string, facts: Record<string, string>, release?: any) {
   const repo = resolve(import.meta.dir, "../..")
   const root = join(repo, "docs/user")
@@ -158,6 +187,13 @@ export function buildMarkdown(site: string, facts: Record<string, string>, relea
     ""
   ].join("\n")
   if (errors.length) throw new Error([...new Set(errors)].join("\n"))
+  const fullPath = join(site, "llms-full.txt")
+  if (existsSync(fullPath)) {
+    const notes = copies.get("setup/release-notes.md")
+    if (!notes) throw new Error("Full bundle has no release-notes Markdown copy")
+    // Preserve every other Vocs page, including VIPs and the home page, byte for byte.
+    writeFileSync(fullPath, updateFullBundle(readFileSync(fullPath, "utf8"), notes))
+  }
   for (const [path, text] of [...copies, ["llms.txt", llms] as const]) {
     const destination = join(site, path)
     mkdirSync(dirname(destination), { recursive: true })
