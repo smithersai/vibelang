@@ -5,7 +5,7 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 
-const directories = [".smithers", "packages/runtime", "packages/compiler", "experiments", "docs/tools"]
+const directories = [".smithers", "packages/runtime", "packages/compiler", "packages/compiler/test/tools", "experiments", "docs/tools"]
 
 function fixture(t) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "vibe-ci-install-"))
@@ -160,6 +160,7 @@ for (const mode of ["graph", "prepare"]) {
     for (const [name, version] of [["effect", "4.1.0"], ["tool-v1", "1.0.0"], ["tool-v2", "2.0.0"]]) {
       manifest("deps/" + name, { name: name === "effect" ? name : "fixture-tool", version })
     }
+    manifest("deps/router", { name: "@tanstack/router-generator", version: "1.0.0" })
     manifest("deps/smthrs", { name: "fixture-smthrs", version: "1.0.0", bin: { smthrs: "cli.cjs" } })
     fs.chmodSync(put("deps/smthrs/cli.cjs", "#!" + process.execPath + "\n" +
       'require("node:fs").appendFileSync(process.env.CI_REAL_TRACE, JSON.stringify(process.argv.slice(2)) + "\\n")\n'), 0o755)
@@ -167,6 +168,7 @@ for (const mode of ["graph", "prepare"]) {
     for (const dir of directories) {
       const dependencies = { effect: "file:" + path.join(root, "deps/effect") }
       if (dir === ".smithers") dependencies["fixture-smthrs"] = "file:" + path.join(root, "deps/smthrs")
+      if (dir === "packages/compiler/test/tools") dependencies["@tanstack/router-generator"] = "file:" + path.join(root, "deps/router")
       if (dir === "experiments") dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v1")
       manifests.set(dir, { private: true, dependencies })
       manifest(dir, manifests.get(dir))
@@ -188,6 +190,7 @@ for (const mode of ["graph", "prepare"]) {
         env: { ...process.env, CI_REAL_TRACE: trace }
       })
       assert.equal(fresh.status, 0, fresh.stdout + fresh.stderr)
+      assert.equal(JSON.parse(fs.readFileSync(path.join(root, "packages/compiler/test/tools/node_modules/@tanstack/router-generator/package.json"), "utf8")).version, "1.0.0", "fresh preparation must install the native router adapter")
       for (const dir of directories) {
         assert.equal(JSON.parse(fs.readFileSync(path.join(root, dir, "node_modules/effect/package.json"), "utf8")).version, "4.1.0")
       }
@@ -216,6 +219,7 @@ for (const mode of ["graph", "prepare"]) {
       for (const dir of directories) {
         assert.equal(JSON.parse(fs.readFileSync(path.join(root, dir, "node_modules/effect/package.json"), "utf8")).version, "4.1.0")
       }
+      assert.equal(JSON.parse(fs.readFileSync(path.join(root, "packages/compiler/test/tools/node_modules/@tanstack/router-generator/package.json"), "utf8")).version, "1.0.0", "native router discovery must have its prepared adapter dependency")
       assert.ok(fs.lstatSync(path.join(root, "packages/runtime/node_modules/effect")).isSymbolicLink(),
         "preparation must share Effect before an individual check runs")
       assert.equal(installedVersion("fixture-tool"), "2.0.0", "CI must install the current lockfile before running the graph")
