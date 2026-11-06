@@ -1,6 +1,6 @@
 #!/bin/sh
-# go test -exec program: runs one package's test binary as GO_TEST_SHARDS processes at once (default 6), each with
-# its own -test.run list, and exits with the first failing process's status.
+# go test -exec program: runs one package's test binary as GO_TEST_SHARDS processes at once (default 6, or one per core
+# on a smaller machine), each with its own -test.run list, and exits with the first failing process's status.
 #
 # Go runs a package's tests one after another unless each calls t.Parallel, and a fuzz target's seed corpus likewise.
 # //:go-vibelangfuzz is such a chain: 686 s on a quiet host (10-31, 614 s of it in top-level tests and fuzz targets
@@ -20,11 +20,20 @@
 # names (uname -n): a CI machine that runs one slice writes it after committing its tree, and a copy that reaches any
 # other checkout slices nothing. GO_TEST_SLICE, when set, wins.
 #
+# The processes share two threads per core, so each runs with GOMAXPROCS set to its share or to a smaller inherited
+# value. Six processes of GOMAXPROCS=4 on a 4-vCPU box took about 1600 s and put FuzzDeclarationIdentity at 15m50s of CPU,
+# over its 12-minute limit; four of GOMAXPROCS=2 took 534 s and 6m07s (2026-11-05). GO_TEST_CORES overrides the core
+# count for tests.
+#
 # Use: go test -exec "$PWD/scripts/go-test-shards.sh" ./pkg/...   Test: scripts/go-test-shards.test.mjs.
 set -u
 bin=$1
 shift
-shards=${GO_TEST_SHARDS:-6}
+cores=${GO_TEST_CORES:-$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 6)}
+case $cores in ''|*[!0-9]*|0) cores=6 ;; esac
+default_shards=6
+[ "$cores" -ge 6 ] || default_shards=$cores
+shards=${GO_TEST_SHARDS:-$default_shards}
 slice=${GO_TEST_SLICE:-}
 slice_file=$(dirname "$0")/go-test-slice
 if [ -z "$slice" ] && [ -f "$slice_file" ]; then
@@ -70,6 +79,13 @@ for arg in "$@"; do
   esac
 done
 [ "$shards" -gt 1 ] || [ "$sn" -gt 1 ] || exec "$bin" "$@"
+
+threads=$((cores * 2 / (shards > 0 ? shards : 1)))
+[ "$threads" -ge 2 ] || threads=2
+case ${GOMAXPROCS:-} in
+  ''|*[!0-9]*|0) ;;
+  *) [ "$GOMAXPROCS" -ge "$threads" ] || threads=$GOMAXPROCS ;;
+esac
 
 dir=$(mktemp -d "${TMPDIR:-/tmp}/go-test-shards.XXXXXX") || exit 1
 pids=
@@ -160,7 +176,7 @@ for list in "$dir"/names*; do
     # Killing only the shell leaves the binary running after cancellation.
     trap cancel HUP INT TERM
     start=$(date +%s)
-    "$bin" "$@" "-test.run=$run" > "$dir/out$i" 2>&1 &
+    GOMAXPROCS=$threads "$bin" "$@" "-test.run=$run" > "$dir/out$i" 2>&1 &
     child=$!
     wait "$child"
     status=$?

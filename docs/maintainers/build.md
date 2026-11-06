@@ -851,7 +851,7 @@ owned marker keeps the existing `pending` and `XPASS` behavior.
 whitespace markers.
 
 `:go-vibelangfuzz` runs its test binary through `scripts/go-test-shards.sh`
-(`go test -exec`): six processes at once, each with its own `-run` list and the
+(`go test -exec`): six processes at once, or one per core on a smaller machine, sharing two threads per core through `GOMAXPROCS`, each with its own `-run` list and the
 40-minute deadline. Go runs a package's tests and each seed corpus one after
 another unless they call `t.Parallel`, so the package was one chain: 686 s on a
 quiet host, and it hit its 40-minute deadline on the loaded post-merges of

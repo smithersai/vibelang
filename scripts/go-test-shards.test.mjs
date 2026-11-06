@@ -15,6 +15,7 @@ const binary = `#!/bin/sh
 for a in "$@"; do case $a in -test.list) printf '%s\\n' "$@" > "$RUNS/../listed-args"; printf '%s\\n' $NAMES; exit 0 ;; esac; done
 me=$$
 printf '%s\\n' "$@" > "$RUNS/$me"
+echo "$GOMAXPROCS" >> "$RUNS/../gomaxprocs"
 run=
 for a in "$@"; do case $a in -test.run=*) run=\${a#-test.run=} ;; esac; done
 i=0
@@ -84,6 +85,30 @@ test("every test, fuzz target and example runs once, across processes that run a
     t.done()
   }
 })
+
+for (const [why, env, processes, threads] of [
+  ["a 4-vCPU box runs one process per core", { GO_TEST_CORES: "4" }, 4, "2"],
+  ["a 2-vCPU box runs one process per core", { GO_TEST_CORES: "2" }, 2, "2"],
+  ["a 48-core host keeps six processes", { GO_TEST_CORES: "48" }, 6, "16"],
+  ["a smaller inherited GOMAXPROCS holds", { GO_TEST_CORES: "48", GOMAXPROCS: "8" }, 6, "8"],
+  ["an explicit GO_TEST_SHARDS wins", { GO_TEST_CORES: "4", GO_TEST_SHARDS: "2" }, 2, "4"],
+  ["an unreadable core count falls back to six processes", { GO_TEST_CORES: "many" }, 6, "2"]
+]) {
+  test(why, () => {
+    const names = Array.from({ length: 12 }, (_, i) => "Test" + i)
+    const t = setup(names)
+    try {
+      const r = t.run([], { GOMAXPROCS: "", GO_TEST_SHARDS: "", BARRIER: String(processes), ...env })
+      assert.equal(r.status, 0, r.stdout + r.stderr)
+      assert.deepEqual(ran(r.stdout), [...names].sort())
+      assert.equal(r.runs.length, processes)
+      const seen = readFileSync(join(t.dir, "gomaxprocs"), "utf8").trim().split("\n")
+      assert.deepEqual(seen, Array(processes).fill(threads))
+    } finally {
+      t.done()
+    }
+  })
+}
 
 test("the slowest names, by testdata/shard-seconds.txt, go to different processes", () => {
   const names = ["TestSlow", "FuzzSlower", "TestSlowest", "TestQuick1", "TestQuick2", "TestQuick3"]
