@@ -5181,6 +5181,8 @@ typescript/vibelang/cases/match-operand-reads/main.vibe:9:19 lambda plain table
 typescript/vibelang/cases/match-or-not-bindings/main.vibe:38:19 lambda plain fallback
 typescript/vibelang/cases/match-or-not-bindings/main.vibe:48:50 lambda plain fallback
 typescript/vibelang/cases/match-ordinary-extractor.fail/main.vibe:9:42 lambda effectFn fallback
+typescript/vibelang/cases/match-own-boolean-class-types/main.vibe:24:21 lambda plain table
+typescript/vibelang/cases/match-own-boolean-class-types/main.vibe:5:14 lambda plain fallback
 typescript/vibelang/cases/match-pattern-value-admission-fixed-output/main.vibe:15:20 lambda plain fallback
 typescript/vibelang/cases/match-pattern-value-admission.fail/main.vibe:3:20 lambda plain fallback
 typescript/vibelang/cases/match-patterns/main.vibe:117:28 lambda effectFn fallback
