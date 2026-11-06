@@ -1,0 +1,25 @@
+// expect-result: ["hit","miss","hit"]
+import { Effect } from "effect"
+import { customMatcher as key } from "vibelang-runtime"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const same = <A, B>(_: Equal<A, B>) => undefined
+class Check {
+ readonly value = 4
+ static [Symbol.hasInstance](s: unknown): s is string { return typeof s === "string" }
+ static [key](s: unknown): boolean { return typeof s === "number" }
+}
+function check(s: unknown) {
+ return match(s) {
+  when Check: do { same<typeof s, unknown>(true); "hit" };
+  default: do { same<typeof s, unknown>(true); "miss" };
+ }
+}
+function inverted(s: Check | number) {
+ return match(s) {
+  when not Check: do { same<typeof s, Check | number>(true); "miss" };
+  default: do { same<typeof s, Check | number>(true); "hit" };
+ }
+}
+export function main(): Effect.Effect<readonly string[]> {
+ return Effect.sync(() => [check(4), check(new Check()), inverted(4)])
+}

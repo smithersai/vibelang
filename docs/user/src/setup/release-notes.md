@@ -29,6 +29,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `effect` on an index signature or after a modifier in an interface or type literal, as in `interface I { readonly effect value: number }`, reported syntax errors. It now reports `EK0108`, with its quick fix.
 - The `EK0801` warning on `using` in effect code named a quick fix that the editor didn't offer. It now offers one that moves the rest of the body into `scoped` and acquires the value with `acquireDisposable`.
 
+- A class pattern whose custom matcher returns `boolean` could incorrectly expose class fields in its arm. It now leaves the subject's type unchanged, as a boolean test does.
+
 - Migration could leave source-linked documentation pointing at removed TypeScript files or showing old imports; matching code blocks and their source paths now follow the conversion.
 - Contributor build checks could duplicate or omit the directive tests. The graph now runs those tests once.
 - A `do` expression in a `provide` provider crashed the compiler. The `do` now runs before the block, and a `continue` or `break` inside it leaves the block as written.
