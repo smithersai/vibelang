@@ -14,10 +14,13 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
+
 - Vite main and worker bundles could compile the same project simultaneously and exhaust memory. Matching plugin instances now share compilation, and closing one keeps the others running.
 
 - Callbacks declared `@throws {any}` could be rejected by compatible typed callback contracts. They now follow TypeScript assignability, while `unknown` and no-throw contracts keep their checks.
 
+- Providers typed as `any` were rejected even though Effect accepts them. They now retain Effect's `unknown` error and requirement types.
 - Contributor build checks could break when a shared input helper gained an export; they now load those helpers consistently.
 - Reverting a module during migration could try to clear build outputs of unrelated packages and stop on an unsafe-output error. Reference refresh now limits cleanup to projects linked by references and records the path behind any refusal.
 
@@ -36,6 +39,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Contributor checks rejected the documentation runner after a harmless reporting flag change; they now recognize its selected suites while retaining deadline checks.
 - Services beside a nested `Context` namespace could emit declarations that TypeScript rejected. Their generated imports now use an unshadowed name.
 - de's loader and the bundler plugins removed a line of a string or comment that spelled `//# sourceMappingURL=`, which changed the program's text. Only the compiler's own directive at the end of the file is removed now.
+- Under `vibelang/bun`, a stack frame named the `.vibe` file with the line of its compiled JavaScript. It now names the `.vibe` line in a module whose emitted JavaScript is ASCII; other modules keep the compiled line.
 - Calls known to throw inside a synchronous generator passed to `Effect.try` or another callback wrapper could compile unchecked. They now report `EK0401`, and `vibelang --fix` preserves the iterator's behavior.
 - JavaScript emission during migration could put declaration sidecars somewhere other than their package exports, losing types in consumers. Sidecars now keep the project's declaration layout while JavaScript retains its package-relative paths.
 - The Bun guides attributed computed `.ts` alias failures to missing runtime hooks. They now distinguish the preload's fallback for literal imports from Bun's extensionless-alias limitation.
@@ -43,6 +47,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration setup stopped when an earlier migrated module reached a declaration that `TS7056` left unemitted on both sides. Setup now records the emit reason, names each unavailable export and continues; the package stays incomplete.
 - Bun bundles could fail when native inputs kept relative or aliased `.ts` imports after migration; the build adapter now loads the matching `.vibe` source while preserving native files and external imports.
 - A TypeScript barrel in a built project reference could lose exports after a module moved to `.vibe` or `.vibex`; consumers now resolve those native modules through their emitted declarations.
+- Migration API checks could report a successfully emitted original as incomplete against itself when its project set `moduleSuffixes` and took `--outDir` on the command line. The check now reads each module's real declaration, so `TS2694` no longer appears on unchanged code.
 - Migration API checks refused every importer of a workspace package with a `declare module` block when the frozen original and the candidate lived in separate checkouts. The key is now the package and module, and the proof compares the ambient blocks and the local declarations they reach.
 
 - Migration could separate a throwing class from its merged namespace, breaking types such as `Asset.Input`. Type-only namespace companions now move with the declaration; namespaces with runtime initialization keep the original source unchanged.
