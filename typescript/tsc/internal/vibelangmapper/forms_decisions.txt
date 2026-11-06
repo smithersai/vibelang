@@ -1178,6 +1178,13 @@ typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:3:32 lambda 
 typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:6:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:9:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:9:68 lambda effectFn table
+typescript/vibelang/cases/concurrent-fresh-binding-defaults/main.vibe:10:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-fresh-binding-defaults/main.vibe:4:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-fresh-binding-defaults/main.vibe:5:26 lambda effectFn table
+typescript/vibelang/cases/concurrent-fresh-binding-defaults/main.vibe:6:28 lambda effectFn table
+typescript/vibelang/cases/concurrent-fresh-binding-defaults/main.vibe:7:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-fresh-binding-defaults/main.vibe:8:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-fresh-binding-defaults/main.vibe:9:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-do-return/main.vibe:12:50 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-do-return/main.vibe:17:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-do-return/main.vibe:23:58 lambda effectFn table

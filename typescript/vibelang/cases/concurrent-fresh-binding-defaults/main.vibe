@@ -1,0 +1,12 @@
+// expect-result: [1,2,3,4,5,6,7]
+export effect function main() {
+  const seen: number[] = []
+  for concurrent (const { n = 1 } of [{}]) { seen.push(n) }
+  for concurrent(1) (let { n: value = 2 } of [{}]) { value += 0; seen.push(value) }
+  for concurrent(2) (const { ["n"]: n = 3 } of [{}]) { seen.push(n) }
+  for concurrent (const { inner: { n = 4 } } of [{ inner: {} }]) { seen.push(n) }
+  for concurrent (const [n = 5] of [[]]) { seen.push(n) }
+  for concurrent (const { n = 6, ...rest } of [{}]) { void rest; seen.push(n) }
+  for concurrent (const { n = 7 } of [{}]) { seen.push(n) }
+  return seen.sort()
+}
