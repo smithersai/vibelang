@@ -228,8 +228,8 @@ The workflow holds no secrets and its token only reads this repository. A hosted
 pass counts; a hosted failure sends the change back to a build host, which is the
 reference for rejecting it.
 
-The warmup includes `./internal/ls/...`, matching the language-service test
-target. `scripts/warm-go-cache.sh --print` prints its package inventory.
+The warmup includes `./internal/compiler` and `./internal/ls/...`, matching
+the compiler-regression and language-service test targets. `scripts/warm-go-cache.sh --print` prints its package inventory.
 
 A hosted run compiles every Go package that changed since the Go cache it
 restores. `.github/workflows/go-cache.yml` keeps that cache current: on each push
