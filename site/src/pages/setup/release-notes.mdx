@@ -12,6 +12,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.13 (unreleased)
 
 ### Bugs fixed since 0.0.12
+
+- Following the pnpm install guide could select a newer Node helper and report incompatible Effect peers. The guide now puts the transitive pin in `pnpm-workspace.yaml`.
+
+- Following the Yarn install guide could stop compilation with `EK3201` after selecting a newer Node helper. The guide now pins that helper with Yarn's `resolutions` setting.
 - Object-rest bindings such as `const { ...timeout } = AbortSignal` could be rejected as platform calls. They now compile as ordinary object copies.
 
 - A test name containing a line break could split its health-report table row and separate it from its failure count. The name and count now stay in the same row.
@@ -47,13 +51,11 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
-- Following the Yarn install guide could stop compilation with `EK3201` after selecting a newer Node helper. The guide now pins that helper with Yarn's `resolutions` setting.
 - In the TypeScript view that editors read, `fork effect { … }` and the same block after `fork.in(scope)`, `fork.scoped` or `fork.detached` produced broken code, and a later `join` of the fiber reported that the mapper could not tell it held a fiber. These forms now project to the Effect operation they run.
 - Migration could report an empty reason when it could not read a module's imports. It now reports the native parser diagnostic and compiler exit status.
 - Rerunning migration setup could leave an unpinned formatter plugin in a checksum-pinned configuration. It now restores the pinned plugins and formats VibeLang through the companion command.
 - Migrating a platform factory could drop documentation from an inferred exported value's members. The migration now preserves that member documentation.
 
-- Following the pnpm install guide could select a newer Node helper and report incompatible Effect peers. The guide now puts the transitive pin in `pnpm-workspace.yaml`.
 - Migration API checks took hours on large packages, because every group of entry points checked the same files again. A comparison now checks each file once for the same environment.
 
 - Test names containing Unicode line or paragraph separators could disappear from the health report. Those names are now retained.
