@@ -3,7 +3,7 @@
  */
 import * as Schema from "effect/Schema";
 import * as Effect from "effect/Effect";
-import * as runtime from "vibelang-runtime";
+import * as runtime from "vibelang-runtime/internal";
 /** The codes. */
 export const Code = Schema.Literals(["a",
     "b"]);

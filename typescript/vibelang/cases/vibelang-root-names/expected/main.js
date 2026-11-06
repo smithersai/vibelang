@@ -3,7 +3,7 @@ import * as Console from "effect/Console";
 import * as Option from "effect/Option";
 import { flow, identity } from "effect/Function";
 import * as Effect from "effect/Effect";
-import * as runtime from "vibelang-runtime";
+import * as runtime from "vibelang-runtime/internal";
 // Every export of effect's root is in scope without an import (D146), after
 // the prelude's names. JavaScript's own built-ins keep their meaning, a host
 // global does not (the DOM's Option is in this project's lib), and a local
