@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: A non-field schema member reports EK2109 instead of EK1505.
-Rules: docs/design/src/900-appendices.md#b9e8dea99193d46d
-Witness: typescript/vibelang/cases/cov900-schema-method.fail/main.vibe

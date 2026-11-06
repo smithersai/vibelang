@@ -1,1 +1,0 @@
-cov2-900b docs/design/src/900-appendices.md#c4980ee7447031f3: no check of the resolved effect version against the 4.1.1 pin; the stub effect 4.0.0 compiles without EK3201

@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: Namespace-body await is accepted instead of native TS1308.
-Rules: docs/design/src/900-appendices.md#87dbd8b09a3536db, docs/design/src/900-appendices.md#5b8fd11e2d4b41b2, docs/design/src/900-appendices.md#ba48757c47aed449
-Witness: typescript/vibelang/cases/cov900-namespace-await.fail/main.vibe

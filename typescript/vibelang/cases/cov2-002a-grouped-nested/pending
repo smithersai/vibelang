@@ -1,1 +1,0 @@
-cov2-002a: The nested Effect fails with string, but the parenthesized try/catch handler parameter is inferred as never (TS2339 on e.length). Retain the specified runtime result 5 and string handler use. Rule: docs/design/src/002-running.md#3bcdfda0231791f8

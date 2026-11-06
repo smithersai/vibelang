@@ -1,1 +1,0 @@
-vip40 Module names are case-folded: module Text and module text collide as EK4408 instead of being two modules. Rule: docs/design/vips/0040-module-declarations.md#9b3b21e834452c6d

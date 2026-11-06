@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: The unsupported data variant payload reports native TS1005 instead of EK1606.
-Rules: docs/design/src/900-appendices.md#fd413b1c9355aeff
-Witness: typescript/vibelang/cases/cov900-data-variant.fail/main.vibe

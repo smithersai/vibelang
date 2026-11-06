@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: Effect parameter await/yield emit EK4602/TS2523/TS7057 rather than the source-owned EK0102/EK2104.
-Rules: docs/design/src/900-appendices.md#8349e2a257b6ff83, docs/design/src/900-appendices.md#9217c5cbd8b1233a
-Witness: typescript/vibelang/cases/cov900-formal-await-yield.fail/main.vibe

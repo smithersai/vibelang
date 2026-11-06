@@ -1,1 +1,0 @@
-cov-tooling VIP coverage: compiler rejects combining --fix with -b rather than fixing each project.

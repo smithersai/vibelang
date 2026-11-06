@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: An Effect function expression named join is accepted instead of EK1702.
-Rules: docs/design/src/900-appendices.md#5a93e924c810e570, docs/design/src/900-appendices.md#23cd9f914b5ae18b, docs/design/src/900-appendices.md#a50e07978dfdf825, docs/design/src/900-appendices.md#ac2dc9c027578580
-Witness: typescript/vibelang/cases/cov900-expression-names.fail/main.vibe

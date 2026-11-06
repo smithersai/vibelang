@@ -1,1 +1,0 @@
-vip40 A module name beside a const is the EK4408 warning, not the EK4005 error. Rules: docs/design/vips/0040-module-declarations.md#7978a78d0fc1f5c1 docs/design/vips/0040-module-declarations.md#97195d9104ac48ed

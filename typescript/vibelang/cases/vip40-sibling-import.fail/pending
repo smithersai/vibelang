@@ -1,1 +1,0 @@
-vip40 An identifier specifier inside a body is parsed as TypeScript (TS1141) instead of reported as EK4007. Rules: docs/design/vips/0040-module-declarations.md#764d53f2f06c5c81 docs/design/vips/0040-module-declarations.md#483cc4b319428c31 docs/design/vips/0040-module-declarations.md#c585a35ce13e81b8

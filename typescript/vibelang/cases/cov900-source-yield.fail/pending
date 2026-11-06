@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: Source yield in an Effect function reports native TS1163 instead of EK2104.
-Rules: docs/design/src/900-appendices.md#540cf8b0c5238db5, docs/design/src/900-appendices.md#17574fba37ddbe1d, docs/design/src/900-appendices.md#34cf8eb315ba3521
-Witness: typescript/vibelang/cases/cov900-source-yield.fail/main.vibe
