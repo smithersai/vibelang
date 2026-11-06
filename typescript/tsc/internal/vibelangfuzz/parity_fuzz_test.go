@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -209,7 +210,12 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 		}
 	}
 	slices.Sort(sourceNames)
-	spans, sourceOnly, spanErr := stockSpans(ctx, tsc, fork.Dir, sourceNames...)
+	sourceOnly := stockSpansSourceOnly(tsc)
+	var spans []stockSpan
+	var spanErr error
+	if !stockReportedNothing(runErr, out) || !testing.Short() || toolsFuzzing() {
+		spans, sourceOnly, spanErr = stockSpans(ctx, tsc, fork.Dir, sourceNames...)
+	}
 	if spanErr != nil {
 		t.Fatalf("cannot compare D266 diagnostic ends: %v", spanErr)
 	}
@@ -289,6 +295,14 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 		g.Add("feature:d266-emit", "D266: the fork (first) and stock TypeScript (second) emit different JavaScript, declarations or maps:\n%s", diff)
 	}
 	g.FinishInput(t, key)
+}
+
+// stockReportedNothing reports whether stock tsc succeeded and printed nothing, so
+// that the language server has no diagnostic to give an end to. That server was
+// the largest cost of the short seeds. Campaigns still ask it, which keeps testing
+// this premise, and a fork diagnostic still differs from the empty stock list.
+func stockReportedNothing(runErr error, out []byte) bool {
+	return runErr == nil && len(bytes.TrimSpace(out)) == 0
 }
 
 func formatParity(file, line, column, category, code string) string {

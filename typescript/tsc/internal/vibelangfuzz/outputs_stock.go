@@ -178,11 +178,11 @@ func stockJavaScriptAPI(tsc string) string {
 // early stop after syntax errors. Native TypeScript 7 uses LSP when it ships
 // no JS API; the boolean then restricts end comparisons to source files.
 func stockSpans(ctx context.Context, tsc, dir string, files ...string) ([]stockSpan, bool, error) {
-	api := stockJavaScriptAPI(tsc)
-	if _, err := os.Stat(api); errors.Is(err, os.ErrNotExist) {
+	if stockSpansSourceOnly(tsc) {
 		spans, err := stockLSPSpans(ctx, tsc, dir, files)
 		return spans, true, err
 	}
+	api := stockJavaScriptAPI(tsc)
 	const script = `const ts = require(process.argv[1]);
 const path = require("node:path");
 const dir = process.cwd();
@@ -202,6 +202,13 @@ console.log(JSON.stringify(ds.map(d => ({ file: d.file ? path.relative(dir, d.fi
 		return nil, false, err
 	}
 	return spans, false, nil
+}
+
+// stockSpansSourceOnly reports whether stockSpans supplies source file spans
+// alone, as it does through LSP for a stock compiler with no JS API.
+func stockSpansSourceOnly(tsc string) bool {
+	_, err := os.Stat(stockJavaScriptAPI(tsc))
+	return errors.Is(err, os.ErrNotExist)
 }
 
 func spanStrings(spans []stockSpan) []string {
