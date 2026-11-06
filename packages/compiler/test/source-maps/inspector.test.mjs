@@ -4,9 +4,10 @@
 import { strict as assert } from "node:assert"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
+import { readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { test } from "node:test"
-import { AnyMap, generatedPositionFor, originalPositionFor } from "@jridgewell/trace-mapping"
+import { AnyMap, decodedMappings, encodedMap, generatedPositionFor, originalPositionFor } from "@jridgewell/trace-mapping"
 import { compiler, entry, locate, mainVibe, project, succeed } from "./helpers.mjs"
 
 class Inspector {
@@ -62,6 +63,7 @@ const decode = (url) => JSON.parse(Buffer.from(url.slice(url.indexOf(",") + 1), 
  */
 async function breakAt(root, args, script, needle, expression) {
   const { child, inspector, socket, log } = await debug(root, args)
+  let timer
   try {
     const target = locate(mainVibe, needle, "main.vibe")
     const scripts = new Map()
@@ -89,12 +91,15 @@ async function breakAt(root, args, script, needle, expression) {
     await inspector.send("Debugger.enable")
     await inspector.send("Debugger.setInstrumentationBreakpoint", { instrumentation: "beforeScriptWithSourceMapExecution" })
     await inspector.send("Runtime.runIfWaitingForDebugger")
-    const event = await Promise.race([hit, new Promise((_, failed) => setTimeout(() => failed(new Error(`no pause at ${needle}:\n${log()}`)), 60000))])
+    const event = await Promise.race([hit, new Promise((_, failed) => timer = setTimeout(() => failed(new Error(`no pause at ${needle}:\n${log()}`)), 60000))])
     const frame = event.callFrames[0]
     const original = originalPositionFor(new AnyMap(map), { line: frame.location.lineNumber + 1, column: frame.location.columnNumber })
     const value = await inspector.send("Debugger.evaluateOnCallFrame", { callFrameId: frame.callFrameId, expression })
-    return { original, target, value: value.result.value }
+    const { scriptSource } = await inspector.send("Debugger.getScriptSource", { scriptId: frame.location.scriptId })
+    const statement = scriptSource.split(/\r\n|[\n\r\u2028\u2029]/)[frame.location.lineNumber]
+    return { original, target, value: value.result.value, functionName: frame.functionName, statement }
   } finally {
+    clearTimeout(timer)
     socket.close()
     child.kill()
   }
@@ -106,12 +111,40 @@ async function sourceMapOf({ sourceMapURL }, root) {
   return JSON.parse(await readFile(join(root, "out", sourceMapURL), "utf8"))
 }
 
+// V8's frame and script text are independent of the map used in both directions.
+async function checkPlainBreakpoint(root) {
+  const needle = 'const made = middle("p")'
+  const { original, target, value, functionName, statement } = await breakAt(root, ["entry.mjs"], "out/main.js", needle, "typeof label")
+  assert.equal(original.line, target.line)
+  assert.equal(functionName, "plainTrace", "paused function")
+  assert.ok(statement.includes(needle), `paused statement: ${statement}`)
+  assert.equal(value, "undefined", "plainTrace has no label parameter")
+}
+
+test("the debugger check rejects maps that swap statements or functions", async (t) => {
+  for (const other of ['const made = leaf(label + "-m")', 'return made.message.length > 0 ? made : new Error("empty")']) {
+    await t.test(other, async (t) => {
+      const root = project(t, { "entry.mjs": entry("./out/main.js") })
+      await succeed(compiler, ["-p", "tsconfig.json"], { cwd: root })
+      const code = await readFile(join(root, "out/main.js"), "utf8")
+      const lines = code.split("\n")
+      const intended = lines.findIndex((line) => line.includes('const made = middle("p")'))
+      const actual = other.startsWith("return") ? intended + 1 : lines.findIndex((line) => line.includes(other))
+      assert.ok(intended >= 0 && actual >= 0 && lines[actual].includes(other), "mutation statements exist")
+      const path = join(root, "out/main.js.map")
+      const map = new AnyMap(JSON.parse(await readFile(path, "utf8")))
+      const rows = decodedMappings(map)
+      ;[rows[intended], rows[actual]] = [rows[actual], rows[intended]]
+      await writeFile(path, JSON.stringify(encodedMap(new AnyMap({ ...encodedMap(map), mappings: rows }))))
+      await assert.rejects(checkPlainBreakpoint(root), /paused function|paused statement/)
+    })
+  }
+})
+
 test("a breakpoint set by .vibe line pauses there in the compiler's output", async (t) => {
   const root = project(t, { "entry.mjs": entry("./out/main.js") })
   await succeed(compiler, ["-p", "tsconfig.json"], { cwd: root })
-  const { original, target, value } = await breakAt(root, ["entry.mjs"], "out/main.js", 'const made = middle("p")', "typeof middle")
-  assert.equal(original.line, target.line)
-  assert.equal(value, "function")
+  await checkPlainBreakpoint(root)
 })
 
 test("a breakpoint set by .vibe line pauses there in an effect function", async (t) => {
