@@ -2348,3 +2348,4 @@ typescript/vibelang/cases/fork-coverage-owners/main.vibe:18:21 lambda: program k
 typescript/vibelang/cases/cov2-002b-owner-syntax/main.vibe:6:30 lambda: program keyword -> program table # The case parses now that named fork owners exist, so this operand gets its ordinary table decision.
 
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The shadowing all(): boolean[] method explicitly returns an ordinary array, so its written return annotation selects a plain method.
+typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The shadowed object method has an explicit boolean[] return annotation, so it is plain regardless of its all name.
