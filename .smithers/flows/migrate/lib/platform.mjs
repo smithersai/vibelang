@@ -279,7 +279,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   if (wrappers.length) head.push(`import * as ${namespace} from "${sibling}"`)
   // An import is not narrowed inside a closure the way a local const is, so a
   // moved const comes back under an alias and is bound to a local const of its
-  // own name where it stood: same value, same inferred type, same narrowing.
+  // own name where it stood. Its explicit type retains unique-symbol identity
+  // as well as the imported value type and local-const narrowing.
   const movedConsts = new Set([...moved].filter((d) => !d.exported && ts.isVariableStatement(d.statement) && (d.statement.declarationList.flags & ts.NodeFlags.Const)).flatMap((d) => [...d.names]))
   const taken = new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name)), namespace])
   const alias = new Map()
@@ -289,7 +290,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   for (const d of declarations) {
     if (!moved.has(d)) body.push(statementText(source, d.statement))
     else if (d.exported) body.push(wrappers.find((w) => w.d === d).text(namespace))
-    else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name} = ${alias.get(name)}`)
+    else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name}: typeof ${alias.get(name)} = ${alias.get(name)}`)
   }
   const moduleText = joinParts(leadingHeader(source), head, body)
   // The sibling: the imports the moved code reads, then the moved code, each

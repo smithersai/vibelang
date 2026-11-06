@@ -220,3 +220,39 @@ test("splitPlatform moves only the declarations that read a named host global", 
     assert.ok(!/\bprocess\b/.test(result.module), result.module)
   }), { seed: 31109, numRuns: 40 })
 })
+
+test("platform aliases keep computed unique-symbol keys and the original declarations", () => {
+  assert.ok(spec.includes(quote))
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-platform-symbol-alias.json", import.meta.url), "utf8"))
+  const before = emit({ [corpus.file]: corpus.text })
+  assert.deepEqual(before.errors, [])
+  const split = splitPlatform(corpus.text, corpus.file, ts, { globals: new Set(["globalThis"]) })
+  assert.ok(split && !split.refused, split?.refused)
+  const after = emit({ [corpus.file]: split.module, [platformPath(corpus.file)]: split.platform })
+  assert.deepEqual(after.errors, [])
+  assert.equal(after.out["Node.d.ts"], before.out["Node.d.ts"])
+})
+
+test("platform alias property preserves unique-symbol identity across keys and initializers", () => {
+  assert.ok(spec.includes(quote))
+  fc.assert(fc.property(
+    fc.integer({ min: 0, max: 99999 }),
+    fc.boolean(),
+    fc.constantFrom("cache", "state", "subjects", "slot"),
+    (id, registry, label) => {
+      const key = label + "Key" + id
+      const source = `const ${key} = Symbol${registry ? ".for" : ""}("entry-${id}")
+const globals = globalThis as typeof globalThis & { [${key}]?: number }
+const value = globals[${key}] ??= ${id}
+export const read = (): number => value
+`
+      const before = emit({ "m.ts": source })
+      assert.deepEqual(before.errors, [])
+      const split = splitPlatform(source, "m.ts", ts, { globals: new Set(["globalThis"]) })
+      assert.ok(split && !split.refused, split?.refused)
+      const after = emit({ "m.ts": split.module, "m.platform.ts": split.platform })
+      assert.deepEqual(after.errors, [])
+      assert.equal(after.out["m.d.ts"], before.out["m.d.ts"])
+    }
+  ), { numRuns: 40 })
+})

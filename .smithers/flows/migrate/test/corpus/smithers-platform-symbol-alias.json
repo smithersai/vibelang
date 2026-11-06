@@ -1,0 +1,4 @@
+{
+  "file": "Node.ts",
+  "text": "const subjectsKey = Symbol.for(\"plan/subjects\")\nconst globals = globalThis as typeof globalThis & { [subjectsKey]?: number }\nconst subjects = globals[subjectsKey] ??= 0\nexport const count = (): number => subjects\n"
+}

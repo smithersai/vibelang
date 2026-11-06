@@ -623,6 +623,8 @@ The migration flow keeps only the selected batch's fixes. It lists the compiler 
 
 Temporary fixing projects list only roots from the original project; imported TypeScript and VibeLang dependencies remain imports. This preserves `rootDir` checks and declaration-backed views. If retained roots cannot reach a selected module, the flow keeps the original project. Each shard receipt lists its `roots` separately from its dependency closure.
 
+A local `const` retained after a platform split keeps the imported value's exact type, including unique-symbol keys, and its original declaration position. This preserves computed-property access and narrowing in closures.
+
 Migration into a TypeScript module body keeps merged declarations in one lexical scope. A class, function or enum moved into the body takes its type-only namespace companions, including reopened and nested namespaces. Namespace-local types keep their scope. A companion with runtime initialization prevents the split, preserving the original statement order.
 
 JavaScript emission preserves the project's declaration source root when `vibe.sidecarDir` is configured. Package `types` targets keep pointing to the emitted declarations, including projects with a source root inside or outside the package. Runtime JavaScript remains under `.vibelang/js/` at its package-relative path.

@@ -48,7 +48,7 @@ function splitChecks(file, text, globals, ambient) {
 test("t3code previewBridge: a moved const read inside closures keeps its narrowing", () => {
   const { before, after, split, name } = splitChecks(corpus.file, corpus.text, corpus.globals, corpus.ambient)
   assert.deepEqual(after.errors, [], split.module)
-  assert.match(split.module, /const nativePreviewBridge = nativePreviewBridge\$platform/)
+  assert.match(split.module, /const nativePreviewBridge: typeof nativePreviewBridge\$platform = nativePreviewBridge\$platform/)
   assert.equal(after.out[`${name}.vibe.d.ts`], before.out[`${name}.d.ts`])
 })
 
