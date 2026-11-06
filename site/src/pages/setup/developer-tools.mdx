@@ -404,6 +404,12 @@ unchanged after migration: the Bun adapter loads the sibling `.vibe` only when t
 Existing native and in-memory entries keep their priority.
 Runtime-only `vibelang/bun` does not
 configure the bundler; other bundlers still need their own integration.
+Native modules inside a Bun bundle can also keep relative, absolute, or
+`tsconfig.json` paths aliases ending in `.ts` after migration. The
+adapter follows a missing source to its `.vibe` sibling. Existing native
+files, in-memory entries, and imports marked external retain their priority.
+Inherited aliases are reread for each build.
+
 
 
 After conversion, the flow emits JavaScript even for private packages without

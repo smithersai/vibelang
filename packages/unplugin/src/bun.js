@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs"
 import { resolve } from "node:path"
+import { migratedImports } from "./bun-migrated-imports.js"
 import { unplugin } from "./index.js"
 
 // An unchanged test can still name a .ts entry after that source migrates.
@@ -27,6 +28,7 @@ export default function vibelang(options) {
     ...plugin,
     setup(build) {
       migratedEntries(build.config)
+      migratedImports(build, options)
       return setup.call(this, build)
     }
   }

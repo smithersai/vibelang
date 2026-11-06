@@ -75,13 +75,19 @@ takes precedence. Each build gets a fresh compiler backend, so concurrent
 builds and builds after source edits remain independent. Set
 `VIBELANG_PROJECT` to select a project other than `tsconfig.json`, or
 keep an explicit `vibelang({ project, compiler })` plugin for per-build
-configuration. `VIBELANG_UNPLUGIN_DEBUG=1` traces registration and compilation.
+configuration. `VIBELANG_UNPLUGIN_DEBUG=1` traces registration, migrated import resolution and compilation.
 
 An unchanged `Bun.build` entrypoint can keep its literal `.ts` name after
 that source migrates: when the file is absent, the adapter loads its sibling
 `.vibe` source. Existing TypeScript and in-memory files still win, and
 declaration files are never treated as runtime entries. This fallback also
 works with an explicitly configured `vibelang-unplugin/bun` plugin.
+
+Native modules inside a Bun bundle can also keep relative, absolute, or
+`tsconfig.json` paths aliases ending in `.ts` after migration. The
+adapter follows a missing source to its `.vibe` sibling. Existing native
+files, in-memory entries, and imports marked external retain their priority.
+Inherited aliases are reread for each build.
 
 Register the preload before application modules capture `Bun.build` or
 import `build` from `bun`. Child processes need the preload in their own
@@ -276,6 +282,8 @@ as `file:line:column - error TS2322: text`.
   imports inside the packages a build bundles. Bun maps a compiled module's
   `./x.js` to `x.ts` or `x.tsx` itself, even when another directory has
   an `x.vibe` with the same basename; the plugin leaves that import to Bun.
+  A separate `.ts` import hook follows migrated sources while excluding
+  declaration names and in-memory entry names from its filter.
   A filter sees only the specifier, so matching it is a precondition:
   the resolve callback claims a path only when it serves the resolved module.
   A `.vibe` file added during a build

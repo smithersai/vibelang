@@ -544,6 +544,12 @@ project and compiler choices. Child processes need the preload in their own
 working directory's configuration, or the `--preload` flag.
 See the [Bun configuration](https://github.com/smithersai/vibelang/tree/main/packages/unplugin#bun-builds-inside-tools-and-tests).
 
+Native modules inside a Bun bundle can also keep relative, absolute, or
+`tsconfig.json` paths aliases ending in `.ts` after migration. The
+adapter follows a missing source to its `.vibe` sibling. Existing native
+files, in-memory entries, and imports marked external retain their priority.
+Inherited aliases are reread for each build.
+
 ### Bun runtime watch limitation
 
 With Bun 1.4.1, `bun --watch --preload vibelang/bun` does not reliably restart after a `.vibe` save. The preload compiles once per process and does not invalidate that result during watch. For development, use the starter's `npm run dev` or `bun run dev`: its compiler watch and Node process rebuild and restart the app.

@@ -22,7 +22,8 @@ const implicitExtensions = [".ts", ".tsx", ".vibe", ".vibex", ".d.ts", ".js", ".
  * a package.json, or when no file is there. The loaders and bundlers resolve
  * x.vibe this way, where only TypeScript's own extensions are theirs.
  */
-export function extensionlessImport(directory, specifier) {
+// A bundler may also provide native in-memory inputs for the same lookup.
+export function extensionlessImport(directory, specifier, fileExists) {
   if (namedExtension.test(specifier)) return undefined
   const target = resolve(directory, specifier)
   const isFile = (path) => {
@@ -37,7 +38,7 @@ export function extensionlessImport(directory, specifier) {
   const stems = /(?:^|[\\/])\.{0,2}$/.test(specifier) ? [] : [target]
   if (!existsSync(join(target, "package.json"))) stems.push(join(target, "index"))
   for (const stem of stems) {
-    const found = implicitExtensions.map((extension) => stem + extension).find(isFile)
+    const found = implicitExtensions.map((extension) => stem + extension).find(fileExists ?? isFile)
     if (found !== undefined) return found
   }
   return undefined

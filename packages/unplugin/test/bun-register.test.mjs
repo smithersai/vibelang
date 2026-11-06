@@ -297,3 +297,123 @@ console.log("precedence")
     assert.match(result.stdout, /precedence/)
   }), { seed: 11052027, numRuns: 6 })
 })
+
+import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
+
+const migratedConfig = (paths) => JSON.stringify({
+  compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler",
+    strict: true, types: [], skipLibCheck: true, noEmit: true, allowImportingTsExtensions: true,
+    rewriteRelativeImportExtensions: true, paths },
+  include: ["src/**/*"]
+})
+const migratedRule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
+
+test("Bun migrated bundle imports quote the source interoperability contract", () => {
+  assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(migratedRule))
+})
+
+for (const kind of ["relative", "alias"]) {
+  test("Bun builds native imports of migrated TypeScript " + kind + " names", t => {
+    const original = JSON.parse(readFileSync(new URL("./corpus/alchemy-bun-bundle-ts-imports.json", import.meta.url), "utf8"))
+    const root = fixture(t, {
+      ...original.files,
+      "tsconfig.json": migratedConfig({ "@/*": ["./src/*"] }),
+      "src/entry.ts": 'export { answer } from ' + JSON.stringify(kind === "relative" ? "./leaf.ts" : "@/leaf.ts") + "\n",
+      "bundle.test.ts": 'import { test, expect } from "bun:test"\n' + execute +
+        '\ntest("original bundle", async () => expect(await answer({})).toBe(42))\n'
+    })
+    const result = run(root, ["test", "./bundle.test.ts", "--timeout", "60000"])
+    green(result)
+    assert.match(result.stderr, /1 pass/)
+  })
+}
+
+test("Bun migrated bundle aliases do not replace virtual native substitutions with migrated sources", t => {
+  const root = fixture(t, {
+    "tsconfig.json": migratedConfig({ "source.ts": ["./src/virtual.ts", "./src/leaf.ts"] }),
+    "src/entry.ts": 'export { answer } from "source.ts"\n',
+    "build.ts": 'import assert from "node:assert/strict"\n' + execute +
+      '\nawait assert.rejects(() => answer({files:{"src/virtual.ts":"export const answer = 84"}}))\n' +
+      'await assert.rejects(() => answer({files:{"src/virtual.tsx":"export const answer = 85"}}))\n' +
+      'assert.equal(await answer({}), 42)\n'
+  })
+  green(run(root, ["run", "build.ts"]))
+})
+
+test("Bun migrated bundle aliases reread inherited paths between builds", t => {
+  const root = fixture(t, {
+    "config/paths.json": JSON.stringify({ compilerOptions: { paths: { "source.ts": ["../src/leaf.ts"] } } }),
+    "tsconfig.json": JSON.stringify({ ...JSON.parse(migratedConfig()), extends: "./config/paths.json" }),
+    "src/other.vibe": "export const answer = 84\n",
+    "src/entry.ts": 'export { answer } from "source.ts"\n',
+    "build.ts": 'import assert from "node:assert/strict"\n' + execute +
+      '\nassert.equal(await answer({}), 42)\n' +
+      'await Bun.write("config/paths.json", JSON.stringify({compilerOptions:{paths:{"source.ts":["../src/other.ts"]}}}))\n' +
+      'assert.equal(await answer({}), 84)\n'
+  })
+  green(run(root, ["run", "build.ts"]))
+})
+
+test("generated Bun bundle imports preserve native source priority", t => {
+  fc.assert(fc.property(fc.array(fc.record({
+    name: fc.constantFrom("plain", "with space", "leaf-雪", "x+y"),
+    value: fc.integer({ min: -1000, max: 1000 }),
+    kind: fc.constantFrom("relative", "absolute", "alias"),
+    native: fc.boolean(),
+    depth: fc.integer({ min: 0, max: 2 })
+  }), { minLength: 2, maxLength: 4 }), cells => {
+    const files = { "tsconfig.json": migratedConfig({ "@/*": ["./src/*"] }) }, imports = [], expected = []
+    cells.forEach((cell, i) => {
+      const stem = "nested/".repeat(cell.depth) + cell.name + "-" + i
+      files["src/" + stem + ".vibe"] = "export const answer = " + cell.value + "\n"
+      const value = cell.value + (cell.native ? 2000 : 0)
+      const content = "export const answer = " + value + "\n"
+      if (cell.native) files["src/" + stem + ".ts"] = content
+      imports.push({ stem, kind: cell.kind, i })
+      expected.push(value)
+    })
+    files["build.ts"] = 'import assert from "node:assert/strict"\n' + execute +
+      '\nassert.deepEqual((await import(await (async () => {\n' +
+      'const result = await Bun.build({entrypoints:["src/entry.ts"],target:"bun"});\n' +
+      'if(!result.success) throw new Error(result.logs.map(String).join("\\n"));\n' +
+      'await Bun.write("out.mjs",result.outputs[0]); return "./out.mjs";})())).answers,' + JSON.stringify(expected) + ')\n'
+    const root = fixture(t, files)
+    const source = imports.map(({ stem, kind, i }) =>
+      "import { answer as a" + i + " } from " + JSON.stringify(kind === "alias" ? "@/" + stem + ".ts" : kind === "absolute" ? join(root, "src", stem + ".ts") : "./" + stem + ".ts"))
+      .join("\n") + "\nexport const answers = [" + imports.map(x => "a" + x.i).join(",") + "]\n"
+    writeFileSync(join(root, "src/entry.ts"), source)
+    green(run(root, ["run", "build.ts"]))
+  }), { seed: 713805, numRuns: 24 })
+})
+
+test("Bun migrated bundle imports preserve explicitly external aliases", t => {
+  const root = fixture(t, {
+    "tsconfig.json": migratedConfig({ "@/*": ["./src/*"] }),
+    "src/entry.ts": 'export { answer } from "@/leaf.ts"\n',
+    "build.ts": 'import assert from "node:assert/strict"\n' +
+      'for(const options of [{external:["@/leaf.ts"]},{external:["@/*"]},{external:["*.ts"]},{external:["*"]},{packages:"external"}]) { const result = await Bun.build({entrypoints:["src/entry.ts"],target:"bun",...options});\n' +
+      'assert.equal(result.success,true); assert.match(await result.outputs[0].text(), /@\\/leaf\\.ts/, JSON.stringify(options)); }\n'
+  })
+  green(run(root, ["run", "build.ts"]))
+})
+
+test("Bun migrated bundle resolution never intercepts JavaScript or declaration sources", async t => {
+  const { migratedImports } = await import("../src/bun-migrated-imports.js")
+  const root = fixture(t, { "src/types.d.vibe": "export const answer = 99\n" })
+  let hook
+  migratedImports({ config: {}, onResolve(options, callback) { hook = { ...options, callback } } }, { root })
+  assert.equal(hook.filter.test("./leaf.js"), false)
+  assert.equal(hook.filter.test("./types.d.ts"), false)
+  assert.equal(hook.filter.test("dependency/index.js"), false)
+  assert.equal(hook.callback({ path: "./types.d.ts", importer: join(root, "src/entry.ts") }), undefined)
+})
+
+test("Bun migrated bundle imports retain the native TypeScript JSX mismatch", t => {
+  const root = fixture(t, {
+    "src/leaf.tsx": "export const answer = 84\n",
+    "src/entry.ts": 'export { answer } from "./leaf.ts"\n',
+    "build.ts": 'import assert from "node:assert/strict"\n' + execute +
+      '\nawait assert.rejects(() => answer({}), error => String(error).includes("Bundle failed"))\n'
+  })
+  green(run(root, ["run", "build.ts"]))
+})

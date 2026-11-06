@@ -1,0 +1,6 @@
+{
+  "description": "A protected native fixture bundles a TypeScript-named import after its implementation migrates.",
+  "files": {
+    "src/leaf.vibe": "export const answer = 42\n"
+  }
+}
