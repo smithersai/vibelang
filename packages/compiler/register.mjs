@@ -3,6 +3,7 @@ import { loaderScope } from "./loader-scope.mjs"
 import { extensionlessImport } from "./relative-imports.mjs"
 import { sourceOfEmitted } from "./emitted-js.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
+import { fileHasVibeDirective } from "./source.mjs"
 // node --import vibelang/register: Node loads .vibe modules from source.
 //
 // A .vibe module keeps its source URL as its identity, so a program that also
@@ -137,8 +138,11 @@ function moduleOutput(url) {
   return source !== undefined && !existsSync(path) && existsSync(source) ? path : undefined
 }
 
-// A module whose imports vibelang rewrote: a .vibe module or a module declaration's.
-const compiled = (url) => url.startsWith("file:") && (clean(url).endsWith(".vibe") || moduleOutput(url) !== undefined)
+// A module vibelang compiles: a .vibe module, or a .ts module with the directive.
+const compiledSource = (url) => url.startsWith("file:") && (clean(url).endsWith(".vibe") || fileHasVibeDirective(fileURLToPath(clean(url))))
+
+// A module whose imports vibelang rewrote: a compiled source or a module declaration's.
+const compiled = (url) => compiledSource(url) || moduleOutput(url) !== undefined
 
 // A migrated package's emitted JavaScript, which its `default` export names
 // for consumers without a loader, runs here from its .vibe source.
@@ -199,7 +203,7 @@ registerHooks({
     }
   },
   load(url, context, nextLoad) {
-    const path = moduleOutput(url) ?? (url.startsWith("file:") && clean(url).endsWith(".vibe") ? fileURLToPath(clean(url)) : undefined)
+    const path = moduleOutput(url) ?? (compiledSource(url) ? fileURLToPath(clean(url)) : undefined)
     if (path === undefined) return nextLoad(url, context)
     const started = performance.now()
     const compile = spent.compile

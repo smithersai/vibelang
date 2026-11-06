@@ -14,6 +14,7 @@ import { readFileSync } from "node:fs"
 import { SourceMap } from "node:module"
 import { dirname, resolve } from "node:path"
 import { diagnosticsForFile } from "./diagnostics.mjs"
+import { isVibeLangFile } from "./source.mjs"
 import { compileProjectSync, findCompiler, findProject, formatDiagnostic, nearestProject, workspaceProject } from "./project.mjs"
 
 // Modules their first project left out, each with the project findProject named.
@@ -67,13 +68,13 @@ export function emitModule(file) {
 
 /**
  * What a tool should parse for `file` when it holds `text`: the module's
- * emitted { code, map } when `file` is a .vibe or .vibex module and `text` is its
+ * emitted { code, map } when `file` is a VibeLang module and `text` is its
  * source as on disk (or omitted), else undefined. Such a path with other text holds
  * JavaScript a bundler plugin already compiled, as vibelang-vite hands it to
  * the plugins after it, so the tool parses that text as it is.
  */
 export function toolSource(file, text) {
-  if (typeof file !== "string" || !/\.vibex?$/.test(file)) return undefined
+  if (typeof file !== "string" || !isVibeLangFile(file)) return undefined
   if (text !== undefined && String(text) !== readFileSync(file, "utf8")) return undefined
   return emitModule(file)
 }

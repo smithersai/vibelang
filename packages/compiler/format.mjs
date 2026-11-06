@@ -1,6 +1,7 @@
 // All formatter entry points use the shipped dprint process plugin.
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
+import { fileHasVibeDirective } from "./source.mjs"
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync, readFileSync } from "node:fs"
 import { availableParallelism, tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
@@ -204,10 +205,10 @@ function formatBatch(files, clean) {
 export function formatFiles(args) {
   const check = args.includes("--check")
   const paths = args.filter(arg => arg !== "--check" && arg !== "--write")
-  const inputs = paths.length ? paths : ["**/*.{vibe,vibex}"]
+  const inputs = paths.length ? paths : ["**/*.{vibe,vibex,ts,mts,cts}"]
   const files = [...new Set(inputs.flatMap(pattern => globSync(pattern, {
     exclude: path => /(^|[/\\])(?:node_modules|dist|build|coverage|\.git|\.jj)([/\\]|$)/.test(path)
-  })))].filter(file => /\.vibex?$/.test(file))
+  })))].filter(file => /\.vibex?$/.test(file) || /\.[cm]?ts$/.test(file) && fileHasVibeDirective(file))
   const clean = cleanTexts()
   const batched = formatBatch(files, clean)
   const keys = new Set()
@@ -216,7 +217,8 @@ export function formatFiles(args) {
     for (const file of files) {
       const before = readFileSync(file, "utf8")
       const result = batched.get(file)
-      const after = result?.input === before ? result.output : formatText(before, file, repositoryStyle(file))
+      // dprint chooses its plugin by name, and only .vibe reaches VibeLang's.
+      const after = result?.input === before ? result.output : formatText(before, file.replace(/\.[cm]?ts$/, ".vibe"), repositoryStyle(file))
       if (before === after) {
         // A gitignored file comes back unchanged without being formatted, so it never counts as clean.
         if (result?.input === before) keys.add(result.key)

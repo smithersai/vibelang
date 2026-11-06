@@ -163,7 +163,7 @@ test("historical platform guidance is retained and the launcher recognizes scope
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const history = readFileSync(join(root, "docs/design/history/src/428-part4-ch28-tooling.md"), "utf8")
   assert.match(history, /Windows.*not (?:available|published).*WSL/s)
-  const launcher = readFileSync(join(root, "packages/compiler/bin/vibelang"), "utf8")
+  const launcher = readFileSync(join(root, "packages/compiler/binary.mjs"), "utf8")
   assert.match(launcher, /const platforms = .*win32-arm64.*win32-x64/)
   assert.match(launcher, /@smthrs\/cli-/)
 })

@@ -388,6 +388,10 @@ it tracks native sources, dependencies, configs and compiler changes. Await
 `close()` when finished. Module loader hooks do not change `readFile` or
 directory enumeration.
 
+`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package. `vibelang-typescript` starts it this way.
+
+`isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe` ([VibeLang in .ts files](https://vibelang.sh/setup/typescript-shim)). `hasVibeDirective(file, text)` answers from text you already hold.
+
 ## Editor support
 
 This package ships the VS Code extension. In a project with `vibelang` installed:

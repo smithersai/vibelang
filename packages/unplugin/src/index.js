@@ -5,6 +5,7 @@ import { createRequire } from "node:module"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createUnplugin } from "unplugin"
+import { isVibeLangFile } from "./vibe-directive.js"
 
 const sourceConditions = (conditions = []) => conditions.includes("vibelang-source") ? conditions : ["vibelang-source", ...conditions]
 
@@ -45,7 +46,7 @@ function isModuleOutput(path) {
   return source !== undefined && !existsSync(path) && existsSync(source)
 }
 // A module whose JavaScript the plugin compiles: a VibeLang source or module declaration.
-const isCompiled = (id) => /\.vibex?$/.test(cleanId(id)) || isModuleOutput(cleanId(id))
+const isCompiled = (id) => isVibeLangFile(cleanId(id)) || isModuleOutput(cleanId(id))
 
 // Keep TypeScript's source priority when the bundler cannot find .vibe.
 function extensionlessVibe(directory, specifier) {
@@ -417,7 +418,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           const sideEffects = sideEffectsOf(cleanId(id))
           return { path: id, namespace: "vibelang", ...(sideEffects === undefined ? {} : { sideEffects }) }
         })
-        build.onLoad({ filter: /\.vibe(?:\.[^./\\]+\.js)?(?:\?.*)?$/ }, async ({ path }) => {
+        build.onLoad({ filter: /\.(?:vibe(?:\.[^./\\]+\.js)?|tsx?|[cm]ts)(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
           const { project, code, map, inputs, errors, warnings, error } = await loadModule(path)
           const messages = []

@@ -30,6 +30,7 @@
       "types": "./emit.d.mts",
       "default": "./emit.mjs"
     },
+    "./binary": "./binary.mjs",
     "./register": "./register.mjs",
     "./eslint": "./eslint.mjs",
     "./oxlint": "./oxlint.mjs",
@@ -52,6 +53,7 @@
   },
   "files": [
     "bin",
+    "binary.mjs",
     "editor",
     "agents.mjs",
     "cache.mjs",
@@ -83,6 +85,7 @@
     "ast-grep.mjs",
     "source.mjs",
     "source.d.mts",
+    "vibe-directive.mjs",
     "source-map-frames.mjs"
   ],
   "scripts": {

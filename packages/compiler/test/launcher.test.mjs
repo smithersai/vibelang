@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 
 const launcher = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
+const binaryModule = fileURLToPath(new URL("../binary.mjs", import.meta.url))
 test("forwards arguments, input, streams, working directory, and exit status", () => {
   const scratch = mkdtempSync(join(tmpdir(), "vibelang-launcher-"))
   try {
@@ -48,6 +49,7 @@ test("names the scoped Windows package when its optional dependency is missing",
     mkdirSync(join(scratch, "bin"))
     writeFileSync(join(scratch, "package.json"), '{"type":"module"}')
     copyFileSync(launcher, join(scratch, "bin", "vibelang"))
+    copyFileSync(binaryModule, join(scratch, "binary.mjs"))
     const env = { ...process.env }
     delete env.VIBELANG_BINARY
     const asWindows = 'data:text/javascript,Object.defineProperty(process,"platform",{value:"win32"})'
@@ -118,6 +120,7 @@ function installed(scratch, { native = false, platform = false } = {}) {
   mkdirSync(join(pkg, "bin"), { recursive: true })
   writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "vibelang", type: "module" }))
   copyFileSync(launcher, join(pkg, "bin", "vibelang"))
+  copyFileSync(binaryModule, join(pkg, "binary.mjs"))
   const fake = (path, label) => {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, `#!/usr/bin/env node\nconsole.log(${JSON.stringify(label)}, ...process.argv.slice(2))\n`)

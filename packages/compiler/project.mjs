@@ -1,5 +1,6 @@
 import { loaderScope } from "./loader-scope.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
+import { isVibeLangFile } from "./source.mjs"
 // Whole-project compilation for the bundler plugins (vibelang-vite,
 // vibelang-unplugin) and the Node and Bun loaders (vibelang/register,
 // vibelang/bun).
@@ -251,11 +252,12 @@ function collect({ status, signal, output }, root, out) {
   }
   const listings = new Map() // each output directory's file names
   for (const source of inputs) {
-    if (!/\.vibex?$/.test(source)) continue
+    if (!isVibeLangFile(source)) continue
     const path = relative(root, source)
     if (path.startsWith("..") || isAbsolute(path)) continue
-    const stem = join(out, relative(emitRoot(root), source).replace(/\.vibex?$/, ""))
-    const emitted = source.endsWith(".vibex") && existsSync(stem + ".jsx") ? stem + ".jsx" : stem + ".js"
+    const stem = join(out, relative(emitRoot(root), source).replace(/\.(?:vibex?|tsx?|[cm]ts)$/, ""))
+    const jsx = /\.(?:vibex|tsx)$/.test(source) && existsSync(stem + ".jsx")
+    const emitted = stem + (jsx ? ".jsx" : source.endsWith(".mts") ? ".mjs" : source.endsWith(".cts") ? ".cjs" : ".js")
     // The compile emits nothing for a module it reached through node_modules,
     // such as a nested workspace package's: that one compiles with its own project.
     if (!existsSync(emitted)) continue

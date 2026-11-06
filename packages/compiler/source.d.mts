@@ -12,3 +12,10 @@ export function listSources(directory: string): string[]
  * for other filesystem errors. Opt-in source-text lookup, not module resolution.
  */
 export function resolveSource(file: string): string | undefined
+
+/** Whether `text`, the content of `file`, is a TypeScript source with the `// @vibe` directive. */
+export function hasVibeDirective(file: string, text: string): boolean
+/** Whether the file on disk at `file` is a TypeScript source with the `// @vibe` directive. */
+export function fileHasVibeDirective(file: string): boolean
+/** Whether `file` is VibeLang source: a .vibe or .vibex file, or a TypeScript source with the directive. */
+export function isVibeLangFile(file: string): boolean

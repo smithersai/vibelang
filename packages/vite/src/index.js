@@ -2,6 +2,7 @@ import { aliasImport } from "./paths-imports.js"
 import { extensionlessImport } from "./relative-imports.js"
 import { existsSync } from "node:fs"
 import { createRequire } from "node:module"
+import { isVibeLangFile } from "./vibe-directive.js"
 import { dirname, isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
@@ -26,7 +27,7 @@ function sourceConditionConfig(config) {
 }
 
 const cleanId = (id) => id.split("?")[0]
-const isSource = (file) => /\.vibex?$/.test(file)
+const isSource = isVibeLangFile
 // A JSX-shaped id lets the framework's ordinary JSX filter see compiler output.
 function jsxSource(file) {
   if (file.endsWith(".vibex.jsx") && !existsSync(file) && existsSync(file.slice(0, -4))) return file.slice(0, -4)
@@ -140,18 +141,18 @@ const debug = process.env.VIBELANG_VITE_DEBUG ? (text) => console.error(`vibelan
 // whose plugin context has meta.rolldownVersion) run before the scanner's own.
 // A .vibe module's source names none of the imports its JavaScript adds, such
 // as effect/Schema for a schema, so the scan reads that JavaScript.
-const scannedId = /\.vibex?(?:\.jsx|\.[^./\\]+\.js)?$/
+const scannedId = /\.(?:vibex?(?:\.jsx|\.[^./\\]+\.js)?|tsx?|[cm]ts)$/
 function scanConfig(config, meta, load) {
   const extensions = [".vibe", ".vibex"].filter(extension => !config.optimizeDeps?.extensions?.includes(extension))
   const scan = async (file) => isCompiled(file) ? load(file) : undefined
   if (meta?.rolldownVersion) {
     return { extensions, rolldownOptions: { plugins: [{ name: "vibelang:scan", load: { filter: { id: scannedId },
-      async handler(id) { const code = await scan(cleanId(id)); return code === undefined ? undefined : { code, moduleType: cleanId(id).includes(".vibex") ? "jsx" : "js" } } } }] } }
+      async handler(id) { const code = await scan(cleanId(id)); return code === undefined ? undefined : { code, moduleType: /\.(?:vibex|tsx)/.test(cleanId(id)) ? "jsx" : "js" } } } }] } }
   }
   return { extensions, esbuildOptions: { plugins: [{ name: "vibelang:scan", setup(build) {
     build.onLoad({ filter: scannedId }, async ({ path }) => {
       const contents = await scan(path)
-      return contents === undefined ? undefined : { contents, loader: path.includes(".vibex") ? "jsx" : "js" }
+      return contents === undefined ? undefined : { contents, loader: /\.(?:vibex|tsx)/.test(path) ? "jsx" : "js" }
     })
   } }] } }
 }

@@ -36,3 +36,5 @@ export function resolveSource(file) {
   const native = exact.replace(/\.ts(x?)$/, ".vibe$1")
   return stat(native)?.isFile() ? native : undefined
 }
+
+export { fileHasVibeDirective, hasVibeDirective, isVibeLangFile } from "./vibe-directive.mjs"
