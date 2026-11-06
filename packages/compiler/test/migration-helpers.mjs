@@ -16,7 +16,7 @@ const runtime = join(repo, "packages/runtime")
 export const skip = [native, effect, join(runtime, "dist/index.js")].some(p => !existsSync(p)) && "build compiler and runtime first"
 
 /** Exercise the production flow's fix loop, then execute both emitted modules. */
-export async function migrationPair(t, source, code) {
+export async function migrationPair(t, source, code, control = source) {
   const spec = readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8")
   assert.ok(spec.includes("A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"))
   const root = realpathSync(mkdtempSync(join(tmpdir(), "foldkit-migration-")))
@@ -26,7 +26,7 @@ export async function migrationPair(t, source, code) {
   symlinkSync(runtime, join(root, "node_modules/vibelang-runtime"))
   writeFileSync(join(root, "package.json"), '{"type":"module"}')
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "esnext", module: "nodenext", moduleResolution: "nodenext", strict: true, skipLibCheck: true, types: [], outDir: "out" }, include: ["*.ts", "*.vibe"] }))
-  writeFileSync(join(root, "control.ts"), 'import { Effect, Option, Match, pipe } from "effect"\n' + source)
+  writeFileSync(join(root, "control.ts"), 'import { Effect, Option, Match, pipe } from "effect"\n' + control)
   writeFileSync(join(root, "candidate.vibe"), source)
   const fixed = await fixToFixedPoint({ compiler: native, tsconfig: "tsconfig.json", cwd: root, root, only: ["candidate.vibe"] })
   assert.equal(fixed.settled, true)

@@ -1,0 +1,12 @@
+import { Context } from "effect"
+export class Tag extends Context.Service<Tag, { readonly n: number }>()("Tag") {}
+export class Other extends Context.Service<Other, { readonly s: string }>()("Other") {}
+const nested = (n: number) => Effect.succeed(Effect.succeed(n))
+export const value = (n: number) => Effect.gen(function* () {
+  const services = (yield* Effect.context<Tag | Other>()).pipe(Context.omit(Other))
+  return Context.get(services, Tag).n + n
+})
+export const program = (n: number) => Effect.gen(function* () {
+  const inner = (yield* nested(n)).pipe(Effect.map((m: number) => m + 1))
+  return yield* inner
+})

@@ -10,6 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // vibelang --fix writes a pipeline of Effect stages with the pipe operator
@@ -83,7 +84,8 @@ func isEffectPipeline(c *checker.Checker, call *ast.Node) bool {
 	if t := c.GetTypeAtLocation(receiver); t != nil && isEffectType(c, t) {
 		return true
 	}
-	return ast.IsCallExpression(receiver) && callReturnsEffect(c, receiver)
+	// (try f()).pipe(g) pipes f's success value, not the Effect f returns.
+	return ast.IsCallExpression(receiver) && receiver.Flags&ast.NodeFlagsVibeLangTry == 0 && callReturnsEffect(c, receiver)
 }
 
 // HttpClientRequest's setters are pure, so unlike cold Effect operators they
@@ -195,11 +197,12 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 		}
 	}
 	first := nodeStart(file, stages[0])
-	if gap := text[callee.Expression().End():first]; strings.ContainsAny(gap, "\r\n") || hasComment(gap) {
+	receiverEnd := pipeReceiverEnd(file, callee.Expression())
+	if gap := text[receiverEnd:first]; strings.ContainsAny(gap, "\r\n") || hasComment(gap) {
 		parenthesis := strings.IndexByte(gap, '(')
-		edits = append(edits, sourceEdit{callee.Expression().End(), callee.Expression().End() + parenthesis + 1, ""}, sourceEdit{first, first, "|> "})
+		edits = append(edits, sourceEdit{receiverEnd, receiverEnd + parenthesis + 1, ""}, sourceEdit{first, first, "|> "})
 	} else {
-		edits = append(edits, sourceEdit{callee.Expression().End(), first, " |> "})
+		edits = append(edits, sourceEdit{receiverEnd, first, " |> "})
 	}
 	for i, stage := range stages {
 		stageEdits, why := pipeStageEdits(c, file, stage)
@@ -227,6 +230,21 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 		edits = append(edits, sourceEdit{start, start, open})
 	}
 	return &formRewrite{edits: joinEditsAt(edits), description: "the pipeline with |>"}
+}
+
+// pipeReceiverEnd returns where receiver ends in the source. The parser reads
+// (try f()).pipe(g) as f().pipe(g) with f() marked as tried, so the closing
+// parenthesis stands after the receiver node.
+func pipeReceiverEnd(file *ast.SourceFile, receiver *ast.Node) int {
+	end := receiver.End()
+	if receiver.Flags&ast.NodeFlagsVibeLangTry == 0 {
+		return end
+	}
+	text := file.Text()
+	if next := scanner.SkipTrivia(text, end); next < len(text) && text[next] == ')' {
+		return next + 1
+	}
+	return end
 }
 
 // pipeStageReceiverSafe checks the receiver supplied by Effect's pipeArguments.

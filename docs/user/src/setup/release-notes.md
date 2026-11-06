@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang-vite`, `vibelang-unplugin`, `vibelang/register`, `vibelang format` and `vibelang lint` skipped or failed on a `.ts` file with `// @vibe`. They now compile, run, format and lint it. Bun's bundler and Metro still need `.vibe`.
 - A project had to change its scripts to call `vibelang`. The new `vibelang-typescript` package replaces `typescript`, so `tsc` and editors that start `tsc --lsp --stdio` read `// @vibe` files. It's the last option: see [VibeLang in .ts files](typescript-shim.md).
 
+- `vibelang --fix` refused a `.pipe` on a parenthesized `try`, as in `(try f()).pipe(g)`, reporting `')' expected`, because its rewrite lost the closing parenthesis. It now keeps the parenthesis, and it leaves a success value's own `.pipe` as written.
 - Contributor mapper checks rejected valid generated code after runtime helpers moved; the expected projections now use the current runtime entry.
 
 - Migrating a generator with nested pipelines could crash or corrupt the rewrite; `vibelang --fix` now preserves nested receiver and stage-callback changes when capturing the surrounding pipeline.
