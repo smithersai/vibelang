@@ -156,6 +156,44 @@ function scanConfig(config, meta, load) {
   } }] } }
 }
 
+// Main and worker bundles create separate plugin instances in one Vite
+// process. Share their whole-project compiles while any instance uses them.
+// Backend identity keeps different installed compiler packages independent.
+const sharedProjects = new WeakMap()
+let nextManager = 0
+async function acquireProjects(backend, options) {
+  let managers = sharedProjects.get(backend)
+  if (!managers) sharedProjects.set(backend, managers = new Map())
+  const key = JSON.stringify([options.root, options.project, options.compiler])
+  let entry
+  while ((entry = managers.get(key))?.closing) await entry.closing
+  if (!entry) {
+    const id = ++nextManager
+    entry = { id, users: 0, projects: backend.projects({
+      ...options, debug: text => debug(`manager ${id}: ${text}`)
+    }) }
+    managers.set(key, entry)
+  }
+  entry.users++
+  debug(`manager ${entry.id}: acquire, ${entry.users} consumers`)
+  let released = false, closing
+  return {
+    ...entry.projects,
+    close() {
+      if (released) return closing
+      released = true
+      entry.users--
+      debug(`manager ${entry.id}: release, ${entry.users} consumers`)
+      if (entry.users === 0) {
+        closing = entry.closing = Promise.resolve().then(() => entry.projects.close()).finally(() => {
+          if (managers.get(key) === entry) managers.delete(key)
+        })
+      }
+      return closing
+    }
+  }
+}
+
 /** @param {import('./index.d.ts').VibeLangOptions} options */
 export default function vibelang(options = {}) {
   let root, project, logger, backend, modules, current, closing
@@ -163,9 +201,9 @@ export default function vibelang(options = {}) {
   // One compile per tsconfig: the project for root's modules, and each
   // workspace package's own for modules outside root.
   function loaded() {
-    modules ??= Promise.resolve(closing).then(() => loadBackend(root)).then((value) => {
+    modules ??= Promise.resolve(closing).then(() => loadBackend(root)).then(async (value) => {
       backend = value
-      current = backend.projects({ root, project, compiler: backend.findCompiler(root, options.compiler), debug })
+      current = await acquireProjects(backend, { root, project, compiler: backend.findCompiler(root, options.compiler), debug })
       return current
     })
     return modules

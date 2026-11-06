@@ -11,10 +11,14 @@ description: "vibelang-vite compiles .vibe modules for Vite (7 and 8) and Vitest
 
 Unicode file names and diagnostic text are preserved, including in large compiler output.
 
-Closing the Vite build, dev server, or watcher waits for the plugin's compiler
-and closes its output pipes. A short compile can finish; after 500 ms teardown
-sends `SIGTERM`, then after another 500 ms sends `SIGKILL` if needed.
-A later build with the same plugin starts a fresh backend.
+Plugin instances in one process share project compiles when their root,
+project configuration and compiler match, including main and worker bundles.
+Edits invalidate the shared result. Closing one instance leaves other instances
+using that compiler running. Closing the last instance waits for the compiler
+and closes its output pipes: after 500 ms teardown sends `SIGTERM`, then after
+another 500 ms sends `SIGKILL` if needed. A later build starts a fresh backend.
+Set `VIBELANG_VITE_DEBUG=1` to trace manager identifiers, active consumer counts,
+project compiles and invalidations.
 
 The plugin selects `vibelang-source` package exports for application and SSR
 bundles, preserving the existing resolution conditions. Under Vitest, which

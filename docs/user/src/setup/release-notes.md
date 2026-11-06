@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Vite main and worker bundles could compile the same project simultaneously and exhaust memory. Matching plugin instances now share compilation, and closing one keeps the others running.
+
 - Callbacks declared `@throws {any}` could be rejected by compatible typed callback contracts. They now follow TypeScript assignability, while `unknown` and no-throw contracts keep their checks.
 
 - Contributor build checks could break when a shared input helper gained an export; they now load those helpers consistently.

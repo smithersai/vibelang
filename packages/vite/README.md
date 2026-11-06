@@ -32,10 +32,16 @@ The plugin compiles with the `vibelang` package, a peer dependency, through its
 acceptance tests use Vite 8 and Vitest 5, with resolver regressions on Vite 7. `create-vibelang` apps already include
 the plugin and a Vitest configuration.
 
-The plugin awaits compiler teardown when a build, dev server, or watcher
-closes. A short compile may finish; after 500 ms it receives `SIGTERM`, and
-after another 500 ms it receives `SIGKILL` and its output pipes close.
-A reused plugin starts a fresh backend for its next build.
+Plugin instances in one process share project compiles when their root,
+project configuration and compiler match, including main and worker bundles.
+Edits invalidate the shared result. Closing one instance leaves other instances
+using that compiler running. When the last instance closes, the plugin awaits
+compiler teardown: a short compile may finish; after 500 ms it receives
+`SIGTERM`, and after another 500 ms it receives `SIGKILL` and its output pipes
+close. A later build starts a fresh backend.
+
+Set `VIBELANG_VITE_DEBUG=1` to trace manager identifiers, active consumer counts,
+project compiles and invalidations.
 
 ## Configure Vite
 

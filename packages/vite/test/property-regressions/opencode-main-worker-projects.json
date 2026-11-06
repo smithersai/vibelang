@@ -1,0 +1,5 @@
+{
+  "property": "vite-shared-projects",
+  "rule": "packages/vite/README.md: Each project compiles once, and again after an edit.",
+  "input": { "consumers": 3, "edits": 1 }
+}
