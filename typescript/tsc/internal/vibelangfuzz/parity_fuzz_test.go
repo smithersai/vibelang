@@ -192,7 +192,7 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, tsc, "-p", ".", "--pretty", "false")
+	cmd := stockCompile(ctx, tsc, "-p", ".", "--pretty", "false")
 	cmd.Dir = fork.Dir
 	out, runErr := cmd.CombinedOutput()
 	if ctx.Err() != nil {

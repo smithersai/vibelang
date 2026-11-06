@@ -360,11 +360,8 @@ func emitDeclarationIdentityStock(t *testing.T, w *Workspace, tsc string, stock 
 	}()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, tsc, "-p", ".", "--pretty", "false", "--singleThreaded")
+	cmd := stockCompile(ctx, tsc, "-p", ".", "--pretty", "false")
 	cmd.Dir = dir
-	// A short compile exits before a collection pays for itself. The limit
-	// bounds each process when a large project does need one.
-	cmd.Env = append(os.Environ(), "GOGC=off", "GOMEMLIMIT=1GiB")
 	out, runErr := cmd.CombinedOutput()
 	if ctx.Err() != nil {
 		t.Fatalf("stock declaration emit did not finish: %v", ctx.Err())

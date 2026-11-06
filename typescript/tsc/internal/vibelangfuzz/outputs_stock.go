@@ -65,7 +65,7 @@ func (oc *OutputChecker) checkStockConsumer(dir string, inputs []string) {
 	}
 	ctx, cancel := context.WithTimeout(oc.Ctx, 2*HangLimit)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, tsc, "-p", config, "--pretty", "false")
+	cmd := stockCompile(ctx, tsc, "-p", config, "--pretty", "false")
 	cmd.Dir = dir
 	out, runErr := cmd.CombinedOutput()
 	if runErr == nil {
@@ -190,4 +190,13 @@ func spanStrings(spans []stockSpan) []string {
 		seen[span.String()] = true
 	}
 	return mapKeys(seen)
+}
+
+// stockCompile runs stock tsc for a baseline, single-threaded and with collection
+// off below 1 GiB. Each compile is short and is charged to its target's CPU limit;
+// its output does not depend on the thread count.
+func stockCompile(ctx context.Context, tsc string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, tsc, append(args, "--singleThreaded")...)
+	cmd.Env = append(os.Environ(), "GOGC=off", "GOMEMLIMIT=1GiB")
+	return cmd
 }
