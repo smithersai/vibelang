@@ -78,9 +78,11 @@ npm install --save-exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-n
 npm install --save-dev --save-exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
-With pnpm, first allow the install script of `dprint`, which `vibelang` depends on. pnpm 11 and later fail an install with `ERR_PNPM_IGNORED_BUILDS` when a dependency's build script is neither allowed nor denied. Add this to `pnpm-workspace.yaml`:
+With pnpm, configure the [transitive pin](https://pnpm.io/settings/dependency-resolution#overrides) in `pnpm-workspace.yaml`. Also allow the install script of `dprint`, which `vibelang` depends on. pnpm 11 and later fail an install with `ERR_PNPM_IGNORED_BUILDS` when a dependency's build script is neither allowed nor denied. Merge these settings into `pnpm-workspace.yaml`:
 
 ```yaml
+overrides:
+  "@effect/platform-node-shared": "4.1.1"
 allowBuilds:
   dprint: true
 ```

@@ -34,6 +34,8 @@ Read the project's root directory and record:
 | | A `.zed/` directory | Zed |
 | | None of these | Ask the user |
 
+For `pnpm`, configure the [workspace pin](setup/existing-project.md#2-install-the-packages) before installing packages.
+
 ## 3. Follow the matching pages
 
 Follow each matching page, in this order: project, build or framework, editor.

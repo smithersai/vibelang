@@ -1554,6 +1554,12 @@ const targets = {
     [],
     [bun, node]
   ),
+  "docs-pnpm-install-pins": check(
+    "pnpm installation examples keep the transitive Effect pin in the workspace configuration.",
+    "bun docs/tools/pnpm-install-pins.mjs && bun test --timeout 30000 docs/tools/pnpm-install-pins.test.ts",
+    [],
+    [bun]
+  ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --only-failures --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
