@@ -222,6 +222,31 @@ function resolveImports(path, contents, loader, inNamespace = false) {
   return { contents: rewritten, loader }
 }
 
+// Bun's runtime reads a source map only from a module marked `// @bun`, its
+// mark for its own build output. It runs such a module as it is and reads its
+// text as ASCII, which is what `bun build` writes. So a module with other text,
+// or one that needs the transpiler, stays unmarked and loses its map: the whole
+// map, never its behavior. The transpiler compiles JSX, gives a module require,
+// __dirname and __filename, and lowers decorators JavaScriptCore cannot parse.
+// Its output has no comments and leaves a shadowing binding alone, so a string
+// that spells a name only costs the map.
+const transpiler = new Bun.Transpiler({ loader: "js", target: "bun" })
+function needsTranspiler(code) {
+  if (code.startsWith("#!") || /[^\x00-\x7f]/.test(code)) return true
+  try {
+    return /\brequire\b|\b__dirname\b|\b__filename\b|__decorat|__legacyDecorat/.test(transpiler.transformSync(code))
+  } catch {
+    return true // JSX, which `jsx: preserve` and `jsx: react-native` leave for Bun
+  }
+}
+
+function withSourceMap({ contents, loader }, map) {
+  if (map === undefined || needsTranspiler(contents)) return { contents, loader }
+  // The mark is a line above the code the map describes.
+  const inline = Buffer.from(JSON.stringify({ ...map, mappings: ";" + map.mappings })).toString("base64")
+  return { contents: `// @bun\n${contents}\n//# sourceMappingURL=data:application/json;base64,${inline}\n`, loader: "js" }
+}
+
 Bun.plugin({
   name: "vibelang",
   setup(build) {
@@ -337,8 +362,7 @@ Bun.plugin({
       claim(source)
       return { contents: reexportOf(source, exportsDefault(source, emitted, loaderOf)), loader: "js" }
     })
-    // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
-    build.onLoad({ filter: /\.vibex?$/ }, ({ path }) => { const code = emitted(path).code, loader = path.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return resolveImports(path, code, loader) })
-    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code, loader = moduleDeclarationSource(path)?.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return resolveImports(path, code, loader, true) })
+    build.onLoad({ filter: /\.vibex?$/ }, ({ path }) => { const { code, map } = emitted(path), loader = path.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader), map) })
+    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const { code, map } = emitted(path), loader = moduleDeclarationSource(path)?.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader, true), map) })
   }
 })

@@ -33,6 +33,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Contributor checks rejected the documentation runner after a harmless reporting flag change; they now recognize its selected suites while retaining deadline checks.
 - Services beside a nested `Context` namespace could emit declarations that TypeScript rejected. Their generated imports now use an unshadowed name.
 - de's loader and the bundler plugins removed a line of a string or comment that spelled `//# sourceMappingURL=`, which changed the program's text. Only the compiler's own directive at the end of the file is removed now.
+- Under `vibelang/bun`, a stack frame named the `.vibe` file with the line of its compiled JavaScript. It now names the `.vibe` line in a module whose emitted JavaScript is ASCII; other modules keep the compiled line.
 - Calls known to throw inside a synchronous generator passed to `Effect.try` or another callback wrapper could compile unchecked. They now report `EK0401`, and `vibelang --fix` preserves the iterator's behavior.
 - JavaScript emission during migration could put declaration sidecars somewhere other than their package exports, losing types in consumers. Sidecars now keep the project's declaration layout while JavaScript retains its package-relative paths.
 - The Bun guides attributed computed `.ts` alias failures to missing runtime hooks. They now distinguish the preload's fallback for literal imports from Bun's extensionless-alias limitation.
