@@ -1510,7 +1510,7 @@ export async function emitMigratedJs(config, t, logs) {
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
-    emitted.push({ package: pkg.dir, compilerArtifact: artifact ? bindCompilerArtifact({ ...config, compilerArtifact: artifact }) : null, files: result.files, generatedFiles: result.generatedFiles, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
+    emitted.push({ package: pkg.dir, compilerArtifact: artifact ? bindCompilerArtifact({ ...config, compilerArtifact: artifact }) : null, files: result.files, generatedFiles: result.generatedFiles, layoutPlans: result.layoutPlans, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
   }
   // Routing edits TypeScript the loader records name, so it comes first.
   const routed = bundledImports(config, { root: t, outputs })

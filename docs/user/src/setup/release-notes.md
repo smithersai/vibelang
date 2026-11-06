@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+
+- Migration emission could retain a large TypeScript declaration graph while compiling, exhausting the coordinator heap. Declaration layout planning now finishes in a separate process before compilation and records its duration.
 - Bundling native error declarations could pull in unused experimental platform services; generated language helpers now keep those services out of the bundle graph.
 
 - Contributor release checks still expected the old specification-test deadline after its limit changed; they now check the current shared limit and reject missing or mismatched deadlines.

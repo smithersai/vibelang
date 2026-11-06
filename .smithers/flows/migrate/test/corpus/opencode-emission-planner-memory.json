@@ -1,0 +1,5 @@
+{
+  "declarations": 100000,
+  "parentHeapMiB": 96,
+  "rule": "Sidecar placement follows TypeScript 5.9's declaration layout"
+}

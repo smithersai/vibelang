@@ -867,6 +867,31 @@ function exportedTestModules(packageDir, candidates) {
   return reached
 }
 
+// A common source root may require TypeScript to parse the imported graph.
+// Finish that work in a short-lived process before starting the compiler,
+// so its syntax trees cannot remain in the emission coordinator's heap.
+async function emissionSourceRoot(config, directories, { cwd, log }) {
+  const marker = "VIBELANG_EMISSION_LAYOUT "
+  const worker = `
+    const { loadTypeScript } = await import(process.argv[1])
+    const { sidecarSettings } = await import(process.argv[2])
+    const ts = loadTypeScript(JSON.parse(process.argv[4]))
+    const settings = sidecarSettings(process.argv[3], ts, undefined, { sourceRootOnly: true })
+    console.log(${JSON.stringify(marker)} + JSON.stringify({ sourceRoot: settings.sourceRoot }))
+  `
+  const command = [process.execPath, "--input-type=module", "-e", worker,
+    import.meta.url, new URL("./sidecar-config.mjs", import.meta.url).href,
+    config, JSON.stringify(directories)].map(quote).join(" ")
+  const result = await run(command, { cwd, timeoutMs: 60_000, log: log && log + ".layout.log" })
+  if (result.code !== 0) throw new Error(
+    `Declaration layout planning failed for ${rel(cwd, config)}: exit ${result.code}, ${result.ms} ms${result.signal ? `, signal ${result.signal}` : ""}${result.timedOut ? ", timed out" : ""}${log ? ` (log: ${log}.layout.log)` : ""}`)
+  const line = result.stdout.split("\n").findLast(line => line.startsWith(marker))
+  if (line === undefined) throw new Error("Declaration layout planner returned no receipt for " + rel(cwd, config))
+  const { sourceRoot } = JSON.parse(line.slice(marker.length))
+  if (typeof sourceRoot !== "string") throw new Error("Declaration layout planner returned no source root for " + rel(cwd, config))
+  return { sourceRoot, ms: result.ms, pid: result.pid }
+}
+
 /**
  * Emits a migrated package's JavaScript under <packageDir>/.vibelang/js/,
  * which its package.json's `default` exports name (rewriteExports), so the
@@ -884,7 +909,9 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
   const out = outDir ?? join(packageDir, ".vibelang", "js")
   rmSync(out, { recursive: true, force: true })
   const scope = resolve(root ?? packageDir)
-  const ts = loadTypeScript([packageDir, scope, fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
+  const typescriptDirectories = [packageDir, scope, fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))]
+  const ts = loadTypeScript(typescriptDirectories)
+  const layoutPlans = []
   const existing = declarationFiles(scope, resolve(out), /\.(?:[cm]?js(?:\.map)?|jsx(?:\.map)?|d\.[cm]?ts)$/)
   mkdirSync(out, { recursive: true })
   const flags = "--noEmit false --declaration false --emitDeclarationOnly false --declarationMap false --sourceMap true --inlineSourceMap false --inlineSources false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
@@ -908,8 +935,11 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
     // JavaScript is relocated afterward to its package-relative runtime tree.
     // Physical map roots also replace any authored virtual source/map roots.
     const config = resolve(packageDir, tsconfig)
-    const settings = existsSync(config) ? sidecarSettings(config, ts, undefined, { sourceRootOnly: true }) : undefined
-    const sourceRoot = settings?.sourceRoot ?? resolve(packageDir)
+    const settings = existsSync(config) ? sidecarSettings(config, ts, undefined, { directoryOnly: true }) : undefined
+    const plan = settings ? await emissionSourceRoot(config, typescriptDirectories, { cwd: packageDir, log }) : undefined
+    const sourceRoot = plan?.sourceRoot ?? resolve(packageDir)
+    if (plan) layoutPlans.push({ project: rel(scope, config), stage: "declaration-layout",
+      sourceRoot: rel(scope, sourceRoot), ms: plan.ms, pid: plan.pid })
     const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --sourceRoot ${quote(sourceRoot + sep)} --mapRoot ${quote(resolve(out) + sep)} --rootDir ${quote(sourceRoot)} --outDir ${quote(out)}`, { cwd: packageDir, log })
     assertFinished(result, log)
     code = Math.max(code, result.code)
@@ -954,7 +984,7 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
   const generatedFiles = [...emittedFiles.values()].map(file => ({
     file: rel(scope, file), sha256: createHash("sha256").update(readFileSync(file)).digest("hex")
   }))
-  return { code, files, outputs, generatedFiles, diagnostics: parseDiagnostics(output, { cwd: packageDir, root }) }
+  return { code, files, outputs, generatedFiles, layoutPlans, diagnostics: parseDiagnostics(output, { cwd: packageDir, root }) }
 }
 
 /**
