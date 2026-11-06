@@ -55,10 +55,11 @@ function isModuleId(id) {
 const slash = (path) => path.replaceAll("\\", "/")
 
 // A module declaration of main.vibe compiles to main.vibe.text.js beside it
-// (D403), which is not on disk: the project's compile serves it. The pattern
-// is vibelang/project's moduleDeclarationSource.
+// (D403), and one in a .vibex file to .jsx under preserved JSX. Neither is on
+// disk: the project's compile serves it. The pattern is vibelang/project's
+// moduleDeclarationSource.
 function isModuleOutput(path) {
-  const source = /^(.+\.vibex?)\.[^./\\]+\.js$/.exec(path)?.[1]
+  const source = /^(.+\.vibex?)\.[^./\\]+\.jsx?$/.exec(path)?.[1]
   return source !== undefined && !existsSync(path) && existsSync(source)
 }
 // A module whose JavaScript the plugin compiles: a .vibe module or one of its module declarations.

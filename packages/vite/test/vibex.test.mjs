@@ -98,6 +98,59 @@ test("Vite resolves generated JSX module IDs without changing resource queries",
   }
 })
 
+// A generated module body in a native JSX source: under `preserve` the compiler
+// writes its output with a .jsx extension, which only the project's compile holds.
+async function moduleBodyFixture(t, jsx, name) {
+  const root = await fixture(t, "vibex", jsx)
+  await writeFile(join(root, "view.vibex"), `function h(tag: string, props: unknown, ...children: unknown[]): JSX.Element { return { tag, children } }
+module ${name} {
+export function raise(value: unknown): never { throw value }
+}
+import { raise as $raise } from ${name}
+export function View({ fail }: { fail: boolean }) {
+  if (fail) $raise("fixture")
+  return <div>ready</div>
+}
+`)
+  return root
+}
+
+for (const jsx of ["preserve", "react-native", "react"]) {
+  for (const name of ["$throw$ts", "body"]) {
+    test(`Vite resolves a .vibex module body ${name} under ${jsx}`, async t => {
+      const root = await moduleBodyFixture(t, jsx, name)
+      const options = { root, configFile: false, logLevel: "silent", plugins: [vibelang()], oxc: { jsx: { runtime: "classic", pragma: "h" } } }
+      const result = await build({ ...options, build: { write: false, minify: false, lib: { entry: join(root, "view.vibex"), formats: ["es"] } } })
+      const code = [result].flat()[0].output.find(output => output.type === "chunk").code
+      const built = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"))
+      assert.deepEqual(built.View({ fail: false }), { tag: "div", children: ["ready"] })
+      assert.throws(() => built.View({ fail: true }), value => value === "fixture")
+      const server = await devServer({ ...options, server: { watch: null } })
+      t.after(() => server.close())
+      const module = await server.ssrLoadModule("/view.vibex")
+      assert.deepEqual(module.View({ fail: false }), { tag: "div", children: ["ready"] })
+      assert.throws(() => module.View({ fail: true }), value => value === "fixture")
+    })
+  }
+}
+
+test("Vite serves a .vibex module output only for a module query and only beside its source", async t => {
+  const root = await moduleBodyFixture(t, "preserve", "$throw$ts")
+  const plugin = vibelang()
+  plugin.configResolved({ root, logger: console })
+  const context = { resolve: async id => ({ id }) }
+  const importer = join(root, "view.vibex.jsx")
+  await fc.assert(fc.asyncProperty(fc.constantFrom("", "?import", "?v=1", "?t=42", "?raw", "?url"), fc.constantFrom(".js", ".jsx"),
+    async (query, extension) => {
+      const output = "view.vibex.-24-throw-24-ts" + extension
+      assert.equal(await plugin.resolveId.call(context, "./" + output + query, importer), join(root, output) + query)
+      assert.equal(await plugin.resolveId.call(context, "./absent.vibex.-24-throw-24-ts" + extension + query, importer), undefined)
+      await writeFile(join(root, "real.vibex." + "text" + extension), "export const real = 1\n")
+      assert.equal(await plugin.resolveId.call(context, "./real.vibex.text" + extension + query, importer), undefined)
+      if (query === "?raw" || query === "?url") assert.equal(await plugin.load.call({ addWatchFile() {}, error(error) { throw error } }, join(root, output) + query), undefined)
+  }), { numRuns: 40, seed: 18140 })
+})
+
 test("Vite development loads native JSX and maps it to its authored source", async t => {
   const root = await fixture(t, "vibex")
   const server = await devServer({
