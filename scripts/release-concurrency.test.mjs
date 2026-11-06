@@ -6,12 +6,11 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
 import test from "node:test"
+import { declaredCommand } from "./declared-command.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
 const declaration = readFileSync(join(root, "PACKAGE.ts"), "utf8")
-const match = declaration.match(/release:\s*check\(\s*"[^"]*",\s*("(?:[^"\\]|\\.)*")/)
-assert.ok(match, "release target declares its command")
-const command = JSON.parse(match[1])
+const command = declaredCommand(declaration, "release")
 
 // Execute the declared command on real files. Each worker announces its start,
 // then waits for the parent to release it: the count measures live workers,
