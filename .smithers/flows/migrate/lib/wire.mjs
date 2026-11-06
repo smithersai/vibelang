@@ -1105,6 +1105,7 @@ export function rootTsconfigs(root, ts) {
 /** The ignore line that keeps formatters reading .prettierignore (Prettier, Oxfmt, Vite+) off vibelang's declaration sidecars. */
 export const sidecarIgnore = "*.d.vibe.ts"
 export const jsxSidecarIgnore = "*.d.vibex.ts"
+export const declarationIgnores = [sidecarIgnore, jsxSidecarIgnore, "*.vibe.*.d.ts", "*.vibex.*.d.ts"]
 // A migrated package's emitted JavaScript (emitPackageJs), vibelang's output too.
 export const emittedIgnore = "**/.vibelang/js/**"
 

@@ -146,3 +146,5 @@ A declined automatic repair retains its source bytes. Module-export qualificatio
 When a legacy migration adds an `effect` marker to a function, it also converts service receiver calls in that body before replacing written `infer` channels. This preserves the service requirement and the failures of dependent method calls.
 
 An alias repair in a class `implements` clause changes only the type spelling. Independent `EK0402` callable throws errors remain, just as they do with a written `Effect.Effect<…>` type.
+
+Migration setup excludes generated declaration sidecars, including `x.vibe.platform.d.ts` and `x.vibex.platform.d.ts`, from Oxlint, ESLint, dprint and formatters that read `.prettierignore`. Authored `.platform.ts` implementations remain checked. Rerun setup to update an existing migration's configuration.

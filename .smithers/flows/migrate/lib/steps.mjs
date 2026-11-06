@@ -1105,14 +1105,13 @@ export async function wireTarget(config, log) {
   // The sidecars are vibelang's output, in its format; formatters leave them alone.
   const formatIgnore = join(t, ".prettierignore")
   const formatIgnoreText = existsSync(formatIgnore) ? readFileSync(formatIgnore, "utf8") : ""
-  writeIfChanged(formatIgnore, formatIgnoreText, Wire.setIgnoreLine(Wire.setIgnoreLine(Wire.setIgnoreLine(formatIgnoreText, Wire.sidecarIgnore, true), Wire.jsxSidecarIgnore, true), Wire.emittedIgnore, true))
+  writeIfChanged(formatIgnore, formatIgnoreText, [...Wire.declarationIgnores, Wire.emittedIgnore].reduce((text, pattern) => Wire.setIgnoreLine(text, pattern, true), formatIgnoreText))
   // And Oxlint leaves them alone: it reads x.d.vibe.ts as TypeScript, not as a declaration file.
   for (const name of Wire.oxlintConfigs.filter((name) => existsSync(join(t, name)))) {
     const text = readFileSync(join(t, name), "utf8")
-    const sidecars = Wire.addOxlintIgnore(text)
-    const jsxSidecars = sidecars === null ? null : Wire.addOxlintIgnore(sidecars, `**/${Wire.jsxSidecarIgnore}`)
-    const next = jsxSidecars === null ? null : Wire.addOxlintIgnore(jsxSidecars, Wire.emittedIgnore)
-    if (next === null) warnings.push(`${name}: add "**/${Wire.sidecarIgnore}", "**/${Wire.jsxSidecarIgnore}" and "${Wire.emittedIgnore}" to its ignorePatterns by hand`)
+    const patterns = [...Wire.declarationIgnores.map(pattern => `**/${pattern}`), Wire.emittedIgnore]
+    const next = patterns.reduce((text, pattern) => text === null ? null : Wire.addOxlintIgnore(text, pattern), text)
+    if (next === null) warnings.push(`${name}: add ${patterns.map(pattern => JSON.stringify(pattern)).join(", ")} to its ignorePatterns by hand`)
     else writeIfChanged(join(t, name), text, next)
   }
   // Oxlint's plugin host is Node: a JS plugin the migration moves to VibeLang loads through vibelang/register.

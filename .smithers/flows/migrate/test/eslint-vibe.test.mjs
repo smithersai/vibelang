@@ -45,7 +45,7 @@ test("withVibe gives every TypeScript block its .vibe glob, and leaves other blo
     { ignores: ["src/generated.ts", "**/*.d.vibe.ts", "**/dist"] },
     { rules: { "no-debugger": "error" } }
   ])
-  assert.deepEqual(config[0], { ignores: ["**/*.d.vibe.ts", "**/.vibelang/js/**"] })
+  assert.deepEqual(config[0], { ignores: ["**/*.d.vibe.ts", "**/*.d.vibex.ts", "**/*.vibe.*.d.ts", "**/*.vibex.*.d.ts", "**/.vibelang/js/**"] })
   assert.deepEqual(config[1].files, ["src/**/*.ts", "examples/**/*.ts", "src/**/*.vibe", "examples/**/*.vibe"])
   assert.deepEqual(config[1].ignores, ["src/**/*.test.ts", "**/*.d.ts", "src/**/*.test.vibe"])
   assert.deepEqual(config[2].files, [["src/**/*.ts", "**/*.{ts,tsx}"], ["src/**/*.vibe", "**/*.vibe"]])

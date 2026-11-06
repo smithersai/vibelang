@@ -5,7 +5,7 @@ import { wireSourceChildren } from "./source-children.mjs"
 import { wireRolldownSources } from "./rolldown-builds.mjs"
 import { wireOxlint } from "./oxlint.mjs"
 import { preloadRegister } from "./oxlint-plugins.mjs"
-import { addEslintIgnore, addEslintImportParsers, addEslintVibe, emittedIgnore, jsxSidecarIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, addEslintVibe, declarationIgnores, emittedIgnore, jsxSidecarIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
 
@@ -352,7 +352,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
       needsCompiler = true
     }
     // The declaration sidecars are vibelang's output, in its format.
-    config.excludes = [...new Set([...(config.excludes ?? []), `**/${sidecarIgnore}`, `**/${jsxSidecarIgnore}`, emittedIgnore])]
+    config.excludes = [...new Set([...(config.excludes ?? []), ...declarationIgnores.map(pattern => `**/${pattern}`), emittedIgnore])]
     write(file, JSON.stringify(config, null, 2) + "\n")
   }
   if (pinned.size) warnings.push(`${pinned.size} dprint configuration${pinned.size === 1 ? " pins" : "s pin"} every plugin by checksum (${[...pinned].slice(0, 3).join(", ")}${pinned.size > 3 ? ", …" : ""}), and VibeLang's dprint plugin, npm:vibelang/dprint-plugin.json, has none: dprint leaves .vibe files there to vibelang-format, which their dprint scripts now run`)
@@ -360,9 +360,8 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   let readsVibe = false
   for (const file of all.filter(f => /(^|\/)eslint\.config\.[cm]?[jt]s$/.test(f) && !f.startsWith(".vibelang/"))) {
     const text = readFileSync(join(root, file), "utf8")
-    const sidecars = addEslintIgnore(text)
-    const jsxSidecars = sidecars === null ? null : addEslintIgnore(sidecars, `**/${jsxSidecarIgnore}`)
-    const ignored = jsxSidecars === null ? null : addEslintIgnore(jsxSidecars, emittedIgnore)
+    const ignored = [...declarationIgnores.map(pattern => `**/${pattern}`), emittedIgnore]
+      .reduce((text, pattern) => text === null ? null : addEslintIgnore(text, pattern), text)
     // eslint-plugin-import reads a .vibe module's exports through vibelang/eslint.
     const parsers = addEslintImportParsers(ignored ?? text)
     if (parsers === null && /["'`]eslint-plugin-import(-x)?["'`]/.test(text)) warnings.push(`${file}: add { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } } as its first configuration by hand`)

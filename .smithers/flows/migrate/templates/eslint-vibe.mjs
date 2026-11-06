@@ -76,7 +76,7 @@ export function withVibe(config) {
   }))
   const settings = importSettings(blocks)
   return [
-    { ignores: ["**/*.d.vibe.ts", "**/.vibelang/js/**"] },
+    { ignores: ["**/*.d.vibe.ts", "**/*.d.vibex.ts", "**/*.vibe.*.d.ts", "**/*.vibex.*.d.ts", "**/.vibelang/js/**"] },
     ...blocks,
     ...(Object.keys(settings).length ? [{ settings }] : []),
     { files: ["**/*.vibe"], languageOptions: { parser }, rules: typedRulesOff(blocks) }

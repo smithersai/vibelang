@@ -1,0 +1,9 @@
+{
+  "key": "migrate:generated-platform-declarations-lint",
+  "sourceFile": "src/MediaFile.vibe",
+  "generated": "src/MediaFile.vibe.platform.d.ts",
+  "declaration": "export {};\n",
+  "authored": "src/MediaFile.platform.ts",
+  "rule": "unicorn/require-module-specifiers"
+}
+
