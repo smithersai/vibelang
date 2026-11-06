@@ -91,8 +91,11 @@ var preludeModules = map[string]string{
 	"$clause": runtimeModule,
 	// The fiber forms (D166-D170, fibers.go): the parser writes await, select,
 	// and for concurrent as calls of these; detach and forkIn are fork's variants.
-	"$await": runtimeModule,
-	"$join":  runtimeModule,
+	"$await":      runtimeModule,
+	"$join":       runtimeModule,
+	"$forkIn":     runtimeModule,
+	"$forkScoped": runtimeModule,
+	"$forkDetach": runtimeModule,
 	// join(x), the keyword join x with a parenthesized operand (D391, D432).
 	"join":    runtimeModule,
 	"$select": runtimeModule,

@@ -49,14 +49,14 @@ func isFiberOperator(node *ast.Node) bool {
 		return false
 	}
 	callee := ast.SkipParentheses(node.Expression())
-	return callee.Text() == "fork" || fiberHelper(node) == "$join"
+	return callee.Text() == "fork" || fiberHelper(node) == "$join" || isForkOwner(node)
 }
 
 // A misplaced operator emitted a cold runtime call. Preserve that meaning
 // without making the surrounding function effectful or adding try. $join
 // also retains the old collection behavior.
 func fiberPlacementRewrite(_ *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
-	if !isFiberOperator(at) || inEffectCode(at) || len(at.Arguments()) != 1 {
+	if !isFiberOperator(at) || isForkOwner(at) || inEffectCode(at) || len(at.Arguments()) != 1 {
 		return &formRewrite{}
 	}
 	export, module, base := "forkScoped", "effect/Effect", "$plainFork"

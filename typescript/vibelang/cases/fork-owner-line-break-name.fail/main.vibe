@@ -1,0 +1,7 @@
+// expect: EK1705
+import { Effect } from "effect"
+export effect function main() {
+  const f = fork
+    .other Effect.succeed(1)
+  return 0
+}

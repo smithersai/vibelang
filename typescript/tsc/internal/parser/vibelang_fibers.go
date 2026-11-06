@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -39,6 +40,9 @@ func (p *Parser) isStartOfVibeLangFork() bool {
 
 func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
 	p.nextToken()
+	if p.token == ast.KindDotToken {
+		return p.legacyForkOwnerHasOperand()
+	}
 	if p.hasPrecedingLineBreak() {
 		return false
 	}
@@ -49,6 +53,90 @@ func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
 		return true
 	}
 	return false
+}
+
+// forkOwners maps each owner of fork.owner (VIP-17) to the runtime helper that
+// gives the checker its signature. Lowering writes Effect's own operation.
+var forkOwners = map[string]string{"in": "$forkIn", "scoped": "$forkScoped", "detached": "$forkDetach"}
+
+// ForkOwnerMessage is EK1705's text: a name after fork. other than the three
+// owners. %s is the name.
+const ForkOwnerMessage = "fork.%s is not a fork owner: write fork.in(scope), fork.scoped or fork.detached before the operand, or fork alone."
+
+// legacyForkOwnerHasOperand recovers a named owner outside effect code. An
+// operand after the owner is a TypeScript syntax error, so a valid member
+// access or call on a variable named fork keeps its reading.
+func (p *Parser) legacyForkOwnerHasOperand() bool {
+	p.nextToken() // .
+	if !tokenIsIdentifierOrKeyword(p.token) {
+		return false
+	}
+	owner := p.scanner.TokenValue()
+	if _, ok := forkOwners[owner]; !ok {
+		return false
+	}
+	p.nextToken()
+	if owner == "in" {
+		if p.token != ast.KindOpenParenToken {
+			return false
+		}
+		for depth := 0; ; {
+			switch p.token {
+			case ast.KindOpenParenToken:
+				depth++
+			case ast.KindCloseParenToken:
+				depth--
+			case ast.KindEndOfFile:
+				return false
+			}
+			p.nextToken()
+			if depth == 0 {
+				break
+			}
+		}
+	}
+	if p.hasPrecedingLineBreak() {
+		return false
+	}
+	switch p.token {
+	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindNewKeyword, ast.KindSuperKeyword, ast.KindAwaitKeyword:
+		return true
+	}
+	return false
+}
+
+// parseVibeLangForkOwner parses the rest of fork.in(scope), fork.scoped or
+// fork.detached after fork, and returns the callee and the scope, if any.
+// Whitespace, comments and line breaks may separate the tokens. Another name
+// is EK1705 and reads as fork for recovery.
+func (p *Parser) parseVibeLangForkOwner(callee *ast.Node, keyword core.TextRange) (*ast.Node, *ast.Node, core.TextRange) {
+	p.nextToken() // .
+	if !tokenIsIdentifierOrKeyword(p.token) {
+		p.parseErrorAtCurrentToken(diagnostics.Identifier_expected)
+		return callee, nil, keyword
+	}
+	name := p.scanner.TokenValue()
+	end := p.scanner.TokenEnd()
+	helper, ok := forkOwners[name]
+	if !ok {
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.tokenRange(), "EK", diagnostics.CategoryError, 1705, fmt.Sprintf(ForkOwnerMessage, name)))
+		p.hasParseError = true
+		p.nextToken()
+		return callee, nil, core.NewTextRange(keyword.Pos(), end)
+	}
+	p.nextToken()
+	var scope *ast.Node
+	if helper == "$forkIn" {
+		p.parseExpected(ast.KindOpenParenToken)
+		forms := p.vibelangSyntaxCount()
+		scope = p.parseAssignmentExpressionOrHigher()
+		// The formatter keeps the prefix word verbatim, so a form inside
+		// the scope needs no edit of its own.
+		p.vibelangSyntaxRewind(forms)
+		end = p.scanner.TokenEnd()
+		p.parseExpected(ast.KindCloseParenToken)
+	}
+	return p.vibelangIntrinsic(helper, keyword), scope, core.NewTextRange(keyword.Pos(), end)
 }
 
 // forkBraceIsObjectOperand reports whether a brace after fork in Effect code is
@@ -97,17 +185,28 @@ func (p *Parser) parseVibeLangFork() *ast.Node {
 	if !p.vibelangFiberContext {
 		p.rejectVibeLangBlockDo("fork")
 	}
+	var scope *ast.Node
+	word := keyword
+	owned := p.token == ast.KindDotToken
+	if owned {
+		callee, scope, word = p.parseVibeLangForkOwner(callee, keyword)
+	}
 	var program *ast.Node
-	if p.token == ast.KindOpenBraceToken && !p.forkBraceIsObjectOperand() {
+	if !owned && p.token == ast.KindOpenBraceToken && !p.forkBraceIsObjectOperand() {
 		body := p.parseFunctionBlock(ParseFlagsNone, nil /*diagnosticMessage*/)
 		p.recordVibeSyntaxBlock(VibeSyntaxForkBlock, keyword, body)
 		program = p.vibelangProgramArrow(nil, body, keyword)
 	} else {
 		program = p.parseSimpleUnaryExpression()
-		p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: keyword, Range: core.NewTextRange(keyword.Pos(), program.End())})
+		p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: word, Range: core.NewTextRange(keyword.Pos(), program.End())})
 	}
-	call := p.finishNode(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(program.Loc, []*ast.Node{program}), ast.NodeFlagsNone), pos)
-	return call
+	arguments := []*ast.Node{program}
+	list := program.Loc
+	if scope != nil {
+		arguments = []*ast.Node{scope, program}
+		list = core.NewTextRange(scope.Pos(), program.End())
+	}
+	return p.finishNode(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(list, arguments), ast.NodeFlagsNone), pos)
 }
 
 // isStartOfVibeLangJoin uses the same source Effect reservation as fork.

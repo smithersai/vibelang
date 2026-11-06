@@ -407,8 +407,16 @@ func checkForkOperand(c *checker.Checker, file *ast.SourceFile, operand *ast.Nod
 // properties. The checker supplies only that call's applicability diagnostics;
 // errors in written calls, assignments and satisfies expressions stay intact.
 func filterRejectedForkArgumentDiagnostics(c *checker.Checker, call *ast.Node, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
-	if len(diagnostics) == 0 || !ast.IsCallExpression(call) || len(call.Arguments()) != 1 ||
-		!isVibeLangFile(ast.GetSourceFileOfNode(call)) {
+	if len(diagnostics) == 0 || !ast.IsCallExpression(call) || !isVibeLangFile(ast.GetSourceFileOfNode(call)) {
+		return diagnostics
+	}
+	if isForkOwner(call) && inEffectCode(call) {
+		if forkOwnerRejected(c, call) {
+			return nil
+		}
+		return diagnostics
+	}
+	if len(call.Arguments()) != 1 {
 		return diagnostics
 	}
 	// Placement explains only the generated operator call. Inner source

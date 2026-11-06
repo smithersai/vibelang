@@ -379,6 +379,9 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case isFiberHelper(node, "$join", 1):
 		p.join(node, e)
 		return
+	case isForkOwner(node):
+		p.forkOwner(node, e)
+		return
 	case isFiberHelper(node, "$try", 1):
 		p.tryValue(node, e)
 		return

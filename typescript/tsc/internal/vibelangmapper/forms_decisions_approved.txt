@@ -2344,3 +2344,5 @@ typescript/vibelang/cases/decl-old-declarations/main.vibe:19:43 lambda: block ap
 typescript/vibelang/cases/decl-old-declarations/main.vibe:22:5 lambda: effectFn keyword -> effectFn keyword # The preserving layer codemod relocates the Greeter method from line 23 without changing its Effect function classification.
 
 typescript/vibelang/cases/legacy-layer-diagnostic-authority.fail/main.vibe:5:3 lambda: effectFn keyword -> effectFn keyword # The fixture is renamed as a rejected layer declaration; its method keeps the same Effect function classification.
+typescript/vibelang/cases/fork-coverage-owners/main.vibe:18:21 lambda: program keyword -> program table # The case parses now that named fork owners exist, so this operand gets its ordinary table decision.
+typescript/vibelang/cases/cov2-002b-owner-syntax/main.vibe:6:30 lambda: program keyword -> program table # The case parses now that named fork owners exist, so this operand gets its ordinary table decision.

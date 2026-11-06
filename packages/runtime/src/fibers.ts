@@ -242,3 +242,15 @@ export function $tryAllSettled<const A extends TryEffects>(operand: A): Effect.E
 > {
   return Effect.all(operand.map(Effect.exit), { concurrency: "unbounded" }) as any
 }
+
+/** VIP-17: the signature of `fork.in(scope) e`, which the compiler writes as Effect.forkIn. */
+export const $forkIn = <A, E, R>(scope: Scope.Scope, program: Effect.Effect<A, E, R>): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
+  Effect.forkIn(program, scope)
+
+/** VIP-17: the signature of `fork.scoped e`, which the compiler writes as Effect.forkScoped. */
+export const $forkScoped = <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<Fiber.Fiber<A, E>, never, R | Scope.Scope> =>
+  Effect.forkScoped(program)
+
+/** VIP-17: the signature of `fork.detached e`, which the compiler writes as Effect.forkDetach. */
+export const $forkDetach = <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
+  Effect.forkDetach(program)

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("other:3:3")

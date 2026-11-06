@@ -469,6 +469,8 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 		f := tx.Factory()
 		fork := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("forkChild"), ast.NodeFlagsNone)
 		call = f.NewCallExpression(fork, nil, nil, f.NewNodeList([]*ast.Node{tx.visit(node.Arguments()[0])}), ast.NodeFlagsNone)
+	} else if isForkOwner(node) {
+		call = tx.forkOwnerCall(node)
 	} else if fiberHelper(node) == "$join" && len(node.Arguments()) == 1 {
 		f := tx.Factory()
 		join := f.NewPropertyAccessExpression(tx.moduleNamespace("effect/Fiber"), nil, f.NewIdentifier("join"), ast.NodeFlagsNone)

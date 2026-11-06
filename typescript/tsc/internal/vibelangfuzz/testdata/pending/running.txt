@@ -1,7 +1,5 @@
 # Chapter 2 static-rule controls and rejections; each named corpus selects its rule.
 FuzzVIPDifferential exit:value/vip02.lexical-receiver compiler VIP-2: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane vip-core2
-FuzzRunningRules control:fork-scoped-requirement compiler VIP-17: `fork.scoped e` does not parse (TS1005) and draws the legacy EK4410; lane w2-fork
-FuzzRunningRules corpus:fork-scoped-requirement compiler VIP-17: minimal reproduction of control:fork-scoped-requirement; lane w2-fork
 FuzzRunningRules diagnostic:concurrent-head-break-outer compiler VIP-19: a labeled `break` in a head default's `do` draws the retired EK1019, not EK1903; lane core-block
 FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-break-outer; lane core-block
 

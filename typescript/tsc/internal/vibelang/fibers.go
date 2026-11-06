@@ -83,7 +83,7 @@ func fiberHelper(call *ast.Node) string {
 		return ""
 	}
 	switch name := callee.Text(); name {
-	case "$await", "$join", "$awaitAll", "$awaitAllSettled", "$awaitRace", "$awaitAny", "$select", "$forConcurrent":
+	case "$await", "$join", "$awaitAll", "$awaitAllSettled", "$awaitRace", "$awaitAny", "$select", "$forConcurrent", "$forkIn", "$forkScoped", "$forkDetach":
 		return name
 	}
 	return ""
@@ -124,6 +124,8 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 			checkAwait(c, file, node)
 		case "$join":
 			checkJoin(c, file, node)
+		case "$forkIn", "$forkScoped", "$forkDetach":
+			checkForkOwner(c, file, node)
 		case "$select":
 			// The parser reports EK4607; retain only recovery coverage here.
 			// The retired form's case programs have no typing to check
@@ -670,6 +672,12 @@ func fiberFormQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 			}
 		}
 		return "join", paragraph
+	case "$forkIn":
+		return "fork.in", "Starts a fiber that the given Scope owns, and gives its Fiber (Effect.forkIn)."
+	case "$forkScoped":
+		return "fork.scoped", "Starts a fiber that the current Scope owns, and gives its Fiber (Effect.forkScoped)."
+	case "$forkDetach":
+		return "fork.detached", "Starts a fiber that nothing owns, and gives its Fiber (Effect.forkDetach)."
 	case "$select":
 		return "select", "Replaced by try.race (EK4607)."
 	case "$forConcurrent":

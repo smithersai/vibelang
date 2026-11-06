@@ -124,6 +124,13 @@ parser/vibelang_errors.go:Parser.vibelangSynthesizedEntityName	admission:error	9
 parser/vibelang_fibers.go:Parser.tokenRange	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
 parser/vibelang_fibers.go:Parser.isStartOfVibeLangFork	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
 parser/vibelang_fibers.go:Parser.parseVibeLangFork	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.parseVibeLangForkOwner	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 named owners fork.in, fork.scoped and fork.detached, with EK1705 for another name
+vibelang/fork_owners.go:checkForkOwner	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 reports EK1703 and EK1706 for named fork owners
+vibelang/fork_owners.go:forkOwnerRejected	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 lets EK1703 and EK1706 own a generated call's argument error
+vibelang/fork_owners.go:forkScopeRejected	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 fork.in scope assignability, EK1706
+vibelang/fork_owners.go:init	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 registers EK1705 and EK1706
+vibelang/fork_owners.go:isForkOwner	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 recognizes fork.in, fork.scoped and fork.detached calls
+vibelang/fork_owners.go:lowering.forkOwnerCall	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 writes Effect.forkIn, forkScoped or forkDetach, with the scope first
 parser/vibelang_fibers.go:Parser.forkBraceIsObjectOperand	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 brace after fork in Effect code is an object UnaryExpression, as after await
 parser/vibelang_fibers.go:Parser.isStartOfVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
@@ -737,6 +744,7 @@ parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration@effect-shorth
 parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration	admission:control-declaration	-	pending	Open VIP-35 does not admit control declarations
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-aggregate	admission:join-aggregate	-	pending	VIP-17 admits grammar operand but not aggregate Fiber join semantics
 parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyForkOperand	admission:fork	900-appendices.md#ForkExpression	recovery	VIP-1/17: outside source Effect context, legacy fork operands are recognized only for their diagnostics and migration
+parser/vibelang_fibers.go:Parser.legacyForkOwnerHasOperand	admission:fork	900-appendices.md#ForkExpression	recovery	VIP-1/17: outside source Effect context, a named owner with an operand recovers for EK1701; a valid member access keeps its reading
 parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyJoinOperand	admission:join	900-appendices.md#JoinExpression	recovery	VIP-1/17: outside source Effect context, legacy join operands are recognized only for their diagnostics and migration
 parser/vibelang_fiber_context.go:Parser.setVibeLangFiberContext	admission:fork	900-appendices.md#ForkExpression,900-appendices.md#JoinExpression	support	Appendix A source Effect parameter for the reserved fork and join operators (VIP-1/17)
 parser/vibelang_fiber_context.go:Parser.parseVibeLangOrdinaryInitializer	admission:fork	900-appendices.md#ForkExpression,900-appendices.md#JoinExpression	support	Appendix A source Effect parameter for the reserved fork and join operators (VIP-1/17)

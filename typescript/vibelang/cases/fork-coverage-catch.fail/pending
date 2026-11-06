@@ -1,1 +1,0 @@
-cov-concurrency VIP-17: catch-head diagnostics are correct; returning fibers still receives the independent legacy EK4838 ownership diagnostic.

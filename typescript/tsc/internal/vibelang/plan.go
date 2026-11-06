@@ -551,7 +551,7 @@ func (a *analyzer) isFiberCall(call *ast.Node) bool {
 // givesFiberEffect reports whether call is join f or fork e, as a keyword or
 // as a call of the runtime's join or fork, whose result is always an Effect.
 func (a *analyzer) givesFiberEffect(call *ast.Node) bool {
-	if fiberHelper(call) == "$join" || a.isFiberCall(call) {
+	if fiberHelper(call) == "$join" || isForkOwner(call) || a.isFiberCall(call) {
 		return true
 	}
 	callee := ast.SkipParentheses(call.Expression())

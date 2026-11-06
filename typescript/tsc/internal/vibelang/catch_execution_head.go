@@ -50,7 +50,7 @@ func isCatchExecutionHead(n *ast.Node) bool {
 	if n == nil {
 		return false
 	}
-	if n.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(n) || tryOperationName(n) != "" || fiberHelper(n) == "$join" {
+	if n.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(n) || tryOperationName(n) != "" || fiberHelper(n) == "$join" || isForkOwner(n) {
 		return true
 	}
 	return ast.IsCallExpression(n) && ast.IsIdentifier(n.Expression()) && n.Expression().Text() == "fork" && n.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0

@@ -107,6 +107,9 @@ func (p *projector) joinValue(n *ast.Node, level, depth int) (valid, known bool)
 		if r.receiverModule(n, 0) == "effect/Fiber" {
 			return true, true
 		}
+		if isForkOwner(n) {
+			return true, true
+		}
 		if ast.IsIdentifier(n.Expression()) {
 			name := n.Expression().Text()
 			if r.binding(n.Expression(), name) == nil && (name == "fork" || name == "detach" || name == "forkIn") {
