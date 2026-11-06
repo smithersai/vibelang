@@ -464,6 +464,11 @@ export function restoreExports(root, edits, module) {
     const pkg = JSON.parse(readFileSync(path, "utf8"))
     const source = posix.relative(posix.dirname(edit.manifest), vibe)
     const sidecar = sidecarOf(root, posix.dirname(edit.manifest))
+    // Routing can remove generated maps before a recorded source is returned.
+    // Replaying its journal must leave those absent fields and keys alone.
+    if (edit.fileEntry === undefined && edit.key !== undefined &&
+        (pkg[edit.field] === null || typeof pkg[edit.field] !== "object" ||
+         !Object.hasOwn(pkg[edit.field], edit.key))) continue
     if (edit.fileEntry !== undefined) {
       const owner = edit.field === "publishConfig" ? pkg.publishConfig : pkg
       if (Array.isArray(owner?.files)) owner.files = owner.files.filter(file => file !== edit.fileEntry)
