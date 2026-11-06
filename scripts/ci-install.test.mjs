@@ -27,7 +27,9 @@ function fixture(t) {
   write(path.join(root, ".smithers/package.json"), "{}")
   write(path.join(root, "packages/runtime/package.json"), JSON.stringify({ peerDependencies: { effect: "4.1.1" } }))
   write(path.join(root, "packages/ts-mapper/package.json"), JSON.stringify({ devDependencies: { typescript: "7.1.0-beta" } }))
-  executable(path.join(root, "packages/ts-mapper/test/.cache/typescript-7.1.0-beta/node_modules/.bin/tsc"), "#!/bin/sh\nexit 0\n")
+  for (const version of ["7.1.0-beta", "7.0.2"]) {
+    executable(path.join(root, "packages/ts-mapper/test/.cache/typescript-" + version + "/node_modules/.bin/tsc"), "#!/bin/sh\nexit 0\n")
+  }
   const smthrs = "#!/usr/bin/env node\nrequire(\"node:fs\").writeFileSync(process.env.CI_LOG, JSON.stringify(process.argv.slice(2)))\n"
   executable(path.join(root, ".smithers/node_modules/.bin/smthrs"), smthrs)
   const log = path.join(temp, "installs.jsonl")
@@ -49,9 +51,9 @@ if (dir.endsWith("/.smithers")) {
 `)
   return {
     root, temp, installed,
-    run(timeout = 30000) {
+    run(timeout = 30000, prepareOnly = false) {
       const start = performance.now()
-      const run = spawnSync("sh", ["scripts/ci.sh", "//packages:runtime-dist", "--jobs", "8"], {
+      const run = spawnSync("sh", ["scripts/ci.sh", ...(prepareOnly ? ["--prepare-only"] : ["//packages:runtime-dist", "--jobs", "8"])], {
         cwd: root, encoding: "utf8", timeout,
         env: { ...process.env, PATH: path.dirname(bun) + ":" + process.env.PATH, INSTALL_LOG: log, CI_LOG: ciLog }
       })
@@ -62,7 +64,8 @@ if (dir.endsWith("/.smithers")) {
         startedInstallers: calls.map(call => path.relative(root, call.dir)),
         stdout: run.stdout, stderr: run.stderr,
       }))
-      assert.deepEqual(JSON.parse(fs.readFileSync(ciLog, "utf8")).slice(0, 4), ["ci", "//packages:runtime-dist", "--jobs", "8"])
+      if (prepareOnly) assert.equal(fs.existsSync(ciLog), false, "preparation never starts the graph")
+      else assert.deepEqual(JSON.parse(fs.readFileSync(ciLog, "utf8")).slice(0, 4), ["ci", "//packages:runtime-dist", "--jobs", "8"])
       return calls
     }
   }
@@ -139,63 +142,103 @@ test("CI never runs an installer through provisioned shared trees", t => {
   for (const dir of directories) assert.ok(fs.lstatSync(path.join(f.root, dir, "node_modules")).isSymbolicLink())
 })
 
-test("real Bun repairs a stale non-Effect package and rechecks an unchanged tree", t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vibe ci real install-"))
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
-  const put = (name, data) => {
-    const target = path.join(root, name)
-    fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.writeFileSync(target, data)
-    return target
-  }
-  const manifest = (name, data) => put(name + "/package.json", JSON.stringify(data) + "\n")
-  for (const name of ["ci.sh", "share-effect.mjs", "check-effect-install.mjs"]) {
-    const source = new URL("./" + name, import.meta.url)
-    if (fs.existsSync(source)) put("scripts/" + name, fs.readFileSync(source))
-  }
-  for (const [name, version] of [["effect", "4.1.0"], ["tool-v1", "1.0.0"], ["tool-v2", "2.0.0"]]) {
-    manifest("deps/" + name, { name: name === "effect" ? name : "fixture-tool", version })
-  }
-  manifest("deps/smthrs", { name: "fixture-smthrs", version: "1.0.0", bin: { smthrs: "cli.cjs" } })
-  fs.chmodSync(put("deps/smthrs/cli.cjs", "#!" + process.execPath + "\n" +
-    'require("node:fs").appendFileSync(process.env.CI_REAL_TRACE, JSON.stringify(process.argv.slice(2)) + "\\n")\n'), 0o755)
-  const manifests = new Map()
-  for (const dir of directories) {
-    const dependencies = { effect: "file:" + path.join(root, "deps/effect") }
-    if (dir === ".smithers") dependencies["fixture-smthrs"] = "file:" + path.join(root, "deps/smthrs")
-    if (dir === "experiments") dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v1")
-    manifests.set(dir, { private: true, dependencies })
-    manifest(dir, manifests.get(dir))
-    const installed = spawnSync("bun", ["install", "--no-cache"], {
-      cwd: path.join(root, dir), encoding: "utf8", timeout: 30_000
+for (const mode of ["graph", "prepare"]) {
+  test("real Bun prepares fresh, stale and unchanged trees: " + mode, t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "vibe ci real install-"))
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+    const put = (name, data) => {
+      const target = path.join(root, name)
+      fs.mkdirSync(path.dirname(target), { recursive: true })
+      fs.writeFileSync(target, data)
+      return target
+    }
+    const manifest = (name, data) => put(name + "/package.json", JSON.stringify(data) + "\n")
+    for (const name of ["ci.sh", "share-effect.mjs", "check-effect-install.mjs"]) {
+      const source = new URL("./" + name, import.meta.url)
+      if (fs.existsSync(source)) put("scripts/" + name, fs.readFileSync(source))
+    }
+    for (const [name, version] of [["effect", "4.1.0"], ["tool-v1", "1.0.0"], ["tool-v2", "2.0.0"]]) {
+      manifest("deps/" + name, { name: name === "effect" ? name : "fixture-tool", version })
+    }
+    manifest("deps/smthrs", { name: "fixture-smthrs", version: "1.0.0", bin: { smthrs: "cli.cjs" } })
+    fs.chmodSync(put("deps/smthrs/cli.cjs", "#!" + process.execPath + "\n" +
+      'require("node:fs").appendFileSync(process.env.CI_REAL_TRACE, JSON.stringify(process.argv.slice(2)) + "\\n")\n'), 0o755)
+    const manifests = new Map()
+    for (const dir of directories) {
+      const dependencies = { effect: "file:" + path.join(root, "deps/effect") }
+      if (dir === ".smithers") dependencies["fixture-smthrs"] = "file:" + path.join(root, "deps/smthrs")
+      if (dir === "experiments") dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v1")
+      manifests.set(dir, { private: true, dependencies })
+      manifest(dir, manifests.get(dir))
+      const installed = spawnSync("bun", ["install", "--no-cache"], {
+        cwd: path.join(root, dir), encoding: "utf8", timeout: 30_000
+      })
+      assert.equal(installed.status, 0, installed.stdout + installed.stderr)
+    }
+    manifest("packages/ts-mapper", { devDependencies: { typescript: "7.1.0-fixture" } })
+    for (const version of ["7.1.0-fixture", "7.0.2"]) {
+      fs.chmodSync(put("packages/ts-mapper/test/.cache/typescript-" + version + "/node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n"), 0o755)
+    }
+    const installedVersion = name => JSON.parse(fs.readFileSync(path.join(root, "experiments/node_modules", name, "package.json"), "utf8")).version
+    const trace = path.join(root, "graph.jsonl")
+    if (mode === "prepare") {
+      for (const dir of directories) fs.rmSync(path.join(root, dir, "node_modules"), { recursive: true })
+      const fresh = spawnSync("sh", ["scripts/ci.sh", "--prepare-only"], {
+        cwd: root, encoding: "utf8", timeout: 30_000,
+        env: { ...process.env, CI_REAL_TRACE: trace }
+      })
+      assert.equal(fresh.status, 0, fresh.stdout + fresh.stderr)
+      for (const dir of directories) {
+        assert.equal(JSON.parse(fs.readFileSync(path.join(root, dir, "node_modules/effect/package.json"), "utf8")).version, "4.1.0")
+      }
+      assert.equal(installedVersion("fixture-tool"), "1.0.0")
+      assert.equal(fs.existsSync(trace), false)
+    }
+    manifests.get("experiments").dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v2")
+    manifest("experiments", manifests.get("experiments"))
+    const lock = spawnSync("bun", ["install", "--lockfile-only", "--no-cache"], {
+      cwd: path.join(root, "experiments"), encoding: "utf8", timeout: 30_000
     })
-    assert.equal(installed.status, 0, installed.stdout + installed.stderr)
-  }
-  manifest("packages/ts-mapper", { devDependencies: { typescript: "7.1.0-fixture" } })
-  fs.chmodSync(put("packages/ts-mapper/test/.cache/typescript-7.1.0-fixture/node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n"), 0o755)
-  const installedVersion = name => JSON.parse(fs.readFileSync(path.join(root, "experiments/node_modules", name, "package.json"), "utf8")).version
-  manifests.get("experiments").dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v2")
-  manifest("experiments", manifests.get("experiments"))
-  const lock = spawnSync("bun", ["install", "--lockfile-only", "--no-cache"], {
-    cwd: path.join(root, "experiments"), encoding: "utf8", timeout: 30_000
+    assert.equal(lock.status, 0, lock.stdout + lock.stderr)
+    assert.equal(installedVersion("fixture-tool"), "1.0.0", "fixture must retain the old installation after the lockfile update")
+    for (const phase of ["repair", "unchanged"]) {
+      const start = performance.now()
+      const result = spawnSync("sh", ["scripts/ci.sh", ...(mode === "prepare" ? ["--prepare-only"] : ["//fixture", "--jobs", "8"])], {
+        cwd: root, encoding: "utf8", timeout: 30_000,
+        env: {
+          ...process.env, CI_REAL_TRACE: trace,
+          // Preparation must not inspect a gate path list or start graph targets.
+          ...(mode === "prepare" ? { CI_CHANGED_PATHS: path.join(root, "absent-paths.txt") } : {})
+        }
+      })
+      t.diagnostic(phase + " CI: " + (performance.now() - start).toFixed(0) + " ms (local fixture packages)")
+      assert.equal(result.status, 0, result.stdout + result.stderr)
+      for (const dir of directories) {
+        assert.equal(JSON.parse(fs.readFileSync(path.join(root, dir, "node_modules/effect/package.json"), "utf8")).version, "4.1.0")
+      }
+      assert.ok(fs.lstatSync(path.join(root, "packages/runtime/node_modules/effect")).isSymbolicLink(),
+        "preparation must share Effect before an individual check runs")
+      assert.equal(installedVersion("fixture-tool"), "2.0.0", "CI must install the current lockfile before running the graph")
+    }
+    if (mode === "prepare") {
+      assert.equal(fs.existsSync(trace), false, "preparation must never dispatch the graph")
+      const manifestPath = path.join(root, "experiments/package.json")
+      const broken = JSON.parse(fs.readFileSync(manifestPath, "utf8"))
+      broken.dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v1")
+      fs.writeFileSync(manifestPath, JSON.stringify(broken))
+      const refused = spawnSync("sh", ["scripts/ci.sh", "--prepare-only"], {
+        cwd: root, encoding: "utf8", timeout: 30_000,
+        env: { ...process.env, CI_REAL_TRACE: trace }
+      })
+      assert.equal(refused.status, 1, refused.stdout + refused.stderr)
+      assert.match(refused.stderr, /lockfile|frozen/i, "retain the real installer's refusal")
+      assert.equal(fs.existsSync(trace), false)
+    } else {
+      assert.deepEqual(fs.readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line)),
+        Array.from({ length: 2 }, () => ["ci", "//fixture", "--jobs", "8", "--workspace", root, "--ui", "plain"]))
+    }
   })
-  assert.equal(lock.status, 0, lock.stdout + lock.stderr)
-  assert.equal(installedVersion("fixture-tool"), "1.0.0", "fixture must retain the old installation after the lockfile update")
-  const trace = path.join(root, "graph.jsonl")
-  for (const phase of ["repair", "unchanged"]) {
-    const start = performance.now()
-    const result = spawnSync("sh", ["scripts/ci.sh", "//fixture", "--jobs", "8"], {
-      cwd: root, encoding: "utf8", timeout: 30_000,
-      env: { ...process.env, CI_REAL_TRACE: trace }
-    })
-    t.diagnostic(phase + " CI: " + (performance.now() - start).toFixed(0) + " ms (local fixture packages)")
-    assert.equal(result.status, 0, result.stdout + result.stderr)
-    assert.equal(installedVersion("effect"), "4.1.0")
-    assert.equal(installedVersion("fixture-tool"), "2.0.0", "CI must install the current lockfile before running the graph")
-  }
-  assert.deepEqual(fs.readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line)),
-    Array.from({ length: 2 }, () => ["ci", "//fixture", "--jobs", "8", "--workspace", root, "--ui", "plain"]))
-})
+}
 
 test("CI fixture retains shared install assertions after a slow installer starts", t => {
   const f = fixture(t)
@@ -255,4 +298,57 @@ test("CI fixture reports a bounded child timeout with process context", t => {
     assert.equal(typeof context.stderr, "string")
     return true
   })
+})
+
+for (const args of [["--prepare-only", "//fixture"], ["--prepare-only", "--jobs", "8"]]) {
+  test("prerequisite-only mode rejects graph arguments before changing installs: " + args.join(" "), t => {
+    const f = fixture(t)
+    const result = spawnSync("sh", ["scripts/ci.sh", ...args], {
+      cwd: f.root, encoding: "utf8", timeout: 30_000,
+      env: { ...process.env, PATH: path.join(f.temp, "bin") + ":" + process.env.PATH,
+        INSTALL_LOG: path.join(f.temp, "unexpected-installs"), CI_LOG: path.join(f.temp, "unexpected-graph") }
+    })
+    assert.equal(result.status, 2, result.stdout + result.stderr)
+    assert.match(result.stderr, /--prepare-only/)
+    assert.equal(fs.existsSync(path.join(f.temp, "unexpected-installs")), false)
+    assert.equal(fs.existsSync(path.join(f.temp, "unexpected-graph")), false)
+  })
+}
+
+
+test("prerequisite-only mode leaves every provisioned shared install untouched", t => {
+  const f = fixture(t)
+  for (const dir of directories) {
+    const modules = path.join(f.root, dir, "node_modules")
+    const shared = path.join(f.temp, "shared", dir, "node_modules")
+    fs.mkdirSync(path.dirname(shared), { recursive: true })
+    fs.renameSync(modules, shared)
+    fs.symlinkSync(shared, modules, "dir")
+  }
+  assert.deepEqual(f.run(30000, true), [])
+  for (const dir of directories) assert.ok(fs.lstatSync(path.join(f.root, dir, "node_modules")).isSymbolicLink())
+})
+
+
+test("prerequisite-only mode installs both stock pins and reuses their prepared caches", t => {
+  const f = fixture(t)
+  const cache = path.join(f.root, "packages/ts-mapper/test/.cache")
+  fs.rmSync(cache, { recursive: true })
+  const log = path.join(f.temp, "stock-installs.jsonl")
+  const npm = path.join(f.temp, "bin/npm")
+  fs.writeFileSync(npm, `#!${process.execPath}
+const fs = require("node:fs")
+const path = require("node:path")
+const args = process.argv.slice(2)
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + "\\n")
+const target = path.join(args[args.indexOf("--prefix") + 1], "node_modules/.bin/tsc")
+fs.mkdirSync(path.dirname(target), { recursive: true })
+fs.writeFileSync(target, "#!/bin/sh\\nexit 0\\n", { mode: 0o755 })
+`, { mode: 0o755 })
+  f.run(30000, true)
+  f.run(30000, true)
+  const calls = fs.readFileSync(log, "utf8").trim().split("\n").map(line => JSON.parse(line))
+  assert.deepEqual(calls, ["7.1.0-beta", "7.0.2"].map(version =>
+    ["install", "--prefix", "packages/ts-mapper/test/.cache/typescript-" + version,
+      "--no-audit", "--no-fund", "--silent", "typescript@" + version]))
 })

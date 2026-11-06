@@ -50,6 +50,18 @@ sh scripts/ci.sh //typescript/vibelang/... --jobs 8 # compiler cases and editor 
 .smithers/node_modules/.bin/smthrs explain //typescript/vibelang:await-ops
 ```
 
+For a focused check on a fresh checkout, prepare the same prerequisites first:
+
+```sh
+sh scripts/ci.sh --prepare-only
+```
+
+This uses the same frozen installs, Effect sharing and two stock TypeScript
+baselines as the complete check. It stops before gate selection and graph
+execution. Run the desired build or test command afterward. This mode accepts
+no target arguments. A failed install retains its diagnostic and nonzero exit
+status; provisioned `node_modules` symlinks stay with their owner.
+
 `scripts/ci.sh` installs what the targets read (`.smithers`, the runtime, the
 compiler package, `experiments`, `docs/tools`) from their lockfiles, then runs
 `smthrs ci`, which runs build and test targets alike. `explain` prints a

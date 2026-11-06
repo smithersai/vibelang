@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Breaking: old `layer Live: Service { … }` declarations compiled with a warning. They now fail with `EK2121`; `vibelang --fix` writes the equivalent `Layer.effect` or `Layer.succeed` call.
 - The migrate lost-wrapper check flagged kept programs: records of `Effect.fn` members, branches emitted as inline calls, and `do` temporaries. It now reads all three, and a real loss in those shapes still flags.
 - Migration API checks ignored `exactOptionalPropertyTypes`, so a declaration valid only under that option left the comparison incomplete with TS2411. The comparison now uses the project's setting.
+- Focused contributor checks could fail with missing packages on a fresh checkout. The documented preparation step now installs all pinned prerequisites before the chosen check.
 - The migrate flow renamed TanStack Router file routes, and the generator then took the `.d.vibex.ts` sidecar for the route. A one-pass plan now keeps those files as `.ts` or `.tsx`.
 - Migration API checks counted a native module body's declaration as a new entry point, so a module with an internal body never compared identical. Its parent's exports now decide the API.
 - `vibelang/babel` and `vibelang/metro` read only `.vibe`, so a `.vibex` module failed to parse or was left out of the bundle. Both now read `.vibex`.

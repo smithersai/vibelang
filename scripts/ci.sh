@@ -5,6 +5,7 @@
 # graph.
 #
 # Usage: scripts/ci.sh [smthrs ci arguments]   (default: //... --jobs 8)
+#        scripts/ci.sh --prepare-only          (install prerequisites, no targets)
 #
 # Environment:
 #   CI_GATE_BASE append changed-path seed targets relative to this jj revision
@@ -13,6 +14,12 @@
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
+
+prepare_only=0
+if [ "${1:-}" = --prepare-only ]; then
+  [ "$#" -eq 1 ] || { echo "usage: scripts/ci.sh --prepare-only (no target arguments)" >&2; exit 2; }
+  prepare_only=1
+fi
 
 # Installs are not targets: their lockfiles are the identity each target keys
 # on. A node_modules symlink is provisioned by its owner: use it as is, without
@@ -32,6 +39,10 @@ for stock_version in "$ts7_version" 7.0.2; do
  [ -x "$ts7_cache/node_modules/.bin/tsc" ] ||
   npm install --prefix "$ts7_cache" --no-audit --no-fund --silent "typescript@$stock_version"
 done
+
+# A focused check can use the exact CI prerequisites without selecting targets
+# or consulting gate-selection inputs. Native builds remain the check's job.
+[ "$prepare_only" -eq 0 ] || exit 0
 
 [ $# -gt 0 ] || set -- //... --jobs 8
 # A supplied empty paths file is meaningful; a failed lookup must stop the gate.
