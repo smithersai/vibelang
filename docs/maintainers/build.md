@@ -247,6 +247,13 @@ build and test commands before and after them.
 Parameter expansions stay inside their shell word, including the space in
 `GOFLAGS=${GOFLAGS:+$GOFLAGS }-trimpath`. The audit reaches the compiler's
 native helper and rejects removal of that appended flag.
+The same check follows the Go test command passed through
+`scripts/go-test-progress.mjs`. The observer forwards its arguments and
+environment unchanged, so wrapping a command does not exempt it from
+`-trimpath` checks. Removing the flag from the actual specification-check
+declaration must fail the audit; selector text and test-binary arguments
+cannot supply it.
+
 
 A `node_modules` symlink in any of these directories, including `.smithers`,
 is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never

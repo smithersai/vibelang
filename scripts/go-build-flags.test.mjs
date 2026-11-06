@@ -203,6 +203,10 @@ test("every go build or go test line compiles with -trimpath", () => {
           if (setting !== null) environment.trimpath = setting
           continue
         }
+        // The progress observer forwards the remaining argv and environment
+        // unchanged. Audit its Go child with the same command-local settings.
+        if (words[program] === "node" &&
+            /^(?:\.\/)?(?:\.\.\/)*scripts\/go-test-progress\.mjs$/.test(words[program + 1] ?? "")) program += 2
         const go = words[program] === "go" && /^(build|test)$/.test(words[program + 1] ?? "")
         const nativeProgram = program + (words[program] === "sh" ? 1 : 0)
         const native = /(?:^|\/)native-output\.sh$/.test(words[nativeProgram] ?? "") &&
@@ -490,3 +494,81 @@ for (const [name, flags, status] of [
   const result = auditNativeSource(t, shell + "\n", "scripts/build-vibelang.sh")
   assert.equal(result.status, status, result.stdout + result.stderr)
 })
+
+
+test("trimpath audit rejects removal from the real progress-wrapped specification command", t => {
+  const source = read("PACKAGE.ts")
+  const entry = "node ../../scripts/go-test-progress.mjs go test -json -count=1 -trimpath"
+  assert.equal(source.split(entry).length, 2, "the real progress command must be unique")
+  const current = auditNativeSource(t, source, "PACKAGE.ts")
+  assert.equal(current.status, 0, current.stdout + current.stderr)
+  const result = auditNativeSource(t, source.replace(entry, entry.replace(" -trimpath", "")), "PACKAGE.ts")
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /PACKAGE\.ts:.*go test invocation 1 requires -trimpath/)
+})
+
+test("trimpath audit checks generated progress-wrapped commands", t => {
+  const failures = []
+  let samples = 0
+  for (const path of ["scripts/go-test-progress.mjs", "./scripts/go-test-progress.mjs", "../../scripts/go-test-progress.mjs"]) {
+    for (const environment of ["", "GOFLAGS=-trimpath "]) {
+      for (const flags of ["", "-trimpath", "-trimpath=false", "-trimpath=false -trimpath"]) {
+        const shell = environment + "node " + path + " go test -json " + flags +
+          " -run 'one&&two;-trimpath' ./fixture && go test -trimpath ./control"
+        const source = "const target = { shell: " + JSON.stringify(shell) + " }\n"
+        const enabled = flags ? flags.split(" ").at(-1) === "-trimpath" : Boolean(environment)
+        const result = auditNativeSource(t, source)
+        if (result.status !== (enabled ? 0 : 1)) failures.push({ path, environment, flags, status: result.status })
+        samples++
+      }
+    }
+  }
+  assert.equal(samples, 24)
+  assert.deepEqual(failures, [])
+})
+
+for (const [name, shell, status] of [
+  ["wrapper flags stay local", "node scripts/go-test-progress.mjs go test -json -trimpath ./one && go test ./two", 1],
+  ["inline wrapper environment stays local", "GOFLAGS=-trimpath node scripts/go-test-progress.mjs go test -json ./one && go test ./two", 1],
+  ["wrapper inherits exported flags", "export GOFLAGS=-trimpath; node scripts/go-test-progress.mjs go test -json ./one", 0],
+  ["wrapper selector is data", "node scripts/go-test-progress.mjs go test -json -run '-trimpath' ./one", 1],
+  ["wrapper binary arguments are data", "node scripts/go-test-progress.mjs go test -json ./one -args -trimpath", 1],
+  ["different node script arguments stay data", "node scripts/report.mjs go test ./one", 0],
+  ["lookalike wrapper path stays data", "node tools/go-test-progress.mjs go test ./one", 0],
+]) test("trimpath audit checks progress wrapper boundaries: " + name, t => {
+  const result = auditNativeSource(t, shell + "\n", "scripts/build-vibelang.sh")
+  assert.equal(result.status, status, result.stdout + result.stderr)
+})
+
+// Execute the production wrapper with an argv-recording child to verify that
+// the audit sees the flags and environment actually forwarded to Go.
+for (const [name, environment, flags, status, childStatus] of [
+  ["missing flag", "", [], 1, 0],
+  ["explicit flag", "", ["-trimpath"], 0, 0],
+  ["inherited flag", "-trimpath", [], 0, 0],
+  ["explicit disable and child failure", "-trimpath", ["-trimpath=false"], 1, 7],
+]) test("trimpath audit agrees with real progress wrapper transport: " + name,
+  { skip: process.platform === "win32" && "POSIX shell executable fixture" }, t => {
+    const dir = mkdtempSync(join(tmpdir(), "go-progress-flags-"))
+    t.after(() => rmSync(dir, { recursive: true, force: true }))
+    const capture = join(dir, "capture.json"), child = join(dir, "capture.mjs")
+    writeFileSync(child, 'import { writeFileSync } from "node:fs"; ' +
+      'writeFileSync(process.env.AUDIT_CAPTURE, JSON.stringify({ args: process.argv.slice(2), flags: process.env.GOFLAGS })); ' +
+      'process.exitCode = Number(process.env.AUDIT_CHILD_STATUS)\n')
+    writeFileSync(join(dir, "go"), '#!/bin/sh\nexec "$AUDIT_NODE" "$AUDIT_CHILD" "$@"\n', { mode: 0o755 })
+    const args = ["test", "-json", ...flags, "-run", "one&&two;-trimpath", "./fixture"]
+    const wrapper = fileURLToPath(new URL("go-test-progress.mjs", import.meta.url))
+    const result = spawnSync(process.execPath, [wrapper, "go", ...args], {
+      encoding: "utf8", timeout: 15_000, cwd: dir,
+      env: { ...process.env, PATH: dir + ":" + process.env.PATH, GOFLAGS: environment,
+        AUDIT_NODE: process.execPath, AUDIT_CHILD: child, AUDIT_CAPTURE: capture, AUDIT_CHILD_STATUS: String(childStatus) },
+    })
+    assert.ifError(result.error)
+    assert.equal(result.status, childStatus, result.stdout + result.stderr)
+    assert.match(result.stderr, /go-progress .*event=finish .*cause=exit/)
+    assert.deepEqual(JSON.parse(readFileSync(capture, "utf8")), { args, flags: environment })
+    const shell = (environment ? "GOFLAGS=" + environment + " " : "") +
+      "node scripts/go-test-progress.mjs go test -json " + flags.join(" ") + " -run 'one&&two;-trimpath' ./fixture"
+    const audit = auditNativeSource(t, shell + "\n", "scripts/build-vibelang.sh")
+    assert.equal(audit.status, status, audit.stdout + audit.stderr)
+  })

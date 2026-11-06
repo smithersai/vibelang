@@ -34,6 +34,7 @@ export const buildContractFiles = [
   "scripts/check-forms-table.sh",
   "scripts/warm-go-cache.sh",
   "scripts/testing/node-failures.mjs",
+  "scripts/go-test-progress.mjs",
   ".github/workflows/go-cache.yml",
   ".github/workflows/mq-pregate.yml",
   "typescript/vibelang/smoke.sh",

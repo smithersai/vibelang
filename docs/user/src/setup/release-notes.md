@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Bundling native error declarations could pull in unused experimental platform services; generated language helpers now keep those services out of the bundle graph.
 
+- Build checks could miss a missing Go build flag when a progress logger wrapped the command; they now check the wrapped command too.
+
 - A throwing default on a generator callback could be rejected even when its caller caught it. Synchronous and async generators now check that default at the invoking `@rethrows` call; deferred bodies keep their own checks.
 
 - A service key hidden behind a conditional type alias could be treated as an ordinary class. It now reports the same errors as a directly named key.
