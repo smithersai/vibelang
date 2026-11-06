@@ -22,7 +22,8 @@ Read the project's root directory and record:
 | | A `package.json` | Existing project |
 | Package manager | `bun.lock` or `bun.lockb` | Bun |
 | | `package-lock.json`, or no lockfile | npm |
-| | `pnpm-lock.yaml` or `yarn.lock` | pnpm or Yarn: install the npm commands' packages with `pnpm add` or `yarn add` |
+| | `pnpm-lock.yaml` | pnpm: install the npm commands' packages with `pnpm add` |
+| | `yarn.lock` | Yarn: configure its [transitive pin](setup/existing-project.md#2-install-the-packages), then use `yarn add` |
 | Build | `vite` or `vitest` in `package.json`, or a `vite.config.*` or `vitest.config.*` file | Vite |
 | | `webpack`, `rollup`, `esbuild`, or `@rspack/core` in `package.json`, or `bun build` in a script | Another bundler: `vibelang-unplugin` |
 | | `metro` or `expo` in `package.json`, or a `metro.config.*` file | Metro |

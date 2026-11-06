@@ -1560,6 +1560,12 @@ const targets = {
     [],
     [bun]
   ),
+  "docs-yarn-install-pins": check(
+    "Yarn setup routes keep the transitive Effect pin in root package resolutions.",
+    "bun docs/tools/yarn-install-pins.mjs && bun test --timeout 30000 docs/tools/yarn-install-pins.test.ts",
+    [],
+    [bun]
+  ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --only-failures --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",

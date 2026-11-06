@@ -94,6 +94,29 @@ pnpm add --save-exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node
 pnpm add --save-dev --save-exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
+With Yarn, use the `node_modules` linker. Yarn Classic already uses it; for Yarn 2 and later, merge this into `.yarnrc.yml`:
+
+```yaml
+nodeLinker: node-modules
+```
+
+Put the transitive pin under [`resolutions`](https://yarnpkg.com/configuration/manifest#resolutions) in the root `package.json`; Yarn does not use npm's `overrides` setting:
+
+```json
+{
+  "resolutions": {
+    "@effect/platform-node-shared": "4.1.1"
+  }
+}
+```
+
+Then run:
+
+```sh
+yarn add --exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
+yarn add --dev --exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
+```
+
 | Package | Install as | Purpose |
 | --- | --- | --- |
 | `vibelang-runtime` | Dependency | Small helpers used by compiled code |
