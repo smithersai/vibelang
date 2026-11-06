@@ -187,6 +187,8 @@ A callable whose thrown type is `T` is assignable to a function type only when t
 
 Explicit `@throws {any}` follows TypeScript assignability: it fits a typed thrown contract such as `@throws {string}`, but not `@throws {never}`. In contrast, `@throws {unknown}` fits only a contract admitting `unknown`, such as `@throws {unknown}` or `@throws {any}`. Neither annotation fits an untagged callback type.
 
+Aliases in written `@throws` contracts have the meaning of their resolved TypeScript types. An alias of `never` throws nothing, and an alias of `unknown` admits every thrown type, just as their direct spellings do.
+
 `Effect.try` and `Effect.tryPromise` declare their thunk `@throws {unknown}` in both overloads, so `Effect.try(() => parse(s))` is allowed and the wrapper turns a throw into a failure. Effect's `LazyArg` and other callback parameter types, those in `.d.ts` files included, describe what an argument callback may throw: without `@throws`, they admit only `never`. So `sync(() => parse(s))` is an error. The `Promise` executor also admits `@throws {unknown}`, and the constructor itself throws `never`.
 
 Written `@throws` types retain their TypeScript structure. An inline type such as `@throws { { readonly code: string } }` requires a compatible `code` property, just as the same type named by an alias does. Nested properties, index signatures, function types and tuples follow the same assignability rules.

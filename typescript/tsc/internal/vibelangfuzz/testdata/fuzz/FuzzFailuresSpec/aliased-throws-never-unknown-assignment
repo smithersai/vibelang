@@ -1,0 +1,3 @@
+go test fuzz v1
+string("aliased-throws-never-unknown-assignment")
+byte(0)

@@ -516,6 +516,8 @@ A foreign callback returning `Effect`, `Stream` or `Layer` has synchronous throw
 
 Explicit `@throws {any}` follows TypeScript assignability: it fits a typed thrown contract such as `@throws {string}`, but not `@throws {never}`. In contrast, `@throws {unknown}` fits only a contract admitting `unknown`, such as `@throws {unknown}` or `@throws {any}`. Neither annotation fits an untagged callback type.
 
+Aliases in written `@throws` contracts have the meaning of their resolved TypeScript types. An alias of `never` throws nothing, and an alias of `unknown` admits every thrown type, just as their direct spellings do.
+
 A foreign constructor's own `@throws` contract also applies when its value is passed, assigned or returned as a construct signature. A construct signature without `@throws` admits only `never`; a signature with `@throws {E}` admits subtypes of `E`, and `@throws {unknown}` admits any thrown type. Overloads match their native parameter types. Constructors returning an effectful value keep their intrinsic synchronous thrown type `never`.
 
 Written `@throws` types retain their TypeScript structure. An inline type such as `@throws { { readonly code: string } }` requires a compatible `code` property, just as the same type named by an alias does. Nested properties, index signatures, function types and tuples follow the same assignability rules. For an incompatible foreign contract, choose a callback with an admitted thrown type or update the owning API explicitly. `--fix` does not choose a new error value or widen an external callback contract.

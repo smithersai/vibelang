@@ -1,0 +1,3 @@
+go test fuzz v1
+string("aliased-throws-any-any-argument")
+byte(0)

@@ -144,12 +144,17 @@ func writtenThrows(c *checker.Checker, decl *ast.Node) throwContract {
 				}
 				contract.tagged = true
 				t := tag.AsJSDocThrowsTag().TypeExpression.AsJSDocTypeExpression().Type
-				switch {
-				case t == nil, t.Kind == ast.KindUnknownKeyword:
+				if t == nil {
 					contract.unknown = true
-				case t.Kind == ast.KindNeverKeyword:
+					continue
+				}
+				resolved := c.GetTypeFromTypeNode(t)
+				switch {
+				case resolved.Flags()&checker.TypeFlagsUnknown != 0:
+					contract.unknown = true
+				case resolved.Flags()&checker.TypeFlagsNever != 0:
 				default:
-					contract.types = append(contract.types, c.GetTypeFromTypeNode(t))
+					contract.types = append(contract.types, resolved)
 				}
 			}
 		}

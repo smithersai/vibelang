@@ -19,6 +19,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The Go-only contributor instructions omitted the runtime dependencies, so mapper tests could fail with missing Effect imports. The guide now includes that install.
 - The grammar reference described whole-shape services as unsupported; it now links `service Name: Shape {}` to the accepted declaration grammar.
 - Inline object and function types in `@throws` could lose their members and admit incompatible callbacks. Throw contracts now retain those members and use the same checks as named types.
+- Type aliases of `never` and `unknown` in `@throws` could reject compatible callbacks. They now behave like the underlying types.
 - A routed import in a migrated package could point at a declaration file that was never written, so TypeScript fell back to untyped JavaScript and reported TS7016 and TS7006 across the importers. A route now names the declaration the compiler wrote.
 - In a repository whose root project also compiles its packages, a routed import could point outside its package, and Bun then failed with `Cannot find module`. A package's own emitted file now wins.
 - The site's Proposals page still showed a layer as `Layer.effect(Users) { ... }`, a trailing block that `EK1101` rejects, and the contributor benchmark for `vibelang/register` generated its modules in that older syntax, so every module it wrote failed to compile. The page now shows `Layer.effect(Users, effect { ... })`, and the benchmark generates current syntax.
