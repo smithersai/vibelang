@@ -6,7 +6,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/module"
+	"github.com/microsoft/TypeScript/tsc/internal/outputpaths"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/tracing"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -63,4 +65,53 @@ func (p *fileLoader) resolveModuleBodyImport(name string, from tspath.RootedFile
 		return result, owner
 	}
 	return resolved, ""
+}
+
+// A project-reference declaration resolves from its source directory first.
+// A body's output has no ordinary root-file entry. Recover its owning source
+// through the reference output map, then verify the actual body and emit path.
+func (p *fileLoader) isProjectReferenceModuleBodyOutput(name string, emitted *module.ResolvedModule) bool {
+	if tspath.IsDeclarationFileName(name) || emitted == nil || !emitted.IsResolved() || emitted.Extension != tspath.ExtensionDts {
+		return false
+	}
+	target := strings.TrimSuffix(string(emitted.ResolvedFileName), tspath.ExtensionDts)
+	baseStart := strings.LastIndexByte(target, '/') + 1
+	for _, extension := range []string{tspath.ExtensionVibe, tspath.ExtensionVibex} {
+		for offset := baseStart; offset < len(target); {
+			index := strings.Index(target[offset:], extension+".")
+			if index < 0 {
+				break
+			}
+			index += offset
+			offset = index + 1
+			ownerOutput := tspath.RootedFilePathFromNormalized(target[:index] + tspath.ExtensionDts)
+			owner := p.projectReferences.getProjectReferenceFromOutputDts(p.toPath(ownerOutput.AsPath()))
+			if owner == nil || !owner.Source.IsVibeLangSource() || !strings.HasSuffix(string(owner.Source), extension) {
+				continue
+			}
+			text, ok := p.host.FS().ReadFile(owner.Source)
+			if !ok {
+				continue
+			}
+			parsed := parser.ParseSourceFile(ast.SourceFileParseOptions{
+				FileName: owner.Source, PathKey: p.toPath(owner.Source.AsPath()),
+			}, text, core.GetScriptKindFromFileName(owner.Source))
+			for _, body := range parsed.EmbeddedModules() {
+				if p.host.FS().FileExists(body.FileName()) {
+					continue
+				}
+				output := outputpaths.GetOutputDeclarationFileNameWorker(body.FileName(), owner.Resolved.CompilerOptions(), owner.Resolved)
+				if p.toPath(output.AsPath()) == emitted.ResolvedPath {
+					if p.tracing != nil {
+						p.tracing.Instant(tracing.PhaseProgram, "vibeProjectReferenceBodyOutput", map[string]any{
+							"sourceKind":       extension,
+							"priorDeclaration": p.host.FS().FileExists(tspath.RootedFilePathFromNormalized(moduleBodyDeclarationPath(body))),
+						})
+					}
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
