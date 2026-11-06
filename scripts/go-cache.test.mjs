@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { readFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { dirname, join } from "node:path"
 import { test } from "node:test"
 
 // .github/workflows/go-cache.yml compiles, on each push to main, what the graph's Go targets compile and saves the
@@ -75,4 +77,66 @@ test("the hosted pre-gate frees disk space before it restores a cache", () => {
   assert.ok(free > 0 && firstRestore > 0, "both steps")
   assert.ok(free < firstRestore, "space is freed first")
   assert.match(yml.slice(free, firstRestore), /sudo rm -rf \/usr\/share\/dotnet /)
+})
+
+// Copy sources without repository metadata or installs. Warmup must work with
+// the POSIX tools in the Go-only workflow, including when Node is unavailable.
+function warmFixture(t) {
+  const root = mkdtempSync(join(tmpdir(), "go-cache-inventory-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const put = (path, source) => {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), source)
+  }
+  for (const path of ["scripts/warm-go-cache.sh", "PACKAGE.ts", "typescript/PACKAGE.ts", "typescript/tsc/PACKAGE.ts", "scripts/check-forms-table.sh"]) {
+    put(path, read(path))
+  }
+  const inventory = "scripts/go-cache-packages.awk"
+  try { put(inventory, read(inventory)) } catch (error) { if (error.code !== "ENOENT") throw error }
+  const run = () => spawnSync("sh", [join(root, "scripts/warm-go-cache.sh"), "--print"], {
+    encoding: "utf8", timeout: 10_000
+  })
+  return { root, put, run }
+}
+
+test("new declared Go packages enter warmup without maintaining another list", t => {
+  const { put, run } = warmFixture(t)
+  const source = read("typescript/tsc/PACKAGE.ts")
+  for (let index = 0; index < 32; index++) {
+    const pattern = "./internal/cacheFixture" + index + (index % 2 ? "/..." : "/")
+    put("typescript/tsc/PACKAGE.ts", source + '\nconst added = goTest("new regression", "' + pattern + '", "internal/cacheFixture' + index + '")\n')
+    const result = run()
+    assert.ifError(result.error)
+    assert.equal(result.status, 0, result.stderr)
+    const patterns = result.stdout.trim().split("\n")
+    assert.ok(patterns.some(p => covers(p, pattern)), "warmup misses " + pattern)
+    assert.equal(patterns.some(p => covers(p, "./internal/cacheFixture" + index + "Sibling")), false)
+    if (!pattern.endsWith("/...")) assert.equal(patterns.some(p => covers(p, pattern + "nested")), false)
+  }
+})
+
+test("warmup inventory is unique and deterministic", () => {
+  const patterns = warmed()
+  assert.deepEqual(patterns, [...new Set(patterns)].sort())
+})
+
+test("unreadable or empty declaration inventories fail before warming any package", t => {
+  const { root, put, run } = warmFixture(t)
+  rmSync(join(root, "typescript/tsc/PACKAGE.ts"))
+  assert.notEqual(run().status, 0, "missing declarations must not silently narrow warmup")
+  for (const path of ["PACKAGE.ts", "typescript/PACKAGE.ts", "typescript/tsc/PACKAGE.ts", "scripts/check-forms-table.sh"]) put(path, "")
+  const empty = run()
+  assert.notEqual(empty.status, 0, "an empty inventory must not mean go test in the current directory")
+  assert.match(empty.stderr, /inventory|package/i)
+})
+
+test("dynamic package suffixes refuse a partial inventory", t => {
+  const { put, run } = warmFixture(t)
+  for (const suffix of ["$" + "{part}", "*", "?", "[ab]", "+extra", "{a,b}"]) {
+    put("typescript/tsc/PACKAGE.ts", read("typescript/tsc/PACKAGE.ts") +
+      '\nconst dynamic = "./internal/cacheFixture' + suffix + '"\n')
+    const result = run()
+    assert.notEqual(result.status, 0, suffix)
+    assert.match(result.stderr, /dynamic package selector/, suffix)
+  }
 })

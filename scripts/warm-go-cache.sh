@@ -14,15 +14,29 @@
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
-# The packages the graph's Go targets and scripts/check-forms-table.sh compile.
-# scripts/go-cache.test.mjs fails when a target names a package these miss.
-tests="./internal/vibelangestree/... ./internal/vibelangfmt/... ./internal/vibelang/... ./internal/vibelangmapper/... ./internal/vibelangfuzz/... ./internal/checker/...
-./internal/effecttsgo/shim/checker/ ./internal/effecttsgo/lint ./internal/parser/... ./internal/format/... ./internal/core/... ./internal/project ./internal/tsoptions ./internal/tspath ./internal/ast ./internal/compiler
-./internal/vibelangfmt/... ./internal/effectglobals/... ./internal/ls/..."
-commands="./cmd/tsc ./cmd/vibelang-forms ./cmd/vibelang-mapper"
+# Read literal package selectors from their declarations, without loading the
+# graph or requiring Node/Bun in the Go-only cache workflow. Keep exact packages
+# exact; recursive selectors stay recursive. The independent graph audit checks
+# coverage, and the native fixture executes a newly declared package with Go.
+inventory=$(awk -f "$root/scripts/go-cache-packages.awk" \
+    "$root/PACKAGE.ts" "$root/typescript/PACKAGE.ts" \
+    "$root/typescript/tsc/PACKAGE.ts" "$root/scripts/check-forms-table.sh")
+inventory=$(printf '%s\n' "$inventory" | LC_ALL=C sort -u)
+tests=
+commands=
+for p in $inventory; do
+    case "$p" in
+        ./internal/*) tests="$tests $p" ;;
+        ./cmd/*) commands="$commands $p" ;;
+    esac
+done
+if [ -z "$tests" ] || [ -z "$commands" ]; then
+    echo "warm-go-cache: incomplete package inventory (test and command packages required)" >&2
+    exit 1
+fi
 
 if [ "${1:-}" = --print ]; then
-	for p in $tests $commands; do echo "$p"; done
+	printf '%s\n' "$inventory"
 	exit 0
 fi
 
@@ -33,10 +47,10 @@ out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
 # The targets' flags: Go keys a compile on its flags and environment, not on
 # the -run, -count or -p a test target adds.
-for c in $commands; do go build -trimpath -o "$out/" "$c"; done
+for c in $commands; do go build -p 8 -trimpath -o "$out/" "$c"; done
 # -run '^$' compiles and vets each test package and runs no test.
 # shellcheck disable=SC2086
-go test -count=1 -trimpath -run '^$' $tests >/dev/null
+go test -p 8 -count=1 -trimpath -run '^$' $tests >/dev/null
 
 # A build that uses an entry sets its mtime to now when the mtime is over an
 # hour old, so an entry older than 90 minutes went unused: an earlier main's

@@ -54,7 +54,8 @@ const nativeInputs = S.Shell.Test({
   data: [
     S.file("tsc/PACKAGE.ts"), S.file("go.work"), S.file("PACKAGE.ts"), S.file("native-inputs.test.mjs"),
     S.file("//.smithers/WORKSPACE.ts"), S.file("//.smithers/package.json"), S.file("//.smithers/bun.lock"),
-    S.file("//scripts/native-output.sh")
+    S.file("//scripts/native-output.sh"), S.file("//scripts/warm-go-cache.sh"),
+    S.file("//scripts/go-cache-packages.awk"), S.file("//scripts/check-forms-table.sh")
   ],
   tools: [S.Host.bin("node"), S.Host.bin("go"), S.Host.bin("bun")],
   sandbox: "none",

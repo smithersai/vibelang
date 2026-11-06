@@ -168,3 +168,57 @@ test("native producer artifacts replay across clean checkouts and reject stale i
   assert.equal(build(second), "ran")
   assert.equal(execute(second), "producer-two\n")
 })
+
+// Use the real declaration loader, Go compiler and production warmup. A newly
+// declared exact package must be compiled without pulling in invalid neighbours
+// or executing tests while the cache is prepared.
+test("cache warmup follows a new real graph package without widening it", { timeout: 300_000 }, t => {
+  const { root, put } = fixture(t)
+  for (const file of ["scripts/warm-go-cache.sh", "scripts/go-cache-packages.awk", "scripts/check-forms-table.sh"]) {
+    put(file, readFileSync(join(repo, file)))
+  }
+  const added = '"go-cache-fixture": goTest("Cache fixture regression.", "./internal/cachefixture", "internal/cachefixture", "^TestCacheFixture$"),'
+  const catalog = readFileSync(join(root, "typescript/tsc/PACKAGE.ts"), "utf8")
+  put("typescript/tsc/PACKAGE.ts", catalog.replace("targets: {", "targets: {\n    " + added))
+  const inventory = spawnSync("sh", [join(root, "scripts/warm-go-cache.sh"), "--print"], { encoding: "utf8", timeout: 10_000 })
+  assert.ifError(inventory.error)
+  assert.equal(inventory.status, 0, inventory.stderr)
+  const patterns = inventory.stdout.trim().split("\n")
+  assert.ok(patterns.includes("./internal/cachefixture"), "new graph package must enter warmup automatically")
+  assert.ok(!patterns.includes("./internal/cachefixture/..."), "exact package must not expand to descendants")
+
+  // Supply tiny real packages for the rest of the unchanged catalog, so the
+  // complete production warmup can run without building the compiler itself.
+  for (const pattern of patterns) {
+    const dir = pattern.replace(/^\.\//, "").replace(/\/\.\.\.$/, "").replace(/\/$/, "")
+    const main = dir.startsWith("cmd/")
+    put("typescript/tsc/" + dir + "/fixture.go", main ? "package main\nfunc main() {}\n" : "package fixture\n")
+  }
+  // The helper fixture has pre-existing Go files with their actual package name.
+  for (const [dir, name] of [["vibelangestree", "vibelangestree"], ["vibelangfuzz", "vibelangfuzz"]]) {
+    put("typescript/tsc/internal/" + dir + "/fixture.go", "package " + name + "\n")
+  }
+  put("typescript/tsc/internal/cachefixture/fixture_test.go", 'package fixture\nimport "testing"\n' +
+    'func TestCacheFixture(t *testing.T) {}\n' +
+    'func TestWarmupMustNotExecute(t *testing.T) { t.Fatal("cache warmup executed tests") }\n')
+  for (const dir of ["cachefixture/nested", "cachefixtureSibling"]) {
+    put("typescript/tsc/internal/" + dir + "/invalid.go", "this package must never be compiled\n")
+  }
+
+  const run = spawnSync("sh", [join(root, "scripts/warm-go-cache.sh")], {
+    cwd: root, encoding: "utf8", timeout: 180_000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...process.env, GOCACHE: join(root, ".cache/go-warm") }
+  })
+  assert.ifError(run.error)
+  assert.equal(run.status, 0, run.stdout + run.stderr)
+  assert.match(run.stdout, /warm-go-cache: \d+s/)
+
+  const result = join(root, "cache-fixture-result.json")
+  const graph = spawnSync(cli, ["test", "//typescript/tsc:go-cache-fixture", "--jobs", "8", "--ui", "plain", "--results-file", result], {
+    cwd: root, encoding: "utf8", timeout: 120_000, maxBuffer: 16 * 1024 * 1024
+  })
+  assert.ifError(graph.error)
+  assert.equal(graph.status, 0, graph.stdout + graph.stderr)
+  const receipt = JSON.parse(readFileSync(result, "utf8")).results.find(entry => entry.label === "//typescript/tsc:go-cache-fixture")
+  assert.equal(receipt?.status, "ran", JSON.stringify(receipt))
+})

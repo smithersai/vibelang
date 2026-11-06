@@ -228,8 +228,16 @@ The workflow holds no secrets and its token only reads this repository. A hosted
 pass counts; a hosted failure sends the change back to a build host, which is the
 reference for rejecting it.
 
-The warmup includes `./internal/compiler` and `./internal/ls/...`, matching
-the compiler-regression and language-service test targets. `scripts/warm-go-cache.sh --print` prints its package inventory.
+Cache preparation reads literal `./internal/` and `./cmd/` package selectors
+from `PACKAGE.ts`, `typescript/PACKAGE.ts`, `typescript/tsc/PACKAGE.ts` and
+`scripts/check-forms-table.sh`; adding a literal package there needs no second
+cache list. The POSIX shell and `awk` reader needs no Node or Bun installation.
+It retains exact package boundaries and recursive `...` selectors, removes
+duplicates and refuses missing declarations, incomplete inventories or dynamic
+selector suffixes. Literals in comments remain included conservatively.
+`scripts/warm-go-cache.sh --print` prints the sorted inventory. The independent
+coverage audit and a real graph/Go fixture check a new exact package, invalid
+neighboring packages and compilation without running its tests.
 
 A hosted run compiles every Go package that changed since the Go cache it
 restores. `.github/workflows/go-cache.yml` keeps that cache current: on each push
