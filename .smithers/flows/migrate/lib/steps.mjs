@@ -428,7 +428,7 @@ async function checkPackage({ compiler, ts, t, pkg, log }) {
 }
 
 /** Rebuild affected project references before consuming their declarations. */
-async function refreshReferences(config, changed, log) {
+async function refreshReferences(config, changed, log, options = {}) {
   const root = config.target, tracked = await Jj.trackedFiles(root)
   const configs = [...new Set([
     ...tracked.filter(file => /(?:^|\/)(?:tsconfig[^/]*|vibe\.config|jsconfig)\.json$/.test(file)),
@@ -438,7 +438,7 @@ async function refreshReferences(config, changed, log) {
   // The planner follows each config's references itself, including solution
   // configs. A source-only revert has no graph and needs neither compiler.
   const ts = configs.length ? typeScriptOf(config, [fileURLToPath(new URL("../../../", import.meta.url))]) : undefined
-  return refreshProjectReferences({ root, ts, configs, changed, tracked, compiler: () => compilerOf(config), log })
+  return refreshProjectReferences({ root, ts, configs, changed, tracked, compiler: () => compilerOf(config), log, ...options })
 }
 
 /**
@@ -1983,7 +1983,9 @@ export async function revertMany(options) {
   // The lint configuration names the modules by their TypeScript paths again (foldkit-107).
   const lintPaths = followLintRenames(config.target, await Jj.trackedFiles(config.target))
   for (const result of results) result.lintPaths = lintPaths
-  const referenceRefresh = await refreshReferences(config, results.map(result => result.file), join(p.batch(b), "logs", "reference-refresh-revert.log"))
+  // A revert runs while other modules still fail: settle returns them one round
+  // at a time, and its next check reports what remains.
+  const referenceRefresh = await refreshReferences(config, results.map(result => result.file), join(p.batch(b), "logs", "reference-refresh-revert.log"), { diagnosticsAllowed: true })
   for (const result of results) result.referenceRefresh = referenceRefresh
   writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
   return results

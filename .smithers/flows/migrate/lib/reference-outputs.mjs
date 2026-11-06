@@ -108,7 +108,7 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
 }
 
 /** Persist each stage so failed or interrupted rebuilds cannot look complete. */
-export async function refreshProjectReferences({ root, ts, configs, changed, tracked, compiler, log, execute = run }) {
+export async function refreshProjectReferences({ root, ts, configs, changed, tracked, compiler, log, execute = run, diagnosticsAllowed = false }) {
   const startedAt = new Date().toISOString()
   let plan
   try { plan = referenceRefreshPlan({ root, ts, configs, changed, tracked }) }
@@ -125,9 +125,12 @@ export async function refreshProjectReferences({ root, ts, configs, changed, tra
   receipt.state = "outputs-cleared"
   writeJson(log + ".json", receipt)
   const result = await execute(quote(executable) + " --build --force --pretty false " + plan.roots.map(quote).join(" "), { cwd: root, log })
-  Object.assign(receipt, { state: result.code === 0 ? "complete" : "failed", finishedAt: new Date().toISOString(), code: result.code, signal: result.signal ?? null })
+  // Exit 1 and 2 mean the compiler finished and reported diagnostics; any other
+  // status, or a signal, means the rebuild itself did not finish.
+  const diagnostics = diagnosticsAllowed && !result.signal && (result.code === 1 || result.code === 2)
+  Object.assign(receipt, { state: result.code === 0 ? "complete" : diagnostics ? "diagnostics" : "failed", finishedAt: new Date().toISOString(), code: result.code, signal: result.signal ?? null })
   writeJson(log + ".json", receipt)
   assertFinished(result, log)
-  if (result.code !== 0) throw new Error("project reference rebuild failed; see " + log)
+  if (result.code !== 0 && !diagnostics) throw new Error("project reference rebuild failed; see " + log)
   return receipt
 }

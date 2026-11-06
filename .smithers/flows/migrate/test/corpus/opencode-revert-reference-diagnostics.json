@@ -1,0 +1,6 @@
+{
+  "key": "opencode-revert-reference-diagnostics",
+  "producer": "export const value = 1\n",
+  "consumerError": "export const broken: string = 1\n",
+  "rule": "A revert accepts a reference rebuild that finishes with diagnostics, because settle returns failing modules one round at a time and its next check reports what remains. A rebuild killed by a signal, or one that exits with any other status, still stops the revert. A migration compile keeps requiring a clean rebuild."
+}

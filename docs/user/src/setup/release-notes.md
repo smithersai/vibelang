@@ -22,6 +22,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Providers typed as `any` were rejected even though Effect accepts them. They now retain Effect's `unknown` error and requirement types.
 - Contributor build checks could break when a shared input helper gained an export; they now load those helpers consistently.
 - Reverting a module during migration could try to clear build outputs of unrelated packages and stop on an unsafe-output error. Reference refresh now limits cleanup to projects linked by references and records the path behind any refusal.
+- Reverting a failing module during migration stopped with "project reference rebuild failed" whenever any other module still had errors, so a migration could never settle. A revert now accepts a rebuild that reports diagnostics, and the next check lists what remains.
 
 - A line break beside a provider comma could hide other errors in the file. The compiler now also reports misplaced `provide` blocks and independent type errors.
 - Migration emission could retain a large TypeScript declaration graph while compiling, exhausting the coordinator heap. Declaration layout planning now finishes in a separate process before compilation and records its duration.
