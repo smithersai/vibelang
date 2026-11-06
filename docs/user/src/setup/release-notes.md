@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The React Compiler reported `Cannot access refs during render` on a ref written in an event handler of a `.vibex` module, because Babel, Metro and oxc read its JSX lowered. They now read the JSX, as for a `.tsx` module.
 
 - The replacement guide ruled out supported TypeScript 5 setups for `vue-tsc` and `svelte-check`. It now explains their reliance on TypeScript's JavaScript API.
+- Contributor queue instructions named the wrong base branch and required checks that run after landing. They now describe work on `vibe`, green commits on `main`, and the supplied base for hosted checks.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
 - The TypeScript replacement guide told npm to install an unavailable package. It now names the version included in this release and retains the source-checkout option.

@@ -190,18 +190,23 @@ emission or VIP-27. The broader migration suite remains unchanged.
 
 ## The merge queue's pre-gate
 
-The merge queue tests every queued change alone on current `main`, and a landing
-batch takes only changes that passed. Most of that testing runs on the project's
-build hosts. `.github/workflows/mq-pregate.yml` adds GitHub-hosted runners: one
-run checks out a commit of `main`, applies one change's patch, runs `scripts/ci.sh`
-with the gate's targets, and uploads the graph's results as an artifact named
-after the run.
+Contributors base new work on `vibe`; `main` advances through green commits.
+The merge queue can dispatch a pre-gate to check one queued change against a
+full base commit id. `.github/workflows/mq-pregate.yml` checks out that supplied
+commit, applies the change's patch, runs `scripts/ci.sh` with the gate's targets,
+and uploads the graph's results as an artifact named after the run.
+
+In stacked mode, changes land on `vibe` after the apply-and-build check without
+waiting for a pre-gate pass. Full validation runs after landing; `main` advances
+only through commits whose post-merge checks passed. Build toolchains from
+`main` unless a required change is available only on `vibe`, as
+[the repository guidance](../../AGENTS.md#vibe-and-main) describes.
 
 The queue dispatches it with a `repository_dispatch` event, `mq-pregate`, and a
 person can dispatch the same inputs with `gh workflow run`:
 
 ```sh
-gh workflow run mq-pregate.yml -f tag=<name> -f base=<commit on main> \
+gh workflow run mq-pregate.yml -f tag=<name> -f base=<full-base-commit-id> \
   -f targets='<targets>' -f patch=<base64 of the git diff, compressed with xz or gzip>
 ```
 
@@ -243,7 +248,9 @@ so one cache serves them all. All three native executable targets pass Go's
 preserving module, build tag and linker settings. The graph's `--jobs` controls simultaneous targets; it does not
 limit package compilation inside one target. `scripts/go-cache.test.mjs` fails when a target
 compiles a package the script misses, or when the two workflows' cache paths
-differ.
+differ. `scripts/mq-pregate.test.mjs` checks the pre-gate's base guidance and
+verifies that both dispatch paths carry the supplied commit into checkout and
+target selection.
 
 The runtime suite uses Bun's `--only-failures` reporter. Every test still runs,
 and the summary retains pass, skip and failure counts. Omitting individual
