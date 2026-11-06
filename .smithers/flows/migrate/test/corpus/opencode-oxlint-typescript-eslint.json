@@ -1,0 +1,10 @@
+[
+  {
+    "source": " oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- reviewed cast",
+    "expected": " eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- reviewed cast"
+  },
+  {
+    "source": " oxlint-disable-next-line typescript-eslint/no-explicit-any",
+    "expected": " eslint-disable-next-line @typescript-eslint/no-explicit-any"
+  }
+]

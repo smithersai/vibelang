@@ -609,7 +609,7 @@ Lint configuration follows a module across its rename. Setup, the codemod and `r
 
 A directory containing only `.vibe` files still runs the ESLint pass. Setup adds `--no-error-on-unmatched-pattern` to the native Oxlint invocations, which have no TypeScript left to lint, and file-list adapters handle empty native directory scans the same way.
 
-Oxlint disable and enable comments keep their original scope and source locations. The generated parser bridge translates only parsed directive comments, including core and TypeScript rule aliases; it does not rewrite source strings or user files. Unused directives remain quiet, as in Oxlint's default configuration.
+Oxlint disable and enable comments keep their original scope and source locations. TypeScript directive namespaces `typescript/`, `typescript-eslint/` and `@typescript-eslint/` identify the same rule. The generated parser bridge translates only parsed directive comments, including core and TypeScript rule aliases; it does not rewrite source strings or user files. Unused directives remain quiet, as in Oxlint's default configuration.
 
 A toolchain switch must not turn new test failures or compiler errors into the next baseline. The flow compares the unchanged native sources with the installed predecessor and candidate compilers, saves raw test reports and compiler identities in `baseline/`, and rejects new failures, missing passing tests or a newly failing command. Setup repeats the test comparison after wiring. A rejected `baseline/admission.json` also blocks replay, planning, codemod, verification and recording; repair the toolchain and start a fresh run from the original source. Existing upstream failures remain visible.
 

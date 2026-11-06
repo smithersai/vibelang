@@ -10,6 +10,7 @@ export function withOxlintComments(parser, aliases) {
       const reverse = new Map([...aliases].map(([actual, native]) => [native, actual]))
       const rule = name => reverse.get(name) ?? reverse.get("eslint/" + name)
         ?? (name.startsWith("eslint/") ? name.slice(7)
+          : name.startsWith("typescript-eslint/") ? "@" + name
           : name.startsWith("typescript/") ? "@typescript-eslint/" + name.slice(11) : name)
       for (const comment of result.ast.comments ?? []) {
         const match = /^(\s*)(?:oxlint|eslint)-(disable(?:-next-line|-line)?|enable)\b([\s\S]*)$/.exec(comment.value)

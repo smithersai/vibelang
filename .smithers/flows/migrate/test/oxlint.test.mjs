@@ -440,6 +440,7 @@ test("installed Oxlint disable and enable comments keep the same meaning in Vibe
     "// oxlint-disable-next-line anti-slop/no-unknown-parameters -- custom plugin\nexport function seeded(value: unknown) { return value }\n",
     "// oxlint-disable-next-line typescript/no-explicit-any -- native TS alias\nexport type Value = any\n",
     "// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ESLint TS alias\nexport type Value = any\n",
+    "// oxlint-disable-next-line typescript-eslint/no-explicit-any -- native extended TS alias\nexport type Value = any\n",
     "const unused = 1 // oxlint-disable-line eslint/no-unused-vars -- native alias\n",
     "/* oxlint-disable no-unused-vars */\nconst suppressed = 1\n/* oxlint-enable no-unused-vars */\nconst reported = 2\n",
     "// oxlint-disable-next-line\ndebugger;\n",
@@ -493,4 +494,26 @@ test("directive mutations preserve source strings, scope identity, reasons and l
       assert.equal(result.ast.comments[0].value, " " + expectedPrefix + "-" + verb + (names.length ? " " + names.map(name => targets[name]).join(", ") : "") + reason)
     }
   ), { seed: 8311010, numRuns: 150 })
+})
+
+test("native TypeScript lint directive aliases preserve the registered ESLint rule", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-oxlint-typescript-eslint.json", import.meta.url), "utf8"))
+  const transform = (value, aliases = new Map()) => {
+    const ast = { comments: [{ value }] }
+    const parser = { parseForESLint() { return { ast } } }
+    return withOxlintComments(parser, aliases).parseForESLint("").ast.comments[0].value
+  }
+  for (const entry of corpus) assert.equal(transform(entry.source), entry.expected)
+  fc.assert(fc.property(
+    fc.constantFrom("typescript", "typescript-eslint", "@typescript-eslint"),
+    fc.constantFrom("oxlint", "eslint"),
+    fc.constantFrom("disable", "disable-next-line", "disable-line", "enable"),
+    fc.constantFrom("no-explicit-any", "no-unsafe-type-assertion", "consistent-type-imports"),
+    fc.constantFrom("", " -- documented escape", " -- keep typescript-eslint/quoted unchanged"),
+    (namespace, prefix, verb, rule, reason) => {
+      const written = " " + prefix + "-" + verb + " " + namespace + "/" + rule + ", house/rule" + reason
+      const canonical = " " + prefix + "-" + verb + " @typescript-eslint/" + rule + ", house/rule" + reason
+      assert.equal(transform(written), transform(canonical))
+    }
+  ), { seed: 8311106, numRuns: 160 })
 })
