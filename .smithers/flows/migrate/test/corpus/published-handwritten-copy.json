@@ -1,0 +1,8 @@
+{
+  "key": "published-handwritten-copy",
+  "quote": "each export's type identical to \u0060tsc\u0060's in both directions",
+  "pattern": "A source handwritten declaration is copied to the published output directory. An explicit published copy must own its path even when a source copy is visited first.",
+  "javascript": "export const value = 1\n",
+  "before": "export declare const value: number\n",
+  "after": "export declare const value: string\n"
+}
