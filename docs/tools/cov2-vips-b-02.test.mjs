@@ -1,11 +1,6 @@
 // Pending coverage obligations; each activation checks the whole assigned rule.
 import { test } from "node:test"
 
-// rule-evidence: docs/design/vips/0027-declaration-output.md#9bf5c90d831a0352
-// VIP-27: cycle elision in vibe and ts.
-// Activation: Compile equivalent recursive builders as .vibe and unchanged .ts and assert the same elided repeated-type output.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-cyclic-inferred-declaration-types-2026-11-01 | cov2-vips-b cycle elision in vibe and ts | present | This applies to `.vibe` and unchanged `.ts` files alike.")
-
 // rule-evidence: docs/design/vips/0027-declaration-output.md#af0d109226341bb8
 // VIP-27: unrelated recursion diagnostics unchanged.
 // Activation: Require native TS7022/7023/7024 and unrelated TS5088 controls without allowing the anonymous-cycle exception to suppress them.

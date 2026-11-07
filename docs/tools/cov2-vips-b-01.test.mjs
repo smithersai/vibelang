@@ -50,8 +50,3 @@ test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#prior-art 
 // VIP-27: nonrelative sidecar source redirect.
 // Activation: Cross package exports, paths and #imports with realpath/preserveSymlinks and node_modules; redirect only a known available source outside node_modules.
 test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#prior-art | cov2-vips-b nonrelative sidecar source redirect | present | **Amended 2026-11-01: sidecars reached by non-relative names.** After native resolution and `realpath`/`preserveSymlinks` handling, a non-relative export, `paths` or `#imports` resolution to a known `.d.vibe.ts`/`.d.vibex.ts` sidecar uses its available source only when the final path is outside `node_modules`.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#62b07b8007aa750b
-// VIP-27: anonymous cycle declaration elision.
-// Activation: Compile recursive builders at the changed anonymous cycle sites; require /*elided*/ any and no new TS5088, compared with pinned native TypeScript.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-cyclic-inferred-declaration-types-2026-11-01 | cov2-vips-b anonymous cycle declaration elision | present | Declaration serialization retains TypeScript 5.9 and 7.0 behavior at the anonymous-type cycle sites changed by [TypeScript #64461](https://github.com/microsoft/TypeScript/pull/64461): write `/*elided*/ any` at the repeated type rather than report the new `TS5088`.")

@@ -35,6 +35,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The compiler help suggested configuring retired package-trust settings. It now identifies the legacy diagnostics section and points to `vibe.severities`.
 
+- A declaration whose inferred type held a reverse mapped type that met itself again, such as the result of `deep(node)` where `deep` takes a recursive mapped type and `node` refers to itself, failed with `TS5088` and declared nothing. It now declares the repeated type as `/*elided*/ any`, as TypeScript 5.9 and 7.0.2 do.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

@@ -3128,7 +3128,10 @@ func (b *NodeBuilderImpl) createAnonymousTypeNodeEx(t *Type, forceClassExpansion
 		}
 	} else if t.objectFlags&ObjectFlagsReverseMapped != 0 && b.ctx.flags&nodebuilder.FlagsAllowAnonymousIdentifier == 0 {
 		if b.ctx.visitedTypes.Has(typeId) {
-			return b.createCyclicStructurePlaceholder()
+			// A reverse mapped type met again is an anonymous-type cycle:
+			// TypeScript 5.9 and 7.0.2 elide it as /*elided*/ any, where 7.1
+			// reports TS5088 (VIP-27, anonymous-type cycle sites).
+			return b.createElidedInformationPlaceholder()
 		}
 		return b.visitAndTransformType(t, (*NodeBuilderImpl).createTypeNodeFromObjectType)
 	} else {

@@ -1,0 +1,10 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-cyclic-inferred-declaration-types-2026-11-01 | Declaration serialization retains TypeScript 5.9 and 7.0 behavior at the anonymous-type cycle sites changed by [TypeScript #64461](https://github.com/microsoft/TypeScript/pull/64461): write `/*elided*/ any` at the repeated type rather than report the new `TS5088`.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-cyclic-inferred-declaration-types-2026-11-01 | This applies to `.vibe` and unchanged `.ts` files alike.
+// The same declarations as lib.ts; expected/lib.d.ts is TypeScript 7.0.2's
+// output for this text, which run.mjs compares with both declarations.
+// reversed.ts and reversed-vibe.vibe hold a reverse mapped type met again.
+export const from = (value: string) => makeBuilder({ value })
+const makeBuilder = (state: { value: string }) => ({ state, named: (value: string) => makeBuilder({ value }) })
+export function chain(count: number) {
+  return { count, more() { return chain(count + 1) } }
+}

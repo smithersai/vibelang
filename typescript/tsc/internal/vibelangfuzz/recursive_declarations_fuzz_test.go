@@ -79,6 +79,8 @@ var recursiveShapes = []recursiveShape{
 	{"declaration", "E function make(count: number) {\n  return { count, more: () => W(make(count + 1)) }\n}"},
 	{"array", "E const make = (value: string) => ({ value, children: [() => W(make(value))] })"},
 	{"generic", "E const make = <T>(value: T) => ({ value, again: () => W(make(value)) })"},
+	// A reverse mapped type met again: 5.9.3 and 7.0.2 elide it, 7.1 reports TS5088.
+	{"reverse", "type Deep<T> = { [K in keyof T]: Deep<T[K]> }\ndeclare function deep<T>(x: Deep<T>): T\ndeclare const node: { n: number; self: typeof node }\nE const make = () => W(deep(node))"},
 }
 
 type recursiveInput struct {
@@ -140,7 +142,7 @@ func (in recursiveInput) source() string {
 		export = ""
 	}
 	text = strings.TrimSpace(strings.ReplaceAll(text, "E ", export+" "))
-	entry := map[string]string{"property": "make(\"a\")", "mutual": "ping(1)", "method": "make(1)", "declaration": "make(1)", "array": "make(\"a\")", "generic": "make(1)"}[in.shape.name]
+	entry := map[string]string{"property": "make(\"a\")", "mutual": "ping(1)", "method": "make(1)", "declaration": "make(1)", "array": "make(\"a\")", "generic": "make(1)", "reverse": "make()"}[in.shape.name]
 	return text + "\nexport const entry = () => " + entry + "\n"
 }
 
