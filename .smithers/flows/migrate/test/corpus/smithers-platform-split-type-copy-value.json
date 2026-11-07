@@ -1,0 +1,21 @@
+{
+  "source": "Smithers modules the platform split refused with \"the type X reads the value X\": .smithers/flows/issue-sweep flow.ts (platform code names a private `type Item = typeof Issue.Type` of a private schema that kept code also reads) and flows/sync PresenceRoom.ts (platform code returns a private interface whose field has the type of a private schema's same-name type). The sibling copies the private type, so the schema value moves with it and the module imports it back. Minimized; names and shapes kept.",
+  "ambient": "declare module \"node:fs\" { export function readFileSync(path: string, encoding: \"utf8\"): string }\n",
+  "others": {
+    "lib.ts": "export interface Schema<A> {\n  readonly Type: A\n  readonly decode: (u: unknown) => A\n}\nexport const literals = <const A extends ReadonlyArray<string>>(...xs: A): Schema<A[number]> => ({\n  Type: undefined as unknown as A[number],\n  decode: (u) => (xs.includes(u as string) ? (u as A[number]) : xs[0]),\n})\n"
+  },
+  "modules": [
+    {
+      "name": "issue-sweep flow",
+      "text": "import { readFileSync } from \"node:fs\"\nimport { literals } from \"./lib.ts\"\n\nconst Issue = literals(\"open\", \"closed\")\ntype Item = typeof Issue.Type\n\n/** Every issue state a sweep decodes. */\nexport const decodeAll = (xs: ReadonlyArray<unknown>): ReadonlyArray<string> => xs.map((x) => Issue.decode(x))\n\n/** How many items the file at path lists. */\nexport const countItems = (path: string): number => {\n  const items: ReadonlyArray<Item> = []\n  return readFileSync(path, \"utf8\").split(\"\\n\").length + items.length\n}\n",
+      "value": "Issue",
+      "probe": "return JSON.stringify([Object.keys(m).sort(), m.decodeAll([\"closed\", \"x\"])])"
+    },
+    {
+      "name": "sync PresenceRoom",
+      "text": "import { readFileSync } from \"node:fs\"\nimport { literals } from \"./lib.ts\"\n\nconst Attachment = literals(\"viewer\", \"editor\")\ntype Attachment = typeof Attachment.Type\n\ninterface Connection {\n  readonly id: string\n  readonly attachment: Attachment\n}\n\nconst decodeAttachment = (u: unknown): Attachment => Attachment.decode(u)\n\n/** The role a socket's attachment decodes to. */\nexport const role = (u: unknown): string => decodeAttachment(u)\n\n/** The connections the roster file at path lists. */\nexport const connections = (path: string): ReadonlyArray<Connection> =>\n  readFileSync(path, \"utf8\").split(\"\\n\").map((id) => ({ id, attachment: \"viewer\" }))\n",
+      "value": "Attachment",
+      "probe": "return JSON.stringify([Object.keys(m).sort(), m.role(\"editor\"), m.role(1)])"
+    }
+  ]
+}

@@ -74,10 +74,10 @@ test("t3code Desktop MacSettingsWindow: the refused module compiles natively as 
 // as a value, as a type, both or neither, and whose type reads the value or
 // not. When the moved code reads the value, the type moves with it and the
 // module re-exports what it exported; only an exported value whose type of
-// the same name is private stays. A private type the sibling would copy that
-// reads the value is refused as before. Otherwise the program checks and the
-// module's declaration is stock TypeScript's, or, through a re-export, has
-// the same names and types.
+// the same name is private stays. A private type the sibling copies that
+// reads the value takes the value with it, as moved code does. Otherwise the
+// program checks and the module's declaration is stock TypeScript's, or,
+// through a re-export, has the same names and types.
 test("a same-name value and type split by how the moved code reads them, keeping declarations", () => {
   let split = 0, refused = 0
   const shape = fc.record({
@@ -104,19 +104,20 @@ test("a same-name value and type split by how the moved code reads them, keeping
     assert.deepEqual(before.errors, [], text)
     const result = splitPlatform(text, "m.ts", ts)
     assert.ok(result, text)
-    const copiesTypeOfValue = !s.movedValueRead && s.movedTypeRead && s.typeReadsValue && !s.typeExported
-    const privateTwinOfExported = s.movedValueRead && s.valueExported && !s.typeExported
-    assert.equal(Boolean(result.refused), copiesTypeOfValue || privateTwinOfExported, (result.refused ?? result.platform) + "\n" + text)
+    // The value moves when the moved code reads it, or when the sibling copies
+    // the private type that reads it.
+    const valueMoves = s.movedValueRead || (s.movedTypeRead && s.typeReadsValue && !s.typeExported)
+    const privateTwinOfExported = valueMoves && s.valueExported && !s.typeExported
+    assert.equal(Boolean(result.refused), privateTwinOfExported, (result.refused ?? result.platform) + "\n" + text)
     if (result.refused) {
-      const named = copiesTypeOfValue ? /the type X reads the value X/ : /the value X would move to m.platform.ts but the type X stays/
-      assert.ok(named.test(result.refused), result.refused)
+      assert.match(result.refused, /the value X would move to m.platform.ts but the type X stays/)
       refused++
       return
     }
     // A type-only read imports the module's exported type or copies a private one, as before.
     const after = emit({ "m.ts": result.module, "m.platform.ts": result.platform })
     assert.deepEqual(after.errors, [], text + "\n----\n" + result.module + "\n----\n" + result.platform)
-    if (!s.movedValueRead) assert.equal(after.out["m.d.ts"], before.out["m.d.ts"], result.module)
+    if (!valueMoves) assert.equal(after.out["m.d.ts"], before.out["m.d.ts"], result.module)
     else {
       // The module re-exports or imports X from the sibling; its exported names and their types are the original's.
       const exportsOf = (out) => [...new Set([...[...out.matchAll(/^export (?:declare )?(?:const|function|type) (\w+)/gm)].map((m) => m[1]), ...[...out.matchAll(/^export (?:type )?\{ ([^}]+) \}/gm)].flatMap((m) => m[1].split(", "))])].sort()

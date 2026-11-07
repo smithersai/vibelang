@@ -71,8 +71,9 @@ for (const c of corpus.cases) {
 // reads one. Walking the chain from the type the platform code reads: an
 // exported type whose chain reads no kept value is copied; an exported type
 // whose chain does is imported, as before; a private type that reads the kept
-// value itself is refused, as before (the sibling cannot copy it). Every split
-// compiles with identical module declarations, and the sibling imports its
+// value itself is copied and the value moves to the sibling, which the module
+// re-exports. Every split compiles, the module's declarations are identical
+// or, when the value moves, export the same names, and the sibling imports its
 // module exactly when the walk reaches an imported type.
 test("the sibling imports its module only for an exported type that reads a kept value", () => {
   const ambient = 'declare var window: { readonly n?: number }\ndeclare module "lib" { export type Id = string & { readonly Id: unique symbol } }\n'
@@ -82,7 +83,7 @@ test("the sibling imports its module only for an exported type that reads a kept
     generic: fc.boolean(),
     reads: fc.constantFrom("none", "prev", "import", "kept")
   })
-  let copied = 0, imported = 0, refused = 0
+  let copied = 0, imported = 0, moved = 0
   fc.assert(fc.property(fc.array(shape, { minLength: 1, maxLength: 4 }), fc.nat(3), fc.nat(3), (types, platformRead, keptRead) => {
     const n = types.length
     const ref = (i) => `T${i}${types[i].generic ? "<string>" : ""}`
@@ -103,13 +104,21 @@ test("the sibling imports its module only for an exported type that reads a kept
     let expected = "copy"
     for (let i = p; ; i--) {
       if (types[i].exported && chainReadsKept(i)) { expected = "import"; break }
-      if (!types[i].exported && types[i].reads === "kept") { expected = "refuse"; break }
+      if (!types[i].exported && types[i].reads === "kept") { expected = "move"; break }
       if (!readsPrev(i)) break
     }
-    if (expected === "refuse") {
+    if (expected === "move") {
+      const before = check({ "src/m.ts": text }, ambient)
       const result = splitPlatform(text, "src/m.ts", ts, { globals: ["window"] })
-      assert.match(result?.refused ?? "", /reads the value keptValue/, text)
-      refused++
+      assert.ok(result && !result.refused, (result?.refused ?? "no split") + "\n" + text)
+      const after = check({ "src/m.ts": result.module, "src/m.platform.ts": result.platform }, ambient)
+      assert.deepEqual(after.errors, [], text + "\n----\n" + result.module + "\n----\n" + result.platform)
+      assert.ok(!importsOf(result.platform).includes("./m.ts"), result.platform)
+      assert.match(result.module, /^export \{ keptValue \} from "\.\/m\.platform\.ts"$/m, result.module)
+      assert.match(after.out["m.platform.d.ts"], /declare const keptValue: \{\s+k: number;\s+\};/, after.out["m.platform.d.ts"])
+      const exportsOf = (out) => [...out.matchAll(/^export (?:declare )?(?:const|function|type|interface) (\w+)|^export \{ (\w+) \}/gm)].map((m) => m[1] ?? m[2]).sort()
+      assert.deepEqual(exportsOf(after.out["m.d.ts"]), exportsOf(before.out["m.d.ts"]), after.out["m.d.ts"] + "\n---\n" + before.out["m.d.ts"])
+      moved++
       return
     }
     const result = split("src/m.ts", text, ["window"], ambient)
@@ -117,5 +126,5 @@ test("the sibling imports its module only for an exported type that reads a kept
     assert.equal(imports, expected === "import", text + "\n----\n" + result.platform)
     expected === "import" ? imported++ : copied++
   }), { seed: 2026110405, numRuns: 120 })
-  assert.ok(copied > 20 && imported > 10 && refused > 5, `copied ${copied}, imported ${imported}, refused ${refused}`)
+  assert.ok(copied > 20 && imported > 10 && moved > 5, `copied ${copied}, imported ${imported}, moved ${moved}`)
 })

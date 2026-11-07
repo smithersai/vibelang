@@ -278,7 +278,9 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
         }
         // A copied const takes its own constants with it.
         if (constants.has(needed) && (needed.exported || copied.has(d))) { copied.add(needed); grew = true; continue }
-        if (copied.has(d)) return { refused: `${file}: the type ${[...d.names].join(", ")} reads the value ${name}` }
+        // A value that moved code or a private type copy reads moves to the
+        // sibling, which never imports its module; the module imports it
+        // back, or re-exports it when exported.
         moved.add(needed); grew = true
       }
     }

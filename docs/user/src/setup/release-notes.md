@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The HTTP handler migration example could report missing `Request` or `Response` types when its declarations were checked. Both the original and repaired examples now load the web types their signatures require.
 - Migration examples could reject the expected source-extension diagnostic as a failed conversion. They now follow TypeScript for value and type-only imports, including when neither extension option is enabled.
 
+- The migrate flow kept a module in TypeScript with "the type Item reads the value Issue" when its platform code named a private type that reads a module value, such as `type Item = typeof Issue.Type` beside a private schema `Issue`. The `.platform.ts` companion copies such a type, so the value it reads now moves to the companion with it, and the module imports the value back or re-exports it.
 - A `.vibe` class constructor calling `super(...)` on a `.ts` base class whose constructor declares `@throws {RangeError}` was accepted, so constructing the class could throw from synchronous VibeLang code. The call is now `EK0401`, as any other call known to throw in a constructor.
 
 - A `schema` field typed `Date`, `URL`, `RegExp`, `Uint8Array`, `ReadonlySet<T>` or `ReadonlyMap<K, V>` reported `EK2109`. These TypeScript-library types now map to Effect's `Schema.Date`, `Schema.URL`, `Schema.RegExp`, `Schema.Uint8Array`, `Schema.ReadonlySet` and `Schema.ReadonlyMap`. `Set` and `Map` still report `EK2109`, now with a note that names the read-only form.
