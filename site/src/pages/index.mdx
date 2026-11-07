@@ -114,6 +114,8 @@ effect function main() {
     try Console.log(try greet("ada"))   // Hello, Ada
   }
 }
+
+await runPromise(main())
 ```
 
 ```ts [Effect]
@@ -140,6 +142,8 @@ const UsersLive = Layer.succeed(Users, {
 const main = Effect.gen(function* () {
   yield* Console.log(yield* greet("ada"))
 }).pipe(Effect.provide(UsersLive))
+
+await Effect.runPromise(main)
 ```
 
 :::
