@@ -30,6 +30,16 @@ test("all grammar admission copies match their source", () => {
   assert.deepEqual(generate(repository, { check: true }), [])
 })
 
+test("method decorator lowering records its enclosing class context", () => {
+  const row = loadRows(repository).find(row => row.hook === "vibelang/methods.go:lowering.methodModifiers")
+  assert.ok(row, "method decorator lowering needs a source admission row")
+  assert.equal(row.form, "admission:effect-method")
+  assert.equal(row.status, "support")
+  assert.deepEqual(row.authority.split(","), ["900-appendices.md#EffectMethod", "002-running.md"])
+  assert.match(row.reason, /decorator/i)
+  assert.match(row.reason, /enclosing.*context/i)
+})
+
 test("fresh grammar generation is idempotent and preserves output mtimes", () => {
   const root = fixture()
   try {

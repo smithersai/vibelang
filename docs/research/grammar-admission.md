@@ -30,6 +30,12 @@ Neither helper admits a new form. Effect callable
 binding helpers, including `bindSuperMethod`, cite the existing
 [bindings rule](../design/src/001-functions.md#bindings); they introduce no syntax.
 
+Method decorator lowering is `admission:effect-method` support under
+`EffectMethod` and the class evaluation rules in
+[Running Effects](../design/src/002-running.md). Decorators run where their
+class is defined and retain that enclosing Effect context; this support row
+introduces no additional syntax.
+
 A `-` authority and `pending` status mean that no accepted authority was
 found. Those rows record audit debt, including denied and open proposals;
 they grant no permission to accept the form and request no compiler change.
