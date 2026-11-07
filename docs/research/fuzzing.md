@@ -1150,3 +1150,5 @@ The shared-package inventory includes `TestHasVibeLangDirective` and
 Selection and cache-input controls reject dropped targets, duplicate target names,
 narrowed selectors and sibling packages, so compiling the AST as a dependency cannot stand in for
 running its directive regressions.
+
+The native module companion oracle isolates only the bundler framework wrapper. It loads declared plugin dependencies from the importing source’s package scope, so source-map helpers execute as installed while the keyed source-owner and exclusion checks remain strict.

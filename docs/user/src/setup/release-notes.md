@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.12
 
 - A migration revert or compile in a repository whose root `tsconfig.base.json` has `allowJs` and no `include` stopped in reference planning with `unsafe project output: packages/fly/lib`: TypeScript's default include made that options-only config list every emitted `lib/*.js` and `lib/*.d.ts`, and each listed file counted as a source to protect. Untracked JavaScript and declarations that only configurations outside the rebuilt graph list now count as outputs, so the refresh clears and rebuilds them; tracked files and untracked TypeScript sources still refuse the deletion.
+- Checks of generated bundler modules could stop when loading a source-map helper. They now load the plugin’s declared helpers and check the generated modules.
 
 - A Vite config with a nested `root`, such as `root: "web"` with `vibelang({ project: "../tsconfig.json" })`, failed to load the project's modules outside that root: `core/Leaf.vibe is not part of tsconfig.json. Add it to the tsconfig's include.`, though the include listed it. The project now compiles from its package's directory, so every module it includes loads. The same applies to the bundler plugins of `vibelang-unplugin`.
 
