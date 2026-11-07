@@ -624,7 +624,7 @@ func checkTrust(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsFunctionLike(node) && node.Body() != nil {
 			boundary = boundary || isBoundaryCallback(c, node)
 		}
-		if ast.IsCallExpression(node) && !boundary && !outsideFibers(c, a, node) {
+		if ast.IsCallExpression(node) && !boundary && (!outsideFibers(c, a, node) || a.inEffectfulPlainHome(node)) {
 			checkCall(c, a, file, node)
 		}
 		if hatchOf(node) != "" {
@@ -645,8 +645,12 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	if unwrappedPromiseInvocation(c, call) {
 		return
 	}
+	effectfulPlain := false
 	if fn := enclosingFunction(call); fn != nil && !a.runsAsEffect(fn) {
-		return // D282: a plain function's calls of TypeScript code are JavaScript calls
+		if !a.isEffectfulPlainHome(fn, call) {
+			return // D282: a plain function's calls of TypeScript code are JavaScript calls
+		}
+		effectfulPlain = true
 	}
 	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {
 		return
@@ -654,6 +658,15 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	t := callTrust(c, call)
 	callee := call.Expression()
 	name := nodeText(file, callee)
+	if effectfulPlain {
+		// Chapter 3 (Plain code never throws): a plain function whose return
+		// type is wholly effectful is stricter, and any thrown type other than
+		// never is EK0401. A written contract is the plain-code pass's.
+		if _, written := foreignThrowsContract(c, call); !written && (t.kind == trustForeign || t.kind == trustUnknown) && !t.promise && !t.value && a.knownThrows(call) == nil {
+			report(c, callee, unknownThrowInEffectful, name)
+		}
+		return
+	}
 	// Chapter 1 (Static rules) and chapter 3 (Code outside the generator):
 	// an effect function's parameter list, a class field initializer and a
 	// static block are not effect code. A call whose throwing is unknown
@@ -715,6 +728,33 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 			}
 		}
 	}
+}
+
+// unknownThrowInEffectful is EK0401's text for a call whose throwing is
+// unknown in a plain function whose return type is wholly effectful.
+var unknownThrowInEffectful = EK0401.With("'{0}' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => …)', declare the callee's '@throws', or move the code to a '.ts' file.")
+
+// inEffectfulPlainHome reports whether call, outside a hatch and an async
+// function, runs where isEffectfulPlainHome holds for its enclosing function.
+func (a *analyzer) inEffectfulPlainHome(call *ast.Node) bool {
+	fn := enclosingFunction(call)
+	return fn != nil && !inHatch(call) && !ast.HasSyntacticModifier(fn, ast.ModifierFlagsAsync) && !a.isEffect(fn) && a.isEffectfulPlainHome(fn, call)
+}
+
+// isEffectfulPlainHome reports whether call runs in the body of fn, a plain
+// function or method whose return type, written or inferred, is wholly
+// effectful, outside a try block with a catch clause and outside a literal
+// whose throws belong to the call it is passed to. A plain catch handler is
+// plain code of its own: an unannotated call there stays an ordinary call.
+func (a *analyzer) isEffectfulPlainHome(fn *ast.Node, call *ast.Node) bool {
+	if !ast.IsFunctionLike(fn) || fn.Body() == nil || isMarkedEffect(fn) || isProducer(fn) || isCatchHandlerOf(fn) || inCatchingTry(call) {
+		return false
+	}
+	if a.plainHomeOf(call) != fn || inParameterListOf(call, fn) || a.throwsBelongToCall(fn, call) {
+		return false
+	}
+	signature := a.checker.GetSignatureFromDeclaration(fn)
+	return signature != nil && isEffectfulType(a.checker, a.checker.GetReturnTypeOfSignature(signature))
 }
 
 // returnsEffectful reports whether call's callee returns wholly an Effect, a

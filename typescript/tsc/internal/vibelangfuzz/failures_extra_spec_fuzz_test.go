@@ -37,6 +37,27 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "effectful-service-" + decl.name + "-throw", Quote: effectfulBody, Code: 401, Host: "none", Decls: decl.body + "\nexport function key(): typeof Store { ⟦throw new Error(\"bad\")⟧; return Store }"})
 	}
+	// The stricter body rule: in a plain function whose return type is wholly
+	// effectful, a call whose throwing is unknown is EK0401 too, unless a try
+	// block with a catch clause in the same function encloses it.
+	const unknownLib = "export declare function untagged(): number\nexport declare class Untagged { value: number }\n/** @throws {never} */\nexport declare function safe(): number"
+	for _, body := range []struct{ name, decls string }{
+		{"effect", "export function probeBody(): Effect.Effect<number> { ⟦untagged()⟧; return Effect.succeed(1) }"},
+		{"exit", "import { Exit } from \"effect\"\nexport function probeBody(): Exit.Exit<number> { return Exit.succeed(⟦untagged()⟧) }"},
+		{"arrow-stream", "import { Stream } from \"effect\"\nexport const probeBody = (): Stream.Stream<number> => Stream.make(⟦untagged()⟧)"},
+		{"inferred", "export function probeBody() { const n = ⟦untagged()⟧; return Effect.succeed(n) }"},
+	} {
+		add(&failCase{Name: "effectful-body-unknown-" + body.name, Quote: effectfulBody, Code: 401, Host: "none", Lib: unknownLib, Decls: body.decls})
+	}
+	for _, body := range []struct{ name, decls string }{
+		{"caught", "export function probeBody(): Effect.Effect<number> { try { untagged() } catch { } return Effect.succeed(1) }"},
+		{"never", "export function probeBody(): Effect.Effect<number> { safe(); return Effect.succeed(1) }"},
+		{"partial", "export function probeBody(): Effect.Effect<number> | undefined { untagged(); return undefined }"},
+		{"plain", "export function probeBody() { return untagged() }"},
+		{"nested", "export function probeBody(): Effect.Effect<number> { const f = () => untagged(); return Effect.sync(f) }"},
+	} {
+		add(&failCase{Name: "effectful-body-control-" + body.name, Quote: effectfulBody, Host: "none", Lib: unknownLib, Decls: body.decls})
+	}
 	const methods = "[ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13)."
 	const rejected = "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |"
 	const priority = "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form."

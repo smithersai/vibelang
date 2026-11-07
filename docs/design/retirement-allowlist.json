@@ -1928,5 +1928,15 @@
       "reference": "docs/design/DECISIONS.md: retired layer declarations"
     },
     "reason": "The existing invalid setup-order fixture already fails with EK9209; the retired declaration additionally reports its preserving migration error EK2121."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effectful-plain-unknown-call.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: the accepted effectful-callables amendment says a function whose return type is wholly Effect, Stream or Layer cannot throw; docs/design/src/003-failures.md (Plain code never throws) makes any thrown type other than never EK0401 in such a plain function. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The call's .ts callee has no @throws tag, so its thrown type is unknown. A repair must choose between making the function effect, which changes its declaration and its callers, declaring a contract on the foreign callee, or moving the code to a .ts file; each needs author intent, and a mechanical rewrite must not change when or whether the call's exception surfaces."
   }
 ]
