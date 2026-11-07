@@ -65,6 +65,7 @@ import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { routeBundledImports, routePrefix as bundledImportPrefix } from "./bundled-imports.mjs"
+import { declarationRouteLeaks } from "./route-declarations.mjs"
 import { routeSourceDeclarationImports, sourceDeclarationPrefix } from "./source-declaration-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
@@ -1504,7 +1505,7 @@ export function recordOutputs(outputs, dir, written, ownerOf) {
   return outputs
 }
 
-export async function emitMigratedJs(config, t, logs) {
+export async function emitMigratedJs(config, t, logs, { routeDeclarations } = {}) {
   const snippets = await captureTrackedSourceSnippets(t, { ts: () => typeScriptOf(config) })
   const artifact = compilerArtifactOf(config.toolchain)
   const emitted = [], sourceOutputs = new Map(), outputs = {}
@@ -1548,6 +1549,27 @@ export async function emitMigratedJs(config, t, logs) {
     if (!affected.length) break
     if (pass >= config.packages.length) throw new Error("Emission routing did not reach a fixed point: " + changedSources.join(", "))
     for (const pkg of affected) await emit(pkg, pass + 1)
+  }
+  // Published declarations never name a route (route-declarations.mjs). A
+  // published package whose compiled declarations still do gets its routes
+  // restored and its modules emitted again; the modules its tests bundle then
+  // return to TypeScript at the test gate instead of shipping an import that no
+  // consumer resolves. Tests pass routeDeclarations for the declaration emit.
+  const routedFiles = routingPasses.flatMap(pass => pass.routed.changed)
+  const declareRoutes = routeDeclarations ?? ((pkg, outDir) => emitPackageDeclarations({ compiler: compilerOf(config), ts: typeScriptOf(config), t, pkg: { ...pkg, dtsTsconfig: pkg.dtsTsconfig ?? pkg.tsconfig }, outDir, log: outDir + ".log" }))
+  for (const pkg of config.packages) {
+    const manifest = join(t, pkg.dir, "package.json")
+    if (!existsSync(manifest) || readJson(manifest).private === true) continue
+    if (!routedFiles.some(file => packageDirOf(t, file) === pkg.dir) && !readFileSync(manifest, "utf8").includes(bundledImportPrefix)) continue
+    const outDir = join(logs, "route-declarations", slug(pkg.dir))
+    await declareRoutes(pkg, outDir)
+    const leaks = declarationRouteLeaks(outDir)
+    if (!leaks.length) continue
+    const modules = [...new Set(routingPasses.flatMap(pass => pass.routed.modules).filter(module => packageDirOf(t, module) === pkg.dir))]
+    const restored = bundledImports({ ...config, packages: [pkg] }, { root: t, restore: true })
+    if (emitted.some(entry => entry.package === pkg.dir && !entry.restored)) await emit(pkg, routingPasses.length + 1)
+    emitted.push({ package: pkg.dir, files: 0, code: 0, restored: true, packingFiles: restored.changed, refusedRoutes: { declarations: leaks, modules },
+      warnings: [posix.join(pkg.dir, "package.json") + ": routes reach published declarations (" + leaks.join(", ") + "); restored them"] })
   }
   // A restored package emitted nothing and gets no record, as before.
   const recorded = emitted.filter((entry) => !entry.restored)

@@ -470,6 +470,9 @@ The routes serve tools that read sources. Compiled output names each routed
 module by its own output instead, `./user.js` for `#vibelang/emitted/src/user`,
 in JavaScript and in declarations, so no route reaches a published package and
 the program loads one copy of the module.
+Migration's record emit checks this: when a published package's compiled
+declarations still name a route, it restores that package's routes and
+reports the declaration files, so the modules its tests bundle stay TypeScript.
 
 Setup records every selected source, output and alias in
 `setup.json`'s `wired.emittedImports.modules`. It uses exact entries instead
