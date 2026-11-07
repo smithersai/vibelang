@@ -1,0 +1,25 @@
+// expect-result: ["spec-900t/Flags",1,true,7,2,"missing"]
+// Transitional diagnostics: EK4855 — spec-rule: docs/design/src/900-appendices.md#56fdd9f7fc321bc5
+// The vibelang --fix output of spec-900t-ek4855-static-default: the same result, without EK4855.
+import { Context as $legacyServiceContext } from "effect"
+import { $global as $legacyServiceInit } from "vibelang-runtime"
+void $legacyServiceInit
+const made = { count: 0 }
+function make() { made.count += 1; return { n: 7, nested: { count: 1 } } }
+class Flags extends $legacyServiceContext.Service<Flags, $legacyServiceContext.Service.Shape<typeof $legacyServiceShape>>()("spec-900t/Flags") {
+  static readonly default: $legacyServiceContext.Service.Shape<typeof $legacyServiceShape> = make()
+}
+service $legacyServiceShape {static readonly key = "spec-900t/Flags/shape/$legacyServiceShape";
+
+  n: number
+
+  nested: { count: number }
+}
+
+export effect function main() {
+  const madeBeforeRead = made.count
+  const same = Flags.default === Flags.default
+  Flags.default.nested.count += 1
+  const exit = try Effect.exit(effect { const flags = try Flags; return flags.n })
+  return [Flags.key, madeBeforeRead, same, Flags.default.n, Flags.default.nested.count, Exit.isFailure(exit) ? "missing" : "provided"]
+}

@@ -24,6 +24,7 @@ import (
 // fails to compile until it is migrated by hand; the owner removes the
 // setting when a run refuses none. A second run does not write it twice.
 // Chapter 007 / refused legacy run sites receive a documented failing severity: docs/design/src/007-tooling.md#d5b818651d984d56
+// Appendix B: EK4802 refusal severity — spec-rule: docs/design/src/900-appendices.md#048b7ad9fa0e5511
 func TestFixVIPRefusalFailsAndMakesEK4802AnError(t *testing.T) {
 	source := legacyRunsPrelude + "effect function f() {\n  return [1].map((n) => {\n    load(n)\n    return n\n  })\n}\n"
 	_, file, _, _ := editorProgram(t, source)
