@@ -28,6 +28,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The runtime guide's logger example failed to compile because it called the platform console directly. It now uses Effect's console adapter and runs with the documented output.
 - Following the Data guide could report an unknown option for migration-only fixes. The guide now includes the required `--fix` flag.
 - The services and layers guides described available forms as awaiting compiler support. They now describe those forms as available.
+- The timing examples could reject their output code as a fiber operation outside an effect function. They now join the fiber before formatting its result.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
