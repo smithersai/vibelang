@@ -1,0 +1,31 @@
+// expect: TS1338 TS1338 TS2322 TS2322 EK4857 TS2322 TS1338 TS2322 EK4857 TS1338 EK4857 TS1338
+// Each table row's source position is its own module, written as the table
+// writes it; expected/diagnostics.txt pins each row's transitional diagnostic.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | | `function p(): Effect.Effect<number, infer E> { return Effect.succeed(1) }` | `EK4857` |
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | | `const a = (): number!(infer E) => Effect.succeed(1)` | Native `TS1338`: the channel is parenthesized |
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | | `class C { effect m(): Effect.Effect<number, infer E, never> { return 1 } }` | `EK4857` |
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | | `type F = () => Effect.Effect<number, infer E>` | Native `TS1338` |
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | | `function p(): number { return 1 }` | No written `infer` channel; no `EK4857` |
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | Invalid native `infer` outside the set keeps `TS1338`; valid conditional inference keeps TypeScript's meaning everywhere.
+import { p as unmarked } from "./row1.vibe"
+import { a } from "./row2.vibe"
+import { C } from "./row3.vibe"
+import type { F } from "./row4.vibe"
+import { p as ordinary } from "./row5.vibe"
+export { unmarked, a, C, ordinary }
+export type { F }
+
+// Invalid native infer outside the set keeps TS1338.
+export let annotated: infer T
+export function parameter(x: infer T) { return x }
+
+// Valid conditional inference keeps its meaning, in a type alias, in a
+// plain annotation and inside an annotation that is in the set (EK4857 for
+// the error channel only). The TS2322 on each assignment below proves that
+// the conditional resolved Element<number[]> to number.
+type Element<T> = T extends Array<infer U> ? U : never
+export const element: Element<number[]> = "not a number"
+export function first<T>(xs: T): T extends Array<infer U> ? U : never { return undefined as never }
+export const firstOfStrings: number = first(["a"])
+export effect function inSet<T>(xs: T): (T extends Array<infer U> ? U : never)!infer E { return undefined as never }
+export effect function useInSet() { const n: string = try inSet([1]); return n }
