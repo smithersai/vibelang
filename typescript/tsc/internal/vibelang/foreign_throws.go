@@ -126,6 +126,11 @@ var foreignThrowingCall = EK0403.With("'{0}' may throw '{1}'. Wrap the call with
 // that old channel split, even while the checker uses the selected contract.
 // Intrinsic signatures retain the shipped classes the former emitter read.
 func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
+	// A partial Stream result formerly counted as effectful. It never
+	// received an implicit bridge, even with a written throws contract.
+	if legacyMarkerStreamReturn(c, call) {
+		return nil
+	}
 	decl := signatureDeclaration(c, call)
 	if decl == nil || isParameterCall(c, call) || legacyListedInManifest(c, ast.GetSourceFileOfNode(decl)) {
 		return nil
@@ -154,6 +159,50 @@ func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
 		}
 	}
 	return failures
+}
+
+// legacyMarkerStreamReturn identifies only migration sites whose former
+// marker-only Stream classification suppressed their synchronous contract.
+// Explicit trusted values kept their failure lists and must retain them.
+func legacyMarkerStreamReturn(c *checker.Checker, call *ast.Node) bool {
+	if callTrust(c, call).value {
+		return false
+	}
+	sig := c.GetResolvedSignature(call)
+	if sig == nil {
+		return false
+	}
+	for sig.Target() != nil {
+		sig = sig.Target()
+	}
+	result := c.GetReturnTypeOfSignature(sig)
+	if ast.IsOptionalChain(call) {
+		result = c.GetNonNullableType(result)
+	}
+	return !isEffectfulType(c, result) && legacyMarkerStreamType(c, result)
+}
+
+// legacyMarkerStreamType is the former effectful-return test, retained
+// only to preserve a migrated call's failure channel.
+func legacyMarkerStreamType(c *checker.Checker, t *checker.Type) bool {
+	if t != nil && t.Flags()&checker.TypeFlagsTypeParameter != 0 {
+		t = c.GetBaseConstraintOfType(t)
+	}
+	if t == nil {
+		return false
+	}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		for _, member := range t.Types() {
+			if !legacyMarkerStreamType(c, member) {
+				return false
+			}
+		}
+		return len(t.Types()) > 0
+	}
+	if t.Flags()&(checker.TypeFlagsObject|checker.TypeFlagsIntersection) == 0 {
+		return false
+	}
+	return isEffectfulType(c, t) || c.GetPropertyOfType(t, streamTypeID) != nil
 }
 
 // needsExplicitThrowsBridge identifies contracts whose former implicit

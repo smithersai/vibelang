@@ -99,6 +99,25 @@ func failuresExtraCases() []*failCase {
 			add(&failCase{Name: "erased-default-control-" + typ.name + "-" + body.name, Quote: effectfulBody, Host: "none", Decls: "declare const invoke: " + typ.value + "\n" + body.decls})
 		}
 	}
+	// Stream results use full assignability, as specified for effectful callables.
+	const streamReturns = "import type { Stream } from \"effect\"\nexport type Marker = Pick<Stream.Stream<number>, typeof Stream.TypeId>\nexport type NoChannel = Omit<Stream.Stream<number>, \"channel\">\nexport type NoPipe = Omit<Stream.Stream<number>, \"pipe\">\nexport type View = { readonly [K in keyof Stream.Stream<number>]: Stream.Stream<number>[K] }\nexport declare function marker(): Marker\nexport declare function noChannel(): NoChannel\nexport declare function noPipe(): NoPipe\nexport declare function whole(): Stream.Stream<number>\nexport declare function view(): View\nexport declare function mixed(): Marker | Stream.Stream<number>\nexport declare function constrained<T extends Marker>(): T\nexport declare function complete<T extends Stream.Stream<number>>(): T\nexport declare function untagged(): number\n/** @throws {never} */\nexport declare function safeMarker(): Marker\n/** @throws {RangeError} */\nexport declare function knownMarker(): Marker"
+	for _, call := range []struct{ name, expr string }{
+		{"marker", "marker()"}, {"no-channel", "noChannel()"}, {"no-pipe", "noPipe()"},
+		{"mixed", "mixed()"}, {"constraint", "constrained()"}, {"known", "knownMarker()"},
+	} {
+		add(&failCase{Name: "stream-return-" + call.name, Quote: effectful, Code: 403, Lib: streamReturns, Body: "const value = ⟦" + call.expr + "⟧"})
+	}
+	for _, call := range []struct{ name, expr string }{
+		{"whole", "whole()"}, {"view", "view()"}, {"constraint", "complete()"}, {"never", "safeMarker()"},
+	} {
+		add(&failCase{Name: "stream-return-control-" + call.name, Quote: effectful, Lib: streamReturns, Body: "const value = " + call.expr})
+	}
+	for _, body := range []struct{ name, decls string }{
+		{"body", "export function probe(): ReturnType<typeof marker> { untagged(); return marker() }"},
+		{"default", "export function probe(p = untagged()): ReturnType<typeof marker> { return marker() }"},
+	} {
+		add(&failCase{Name: "stream-return-plain-" + body.name, Quote: effectful, Host: "none", Lib: streamReturns, Decls: body.decls})
+	}
 	const methods = "[ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13)."
 	const rejected = "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |"
 	const priority = "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form."

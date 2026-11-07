@@ -65,6 +65,10 @@
       {
         "input": "typescript/vibelang/cases/rethrows-optional-tuple.fail",
         "output": "typescript/vibelang/cases/rethrows-optional-tuple-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/stream-return-contract.fail",
+        "output": "typescript/vibelang/cases/stream-return-contract-fixed-output"
       }
     ]
   },
