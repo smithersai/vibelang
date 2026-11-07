@@ -43,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A bundler in watch mode could stay failed after you created a missing imported source. It now rebuilds when that relative source appears.
 
+- Setting up coding agents with a missing target directory could print an uncaught exception. The command now reports the target error and asks for an existing project directory.
+
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
 - The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
 - The error guides described plain-function throws as JavaScript exceptions or defects. They now explain the compile error and show how to choose a typed failure or defect.

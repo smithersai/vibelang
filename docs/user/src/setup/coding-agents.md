@@ -1,5 +1,7 @@
 # Coding agents
 
+Run the setup command in an existing project directory containing `package.json`. A missing target path reports an error without creating the directory.
+
 `npx vibelang agents init` sets up a repository's coding agents for `.vibe` files. Each agent gets the VibeLang skill, instructions in `AGENTS.md`, the language server where it has an LSP client, and a check after each edit that applies `vibelang --fix` and returns the errors left to the agent. Each part uses the agent's own configuration files.
 
 ![The compiler tells the agent what to write instead](/videos/agent-loop.mp4)
