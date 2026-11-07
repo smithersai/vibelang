@@ -1,0 +1,14 @@
+{
+  "source": "opencode p05 cause E (app runtime/server/health), minimized",
+  "modules": [
+    {
+      "file": "src/health.ts",
+      "text": "interface Options {\n  readonly signal?: AbortSignal\n}\n\nexport function pause(opts?: Options): Promise<void> {\n  return new Promise((resolve) => setTimeout(resolve, opts?.signal?.aborted ? 0 : 10))\n}\n",
+      "globals": [
+        "setTimeout",
+        "AbortSignal"
+      ],
+      "kept": "Options"
+    }
+  ]
+}

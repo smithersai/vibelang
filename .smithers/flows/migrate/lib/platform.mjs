@@ -178,7 +178,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     }
   }
   const declaredAtTop = new Set(source.statements.flatMap((s) => (ts.isImportDeclaration(s) ? [] : [...declaredNames(s, ts)])))
-  for (const name of globals) if (!imported.has(name) && !declaredAtTop.has(name)) platform.add(name)
+  const hostGlobals = new Set([...globals].filter((name) => !imported.has(name) && !declaredAtTop.has(name)))
+  for (const name of hostGlobals) platform.add(name)
   if (!platform.size) return null
   // Each top-level declaration: the names it declares and the names it reads.
   const declarations = []
@@ -199,7 +200,12 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     const value = valueByName.get(name), type = typeByName.get(name)
     return value && type ? (d.valueReads.has(name) ? value : type) : (value ?? type)
   }
-  const moved = new Set(declarations.filter((d) => [...d.reads].some((n) => platform.has(n) && !byName.has(n))))
+  // A type alias or interface names a host global only as a type, which a .vibe
+  // file may write (`readonly signal?: AbortSignal`, `ReturnType<typeof
+  // setTimeout>`), so it moves only for a builtin import it reads; moved code
+  // that reads it takes a private copy, and the module keeps the declaration.
+  const platformRead = (d, n) => platform.has(n) && !byName.has(n) && !(typeOnly(d) && hostGlobals.has(n))
+  const moved = new Set(declarations.filter((d) => [...d.reads].some((n) => platformRead(d, n))))
   if (!moved.size) return null
   // The moved code takes the module's own declarations it reads, values and types.
   // Types stay in the module, whose declarations name them. The sibling has

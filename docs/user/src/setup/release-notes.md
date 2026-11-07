@@ -236,6 +236,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A function with a property assigned more than once, such as `f.x = a` followed by `f["x"] = b`, got declarations that named the property twice, which TypeScript rejects with `TS2300`. The declarations now declare the property once, with the type of everything assigned to it.
 
 - The migrate flow kept a module in TypeScript when one of its types read an exported function that the platform split moves, such as `export type Timer = ReturnType<typeof createTimer>`. The function stays in the module as a wrapper of the same name and signature, so the type keeps reading it and the module converts.
+- The migrate flow's platform split moved an interface that names a host type, such as `readonly signal?: AbortSignal`, out of the module while a function the module kept still used it, so the converted file reported `TS2304`. The interface now stays in the module, and the moved code uses its own copy.
 
 ### Upgrade from 0.0.12
 
