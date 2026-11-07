@@ -269,6 +269,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-signature-reserved-rest", "schema S = { (...static: Missing[]): Missing }"},
 	{"effect-type-second-bang-line-break", "{ type T = (\nnumber ! string\n! 1 )\nboolean }"},
 	{"effect-type-second-bang-nested", "type T = [number, (number!string\n!boolean)];"},
+	{"schema-effect-method", "schema S = { effect id() }"},
+	{"schema-effect-method-line-break", "schema S =\n{ async\neffect effect (\n) }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1044,6 +1046,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarSchemaModifiedMethod(ts, "static") {
 		return "admission:schema-static-method"
+	}
+	if grammarSchemaEffectMethod(ts) {
+		return "admission:schema-effect-method"
 	}
 	if grammarSchemaSignatureParameterModifier(ts) {
 		return "admission:schema-signature-parameter-modifier"

@@ -1996,6 +1996,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-async-method ` | ` admission:schema-async-method ` | ` - ` | ` pending ` | VIP-15: a schema object-type alias reports only `EK2109` for an `async` method signature, covering native `TS1070` |
 | ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-signature-parameter-modifier ` | ` admission:schema-signature-parameter-modifier ` | ` - ` | ` pending ` | VIP-15: a schema object-type alias reports only `EK2109` for a call signature, covering native parameter-modifier rejection |
 | ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-static-method ` | ` admission:schema-static-method ` | ` - ` | ` pending ` | VIP-15: a `static` schema-alias method reports only `EK2109`, covering native `TS1070` |
+| ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-effect-method ` | ` admission:schema-effect-method ` | ` - ` | ` pending ` | VIP-15: a schema object-type alias reports only `EK2109` for an `effect` method signature, covering the `EK0108` rejection of an `effect` type-literal member |
 | ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-signature-reserved-binding ` | ` admission:schema-signature-reserved-binding ` | ` - ` | ` pending ` | VIP-15: a schema-alias signature reports only `EK2109` for a strict-mode reserved parameter binding, covering native `TS1212` |
 
 </details>

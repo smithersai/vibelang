@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-effect-method-line-break\nschema S =\n{ async\neffect effect (\n) }")

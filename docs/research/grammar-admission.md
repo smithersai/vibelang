@@ -654,3 +654,16 @@ This is separate from a parameter modifier: `(static static)` retains
 The classifier reads binding positions; property keys, type references
 and initializer expressions do not become reserved parameter bindings.
 The compiler is unchanged and the known witnesses remain pending.
+
+An `effect` method signature in a schema alias is
+`admission:schema-effect-method`. Appendix A rejects an interface or
+type-literal member written with that modifier with `EK0108`, and
+`type S = { effect id() }` reports it. `schema S = { effect id() }`
+reports only `EK2109` for the unsupported member, which covers that
+rejection, as it covers `TS1024` and `TS1070` for the `readonly`, `async`
+and `static` method families. An untyped `async` property ended by a line
+break does not change the cover. A method named `effect`, an `effect`
+modifier ended by a line break and the named-body `EK1505` rejection stay
+outside the family. An optional `effect id?()` signature is a method in
+this family, not the `admission:schema-effect-field` field form. The
+compiler is unchanged and the witnesses remain pending.
