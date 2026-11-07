@@ -22,6 +22,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The fallback guide gave the wrong diagnostic for throwing calls in plain handlers. It now identifies `EK0401` and the effect-handler repair.
 - The Exit guide marked working constructors as unavailable. Its example now demonstrates both success and failure exits.
 - The throw-expression example used a statement instead of an expression. It now shows a missing-value fallback with `?? throw` and checks both outcomes.
+- Copying the TestClock guide's Vitest configuration into a starter rejected test files as outside the project. The guide now selects the starter's test configuration.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
