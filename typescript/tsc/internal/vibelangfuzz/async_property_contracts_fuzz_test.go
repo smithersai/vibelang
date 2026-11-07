@@ -21,6 +21,7 @@ func FuzzAsyncCallablePropertyContracts(f *testing.F) {
 	keys = append(keys, "computed-number-string", "computed-number-number", "computed-template", "computed-union", "computed-number-class", "computed-string-class", "computed-template-class", "computed-number-inherited", "computed-union-string", "computed-any-control", "computed-unknown-control", "computed-other-index-control", "computed-untyped-control")
 	keys = append(keys, "computed-template-number-contract", "computed-template-other-contract", "named-other-inferred-contract", "literal-other-inferred-contract", "computed-string-union-number", "computed-template-untyped-control", "computed-literal-untyped-control")
 	keys = append(keys, "computed-numeric-template-number", "computed-number-numeric-template", "computed-numeric-template-control")
+	keys = append(keys, "generic-union-number", "generic-union-string", "generic-union-template", "generic-numeric-template", "generic-union-class", "generic-control", "generic-any-control", "generic-chained-number", "generic-keyof-number", "generic-conditional-number", "generic-union-inherited", "generic-number-contract", "generic-symbol-control", "generic-symbol-inherited-control", "generic-unknown-control", "generic-literal-number", "generic-chained-template", "generic-literal-disjoint-contract")
 	for _, key := range keys {
 		f.Add(key, uint8(0))
 	}
@@ -155,6 +156,42 @@ func asyncCallablePropertySource(key string, mode uint8) (string, int, bool) {
 		source, offer = "const key: number = 7; export class Loader { [key: `${number}`]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
 	case "computed-numeric-template-control":
 		source, offer = "const key = '7' as `${number}`; export class Loader { ASYNC [key](input: Promise<number>) { return await input } }", true
+	case "generic-union-number":
+		source, offer = "export function create<K extends number | symbol>(key: K) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-union-string":
+		source, offer = "export function create<K extends number | symbol>(key: K) { const holder: { [key: string]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-union-template":
+		source, offer = "export function create<K extends `load${number}` | symbol>(key: K) { const holder: { [key: `load${number}`]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-numeric-template":
+		source, offer = "export function create<K extends `${number}` | symbol>(key: K) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-union-class":
+		source, offer = "export function create<K extends number | symbol>(key: K) { return class Loader { [key: number]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } } }", false
+	case "generic-control":
+		source, offer = "export {}; function create<K extends number | symbol>(key: K) { return class Loader { ASYNC [key](input: Promise<number>) { return await input } } }", true
+	case "generic-any-control":
+		source, offer = "export function create<K extends number | symbol>(key: K) { const holder: Record<number, (input: Promise<number>) => any> = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", true
+	case "generic-chained-number":
+		source, offer = "export function create<K extends number | symbol, P extends K>(key: P) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-keyof-number":
+		source, offer = "export function create<K extends keyof { [key: number]: unknown; [key: symbol]: unknown }>(key: K) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-conditional-number":
+		source, offer = "export function create<K extends number | symbol>(key: K extends number ? K : symbol) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-union-inherited":
+		source, offer = "interface Base { [key: number]: (input: Promise<number>) => Promise<number> }; interface Derived extends Base {}; export function create<K extends number | symbol>(key: K) { const holder: Derived = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-number-contract":
+		source, offer = "export function create<K extends number>(key: K) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-symbol-control":
+		source, offer = "export function create<K extends symbol>(key: K) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", true
+	case "generic-symbol-inherited-control":
+		source, offer = "class Base { [key: number]: (input: Promise<number>) => Promise<number> }; export {}; function create<K extends symbol>(key: K) { return class Loader extends Base { ASYNC [key](input: Promise<number>) { return await input } } }", true
+	case "generic-unknown-control":
+		source, offer = "export function create<K extends number | symbol>(key: K) { const holder: { [key: number]: (input: Promise<number>) => unknown } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", true
+	case "generic-literal-number":
+		source, offer = "export function create<K extends \"7\" | symbol>(key: K) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-chained-template":
+		source, offer = "export function create<K extends `${number}` | symbol, P extends K>(key: P) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
+	case "generic-literal-disjoint-contract":
+		source, offer = "export function create<K extends \"load\">(key: K) { const holder: { [key: number]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }; return holder }", false
 	case "untyped-field-control":
 		source, offer = "export class Loader { load = ASYNC (input: Promise<number>) => await input }", true
 	case "object-base-field-control":
@@ -172,7 +209,7 @@ func asyncCallablePropertySource(key string, mode uint8) (string, int, bool) {
 	}
 	// Some written class indexes must satisfy an inferred Promise index;
 	// their original value contracts cannot widen to PromiseLike.
-	if mode&4 != 0 && key != "computed-template-number-contract" && key != "computed-template-other-contract" && key != "computed-number-numeric-template" && key != "computed-numeric-template-number" {
+	if mode&4 != 0 && key != "computed-template-number-contract" && key != "computed-template-other-contract" && key != "computed-number-numeric-template" && key != "computed-numeric-template-number" && key != "generic-union-class" {
 		source = strings.ReplaceAll(source, "): Promise<number>", "): PromiseLike<number>")
 		source = strings.ReplaceAll(source, "=> Promise<number>", "=> PromiseLike<number>")
 	}

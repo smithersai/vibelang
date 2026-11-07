@@ -484,4 +484,4 @@ A native `Effect.gen(function* () { ... })` with JavaScript `try/catch` keeps th
 
 Option migration preserves comments and writes the qualified `Option.Option` type. A second `--fix` pass leaves the repaired source unchanged.
 
-Async-to-Effect editor conversions retain containing property contracts. A computed method key, including a numeric, template-literal or union key, still selects its applicable index signatures; the editor withholds conversion when those signatures require a `Promise` result. Indexes inferred from computed members also retain their compatibility checks. Migrate the method and its contracts together.
+Async-to-Effect editor conversions retain containing property contracts. A computed method key, including a numeric, template-literal or union key, still selects its applicable index signatures; the editor withholds conversion when those signatures require a `Promise` result. Indexes inferred from computed members also retain their compatibility checks. A generic computed key keeps these checks through its resolved constraint, including a union constraint. Migrate the method and its contracts together.

@@ -81,6 +81,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A refused constructor migration gave a generic message about moving its operands. The refusal now identifies direct `eval` or `yield*`, so the scope or suspension that needs a manual migration is clear.
 
+- An editor conversion could make a method with a generic computed key violate its indexed `Promise` return type. The editor now follows generic constraints when deciding whether to offer the conversion.
+
 - A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
 
 - An implicit `Effect.gen` repair could be refused when its body constructed a foreign class. It now preserves those constructor exceptions as defects, including member and aliased constructors.

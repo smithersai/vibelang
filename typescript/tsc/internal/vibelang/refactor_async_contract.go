@@ -1,6 +1,8 @@
 package vibelang
 
 import (
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
@@ -101,7 +103,12 @@ func asyncKeepsPromiseContract(c *checker.Checker, fn *ast.Node) bool {
 					keyType = c.GetTypeFromTypeNode(literalType)
 				}
 			}
-			for _, part := range unionMembers(keyType) {
+			parts := unionMembers(keyType)
+			// Keep exact key identity and inspect resolved generic constraints too.
+			if constraint := c.GetBaseConstraintOfType(keyType); constraint != nil && constraint != keyType {
+				parts = slices.Concat(parts, unionMembers(constraint))
+			}
+			for _, part := range parts {
 				// Numeric property keys also fall under string index signatures.
 				if keyApplies(part, info.KeyType()) {
 					return true
