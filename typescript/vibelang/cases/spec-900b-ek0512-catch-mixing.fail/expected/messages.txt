@@ -1,0 +1,8 @@
+main.vibe(7,20)
+main.vibe(8,14)
+main.vibe(9,15)
+main.vibe(10,33)
+main.vibe(11,38)
+main.vibe(12,30)
+main.vibe(13,37)
+A catch expression cannot mix with ??, || or && without parentheses, or attach an operator, member access or call to a closed handler.
