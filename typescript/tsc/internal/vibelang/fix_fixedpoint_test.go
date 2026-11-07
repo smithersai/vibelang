@@ -85,6 +85,7 @@ export error Bad { id: string }
 				t.Fatal(err)
 			}
 			second := FixProject(t.Context(), fs, bundled.LibPath(), fixConfigOf(t, fs, name))
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#8b7166d0d577488c | **Amended 2026-10-31: `--fix` reaches a fixed point, and a missing runtime is one error.** One `vibelang --fix` run applies fixes until none applies; running it again changes nothing, and a run that has not converged within its pass limit reports the remaining fixes as an error.
 			if second.Err != nil || len(second.Files) > 0 {
 				var changed []string
 				for _, name := range second.Order {
@@ -157,6 +158,7 @@ export type Shape = typeof Shape.Type
 	dir := filepath.Dir(file.FileName().AsString())
 	system := &fixLimitSystem{fs: bundled.WrapFS(osvfs.FS()), cwd: tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(dir))}
 	code := Fix(t.Context(), system, []string{"-p", dir})
+	// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#8b7166d0d577488c | **Amended 2026-10-31: `--fix` reaches a fixed point, and a missing runtime is one error.** One `vibelang --fix` run applies fixes until none applies; running it again changes nothing, and a run that has not converged within its pass limit reports the remaining fixes as an error.
 	if code != int(tsc.ExitStatusDiagnosticsPresent_OutputsGenerated) {
 		t.Fatalf("incomplete --fix exited %d, want 2; stdout=%s stderr=%s", code, system.out.String(), system.errors.String())
 	}

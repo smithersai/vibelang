@@ -44,8 +44,9 @@ func TestFixPlatformWrapperPreservesDeclaration(t *testing.T) {
 			}
 			dir := filepath.Dir(file.FileName().AsString())
 			result := fixCase(t, dir)
-			if result.Err != nil || len(result.Refused) != 0 || len(result.Files) != 2 {
-				t.Fatalf("expected a verified two-file migration: %+v", result)
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#167c07fbf7bca676 | VIP-33's platform repair alone may create a fresh absent sibling `.ts` file after proving the same run phase, captures, receiver and public types, never overwrite one.
+			if result.Err != nil || len(result.Refused) != 0 || len(result.Files) != 2 || result.Files[tspath.RootedFilePath(filepath.ToSlash(filepath.Join(dir, "main.platform.ts")))] == nil {
+				t.Fatalf("expected a verified two-file migration that creates main.platform.ts: %+v", result)
 			}
 			for name, fixed := range result.Files {
 				if err := os.WriteFile(name.AsString(), []byte(fixed.Text), 0600); err != nil {
@@ -81,23 +82,29 @@ func TestFixPlatformWrapperCaptureMovesOnlyHostRead(t *testing.T) {
 	}
 }
 
+// Each sibling module the companion could collide with, TypeScript or
+// JavaScript, refuses the repair and keeps its bytes.
 func TestFixPlatformWrapperRefusesExistingFiles(t *testing.T) {
 	for _, test := range []struct {
-		source, why string
-		existing    bool
+		source, why, suffix string
+		existing            bool
 	}{
-		{"export effect function probe() { return try Effect.try(() => window.location.origin); }", "already exists", true},
+		{"export effect function probe() { return try Effect.try(() => window.location.origin); }", "already exists", ".ts", true},
+		{"export effect function probe() { return try Effect.try(() => window.location.origin); }", "already exists", ".tsx", true},
+		{"export effect function probe() { return try Effect.try(() => window.location.origin); }", "already exists", ".js", true},
+		{"export effect function probe() { return try Effect.try(() => window.location.origin); }", "already exists", ".d.ts", true},
 	} {
-		t.Run(test.why, func(t *testing.T) {
+		t.Run(test.suffix, func(t *testing.T) {
 			_, file, _, _ := editorProgram(t, test.source)
 			dir := filepath.Dir(file.FileName().AsString())
-			existing := filepath.Join(dir, "main.platform.ts")
+			existing := filepath.Join(dir, "main.platform"+test.suffix)
 			if test.existing {
 				if err := os.WriteFile(existing, []byte("export const sentinel = 7\n"), 0600); err != nil {
 					t.Fatal(err)
 				}
 			}
 			result := fixCase(t, dir)
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#167c07fbf7bca676 | VIP-33's platform repair alone may create a fresh absent sibling `.ts` file after proving the same run phase, captures, receiver and public types, never overwrite one.
 			if len(result.Refused) != 1 || !strings.Contains(result.Refused[0].Error, test.why) {
 				t.Fatalf("missing refusal %q: %+v", test.why, result)
 			}

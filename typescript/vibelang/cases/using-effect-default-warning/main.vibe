@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#c24c0e4bba4ef1e7 | **Amended 2026-11-02: the native-resource warning belongs to VIP-34.** `using` in effect code has the default warning `EK0801`: a failure or interruption can abandon the generator before JavaScript disposal.
+// No severity override: the project gets EK0801's default category. Only the
+// effect function warns; the plain and async functions keep native using.
+export effect function inEffect(resource: Disposable) { using held = resource; return 1 }
+export function plain(resource: Disposable) { using held = resource; return 2 }
+export async function native(resource: AsyncDisposable) { await using held = resource; return 3 }

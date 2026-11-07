@@ -16,16 +16,6 @@ test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision
 // Activation: Run --fix-vip-only on function-kind and legacy try candidates plus prelude/import controls; assert only the VIP migration passes apply.
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b VIP only scope | present | `--fix-vip-only` selects the VIP migration passes, including the VIP-1/VIP-2 function-kind and `try` migration, excluding prelude/import cleanup.")
 
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#c24c0e4bba4ef1e7
-// VIP-34: native using effect warning.
-// Activation: Compile using in Effect code without an override, require warning EK0801 and zero warning-only exit, retaining plain/native using controls.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b native using effect warning | present | **Amended 2026-11-02: the native-resource warning belongs to VIP-34.** `using` in effect code has the default warning `EK0801`: a failure or interruption can abandon the generator before JavaScript disposal.")
-
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#433e4356640327a8
-// VIP-34: using repair scoped acquireDisposable.
-// Activation: Apply the context-safe quick fix in an isolated resource fixture and compare acquire/dispose traces with scoped acquireDisposable's native twin.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b using repair scoped acquireDisposable | present | Its context-safe quick fix uses `acquireDisposable` inside `scoped`.")
-
 // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#1201c82921527c11
 // VIP-34: VIP migration preserves success data phase.
 // Activation: Cross error, schema error, Effect and asEffect-shaped success data through known legacy wrappers; --fix-vip-only removes legacy try while preserving construction/run traces.
@@ -50,13 +40,3 @@ test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-wo
 // VIP-34: build fix project ownership.
 // Activation: Use a referenced-project graph with distinguishable source fixes and record build order; each project may edit only its own source files.
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | cov2-vips-b build fix project ownership | present | In `-b`, each project fixes its own files in build order.")
-
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#167c07fbf7bca676
-// VIP-34: platform repair absent sibling only.
-// Activation: Exercise phase/capture/receiver/public-type proofs and preexisting sibling paths; only a fresh absent .ts sibling may be created.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | cov2-vips-b platform repair absent sibling only | present | VIP-33's platform repair alone may create a fresh absent sibling `.ts` file after proving the same run phase, captures, receiver and public types, never overwrite one.")
-
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#c8a9f8f09355bffa
-// VIP-34: retired Effect alias warning.
-// Activation: Resolve the retired prelude Effect<A,E,R> alias and require EK4856; explicit native Effect imports and local-shadow names remain controls.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | cov2-vips-b retired Effect alias warning | present | **Amended 2026-11-01: legacy Effect alias migration.** VIP-3 allocates migration warning `EK4856` to uses resolving to the retired prelude `Effect<A, E, R>` alias.")
