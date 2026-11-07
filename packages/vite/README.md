@@ -167,15 +167,19 @@ v0 runs one `vibelang` subprocess for the whole project on the first module requ
 and after each source change; requests share that compilation. Each plugin
 instance owns an output directory under `node_modules/.vibelang/vite-*`, removed
 when Vite closes. It forces JavaScript and source-map emission, embeds source
-content, checks and emits only the `.vibe` files under the root (`--loader-root`), and
-disables declarations and incremental output.
+content, checks and emits only the project's own `.vibe` files (`--loader-root`): those
+under Vite's root, or under the project's package when its `tsconfig.json` sits
+above that root. It disables declarations and incremental output.
 Source paths in compiler maps resolve to the original files before Vite composes
 the maps for its transformations. Each hook returns an independent map, so
 Vite's path rewriting leaves the compiler's cached source paths and embedded
 source text intact for later requests, including inline module outputs.
 
-The Vite root must contain the project's source files; the plugin overrides
-`rootDir` to that root so emitted paths are predictable. Normal application
+Vite's root may be a directory inside your package, as `root: "web"` with
+`vibelang({ project: "../tsconfig.json" })`: that project still compiles every
+`.vibe` module its `include` lists, inside Vite's root or not. The plugin
+overrides `rootDir` to the filesystem root, so each emitted path mirrors its
+source path. Normal application
 `dist/` output stays separate. Each source change invalidates all loaded `.vibe`
 modules and their transitive importers, a conservative rule
 that covers exported contract and control changes without duplicating compiler

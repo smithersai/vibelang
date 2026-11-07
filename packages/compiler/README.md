@@ -304,7 +304,9 @@ module, a `tsconfig.json` elsewhere in the package does, such as a
 `worker/tsconfig.json` that includes `../db`: the first by path that lists the
 module, else the first by path that imports it. Sibling discovery does not enter
 nested packages. Custom-named configs must be selected explicitly or referenced. `project` stands for
-the config of `root`'s own directories. `load(file)` returns
+the config of `root`'s own directories. When `project` sits above or beside `root`, as a
+nested Vite root's `../tsconfig.json` does, it compiles from its package's directory instead, so every module it includes
+loads, inside `root` or not. `load(file)` returns
 the module's JavaScript, its source map, and its source diagnostics and project-wide diagnostics, for a
 `.vibe` file or for the output of one of its `module` declarations,
 `main.vibe.text.js` beside `main.vibe`, which `moduleDeclarationSource(path)`
@@ -312,7 +314,7 @@ recognizes;
 `invalidate()` makes every project compile again on its next load, or load from
 the cache when nothing changed. A compile runs `vibelang -p <tsconfig>
 --loader-root <root>`, which type-checks and emits only the `.vibe` files under
-`root`, the modules it serves; the project's `.ts` files only supply types. When the compiler is the `vibelang` launcher, the compile
+`root` (under the package's directory, for a project above or beside `root`), the modules it serves; the project's `.ts` files only supply types. When the compiler is the `vibelang` launcher, the compile
 runs the native compiler the launcher would run, without starting Node for it.
 
 The public `compileProjectSync` and `projectBackend().compile` results include
