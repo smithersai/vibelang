@@ -1,0 +1,6 @@
+import "vibelang/platform/node"
+
+// A CommonJS module: the rewrite keeps no runtime entry dispatcher.
+export effect function main() {
+  try Console.log("commonjs main ran")
+}

@@ -1,0 +1,10 @@
+import "vibelang/platform/node"
+
+// helper.runMain resolves to the program's own method, not a runner, so main
+// stays eligible and --fix writes its runner.
+const helper = { runMain(value: number) { return value } }
+helper.runMain(1)
+
+export effect function main() {
+  try Console.log("local-runner main ran")
+}

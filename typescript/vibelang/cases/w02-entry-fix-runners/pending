@@ -1,0 +1,1 @@
+witness-02 vibelang --fix has no entry migration: it leaves vibelang/platform/* markers in place and writes no NodeRuntime.runMain or BrowserRuntime.runMain call (007-tooling.md, Legacy entry-dispatch migration)

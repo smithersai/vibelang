@@ -1,0 +1,6 @@
+import "vibelang/platform/bun"
+
+// main needs FileSystem and Path, so the legacy compiler selected BunServices.layer.
+export effect function main() {
+  try Console.log(try (try FileSystem.FileSystem).readFileString((try Path.Path).join("data", "config.json")))
+}

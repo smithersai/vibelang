@@ -1,0 +1,8 @@
+import "vibelang/platform/node"
+
+// main needs FileSystem and the experimental Process: the legacy compiler
+// selected ExperimentalNodeServices.layer alone, which holds Effect's bundle.
+export effect function main() {
+  const pid = try (try Experimental.Process.Process).pid
+  try Console.log(`node experimental ${try (try FileSystem.FileSystem).exists("package.json")} ${pid > 0}`)
+}

@@ -1,0 +1,10 @@
+import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+
+// A checker-resolved top-level runner call makes main ineligible: the module
+// already starts itself, so --fix adds no second runner.
+export effect function main() {
+  try Console.log("main-with-runner ran")
+}
+
+NodeRuntime.runMain(main())
