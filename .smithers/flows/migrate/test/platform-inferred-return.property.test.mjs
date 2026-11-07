@@ -103,9 +103,12 @@ test("an inferred return type that names a private type or class names the sibli
   const ambient = 'declare module "node:fs" { export function readFileSync(path: string, encoding: "utf8"): string }\n'
   const privateType = 'import { readFileSync } from "node:fs"\ninterface Row { readonly id: string }\nexport const readRows = (path: string) => JSON.parse(readFileSync(path, "utf8")) as readonly Row[]\nexport const first = (rows: readonly Row[]): string => rows[0]?.id ?? ""\n'
   const rows = assertSplitPreserves("Rows.ts", privateType, ambient)
-  assert.match(rows.platform, /^export interface Row \{/m)
+  assert.match(rows.platform, /^interface Row \{/m)
+  assert.match(rows.platform, /^export type \{ Row \}$/m)
   const privateClass = 'import { readFileSync } from "node:fs"\nclass Handle { constructor(readonly text: string) {} }\nexport const open = (path: string) => new Handle(readFileSync(path, "utf8"))\n'
-  assert.match(assertSplitPreserves("Open.ts", privateClass, ambient).platform, /^export class Handle /m)
+  const open = assertSplitPreserves("Open.ts", privateClass, ambient)
+  assert.match(open.platform, /^class Handle /m)
+  assert.match(open.platform, /^export \{ Handle, open \}$|^export \{ Handle \}$/m)
   // A parameter with no written type has no signature to write: the function is re-exported instead.
   const untyped = 'import { readFileSync } from "node:fs"\nexport const read = (path) => readFileSync(path, "utf8")\nexport const name = "read"\n'
   const split = splitPlatform(untyped, "src/Read.ts", ts)

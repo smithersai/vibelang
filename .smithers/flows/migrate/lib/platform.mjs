@@ -412,18 +412,30 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
     else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name}: typeof ${alias.get(name)} = ${alias.get(name)}`)
   }
   const moduleText = joinParts(leadingHeader(source), head, body)
-  // The sibling: the imports the moved code reads, then the moved code, each
-  // declaration the module reads exported.
+  // The sibling: the module's header, the imports the moved code reads, the
+  // moved code as written, then an export of each private declaration the
+  // module reads or its inferred types name.
   const movedList = declarations.filter((d) => moved.has(d) || copied.has(d))
   const movedReads = new Set(movedList.flatMap((d) => [...d.reads]))
   const platformImports = imports.map((i) => importText(i, source, ts, (b) => movedReads.has(b.name))).filter(Boolean)
   if (typesFromModule.size) platformImports.push(`import type { ${[...typesFromModule].sort().join(", ")} } from "./${posix.basename(file)}"`)
-  const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : !d.exported && (fromSibling.some((n) => d.names.has(n)) || namedInSibling.has(d)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
+  // A private declaration keeps its text, so a convention that reads
+  // exported declarations, such as Smithers' JSDoc on every export, meets it
+  // as the original wrote it; the sibling exports it in a list after the code.
+  const listed = movedList.filter((d) => !d.exported && (fromSibling.some((n) => d.names.has(n)) || namedInSibling.has(d)))
+  const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : statementText(source, d.statement)))
+  const listedValues = [...new Set(listed.filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))]
+  const listedTypes = [...new Set(listed.filter(typeOnly).flatMap((d) => [...d.names]))].filter((n) => !listedValues.includes(n))
+  const platformExports = [listedValues.length ? `export { ${listedValues.join(", ")} }` : "", listedTypes.length ? `export type { ${listedTypes.join(", ")} }` : ""].filter(Boolean)
   const note = `// The platform code of ${posix.basename(file).replace(/\.tsx$/, ".vibex").replace(/\.m?ts$/, ".vibe")}, which a .vibe file does not import as a value (EK4402).`
-  // A file-wide directive governed the moved code too, so the sibling keeps it
-  // (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
-  const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)))
-  const platformText = joinParts(directives, [note], platformImports, platformBody)
+  // The sibling holds part of the module, so it starts with the module's
+  // header, a license or the module's documentation, which a repository may
+  // require of every file (Smithers: prose and `@since`); a shebang stays in
+  // the module. A file-wide directive outside the header governed the moved
+  // code too (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
+  const header = leadingHeader(source).map((h) => h.replace(/^#!.*(?:\r?\n|$)/, "").replace(/^\s*\n/, "")).filter((h) => h.trim())
+  const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)) && !header.some((h) => h.includes(d)))
+  const platformText = joinParts(header, directives, [note], platformImports, platformBody, platformExports)
   return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name), reexported: reexportedNames, exportedForInference }
 }
 

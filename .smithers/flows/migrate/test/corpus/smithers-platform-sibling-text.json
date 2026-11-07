@@ -1,0 +1,18 @@
+{
+  "source": "Smithers modules whose platform sibling failed the repository's JSDoc convention (root eslint: flows-jsdoc/module-header and jsdoc/require-jsdoc): agent/integrations core/Signature.ts, whose private hmacSha256 reads crypto.subtle and an export calls it, and flows/database internal/BunSqliteClient.ts, a triple-slash directive above the module header and a private make over bun:sqlite. The sibling had no header, and the split wrote `export` into each private helper, a declaration with no JSDoc. Minimized; shapes kept, with `/// <reference lib>` for the original's `/// <reference types=\"bun\" />`.",
+  "modules": [
+    {
+      "file": "Signature.ts",
+      "text": "/**\n * Constant-time HMAC-SHA256 webhook verification.\n *\n * The HMAC is WebCrypto's (`crypto.subtle`), which a browser, a Cloudflare\n * Worker, Node and Bun all provide.\n *\n * @since 1.0.0\n */\n\nconst encoder = new TextEncoder()\n\n// Text is UTF-8, as the provider signed it.\nconst hmacSha256 = (payload: string, secret: string): Promise<ArrayBuffer> =>\n  crypto.subtle.importKey(\"raw\", encoder.encode(secret), { name: \"HMAC\", hash: \"SHA-256\" }, false, [\"sign\"])\n    .then((key) => crypto.subtle.sign(\"HMAC\", key, encoder.encode(payload)))\n\nconst encodeHex = (bytes: ArrayBuffer): string =>\n  Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, \"0\")).join(\"\")\n\n/**\n * The lowercase hex HMAC-SHA256 of `payload` under `secret`.\n *\n * @category verification\n * @since 1.0.0\n */\nexport const computeHmacSha256Hex = (payload: string, secret: string): Promise<string> =>\n  hmacSha256(payload, secret).then(encodeHex)\n",
+      "globals": [
+        "crypto"
+      ],
+      "ambient": "declare class TextEncoder { encode(input: string): Uint8Array }\ndeclare var crypto: {\n  readonly subtle: {\n    importKey(format: \"raw\", key: Uint8Array, algorithm: { name: string; hash: string }, extractable: boolean, usages: string[]): Promise<object>\n    sign(algorithm: \"HMAC\", key: object, data: Uint8Array): Promise<ArrayBuffer>\n  }\n}\n"
+    },
+    {
+      "file": "BunSqliteClient.ts",
+      "text": "/// <reference lib=\"es2022\" />\n/**\n * Bun SQLite client whose raw writes report affected rows.\n *\n * @since 1.0.0\n */\n\nimport { Database } from \"bun:sqlite\"\n\ninterface Options {\n  readonly filename: string\n}\n\nconst make = (options: Options): Database => new Database(options.filename)\n\n/**\n * The file a client opens.\n *\n * @category constructors\n * @since 1.0.0\n */\nexport const filename = (options: Options): string => make(options).filename\n",
+      "ambient": "declare module \"bun:sqlite\" { export class Database { constructor(filename: string); readonly filename: string } }\n"
+    }
+  ]
+}
