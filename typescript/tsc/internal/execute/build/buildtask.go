@@ -18,8 +18,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/incremental"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
+	"github.com/microsoft/TypeScript/tsc/internal/tracing"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/zeebo/xxh3"
 )
 
 type buildKind uint
@@ -248,10 +250,29 @@ func (t *BuildTask) compileAndEmit(orchestrator *Orchestrator, path tspath.PathK
 		oldProgram = incremental.ReadBuildInfoProgram(t.resolved, orchestrator.host, compilerHost)
 	}
 	compileTimes.BuildInfoReadTime = orchestrator.opts.Sys.Now().Sub(buildInfoReadStart)
+	var tr *tracing.Tracing
+	if traceDir := t.resolved.CompilerOptions().GenerateTrace; traceDir != "" {
+		// Projects can build concurrently and each checker starts numbering at zero.
+		// Give each project its own output directory to preserve every trace.
+		projectDir := traceDir.ResolveDirectory(fmt.Sprintf("project-%016x", xxh3.HashString(t.config.AsString())))
+		var err error
+		tr, err = tracing.StartTracing(orchestrator.opts.Sys.FS(), projectDir, t.config.AsString(), orchestrator.opts.Testing != nil)
+		if err != nil {
+			fmt.Fprintf(&t.result.builder, "Warning: Failed to start tracing project %s: %v\n", t.config, err)
+		}
+		if tr != nil {
+			defer func() {
+				if err := tr.StopTracing(); err != nil {
+					fmt.Fprintf(&t.result.builder, "Warning: Failed to stop tracing project %s: %v\n", t.config, err)
+				}
+			}()
+		}
+	}
 	parseStart := orchestrator.opts.Sys.Now()
 	program := compiler.NewProgram(compiler.ProgramOptions{
-		Config: t.resolved,
-		Host:   compilerHost,
+		Config:  t.resolved,
+		Host:    compilerHost,
+		Tracing: tr,
 	})
 	compileTimes.ParseTime = orchestrator.opts.Sys.Now().Sub(parseStart)
 	changesComputeStart := orchestrator.opts.Sys.Now()
@@ -272,6 +293,7 @@ func (t *BuildTask) compileAndEmit(orchestrator *Orchestrator, path tspath.PathK
 		CompileTimes:       &compileTimes,
 		Testing:            orchestrator.opts.Testing,
 		TestingMTimesCache: orchestrator.host.mTimes,
+		Tracing:            tr,
 	})
 	t.result.exitStatus = result.Status
 	t.result.statistics = statistics
