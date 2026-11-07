@@ -1,3 +1,4 @@
+import { clientUrls, moduleUrls } from "./url-output.js"
 import { relativeOutput } from "./relative-output.js"
 import { aliasImport } from "./paths-imports.js"
 import { extensionlessImport } from "./relative-imports.js"
@@ -215,7 +216,10 @@ async function acquireProjects(backend, options) {
 
 /** @param {import('./index.d.ts').VibeLangOptions} options */
 export default function vibelang(options = {}) {
-  let root, project, logger, backend, modules, current, closing
+  let root, project, logger, backend, modules, current, closing, serving, clientGraph
+  let urlBase = "/"
+  const urlVersions = new Map()
+  const rewrittenUrls = new WeakSet()
 
   // One compile per tsconfig: the project for root's modules, and each
   // workspace package's own for modules outside root.
@@ -248,6 +252,7 @@ export default function vibelang(options = {}) {
 
   function close() {
     writtenImports.clear()
+    urlVersions.clear()
     const pending = modules
     modules = undefined
     current = undefined
@@ -286,6 +291,18 @@ export default function vibelang(options = {}) {
   }
 
   async function hotUpdate(context, environment) {
+    if (context.file.includes("%")) {
+      urlVersions.set(context.file, context.timestamp || Date.now())
+      const graph = environment?.moduleGraph ?? context.server.moduleGraph
+      // Vite's soft invalidation edits its cached raw URLs. Our escaped URLs
+      // need a fresh post transform, including the dependency's update timestamp.
+      for (const module of context.modules) for (const importer of module.importers) {
+        if (rewrittenUrls.has(importer)) {
+          graph.invalidateModule(importer)
+          debug(`served URL importer invalidated: ${importer.id}`)
+        }
+      }
+    }
     if (isGeneratedDeclaration(context.file)) { debug(`ignore generated declaration ${context.file}`); return [] }
     if (!/\.(?:vibex?|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
     const graph = environment?.moduleGraph ?? context.server.moduleGraph
@@ -362,10 +379,13 @@ export default function vibelang(options = {}) {
     },
     configResolved(config) {
       root = config.root
+      serving = config.command === "serve"
+      urlBase = config.base || "/"
       project = resolve(root, options.project || "tsconfig.json")
       logger = config.logger
     },
     configureServer(server) {
+      clientGraph = server.environments?.client?.moduleGraph ?? server.moduleGraph
       // Vite otherwise treats an unknown extension as a static asset on HTTP.
       server.middlewares.use((request, _response, next) => {
         const url = new URL(request.url || "/", "http://localhost")
@@ -421,13 +441,15 @@ export default function vibelang(options = {}) {
       }
       if (file !== original) return this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true })
     },
-    // A module declaration's JavaScript comes from its .vibe file's compile.
+    // Source modules and module declarations share the owning project compile.
     async load(id) {
       const file = cleanId(id)
-      if ((!isModuleOutput(file) && !jsxSource(file)) || !isModuleId(id)) return
+      if (!isCompiled(file) || !isModuleId(id)) return
       const { project, code, map, errors, warnings, error } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
-      if (jsxSource(file)) this.addWatchFile(sourceFile(file))
+      // Handling load bypasses Vite's filesystem loader, which normally adds
+      // watches for source files outside its root.
+      this.addWatchFile(backend.moduleDeclarationSource?.(file) ?? sourceFile(file))
       if (errors.length) this.error(diagnostics(errors, file))
       for (const warning of warnings) logger.warn(backend.formatDiagnostic(warning))
       if (error) this.error(error)
@@ -435,16 +457,23 @@ export default function vibelang(options = {}) {
       // caches these objects across requests, so each caller owns its copy.
       return { code, map: structuredClone(map) }
     },
-    async transform(_source, id) {
-      const file = cleanId(id)
-      if (!isSource(file) || !isModuleId(id)) return
-      const { project, code, map, errors, warnings, error } = await loadModule(sourceFile(file))
-      this.addWatchFile(project)
-      // Reject diagnostics for this source, including on repeated requests.
-      if (errors.length) this.error(diagnostics(errors, file))
-      for (const warning of warnings) logger.warn(backend.formatDiagnostic(warning))
-      if (error) this.error(error)
-      return { code, map: structuredClone(map) }
+    // Import analysis runs after ordinary transforms. Compile in load so this
+    // post transform can serialize the resolved module URLs without changing IDs.
+    transform: {
+      order: "post",
+      async handler(code, id) {
+        if (!serving || !isModuleId(id) || this.environment?.config.consumer === "server") return
+        const client = clientUrls(code, cleanId(id))
+        if (client) return client
+        if (!code.includes("%")) return
+        const graph = this.environment?.moduleGraph ?? clientGraph
+        if (![...(graph?.getModuleById(id)?.importedModules ?? [])].some(module => module.file?.includes("%"))) return
+        await loaded()
+        return moduleUrls(code, id, {
+          base: urlBase, graph, backend, compiler: () => backend.findCompiler(root, options.compiler),
+          debug, versions: urlVersions, rewritten: rewrittenUrls
+        })
+      }
     },
     watchChange(id) {
       if (isGeneratedDeclaration(id)) { debug(`ignore generated declaration ${id}`); return }

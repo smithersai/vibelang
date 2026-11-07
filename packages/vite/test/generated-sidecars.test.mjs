@@ -36,7 +36,7 @@ export const projects = () => ({
     const { stats } = await import(pathToFileURL(join(backend, "project.mjs")).href)
     plugin = vibelang()
     plugin.configResolved({ root, logger: { warn() {} } })
-    await plugin.transform.call({ addWatchFile() {} }, "", source)
+    await plugin.load.call({ addWatchFile() {} }, source)
     const importer = { file: join(root, "entry.ts"), importers: new Set(), transformResult: {} }
     const served = { file: source, importers: new Set([importer]), transformResult: {} }
     const invalidated = []

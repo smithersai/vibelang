@@ -407,10 +407,10 @@ test("a native compiler named bin/vibelang is executed without Node", async (t) 
   t.after(() => plugin.closeBundle())
   plugin.configResolved({ root, logger: { warn() {} } })
   const file = join(root, "main.vibe")
-  const result = await plugin.transform.call({
+  const result = await plugin.load.call({
     addWatchFile() {},
     error(error) { throw new Error(error.message) }
-  }, await readFile(file, "utf8"), file)
+  }, file)
   assert.match(result.code, /Effect\.succeed/)
 })
 
@@ -452,7 +452,7 @@ test("Vite hot updates ignore diagnostics in unserved TypeScript sources", async
   const logger = { warn() {}, error: (message) => messages.push(message) }
   plugin.configResolved({ root, logger })
   const file = join(root, "main.vibe")
-  await plugin.transform.call({ addWatchFile() {} }, "", file)
+  await plugin.load.call({ addWatchFile() {} }, file)
   await writeFile(unrelated, 'export const value: number = "wrong"\n')
   const loaded = { file, importers: [] }
   const affected = await plugin.handleHotUpdate({
