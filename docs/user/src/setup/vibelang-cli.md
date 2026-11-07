@@ -714,3 +714,5 @@ For an imported `EK3801` diagnostic in a `.vibe` file, ordinary `--fix` writes `
 `vibelang --generateCpuProfile compiler.cpuprofile` writes native compiler CPU samples in Chrome CPU-profile JSON format. The option also works with `--build`, and the profile is written when compilation reports source errors. Parent output directories are created as needed. An existing directory receives a timestamped profile file, as in TypeScript; an unwritable destination makes the command fail with a diagnostic.
 
 The native runtime aggregates repeated stacks. The exported call tree keeps their sample counts and duration without inventing a chronological sample timeline. For Go CPU and memory profiles, use `--pprofDir profiles` instead. Choose one profiler per command; these two options cannot be combined.
+
+Build-mode paths, including `--generateCpuProfile`, `--generateTrace` and `--pprofDir`, resolve relative to the command working directory. Paths read from response files use that same directory. Absolute paths retain their location.
