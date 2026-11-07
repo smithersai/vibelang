@@ -69,6 +69,10 @@
       {
         "input": "typescript/vibelang/cases/stream-return-contract.fail",
         "output": "typescript/vibelang/cases/stream-return-contract-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/effectful-optional-nullable-return.fail",
+        "output": "typescript/vibelang/cases/effectful-optional-nullable-return-fixed-output"
       }
     ]
   },

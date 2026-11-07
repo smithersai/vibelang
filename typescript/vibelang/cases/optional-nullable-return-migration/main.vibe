@@ -1,0 +1,5 @@
+import { maybe, absent, argument } from "./lib.js"
+export effect function valueResult() { return try Effect.orDie(Effect.try({ try: () => maybe?.("value"), catch: (e) => e })) }
+export effect function emptyResult() { return try Effect.orDie(Effect.try({ try: () => maybe?.("empty"), catch: (e) => e })) }
+export effect function thrownResult() { return try Effect.orDie(Effect.try({ try: () => maybe?.("throw"), catch: (e) => e })) }
+export effect function absentResult() { return try Effect.orDie(Effect.try({ try: () => absent?.(argument()), catch: (e) => e })) }

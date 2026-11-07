@@ -268,3 +268,32 @@ func TestForeignThrowsGateFixPreservesPartialStreamReturn(t *testing.T) {
 		})
 	}
 }
+
+// Optional syntax formerly erased a callable's own nullable return member,
+// suppressing its written throws contract. The migration keeps E=never.
+func TestForeignThrowsGateFixPreservesNullableOptionalReturn(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/effectful-optional-nullable-return.fail"), root)
+	result := fixCase(t, dir)
+	if result.Err != nil || len(result.Refused) != 0 {
+		t.Fatalf("fix: %v, refused %v", result.Err, result.Refused)
+	}
+	var text string
+	for name, fixed := range result.Files {
+		if filepath.Base(name.AsString()) == "main.vibe" {
+			text = fixed.Text
+			if err := os.WriteFile(name.AsString(), []byte(text), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if strings.Count(text, "orDie(Effect.try(") != 6 || strings.Contains(text, "instanceof") {
+		t.Fatalf("changed the former optional call's defect channel:\n%s", text)
+	}
+	if again := fixCase(t, dir); len(again.Files) != 0 || len(again.Refused) != 0 {
+		t.Fatalf("not idempotent: files %v, refused %v", again.Order, again.Refused)
+	}
+}

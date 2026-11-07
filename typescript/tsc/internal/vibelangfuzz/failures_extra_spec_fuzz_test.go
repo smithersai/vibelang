@@ -118,6 +118,24 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "stream-return-plain-" + body.name, Quote: effectful, Host: "none", Lib: streamReturns, Decls: body.decls})
 	}
+	// Optional invocation changes reference evaluation, not the selected
+	// callable's original return contract.
+	const nullableResults = "import type { Effect, Stream, Layer, Exit } from \"effect\"\n/** @throws {RangeError} */\nexport declare function maybeEffect(): Effect.Effect<number> | undefined\n/** @throws {RangeError} */\nexport declare function maybeStream(): Stream.Stream<number> | null\n/** @throws {RangeError} */\nexport declare function maybeLayer(): Layer.Layer<never> | undefined\n/** @throws {RangeError} */\nexport declare function maybeExit(): Exit.Exit<number> | undefined\n/** @throws {RangeError} */\nexport declare function genericMaybe<T extends Effect.Effect<number> | undefined>(): T\n/** @throws {RangeError} */\nexport declare const optionalWhole: (() => Effect.Effect<number>) | undefined\n/** @throws {never} */\nexport declare function safeMaybe(): Effect.Effect<number> | undefined\nexport declare function unknownMaybe(): Effect.Effect<number> | undefined\n/** @throws {RangeError} */\nexport declare const composite: (() => Effect.Effect<number> | undefined) | (() => Effect.Effect<string> | undefined)\n/** @throws {RangeError} */\nexport declare function overloaded(value: number): Effect.Effect<number> | undefined\n/** @throws {RangeError} */\nexport declare function overloaded(value: string): Stream.Stream<string> | null\nexport declare const box: {\n  /** @throws {RangeError} */\n  read(): Effect.Effect<number> | undefined\n  whole(): Effect.Effect<number>\n} | undefined\nexport declare const optionalStream: (() => Stream.Stream<number>) | undefined\n"
+	for _, call := range []struct{ name, expr string }{
+		{"effect", "maybeEffect?.()"}, {"stream", "maybeStream?.()"}, {"layer", "maybeLayer?.()"},
+		{"exit", "maybeExit?.()"}, {"generic", "genericMaybe?.()"},
+		{"unknown", "unknownMaybe?.()"}, {"composite", "composite?.()"},
+		{"overload", "overloaded?.(1)"}, {"property", "box?.read()"},
+	} {
+		add(&failCase{Name: "nullable-return-" + call.name, Quote: effectful, Code: 403, Lib: nullableResults, Body: "const value = ⟦" + call.expr + "⟧"})
+	}
+	for _, call := range []struct{ name, expr string }{
+		{"optional-reference", "optionalWhole?.()"}, {"never", "safeMaybe?.()"},
+		{"stream-reference", "optionalStream?.()"}, {"property-reference", "box?.whole()"},
+		{"bridge", "try Effect.orDie(Effect.try(() => maybeEffect?.()))"},
+	} {
+		add(&failCase{Name: "nullable-return-control-" + call.name, Quote: effectful, Lib: nullableResults, Body: "const value = " + call.expr})
+	}
 	// Complete Layer assignability is distinct from extracting variance
 	// channels. The partial views below have no pipe contract; a property
 	// with variance-shaped fields does not supply the Layer marker either.
