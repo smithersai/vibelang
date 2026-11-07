@@ -13,7 +13,31 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- After an unresolved import was repaired, Rollup could stop responding to later edits. It now keeps rebuilding source and type-only changes through error recovery.
+
+- Converting a named Effect generator could narrow a generic service requirement and change its public type. The converted function now keeps the original requirement, including through pipeline stages.
+
+- Generic data declarations could gain unnecessary helper suffixes when a matching name appeared only in an object or class member. Generated declarations now keep the first free helper name.
+
+- Using `yield` in a returned match or a match statement could crash the compiler. These forms now retain the surrounding generator's variables and suspend normally.
+
+- Migrating an Effect generator with an old `: infer _` annotation in a nested TypeScript callback could leave `TS1338` errors. The fixer now removes the retired annotation and preserves the callback's inferred result.
+
+- Formatting many JSX or marked TypeScript files started a formatter process for every file, even on repeated clean checks. These files now share batch runs, and a clean cached check starts no formatter process.
+
+- The migrate flow kept a module in TypeScript when a provider that read the host also read a value with a type of the same name, such as a resource and its interface: moving the provider took the value, its type and so every value of the module. The module now keeps all its declarations, both meanings of the name included, and only the host calls and reads move into the module body.
+
+- A loop that updated a narrowed URL could report `TS7022` on a response and `TS18048` on the URL. Calls with a known return type now preserve TypeScript inference and narrowing.
+
+- Migration could stop when the same declaration appeared with and without a source-map comment. Matching declarations now compare successfully while type and documentation changes still fail.
+
+- A formatter failure in a batch could omit the input filename. Formatter commands and `formatSource` now identify the original file, including marked TypeScript files.
+
 - The migrate flow's platform split left a private type in the module after moving every reader of it to the `.platform.ts` companion, such as `type Entry` read only by a moved `load`, so the module failed `noUnusedLocals` (`TS6196`). The split now leaves such a type to the companion, and keeps every type the module still reads.
+- Migration kept a module in TypeScript when an exported function threw in plain code, unless the run set `platformModuleBodies`. The function now moves into the module's `module throwing { }` body and the module re-exports it; the body's declaration file ships with the package and is added to no `exports` entry.
+- `vibelang --fix` rewrote `Effect.sync(() => { ... })` with a block into an `effect` block or function, which the compiler builds with `Effect.gen` or `Effect.fnUntraced`, so a converted module built a wrapper its TypeScript did not and the migration's run-phase check returned it. Such an `Effect.sync` now stays as written; `Effect.sync(() => value)` still becomes `effect { return value }`.
+- A migration on a compiler before plain-function inference wrote a `Generator<...>` return type on generators handed to `Effect.fn`, which erased their requirements, so a provider layer declared `unknown` where TypeScript declared its services. The migration now leaves an Effect's generator body unannotated.
+- Migration kept a module in TypeScript when its platform code found files beside the module through `dirname(fileURLToPath(import.meta.url))` or `import.meta.dirname`, because moved code must not read `import.meta`. The `.platform.ts` companion shares the module's directory, so such code now moves; code that reads the module's own file name or `import.meta.main` still stays.
 - Checking the compact language guides rejected current descriptions of foreign calls and `Effect` factories. Checks now recognize that guidance while still rejecting missing failure rules.
 
 - A throw expression stored as an array element, an object field or a binding, such as `[a, throw e]`, reported warning `EK1012` as if it were a call that never succeeds, and its suggestion added `()` after the throw. A throw expression no longer reports `EK1012`.
@@ -46,9 +70,21 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migrate flow kept a module in TypeScript when a declaration that reached the platform also read `import.meta`, such as a resource's `main: import.meta.url`, and its sibling split could move such code so that `import.meta.url` named the `.platform.ts` companion. The declaration now stays in the module and only its host calls and reads move into the module body, so `import.meta.url` still names the module.
 
+- `vibelang --fix` left an `Effect.gen` or `Effect.fn` generator unconverted when it tested a type predicate from a TypeScript module, such as `if (!isRecord(body)) return …`, because the converted test kept only the boolean and `body` stayed `unknown` (`TS2339`). The fix now keeps the predicate's proof in a `const` that the guarded code reads, and converts the generator.
 - `vibelang --fix` left an `Effect.gen` or `Effect.fn` generator unconverted when one of its throwing calls read a property that a guard had proved, such as `content.text ? Lifecycle.textDelta(content.text) : 0`, because the converted call lost the guard's proof (`TS2345`). The fix now moves the guard into the call's wrapper, or reads the property into a `const` before the statement, and converts the generator.
 - A migration on a compiler before plain-function inference wrote `: infer _` into a TypeScript `module` body and into callbacks of an object passed as an argument, such as `Effect.try({ try, catch })`, so the module failed with `TS1338` or its `Effect.gen` repair was refused. The migration now leaves those functions as written.
 - The installation guide asked existing projects to run an undefined `dev` script. Its command list now uses the `start` script supplied by the setup.
+- After the compiler started rejecting possible throws in plain functions that return an Effect, a migrated file whose launcher used the generated child-process loader helper failed with `EK0401`. The helper now declares `@throws {never}` and launches with the written arguments when the VibeLang loader cannot be resolved.
+- `vibelang --fix` left an `Effect.gen` or `Effect.fn` generator unconverted when one of its `.pipe` stages came from a call into a TypeScript module, such as `effect.pipe(instances.provide(session))`, because the converted program left that call unwrapped (`EK0403`). The fix now writes the stage call through the same defect bridge as the generator's other throwing calls.
+- The migration's lost-wrapper check listed a pipeline callback as unpaired after the migration inlined it into the surrounding `effect { }` block, so the module stayed unqualified. The check now reports such a callback as inlined while its holder is still a program, and still flags a holder that lost its program.
+- The migration's lost-wrapper check could not find a function the migration had moved into a `module` body, so it listed every such Effect-returning function as unpaired and the module stayed unqualified. The check now reads the body's emitted JavaScript and pairs those functions, and it still flags one that lost its wrapper.
+- `vibelang --fix` left an `Effect.gen` unconverted when its body piped a stream through `Stream.runForEach`, `Stream.runDrain` or `Stream.runHead` into an Effect stage, as in `rows.pipe(Stream.runForEach((row) => ...), Effect.forkIn(scope))`: it treated the stage as a runner, wrote it apart from the stream, lost the callback's parameter type and refused the rewrite. It now writes `rows |> Stream.runForEach(%, (row) => ...) |> Effect.forkIn(%, scope)`.
+- `vibelang --fix` left an `Effect.gen` unconverted when its `.pipe` had a stage whose options are built by a call, as in `Effect.gen(...).pipe(Effect.withSpan("named", attributes(name)))`: it wrote the new `effect` block after the captured pipeline, outside the function, where `name` read the host global, and refused the rewrite. It now writes the block inside the captured pipeline.
+- The ESLint pass for `.vibe` files ignored an `oxlint.config.ts` and linted with typescript-eslint's recommended rules instead, so it reported rules such as `no-empty-object-type` that Oxlint does not run on the `.ts` original. It now reads a TypeScript or JavaScript Oxlint configuration through installed Oxlint, and where Oxlint resolves the rules it adds no recommended rules of its own.
+- Cleaning build projects through `vibelang lint` could delete existing outputs. It now reports the files without removing them.
+- `vibelang lint` could switch configurations and reject compiler options when an old lint flag was present. It now uses compiler options consistently and reports old lint flags as unknown options.
+- An inferred declaration could name a private package subpath blocked by `exports`, causing `TS2307` in TypeScript consumers. It now respects the selected export entry and uses the available public type.
+- `vibelang --fix --only` refused a list naming a file outside the project with `lists 1 file that is not .vibe module of this project`, which left out `.vibex` modules. It now says `lists 1 file that is not a .vibe or .vibex module of this project`.
 - The migrate flow sent a module back to TypeScript with `EK4402` when it read `import.meta.filename`, `import.meta.dirname` or `import.meta.env`, or called `import.meta.resolve` with a computed or second argument. It now serves these reads from the `.platform.ts` companion, passing the module's own `import.meta.url` where the value names the module, so `main: import.meta.filename` still names the module after migration.
 
 - A migrated lint runner could drop JSX files in its extension filter before linting them. Setup now includes JSX source, preserves directory scope, and repairs filters from earlier setup runs.
@@ -92,6 +128,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The editor reported a `var` in a `do` expression twice, once as `EK0107` and again as `EK0201` or `EK0203`. It now reports only the `do` diagnostic for that declaration.
 
+- A migration batch whose module took `vibelang --fix`'s platform repair failed its verify step on the new `x.platform.ts`, reported as a file outside the batch, and a revert left that file behind. The migration flow now records the compiler's companion with its module, formats it with the batch and removes it when the module is reverted.
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
@@ -150,6 +187,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The expected-errors guide repeated its static-member restriction. It now gives the rule and all repair details together once.
 - The migration's API identity check could not compare a package entry point declared by a handwritten `.d.ts` beside a plain `.js`, which the package build copies to its declaration output, so it refused every module of that package, changed or not. The check now reads that declaration where the package publishes it, and still reports a change to it.
 - A `.vibe` class that implemented an overloaded interface method, such as Effect's `Pipeable.pipe`, with fewer overloads reported `EK0402`, although TypeScript accepts the class. The check now pairs overloads as TypeScript does: a VibeLang method passes, and an untagged TypeScript function still reports `EK0402`.
+- A TypeScript module that reached a `.vibe` module through a migration route, `#vibelang/emitted/…`, kept the route in its compiled JavaScript and declarations. Published declarations then named a file the package does not ship, and the program could load a second copy of the module. Compiled output now names the module's own output, `./user.js`.
+- Migration's record emit could commit a `#vibelang/emitted/…` route that a published package's declarations named, so the package built, but its consumers could not resolve the import. When compiled declarations still name a route, the emit now restores that package's routes and reports the declaration files.
+- `vibelang --fix --pprofDir <dir>` profiled only the compile after the repair, so a slow `--fix` run had no profile of its own checks. It now also writes the repair's CPU and memory profiles to `<dir>/fix`.
 - Migration setup could omit a test package that imported a migrated module through a relative path. It now selects that package and its transitive consumers, even without a manifest dependency.
 - The error guides described working error and producer syntax as a future feature. They now describe the syntax as available.
 - The setup guide required Node 26, while the introductory guides admitted unsupported Node versions. All three now give the package requirements: Node `22.22.3` in `22.x`, or `24.11.1` or later.
@@ -241,6 +281,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A function with a property assigned more than once, such as `f.x = a` followed by `f["x"] = b`, got declarations that named the property twice, which TypeScript rejects with `TS2300`. The declarations now declare the property once, with the type of everything assigned to it.
 
 - The migrate flow kept a module in TypeScript when one of its types read an exported function that the platform split moves, such as `export type Timer = ReturnType<typeof createTimer>`. The function stays in the module as a wrapper of the same name and signature, so the type keeps reading it and the module converts.
+- The migrate flow's platform split moved an interface that names a host type, such as `readonly signal?: AbortSignal`, out of the module while a function the module kept still used it, so the converted file reported `TS2304`. The interface now stays in the module, and the moved code uses its own copy.
+- The migrate flow kept a component or a function that returns nothing in TypeScript when its platform code read a private type of the module, on the grounds that the inferred return type might name that type. A function that returns only JSX, `null` or `undefined`, or no value, now keeps its wrapper and the module converts; a function that may return the private type still stays in TypeScript.
+- With a compiler before VIP-1, the migrate flow marked a function `: infer _` when it returned the Effect of a module converted in the same batch, and the converted module failed `EK9203`. The flow now reads that module's types from its TypeScript source and keeps such functions Effect functions.
 
 ### Upgrade from 0.0.12
 
