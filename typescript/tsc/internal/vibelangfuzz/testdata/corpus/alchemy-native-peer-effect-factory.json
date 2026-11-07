@@ -1,0 +1,4 @@
+{
+  "peer": "import * as Effect from \"effect/Effect\";\nexport const consume = (n: number) => Effect.succeed(n);\n",
+  "caller": "import { consume } from \"./peer.ts\";\nexport const program = (n: number) => consume(n);\n"
+}
