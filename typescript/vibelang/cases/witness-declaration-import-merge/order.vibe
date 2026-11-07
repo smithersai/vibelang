@@ -1,0 +1,6 @@
+// Names written through one import keep that import's order; Effect joins it.
+import { Option, HashSet } from 'effect'
+
+export effect function second(set: HashSet.HashSet<number>): Option.Option<number>!! {
+  return Option.fromNullishOr([...set][0])
+}

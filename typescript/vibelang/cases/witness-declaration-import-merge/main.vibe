@@ -1,0 +1,9 @@
+// rule-evidence: docs/design/src/001-functions.md#declaration-output | For example, `import { HashSet, Option } from 'effect'` may become `import { Effect, HashSet, Option } from 'effect'`.
+// The effect function writes Effect, which its Effect TypeScript imports: the
+// generated name joins the written effect import, in its quotes.
+import { HashSet, Option } from 'effect'
+
+export effect function first(set: HashSet.HashSet<number>): Option.Option<number>!! {
+  try sleep(1)
+  return Option.fromNullishOr([...set][0])
+}

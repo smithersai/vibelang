@@ -1,0 +1,4 @@
+// The same module name in a .vibe source keeps that source's own basename.
+module Über { export const n = "other.vibe" }
+import { n } from Über
+export { n as other }
