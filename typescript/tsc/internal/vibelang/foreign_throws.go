@@ -126,9 +126,9 @@ var foreignThrowingCall = EK0403.With("'{0}' may throw '{1}'. Wrap the call with
 // that old channel split, even while the checker uses the selected contract.
 // Intrinsic signatures retain the shipped classes the former emitter read.
 func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
-	// A partial Stream result formerly counted as effectful. It never
-	// received an implicit bridge, even with a written throws contract.
-	if legacyMarkerStreamReturn(c, call) {
+	// Formerly effectful return classifications received no implicit
+	// bridge, even with a written throws contract.
+	if legacyEffectfulReturn(c, call) {
 		return nil
 	}
 	decl := signatureDeclaration(c, call)
@@ -161,10 +161,10 @@ func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
 	return failures
 }
 
-// legacyMarkerStreamReturn identifies only migration sites whose former
-// marker-only Stream classification suppressed their synchronous contract.
+// legacyEffectfulReturn identifies migration sites whose former return
+// classification suppressed their synchronous contract.
 // Explicit trusted values kept their failure lists and must retain them.
-func legacyMarkerStreamReturn(c *checker.Checker, call *ast.Node) bool {
+func legacyEffectfulReturn(c *checker.Checker, call *ast.Node) bool {
 	if callTrust(c, call).value {
 		return false
 	}
@@ -179,12 +179,12 @@ func legacyMarkerStreamReturn(c *checker.Checker, call *ast.Node) bool {
 	if ast.IsOptionalChain(call) {
 		result = c.GetNonNullableType(result)
 	}
-	return !isEffectfulType(c, result) && legacyMarkerStreamType(c, result)
+	return !returnsEffectful(c, call) && legacyEffectfulType(c, result)
 }
 
-// legacyMarkerStreamType is the former effectful-return test, retained
+// legacyEffectfulType is the former effectful-return test, retained
 // only to preserve a migrated call's failure channel.
-func legacyMarkerStreamType(c *checker.Checker, t *checker.Type) bool {
+func legacyEffectfulType(c *checker.Checker, t *checker.Type) bool {
 	if t != nil && t.Flags()&checker.TypeFlagsTypeParameter != 0 {
 		t = c.GetBaseConstraintOfType(t)
 	}
@@ -193,7 +193,7 @@ func legacyMarkerStreamType(c *checker.Checker, t *checker.Type) bool {
 	}
 	if t.Flags()&checker.TypeFlagsUnion != 0 {
 		for _, member := range t.Types() {
-			if !legacyMarkerStreamType(c, member) {
+			if !legacyEffectfulType(c, member) {
 				return false
 			}
 		}

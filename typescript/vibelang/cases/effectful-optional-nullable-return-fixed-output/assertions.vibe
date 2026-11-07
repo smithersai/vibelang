@@ -1,0 +1,7 @@
+import type { Effect, Stream, Layer, Exit } from "effect"
+import { effectResult, streamResult, layerResult, exitResult, genericResult } from "./main.js"
+export const effectChecked: (Effect.Effect<number> | undefined)!! = effectResult()
+export const streamChecked: (Stream.Stream<number> | null)!! = streamResult()
+export const layerChecked: (Layer.Layer<never> | undefined)!! = layerResult()
+export const exitChecked: (Exit.Exit<number> | undefined)!! = exitResult()
+export const genericChecked: (Effect.Effect<number> | undefined)!! = genericResult()

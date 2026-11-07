@@ -856,12 +856,9 @@ func returnsEffectful(c *checker.Checker, call *ast.Node) bool {
 	for sig.Target() != nil {
 		sig = sig.Target()
 	}
-	result := c.GetReturnTypeOfSignature(sig)
-	if ast.IsOptionalChain(call) {
-		// f?.() calls f only when it is there; the checker's call-chain
-		// signature adds undefined to what f returns.
-		result = c.GetNonNullableType(result)
-	}
+	result := c.GetReturnTypeOfSignatureWithoutCallChain(sig)
+	// The signature target is the callable's own contract. Optional
+	// reference syntax must not erase its legitimate nullable results.
 	return isEffectfulType(c, result)
 }
 

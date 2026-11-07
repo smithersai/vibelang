@@ -1,0 +1,11 @@
+// expect: EK0403
+// Optional reference syntax does not erase a callable's own nullable result.
+import { maybeEffect, maybeStream, maybeLayer, maybeExit, genericMaybe, optionalWhole, safeMaybe } from "./lib.js"
+export effect function effectResult() { return maybeEffect?.() }
+export effect function streamResult() { return maybeStream?.() }
+export effect function layerResult() { return maybeLayer?.() }
+export effect function exitResult() { return maybeExit?.() }
+export effect function genericResult() { return genericMaybe?.() }
+export effect function optionalReference() { return optionalWhole?.() }
+export effect function safeResult() { return safeMaybe?.() }
+export effect function explicitBridge() { return try Effect.orDie(Effect.try(() => maybeEffect?.())) }

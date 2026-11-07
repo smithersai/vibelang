@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Calling a foreign function with `?.()` could bypass throwing-call checks when its own result was an `Effect`, `Stream` or `Layer` combined with `null` or `undefined`. Optional calls now keep that nullable return contract and require the same bridge as ordinary calls.
+
 - A migration revert or compile in a repository whose root `tsconfig.base.json` has `allowJs` and no `include` stopped in reference planning with `unsafe project output: packages/fly/lib`: TypeScript's default include made that options-only config list every emitted `lib/*.js` and `lib/*.d.ts`, and each listed file counted as a source to protect. Untracked JavaScript and declarations that only configurations outside the rebuilt graph list now count as outputs, so the refresh clears and rebuilds them; tracked files and untracked TypeScript sources still refuse the deletion.
 - Checks of generated bundler modules could stop when loading a source-map helper. They now load the plugin’s declared helpers and check the generated modules.
 
