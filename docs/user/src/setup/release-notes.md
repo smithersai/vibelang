@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Generated packing receipts could fail the repository's format check after migration. Packing metadata now uses the repository's formatter before loader records are saved.
+
 - Migration could reject an unchanged generic factory after a type dependency gained only a re-export. API comparison now follows re-exports that preserve every exported name, type and value.
 
 - A project that turned on `unnecessaryArrowBlock`, `unnecessaryPipe` or `unnecessaryPipeChain` still had those reports after `vibelang --fix`, so a converted module failed the project's own lint. `--fix` now applies those repairs where the project turns the rule on and leaves the code alone where it is off. The repairs no longer drop comments between pipe arguments, and a block returning `a, b` becomes `=> (a, b)`.

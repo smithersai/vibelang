@@ -491,6 +491,11 @@ enables `vibelang-source` in the package's compiler projects' `customConditions`
 so a cold compiler build reads sources before declaration sidecars exist.
 Node, Rolldown and Vite consume the emitted JavaScript through `default`.
 
+After emission or restoration, migration formats the packing manifests and
+`.vibelang/pack-policy.json` with the repository's formatter before recording
+loader fingerprints. A formatter failure reports its exit status and log path
+and stops the step. Other repository files stay outside this formatting pass.
+
 The routes serve tools that read sources. Compiled output names each routed
 module by its own output instead, `./user.js` for `#vibelang/emitted/src/user`,
 in JavaScript and in declarations, so no route reaches a published package and

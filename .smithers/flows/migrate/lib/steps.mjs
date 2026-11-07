@@ -1588,6 +1588,15 @@ export async function emitMigratedJs(config, t, logs, { routeDeclarations } = {}
     entry.packingFiles = [...new Set([...(entry.packingFiles ?? []), ...packing.files.map(file => posix.join(entry.package, file))])]
     if (JSON.stringify(pkg) !== JSON.stringify(JSON.parse(before))) writeFileSync(manifest, JSON.stringify(pkg, null, 2) + "\n")
   }
+  // Packing writes JSON after source formatting, including restored manifests.
+  // Format it before records fingerprint every package's final manifest.
+  const packingFormatLog = join(logs, "packing-format.log")
+  const packingFiles = [...new Set(emitted.flatMap(entry => entry.packingFiles ?? []))].filter(file => /\.jsonc?$/.test(file))
+  const packingFormatted = await formatWritten(t, packingFiles, packingFormatLog)
+  if (packingFormatted.code !== 0) throw new Error("packing metadata formatting failed (exit " + packingFormatted.code + "); see " + packingFormatLog)
+  for (const entry of emitted) entry.packingFormatted = { ...packingFormatted,
+    files: packingFormatted.files.filter(file => entry.packingFiles?.includes(file)),
+    log: packingFormatted.files.length ? "packing-format.log" : null }
   for (const entry of recorded) entry.loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t })
   for (const entry of recorded) entry.loaderRecords = await checkLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t, records: entry.loaderRecords })
   for (const { routed, sourceDeclarations } of routingPasses) {
