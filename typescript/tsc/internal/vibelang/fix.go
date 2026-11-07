@@ -1450,8 +1450,12 @@ func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsopt
 		},
 	})
 	host := fixCompilerHost{compiler.NewCompilerHost(overlaid, libraryPath, nil, nil, nil), parsed}
+	// A fix builds no referenced project, so a reference's declaration output
+	// may not exist yet (TS6305), and every import resolved to it would read
+	// as any. Read the reference's sources, as the editor and the module
+	// loader do; fixableFiles still leaves those sources to their own project.
 	return compiler.NewProgram(compiler.ProgramOptions{
-		ProgramConfig:    compiler.ProgramConfig{Config: withNewRoots(config, overlay)},
+		ProgramConfig:    compiler.ProgramConfig{Config: withNewRoots(config, overlay), UseSourceOfProjectReference: true},
 		ProgramHosts:     compiler.ProgramHosts{Host: host},
 		ProgramFactories: compiler.ProgramFactories{CreateModuleResolver: parsed.moduleResolver(created)},
 	})
