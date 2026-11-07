@@ -170,22 +170,44 @@ test("the name avoids every binding and read of the file", () => {
   assert.match(module, /^module platform2 \{$/m)
 })
 
-test("moduleBodies is opt-in, and serves only what the sibling split refuses", () => {
+test("moduleBodies is opt-in; a sibling serves an exported package, a body a private one", () => {
   const refused = `import { sep } from "node:path"\nexport const a = sep\nexport const k = 1\n`
   const split = `import { sep } from "node:path"\nexport function a(s: string): string { return s + sep }\nexport const k = 1\n`
-  const run = (options) => {
-    const files = { "package.json": '{"private":true}', "r.ts": refused, "s.ts": split }
+  const run = (manifest, options) => {
+    const files = { "package.json": manifest, "r.ts": refused, "s.ts": split }
     const result = splitBatchPlatform("/none", ["r.ts", "s.ts"], ts, { exists: (f) => f in files, read: (f) => files[f], write: (f, t) => { files[f] = t }, ...options })
     return { result, files }
   }
-  const off = run({})
+  const exported = '{"name":"p","exports":{".":"./s.js"}}'
+  const off = run('{"private":true}', {})
   assert.equal(off.files["r.ts"], refused)
   assert.equal(off.result.refused.length, 1)
-  const on = run({ moduleBodies: true })
+  assert.deepEqual(off.result.splits.map((s) => [s.file, s.platform]), [["s.ts", "s.platform.ts"]])
+  // An explicit export map hides the sibling, so the body serves only what it refuses.
+  const on = run(exported, { moduleBodies: true })
   assert.deepEqual(on.result.refused, [])
   assert.deepEqual(on.result.splits.map((s) => [s.file, s.platform, s.module ?? null]), [["r.ts", null, "platform"], ["s.ts", "s.platform.ts", null]])
   assert.match(on.files["r.ts"], /^module platform \{$/m)
   assert.equal(on.files["r.platform.ts"], undefined)
+  // Every module of a private package is an API entry (t3code Desktop
+  // DesktopObservability.ts): a body adds none, a sibling adds one.
+  const priv = run('{"private":true,"type":"module","main":"./dist/index.js"}', { moduleBodies: true })
+  assert.deepEqual(priv.result.refused, [])
+  assert.deepEqual(priv.result.splits.map((s) => [s.file, s.platform, s.module ?? null]), [["r.ts", null, "platform"], ["s.ts", null, "platform"]])
+  assert.equal(priv.files["s.platform.ts"], undefined)
+  assert.match(priv.files["s.ts"], /^module platform \{$/m)
+})
+
+test("a private package keeps the sibling when a body refuses", () => {
+  // export = has no place beside a module body (EK4008); the sibling split still serves it.
+  const text = `import { sep } from "node:path"\nfunction a(s: string): string { return s + sep }\nexport = a\n`
+  const files = { "package.json": '{"private":true}', "e.ts": text }
+  const result = splitBatchPlatform("/none", ["e.ts"], ts, { moduleBodies: true, exists: (f) => f in files, read: (f) => files[f], write: (f, t) => { files[f] = t } })
+  const plain = { "package.json": '{"private":true}', "e.ts": text }
+  const control = splitBatchPlatform("/none", ["e.ts"], ts, { exists: (f) => f in plain, read: (f) => plain[f], write: (f, t) => { plain[f] = t } })
+  assert.deepEqual(result.splits.map((s) => [s.file, s.platform]), [["e.ts", "e.platform.ts"]])
+  assert.deepEqual(result.splits, control.splits)
+  assert.deepEqual(files, plain)
 })
 
 // A generated module, compiled by the real compiler as a .vibe file against the

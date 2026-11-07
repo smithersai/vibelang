@@ -315,6 +315,16 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
 // maps still go through the declaration graph gate, which rejects any new
 // reachable declaration. An unknown wildcard mapping is deliberately refused
 // rather than guessed from one tsconfig: packages may publish multiple builds.
+function owningManifest(root, file, { exists, read }) {
+  const boundary = resolve(root)
+  for (let dir = dirname(resolve(root, file)); dir === boundary || dir.startsWith(boundary + "/"); dir = dirname(dir)) {
+    const path = posix.relative(boundary, join(dir, "package.json"))
+    if (exists(path)) { try { return JSON.parse(read(path)) } catch { return undefined } }
+    if (dir === boundary) break
+  }
+  return undefined
+}
+
 function publishedSiblingRisk(root, file, { exists, read }) {
   const boundary = resolve(root)
   let dir = dirname(resolve(root, file))
@@ -381,6 +391,16 @@ export function splitBatchPlatform(root, files, ts, {
     const risk = result.refused ? null : publishedSiblingRisk(root, file, { exists, read })
     const privateExports = risk && result.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
     const refusal = result.refused ?? (risk && !privateExports && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
+    // Every module of a private package is an API entry, so a sibling adds one;
+    // a VIP-40 body adds none. With moduleBodies, prefer it and keep the sibling as fallback.
+    if (!refusal && moduleBodies && owningManifest(root, file, { exists, read })?.private === true) {
+      const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies })
+      if (body && !body.refused) {
+        write(file, body.module)
+        splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+        continue
+      }
+    }
     if (refusal) {
       // A sibling cannot serve this module. With moduleBodies, a VIP-40 body may.
       const body = moduleBodies ? splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies }) : null
