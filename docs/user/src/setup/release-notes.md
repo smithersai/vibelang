@@ -43,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An invalid native profiling directory could crash the compiler and print a stack trace. Profiling setup and output failures now report the failed stage and path as ordinary command errors.
 
+- Asking for language-server help returned an error exit status. `vibelang --lsp --help` and `-h` now print usage and exit successfully without starting a server.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

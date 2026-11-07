@@ -720,3 +720,4 @@ The native runtime aggregates repeated stacks. The exported call tree keeps thei
 Build-mode paths, including `--generateCpuProfile`, `--generateTrace` and `--pprofDir`, resolve relative to the command working directory. Paths read from response files use that same directory. Absolute paths retain their location.
 
 The `--pprofDir` option reports directory creation, CPU-profile startup and profile-output failures as command errors. A failed profiling destination does not produce an uncaught stack trace, and a failure while finishing the profiles makes an otherwise successful compilation fail.
+Use `vibelang --lsp --help` to inspect language-server options without starting a server or selecting a transport. The `-h` alias has the same successful exit status.

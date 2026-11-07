@@ -19,15 +19,18 @@ import (
 )
 
 func runLSP(args []string) (status int) {
-	flag := flag.NewFlagSet("lsp", flag.ContinueOnError)
-	stdio := flag.Bool("stdio", false, "use stdio for communication")
-	pprofDir := flag.String("pprofDir", "", "Generate pprof CPU/memory profiles to the given directory.")
-	pipe := flag.String("pipe", "", "use named pipe for communication")
+	flags := flag.NewFlagSet("lsp", flag.ContinueOnError)
+	stdio := flags.Bool("stdio", false, "use stdio for communication")
+	pprofDir := flags.String("pprofDir", "", "Generate pprof CPU/memory profiles to the given directory.")
+	pipe := flags.String("pipe", "", "use named pipe for communication")
 	_ = pipe
-	socket := flag.String("socket", "", "use socket for communication")
+	socket := flags.String("socket", "", "use socket for communication")
 	_ = socket
-	clientProcessID := flag.Int("clientProcessId", 0, "use the given PID for the parent process watchdog")
-	if err := flag.Parse(args); err != nil {
+	clientProcessID := flags.Int("clientProcessId", 0, "use the given PID for the parent process watchdog")
+	if err := flags.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return 0
+		}
 		return 2
 	}
 
