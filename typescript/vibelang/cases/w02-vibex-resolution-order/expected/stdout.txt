@@ -1,0 +1,14 @@
+./App.vibe from main.vibe with [App.vibe, App.vibex, App.d.ts, App.ts, App.tsx] -> App.vibe
+./App.vibe from main.vibe with [App.vibex, App.d.ts, App.ts, App.tsx] -> App.vibex
+./App.vibe from main.vibe with [App.d.ts, App.ts, App.tsx] -> App.d.ts
+./App.vibe from main.vibe with [App.ts, App.tsx] -> TS2307
+./App.vibex from main.vibe with [App.vibex, App.vibe, App.d.ts, App.ts, App.tsx] -> App.vibex
+./App.vibex from main.vibe with [App.vibe, App.d.ts, App.ts, App.tsx] -> App.vibe
+./App.vibex from main.vibe with [App.d.ts, App.ts, App.tsx] -> App.d.ts
+./App.vibex from main.vibe with [App.ts, App.tsx] -> TS2307
+./App.ts from main.ts with [App.ts, App.tsx, App.d.ts] -> App.ts
+./App.ts from main.ts with [App.tsx, App.d.ts] -> App.tsx
+./App.ts from main.ts with [App.d.ts] -> App.d.ts
+./App.tsx from main.ts with [App.tsx, App.ts, App.d.ts] -> App.tsx
+./App.tsx from main.ts with [App.ts, App.d.ts] -> App.ts
+./App.tsx from main.ts with [App.d.ts] -> App.d.ts

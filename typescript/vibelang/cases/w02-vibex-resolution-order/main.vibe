@@ -1,0 +1,8 @@
+// rule-evidence: docs/design/src/007-tooling.md#jsx-source-files-vibex | | `./App.vibe` | `App.vibe`, `App.vibex`, `App.d.ts` |
+// rule-evidence: docs/design/src/007-tooling.md#jsx-source-files-vibex | | `./App.vibex` | `App.vibex`, `App.vibe`, `App.d.ts` |
+// A written `./App.vibe` tries App.vibe, then App.vibex, then App.d.ts; a written
+// `./App.vibex` tries App.vibex, then App.vibe, then App.d.ts. Neither reaches
+// App.ts or App.tsx, which leave the import unresolved (TS2307). Each candidate
+// exports a distinct literal type, so the importer's declaration names the
+// file that won. run.mjs removes candidates one at a time.
+export const witness = 1

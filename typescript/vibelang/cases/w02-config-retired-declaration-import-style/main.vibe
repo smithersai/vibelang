@@ -1,0 +1,7 @@
+// rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | | A retired `declarationImportStyle` setting is ignored, for every value ([VIP-30](../vips/0030-config-files.md)) | `EK3011` | Remove the setting; declaration spelling follows the native TypeScript twin.
+// rule-evidence: docs/design/src/007-tooling.md#declaration-import-spelling | `declarationImportStyle` is retired: root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle` are ignored with nonfatal deprecation warning `EK3011` for every value, including invalid values (VIP-30, amended).
+// Both legacy locations warn once at the key for every value, the compile still
+// succeeds, and JavaScript and declarations equal the output without the setting.
+// The setting was never a `vibe` key, so `vibe.declarationImportStyle` is an
+// unknown key (EK3007). run.mjs compiles each layout.
+export const witness = 1
