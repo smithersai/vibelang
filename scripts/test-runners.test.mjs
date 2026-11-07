@@ -41,6 +41,7 @@ const runs = [
   ["typescript/vibelang/cov900-probe.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov900-probe.test.mjs"],
   ["typescript/vibelang/cov900-quickfix.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov900-quickfix.test.mjs"],
   ["typescript/vibelang/cov900-twin.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov900-twin.test.mjs"],
+  ["typescript/vibelang/case-advice-examples.test.mjs", "typescript/vibelang/PACKAGE.ts", "node --test typescript/vibelang/case-advice-examples.test.mjs"],
   ["typescript/vibelang/coverage-twin.test.mjs", "typescript/vibelang/PACKAGE.ts", "node --test typescript/vibelang/coverage-twin.test.mjs"],
   ["typescript/vibelang/coverage-stock-twins.test.mjs", "PACKAGE.ts", "typescript/vibelang/coverage-stock-twins.test.mjs"],
   ["typescript/vibelang/vip7-reference.test.mjs", "PACKAGE.ts", "typescript/vibelang/vip7-reference.test.mjs"],

@@ -137,6 +137,21 @@ targets["coverage-twin-oracle"] = S.Shell.Test({
   timeout: "5m"
 })
 
+// Expected replacement advice must match the compiler's replacement tables,
+// read as files; the case suite that checks it needs a built compiler.
+targets["case-advice-examples"] = S.Shell.Test({
+  summary: "Every case quotes EK4402 replacement advice that the compiler's tables still hold.",
+  shell: "node --test typescript/vibelang/case-advice-examples.test.mjs",
+  data: [
+    S.file("case-advice-examples.test.mjs"),
+    S.glob("cases/*/expected/messages.txt"),
+    S.glob("//typescript/tsc/internal/vibelang/*.go")
+  ],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "2m"
+})
+
 /** Every file in typescript/vibelang, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
