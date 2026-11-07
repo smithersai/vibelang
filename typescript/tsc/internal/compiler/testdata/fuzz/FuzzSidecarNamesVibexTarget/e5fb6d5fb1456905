@@ -1,0 +1,6 @@
+go test fuzz v1
+string("xA1")
+string("a/b")
+byte('\x01')
+byte('\x02')
+bool(false)

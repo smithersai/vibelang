@@ -103,6 +103,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Language-server help advertised named-pipe and socket transports that the server could not use. It now identifies these options as reserved and states that standard input/output is the supported transport.
 
+- A `.vibe` file importing a `.vibex` module as `./App.jsx`, `./App.js` or `./App` wrote a compatibility sidecar that kept that specifier, so plain `tsc` reading the sidecar reported `TS2307`. The sidecar now names `./App.vibex`, which resolves to its `App.d.vibex.ts`.
+
 - The editor reported a `var` in a `do` expression twice, once as `EK0107` and again as `EK0201` or `EK0203`. It now reports only the `do` diagnostic for that declaration.
 
 - A migration batch whose module took `vibelang --fix`'s platform repair failed its verify step on the new `x.platform.ts`, reported as a file outside the batch, and a revert left that file behind. The migration flow now records the compiler's companion with its module, formats it with the batch and removes it when the module is reverted.

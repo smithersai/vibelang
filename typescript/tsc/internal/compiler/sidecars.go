@@ -164,9 +164,11 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 					resolved, _, _ := resolver.ResolveModuleName(specifier, data.SourceFile.FileName(), p.GetDefaultResolutionModeForFile(data.SourceFile), nil)
 					// A body declaration stays beside the source. Keep its source
 					// identity: a relocated output is not a second VibeLang input.
-					if !isBody && resolved != nil && resolved.Extension == tspath.ExtensionVibe {
+					// A .vibex target, however the import spells it, is named by its
+					// own compatibility declaration exactly as a .vibe target is.
+					if !isBody && resolved != nil && (resolved.Extension == tspath.ExtensionVibe || resolved.Extension == tspath.ExtensionVibex) {
 						target, _ := p.vibeSidecarPaths(string(resolved.ResolvedFileName))
-						return strings.TrimSuffix(target, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe
+						return strings.TrimSuffix(target, ".d"+resolved.Extension+".ts") + resolved.Extension
 					}
 					return tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier)
 				}
