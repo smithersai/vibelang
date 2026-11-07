@@ -1,12 +1,14 @@
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
+import { createRequire } from "node:module"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import vm from "node:vm"
 
 const root = process.cwd(), [key, rawMode] = process.argv.slice(2), mode = Number(rawMode) & 31
 const data = join(root, "typescript/tsc/internal/vibelangfuzz/testdata")
 const fixture = JSON.parse(readFileSync(join(data, "corpus/t3code-jsx-module-companion.json"), "utf8"))
+const dependencies = JSON.parse(readFileSync(join(root, "packages/unplugin/package.json"), "utf8")).dependencies
 const cache = new Map()
 async function sourceModule(file) {
  const url = pathToFileURL(file).href
@@ -21,13 +23,18 @@ async function sourceModule(file) {
   if (specifier === "unplugin") return new vm.SyntheticModule(["createUnplugin"], function () {
    this.setExport("createUnplugin", factory => ({ raw: (options, meta) => factory(options, meta) }))
   })
-  if (specifier.startsWith("node:")) {
-   const namespace = await import(specifier)
+  if (!specifier.startsWith(".")) {
+   // Load the plugin's declared helpers as installed, from the importing
+   // source's package scope. Only the framework wrapper above is replaced.
+   assert.ok(specifier.startsWith("node:") || Object.hasOwn(dependencies, specifier),
+    "unexpected plugin dependency: " + specifier)
+   const resolved = specifier.startsWith("node:") ? specifier
+    : pathToFileURL(createRequire(parent.identifier).resolve(specifier)).href
+   const namespace = await import(resolved)
    return new vm.SyntheticModule(Object.keys(namespace), function () {
     for (const name of Object.keys(namespace)) this.setExport(name, namespace[name])
    })
   }
-  assert.ok(specifier.startsWith("."), "unexpected plugin dependency")
   return sourceModule(resolve(dirname(fileURLToPath(parent.identifier)), specifier))
  })
  return module
