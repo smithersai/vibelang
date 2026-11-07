@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
+
 - An implicit `Effect.gen` repair could be refused when its body constructed a foreign class. It now preserves those constructor exceptions as defects, including member and aliased constructors.
 
 - Screen-reader navigation could not distinguish the site menu, documentation sidebar and page outline. Each navigation landmark now has its own name.

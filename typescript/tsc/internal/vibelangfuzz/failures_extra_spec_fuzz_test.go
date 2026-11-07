@@ -242,6 +242,28 @@ func failuresExtraCases() []*failCase {
 		add(&failCase{Name: "super-control-" + row.name, Owner: "compiler", Quote: knownCall, Host: "none", Lib: superLib, Decls: row.decls})
 	}
 
+	// An explicit base-constructor call also combines the contract of each
+	// callback named by @rethrows, even with an own never contract.
+	const superRethrowsRule = "or has a `@rethrows` parameter given a callback known to throw."
+	const superRethrowsLib = "/** @throws {RangeError} */\nexport declare function risky(): number\n/** @throws {never} */\nexport declare function safe(): number\nexport declare function untagged(): number\nexport declare class Base {\n /** @throws {never}\n  * @rethrows cb */\n constructor(cb: () => number)\n}\nexport declare class Generic<T> {\n /** @throws {never}\n  * @rethrows cb */\n constructor(cb: () => T)\n}\nexport declare class Rest {\n /** @throws {never}\n  * @rethrows callbacks */\n constructor(...callbacks: (() => number)[])\n}\n"
+	for _, row := range []struct{ name, base, prefix, body string }{
+		{"known", "Base", "", "⟦super(risky)⟧"},
+		{"literal", "Base", "", "⟦super(() => risky())⟧"},
+		{"conditional", "Base", "declare const flag: boolean\n", "⟦super(flag ? risky : safe)⟧"},
+		{"alias", "Base", "const saved = risky\n", "⟦super(saved)⟧"},
+		{"spread", "Base", "const callbacks = [risky] as const\n", "⟦super(...callbacks)⟧"},
+		{"generic", "Generic<number>", "", "⟦super(risky)⟧"},
+		{"rest", "Rest", "", "⟦super(safe, risky)⟧"},
+		{"control-safe", "Base", "", "super(safe)"},
+		{"control-untagged", "Base", "", "super(untagged)"},
+		{"control-local", "Base", "", "super(() => 1)"},
+		{"control-caught-call", "Base", "", "try { super(risky) } catch { super(safe) }"},
+		{"control-caught-literal", "Base", "", "super(() => { try { return risky() } catch { return 1 } })"},
+		{"nested-source", "Base", "", "super(() => { const nested = () => ⟦risky()⟧; return 1 })"},
+	} {
+		add(&failCase{Name: "super-rethrows-" + row.name, Owner: "compiler", Quote: superRethrowsRule, Code: 401, Host: "none", Lib: superRethrowsLib, Decls: row.prefix + "export class Derived extends " + row.base + " { constructor() { " + row.body + " } }"})
+	}
+
 	const signatures = "Tags attach to call signatures: each overload and a returned callable's own signature carry their own. `const g = f` preserves `f`'s contract; a tag on an alias of a function type does not attach, so in a foreign declaration write `type Reader = { /** @throws {E} */ (): string }`."
 	add(&failCase{Name: "inferred-callable-alias", Quote: signatures, Code: 403, Decls: failParse + "\nconst alias = parse", Body: "⟦alias(s)⟧"})
 	add(&failCase{Name: "foreign-callable-alias", Quote: signatures, Code: 403, Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string", Decls: "const alias = parse", Body: "⟦alias(s)⟧"})
