@@ -5,7 +5,7 @@ import { test } from "node:test"
 const root = new URL("../", import.meta.url)
 const read = (path) => readFileSync(new URL(path, root), "utf8")
 
-// Only VibeLang-owned test files in shared upstream packages. Whole-package
+// Native command tests and VibeLang-owned files in shared upstream packages. Whole-package
 // targets already cover parser/format tests; project and tsoptions use a
 // bounded -run selector so optional upstream fixtures are not prerequisites.
 function ownedTests() {
@@ -13,7 +13,10 @@ function ownedTests() {
   const walk = (dir) => {
     for (const entry of readdirSync(new URL(dir + "/", root), { withFileTypes: true })) {
       if (entry.isDirectory() && entry.name !== "testdata" && !entry.name.startsWith("vibelang")) walk(dir + "/" + entry.name)
-      if (entry.isFile() && /^vibelang.*_test\.go$/.test(entry.name)) {
+      const owned = dir.startsWith("typescript/tsc/cmd/tsc")
+        ? /_test\.go$/.test(entry.name)
+        : /^vibelang.*_test\.go$/.test(entry.name)
+      if (entry.isFile() && owned) {
         const file = dir + "/" + entry.name
         for (const match of read(file).matchAll(/^func ((?:Test|Fuzz)\w+)\(/gm)) {
           tests.push({ file, pkg: "./" + dir.replace("typescript/tsc/", ""), name: match[1] })
@@ -22,6 +25,7 @@ function ownedTests() {
     }
   }
   walk("typescript/tsc/internal")
+  walk("typescript/tsc/cmd/tsc")
   return tests
 }
 
