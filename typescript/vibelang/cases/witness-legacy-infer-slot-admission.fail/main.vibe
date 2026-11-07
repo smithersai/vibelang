@@ -1,0 +1,59 @@
+// expect: EK4857 EK4857 EK4857 EK4857 EK4857 EK4857 EK4857 EK4857 EK4857 EK4857 EK4857 EK4857 TS1338 TS1338 TS1338 TS1338 TS1064 TS1338 TS2739 TS1338 TS2322 TS1338 TS1338 TS1338 TS1338 TS1338 TS1338 TS1093 TS1338 TS1338 TS1338 TS1338 TS1338 TS1338
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | While the VIP-3 migration exists, `EK4857` replaces `TS1338` for the same immediate written `infer` channel in this set:
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | The annotation is the return annotation of a function declaration, function expression, arrow, or class or object method **with a body**, in a `.vibe` or `.vibex` file outside a TypeScript `module` body or a boundary hatch's TypeScript callback.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | It is neither `async` nor an ordinary generator.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | The annotation directly names the real Effect type and exposes its success, error and requirement channels: `Effect.Effect<A, E, R>`, the `A!E!R` shorthand, an equivalent imported or namespace-renamed Effect binding, or the supported retired prelude `Effect<A, E, R>` alias.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | A shadowing type named `Effect` or an arbitrary alias of a whole Effect type does not qualify merely by spelling or structure.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | At least one complete channel is written directly as `infer Name`, without enclosing parentheses or another type constructor.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | A parenthesized channel such as `number!(infer E)` was not a recognized legacy inferred slot and keeps native `TS1338`.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | An `infer` nested in a valid conditional type is native conditional inference, not a retired channel.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | The set includes an **unmarked** function, expression, arrow or method whose explicit Effect return annotation selected the legacy Effect-function model; it is not restricted to today's `effect` modifier.
+// rule-evidence: docs/design/src/001-functions.md#legacy-written-infer-return-slots | Function types, interface or bodyless call signatures, standalone type aliases, ordinary non-Effect annotations, constructors, accessors, `async` functions, ordinary generators and `.ts`/`.js` code are outside this migration.
+// expected/diagnostics.txt pins every position: EK4857 alone where a channel
+// is in the legacy set (no TS1338 beside it), native TS1338 everywhere else.
+import { Effect as Fx } from "effect"
+import * as Eff from "effect/Effect"
+
+// In the set: each callable kind with a body, marked or unmarked (EK4857).
+export function declared(): Effect.Effect<number, infer E> { return Effect.succeed(1) }
+export const expression = function (): Effect.Effect<number, infer E> { return Effect.succeed(1) }
+export const arrow = (): Effect.Effect<number, infer E> => Effect.succeed(1)
+export const object = { method(): Effect.Effect<number, infer E> { return Effect.succeed(1) } }
+export class Klass { method(): Effect.Effect<number, infer E> { return Effect.succeed(1) } }
+export effect function marked(): Effect.Effect<number, infer E, never> { return 1 }
+export class Marked { effect method(): Effect.Effect<number, infer E, never> { return 1 } }
+
+// In the set: every spelling of the real Effect type (EK4857).
+export const shorthand = (): number!infer E => Effect.succeed(1)
+export effect function success(): infer A!never { return 1 }
+export const imported = (): Fx.Effect<number, infer E> => Effect.succeed(1)
+export const namespaced = (): Eff.Effect<number, infer E> => Effect.succeed(1)
+export const prelude = (): Effect<number, infer E, never> => Effect.succeed(1)
+
+// Not in the set: the channel is not written directly as infer Name (TS1338).
+export const parenthesized = (): number!(infer E) => Effect.succeed(1)
+export const parenthesizedLong = (): Effect.Effect<number, (infer E)> => Effect.succeed(1)
+export const constructed = (): Effect.Effect<number, Array<infer E>> => Effect.succeed(1)
+
+// Not in the set: an alias of a whole Effect type, whatever its structure (TS1338).
+type Whole<A, E> = Effect.Effect<A, E>
+export const aliased = (): Whole<number, infer E> => Effect.succeed(1)
+
+// Native conditional inference keeps its meaning: no diagnostic.
+export function conditional<T>(t: T): Effect.Effect<T extends Array<infer U> ? U : never> { return Effect.succeed(undefined as never) }
+
+// Outside the migration: async functions and ordinary generators (TS1338).
+export async function asynchronous(): Effect.Effect<number, infer E> { return Effect.succeed(1) }
+export function* generator(): Effect.Effect<number, infer E> { return Effect.succeed(1) }
+
+// Outside the migration: types, signatures without a body, constructors,
+// accessors and ordinary non-Effect annotations (TS1338).
+export type FunctionType = () => Effect.Effect<number, infer E>
+export type Standalone = Effect.Effect<number, infer E>
+export interface Signatures { method(): Effect.Effect<number, infer E>; (): Effect.Effect<number, infer E> }
+export declare function ambient(): Effect.Effect<number, infer E>
+export function overloaded(): Effect.Effect<number, infer E>
+export function overloaded(): Effect.Effect<number, never> { return Effect.succeed(1) }
+export class Construct { constructor(): Effect.Effect<number, infer E> {} }
+export class Accessor { get value(): Effect.Effect<number, infer E> { return Effect.succeed(1) } }
+export const ordinary = (): Array<infer E> => []

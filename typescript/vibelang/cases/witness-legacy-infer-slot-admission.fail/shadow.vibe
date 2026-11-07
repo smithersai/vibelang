@@ -1,0 +1,3 @@
+// A local type named Effect shadows the real one: native TS1338.
+type Effect<A, E, R> = { a: A; e: E; r: R }
+export const shadowed = (): Effect<number, infer E, never> => ({ a: 1, e: undefined as never, r: undefined as never })
