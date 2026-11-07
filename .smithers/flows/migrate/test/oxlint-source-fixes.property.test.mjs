@@ -43,7 +43,7 @@ function verify(extension, name, both, flagFirst, information) {
     for (const ext of ["vibe", "vibex"]) assert.equal(readFileSync(join(root, "src/entry." + ext), "utf8"), before(ext))
     const flags = ["--fix", ...(information ? [information] : [])]
     const fixed = run(flagFirst ? [...flags, ...files] : [...files, ...flags])
-    assert.equal(fixed.status, information && information !== "--vibe-native" ? 1 : 0, fixed.stdout + fixed.stderr)
+    assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
     for (const ext of ["vibe", "vibex"]) {
       const expected = !information && selected.includes(ext) ? before(ext).replace(/\blet /, "const ") : before(ext)
       assert.equal(readFileSync(join(root, "src/entry." + ext), "utf8"), expected, "only selected authored source is fixed")

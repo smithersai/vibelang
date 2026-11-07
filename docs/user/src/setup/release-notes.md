@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- File-list lint runners could return no usage text for `--help` or mix findings into `--print-config`. They now return the requested information without linting input files.
+
 - Node stack traces from esbuild bundles could show escaped or altered source filenames. They now preserve Unicode, spaces and literal percent sequences at the original source position.
 
 - Calling a value typed `any` or `Function` in an Effect function’s or producer’s parameter default could bypass the no-throw check. These calls now report `EK0401` because their thrown type is unknown.
