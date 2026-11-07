@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- `vibelang --fix --fix-vip-only` kept the `try` before a legacy wrapper whose success data was an Effect value, such as `function make() { return Effect.void }`, so the migrated call ran that Effect instead of returning it. The migration now removes that `try` and writes none before such a call; a wrapper whose returned call ran, such as `return Effect.succeed(7)`, keeps its `try`.
+
 - TypeScript-mapper output could reject an Effect run in a `for concurrent` head default or computed key. Head initialization now runs inside each item's Effect, with the body in its own scope.
 
 - The migration kept a module in TypeScript when a top-level statement read the host, such as `if (process.env.FLAG) { … }` or a runner's `NodeRuntime.runMain(…)` reading `process.argv`, because that statement cannot move into a `module` body without running early. The statement now stays where it is, and only its host reads and writes move into the body as helpers it calls in place.
