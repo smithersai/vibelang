@@ -20,10 +20,10 @@ func TestFileSystemServiceAdvice(t *testing.T) {
 	ambient := ""
 	for _, module := range []string{"node:fs", "fs"} {
 		ambient += "declare module " + strconv.Quote(module) + " { "
-		for _, name := range []string{"readFile", "writeFile", "mkdir", "stat", "createReadStream", "createWriteStream", "watch", "glob"} {
+		for _, name := range []string{"readFile", "writeFile", "appendFile", "mkdir", "mkdtemp", "rm", "rmdir", "unlink", "stat", "lstat", "exists", "access", "readdir", "opendir", "readlink", "realpath", "rename", "symlink", "link", "chmod", "chown", "copyFile", "cp", "truncate", "utimes", "open", "watch", "glob", "createReadStream", "createWriteStream"} {
 			ambient += "export const " + name + ": (...args:any[])=>unknown; "
 		}
-		ambient += "}\n"
+		ambient += "export const constants: { readonly O_NONBLOCK: number }; }\n"
 	}
 	for _, row := range rows {
 		t.Run(row.Key, func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestFileSystemServiceAdvice(t *testing.T) {
 				if d.Code() == EK4402.Code {
 					count++
 					if text := diagnosticWithNotes(d); !strings.Contains(text, row.Advice) {
-						t.Errorf("chapter 005 requires the service key lookup; want %q in:\n%s", row.Advice, text)
+						t.Errorf("the replacement must retrieve the service and run returned Effects; want %q in:\n%s", row.Advice, text)
 					}
 				}
 			}

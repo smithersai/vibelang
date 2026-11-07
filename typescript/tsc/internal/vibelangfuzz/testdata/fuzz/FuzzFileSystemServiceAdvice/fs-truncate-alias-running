@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("fs:truncate:alias\x00\x01")

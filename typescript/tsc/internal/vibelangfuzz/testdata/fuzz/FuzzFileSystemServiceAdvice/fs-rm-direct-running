@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("fs:rm:direct\x00\x01")

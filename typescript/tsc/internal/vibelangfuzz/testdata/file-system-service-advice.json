@@ -2,161 +2,757 @@
   {
     "key": "node:fs:readFile:direct",
     "source": "import { readFile } from \"node:fs\"\nexport const native = readFile\n",
-    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+    "advice": "try (try FileSystem.FileSystem).readFileString(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readFileString(path) }\n"
   },
   {
     "key": "node:fs:readFile:alias",
     "source": "import { readFile as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+    "advice": "try (try FileSystem.FileSystem).readFileString(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readFileString(path) }\n"
   },
   {
     "key": "node:fs:writeFile:direct",
     "source": "import { writeFile } from \"node:fs\"\nexport const native = writeFile\n",
-    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text) }\n"
   },
   {
     "key": "node:fs:writeFile:alias",
     "source": "import { writeFile as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text) }\n"
+  },
+  {
+    "key": "node:fs:appendFile:direct",
+    "source": "import { appendFile } from \"node:fs\"\nexport const native = appendFile\n",
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" }) }\n"
+  },
+  {
+    "key": "node:fs:appendFile:alias",
+    "source": "import { appendFile as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" }) }\n"
   },
   {
     "key": "node:fs:mkdir:direct",
     "source": "import { mkdir } from \"node:fs\"\nexport const native = mkdir\n",
-    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+    "advice": "try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true }) }\n"
   },
   {
     "key": "node:fs:mkdir:alias",
     "source": "import { mkdir as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+    "advice": "try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true }) }\n"
+  },
+  {
+    "key": "node:fs:mkdtemp:direct",
+    "source": "import { mkdtemp } from \"node:fs\"\nexport const native = mkdtemp\n",
+    "advice": "try (try FileSystem.FileSystem).makeTempDirectory()",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeTempDirectory() }\n"
+  },
+  {
+    "key": "node:fs:mkdtemp:alias",
+    "source": "import { mkdtemp as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).makeTempDirectory()",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeTempDirectory() }\n"
+  },
+  {
+    "key": "node:fs:rm:direct",
+    "source": "import { rm } from \"node:fs\"\nexport const native = rm\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path, { recursive: true }) }\n"
+  },
+  {
+    "key": "node:fs:rm:alias",
+    "source": "import { rm as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path, { recursive: true }) }\n"
+  },
+  {
+    "key": "node:fs:rmdir:direct",
+    "source": "import { rmdir } from \"node:fs\"\nexport const native = rmdir\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
+  },
+  {
+    "key": "node:fs:rmdir:alias",
+    "source": "import { rmdir as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
+  },
+  {
+    "key": "node:fs:unlink:direct",
+    "source": "import { unlink } from \"node:fs\"\nexport const native = unlink\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
+  },
+  {
+    "key": "node:fs:unlink:alias",
+    "source": "import { unlink as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
   },
   {
     "key": "node:fs:stat:direct",
     "source": "import { stat } from \"node:fs\"\nexport const native = stat\n",
-    "advice": "(try FileSystem.FileSystem).stat(path)"
+    "advice": "try (try FileSystem.FileSystem).stat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).stat(path) }\n"
   },
   {
     "key": "node:fs:stat:alias",
     "source": "import { stat as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).stat(path)"
+    "advice": "try (try FileSystem.FileSystem).stat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).stat(path) }\n"
   },
   {
-    "key": "node:fs:createReadStream:direct",
-    "source": "import { createReadStream } from \"node:fs\"\nexport const native = createReadStream\n",
-    "advice": "(try FileSystem.FileSystem).stream(path)"
+    "key": "node:fs:lstat:direct",
+    "source": "import { lstat } from \"node:fs\"\nexport const native = lstat\n",
+    "advice": "try (try FileSystem.FileSystem).lstat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).lstat(path) }\n"
   },
   {
-    "key": "node:fs:createReadStream:alias",
-    "source": "import { createReadStream as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).stream(path)"
+    "key": "node:fs:lstat:alias",
+    "source": "import { lstat as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).lstat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).lstat(path) }\n"
   },
   {
-    "key": "node:fs:createWriteStream:direct",
-    "source": "import { createWriteStream } from \"node:fs\"\nexport const native = createWriteStream\n",
-    "advice": "(try FileSystem.FileSystem).sink(path)"
+    "key": "node:fs:exists:direct",
+    "source": "import { exists } from \"node:fs\"\nexport const native = exists\n",
+    "advice": "try (try FileSystem.FileSystem).exists(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).exists(path) }\n"
   },
   {
-    "key": "node:fs:createWriteStream:alias",
-    "source": "import { createWriteStream as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).sink(path)"
+    "key": "node:fs:exists:alias",
+    "source": "import { exists as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).exists(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).exists(path) }\n"
+  },
+  {
+    "key": "node:fs:access:direct",
+    "source": "import { access } from \"node:fs\"\nexport const native = access\n",
+    "advice": "try (try FileSystem.FileSystem).access(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).access(path) }\n"
+  },
+  {
+    "key": "node:fs:access:alias",
+    "source": "import { access as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).access(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).access(path) }\n"
+  },
+  {
+    "key": "node:fs:readdir:direct",
+    "source": "import { readdir } from \"node:fs\"\nexport const native = readdir\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "node:fs:readdir:alias",
+    "source": "import { readdir as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "node:fs:opendir:direct",
+    "source": "import { opendir } from \"node:fs\"\nexport const native = opendir\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "node:fs:opendir:alias",
+    "source": "import { opendir as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "node:fs:readlink:direct",
+    "source": "import { readlink } from \"node:fs\"\nexport const native = readlink\n",
+    "advice": "try (try FileSystem.FileSystem).readLink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readLink(path) }\n"
+  },
+  {
+    "key": "node:fs:readlink:alias",
+    "source": "import { readlink as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).readLink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readLink(path) }\n"
+  },
+  {
+    "key": "node:fs:realpath:direct",
+    "source": "import { realpath } from \"node:fs\"\nexport const native = realpath\n",
+    "advice": "try (try FileSystem.FileSystem).realPath(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).realPath(path) }\n"
+  },
+  {
+    "key": "node:fs:realpath:alias",
+    "source": "import { realpath as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).realPath(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).realPath(path) }\n"
+  },
+  {
+    "key": "node:fs:rename:direct",
+    "source": "import { rename } from \"node:fs\"\nexport const native = rename\n",
+    "advice": "try (try FileSystem.FileSystem).rename(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).rename(from, to) }\n"
+  },
+  {
+    "key": "node:fs:rename:alias",
+    "source": "import { rename as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).rename(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).rename(from, to) }\n"
+  },
+  {
+    "key": "node:fs:symlink:direct",
+    "source": "import { symlink } from \"node:fs\"\nexport const native = symlink\n",
+    "advice": "try (try FileSystem.FileSystem).symlink(target, path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).symlink(target, path) }\n"
+  },
+  {
+    "key": "node:fs:symlink:alias",
+    "source": "import { symlink as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).symlink(target, path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).symlink(target, path) }\n"
+  },
+  {
+    "key": "node:fs:link:direct",
+    "source": "import { link } from \"node:fs\"\nexport const native = link\n",
+    "advice": "try (try FileSystem.FileSystem).link(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).link(from, to) }\n"
+  },
+  {
+    "key": "node:fs:link:alias",
+    "source": "import { link as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).link(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).link(from, to) }\n"
+  },
+  {
+    "key": "node:fs:chmod:direct",
+    "source": "import { chmod } from \"node:fs\"\nexport const native = chmod\n",
+    "advice": "try (try FileSystem.FileSystem).chmod(path, mode)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chmod(path, mode) }\n"
+  },
+  {
+    "key": "node:fs:chmod:alias",
+    "source": "import { chmod as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).chmod(path, mode)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chmod(path, mode) }\n"
+  },
+  {
+    "key": "node:fs:chown:direct",
+    "source": "import { chown } from \"node:fs\"\nexport const native = chown\n",
+    "advice": "try (try FileSystem.FileSystem).chown(path, uid, gid)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chown(path, uid, gid) }\n"
+  },
+  {
+    "key": "node:fs:chown:alias",
+    "source": "import { chown as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).chown(path, uid, gid)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chown(path, uid, gid) }\n"
+  },
+  {
+    "key": "node:fs:copyFile:direct",
+    "source": "import { copyFile } from \"node:fs\"\nexport const native = copyFile\n",
+    "advice": "try (try FileSystem.FileSystem).copyFile(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copyFile(from, to) }\n"
+  },
+  {
+    "key": "node:fs:copyFile:alias",
+    "source": "import { copyFile as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).copyFile(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copyFile(from, to) }\n"
+  },
+  {
+    "key": "node:fs:cp:direct",
+    "source": "import { cp } from \"node:fs\"\nexport const native = cp\n",
+    "advice": "try (try FileSystem.FileSystem).copy(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copy(from, to) }\n"
+  },
+  {
+    "key": "node:fs:cp:alias",
+    "source": "import { cp as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).copy(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copy(from, to) }\n"
+  },
+  {
+    "key": "node:fs:truncate:direct",
+    "source": "import { truncate } from \"node:fs\"\nexport const native = truncate\n",
+    "advice": "try (try FileSystem.FileSystem).truncate(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).truncate(path) }\n"
+  },
+  {
+    "key": "node:fs:truncate:alias",
+    "source": "import { truncate as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).truncate(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).truncate(path) }\n"
+  },
+  {
+    "key": "node:fs:utimes:direct",
+    "source": "import { utimes } from \"node:fs\"\nexport const native = utimes\n",
+    "advice": "try (try FileSystem.FileSystem).utimes(path, atime, mtime)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).utimes(path, atime, mtime) }\n"
+  },
+  {
+    "key": "node:fs:utimes:alias",
+    "source": "import { utimes as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).utimes(path, atime, mtime)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).utimes(path, atime, mtime) }\n"
+  },
+  {
+    "key": "node:fs:open:direct",
+    "source": "import { open } from \"node:fs\"\nexport const native = open\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"r\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"r\" }) }\n"
+  },
+  {
+    "key": "node:fs:open:alias",
+    "source": "import { open as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"r\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"r\" }) }\n"
   },
   {
     "key": "node:fs:watch:direct",
     "source": "import { watch } from \"node:fs\"\nexport const native = watch\n",
-    "advice": "(try FileSystem.FileSystem).watch(path)"
+    "advice": "(try FileSystem.FileSystem).watch(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).watch(path) }\n"
   },
   {
     "key": "node:fs:watch:alias",
     "source": "import { watch as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).watch(path)"
+    "advice": "(try FileSystem.FileSystem).watch(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).watch(path) }\n"
   },
   {
     "key": "node:fs:glob:direct",
     "source": "import { glob } from \"node:fs\"\nexport const native = glob\n",
-    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+    "advice": "try (try FileSystem.FileSystem).glob(pattern)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).glob(pattern) }\n"
   },
   {
     "key": "node:fs:glob:alias",
     "source": "import { glob as Native } from \"node:fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+    "advice": "try (try FileSystem.FileSystem).glob(pattern)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).glob(pattern) }\n"
+  },
+  {
+    "key": "node:fs:createReadStream:direct",
+    "source": "import { createReadStream } from \"node:fs\"\nexport const native = createReadStream\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).stream(path) }\n"
+  },
+  {
+    "key": "node:fs:createReadStream:alias",
+    "source": "import { createReadStream as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).stream(path) }\n"
+  },
+  {
+    "key": "node:fs:createWriteStream:direct",
+    "source": "import { createWriteStream } from \"node:fs\"\nexport const native = createWriteStream\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).sink(path) }\n"
+  },
+  {
+    "key": "node:fs:createWriteStream:alias",
+    "source": "import { createWriteStream as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).sink(path) }\n"
   },
   {
     "key": "fs:readFile:direct",
     "source": "import { readFile } from \"fs\"\nexport const native = readFile\n",
-    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+    "advice": "try (try FileSystem.FileSystem).readFileString(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readFileString(path) }\n"
   },
   {
     "key": "fs:readFile:alias",
     "source": "import { readFile as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).readFileString(path)"
+    "advice": "try (try FileSystem.FileSystem).readFileString(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readFileString(path) }\n"
   },
   {
     "key": "fs:writeFile:direct",
     "source": "import { writeFile } from \"fs\"\nexport const native = writeFile\n",
-    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text) }\n"
   },
   {
     "key": "fs:writeFile:alias",
     "source": "import { writeFile as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).writeFileString(path, text)"
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text) }\n"
+  },
+  {
+    "key": "fs:appendFile:direct",
+    "source": "import { appendFile } from \"fs\"\nexport const native = appendFile\n",
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" }) }\n"
+  },
+  {
+    "key": "fs:appendFile:alias",
+    "source": "import { appendFile as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).writeFileString(path, text, { flag: \"a\" }) }\n"
   },
   {
     "key": "fs:mkdir:direct",
     "source": "import { mkdir } from \"fs\"\nexport const native = mkdir\n",
-    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+    "advice": "try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true }) }\n"
   },
   {
     "key": "fs:mkdir:alias",
     "source": "import { mkdir as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).makeDirectory(path, { recursive: true })"
+    "advice": "try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeDirectory(path, { recursive: true }) }\n"
+  },
+  {
+    "key": "fs:mkdtemp:direct",
+    "source": "import { mkdtemp } from \"fs\"\nexport const native = mkdtemp\n",
+    "advice": "try (try FileSystem.FileSystem).makeTempDirectory()",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeTempDirectory() }\n"
+  },
+  {
+    "key": "fs:mkdtemp:alias",
+    "source": "import { mkdtemp as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).makeTempDirectory()",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).makeTempDirectory() }\n"
+  },
+  {
+    "key": "fs:rm:direct",
+    "source": "import { rm } from \"fs\"\nexport const native = rm\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path, { recursive: true }) }\n"
+  },
+  {
+    "key": "fs:rm:alias",
+    "source": "import { rm as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path, { recursive: true })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path, { recursive: true }) }\n"
+  },
+  {
+    "key": "fs:rmdir:direct",
+    "source": "import { rmdir } from \"fs\"\nexport const native = rmdir\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
+  },
+  {
+    "key": "fs:rmdir:alias",
+    "source": "import { rmdir as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
+  },
+  {
+    "key": "fs:unlink:direct",
+    "source": "import { unlink } from \"fs\"\nexport const native = unlink\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
+  },
+  {
+    "key": "fs:unlink:alias",
+    "source": "import { unlink as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).remove(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).remove(path) }\n"
   },
   {
     "key": "fs:stat:direct",
     "source": "import { stat } from \"fs\"\nexport const native = stat\n",
-    "advice": "(try FileSystem.FileSystem).stat(path)"
+    "advice": "try (try FileSystem.FileSystem).stat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).stat(path) }\n"
   },
   {
     "key": "fs:stat:alias",
     "source": "import { stat as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).stat(path)"
+    "advice": "try (try FileSystem.FileSystem).stat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).stat(path) }\n"
   },
   {
-    "key": "fs:createReadStream:direct",
-    "source": "import { createReadStream } from \"fs\"\nexport const native = createReadStream\n",
-    "advice": "(try FileSystem.FileSystem).stream(path)"
+    "key": "fs:lstat:direct",
+    "source": "import { lstat } from \"fs\"\nexport const native = lstat\n",
+    "advice": "try (try FileSystem.FileSystem).lstat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).lstat(path) }\n"
   },
   {
-    "key": "fs:createReadStream:alias",
-    "source": "import { createReadStream as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).stream(path)"
+    "key": "fs:lstat:alias",
+    "source": "import { lstat as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).lstat(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).lstat(path) }\n"
   },
   {
-    "key": "fs:createWriteStream:direct",
-    "source": "import { createWriteStream } from \"fs\"\nexport const native = createWriteStream\n",
-    "advice": "(try FileSystem.FileSystem).sink(path)"
+    "key": "fs:exists:direct",
+    "source": "import { exists } from \"fs\"\nexport const native = exists\n",
+    "advice": "try (try FileSystem.FileSystem).exists(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).exists(path) }\n"
   },
   {
-    "key": "fs:createWriteStream:alias",
-    "source": "import { createWriteStream as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).sink(path)"
+    "key": "fs:exists:alias",
+    "source": "import { exists as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).exists(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).exists(path) }\n"
+  },
+  {
+    "key": "fs:access:direct",
+    "source": "import { access } from \"fs\"\nexport const native = access\n",
+    "advice": "try (try FileSystem.FileSystem).access(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).access(path) }\n"
+  },
+  {
+    "key": "fs:access:alias",
+    "source": "import { access as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).access(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).access(path) }\n"
+  },
+  {
+    "key": "fs:readdir:direct",
+    "source": "import { readdir } from \"fs\"\nexport const native = readdir\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "fs:readdir:alias",
+    "source": "import { readdir as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "fs:opendir:direct",
+    "source": "import { opendir } from \"fs\"\nexport const native = opendir\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "fs:opendir:alias",
+    "source": "import { opendir as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).readDirectory(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readDirectory(path) }\n"
+  },
+  {
+    "key": "fs:readlink:direct",
+    "source": "import { readlink } from \"fs\"\nexport const native = readlink\n",
+    "advice": "try (try FileSystem.FileSystem).readLink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readLink(path) }\n"
+  },
+  {
+    "key": "fs:readlink:alias",
+    "source": "import { readlink as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).readLink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readLink(path) }\n"
+  },
+  {
+    "key": "fs:realpath:direct",
+    "source": "import { realpath } from \"fs\"\nexport const native = realpath\n",
+    "advice": "try (try FileSystem.FileSystem).realPath(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).realPath(path) }\n"
+  },
+  {
+    "key": "fs:realpath:alias",
+    "source": "import { realpath as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).realPath(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).realPath(path) }\n"
+  },
+  {
+    "key": "fs:rename:direct",
+    "source": "import { rename } from \"fs\"\nexport const native = rename\n",
+    "advice": "try (try FileSystem.FileSystem).rename(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).rename(from, to) }\n"
+  },
+  {
+    "key": "fs:rename:alias",
+    "source": "import { rename as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).rename(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).rename(from, to) }\n"
+  },
+  {
+    "key": "fs:symlink:direct",
+    "source": "import { symlink } from \"fs\"\nexport const native = symlink\n",
+    "advice": "try (try FileSystem.FileSystem).symlink(target, path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).symlink(target, path) }\n"
+  },
+  {
+    "key": "fs:symlink:alias",
+    "source": "import { symlink as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).symlink(target, path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).symlink(target, path) }\n"
+  },
+  {
+    "key": "fs:link:direct",
+    "source": "import { link } from \"fs\"\nexport const native = link\n",
+    "advice": "try (try FileSystem.FileSystem).link(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).link(from, to) }\n"
+  },
+  {
+    "key": "fs:link:alias",
+    "source": "import { link as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).link(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).link(from, to) }\n"
+  },
+  {
+    "key": "fs:chmod:direct",
+    "source": "import { chmod } from \"fs\"\nexport const native = chmod\n",
+    "advice": "try (try FileSystem.FileSystem).chmod(path, mode)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chmod(path, mode) }\n"
+  },
+  {
+    "key": "fs:chmod:alias",
+    "source": "import { chmod as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).chmod(path, mode)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chmod(path, mode) }\n"
+  },
+  {
+    "key": "fs:chown:direct",
+    "source": "import { chown } from \"fs\"\nexport const native = chown\n",
+    "advice": "try (try FileSystem.FileSystem).chown(path, uid, gid)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chown(path, uid, gid) }\n"
+  },
+  {
+    "key": "fs:chown:alias",
+    "source": "import { chown as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).chown(path, uid, gid)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).chown(path, uid, gid) }\n"
+  },
+  {
+    "key": "fs:copyFile:direct",
+    "source": "import { copyFile } from \"fs\"\nexport const native = copyFile\n",
+    "advice": "try (try FileSystem.FileSystem).copyFile(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copyFile(from, to) }\n"
+  },
+  {
+    "key": "fs:copyFile:alias",
+    "source": "import { copyFile as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).copyFile(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copyFile(from, to) }\n"
+  },
+  {
+    "key": "fs:cp:direct",
+    "source": "import { cp } from \"fs\"\nexport const native = cp\n",
+    "advice": "try (try FileSystem.FileSystem).copy(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copy(from, to) }\n"
+  },
+  {
+    "key": "fs:cp:alias",
+    "source": "import { cp as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).copy(from, to)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).copy(from, to) }\n"
+  },
+  {
+    "key": "fs:truncate:direct",
+    "source": "import { truncate } from \"fs\"\nexport const native = truncate\n",
+    "advice": "try (try FileSystem.FileSystem).truncate(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).truncate(path) }\n"
+  },
+  {
+    "key": "fs:truncate:alias",
+    "source": "import { truncate as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).truncate(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).truncate(path) }\n"
+  },
+  {
+    "key": "fs:utimes:direct",
+    "source": "import { utimes } from \"fs\"\nexport const native = utimes\n",
+    "advice": "try (try FileSystem.FileSystem).utimes(path, atime, mtime)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).utimes(path, atime, mtime) }\n"
+  },
+  {
+    "key": "fs:utimes:alias",
+    "source": "import { utimes as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).utimes(path, atime, mtime)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).utimes(path, atime, mtime) }\n"
+  },
+  {
+    "key": "fs:open:direct",
+    "source": "import { open } from \"fs\"\nexport const native = open\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"r\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"r\" }) }\n"
+  },
+  {
+    "key": "fs:open:alias",
+    "source": "import { open as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"r\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"r\" }) }\n"
   },
   {
     "key": "fs:watch:direct",
     "source": "import { watch } from \"fs\"\nexport const native = watch\n",
-    "advice": "(try FileSystem.FileSystem).watch(path)"
+    "advice": "(try FileSystem.FileSystem).watch(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).watch(path) }\n"
   },
   {
     "key": "fs:watch:alias",
     "source": "import { watch as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).watch(path)"
+    "advice": "(try FileSystem.FileSystem).watch(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).watch(path) }\n"
   },
   {
     "key": "fs:glob:direct",
     "source": "import { glob } from \"fs\"\nexport const native = glob\n",
-    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+    "advice": "try (try FileSystem.FileSystem).glob(pattern)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).glob(pattern) }\n"
   },
   {
     "key": "fs:glob:alias",
     "source": "import { glob as Native } from \"fs\"\nexport const native = Native\n",
-    "advice": "(try FileSystem.FileSystem).glob(pattern)"
+    "advice": "try (try FileSystem.FileSystem).glob(pattern)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).glob(pattern) }\n"
+  },
+  {
+    "key": "fs:createReadStream:direct",
+    "source": "import { createReadStream } from \"fs\"\nexport const native = createReadStream\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).stream(path) }\n"
+  },
+  {
+    "key": "fs:createReadStream:alias",
+    "source": "import { createReadStream as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).stream(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).stream(path) }\n"
+  },
+  {
+    "key": "fs:createWriteStream:direct",
+    "source": "import { createWriteStream } from \"fs\"\nexport const native = createWriteStream\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).sink(path) }\n"
+  },
+  {
+    "key": "fs:createWriteStream:alias",
+    "source": "import { createWriteStream as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "(try FileSystem.FileSystem).sink(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return (try FileSystem.FileSystem).sink(path) }\n"
+  },
+  {
+    "key": "node:fs:namespace",
+    "source": "import * as fs from \"node:fs\"\nexport const native = fs\n",
+    "advice": "try (try FileSystem.FileSystem).readFileString(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readFileString(path) }\n"
+  },
+  {
+    "key": "fs:namespace",
+    "source": "import * as fs from \"fs\"\nexport const native = fs\n",
+    "advice": "try (try FileSystem.FileSystem).readFileString(path)",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).readFileString(path) }\n"
+  },
+  {
+    "key": "node:fs:constants:direct",
+    "source": "import { constants } from \"node:fs\"\nexport const native = constants\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"wx\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"wx\" }) }\n"
+  },
+  {
+    "key": "node:fs:constants:alias",
+    "source": "import { constants as Native } from \"node:fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"wx\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"wx\" }) }\n"
+  },
+  {
+    "key": "fs:constants:direct",
+    "source": "import { constants } from \"fs\"\nexport const native = constants\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"wx\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"wx\" }) }\n"
+  },
+  {
+    "key": "fs:constants:alias",
+    "source": "import { constants as Native } from \"fs\"\nexport const native = Native\n",
+    "advice": "try (try FileSystem.FileSystem).open(path, { flag: \"wx\" })",
+    "replacement": "import * as FileSystem from \"effect/FileSystem\"\nexport effect function run(path: string, text: string, from: string, to: string, target: string, mode: number, uid: number, gid: number, atime: Date, mtime: Date, pattern: string) { return try (try FileSystem.FileSystem).open(path, { flag: \"wx\" }) }\n"
   }
 ]

@@ -62,7 +62,7 @@ func TestPlatformReplacementMessages(t *testing.T) {
 		{"fs", `import { readFile } from "node:fs/promises"
 export const run = (path: string) => readFile(path, "utf8")`, []string{
 			"readFile from node:fs/promises is platform code, which a .vibe file does not import as a value.",
-			"Use the FileSystem service:   (try FileSystem.FileSystem).readFileString(path)", provideNodeServices,
+			"Use the FileSystem service:   try (try FileSystem.FileSystem).readFileString(path)", provideNodeServices,
 		}},
 		{"path", `import * as path from "node:path"
 export const run = (name: string) => path.join("dist", name)`, []string{
@@ -144,7 +144,7 @@ export const run = () => tmpdir()`, []string{
 		{"mkdtemp", `import { mkdtemp } from "node:fs/promises"
 export const run = () => mkdtemp("build-")`, []string{
 			"mkdtemp from node:fs/promises is platform code, which a .vibe file does not import as a value.",
-			"Use the FileSystem service:   (try FileSystem.FileSystem).makeTempDirectory()", provideNodeServices,
+			"Use the FileSystem service:   try (try FileSystem.FileSystem).makeTempDirectory()", provideNodeServices,
 		}},
 		{"crypto digest", `export const run = (bytes: Uint8Array) => crypto.subtle.digest("SHA-256", bytes)`, []string{
 			"crypto.subtle is platform code, which VibeLang code does not use directly.",
@@ -195,12 +195,12 @@ export const run = (emitter: unknown) => once(emitter, "exit")`, []string{
 		{"lstat", `import { lstat } from "node:fs/promises"
 export const run = (path: string) => lstat(path)`, []string{
 			"lstat from node:fs/promises is platform code, which a .vibe file does not import as a value.",
-			"Use the FileSystem service:   (try FileSystem.FileSystem).lstat(path)", provideNodeServices,
+			"Use the FileSystem service:   try (try FileSystem.FileSystem).lstat(path)", provideNodeServices,
 		}},
 		{"file system constants", `import { constants } from "node:fs"
 export const run = () => constants.O_NONBLOCK`, []string{
 			"constants from node:fs is platform code, which a .vibe file does not import as a value.",
-			`Use the FileSystem service:   (try FileSystem.FileSystem).open(path, { flag: "wx" })`, provideNodeServices,
+			`Use the FileSystem service:   try (try FileSystem.FileSystem).open(path, { flag: "wx" })`, provideNodeServices,
 		}},
 		{"hmac", `import { createHmac } from "node:crypto"
 export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
