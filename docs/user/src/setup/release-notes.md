@@ -83,6 +83,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A pattern that bound one name twice with the same keyword, such as `when let x and let x` or `[let x, let x]`, reported `TS2451` or silently kept the second value. Both are valid, as the pattern-matching proposal says; the second binding that runs now throws `ReferenceError`, and a later `or` alternative may still replace a failed alternative's binding.
 
+- Random-integer replacement hints could include their upper bound, unlike Node’s `randomInt`. They now keep that bound exclusive.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.

@@ -1,0 +1,22 @@
+// expect-result: [0,0,3,4,2]
+import { Effect } from "effect"
+import { SecureRandom } from "effect/crypto"
+
+let draws = 0
+export effect function main() {
+  const random = try Effect.try(() => SecureRandom.make((size) => {
+    draws++
+    const bytes = new Uint8Array(size)
+    // A draw in the final quarter reaches the closed interval’s upper endpoint.
+    bytes[0] = 24
+    return bytes
+  }))
+  const before = draws
+  const program = effect {
+    return try (try SecureRandom.SecureRandom).intBetween(1, 4, { halfOpen: true })
+  }
+  const cold = draws
+  const fixed = try Effect.provideService(program, SecureRandom.SecureRandom, random)
+  const closed = try random.intBetween(1, 4)
+  return [before, cold, fixed, closed, draws]
+}

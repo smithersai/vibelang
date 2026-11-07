@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("node:crypto:randomInt:direct\u0000\u0007")

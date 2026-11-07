@@ -38,7 +38,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 
 WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provide `NodeSocket.layerWebSocketConstructor` or `BrowserSocket.layerWebSocketConstructor` for its `Socket.WebSocketConstructor` requirement. A `layerWebSocket(url)` provides `Socket.Socket`; retrieve that service with `try Socket.Socket`.
 
-`crypto.randomInt(min, max)` excludes `max`. For valid native integer bounds, set `halfOpen: true` on the `SecureRandom.SecureRandom` service’s `intBetween` method to retain that range. The Effect method includes both bounds by default and rounds fractional bounds; keep a native call in a `.ts` adapter when its argument validation is required.
+`crypto.randomInt(min, max)` excludes `max`. Its replacement hint sets `halfOpen: true` explicitly. For valid native integer bounds, set `halfOpen: true` on the `SecureRandom.SecureRandom` service’s `intBetween` method to retain that range. The Effect method includes both bounds by default and rounds fractional bounds; keep a native call in a `.ts` adapter when its argument validation is required.
 
 | Global | Use instead |
 | --- | --- |

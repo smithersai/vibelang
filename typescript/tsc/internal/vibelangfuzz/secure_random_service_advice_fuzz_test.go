@@ -14,6 +14,7 @@ const secureRandomInjectionQuote = "Platform access is only through injected Eff
 
 func secureRandomServiceAdviceQuoted(t testing.TB) {
 	t.Helper()
+	chapterSays(t, "007-tooling.md", "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible.")
 	text := SpecText("005-services.md")
 	for _, quote := range []string{secureRandomModuleQuote, secureRandomInjectionQuote} {
 		if !strings.Contains(text, quote) {
@@ -36,6 +37,11 @@ func FuzzSecureRandomServiceAdvice(f *testing.F) {
 	for _, row := range rows {
 		f.Add([]byte(row.Key + "\x00\x00"))
 		f.Add([]byte(row.Key + "\x00\x01"))
+		if strings.Contains(row.Key, ":randomInt:") {
+			for mode := byte(2); mode < 8; mode++ {
+				f.Add([]byte(row.Key + "\x00" + string([]byte{mode})))
+			}
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -50,7 +56,20 @@ func FuzzSecureRandomServiceAdvice(f *testing.F) {
 		if len(parts) > 1 && len(parts[1]) > 0 && parts[1][0]&1 != 0 {
 			source = "// retain namespace lookup through trivia\n" + strings.ReplaceAll(source, "Native", "Nâtive")
 		}
-		r, err := w.Compile(t.Context(), Project{Config: "{\"compilerOptions\":{\"strict\":true,\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"types\":[],\"skipLibCheck\":true,\"noEmit\":true},\"files\":[\"main.vibe\",\"node.d.ts\"]}", Files: map[string]string{"main.vibe": source, "node.d.ts": "declare module \"node:crypto\" { export const randomUUID:(...args:any[])=>unknown;export const randomBytes:(...args:any[])=>unknown;export const randomInt:(...args:any[])=>unknown;export const getRandomValues:(...args:any[])=>unknown; }declare module \"crypto\" { export const randomUUID:(...args:any[])=>unknown;export const randomBytes:(...args:any[])=>unknown;export const randomInt:(...args:any[])=>unknown;export const getRandomValues:(...args:any[])=>unknown; }", "package.json": `{"type":"module"}`}})
+		project := Project{Config: "{\"compilerOptions\":{\"strict\":true,\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"types\":[],\"skipLibCheck\":true,\"noEmit\":true},\"files\":[\"main.vibe\",\"node.d.ts\"]}", Files: map[string]string{"main.vibe": source, "node.d.ts": "declare module \"node:crypto\" { export const randomUUID:(...args:any[])=>unknown;export const randomBytes:(...args:any[])=>unknown;export const randomInt:(...args:any[])=>unknown;export const getRandomValues:(...args:any[])=>unknown; }declare module \"crypto\" { export const randomUUID:(...args:any[])=>unknown;export const randomBytes:(...args:any[])=>unknown;export const randomInt:(...args:any[])=>unknown;export const getRandomValues:(...args:any[])=>unknown; }", "package.json": `{"type":"module"}`}}
+		mode := byte(0)
+		if len(parts) > 1 && len(parts[1]) > 0 {
+			mode = parts[1][0]
+		}
+		if mode&2 != 0 {
+			project.Config = strings.Replace(project.Config, "{", `{"vibe":{"effectGlobals":false,"effectModules":false},`, 1)
+		}
+		if mode&4 != 0 {
+			project.Files["main.vibex"] = project.Files["main.vibe"]
+			delete(project.Files, "main.vibe")
+			project.Config = strings.Replace(project.Config, "main.vibe", "main.vibex", 1)
+		}
+		r, err := w.Compile(t.Context(), project)
 		if err != nil {
 			t.Fatal(err)
 		}

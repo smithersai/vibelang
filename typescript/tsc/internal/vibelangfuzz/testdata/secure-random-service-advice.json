@@ -22,12 +22,12 @@
   {
     "key": "node:crypto:randomInt:direct",
     "source": "import { randomInt } from \"node:crypto\";export const value=randomInt",
-    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })"
   },
   {
     "key": "node:crypto:randomInt:alias",
     "source": "import { randomInt as Native } from \"node:crypto\";export const value=Native",
-    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })"
   },
   {
     "key": "node:crypto:getRandomValues:direct",
@@ -72,12 +72,12 @@
   {
     "key": "crypto:randomInt:direct",
     "source": "import { randomInt } from \"crypto\";export const value=randomInt",
-    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })"
   },
   {
     "key": "crypto:randomInt:alias",
     "source": "import { randomInt as Native } from \"crypto\";export const value=Native",
-    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max)"
+    "advice": "try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })"
   },
   {
     "key": "crypto:getRandomValues:direct",

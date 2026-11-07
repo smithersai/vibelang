@@ -19,7 +19,7 @@ var platformGlobalDocVariants = map[string]struct{ diagnostic, documented string
 	"crypto.createCipheriv":   {"`try (try Aead.Aead).encrypt(key, plaintext, { nonce })`", "`try (try Aead.Aead).encrypt(aeadKey, plaintext, { nonce })`"},
 	"crypto.createDecipheriv": {"`try (try Aead.Aead).decrypt(key, ciphertext, { nonce })`", "`try (try Aead.Aead).decrypt(aeadKey, ciphertext, { nonce })`"},
 	"crypto.createHmac":       {"`try (try Mac.Mac).sign(key, data)`", "`try (try Mac.Mac).sign(macKey, data)`"},
-	"crypto.randomInt":        {"`try (try SecureRandom.SecureRandom).intBetween(min, max)`", "`try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })`"},
+	"crypto.randomInt":        {"`try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })`", "`try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })`"},
 	"crypto.subtle":           {"`try (try Mac.Mac).sign(key, data)`", "`try (try Mac.Mac).sign(macKey, data)`"},
 	"crypto.webcrypto":        {"`try (try Mac.Mac).sign(key, data)`", "`try (try Mac.Mac).sign(macKey, data)`"},
 	"importScripts":           {"Worker and WorkerRunner", "`effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`"},

@@ -239,7 +239,7 @@ var platformAPIs = map[string]platformAPI{
 
 	"crypto.randomUUID":       {"Crypto", "try (try SecureRandom.SecureRandom).uuidV4()", ""},
 	"crypto.randomBytes":      {"Crypto", "try (try SecureRandom.SecureRandom).randomBytes(size)", ""},
-	"crypto.randomInt":        {"Crypto", "try (try SecureRandom.SecureRandom).intBetween(min, max)", ""},
+	"crypto.randomInt":        {"Crypto", "try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })", "For valid native integer bounds, halfOpen excludes max as Node randomInt does. Keep native argument validation in a .ts file when required."},
 	"crypto.getRandomValues":  {"Crypto", "try (try SecureRandom.SecureRandom).randomBytes(size)", "The randomBytes method returns new bytes instead of filling an array."},
 	"crypto.createHash":       {"Crypto", "try (try Digest.Digest).digest(Digest.sha256, bytes)", "The digest method hashes all the bytes in one call; it has no incremental update."},
 	"crypto.hash":             {"Crypto", "try (try Digest.Digest).digest(Digest.sha256, bytes)", ""},
