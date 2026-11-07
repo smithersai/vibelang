@@ -20,8 +20,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,191 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,542 |
 | The skill and the user guide (144 pages) | 540,000 |
-| The user guide alone | 530,000 |
-| The specification (11 chapters) | 250,000 |
+| The user guide alone | 540,000 |
+| The specification (11 chapters) | 260,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
 ## Effect TypeScript beside VibeLang
@@ -94,16 +94,16 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Learning Path** | **15,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 3,100 |
 | [Installation](../getting-started/004-installation.md) | 3,100 |
-| [Creating Effects](../getting-started/005-creating-effects.md) | 4,600 |
+| [Creating Effects](../getting-started/005-creating-effects.md) | 4,500 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
-| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,700 |
+| [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,800 |
 | **Core Concepts** | **32,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,600 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,100 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,100 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,000 |
 | [Devtools](../getting-started/012-devtools.md) | 22,000 |
-| **All 13 pages** | **52,000** |
+| **All 13 pages** | **53,000** |
 
 ### Setup
 
@@ -112,14 +112,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Set up VibeLang](../setup.md) | 2,100 |
 | [Known limitations](../setup/known-limitations.md) | 660 |
 | [Source maps](../setup/source-maps.md) | 780 |
-| **Start a project** | **9,800** |
+| **Start a project** | **9,900** |
 | [New project](../setup/new-project.md) | 670 |
 | [Existing project](../setup/existing-project.md) | 4,400 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,700 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,800 |
 | **Build and test** | **24,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 20,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,200 |
-| **Format and lint** | **13,000** |
+| **Format and lint** | **14,000** |
 | [Format with dprint](../setup/formatting.md) | 3,300 |
 | [Developer tools](../setup/developer-tools.md) | 10,000 |
 | **Frameworks** | **11,000** |
@@ -262,7 +262,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 10,000 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,600 |
-| **All 101 pages** | **180,000** |
+| **All 101 pages** | **190,000** |
 
 ### VibeLang features
 
@@ -273,7 +273,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 12,000 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
-| [Pattern matching with match and is](116-match-and-is.md) | 12,000 |
+| [Pattern matching with match and is](116-match-and-is.md) | 13,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,500 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
 | **All 8 pages** | **56,000** |
@@ -295,6 +295,6 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Appendices** | **120,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 98,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
-| **All 11 pages** | **250,000** |
+| **All 11 pages** | **260,000** |
 
 <!-- token-counts: end -->
