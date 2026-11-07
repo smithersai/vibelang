@@ -1,5 +1,7 @@
 # Format with dprint
 
+An explicit file path or glob pattern that matches no files makes the format command fail before writing any files. Check the spelling and quote glob patterns so the formatter receives them intact. Running without paths may find no files and succeed.
+
 [dprint](https://dprint.dev) formats `.vibe` files through the `vibelang` package's dprint plugin. The plugin writes each `.vibe` file as TypeScript, has dprint's TypeScript plugin format it, and writes the result back as VibeLang, so `.vibe` and `.ts` files follow the same `typescript` settings of the project's dprint configuration. Install the packages with [Add VibeLang to an existing project](existing-project.md) first.
 
 ![vibelang format with dprint](/videos/eco-format.mp4)

@@ -214,9 +214,13 @@ export function formatFiles(args) {
   const check = args.includes("--check")
   const paths = args.filter(arg => arg !== "--check" && arg !== "--write")
   const inputs = paths.length ? paths : ["**/*.{vibe,vibex,ts,tsx,mts,cts}"]
-  const files = [...new Set(inputs.flatMap(pattern => globSync(pattern, {
+  const files = [...new Set(inputs.flatMap(pattern => {
+    const matches = globSync(pattern, {
     exclude: path => /(^|[/\\])(?:node_modules|dist|build|coverage|\.git|\.jj)([/\\]|$)/.test(path)
-  })))].filter(file => /\.vibex?$/.test(file) || fileHasVibeDirective(file))
+    })
+    if (paths.length && matches.length === 0) throw new Error("vibelang format: no files match " + JSON.stringify(pattern) + ". Check the path or glob pattern.")
+    return matches
+  }))].filter(file => /\.vibex?$/.test(file) || fileHasVibeDirective(file))
   const clean = cleanTexts()
   const batched = formatBatch(files, clean)
   const keys = new Set()
