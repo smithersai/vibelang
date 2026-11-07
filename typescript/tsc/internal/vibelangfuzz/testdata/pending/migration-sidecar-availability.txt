@@ -1,0 +1,5 @@
+FuzzMigrationSidecarAvailability availability:unrelated-error compiler Chapter 1: unresolved neighbour blocks independent declaration comparison; lane migfix-t3code
+FuzzMigrationSidecarAvailability availability:changed-with-error compiler Chapter 1: unresolved neighbour blocks independent declaration comparison; lane migfix-t3code
+FuzzMigrationSidecarAvailability availability:doc-with-error compiler Chapter 1: unresolved neighbour blocks independent declaration comparison; lane migfix-t3code
+FuzzMigrationSidecarAvailability availability:dependent-error compiler Chapter 1: unresolved neighbour blocks independent declaration comparison; lane migfix-t3code
+FuzzMigrationSidecarAvailability corpus:t3code-independent-sidecar-unavailable compiler Chapter 1: unresolved neighbour blocks independent declaration comparison; lane migfix-t3code

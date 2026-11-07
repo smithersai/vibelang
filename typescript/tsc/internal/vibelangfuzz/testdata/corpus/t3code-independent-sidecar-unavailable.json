@@ -1,0 +1,4 @@
+{
+  "good": "export declare const good: number;\n",
+  "bad": "export declare const bad: MissingType;\n"
+}
