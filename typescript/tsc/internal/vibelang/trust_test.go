@@ -246,7 +246,7 @@ export declare const vi: { spyOn(target: object, name: string): Spy }`,
 func TestForeignCallSuggestionCompiles(t *testing.T) {
 	const prefix = "module util {\n" +
 		"  export function shout(s: string): string { return s.toUpperCase() }\n" +
-		"  export class Box { constructor(readonly v: string) {} show(prefix: string): string { return prefix + this.v } }\n" +
+		"  export class Box {\n    /** @throws {never} */\n    constructor(readonly v: string) {}\n    show(prefix: string): string { return prefix + this.v } }\n" +
 		"}\n" +
 		"import { shout, Box } from util\n" +
 		"effect function hello(name: string) { return `hello ${name}` }\n" +

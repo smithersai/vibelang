@@ -105,6 +105,27 @@ func failuresExtraCases() []*failCase {
 	add(&failCase{Name: "wrapper-callback-throw", Owner: "nothrow-impl", Quote: nothrowQ.knownCall, Code: 401, Decls: failParse, Body: "const p = Effect.callback<number>(() => { ⟦parse(s)⟧ })"})
 	add(&failCase{Name: "wrapper-suspend-throw", Quote: effectfulBody, Code: 401, Decls: failParse, Body: "const p = Effect.suspend(() => { ⟦parse(s)⟧; return Effect.succeed(1) })"})
 	const direct = "| In effect code, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))`. In a plain `catch` handler and other plain code, a call known to throw is `EK0401` ([Plain code never throws](#plain-code-never-throws)) | `EK0403` |"
+	// Invocations other than calls: a new expression and a tagged template
+	// follow the same rule in effect code and in a wholly effectful plain
+	// function. Lib constructors and VibeLang classes are not tracked.
+	const invocationRule = "| In effect code, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |"
+	const invocationLib = "export declare class Explicit { constructor(n: number); readonly n: number }\nexport declare class Known {\n  /** @throws {RangeError} */\n  constructor(n: number)\n}\nexport declare class Safe {\n  /** @throws {never} */\n  constructor()\n}\nexport declare function untaggedTag(parts: TemplateStringsArray): number"
+	for _, row := range []struct{ name, body string }{
+		{"new-untagged", "const v = ⟦new Explicit(1)⟧"},
+		{"new-known", "const v = ⟦new Known(1)⟧"},
+		{"tag-untagged", "const v = ⟦untaggedTag`x`⟧"},
+	} {
+		add(&failCase{Name: "effect-invocation-" + row.name, Quote: invocationRule, Code: 403, Lib: invocationLib, Body: row.body})
+	}
+	add(&failCase{Name: "effect-invocation-plain-effectful-new", Quote: effectfulBody, Code: 401, Host: "none", Lib: invocationLib, Decls: "export function probeBody(): Effect.Effect<number> { return Effect.succeed(⟦new Explicit(1)⟧.n) }"})
+	for _, row := range []struct{ name, body string }{
+		{"new-safe", "const v = new Safe()"},
+		{"new-wrapped", "const v = try Effect.try(() => new Explicit(1))"},
+		{"new-map", "const v = new Map<string, number>()"},
+		{"new-error", "const v = new Error(\"x\")"},
+	} {
+		add(&failCase{Name: "effect-invocation-control-" + row.name, Quote: invocationRule, Lib: invocationLib, Body: row.body})
+	}
 	add(&failCase{Name: "catch-tracked-new", Owner: "nothrow-impl", Quote: nothrowQ.handler, Code: 401, Decls: failInput, Body: "const p = Effect.fail(\"bad\") catch () => ⟦new Input(s)⟧"})
 	add(&failCase{Name: "catch-tracked-template", Owner: "nothrow-impl", Quote: nothrowQ.handler, Code: 401, Lib: "/** @throws {Error} */\nexport declare function tag(parts: TemplateStringsArray): never\n", Body: "const p = Effect.fail(\"bad\") catch () => ⟦tag`x`⟧"})
 	const producing = "| In effect code, a call (runtime `import()` included), `new` expression, tagged template or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |"

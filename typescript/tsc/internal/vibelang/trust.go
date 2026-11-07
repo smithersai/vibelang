@@ -627,6 +627,9 @@ func checkTrust(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsCallExpression(node) && !boundary && (!outsideFibers(c, a, node) || a.inEffectfulPlainHome(node)) {
 			checkCall(c, a, file, node)
 		}
+		if (ast.IsNewExpression(node) || ast.IsTaggedTemplateExpression(node)) && !boundary && (!outsideFibers(c, a, node) || a.inEffectfulPlainHome(node)) {
+			checkInvocation(c, a, file, node)
+		}
 		if hatchOf(node) != "" {
 			// A hatch's TypeScript is a boundary (D148); its mapper and inputs are VibeLang (D232).
 			for i, argument := range node.Arguments() {
@@ -728,6 +731,86 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 			}
 		}
 	}
+}
+
+// checkInvocation is checkCall for a new expression or a tagged template.
+// Chapter 3 (Calls in effect code): a call, new expression, tagged template
+// or class evaluation whose thrown type is not never is EK0403 in effect
+// code; a written contract names its classes, and an untagged foreign callee
+// throws unknown.
+func checkInvocation(c *checker.Checker, a *analyzer, file *ast.SourceFile, node *ast.Node) {
+	if unwrappedPromiseInvocation(c, node) {
+		return
+	}
+	effectfulPlain := false
+	if fn := enclosingFunction(node); fn != nil && !a.runsAsEffect(fn) {
+		if !a.isEffectfulPlainHome(fn, node) {
+			return
+		}
+		effectfulPlain = true
+	}
+	if a.performs(node) || returnsEffectful(c, node) || isPlatformInvocation(c, node) {
+		return
+	}
+	// A constructor no class declares has no signature to carry a tag, so
+	// it stays untracked, as before; so does a lib constructor or tag the
+	// shipped table does not list.
+	decl := signatureDeclaration(c, node)
+	if decl == nil && ast.IsNewExpression(node) {
+		return
+	}
+	t := callTrust(c, node)
+	if decl != nil && isLibFile(c, ast.GetSourceFileOfNode(decl)) && t.kind == trustForeign {
+		return
+	}
+	callee := ast.GetInvokedExpression(node)
+	name := nodeText(file, callee)
+	bound, written := foreignThrowsContract(c, node)
+	unknown := (t.kind == trustForeign || t.kind == trustUnknown) && !t.promise && !t.value
+	if effectfulPlain {
+		if !written && unknown && a.knownThrows(node) == nil {
+			report(c, node, unknownThrowInEffectful, name)
+		}
+		return
+	}
+	switch home := a.plainHomeOf(node); {
+	case home == nil:
+	case home.Kind == ast.KindPropertyDeclaration && home.Initializer() != nil && ast.IsNodeDescendantOf(node, home.Initializer()),
+		home.Kind == ast.KindClassStaticBlockDeclaration:
+		return
+	case ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(node, home):
+		if t.kind == trustForeign && !t.promise && a.knownThrows(node) == nil {
+			report(c, node, foreignCallInEffectParameters, name)
+		}
+		return
+	}
+	if written && !t.value && !t.promise {
+		if bound != "" {
+			report(c, node, foreignThrowingCall, name, bound)
+		}
+		return
+	}
+	switch {
+	case unknown:
+		d := report(c, node, EK0403)
+		note(d, "Run it through {0}.", wrappedCall("try", nodeText(file, node), ""))
+	case t.kind == trustBuiltin && len(t.failures) > 0:
+		var names []string
+		for _, failure := range t.failures {
+			names = append(names, failure.name)
+		}
+		report(c, node, foreignThrowingCall, name, strings.Join(names, " | "))
+	}
+}
+
+// isPlatformInvocation is isPlatformCallee for any invocation.
+func isPlatformInvocation(c *checker.Checker, node *ast.Node) bool {
+	root := ast.SkipParentheses(ast.GetInvokedExpression(node))
+	for ast.IsPropertyAccessExpression(root) || ast.IsElementAccessExpression(root) {
+		root = ast.SkipParentheses(root.Expression())
+	}
+	_, ok := platformReference(c, root)
+	return ok
 }
 
 // unknownThrowInEffectful is EK0401's text for a call whose throwing is

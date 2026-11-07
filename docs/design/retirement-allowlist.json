@@ -2238,5 +2238,25 @@
       "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns gives Symbol.customMatcher the same unique symbol type as the runtime customMatcher export. This cites existing published acceptance, not a new approval."
     },
     "reason": "The negative controls show that another unique symbol is not assignable to or comparable with the key; TypeScript itself reports TS2322 and TS2367, and the compiler before this commit reports the same codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0403",
+    "case": "typescript/vibelang/cases/effect-untagged-invocations.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md (Calls in effect code): a call, new expression, tagged template or class evaluation whose thrown type is not never is EK0403 in effect code, and an untagged foreign declaration throws unknown. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "An untagged or throwing .ts constructor or tag in effect code needs its exception routed into the error channel or declared impossible. Choosing between try Effect.try, a typed catch mapper and a @throws {never} contract on the foreign declaration needs author intent; a mechanical rewrite must not change when the exception surfaces."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effect-untagged-invocations.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md (Calls in effect code): a call, new expression, tagged template or class evaluation whose thrown type is not never is EK0403 in effect code, and an untagged foreign declaration throws unknown. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The same invocation in a plain function whose return type is wholly effectful runs before any Effect exists. A repair must choose between making the function effect, declaring a contract on the foreign callee, or moving the code to a .ts file; each needs author intent."
   }
 ]
