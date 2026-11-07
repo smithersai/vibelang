@@ -502,6 +502,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A plain `catch` handler with a written return type, such as `x catch (): number => 0` or `x catch (): Effect.Effect<number> => Effect.succeed(7)`, was rejected with `TS2322`, `TS2345` or `EK0502`: the compiler read the annotation as an `effect` function's Effect type. The annotation now types what the handler returns, as on any plain function, and the `catch` gives that value, an Effect included, unrun.
 
+- The migrate flow kept a module in TypeScript when its platform code built a URL beside the module from a path written without `./`, such as `new URL("results/", import.meta.url)`, because it read the path as naming the module's file. Any written path that is not empty and starts with neither `?` nor `#` drops the file name, so it names the same URL from the `.platform.ts` companion, and such code now moves.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |

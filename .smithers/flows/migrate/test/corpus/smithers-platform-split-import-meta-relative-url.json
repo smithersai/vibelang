@@ -1,0 +1,4 @@
+{
+  "source": "Smithers apps/mvp evals/suite.ts: the platform split refused `const RESULTS = new URL(\"results/\", import.meta.url)` read by code that writes the results with node:fs, because the path is not written with `./`. Minimized; names and shapes kept.",
+  "text": "import { existsSync, mkdirSync, writeFileSync } from \"node:fs\"\n\nconst RESULTS = new URL(\"results/\", import.meta.url)\n\n/** Where the eval results are written. */\nexport const resultsDir = (): string => RESULTS.href\n\n/** Writes one run's artifact beside the suite. */\nexport const record = (runId: string, artifact: unknown): string => {\n  if (!existsSync(RESULTS)) mkdirSync(RESULTS, { recursive: true })\n  const target = new URL(`${runId}.json`, RESULTS)\n  writeFileSync(target, `${JSON.stringify(artifact, null, 2)}\\n`)\n  return target.href\n}\n\nexport const suiteName = \"mvp-evals\"\n"
+}

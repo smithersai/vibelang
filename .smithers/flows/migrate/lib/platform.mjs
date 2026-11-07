@@ -1636,7 +1636,7 @@ const calleeName = (callee, ts) => ts.isIdentifier(callee) ? callee.text
   : ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && !callee.questionDotToken ? callee.expression.text + "." + callee.name.text : null
 
 // Whether node reads import.meta for the module's own identity: anything but
-// import.meta.url as the base of new URL(<a path beside the module>, ...),
+// import.meta.url as the base of new URL(<a path that drops the file name>, ...),
 // the argument of createRequire, whose resolution starts from the module's
 // directory, or what names that directory in a sibling beside it too: the
 // directory of fileURLToPath(import.meta.url), and the companion's
@@ -1654,9 +1654,14 @@ function namesModule(node, ts, requires) {
       if (ts.isCallExpression(parent) && parent.arguments.length === 1 && parent.arguments[0] === use && directories.get(calleeName(parent.expression, ts)) === "dirname") return false
     }
     if (!ts.isNewExpression(use) || use.arguments?.length !== 2 || use.arguments[1] !== url || !ts.isIdentifier(use.expression) || use.expression.text !== "URL") return true
+    // Against a base, a path that is not empty and starts with neither `?`
+    // nor `#` drops the base's file name (or the whole base when absolute),
+    // so it names the same URL from the sibling beside the module. The URL
+    // parser strips leading whitespace, so a path that starts with it proves
+    // nothing.
     const first = use.arguments[0]
     const head = ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) ? first.text : ts.isTemplateExpression(first) ? first.head.text : null
-    return head === null || !(head === "." || head === ".." || head.startsWith("./") || head.startsWith("../"))
+    return head === null || !/^[^\s\x00-\x1f?#]/.test(head)
   }
   return !!ts.forEachChild(node, (child) => namesModule(child, ts, requires) || undefined)
 }
