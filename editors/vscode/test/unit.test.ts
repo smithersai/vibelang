@@ -91,7 +91,7 @@ test("starts the configured server with stdio and owns only VibeLang by default"
   expect(clients[0].server).toEqual({ command: "/configured/vibelang", args: ["--lsp"], transport: 0, options: { cwd: scratch } })
   expect(clients[0].options.documentSelector).toEqual([{ scheme: "file", language: "vibe" }, { scheme: "untitled", language: "vibe" }, { scheme: "file", language: "vibex" }, { scheme: "untitled", language: "vibex" }])
   expect(status.text).toBe("vibelang")
-  expect(status.detail).toContain("TypeScript 7.1-test")
+  expect(status.detail).toBe("/configured/vibelang (7.1-test)")
   await deactivate()
   expect(clients[0].stopped).toBe(true)
 })
@@ -498,3 +498,41 @@ test("a failed recovery notification is logged without disabling restart", async
   await command("restartServer")
   expect(status.text).toBe("vibelang")
 })
+
+test("server status preserves the compiler and TypeScript version identity", async () => {
+  await start()
+  const reported = "0.0.12 (TypeScript 7.1.0-dev)"
+  clients[0].initializeResult.serverInfo.version = reported
+  clients[0].handler({ newState: 2 })
+  expect(status.detail).toBe(`/configured/vibelang (${reported})`)
+})
+
+const statusVersion = fc.oneof(
+  fc.constant(undefined),
+  fc.constant(""),
+  fc.tuple(fc.integer({ min: 0, max: 99 }), fc.integer({ min: 0, max: 99 }), fc.integer({ min: 0, max: 99 }), fc.boolean())
+    .map(([major, minor, patch, compound]) => `${major}.${minor}.${patch}${compound ? " (TypeScript 7.1.0-dev)" : ""}`)
+)
+// Metamorphic: changing the advertised version changes only that identity;
+// an absent version leaves just the executable, and stopped clients cannot
+// overwrite the running server's identity.
+test("property: server status versions remain opaque across restart", () => property("editor-server-version",
+  fc.tuple(statusVersion, statusVersion), async ([first, second]) => {
+    await start()
+    const report = (client: FakeClient, version: string | undefined) => {
+      client.initializeResult = version === undefined ? {} as any : { serverInfo: { version } }
+      client.handler({ newState: 2 })
+    }
+    const verify = (version: string | undefined) => {
+      expect(status.detail).toBe("/configured/vibelang" + (version ? ` (${version})` : ""))
+      expect(status.text).toBe("vibelang")
+    }
+    const previous = clients[0]
+    report(previous, first)
+    verify(first)
+    await command("restartServer")
+    report(clients[1], second)
+    verify(second)
+    report(previous, first)
+    verify(second)
+  }))

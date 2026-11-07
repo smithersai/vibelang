@@ -43,7 +43,7 @@ The extension runs the first of:
 2. The `node_modules/.bin/vibelang` nearest to the open `.vibe` or `.vibex` file, then nearest to each workspace folder. `bun install` puts it there from `vibelang`.
 3. `vibelang` on `PATH`. `scripts/setup.sh` links `~/.local/bin/vibelang` when that directory is on `PATH`.
 
-If none exists, the extension says so and the status item next to the language mode reads "vibelang not found". After rebuilding the compiler, run **VibeLang: Restart Language Server**. After installing a missing compiler, restart the server even if the earlier notification is still open; it does not block activation or restart.
+If none exists, the extension says so and the status item next to the language mode reads "vibelang not found". When the server is running, its status detail shows the compiler path and the version reported by the server, including its TypeScript version. After rebuilding the compiler, run **VibeLang: Restart Language Server**. After installing a missing compiler, restart the server even if the earlier notification is still open; it does not block activation or restart.
 
 ## TypeScript files
 

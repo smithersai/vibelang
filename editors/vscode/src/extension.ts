@@ -123,7 +123,7 @@ async function start(): Promise<void> {
       const info = started.initializeResult?.serverInfo
       status.severity = vscode.LanguageStatusSeverity.Information
       status.text = "vibelang"
-      status.detail = `${server.command}${info?.version ? ` (TypeScript ${info.version})` : ""}`
+      status.detail = `${server.command}${info?.version ? ` (${info.version})` : ""}`
     } else if (newState === State.Stopped) {
       status.severity = vscode.LanguageStatusSeverity.Warning
       status.text = "vibelang stopped"
