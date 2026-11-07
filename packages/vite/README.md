@@ -105,6 +105,8 @@ plugin emits JavaScript. If `tsconfig.json` has `"files": []` and only lists
 `references`, as Vite's templates do, each module compiles under the first
 referenced configuration that holds it.
 
+With `allowJs`, edits to JavaScript dependencies recheck their VibeLang importers, including imports used only for types. Changed type errors appear in the terminal and overlay; correcting or recreating the JavaScript source restores hot updates.
+
 ## Configure Vitest
 
 ```ts

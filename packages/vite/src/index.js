@@ -232,6 +232,26 @@ export default function vibelang(options = {}) {
     return modules
   }
 
+  const contractFiles = new Map()
+  function contractPaths(file) {
+    const paths = [slash(resolve(file))]
+    try { paths.push(slash(realpathSync(file))) } catch {}
+    return paths
+  }
+  function rememberContracts(result) {
+    const previous = contractFiles.get(result.project)
+    const failed = Boolean(result.errors?.length || result.error)
+    if (previous && previous.inputs === result.inputs) {
+      previous.failed ||= failed
+      return
+    }
+    contractFiles.set(result.project, {
+      inputs: result.inputs,
+      paths: new Set((result.inputs ?? []).flatMap(contractPaths)),
+      failed
+    })
+  }
+
   const writtenImports = new Map()
   function writtenOutput(source, importer) {
     const file = sourceFile(cleanId(importer))
@@ -253,6 +273,7 @@ export default function vibelang(options = {}) {
   function close() {
     writtenImports.clear()
     urlVersions.clear()
+    contractFiles.clear()
     const pending = modules
     modules = undefined
     current = undefined
@@ -278,6 +299,7 @@ export default function vibelang(options = {}) {
 
   async function loadModule(file) {
     const result = await (await loaded()).load(file)
+    rememberContracts(result)
     return relativeOutput(result, file, backend, () => backend.findCompiler(root, options.compiler), debug)
   }
 
@@ -304,7 +326,14 @@ export default function vibelang(options = {}) {
       }
     }
     if (isGeneratedDeclaration(context.file)) { debug(`ignore generated declaration ${context.file}`); return [] }
-    if (!/\.(?:vibex?|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
+    const javascript = /\.[cm]?jsx?$/.test(context.file)
+    if (!javascript && !/\.(?:vibex?|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
+    if (javascript) {
+      const paths = contractPaths(context.file)
+      const relevant = (context.type === "create" && contractFiles.size > 0) || [...contractFiles.values()].some(entry => entry.failed || paths.some(path => entry.paths.has(path)))
+      if (!relevant) { debug(`ignore JavaScript outside loaded contracts: ${context.file}`); return }
+      debug(`JavaScript contract invalidated: ${context.file}; projects=${contractFiles.size}`)
+    }
     const graph = environment?.moduleGraph ?? context.server.moduleGraph
     const channel = environment?.hot ?? context.server.ws
     debug(`hot ${context.type ?? "update"} ${context.file}; environment=${environment?.name ?? "legacy"}, modules=${context.modules.length}`)
@@ -322,11 +351,15 @@ export default function vibelang(options = {}) {
       if (module.file && isCompiled(module.file)) visit(module)
     }
     for (const module of affected) graph.invalidateModule(module)
-    // Recompile the sources Vite has loaded. A watched TypeScript source
+    // Recompile the sources Vite has loaded. A watched JavaScript or TypeScript source
     // can change their contracts without making its own errors loader errors.
     const errors = []
     const sources = new Set([...affected].map((module) => module.file).filter((file) => file && isCompiled(file)))
-    for (const file of sources) errors.push(...(await projects.load(sourceFile(file))).errors)
+    for (const file of sources) {
+      const result = await projects.load(sourceFile(file))
+      rememberContracts(result)
+      errors.push(...result.errors)
+    }
     if (errors.length) {
       const { message, id, loc } = diagnostics(errors, context.file)
       context.server.config.logger.error(message)
@@ -477,7 +510,7 @@ export default function vibelang(options = {}) {
     },
     watchChange(id) {
       if (isGeneratedDeclaration(id)) { debug(`ignore generated declaration ${id}`); return }
-      if (/\.(?:vibex?|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
+      if (/\.(?:vibex?|[cm]?[jt]sx?|json)$/.test(id)) current?.invalidate()
     },
     async hotUpdate(context) {
       return hotUpdate(context, this.environment)

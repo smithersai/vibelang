@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Editing a JavaScript dependency could leave stale type checking in the Vite dev server. Importers now report changed type errors and recover when the JavaScript is corrected.
+
 - When a `.ts` function's `@throws` named a type that is not a class, such as `@throws {typeof sentinel}` or `@throws {"default"}`, calling it in plain code reported `EK0401` saying it "may throw 'unknown'". The message now shows the written contract, as the effect-code message does.
 
 - Migration examples with callable exports outside a package could still be reported as unsupported after their dependencies resolved. They now verify that support while continuing to reject changed types, changed documentation, and unresolved inputs.

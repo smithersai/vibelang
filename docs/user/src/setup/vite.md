@@ -272,6 +272,8 @@ scan compiles each `.vibe` module it reaches once; the requests reuse that
 compile. A module that does not compile scans as empty and reports its errors
 when requested.
 
+With `allowJs`, edits to JavaScript dependencies recheck their VibeLang importers, including imports used only for types. Changed type errors appear in the terminal and overlay; correcting or recreating the JavaScript source restores hot updates.
+
 ## Generated declarations
 
 While serving a `.vibe` module, the compiler can write its `.d.vibe.ts`
