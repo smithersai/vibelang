@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "compilerVersion": "0.0.12",
+  "effectVersion": "4.1.1",
+  "sourceSha256": "2fe319ca16e332494c2173cb3531acabdb2f41879f1527fbfad0d29e18ce6cae",
+  "videoSha256": "5524adbdc7b42e259e90a84b12a3a873df34bfd6b2ef0a73e3713065e739fe4e",
+  "posterSha256": "643bb1f9388c022ce9042097c6e876fc13eeb464acadce8b181546d89b0bbe45",
+  "commands": [
+    {
+      "command": "bun run test",
+      "exitCode": 0,
+      "output": "RUN  v5.1.0 my-app\n\n ✓ src/greeting.test.vibe (2 tests) 8ms\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Duration  1.07s (transform 76%, import 22%, tests 1%)\n\n$ vitest run"
+    }
+  ]
+}

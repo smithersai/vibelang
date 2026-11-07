@@ -1,0 +1,12 @@
+import { assert, it } from "@effect/vitest"
+import { EmptyName, greeting } from "./greeting.vibe"
+
+it.effect("greets a name", effect () => {
+  const message = try greeting("Ada")
+  try Effect.try(() => assert.strictEqual(message, "Hello, Ada!"))
+})
+
+it.effect("recovers from an empty name", effect () => {
+  const result = greeting("") catch (error) => error instanceof EmptyName
+  try Effect.try(() => assert.strictEqual(result, true))
+})

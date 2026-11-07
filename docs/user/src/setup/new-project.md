@@ -64,7 +64,7 @@ Recovered from EmptyName
 bun run test
 ```
 
-With npm, run `npm run test`. The output includes:
+The starter tests check a successful greeting and recovery from an empty name. With npm, run `npm run test`. The output includes:
 
 ```out
  Test Files  1 passed (1)

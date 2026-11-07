@@ -39,6 +39,8 @@ const runs = [
   ["site/scripts/heading-order.test.mjs", "site/package.json", "scripts/heading-order.test.mjs"],
   ["site/scripts/table-headers.test.mjs", "site/package.json", "scripts/table-headers.test.mjs"],
   ["site/scripts/proposal-overview.test.mjs", "site/package.json", "scripts/proposal-overview.test.mjs"],
+  ["site/scripts/starter-video.test.mjs", "site/package.json", "scripts/starter-video.test.mjs"],
+  ["site/scripts/starter-video-playback.test.mjs", "site/package.json", "scripts/starter-video-playback.test.mjs"],
   [`scripts/!(api-identity*|${buildContractExclusions}).test.mjs`, "PACKAGE.ts", "\" + buildContractExclusions + \""],
   ["scripts/api-identity*.test.mjs", "PACKAGE.ts", "node --test scripts/api-identity*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
