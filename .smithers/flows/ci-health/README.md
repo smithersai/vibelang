@@ -48,6 +48,11 @@ A `skip` or `todo` reason string marks a test even when it is `""`, matching
 Node's successful exit and skipped/todo counts. Both reporter fixtures include
 actual executions of these empty-reason controls.
 
+Whitespace-only names are valid Node test names. The analyzer retains spaces,
+tabs, line separators and other whitespace without trimming them. Node turns an
+empty written name into `<anonymous>`; records with a missing, nonstring
+or empty name field remain invalid.
+
 Failure counters treat every test name as a key, including `__proto__`,
 `constructor` and other inherited property names. They retain independent counts
 and last-failure times through saved analysis and the rendered report.
@@ -172,3 +177,8 @@ actual reporter executions alternate ordinary assertion failures and success.
 Names describe resource and timeout handling, and expected skip/todo controls
 carry resource or deadline errors. The flow must attribute the ordinary
 assertions correctly while retaining the exact failed names and counters.
+
+The `blank-names` eval uses `fixture-blank-names/`: four graph
+histories from eight actual reporter executions retain seven whitespace-only
+names and Node's anonymous-name control. The report must save every name,
+two failures per name and its returning-test observation in both test tables.

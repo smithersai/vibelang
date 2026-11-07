@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
+
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
 - The editor and TypeScript mapper treated producer function expressions as JavaScript generators. They now preserve their lazy `Stream` behavior for anonymous, named and nested expressions.

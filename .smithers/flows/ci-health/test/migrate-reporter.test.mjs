@@ -24,7 +24,7 @@ test("mixed reporter records preserve generated failure names without duplicates
     name: fc.oneof(
       fc.constant("Unicode \u2028 and \u2029 separators"),
       fc.array(fc.integer({ min: 0, max: 0xffff }), { minLength: 1, maxLength: 80 }).map(units => String.fromCharCode(...units))
-    ).filter(name => name.trim().length > 0),
+    ).filter(name => name.length > 0),
     kind: fc.constantFrom("migration", "compiler"),
     fails: fc.boolean(),
     todo: fc.constantFrom(false, true, "", "future control"),
@@ -44,7 +44,7 @@ test("mixed reporter records preserve generated failure names without duplicates
 test("migration records reject incomplete JSON, wrong shapes and other events without naming tests", () => {
   assert.deepEqual(failedTests([
     "[migrate-test] {", "[migrate-test] null", "[migrate-test] []", record("test-failed"),
-    record({ event: "test-failed", name: 17 }), record({ event: "test-failed", name: "  " }),
+    record({ event: "test-failed", name: 17 }), record({ event: "test-failed", name: "" }),
     record({ event: "test-failed" }), record({ event: "failure", name: "wrong protocol event" }),
     '[node-test] {"event":"test-failed","name":"wrong compiler event"}',
     ...["start", "progress", "failure-output", "complete", "incomplete"].map(event => record({ event, name: "not a test" })),

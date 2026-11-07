@@ -1,0 +1,14 @@
+//packages:compiler-test-2: [node-test] {"event":"start","elapsedMs":0}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"tests 8"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"suites 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"pass 8"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"fail 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"cancelled 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"skipped 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"todo 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":62,"message":"duration_ms 78.025507"}
+//packages:compiler-test-2: [node-test] {"event":"summary","elapsedMs":63,"counts":{"tests":8,"failed":0,"passed":8,"cancelled":0,"skipped":0,"todo":0,"topLevel":8,"suites":0},"success":true}
+//packages:compiler-test-2: 
+//packages:migrate-test: [migrate-test] {"event":"start","elapsedMs":0,"filesSelected":1,"files":["case.mjs"]}
+//packages:migrate-test: [migrate-test] {"event":"complete","elapsedMs":58,"filesSelected":1,"filesCompleted":1,"missing":[],"counts":{"tests":8,"passed":8,"failed":0,"cancelled":0,"skipped":0,"todo":0},"success":true}
+//packages:migrate-test: 

@@ -194,7 +194,7 @@ export function failedTests(lines) {
         const item = JSON.parse(record[2])
         const event = record[1] === "node-test" ? "failure" : "test-failed"
         if (item?.event === event && !marked(item.todo) && !marked(item.skip) &&
-            typeof item.name === "string" && item.name.trim()) out.add(item.name)
+            typeof item.name === "string" && item.name.length > 0) out.add(item.name)
       } catch { /* A truncated record must not invent a failed test. */ }
       continue
     }

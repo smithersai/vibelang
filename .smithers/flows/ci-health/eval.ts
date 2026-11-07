@@ -217,6 +217,22 @@ cases.push({
   } satisfies Input
 });
 
+// Node preserves whitespace-only names and normalizes the empty name.
+const blankNames = ["<anonymous>", " ", "\t", "\n", "\r\n", "\u2028", "\u2029", "\u00a0"];
+cases.push({
+  name: "blank-names",
+  input: {
+    fixture: "fixture-blank-names",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: blankNames,
+    exactTests: true,
+    intermittent: blankNames,
+    regressed: {},
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "3", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
