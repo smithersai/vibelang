@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Following the Alchemy install guide could select an incompatible Node helper and stop compilation. The guide now pins that helper before installing dependencies.
+
 - The browser entry guide used a crypto API that no longer compiled. Its HMAC example now uses Effect's crypto service and browser layer.
 
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.

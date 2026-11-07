@@ -42,6 +42,37 @@ export function bunInstallProblems(markdown, expected, file = "document") {
   return problems
 }
 
+// A newly initialized project has no existing pin table to preserve.
+export function freshBunInstallProblems(markdown, expected, file = "document") {
+  let pinned = false, context = ""
+  const problems = []
+  for (const token of blocks(lexer(markdown))) {
+    if (token.type !== "code") {
+      context += token.raw ?? ""
+      continue
+    }
+    const language = (token.lang ?? "").split(/\s+/, 1)[0].toLowerCase()
+    if (language === "json" && /package\.json/.test(context + (token.lang ?? ""))) {
+      try {
+        const config = JSON.parse(token.text)
+        const active = Object.hasOwn(config, "overrides") ? "overrides" : "resolutions"
+        pinned ||= config[active]?.["@effect/platform-node-shared"] === expected
+      } catch {}
+    }
+    if (/^(?:sh|shell|bash|console)$/.test(language)) {
+      for (const line of token.text.split("\n")) {
+        if (/^[ \t]*bun\s+init\b/.test(line)) pinned = false
+        if (/^[ \t]*bun\s+add\b/.test(line) &&
+            /(?:^|\s)(?:effect(?:@|\s|$)|@effect\/platform-node(?:@|\s|$))/.test(line) && !pinned) {
+          problems.push(file + ": pin @effect/platform-node-shared to " + expected + " in the root package.json before installing Effect")
+        }
+      }
+    }
+    context = ""
+  }
+  return problems
+}
+
 export function userBunInstallProblems(repo = fileURLToPath(new URL("../../", import.meta.url))) {
   const expected = JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies.effect
   return ["docs/user/src/setup/existing-project.md", "docs/user/src/getting-started/004-installation.md"].flatMap(file =>

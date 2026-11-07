@@ -14,6 +14,19 @@ The complete stack, an R2 bucket of notes and a Worker that stores (`PUT /key`) 
 ```sh
 mkdir my-stack && cd my-stack
 bun init -y
+```
+
+Before installing dependencies, add this transitive pin to `package.json`. It keeps the Node helper on the Effect version VibeLang supports:
+
+```json
+{
+  "overrides": {
+    "@effect/platform-node-shared": "4.1.1"
+  }
+}
+```
+
+```sh
 bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.1.1 \
   @effect/platform-bun@4.1.1 @effect/platform-node@4.1.1 vibelang-runtime@0.0.12
 bun add -d vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1

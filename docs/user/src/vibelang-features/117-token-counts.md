@@ -261,7 +261,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Terminal](../platform/110-terminal.md) | 1,700 |
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 10,000 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
-| [Alchemy](../platform/alchemy.md) | 2,500 |
+| [Alchemy](../platform/alchemy.md) | 2,600 |
 | **All 101 pages** | **180,000** |
 
 ### VibeLang features
