@@ -774,6 +774,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				}
 			}
 			p = p.withFixes(callbackSatisfiesFixes(ctx, program, file, g.refused))
+			p = p.withFixes(foreignThunkBridgeFixes(ctx, program, file, g.refused))
 			if options.MigrationOnly || options.VIPOnly {
 				p = p.withFixes(callbackMigrationFixes(ctx, program, file, g.refused))
 			}

@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The editor offered an `infer`-slot repair even when a plain function returned an Effect incompatible with a written channel. It now withholds that repair instead of leaving a type error.
 
+- An unannotated TypeScript function passed straight to `Effect.promise` or `Effect.sync`, such as `Effect.promise(loadCatalog)`, reports `EK0402`, and `vibelang --fix` left it for a hand repair. The fix now writes the defect bridge `Effect.orDie(Effect.tryPromise({ try: () => loadCatalog(), catch: (e) => e }))` (or `Effect.try` for `sync`), which keeps a thrown or rejected value as the same defect.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.

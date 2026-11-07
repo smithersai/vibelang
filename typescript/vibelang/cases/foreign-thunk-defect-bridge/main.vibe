@@ -1,0 +1,10 @@
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws docs/design/src/007-tooling.md#fix-ownership-and-preservation
+// An unannotated foreign function may throw unknown, so Effect.promise(f) and
+// Effect.sync(f) are EK0402. --fix writes this defect bridge. run.mjs checks
+// that each program dies with the same value as the TypeScript twin's
+// Effect.promise(f) or Effect.sync(f), and that success is unchanged.
+import { rejects, throwsFirst, boom, load } from "./foreign.ts"
+export const rejected = Effect.orDie(Effect.tryPromise({ try: () => rejects(), catch: (e) => e }))
+export const thrownFirst = Effect.orDie(Effect.tryPromise({ try: () => throwsFirst(), catch: (e) => e }))
+export const thrown = Effect.orDie(Effect.try({ try: () => boom(), catch: (e) => e }))
+export const loaded = Effect.orDie(Effect.tryPromise({ try: () => load(), catch: (e) => e }))

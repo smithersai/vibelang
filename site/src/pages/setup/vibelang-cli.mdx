@@ -230,6 +230,20 @@ The `catch` mapping retains the original thrown value, and `Effect.orDie`
 keeps it as a defect. The helper runs when the Effect runs. Do not mark a
 throwing validation helper `@nothrow` to pass a non-throwing callback check.
 
+### Bridge a TypeScript function passed to `promise` or `sync`
+
+An unannotated TypeScript function may throw, so passing it as the thunk of
+`Effect.promise` or `Effect.sync` reports `EK0402`, as in
+`Effect.promise(loadCatalog)`. `vibelang --fix` writes the defect bridge,
+`Effect.orDie(Effect.tryPromise({ try: () => loadCatalog(), catch: (e) => e }))`,
+or `Effect.orDie(Effect.try({ try: () => read(), catch: (e) => e }))` for
+`Effect.sync(read)`. A thrown value, or a rejection, stays the same defect.
+A function that takes Effect's `AbortSignal` receives it:
+`try: (signal) => fetchPage(signal)`. The fix applies to a function declaration
+or a `const`; a method read from an object, such as
+`Effect.promise(client.load)`, keeps the diagnostic, because the bridge would
+call it with `client` as `this`.
+
 With `vibelang lint --build --clean`, project outputs are listed as a dry run and existing files stay intact. Ordinary `vibelang --build --clean` removes its selected build outputs as TypeScript does.
 
 With `vibelang lint --init`, the command previews creating `tsconfig.json` and writes no file. Use `vibelang --init` to create the configuration.
