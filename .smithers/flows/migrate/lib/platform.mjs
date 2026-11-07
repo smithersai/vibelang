@@ -303,7 +303,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
     if (!isMovable(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} cannot move to ${posix.basename(platformPath(file))}` }
   }
   const early = earlyConstant(declarations, moved, copied, constants, ts)
-  if (early) return { refused: `${file}: export ${[...early.names].join(", ")} uses platform code and is not a function with written parameter and return types, so it cannot stay in the .vibe module` }
+  if (early) return { refused: `${file}: export ${[...early.names].join(", ")} is read by platform code that a statement above it runs while the module loads, so its copy in ${posix.basename(platformPath(file))} would be initialized before that read` }
   // import.meta.url names the module that reads it, so in the sibling it would
   // name the sibling. A URL resolved against it for a path beside the module
   // means the same in either file.
@@ -819,25 +819,36 @@ const primitiveOperators = (ts) => new Set([ts.SyntaxKind.PlusToken, ts.SyntaxKi
 
 // The sibling evaluates before the module body, so a copied const is
 // initialized before any kept statement runs. In the original a kept statement
-// above the const that ran the moved code at load read it in its temporal
-// dead zone and threw a ReferenceError; the copy would not. Such a const is
-// not copied: the first kept statement above it whose evaluation can reach the
-// moved code, through a name that reads it, makes the split refuse.
+// above the const whose load ran moved code that reads it read it in its
+// temporal dead zone and threw a ReferenceError; the copy would not. Such a
+// const is not copied: the split refuses. Moved code that never reads it runs
+// the same in either file (smithers build/targets Exec.ts: a schema above
+// defaultPathExtensions reads moved code at load that does not read it).
 function earlyConstant(declarations, moved, copied, constants, ts) {
   const copies = declarations.filter((d) => copied.has(d) && (constants === null || constants.has(d)))
   if (!copies.length) return null
-  const reaching = new Set([...moved].flatMap((d) => [...d.names]))
-  for (let grew = true; grew; ) {
-    grew = false
-    for (const d of declarations) {
-      if (moved.has(d) || [...d.names].every((n) => reaching.has(n))) continue
-      if ([...d.reads].some((n) => reaching.has(n))) { for (const n of d.names) reaching.add(n); grew = true }
+  const byName = new Map(declarations.flatMap((d) => [...d.names].map((n) => [n, d])))
+  // The declarations a kept statement's load can run: what it reads at load,
+  // then everything a declaration it reaches reads, since a call runs its body.
+  const reached = (k) => {
+    const seen = new Set(), queue = [...loadReads(k.statement, ts)]
+    while (queue.length) {
+      const t = byName.get(queue.pop())
+      if (!t || seen.has(t)) continue
+      seen.add(t)
+      queue.push(...t.reads)
     }
+    return seen
   }
-  let reached = false
+  // Moved code reads the sibling's declaration, initialized before the module
+  // body runs. A kept read of a copied const reads the module's own, which
+  // keeps its temporal dead zone; a declaration that moved is the sibling's
+  // for every reader.
+  const readsEarly = (t, d) => t === d ? moved.has(d) : moved.has(t) && [...t.reads].some((n) => d.names.has(n))
+  const kept = []
   for (const d of declarations) {
-    if (copies.includes(d) && reached) return d
-    if (!moved.has(d) && [...loadReads(d.statement, ts)].some((n) => reaching.has(n))) reached = true
+    if (copies.includes(d) && kept.some((k) => [...reached(k)].some((t) => readsEarly(t, d)))) return d
+    if (!moved.has(d)) kept.push(d)
   }
   return null
 }
