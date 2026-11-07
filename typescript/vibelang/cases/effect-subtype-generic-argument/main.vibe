@@ -1,0 +1,20 @@
+// expect-result: ["repro","direct","curried",true,true]
+import { Command } from "effect/cli"
+
+// A Command is data with an Effect capability, including as Pipeable's receiver.
+export effect function program() {
+  const command = Command.make("repro").pipe(Command.withDescription("A command."))
+  return command.name
+}
+
+function keep<T>(value: T): { readonly value: T } { return { value } }
+type CommandAlias = Command.Command<"kept", {}, {}>
+
+export effect function main() {
+  const direct = Command.withDescription(Command.make("direct"), "A command.")
+  const curried = Command.withDescription("A command.")(Command.make("curried"))
+  const command: CommandAlias = Command.make("kept")
+  const held = keep(command)
+  const config = Config.String("unused")
+  return [try program(), direct.name, curried.name, held.value === command, keep(config).value === config]
+}
