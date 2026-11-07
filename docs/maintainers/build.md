@@ -697,6 +697,14 @@ CI-health reports identify Node `Cannot find package` errors as `missing package
 
 ### Go test progress
 
+If its output reader closes, the reporter stops reading Go's output, sends
+`SIGTERM` to its owned process group and exits with status `1`. A correlated
+`go-progress` record with `event=output-error` and `cause=output` retains the
+bounded error code, such as `EPIPE`; the finish record keeps that cause.
+Arguments, paths and error messages are excluded. Run the real-pipe and
+native Go child regressions with
+`node --test scripts/go-test-progress-output-error.test.mjs`.
+
 The `//:spec-tests` target runs `go test -json` through
 `scripts/go-test-progress.mjs`. The original JSON stream is preserved, including
 failures, and `go-progress` records appear immediately, every ten seconds, at

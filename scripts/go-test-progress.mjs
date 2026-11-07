@@ -95,7 +95,7 @@ export function run(args) {
     return
   }
   const started = performance.now(), observer = progressState(), decoder = new StringDecoder("utf8")
-  let child, spawnError, interrupted
+  let child, spawnError, interrupted, outputError
   const record = (event, extra = "") => {
     const kinds = child?.pid ? processKinds(child.pid) : null
     const state = observer.state
@@ -132,6 +132,16 @@ export function run(args) {
     process.on(signal, handler)
     return [signal, handler]
   })
+  process.stdout.on("error", error => {
+    if (outputError) return
+    outputError = typeof error.code === "string" && /^[A-Z][A-Z0-9_]{0,31}$/.test(error.code) ? error.code : "UNKNOWN"
+    process.exitCode = 1
+    // The output consumer is gone. Stop reading and cancel the entire owned
+    // group, including test binaries whose parent may already have exited.
+    child.stdout.destroy()
+    record("output-error", "cause=output code=" + outputError)
+    forward("SIGTERM")
+  })
   child.stdout.on("data", chunk => {
     if (!process.stdout.write(chunk)) {
       child.stdout.pause()
@@ -153,10 +163,10 @@ export function run(args) {
       process.stderr.write("go-failure-summary run=" + process.pid + " failed_events=" + failures.failedEvents +
         " listed_roots=" + failures.roots.length + " omitted_events=" + failures.omittedEvents + "\n")
     }
-    record("finish", spawnError ? "cause=spawn code=" + spawnError :
+    record("finish", outputError ? "cause=output code=" + outputError : spawnError ? "cause=spawn code=" + spawnError :
       "cause=" + (signal || interrupted ? "signal" : "exit") + " code=" + code +
       (signal || interrupted ? " signal=" + (signal || interrupted) : ""))
-    process.exitCode = spawnError ? 1 : signal || interrupted ?
+    process.exitCode = outputError || spawnError ? 1 : signal || interrupted ?
       128 + (constants.signals[signal || interrupted] || 1) : code ?? 1
   })
 }

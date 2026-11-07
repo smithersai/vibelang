@@ -71,6 +71,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The platform guides said an `import.meta.dirname` read had to stay in the entry module. They now explain that a declaration can move to a sibling with the same directory, while `import.meta.filename` retains the entry's identity.
 
+- Go test progress could crash when its output reader closed and leave tests running in the background. It now cancels those tests and reports why output stopped.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
