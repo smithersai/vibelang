@@ -404,14 +404,82 @@ export function runPhaseOf(ts, node) {
 
 // A cold program's explicit success value must not disappear when its
 // callback becomes an effect body. Nested functions have their own returns.
+// A generator's `return yield* Effect.fail(e)` or `return yield* new E(...)`
+// returns no value: the program fails there. In effect code `throw e` means
+// "the Effect fails with `e`, a typed error: `return yield* Effect.fail(e)`"
+// (Chapter 3), so the native rewrite writes `throw e` or `throw new E(...)`
+// in its place. failingReturn names such a return: the constructor a `new`
+// yields, or null for Effect.fail.
+function failingReturn(ts, expression) {
+  const node = unwrap(ts, expression)
+  if (!node || !ts.isYieldExpression(node) || !node.asteriskToken) return undefined
+  const yielded = unwrap(ts, node.expression)
+  if (yielded && ts.isNewExpression(yielded)) {
+    const name = entityText(ts, yielded.expression)
+    return name ? { callee: name } : undefined
+  }
+  if (yielded && ts.isCallExpression(yielded) && !yielded.questionDotToken) {
+    const member = effectMember(ts, yielded.expression)
+    if (member?.module === "Effect" && member.name === "fail") return { callee: null }
+  }
+  return undefined
+}
+
+function entityText(ts, node) {
+  node = unwrap(ts, node)
+  if (ts.isIdentifier(node)) return node.text
+  if (ts.isPropertyAccessExpression(node) && !node.questionDotToken && ts.isIdentifier(node.name)) {
+    const left = entityText(ts, node.expression)
+    return left && left + "." + node.name.text
+  }
+  return null
+}
+
+const estreeEntity = node => {
+  node = estreeUnwrap(node)
+  if (node?.type === "Identifier") return node.name
+  if (node?.type === "MemberExpression" && !node.computed && !node.optional && node.property?.type === "Identifier") {
+    const left = estreeEntity(node.object)
+    return left && left + "." + node.property.name
+  }
+  return null
+}
+
+// Whether the native body's own throw statements stand for the failing
+// returns: one throw for each, the same constructor for each `new`. A throw
+// in a nested function or class is that function's.
+function throwsFor(body, failures) {
+  const thrown = []
+  const visit = node => {
+    if (!node || typeof node !== "object") return
+    if (Array.isArray(node)) return node.forEach(visit)
+    if (estreeFunctions.has(node.type) || ["ClassDeclaration", "ClassExpression"].includes(node.type)) return
+    if (node.type === "ThrowStatement") {
+      const argument = estreeUnwrap(node.argument)
+      thrown.push(argument?.type === "NewExpression" ? estreeEntity(argument.callee) : null)
+    }
+    for (const [key, value] of Object.entries(node)) if (!["tokens", "comments", "range", "loc", "parent"].includes(key)) visit(value)
+  }
+  visit(body)
+  for (const failure of [...failures].sort((a, b) => (a.callee === null) - (b.callee === null))) {
+    const at = failure.callee === null ? 0 : thrown.indexOf(failure.callee)
+    if (at < 0 || at >= thrown.length) return false
+    thrown.splice(at, 1)
+  }
+  return true
+}
+
 function dropsProgramValue(ts, before, after) {
   if (!before.body || !after.body) return false
   let value = false
+  const failures = []
   const returnsValue = node => {
     if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
     if (ts.isReturnStatement(node) && node.expression) {
       const expression = unwrap(ts, node.expression)
-      if (!ts.isVoidExpression(expression) && !(ts.isIdentifier(expression) && expression.text === "undefined")) value = true
+      const failing = failingReturn(ts, expression)
+      if (failing) failures.push(failing)
+      else if (!ts.isVoidExpression(expression) && !(ts.isIdentifier(expression) && expression.text === "undefined")) value = true
     }
     ts.forEachChild(node, returnsValue)
   }
@@ -428,6 +496,8 @@ function dropsProgramValue(ts, before, after) {
   }
   if (ts.isBlock(before.body)) scanReturns(before.body)
   else programs(before.body)
+  // A failing return the native body does not throw in its place reads as a dropped value.
+  if (failures.length && !(after.body.type === "BlockStatement" && throwsFor(after.body, failures))) value = true
   if (!value) return false
   const hasValue = node => {
     if (!node || typeof node !== "object") return false

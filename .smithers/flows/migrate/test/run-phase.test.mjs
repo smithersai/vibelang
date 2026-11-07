@@ -32,6 +32,55 @@ for (const [name, corpus] of corpora) {
   })
 }
 
+// A generator's failing return becomes a throw in the native body; it never
+// returned a value (Chapter 3: in effect code `throw e` means the Effect fails
+// with `e`, `return yield* Effect.fail(e)`).
+const failures = readFileSync(SpecPath("003-failures.md"), "utf8")
+const failureCorpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-verifier-failure-return.json", import.meta.url), "utf8"))
+test("alchemy-verifier-failure-return: the corpus quotes chapter 3's rule", () => {
+  assert.ok(failures.includes(failureCorpus.quote), failureCorpus.quote)
+})
+test("alchemy-verifier-failure-return: Hrana's failing returns rewritten to throw keep the run phase", native, () => {
+  assert.deepEqual(changes(failureCorpus.before, failureCorpus.after), failureCorpus.expected)
+})
+test("alchemy-verifier-failure-return: return yield* Effect.fail and new E(...) become throws", native, () => {
+  const effect = 'import * as Effect from "effect/Effect"\n'
+  assert.deepEqual(changes(effect + 'export const make = () => Effect.gen(function* () { return yield* Effect.fail("bad") })\n',
+    'export const make = effect () => { throw "bad" }\n'), [])
+  assert.deepEqual(changes(effect + 'import * as Data from "effect/Data"\nexport class E extends Data.TaggedError("E")<{}> {}\n' +
+    'export const make = (n: number): Effect.Effect<void, E> => Effect.gen(function* () { if (n > 1) return; if (n < 0) { return yield* new E() } })\n',
+    'export error E {}\nexport const make = effect (n: number): void!E => { if (n > 1) return; if (n < 0) { throw new E() } }\n'), [])
+  assert.deepEqual(changes(effect + 'export const make = (n: number) => Effect.gen(function* () { if (n) return yield* Effect.fail(n); return n })\n',
+    'export const make = effect (n: number) => { if (n) throw n; return n }\n'), [])
+})
+test("alchemy-verifier-failure-return: a dropped value or a throw that stands for nothing is still reported", native, () => {
+  const effect = 'import * as Effect from "effect/Effect"\n'
+  const value = [{ name: "make", line: 1, verdict: "value" }]
+  // the returned 7 is gone
+  assert.deepEqual(changes(effect + "export const make = () => Effect.gen(function* () { return 7 })\n", "export const make = effect () => { 7 }\n"), value)
+  // a different constructor is thrown
+  assert.deepEqual(changes(effect + "export const make = () => Effect.gen(function* () { return yield* new Box() })\n", "export const make = effect () => { throw new Other() }\n"), value)
+  // nothing is thrown in the failing return's place
+  assert.deepEqual(changes(effect + 'export const make = () => Effect.gen(function* () { return yield* Effect.fail("bad") })\n', "export const make = effect () => {}\n"), value)
+  // the only throw belongs to a nested function
+  assert.deepEqual(changes(effect + 'export const make = () => Effect.gen(function* () { return yield* Effect.fail("bad") })\n',
+    'export const make = effect () => { const later = () => { throw "bad" }; void later }\n'), value)
+})
+test("alchemy-verifier-failure-return: failing returns are accounted for one throw each", native, () => {
+  const fc = require("fast-check")
+  const kinds = ["fail", "E", "Errors.Missing"]
+  fc.assert(fc.property(fc.array(fc.constantFrom(...kinds), { minLength: 1, maxLength: 3 }), fc.boolean(), fc.nat(2), (returns, broken, which) => {
+    const at = which % returns.length
+    const original = (k, i) => `if (n === ${i}) return yield* ${k === "fail" ? `Effect.fail(${i})` : `new ${k}()`};`
+    const native_ = (k, i) => broken && i === at ? "" : `if (n === ${i}) throw ${k === "fail" ? i : `new ${k}()`};`
+    const before = 'import * as Effect from "effect/Effect"\nexport const make = (n: number) => Effect.gen(function* () { ' + returns.map(original).join(" ") + " })\n"
+    const after = "export const make = effect (n: number) => { " + returns.map(native_).join(" ") + " }\n"
+    const got = changes(before, after)
+    // Each failing return needs a throw of its own, so dropping one is reported.
+    return broken ? got.length === 1 && got[0].verdict === "value" : got.length === 0
+  }), { numRuns: 30 })
+})
+
 // Chapter 007 / plain functions constructing cold programs remain valid migrations: docs/design/src/007-tooling.md#64beed753c1151d7
 test("alchemy-62: conversions that keep the run phase pass", native, () => {
   // An Effect.gen body and an Effect.fn function return a program at the call

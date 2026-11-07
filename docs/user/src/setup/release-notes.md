@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migrating a generator that fails with `return yield* new E(…)` or `return yield* Effect.fail(e)` stopped the batch with "drops the original program's returned value", although the converted `throw` keeps the same failure. The run-phase check now pairs each such return with its `throw`.
+
 - `vibelang --fix` on a project whose `references` were not built yet read every import from those projects as `any`. It wrapped calls such as `shell.list()` in `Effect.try` bridges that lost an `if` guard's narrowing and stopped compiling once the reference was built. `--fix` now reads a referenced project's sources, as the editor does, and writes the same rewrite as for a built reference.
 
 - `vibelang --fix` left `EK0401` on a call that may throw inside an `Effect.catchTag`, `Effect.catchTags`, `Effect.tapError`, `Effect.matchEffect`, `Effect.onExit` or similar handler, so the module could not convert. It now wraps the handler's body so the call fails with the same defect, as it already did for `Effect.suspend` and `Effect.flatMap` callbacks.
