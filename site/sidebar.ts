@@ -762,6 +762,10 @@ export const sidebar = [
         "link": "/vibelang-features/diagnostic-code-map"
       },
       {
+        "text": "Imported lint diagnostics",
+        "link": "/vibelang-features/imported-lint-diagnostics"
+      },
+      {
         "text": "Experimental platform APIs",
         "link": "/vibelang-features/118-experimental-platform-apis"
       }
