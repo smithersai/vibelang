@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Oxlint could fail with a valid project loader in `NODE_OPTIONS`. Linting and configuration output now keep the loader working.
+
 - Health reports could mistake output from an expected test failure for a real resource failure or timeout. They now show file-level output separately from attributed test errors.
 
 - Multiline warnings could lose source excerpts containing a library URL; the complete warning now stays visible.

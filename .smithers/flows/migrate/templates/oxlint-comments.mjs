@@ -22,7 +22,7 @@ export function blanketReasonPolicy(tool, command = []) {
     // from its temporary directory; preserve the caller's other Node options.
     const preloads = (process.env.NODE_OPTIONS ?? "").replace(/--import(?:=|\s+)vibelang\/register/g, "").trim()
     const run = spawnSync(tool, [...command, "--threads", "1", "--format", "json", "--config", config, source],
-      { cwd: root, encoding: "utf8", timeout: 30000, maxBuffer: 1024 * 1024, env: { ...process.env, NODE_OPTIONS: preloads } })
+      { cwd: process.cwd(), encoding: "utf8", timeout: 30000, maxBuffer: 1024 * 1024, env: { ...process.env, NODE_OPTIONS: preloads } })
     if (run.error || run.status !== 0) throw new Error("Oxlint directive compatibility probe failed (status " + run.status + ", signal " + run.signal + "): " + (run.stderr ?? "").slice(-2000), { cause: run.error })
     const result = JSON.parse(run.stdout)
     if (!Array.isArray(result.diagnostics)) throw new Error("Oxlint directive compatibility probe returned no diagnostics array")
