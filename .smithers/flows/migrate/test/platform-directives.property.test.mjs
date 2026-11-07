@@ -75,7 +75,7 @@ const ordinary = fc.constantFrom(
 const header = fc.array(fc.oneof(directive.map((text) => ({ text, directive: true })), ordinary.map((text) => ({ text, directive: false }))), { minLength: 1, maxLength: 4 })
 const body = 'import { readFileSync } from "node:fs";\n\nexport function read(path: string): string {\n  return readFileSync(path);\n}\n'
 
-test("the sibling starts with every file-wide directive of the header, once and in order, and the module is unchanged", () => {
+test("the sibling starts with the module's header, or the file-wide directives of comments attached to its first statement, once and in order, and the module is unchanged", () => {
   let directives = 0
   fc.assert(fc.property(header, fc.boolean(), (lines, attached) => {
     const text = lines.map((l) => l.text).join("\n") + (attached ? "\n" : "\n\n") + body
@@ -87,8 +87,11 @@ test("the sibling starts with every file-wide directive of the header, once and 
     // Each directive once per occurrence: a comment attached to a moved import already travels with it.
     const count = (hay, needle) => hay.split(needle).length - 1
     for (const d of new Set(expected)) assert.equal(count(split.platform, d), expected.filter((e) => e === d).length, split.platform)
-    if (!attached) assert.deepEqual(copied, expected)
-    for (const l of lines.filter((l) => !l.directive)) assert.ok(!top.includes(l.text), top)
+    // A header a blank line separates is the module's, licence and
+    // documentation included; comments attached to the first statement
+    // belong to it and travel with it, so no ordinary one reaches the top.
+    if (!attached) assert.deepEqual(copied, lines.map((l) => l.text))
+    if (attached) for (const l of lines.filter((l) => !l.directive)) assert.ok(!top.includes(l.text), top)
     // The .vibe module keeps the whole header, as before.
     if (!attached) assert.ok(split.module.startsWith(lines.map((l) => l.text).join("\n") + "\n\n"), split.module)
     assert.equal(ts.transpileModule(split.platform, { reportDiagnostics: true }).diagnostics.length, 0)
