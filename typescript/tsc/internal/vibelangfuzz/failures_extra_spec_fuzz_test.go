@@ -118,6 +118,29 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "stream-return-plain-" + body.name, Quote: effectful, Host: "none", Lib: streamReturns, Decls: body.decls})
 	}
+	// Complete Layer assignability is distinct from extracting variance
+	// channels. The partial views below have no pipe contract; a property
+	// with variance-shaped fields does not supply the Layer marker either.
+	const layerReturns = "import type { Layer } from \"effect\"\nexport type Marker = Pick<Layer.Layer<unknown>, \"~effect/Layer\">\nexport type NoPipe = Omit<Layer.Layer<unknown>, \"pipe\">\nexport type Fake = { other: { _ROut: (_: unknown) => void, _E: () => never, _RIn: () => never } }\nexport type View = { readonly [K in keyof Layer.Layer<unknown>]: Layer.Layer<unknown>[K] }\nexport declare function marker(): Marker\nexport declare function noPipe(): NoPipe\nexport declare function fake(): Fake\nexport declare function mixed(): Marker | Layer.Layer<unknown>\nexport declare function constrained<T extends Marker>(): T\nexport declare function complete<T extends Layer.Layer<unknown>>(): T\nexport declare function unconstrained<T>(): T\nexport declare function whole(): Layer.Layer<unknown>\nexport declare function view(): View\nexport declare function untagged(): number\n/** @throws {RangeError} */\nexport declare function knownMarker(): Marker\n/** @throws {never} */\nexport declare function safeMarker(): Marker\n"
+	for _, call := range []struct{ name, expr string }{
+		{"marker", "marker()"}, {"no-pipe", "noPipe()"}, {"fake", "fake()"},
+		{"union", "mixed()"}, {"constraint", "constrained()"}, {"known", "knownMarker()"},
+	} {
+		add(&failCase{Name: "layer-return-" + call.name, Owner: "compiler", Quote: effectful, Code: 403, Lib: layerReturns, Body: "const value = ⟦" + call.expr + "⟧"})
+	}
+	for _, call := range []struct{ name, expr string }{
+		{"whole", "whole()"}, {"view", "view()"}, {"constraint", "complete()"}, {"never", "safeMarker()"},
+		{"bridge", "try Effect.orDie(Effect.try(() => marker()))"},
+	} {
+		add(&failCase{Name: "layer-return-control-" + call.name, Owner: "compiler", Quote: effectful, Lib: layerReturns, Body: "const value = " + call.expr})
+	}
+	add(&failCase{Name: "layer-return-control-unconstrained", Owner: "compiler", Quote: effectful, Code: 403, Lib: layerReturns, Body: "const value = ⟦unconstrained<ReturnType<typeof marker>>()⟧"})
+	for _, body := range []struct{ name, decls string }{
+		{"body", "export function probe(): ReturnType<typeof marker> { untagged(); return marker() }"},
+		{"default", "export function probe(p = untagged()): ReturnType<typeof marker> { return marker() }"},
+	} {
+		add(&failCase{Name: "layer-return-plain-" + body.name, Owner: "compiler", Quote: effectful, Host: "none", Lib: layerReturns, Decls: body.decls})
+	}
 	const methods = "[ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13)."
 	const rejected = "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |"
 	const priority = "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form."

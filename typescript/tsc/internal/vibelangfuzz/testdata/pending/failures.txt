@@ -41,3 +41,20 @@ FuzzFailuresSpec feature:throws-destructured-receiver-function-object-never-effe
 FuzzFailuresSpec corpus:throws-destructured-receiver-function-object-never-effect compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
 FuzzFailuresSpec feature:throws-destructured-receiver-function-object-never-plain compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
 FuzzFailuresSpec corpus:throws-destructured-receiver-function-object-never-plain compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
+
+FuzzFailuresSpec feature:layer-return-marker compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-marker compiler VIP-4: minimized reproduction of feature:layer-return-marker; lane compiler
+FuzzFailuresSpec feature:layer-return-no-pipe compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-no-pipe compiler VIP-4: minimized reproduction of feature:layer-return-no-pipe; lane compiler
+FuzzFailuresSpec feature:layer-return-fake compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-fake compiler VIP-4: minimized reproduction of feature:layer-return-fake; lane compiler
+FuzzFailuresSpec feature:layer-return-union compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-union compiler VIP-4: minimized reproduction of feature:layer-return-union; lane compiler
+FuzzFailuresSpec feature:layer-return-constraint compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-constraint compiler VIP-4: minimized reproduction of feature:layer-return-constraint; lane compiler
+FuzzFailuresSpec feature:layer-return-known compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-known compiler VIP-4: minimized reproduction of feature:layer-return-known; lane compiler
+FuzzFailuresSpec feature:layer-return-plain-body compiler VIP-4: 003-failures.md requires complete Layer assignability; a plain factory returning an incomplete Layer view incorrectly receives EK0401; lane compiler
+FuzzFailuresSpec corpus:layer-return-plain-body compiler VIP-4: minimized reproduction of feature:layer-return-plain-body; lane compiler
+FuzzFailuresSpec feature:layer-return-plain-default compiler VIP-4: 003-failures.md requires complete Layer assignability; a plain factory returning an incomplete Layer view incorrectly receives EK0401; lane compiler
+FuzzFailuresSpec corpus:layer-return-plain-default compiler VIP-4: minimized reproduction of feature:layer-return-plain-default; lane compiler
