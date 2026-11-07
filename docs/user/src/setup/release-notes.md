@@ -274,6 +274,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` could call a `.ts` function with no `@throws` tag, although such a function must never throw. The call now reports `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare the callee's `@throws`, or move the code to a `.ts` file. The same holds for the function's parameter defaults.
 
+- In effect code, a `new` expression or tagged template whose `.ts` constructor or tag had a `@throws` tag, or no tag at all, was not checked, although a call of the same function was. It now reports `EK0403`, and `EK0401` in a plain function that returns an Effect: wrap it with `try Effect.try(() => …)`, or declare `@throws {never}` on a constructor or tag that cannot throw.
+
 - In a project that emits declarations, `vibelang --fix` turned a private `Schema.Struct` constant into a `schema` declaration even when the declaration file named the constant, which added `type X = typeof X.Type` to the declaration, or exported a new type through `export { X }`. The fix now keeps such a constant as written.
 - With a project pinned to a compiler older than `--only`, such as VibeLang 0.0.11, the migrate flow's ordinary repairs failed with `TS5023` and each batch was reported settled with no fixes. The flow now reruns that repair without `--only` and still keeps only the batch's own files changed.
 
