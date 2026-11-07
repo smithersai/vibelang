@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | Module resolution is as in TypeScript, with `.vibe` and `.vibex` beside `.ts` and `.tsx`: NodeNext `./user.js` can resolve to `user.vibe`.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | A written `./x.ts` keeps native substitutions, including `x.tsx` and `x.d.ts`, but never falls back to VibeLang source; no native candidate means `TS2307`.
+export const witness = 1

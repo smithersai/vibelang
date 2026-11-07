@@ -1,0 +1,1 @@
+trustedPackages is ignored with EK3010; npm functions follow the local TypeScript foreign-callable contract

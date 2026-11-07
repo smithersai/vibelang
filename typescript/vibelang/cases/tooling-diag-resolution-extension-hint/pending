@@ -1,0 +1,1 @@
+tooling an extensionless NodeNext import of user.vibe or user.vibex reports TS2834 with no suggestion where the .ts/.tsx twin reports TS2835 "Did you mean './user.js'?" (or './user.jsx' under jsx preserve)
