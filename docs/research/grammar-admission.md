@@ -694,3 +694,12 @@ as TypeScript requires. A parameter named `async`, as in `(async: T)`,
 `(public ...p)` were keyed as reserved bindings; they now key as parameter
 modifiers. `(static: T)` and `(...static: T[])` remain reserved bindings.
 The compiler is unchanged and the witnesses remain pending.
+
+An optional schema-alias member with an initializer keeps
+`admission:schema-field-initializer` after a modifier prefix.
+`schema S = { readonly 1 ? =\nMissing }` and `readonly id ? = Missing`
+report only `EK2109`; the `type` twins report `TS1247`. Without the `?`,
+`readonly 1 = Missing` and `readonly id = Missing` already report a
+syntax error, and `static [k] = Missing` reports the `static` type-member
+rejection. These stay outside the family. The compiler is unchanged and
+the witnesses remain pending.
