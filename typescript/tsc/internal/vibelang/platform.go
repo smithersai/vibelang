@@ -86,12 +86,12 @@ var platformServices = map[string]*platformService{
 	"SocketTls": {"the Socket service", "", "", `NodeSocket.layerTls(options) from "@effect/platform-node"`},
 	"WebSocket": {"the Socket service", "Socket.makeWebSocket(url)", "",
 		`NodeSocket.layerWebSocket(url) from "@effect/platform-node", or BrowserSocket.layerWebSocket(url) from "@effect/platform-browser"`},
-	"SocketServer":    {"the SocketServer service", "", "", `NodeSocketServer.layer({ port }) from "@effect/platform-node"`},
-	"SocketServerTls": {"the SocketServer service", "", "", `NodeSocketServer.layerTls(options) from "@effect/platform-node"`},
-	"DatagramSocket":  {"the DatagramSocket service", "", "", `NodeDatagramSocket.layer(options) from "@effect/platform-node"`},
-	"Dns":             {"the Dns service", "", "", `NodeDns.layer from "@effect/platform-node"`},
+	"SocketServer":           {"the SocketServer service", "", "", `NodeSocketServer.layer({ port }) from "@effect/platform-node"`},
+	"SocketServerTls":        {"the SocketServer service", "", "", `NodeSocketServer.layerTls(options) from "@effect/platform-node"`},
+	"DatagramSocket":         {"the DatagramSocket service", "", "", `NodeDatagramSocket.layer(options) from "@effect/platform-node"`},
+	"Dns":                    {"the Dns service", "", "", `NodeDns.layer from "@effect/platform-node"`},
 	"ExperimentalNetAddress": {"the pure Experimental.NetAddress predicate, which needs no layer", "Experimental.NetAddress.isIPv6(address)", "", ""},
-	"NetAddress":      {"NetAddress, which needs no layer", "NetAddress.ipFromString(text)", "", ""},
+	"NetAddress":             {"NetAddress, which needs no layer", "NetAddress.ipFromString(text)", "", ""},
 	"Worker": {"Worker and WorkerRunner", "", "",
 		`NodeWorker.layer(spawn) from "@effect/platform-node", or BrowserWorker.layer(spawn) from "@effect/platform-browser"`},
 	"KeyValueStore": {"the KeyValueStore service", "try (try KeyValueStore.KeyValueStore).get(key)", "",
@@ -840,6 +840,27 @@ func isPlatformCallee(c *checker.Checker, call *ast.Node) bool {
 	return ok
 }
 
+// inFormerPlatformBoundary preserves the migration warning for the first
+// argument of a global callback call even though callback now uses its native
+// signature and no longer uses the compatibility hatch lowering.
+func inFormerPlatformBoundary(node *ast.Node) bool {
+	if inHatch(node) {
+		return true
+	}
+	for n := node; n != nil && n.Parent != nil; n = n.Parent {
+		call := n.Parent
+		if !ast.IsCallExpression(call) || len(call.Arguments()) == 0 || call.Arguments()[0] != n {
+			continue
+		}
+		callee := call.Expression()
+		if ast.IsIdentifier(callee) && callee.Text() == "callback" &&
+			isVibeLangFile(ast.GetSourceFileOfNode(call)) && !shadowed(call, "callback") {
+			return true
+		}
+	}
+	return false
+}
+
 // checkPlatformUse reports id, a use of a platform global (D310), where the
 // code uses it: calls it, constructs it, tags a template with it, reads a
 // property of it, which can run a getter, as process.env does, or holds it as
@@ -863,7 +884,7 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 	}
 	members, _ := accessChain(id)
 	message := EK4402
-	if inHatch(id) {
+	if inFormerPlatformBoundary(id) {
 		// Older releases accepted host operations in boundary callbacks.
 		// Keep the retirement diagnostic nonfatal while the preserving
 		// migration still refuses some captured or stateful wrappers.

@@ -1,3 +1,4 @@
+import { callback } from "vibelang-runtime"
 
 import * as $nativeTryEffect2 from "effect/Effect";
 

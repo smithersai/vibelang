@@ -13,26 +13,23 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// The boundary hatches (design D148) run plain TypeScript inside VibeLang:
+// The legacy sync hatch (design D148) runs plain TypeScript inside VibeLang:
 //
 //	const id = sync(crypto.randomUUID())                       // Effect.sync
 //	const n = sync((text) => text.length, text)                // inputs fill its parameters
-//	const tick = callback<number>((resume) => {                // Effect.callback
-//	  const timer = setTimeout(() => resume(1), 10)
-//	  return () => clearTimeout(timer)
-//	})
+// Native callback calls use Effect.callback directly.
 //
 // A hatch's first argument is TypeScript, not VibeLang: a call there does not
 // run, so calling a .vibe function gives an inert Effect value for
 // runPromise or runFork; throw, async, and await keep their JavaScript
-// meaning; platform APIs are allowed (no EK4401 or EK4402); and a
+// meaning; platform APIs retain their migration diagnostics; and a
 // runner may start a program (no EK1005). VIP-6 permits ordinary lexical
 // captures. Legacy explicit inputs, the arguments after the function, still
 // fill its first parameters (D230). The inputs are VibeLang (D232). A
 // throw or rejection that may fail is wrapped with Effect's own Effect.try
 // or Effect.tryPromise, which replaced the try hatch (VIP-5).
 //
-// A hatch is a call whose callee is the prelude's sync or callback: the name,
+// A hatch is a call whose callee is the prelude's sync: the name,
 // with no declaration in any scope around the call that shadows it.
 
 // hatchNames are the prelude's hatches.
@@ -48,6 +45,11 @@ func hatchOf(call *ast.Node) string {
 		return ""
 	}
 	name := callee.Text()
+	// VIP-6: callback is Effect.callback, including a direct call.
+	// The legacy adapter remains available through an explicit runtime import.
+	if name == "callback" {
+		return ""
+	}
 	if !isVibeLangFile(ast.GetSourceFileOfNode(call)) || shadowed(call, name) {
 		return ""
 	}

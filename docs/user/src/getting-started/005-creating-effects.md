@@ -162,7 +162,6 @@ An API returning `number | Promise<number>` can be normalized in the callback: `
 ## Adapt callbacks and cancellation
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // A one-shot read ends its registration when either callback fires.
 // run: try Console.log(try readAndReport({ read: (onValue: (n: number) => void) => { onValue(7); return () => {} } }))
 type Source = {
