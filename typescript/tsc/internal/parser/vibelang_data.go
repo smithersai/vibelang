@@ -218,6 +218,20 @@ func dataMemberSeparatorDiagnostic(pos int) *ast.Diagnostic {
 }
 
 func (p *Parser) parseDataFields() *ast.Node {
+	return p.parseVibeLangFields(dataMemberSeparatorDiagnostic)
+}
+
+// VIP-15 / decided detail 241: a schema body's own field separators use
+// EK1504. Nested TypeScript types and alias types keep their diagnostics.
+func schemaFieldSeparatorDiagnostic(pos int) *ast.Diagnostic {
+	return ast.NewExternalDiagnostic(nil, core.NewTextRange(pos, pos), "EK", diagnostics.CategoryError, 1504,
+		"These schema fields need a separator. Write `;` or a line break between them.")
+}
+
+// parseVibeLangFields parses a declaration's braced field list as a type
+// literal, reporting a missing separator between two of its own members with
+// separator's diagnostic at the insertion point.
+func (p *Parser) parseVibeLangFields(separator func(int) *ast.Diagnostic) *ast.Node {
 	pos := p.nodePos()
 	p.parseExpected(ast.KindOpenBraceToken)
 	members := p.parseList(PCTypeMembers, func(p *Parser) *ast.Node {
@@ -231,7 +245,7 @@ func (p *Parser) parseDataFields() *ast.Node {
 			d := p.diagnostics[i]
 			args := d.MessageArgs()
 			if d.Code() == diagnostics.X_0_expected.Code() && len(args) == 1 && args[0] == ";" && d.Loc() == p.scanner.TokenRange() {
-				p.diagnostics[i] = dataMemberSeparatorDiagnostic(member.End())
+				p.diagnostics[i] = separator(member.End())
 			}
 		}
 		return member

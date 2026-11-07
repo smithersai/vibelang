@@ -75,8 +75,6 @@ var specAhead = map[int32]string{
 	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
 	// Assigned by the round-20 spec for decided detail 100 (an extractor on a class without its own matcher).
 
-	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.
-	1504: renumbering,
 	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.
 	// The round-24 trigger catalog gives unsupported fork owners, fork.in scopes, dotted try names and concurrency limits their codes.
 	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).

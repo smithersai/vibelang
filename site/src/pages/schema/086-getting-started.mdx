@@ -82,7 +82,7 @@ Schema references keep TypeScript’s declaration order and temporal dead zone. 
 
 A member of a `schema` body that is not a field, such as a method `m(): string`, an index signature `[k: string]: number` or a name without a type, reports `EK1505`. Write `name: Type` or `name?: Type`; a method belongs on a `schema error`, and a set of keys is a `Record<K, V>` field.
 
-Separate `schema` declaration fields with `;`, `,` or a new line. Nested object types and alias types retain TypeScript’s comma separators.
+Separate `schema` declaration fields with `;`, `,` or a new line. Two fields on one line with no separator, such as `schema S { a: string b: number }`, report `EK1504`; the editor offers a quick fix that inserts `;`. Nested object types and alias types retain TypeScript’s comma separators and TypeScript's diagnostic for a missing one.
 
 A JSDoc comment on a `schema` declaration documents the emitted constant only; its generated type alias has no comment. Tags such as `@deprecated` and `@internal` follow the constant, as on the ordinary Effect TypeScript pair. When the constant and its type need different comments, write one nongeneric `type Name = typeof Name.Type` in the same scope as the `schema Name`, before or after it. The written type replaces the generated alias, keeping its own JSDoc and `export` modifier. Comments after a schema’s optional semicolon are retained in declarations as TypeScript retains comments after the equivalent constant.
 

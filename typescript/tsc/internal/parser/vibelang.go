@@ -1254,7 +1254,7 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	if p.token == ast.KindOpenBraceToken {
 		saved := p.vibelangImplicitReadonly
 		p.vibelangImplicitReadonly = true // a schema's fields map as written (D134; see Members keep TypeScript's mutability)
-		literal := p.parseTypeLiteral()
+		literal := p.parseVibeLangFields(schemaFieldSeparatorDiagnostic)
 		p.vibelangImplicitReadonly = saved
 		members = literal.AsTypeLiteralNode().Members.Nodes
 		body = literal.Loc
