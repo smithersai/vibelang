@@ -27,6 +27,7 @@ var adviceTypingPending = map[string]string{}
 // adviceFreeNames are the placeholders the examples use for a caller's values.
 var adviceFreeNames = []string{
 	"a", "app", "args", "atime", "b", "blob", "bytes", "ciphertext", "command", "data", "directory", "element",
+	"body", "headers", "request", "response", "signal", "startNanos",
 	"fiber", "from", "gid", "items", "key", "killSignal", "max", "message", "min", "mode", "mtime", "name",
 	"nonce", "onResize", "options", "parts", "path", "pattern", "pid", "plaintext", "port", "privateKey",
 	"program", "publicKey", "query", "rows", "signature", "size", "spawn", "target", "text", "to", "uid", "url",
@@ -153,6 +154,21 @@ func TestPlatformAdviceExamplesTypecheck(t *testing.T) {
 			imports = s.imports
 		}
 		rows = append(rows, row{"clockReads[" + read + "]", example, imports})
+	}
+	// Check the displayed introduction examples too. Some intentionally differ
+	// from diagnostic shorthand (bytes, inherited stdio and elapsed clocks);
+	// exact table comparisons alone cannot prove their APIs still exist.
+	docRows, problems := platformIntroductionRows(platformIntroductionPage(t))
+	for _, problem := range problems {
+		t.Error(problem)
+	}
+	for _, doc := range docRows {
+		example, _, ok := platformDocCode(doc.effect)
+		if !ok {
+			t.Errorf("%s: replacement is not inline code", doc.call)
+			continue
+		}
+		rows = append(rows, row{"platform introduction " + doc.call, example, ""})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].where < rows[j].where })
 	fixture := t.TempDir()
