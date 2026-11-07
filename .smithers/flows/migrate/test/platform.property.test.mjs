@@ -142,7 +142,7 @@ test("platformGlobalsOf names the host globals that EK4402 messages report", () 
     "EK4402: createHash from node:crypto is platform code, which a .vibe file does not import as a value.",
     "EK4402: import.meta.dirname is platform code, which VibeLang code does not use directly.",
     "EK4401: Dialect.integer is a plain TypeScript function, and nothing says what its exceptions mean.",
-  ]), ["globalThis", "process"])
+  ]), ["globalThis", "globalThis.process", "globalThis.setTimeout", "process"])
 })
 
 // VIP-33's derived ban reports a global the platform table does not list in
