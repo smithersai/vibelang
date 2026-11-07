@@ -3083,6 +3083,7 @@ typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:6:20 lamb
 typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:7:15 lambda plain fallback
 typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:7:21 lambda program keyword
 typescript/vibelang/cases/effect-empty-construction-identity/main.vibe:9:18 lambda plain fallback
+typescript/vibelang/cases/effect-erased-callable-default.fail/main.vibe:13:54 lambda choice fallback
 typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:4:15 lambda effectFn keyword
 typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:6:18 lambda effectFn keyword
 typescript/vibelang/cases/effect-escaped-keyword.fail/main.vibe:7:17 lambda plain fallback

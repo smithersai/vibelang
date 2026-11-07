@@ -685,7 +685,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	case ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(call, home):
 		// Known throws are already owned by the plain-code pass. The
 		// stricter parameter check adds only previously unknown throwing.
-		if t.kind == trustForeign && a.knownThrows(call) == nil {
+		if (t.kind == trustForeign || t.kind == trustUnknown) && a.knownThrows(call) == nil {
 			d := report(c, callee, foreignCallInEffectParameters, name)
 			note(d, "Compute the value in the body with {0}.", boundaryCall(c, file, "try", call, ""))
 		}

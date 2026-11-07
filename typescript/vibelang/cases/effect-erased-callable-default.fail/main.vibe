@@ -1,0 +1,13 @@
+// expect: EK0401
+// Calls through any and Function have thrown type unknown.
+declare const erasedAny: any
+declare const erasedFunction: Function
+declare const sourceSafe: () => number
+export effect function anyDefault(p = erasedAny()) { return p }
+export effect function* anyProducer(p = erasedAny()) { yield p }
+export effect function functionDefault(p = erasedFunction()) { return p }
+export effect function* functionProducer(p = erasedFunction()) { yield p }
+export function ordinaryAny(p = erasedAny()) { return p }
+export async function nativeFunction(p = erasedFunction()) { return p }
+export effect function sourceDefault(p = sourceSafe()) { return p }
+export effect function sourceBody() { const native = () => erasedAny(); return native }
