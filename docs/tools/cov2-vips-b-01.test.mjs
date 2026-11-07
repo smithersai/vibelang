@@ -111,21 +111,6 @@ test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision |
 // Activation: Compare the documented function twin after adding @throws {never}, and reject the same tag in .vibe source with EK0406.
 test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b twin JSDoc and forbidden source throws tag | present | Preserve the source documentation and add that tag to the twin's JSDoc before running `tsc`; do not add it to the `.vibe` source, where it is `EK0406`.")
 
-// rule-evidence: docs/design/vips/0027-declaration-output.md#05024cf58f9aa0bd
-// VIP-27: cross module thrown contract.
-// Activation: Consume annotated and unannotated independently emitted TypeScript twins; require never versus unknown thrown contracts.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b cross module thrown contract | present | This makes the same-comment comparison include the required cross-module contract: an unannotated TypeScript twin would instead advertise `unknown` and would not represent the same API.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#db3e61dd091524e0
-// VIP-27: stock declaration retains throws tag.
-// Activation: Emit a documented native TypeScript function with @throws {never} and assert the exact tag remains in its declaration.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b stock declaration retains throws tag | present | Stock `tsc` preserves the tag in the declaration, exactly as shown above.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#c3183236d1d85a6b
-// VIP-27: unannotated foreign callable throws unknown.
-// Activation: Emit an unannotated TypeScript function, verify no synthesized JSDoc, and reject its unchecked call as a foreign unknown throw.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b unannotated foreign callable throws unknown | present | Without the tag, `tsc` emits the same function type with no JSDoc; that is a foreign callable with thrown type `unknown` under VIP-4.")
-
 // rule-evidence: docs/design/vips/0027-declaration-output.md#ab84b6b8845122f6
 // VIP-27: migration enables enumeration sidecars.
 // Activation: Run setup on an isolated fixture whose tracked script enumerates *.ts; verify sidecars enabled and the live migration trees remain untouched.

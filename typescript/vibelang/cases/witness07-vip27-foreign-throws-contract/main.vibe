@@ -1,0 +1,3 @@
+// The generated `@throws {never}` on this declaration is the cross-module contract
+// a consumer reads; run.mjs compares it with stock tsc on annotated and unannotated twins.
+export function add(a: number, b: number) { return a + b }

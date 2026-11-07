@@ -1,0 +1,1 @@
+generated throws contract matches the annotated twin
