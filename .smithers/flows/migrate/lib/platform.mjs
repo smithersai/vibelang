@@ -368,8 +368,17 @@ function publishedSiblingRisk(root, file, { exists, read }) {
       try { manifest = JSON.parse(read(path)) }
       catch { return "cannot establish the package's published module surface" }
       if (manifest.private === true) return null
+      // A wildcard target whose text after * ends in a fixed file name, such
+      // as "./dist/*/neon.js", matches only files of that name. A companion is
+      // named <stem>.platform.<extension>, so no such target can publish it.
+      const fixedFile = target => {
+        const parts = target.split("*")
+        if (parts.length !== 2) return false
+        const slash = parts[1].lastIndexOf("/")
+        return slash >= 0 && !parts[1].slice(slash + 1).includes(".platform.")
+      }
       const open = value => typeof value === "string"
-        ? value.includes("*") || value.endsWith("/")
+        ? value.includes("*") && !fixedFile(value) || value.endsWith("/")
         : Array.isArray(value) ? value.some(open)
         : value && typeof value === "object" ? Object.values(value).some(open) : false
       if (manifest.exports === undefined || open(manifest.exports)) {

@@ -18,8 +18,12 @@ function check(input) {
   try {
     const pkg = join(root, "pkg"), path = [...Array.from({ length: input.depth }, (_, i) => "d" + i), input.name].join("/")
     const source = "src/" + path + ".ts", declaration = path + ".d.ts", sibling = path + ".platform.d.ts"
+    // A fixed-file wildcard names one file per directory, as frontend packages'
+    // "./*/neon" entries do; one whose file name is a companion's is open.
     const exports = input.kind === "explicit" ? { "./main": { types: "./lib/" + declaration } }
       : input.kind === "wildcard" ? { "./*": "./lib/*.js" }
+      : input.kind === "fixed-file" ? { "./main": { types: "./lib/" + declaration }, "./*/neon": { types: "./lib/*/neon.d.ts", default: "./lib/*/neon.js" } }
+      : input.kind === "platform-file" ? { "./main": { types: "./lib/" + declaration }, "./*/x": { types: "./lib/*/" + input.name + ".platform.d.ts" } }
       : { "./*": { types: "./lib/*.d.ts", default: "./src/*.ts" } }
     const files = {
       "package.json": JSON.stringify({ name: "@demo/platform", type: "module", files: ["lib", "src"], exports }),
@@ -66,7 +70,7 @@ function check(input) {
     assert.equal(resolve(), undefined, "native consumer cannot import the absent platform module")
     const result = splitBatchPlatform(pkg, [source], ts)
     if (result.splits.length === 0) {
-      assert.notEqual(input.kind, "explicit", "the private-helper control remains splittable")
+      assert.ok(!["explicit", "fixed-file"].includes(input.kind), "the private-helper controls remain splittable: " + JSON.stringify(result.refused))
       assert.ok(result.refused.length > 0)
       assert.equal(readFileSync(join(pkg, source), "utf8"), files[source])
       assert.equal(existsSync(join(pkg, "src", path + ".platform.ts")), false)
@@ -77,7 +81,16 @@ function check(input) {
     const after = emit("after"), resolved = resolve()
     assert.equal(readFileSync(join(after, declaration), "utf8"), readFileSync(join(before, declaration), "utf8"), "old public declaration bytes alone do not prove preservation")
     const comparison = compareDeclarations(ts, before, after)
-    if (input.kind === "explicit") {
+    assert.notEqual(input.kind, "platform-file", "a wildcard that can name the companion keeps it unsplit")
+    if (input.kind === "fixed-file") {
+      // The surface recorder reads a wildcard entry as a literal path on both
+      // sides; that is independent of the split. What the companion decides is
+      // whether a consumer can import it, and what the module declares.
+      assert.equal(resolved, undefined, "a fixed-file wildcard cannot publish the companion")
+      assert.deepEqual([comparison.nameDifferences, comparison.typeDifferences, comparison.docDifferences], [[], [], []])
+      assert.deepEqual(comparison.added, [sibling])
+      for (const d of comparison.environmentDiagnostics.filter(d => d.blocking)) assert.match(d.diagnostic, /\*\/neon\.d\.ts/)
+    } else if (input.kind === "explicit") {
       assert.equal(resolved, undefined, "explicit exports keep the helper private")
       assert.equal(comparison.identical, true)
       assert.deepEqual(comparison.addedPrivate, [sibling])
@@ -96,6 +109,10 @@ test("platform publication spans source depths, names and conditional exports wi
   fc.assert(fc.property(fc.record({
     name: fc.constantFrom("ToLambda", "createRouteId", "Value", "Unicodeé"),
     depth: fc.integer({ min: 0, max: 3 }),
-    kind: fc.constantFrom("wildcard", "conditional", "explicit"),
-  }), check), { seed: 600060, numRuns: 12, endOnFailure: true })
+    kind: fc.constantFrom("wildcard", "conditional", "explicit", "fixed-file", "platform-file"),
+  }), check), { seed: 600060, numRuns: 20, endOnFailure: true })
+})
+
+test("a wildcard whose target names a fixed file publishes no companion", () => {
+  for (const kind of ["fixed-file", "platform-file"]) for (const depth of [1, 2]) check({ name: "createRouteId", depth, kind })
 })

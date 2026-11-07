@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The migrate flow kept a published package's platform code in TypeScript when its export map had a wildcard naming a fixed file, such as `"./*/neon": "./dist/*/neon.js"`, although such an entry can never publish a `.platform.ts` companion. Those packages now get the companion, as packages with explicit exports do.
+
 - The migrate flow kept a module in TypeScript when a declaration that reached the platform also read `import.meta`, such as a resource's `main: import.meta.url`, and its sibling split could move such code so that `import.meta.url` named the `.platform.ts` companion. The declaration now stays in the module and only its host calls and reads move into the module body, so `import.meta.url` still names the module.
 
 - `vibelang --fix` left an `Effect.gen` or `Effect.fn` generator unconverted when one of its throwing calls read a property that a guard had proved, such as `content.text ? Lifecycle.textDelta(content.text) : 0`, because the converted call lost the guard's proof (`TS2345`). The fix now moves the guard into the call's wrapper, or reads the property into a `const` before the statement, and converts the generator.

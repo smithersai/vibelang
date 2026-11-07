@@ -16,6 +16,17 @@
       "name": "ToLambda",
       "depth": 1,
       "kind": "explicit"
+    },
+    {
+      "name": "BuildChild",
+      "depth": 1,
+      "kind": "fixed-file",
+      "note": "frontend framework package: its only wildcard entry is \"./*/neon\": \"./dist/*/neon.js\""
+    },
+    {
+      "name": "aws",
+      "depth": 1,
+      "kind": "fixed-file"
     }
   ]
 }
