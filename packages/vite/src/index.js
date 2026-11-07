@@ -5,7 +5,7 @@ import { extensionlessImport } from "./relative-imports.js"
 import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { createRequire } from "node:module"
 import { isVibeLangFile } from "./vibe-directive.js"
-import { dirname, isAbsolute, join, resolve } from "node:path"
+import { basename, dirname, isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 // Vite's default resolve.extensions, which a config that sets none uses.
@@ -101,6 +101,15 @@ function isGeneratedDeclaration(path) {
     if (path.endsWith(suffix) && existsSync(path.slice(0, -suffix.length) + extension)) return true
   }
   return false
+}
+
+// cache.mjs writes JSON entries named by 32 base64url characters in the configured
+// cache directory. Those outputs can be inside Vite's watched root without
+// becoming project inputs; invalidating them would discard live SSR maps.
+function isCompilerCacheEntry(file) {
+  const directory = process.env.VIBELANG_CACHE_DIR
+  return Boolean(directory) && dirname(resolve(file)) === resolve(directory) &&
+    /^[A-Za-z0-9_-]{32}\.json$/.test(basename(file))
 }
 
 // Keep TypeScript's source priority when the bundler cannot find .vibe.
@@ -313,6 +322,7 @@ export default function vibelang(options = {}) {
   }
 
   async function hotUpdate(context, environment) {
+    if (isCompilerCacheEntry(context.file)) { debug("ignore compiler cache " + context.file); return [] }
     if (context.file.includes("%")) {
       urlVersions.set(context.file, context.timestamp || Date.now())
       const graph = environment?.moduleGraph ?? context.server.moduleGraph
@@ -509,6 +519,7 @@ export default function vibelang(options = {}) {
       }
     },
     watchChange(id) {
+      if (isCompilerCacheEntry(id)) { debug("ignore compiler cache " + id); return }
       if (isGeneratedDeclaration(id)) { debug(`ignore generated declaration ${id}`); return }
       if (/\.(?:vibex?|[cm]?[jt]sx?|json)$/.test(id)) current?.invalidate()
     },

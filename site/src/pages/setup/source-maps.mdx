@@ -16,7 +16,7 @@ Each row is checked by driving the tool itself. The table names each test file.
 | Node | `--enable-source-maps` and `vibelang/register` print `.vibe` lines and columns | `node.test.mjs` |
 | Debuggers | A breakpoint set on a `.vibe` line pauses there, over V8's inspector protocol | `inspector.test.mjs` |
 | Bun | `vibelang/bun` prints `.vibe` lines, with the limits below | `bun.test.mjs` |
-| Vite | The dev server's modules and SSR stacks, and `vite build` | `vite.test.mjs`, `bundlers.test.mjs` |
+| Vite | The dev server's modules and SSR stacks, including compiler-cache writes, and `vite build` | `vite.test.mjs`, `bundlers.test.mjs` |
 | Vitest | A failing test's stack, with `@effect/vitest` too, and coverage with the V8 and Istanbul providers | `vitest.test.mjs` |
 | esbuild, Rollup, Rolldown, webpack | The bundle's map reaches `.vibe` text, and Node prints `.vibe` frames | `bundlers.test.mjs` |
 | Rspack | The bundle's map reaches `.vibe` text | `packages/unplugin/test/bundlers.test.mjs` |

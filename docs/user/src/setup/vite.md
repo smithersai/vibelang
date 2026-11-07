@@ -300,6 +300,8 @@ Source maps keep the original `.vibe` positions and source text through repeated
 development requests and hot updates, including modules declared inside a
 `.vibe` file.
 
+Compiler cache entries written under `VIBELANG_CACHE_DIR` preserve loaded modules and SSR maps even when the cache sits inside Vite's watched root. Source and configuration edits still invalidate their compilations.
+
 Both `vibelang-vite` and the shared `vibelang-unplugin` load hook accept
 `.vibex` sources. Configure `compilerOptions.jsx` as for the corresponding
 `.tsx` project. The Vite adapter compiles native JSX before JavaScript parsing

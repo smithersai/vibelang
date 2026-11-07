@@ -1,0 +1,9 @@
+{
+  "property": "vite-cache-watch-maps",
+  "rule": "428-part4-ch28-tooling.md: Debugging, D299",
+  "input": {
+    "hash": "00000000000000000000000000000000",
+    "directory": "cache",
+    "event": "update"
+  }
+}

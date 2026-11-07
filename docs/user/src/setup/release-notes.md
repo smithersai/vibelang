@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Vite SSR stacks could show generated JavaScript positions after a compiler cache write. Cache entries now preserve loaded modules and their original source locations.
+
 - Formatting a standalone `do` expression could fail with `'while' expected`. The formatter now keeps the parentheses that distinguish it from a `do`/`while` statement.
 
 - Migration examples with contextual plugin factories could still be reported as unsupported after their inferred contracts were preserved. They now verify the supported repair, including named wrappers and generic factories.

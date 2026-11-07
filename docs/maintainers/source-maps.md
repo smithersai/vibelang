@@ -91,3 +91,5 @@ The subprocess checks record elapsed time and distinguish their own deadline fro
 While a diagnostic is continuing, nonexistent comment-shaped paths, including `//path/to/source`, stay in its source excerpt. Existing input files remain inputs, and a started file listing still accepts missing paths. The parser property covers these boundaries separately.
 
 The tool-adapter suite stages a private Vite plugin beside its compiler peer. It reads the plugin manifest and source from the checkout, so testing does not depend on a separate install in the Vite package.
+
+The Vite SSR replay writes a compiler cache entry after loading the module and waits for the cache watcher event. The stack must still name the original source position. Failure output retains the raw stack, SSR code and map, and a bounded list of watcher events. A keyed fast-check property varies cache keys, directory spellings and create/update/delete events, while checking that ordinary JSON and neighbouring directories still invalidate.

@@ -181,6 +181,8 @@ the maps for its transformations. Each hook returns an independent map, so
 Vite's path rewriting leaves the compiler's cached source paths and embedded
 source text intact for later requests, including inline module outputs.
 
+Compiler cache entries written under `VIBELANG_CACHE_DIR` preserve loaded modules and SSR maps even when the cache sits inside Vite's watched root. Source and configuration edits still invalidate their compilations.
+
 Vite's root may be a directory inside your package, as `root: "web"` with
 `vibelang({ project: "../tsconfig.json" })`: that project still compiles every
 `.vibe` module its `include` lists, inside Vite's root or not. The plugin
