@@ -271,6 +271,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-second-bang-nested", "type T = [number, (number!string\n!boolean)];"},
 	{"schema-effect-method", "schema S = { effect id() }"},
 	{"schema-effect-method-line-break", "schema S =\n{ async\neffect effect (\n) }"},
+	{"fiber-primary-reference", "effect function f() { return new join.target; }"},
+	{"fiber-primary-reference-extends", "effect function f() { return class extends fork.C {}; }"},
+	{"fiber-primary-reference-spaced", "effect function f ( ) { return new join . target ; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1240,6 +1243,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarFiberParameter.MatchString(source) {
 		return "admission:fiber-binding"
+	}
+	if grammarFiberPrimaryReference(file) {
+		return "admission:fiber-primary-reference"
 	}
 	for _, form := range forms {
 		if form.Kind != parser.VibeSyntaxBlockStatement {

@@ -667,3 +667,19 @@ modifier ended by a line break and the named-body `EK1505` rejection stay
 outside the family. An optional `effect id?()` signature is a method in
 this family, not the `admission:schema-effect-field` field form. The
 compiler is unchanged and the witnesses remain pending.
+
+A `fork` or `join` that heads a `new` callee or an `extends` clause in
+Effect code is `admission:fiber-primary-reference`. Appendix A reserves
+both words wherever an `IdentifierReference` could stand under `[+Effect]`,
+as `await` is reserved under `[+Await]`. The parser tests for them only
+where a unary expression starts, so `effect function f() { return new
+join.target; }` reads `join` as an identifier. The compiler then reports
+only the old compiler compatibility error `EK4410` for a stored intrinsic and `TS2339` for the member, not the
+reservation error `EK1702`. `class extends fork.C {}` in the same body
+reports only `TS2339`. A non-null assertion inside the head, as in
+`new join.target!`, does not change the reading. The `async function f() { return new await.target;
+}` twin reports `TS1109`. A shorthand property `{ join }` already reports
+`EK1702`, and `new (join).target` reports `TS1109`, so both stay outside
+the family. A nested plain callable resets the context, as do plain code
+and a member name such as `new x.join`, and these remain ordinary
+identifiers. The compiler is unchanged and the witnesses remain pending.
