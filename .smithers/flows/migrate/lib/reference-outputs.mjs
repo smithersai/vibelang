@@ -11,7 +11,7 @@ const extra = ts => [{ extension: ".vibe", isMixedContent: false, scriptKind: ts
   { extension: ".vibex", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }]
 
 /** Effective project outputs and the reverse reference closure of changed sources. */
-export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] }) {
+export function referenceRefreshPlan({ root, ts, configs, changed, tracked }) {
   root = resolve(root)
   const projects = new Map()
   const configPath = path => {
@@ -83,8 +83,23 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked = [] 
       }
     }
   }
-  const sources = [...projects.values()].flatMap(project => project.parsed.fileNames).concat(
-    tracked.map(file => resolve(root, file)), [...projects.keys()])
+  // Every config and tracked file protects an output directory, and so does a
+  // file a project lists, with one exception once the tracked files are known:
+  // untracked JavaScript or declarations that only projects outside this
+  // refresh's graph list. A root config that shares options, with allowJs and
+  // no include, lists every emitted output through TypeScript's default include.
+  const graph = new Set()
+  const reach = path => {
+    if (graph.has(path)) return
+    graph.add(path)
+    for (const ref of projects.get(path).references) reach(ref)
+  }
+  for (const path of affected) reach(path)
+  const trackedPaths = tracked && new Set(tracked.map(file => resolve(root, file)))
+  const emitted = /\.(?:[cm]?jsx?|d\.(?:[^/\\]+\.)?[cm]?ts)$/
+  const sources = [...projects].flatMap(([path, project]) => project.parsed.fileNames.filter(file =>
+    graph.has(path) || !trackedPaths || trackedPaths.has(resolve(file)) || !emitted.test(file))).concat(
+    [...(trackedPaths ?? [])], [...projects.keys()])
   // Validate the entire deletion plan before removing any artifact.
   for (const path of outputs) {
     let parent = path
