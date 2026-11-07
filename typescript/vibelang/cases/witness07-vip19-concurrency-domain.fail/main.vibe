@@ -1,0 +1,16 @@
+// expect: EK1907 TS2322
+import type { Types } from "effect"
+
+// rule-evidence: docs/design/vips/0019-for-concurrent.md#decision | In effect 4.1.1, `Concurrency` is a number or `"unbounded"` (`Types.d.ts`); the decision as sent also listed `"inherit"`, which 4.1.1 doesn't have.
+// "inherit" is not a pinned `Types.Concurrency`: the literal and a named
+// value of that type are both rejected, as stock Effect.forEach rejects the
+// same operand in native.ts.
+export effect function literal() { for concurrent("inherit") (const x of [1]) { void x } }
+declare const inherit: "inherit"
+export effect function named() { for concurrent(inherit) (const x of [1]) { void x } }
+
+// Every member of the pinned type is admitted: any number and "unbounded".
+export effect function numeric(n: number) { for concurrent(n) (const x of [1]) { void x } }
+export effect function zero() { for concurrent(0) (const x of [1]) { void x } }
+export effect function unbounded() { for concurrent("unbounded") (const x of [1]) { void x } }
+export effect function pinned(c: Types.Concurrency) { for concurrent(c) (const x of [1]) { void x } }

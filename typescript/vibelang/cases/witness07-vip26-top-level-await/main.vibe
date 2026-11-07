@@ -1,0 +1,12 @@
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#decision | `await` there is ES top-level await of a Promise (VIP-5), and `try` is not allowed, because a top level is not an `effect` function.
+// A Promise awaited at the top level, in a declaration, a statement and a
+// block; witness07-vip26-top-level-try.fail rejects try in the same places.
+// The Decision's own startup: await runPromise(main()) runs main once, here.
+export const answer = await Promise.resolve(40)
+let steps = 0
+await Promise.resolve().then(() => { steps = 2 })
+let label = ""
+if (answer > 0) { label = await Promise.resolve("done") }
+export let calls = 0
+export effect function main() { calls++; return [answer + steps, label] as const }
+export const started = await runPromise(main())

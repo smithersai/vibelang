@@ -1,0 +1,41 @@
+// expect: EK2202
+import { Effect } from "effect"
+declare const poll: number!!
+declare const limit: number
+
+// rule-evidence: docs/design/vips/0022-interruption-blocks.md#decision | **Amended 2026-10-30: `restore` in a `for concurrent` body.** `restore` inside any `for concurrent` head binding initialization or body is a compile error (`EK2202`), whatever the limit: each item runs as a separate Effect that the enclosing mask does not govern.
+// One rejected body and one rejected head default per limit, including 1,
+// which runs items sequentially on the enclosing fiber (expected/diagnostics.txt).
+export effect function omitted(xs: number[]) {
+  uninterruptible { for concurrent (const x of xs) { restore { try poll }; void x } }
+}
+export effect function one(xs: number[]) {
+  uninterruptible { for concurrent(1) (const x of xs) { restore { try poll }; void x } }
+}
+export effect function two(xs: number[]) {
+  uninterruptible { for concurrent(2) (const x of xs) { restore { try poll }; void x } }
+}
+export effect function unbounded(xs: number[]) {
+  uninterruptible { for concurrent("unbounded") (const x of xs) { restore { try poll }; void x } }
+}
+export effect function dynamic(xs: number[]) {
+  uninterruptible { for concurrent(limit) (const x of xs) { restore { try poll }; void x } }
+}
+export effect function zero(xs: number[]) {
+  uninterruptible { for concurrent(0) (const x of xs) { restore { try poll }; void x } }
+}
+export effect function headOne(xs: Array<{ n?: number }>) {
+  uninterruptible { for concurrent(1) (const { n = do { restore { try poll }; 1 } } of xs) { void n } }
+}
+export effect function headUnbounded(xs: Array<{ n?: number }>) {
+  uninterruptible { for concurrent("unbounded") (const { n = do { restore { try poll }; 1 } } of xs) { void n } }
+}
+
+// Controls: the limit and the iterable run outside the item region and keep
+// the enclosing mask, so restore there is accepted at every limit.
+export effect function limitOutside(xs: number[]) {
+  uninterruptible { for concurrent(do { restore { try poll }; 1 }) (const x of xs) { void x } }
+}
+export effect function iterableOutside() {
+  uninterruptible { for concurrent(1) (const x of do { restore { try poll }; [1] }) { void x } }
+}

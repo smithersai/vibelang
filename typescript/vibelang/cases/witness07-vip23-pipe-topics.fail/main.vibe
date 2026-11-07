@@ -1,0 +1,10 @@
+// expect: EK2301
+// rule-evidence: docs/design/vips/0023-pipe.md#prior-art | **Clarified 2026-11-03: pipe diagnostics.** Adopted pipe grammar and early errors without a more specific code use `EK2301`, including a missing topic and a whole bare plain, `async` or `effect` arrow body.
+// The missing-topic and topic-placement early errors. They are semantic, so
+// they live apart from pipe-arrows.fail, whose grammar errors would stop
+// tsc before it reports them.
+export const missingTopic = 1 |> 2
+export function missingInBody() { return 1 |> "anonymous" }
+export const missingNested = 1 |> [2, (3 |> %)]
+export const topicOutside = %
+export function topicInBody() { const t = %; return t }

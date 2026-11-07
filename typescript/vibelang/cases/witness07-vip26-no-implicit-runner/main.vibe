@@ -1,0 +1,7 @@
+import { Console } from "effect"
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#decision | A function named `main` is an ordinary function, and you call a runner yourself, exactly as in Effect TS.
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind | This adds no implicit runner or special `main`.
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-legacy-entry-markers | A refused marker remains an error; no implicit startup is retained and no ordinary `main` binding is rejected.
+// Started by the host, this module runs nothing: run.mjs requires empty
+// output, and only its explicit runner prints.
+export effect function main() { try Console.log("effect main ran") }

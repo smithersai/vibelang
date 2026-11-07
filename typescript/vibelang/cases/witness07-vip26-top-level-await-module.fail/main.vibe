@@ -1,0 +1,7 @@
+// expect: TS1378
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind | Top-level `await` therefore requires supported module and target options.
+// The .vibe file is a module without any import or export, so its top-level
+// await gets TypeScript's option diagnostic, TS1378, exactly as twin.ts does
+// (expected/diagnostics.txt); it is never the script diagnostic TS1375.
+const answer = await Promise.resolve(42)
+void answer

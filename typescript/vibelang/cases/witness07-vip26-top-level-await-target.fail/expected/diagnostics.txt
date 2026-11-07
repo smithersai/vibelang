@@ -1,0 +1,2 @@
+main.vibe(6,16): error TS1378
+twin.ts(1,16): error TS1378

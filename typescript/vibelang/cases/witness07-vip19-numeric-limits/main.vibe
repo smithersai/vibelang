@@ -1,0 +1,27 @@
+import { Effect } from "effect"
+import type { Types } from "effect"
+
+// rule-evidence: docs/design/vips/0019-for-concurrent.md#decision | On Effect `4.1.1`, numeric limits below `1` still visit every item sequentially as `1` does; positive integers bound concurrent items, while other numbers retain Effect's own behavior.
+// rule-evidence: docs/design/vips/0019-for-concurrent.md#decision | In Effect `4.1.1`, concurrency `1` runs items sequentially on the enclosing fiber; higher limits and `"unbounded"` fork per item.
+// One probe per limit: the visiting order, the peak number of items active at
+// once, and whether each item ran on the enclosing fiber. run.mjs compares the
+// Exit with reference.ts, which passes the same limit to Effect.forEach.
+export effect function visit(limit: Types.Concurrency) {
+  const parent = try Effect.fiberId
+  const started: number[] = []
+  const finished: number[] = []
+  const onParent: boolean[] = []
+  let active = 0
+  let peak = 0
+  for concurrent(limit) (const n of [1, 2, 3, 4, 5]) {
+    started.push(n)
+    const self = try Effect.fiberId
+    onParent.push(self === parent)
+    active++
+    peak = Math.max(peak, active)
+    try Effect.yieldNow
+    active--
+    finished.push(n)
+  }
+  return { started, finished, onParent, peak }
+}

@@ -1,0 +1,2 @@
+import "vibelang/platform/browser"
+export effect function start() { return 2 }

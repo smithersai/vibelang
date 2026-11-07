@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "es2022", "lib": ["esnext"], "module": "es2020", "moduleResolution": "bundler", "moduleDetection": "legacy", "strict": true, "types": [], "skipLibCheck": true, "outDir": "out"}, "include": ["*.vibe", "*.ts"]}

@@ -6,85 +6,10 @@ import { test } from "node:test"
 // Activation: Compile fork (e catch h), (fork e) catch h, and unparenthesized controls; require no EK0505 for parentheses and EK0506 only for the Fiber catch.
 test.todo("rule-evidence: docs/design/vips/0017-fork.md#decision | cov2-vips-b parenthesized fork catch diagnostics | present | *Corrected 2026-10-30: the quick fix was `fork (e catch h)`, which contradicted decided detail 99's own Effect TypeScript, `Effect.forkChild(Effect.catch(e, \u2026))` (found by the round-19 Fable review).* The parenthesized forms are not `EK0505`; `(fork e) catch h` is still `EK0506`, as a `Fiber` is not an Effect in Effect 4.1.1.")
 
-// rule-evidence: docs/design/vips/0019-for-concurrent.md#be892d4246ccf5de
-// VIP-19: native concurrency domain.
-// Activation: Check number and "unbounded" against native Types.Concurrency, reject "inherit", and compare the same operands in for concurrent.
-test.todo("rule-evidence: docs/design/vips/0019-for-concurrent.md#decision | cov2-vips-b native concurrency domain | present | In effect 4.1.1, `Concurrency` is a number or `\"unbounded\"` (`Types.d.ts`); the decision as sent also listed `\"inherit\"`, which 4.1.1 doesn't have.")
-
-// rule-evidence: docs/design/vips/0019-for-concurrent.md#84082ffd5bd96457
-// VIP-19: numeric concurrency runtime.
-// Activation: Compare visitation, peak concurrency, and Exit for negative, zero, fractional, NaN, finite positive and infinite limits with Effect.forEach.
-test.todo("rule-evidence: docs/design/vips/0019-for-concurrent.md#decision | cov2-vips-b numeric concurrency runtime | present | On Effect `4.1.1`, numeric limits below `1` still visit every item sequentially as `1` does; positive integers bound concurrent items, while other numbers retain Effect's own behavior.")
-
-// rule-evidence: docs/design/vips/0019-for-concurrent.md#e782bc9bae7a0f6f
-// VIP-19: concurrency fiber identity.
-// Activation: Compare item fiber ids with the parent for limits 1, 2 and "unbounded"; sequential uses parent, parallel forks.
-test.todo("rule-evidence: docs/design/vips/0019-for-concurrent.md#decision | cov2-vips-b concurrency fiber identity | present | In Effect `4.1.1`, concurrency `1` runs items sequentially on the enclosing fiber; higher limits and `\"unbounded\"` fork per item.")
-
-// rule-evidence: docs/design/vips/0021-producers.md#3b282487657a0632
-// VIP-21: retired producer diagnostic.
-// Activation: Assert EK2101 is absent from active diagnostic and severity registries, including a negative configuration control.
-test.todo("rule-evidence: docs/design/vips/0021-producers.md#decision | cov2-vips-b retired producer diagnostic | present | The old `EK2101` is retired and will never be reassigned.")
-
-// rule-evidence: docs/design/vips/0021-producers.md#75071da52199147a
-// VIP-21: written producer native contracts.
-// Activation: Compile declarations and expressions with the same annotations as Stream.callback, retaining compatible and incompatible controls.
-test.todo("rule-evidence: docs/design/vips/0021-producers.md#wills-words | cov2-vips-b written producer native contracts | present | **Clarified 2026-11-03: written producer contracts.** Written return annotations follow TypeScript's ordinary contract checking on the `Stream.callback` counterpart.")
-
-// rule-evidence: docs/design/vips/0021-producers.md#e6bd074af6225da0
-// VIP-21: producer channels and annotation fallback.
-// Activation: Check success, error and requirement channels separately, then a non-Stream annotation against the inferred whole Stream type.
-test.todo("rule-evidence: docs/design/vips/0021-producers.md#wills-words | cov2-vips-b producer channels and annotation fallback | present | A written `Stream.Stream<A, E, R>` checks the yielded values, escaping errors and supplied requirements; otherwise infer the body channels and check the resulting Stream against the annotation.")
-
-// rule-evidence: docs/design/vips/0021-producers.md#0511a9493ea9c171
-// VIP-21: producer aliases any unknown unions.
-// Activation: Compile direct and aliased Stream, any, unknown and compatible unions; reject incompatible annotations with exactly EK2102.
-test.todo("rule-evidence: docs/design/vips/0021-producers.md#wills-words | cov2-vips-b producer aliases any unknown unions | present | Aliases, `any`, `unknown` and compatible unions are admitted; an incompatible annotation is `EK2102`.")
-
-// rule-evidence: docs/design/vips/0022-interruption-blocks.md#a8c9f8d1e9fe9fcb
-// VIP-22: restore concurrent head and body.
-// Activation: Place restore in head binding defaults and bodies at sequential and parallel limits inside uninterruptible; require EK2202.
-test.todo("rule-evidence: docs/design/vips/0022-interruption-blocks.md#decision | cov2-vips-b restore concurrent head and body | present | **Amended 2026-10-30: `restore` in a `for concurrent` body.** `restore` inside any `for concurrent` head binding initialization or body is a compile error (`EK2202`), whatever the limit: each item runs as a separate Effect that the enclosing mask does not govern.")
-
-// rule-evidence: docs/design/vips/0023-pipe.md#88d75aa7cd5ffd1c
-// VIP-23: pipe effect arrow covering.
-// Activation: Exercise bare plain, async and effect arrow bodies at the right edge, with parenthesized valid controls.
-test.todo("rule-evidence: docs/design/vips/0023-pipe.md#prior-art | cov2-vips-b pipe effect arrow covering | present | **Clarified 2026-11-03: arrows at the right edge.** The arrow-body covering restriction includes `EffectArrow`, as it includes `AsyncArrowFunction`.")
-
-// rule-evidence: docs/design/vips/0023-pipe.md#903aee00838d9c25
-// VIP-23: pipe diagnostic ownership.
-// Activation: Require EK2301 for missing topic and each whole bare arrow body; retain independent native-expression diagnostics.
-test.todo("rule-evidence: docs/design/vips/0023-pipe.md#prior-art | cov2-vips-b pipe diagnostic ownership | present | **Clarified 2026-11-03: pipe diagnostics.** Adopted pipe grammar and early errors without a more specific code use `EK2301`, including a missing topic and a whole bare plain, `async` or `effect` arrow body.")
-
-// rule-evidence: docs/design/vips/0023-pipe.md#1c141e44061f0121
-// VIP-23: parenthesized pipe arrow.
-// Activation: Compile x |> (() => %) and invoke the resulting closure; compare with a TypeScript temporary capture.
-test.todo("rule-evidence: docs/design/vips/0023-pipe.md#prior-art | cov2-vips-b parenthesized pipe arrow | present | Parenthesize the arrow, `x |> (() => %)`.")
-
-// rule-evidence: docs/design/vips/0026-top-level-and-main.md#9b77f698158ab897
-// VIP-26: top level Promise await and rejected try.
-// Activation: Compile Promise top-level await under supported options and require the owning diagnostic for a top-level try Effect.
-test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#decision | cov2-vips-b top level Promise await and rejected try | present | `await` there is ES top-level await of a Promise (VIP-5), and `try` is not allowed, because a top level is not an `effect` function.")
-
 // rule-evidence: docs/design/vips/0026-top-level-and-main.md#657b0febacc88ea2
 // VIP-26: ordinary function main.
 // Activation: Export a plain main with an observable counter; module import must not call it, and an explicit call must increment once.
 test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#decision | cov2-vips-b ordinary function main | present | A function named `main` is an ordinary function, and you call a runner yourself, exactly as in Effect TS.")
-
-// rule-evidence: docs/design/vips/0026-top-level-and-main.md#6fe6b872cde3e319
-// VIP-26: explicit NodeRuntime import.
-// Activation: Check that an unimported NodeRuntime is unresolved and that the explicit @effect/platform-node import resolves.
-test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#decision | cov2-vips-b explicit NodeRuntime import | present | *Corrected 2026-11-02: the Decision example imports `NodeRuntime` from `@effect/platform-node`, which is not in scope (VIP-14), as chapter 1 does (found by the round-6 review).*")
-
-// rule-evidence: docs/design/vips/0026-top-level-and-main.md#7dfa949b3adf3b16
-// VIP-26: all vibe files external modules.
-// Activation: Check binding isolation and duplicate local names across moduleDetection modes and all effectGlobals/effectModules combinations, including files with no imports.
-test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind | cov2-vips-b all vibe files external modules | present | Every source `.vibe` compilation unit is an external module before binding and checking, independently of written imports and exports, required prelude imports, `vibe.effectGlobals` and `vibe.effectModules`.")
-
-// rule-evidence: docs/design/vips/0026-top-level-and-main.md#62576f853a8abb03
-// VIP-26: top level await options.
-// Activation: Compare supported and unsupported module/target combinations and CommonJS package mode against native TypeScript diagnostics.
-test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind | cov2-vips-b top level await options | present | Top-level `await` therefore requires supported module and target options.")
 
 // rule-evidence: docs/design/vips/0026-top-level-and-main.md#f60cc1f65858f126
 // VIP-26: no implicit runner.

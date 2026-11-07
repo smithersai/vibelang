@@ -1,0 +1,1 @@
+witness-07 VIP-26 says main is ordinary and nothing starts it, but the compiler still emits the D135 runtime.$entry runner for an exported zero-parameter main. Removing it changes what existing programs do when started, so it waits on a decision; see the lane report.

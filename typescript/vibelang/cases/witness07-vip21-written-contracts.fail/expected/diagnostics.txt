@@ -1,0 +1,17 @@
+main.vibe(15,67): error TS2322
+main.vibe(16,76): error EK9201
+main.vibe(17,73): error EK9202
+main.vibe(19,38): error EK2102
+main.vibe(19,38): warning EK4833
+main.vibe(20,40): error EK2102
+main.vibe(22,81): error TS2322
+main.vibe(30,37): error EK2102
+main.vibe(31,37): error EK2102
+native.ts(9,53): error TS2322
+native.ts(10,53): error TS2322
+native.ts(11,59): error TS2322
+native.ts(13,54): error TS2739
+native.ts(14,51): error TS2741
+native.ts(16,67): error TS2322
+native.ts(23,65): error TS2322
+native.ts(24,37): error TS2322

@@ -1,0 +1,3 @@
+import { Console, Effect } from "effect"
+// A plain function named main is just as ordinary.
+export function main() { Effect.runSync(Console.log("plain main ran")) }

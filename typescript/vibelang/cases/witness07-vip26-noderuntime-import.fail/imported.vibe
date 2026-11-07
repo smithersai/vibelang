@@ -1,0 +1,4 @@
+// The Decision example as corrected compiles.
+import { NodeRuntime } from "@effect/platform-node"
+export effect function main() { return 1 }
+NodeRuntime.runMain(main())
