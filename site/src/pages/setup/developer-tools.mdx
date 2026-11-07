@@ -623,3 +623,5 @@ The formatter preserves comparisons after Effect type assertions, including `val
 Use the compiler, plugins and editor integrations above with `.vibe` and `.vibex` files whenever possible. A project that cannot rename its TypeScript files can consider the experimental [TypeScript shim](/setup/typescript-shim) as the final fallback. Stock readers can accept marked files with different meaning; read the shim's limitations first.
 
 Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.
+
+Development imports and hot updates preserve literal percent sequences in filenames. A source such as `percent%20.vibe` and a JavaScript dependency such as `percent%2520.js` retain their own contents and original source-map locations, including under a configured Vite `base`.

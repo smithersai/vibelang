@@ -80,9 +80,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The cheat-sheet example for wrapped platform calls was still marked unavailable even though it compiled. It is now checked as a runnable example, including its documented output.
 
-- The migration example for incomplete `Stream` results omitted its type assertions before the repair. It now retains those assertions from input to repaired output.
 
-- Examples with declaration snapshots could be rejected despite a valid repair. Declaration snapshots now stay separate from the source being repaired.
 
 - Native TypeScript importers could lose exported types after migration when compatibility declarations were emitted from a monorepo ancestor. Bundler routes now select the existing declaration file for that layout.
 
@@ -118,7 +116,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Calling a function whose return type is an interface named `Effect` that copies Effect's `~effect/Effect` marker without declaring its type parameters crashed the compiler. Such a value is now ordinary data, and the call follows the usual throw-contract rules.
 
 - A relational pattern such as `when <= limits.max:` or `when in table:` evaluated its operand, running a getter or index read, even for a subject that could not match, such as an object for `<=` or a number for `in`. The subject's type is now tested first, so the operand runs only for a string, number or bigint, or a property key for `in`.
-- The page outline contained invalid list markup on wide screens. Its position marker now stays out of screen-reader navigation while headings remain proper list items.
 
 - An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
 

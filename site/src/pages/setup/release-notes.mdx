@@ -13,17 +13,57 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An exported `main` in the documentation's output examples could remain unrun and print nothing. Those examples now call `runPromise(main())` explicitly.
+
+- Installing a bundler example could reject the exact source-map helper versions required by the VibeLang plugins. The examples now exempt those pinned helpers from the minimum release age.
+
+- The `EK0403` message said it applied in a plain `catch` handler, where a call whose throwing is unknown is an ordinary call and a call known to throw is `EK0401`. It now says it applies in effect code, and names class evaluation among the forms it covers.
+
+- A `try` around a type assertion or conditional could run a returned Effect too early in TypeScript mapper output. It now runs only the operand's outer Effect, preserving the returned Effect for its own execution site.
+
+- An explicit `try` in an Effect-annotated `const` initializer could be rejected or skipped. It now runs at the binding site and stores the Effect's success value.
+
+- A class field that overrode a base class member with a function that may throw, such as `class C extends Reader { read = parse }` where `parse` declares `@throws {RangeError}` and `Reader.read` admits no throw, was accepted. It now reports `EK0402`, as the same member does under `implements`.
+
+- Patterns with an impossible extractor length showed a warning without a usable editor repair. The editor now offers a bare pattern or the matching single-value extractor.
+
+- The bundler entry-point example still expected automatic `main` startup. It now writes its runner explicitly and keeps an imported library's `main` inert.
+
+- The bundled entry-point example reported `TS5097` for its `.vibe` import. Its configuration now enables source-extension rewriting, as TypeScript requires.
+
+- Fresh checkout checks could fail to load the Vite plugin because its runtime dependencies were missing. Starter and isolated tool checks now install and resolve those dependencies.
+
+- Foreign constructors and tagged templates could leave `EK0403` behind after `--fix`. Supported synchronous invocations now receive explicit defect bridges, and generator repairs include constructors.
+
+- The diagnostic inventory could report retired `EK4705` even though the compiler emits `EK0707`. Numeric assignments in unrelated files no longer invent mapper diagnostic codes.
+
+- A file containing retired handler syntax could also produce overlapping-edit errors and lose unrelated generated code. The TypeScript mapper now reports the retirement diagnostic while preserving other declarations.
+
+- Replaying a migration example after compilation could report a compiler-generated declaration as an extra source file. Replays now ignore generated declaration companions and retain authored declarations.
+
+- The migration example for incomplete `Stream` results omitted its type assertions before the repair. It now retains those assertions from input to repaired output.
+
+- Examples with declaration snapshots could be rejected despite a valid repair. Declaration snapshots now stay separate from the source being repaired.
+
+- The page outline contained invalid list markup on wide screens. Its position marker now stays out of screen-reader navigation while headings remain proper list items.
+
+- Cross-file service, failure-contract and migration examples could report `TS5097` before demonstrating their intended behavior. They now use runtime import names or explicitly enable source imports where required.
+
 - Calling a foreign function with `?.()` could bypass throwing-call checks when its own result was an `Effect`, `Stream` or `Layer` combined with `null` or `undefined`. Optional calls now keep that nullable return contract and require the same bridge as ordinary calls.
 
 - A migration revert or compile in a repository whose root `tsconfig.base.json` has `allowJs` and no `include` stopped in reference planning with `unsafe project output: packages/fly/lib`: TypeScript's default include made that options-only config list every emitted `lib/*.js` and `lib/*.d.ts`, and each listed file counted as a source to protect. Untracked JavaScript and declarations that only configurations outside the rebuilt graph list now count as outputs, so the refresh clears and rebuilds them; tracked files and untracked TypeScript sources still refuse the deletion.
 - Checks of generated bundler modules could stop when loading a source-map helper. They now load the plugin’s declared helpers and check the generated modules.
 
 - A Vite config with a nested `root`, such as `root: "web"` with `vibelang({ project: "../tsconfig.json" })`, failed to load the project's modules outside that root: `core/Leaf.vibe is not part of tsconfig.json. Add it to the tsconfig's include.`, though the include listed it. The project now compiles from its package's directory, so every module it includes loads. The same applies to the bundler plugins of `vibelang-unplugin`.
+- Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
 
+- A source outside a bundler's compilation root could be reported as excluded from a project that already included it; the error now identifies the root boundary and explains the supported setup.
 - The migrate flow's platform split refused a module when a kept statement above an export ran any moved code while the module loaded, even code that never reads the export, such as a schema above a copied `export const defaultPathExtensions = "…"`. It now refuses only when that code reads the export, the one case where the original reads it before it exists, and the refusal for a copied constant no longer says it uses platform code.
 - The migrate flow's `<Name>.platform.ts` sibling had no module header and wrote `export` into each private helper the module calls, so a repository that requires a header and JSDoc on exported declarations, such as Smithers, failed its lint on the generated file. The sibling now starts with the module's header and exports those helpers in an `export { … }` after the moved code, which stays as written.
 - The migrate flow's platform split refused an export with an inferred return type that might name a private type or class moving to `<Name>.platform.ts`. The sibling now exports that declaration so the module's declarations can name it; the module gains no export.
 - Migration kept a module in TypeScript when its platform code read an export that is not a function, such as an error class, a schema and the type of its name, or an object. The `.platform.ts` companion now declares such an export and the module re-exports it, so the export keeps its identity, type and documentation; the companion's declaration file ships with the package and is added to no `exports` entry.
+- Importing a source file and its JavaScript sibling could load the JavaScript file twice; each import now loads its own file.
+- Vite development imports and hot updates could fail or load stale contents for filenames containing percent escapes; these files now load and update with their original source maps.
 - Migrating a host constructor such as `new Response(...)` could leave its module in TypeScript when the diagnostic named `globalThis.Response`. Both companion-file and module-body migrations now recognize the original bare constructor while preserving local bindings.
 
 - A saved declaration alongside a migration example could make a valid quick fix fail verification. Saved declarations now stay separate from the sources the fix must produce, and mismatches name the unmatched source files.
@@ -45,15 +85,15 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The cheat-sheet example for wrapped platform calls was still marked unavailable even though it compiled. It is now checked as a runnable example, including its documented output.
 
-- The migration example for incomplete `Stream` results omitted its type assertions before the repair. It now retains those assertions from input to repaired output.
 
-- Examples with declaration snapshots could be rejected despite a valid repair. Declaration snapshots now stay separate from the source being repaired.
 
 - Native TypeScript importers could lose exported types after migration when compatibility declarations were emitted from a monorepo ancestor. Bundler routes now select the existing declaration file for that layout.
 
 - An `is` binding in a call argument could make the TypeScript mapper report overlapping edits and emit no JavaScript. It now projects the argument and its bindings with valid source locations.
 
 - The compatibility diagnostic reference gave vague instructions for starting a provided program. It now names `runPromise` at the entry point.
+
+- Updating a VibeLang dependency could reload the whole Vite page even when an importer accepted the update. Accepted updates now preserve the page and its state.
 
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
@@ -377,6 +417,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An object tag pattern could incorrectly count primitive literal cases as covered when their wrapper interface declared `_tag`, letting an incomplete match compile. These cases now remain uncovered, and `--fix` can preserve the previous no-match error with an explicit default.
 - Migration `verify` reported a `package.json` as a foreign file when the codemod moved one of its scripts to a renamed module and emission added `#vibelang/emitted/*` routes to it. Those routes are now in the batch's scope; any other change to the manifest still fails.
 - Vite's dependency scan failed with `UNLOADABLE_DEPENDENCY` on a `.vibex` file with a `module` body under `"jsx": "preserve"`, because the scan read the absent `.jsx` output from disk. `vibelang-vite` now loads that output from the compile.
+- Passing an Effect CLI Command through its combinators, including `.pipe(Command.withDescription(...))`, incorrectly warned `EK4802`; Commands and other data types that implement Effect now keep their data identity, while passing an unrun Effect to a plain generic function still warns.
+
 - A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
 - Inline type re-exports and empty re-exports of Node builtins could retain unreported runtime loads. They now report `EK4402`, and `vibelang --fix` preserves those loads behind a native module boundary.
 
