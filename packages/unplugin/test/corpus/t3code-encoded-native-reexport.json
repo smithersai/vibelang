@@ -1,0 +1,8 @@
+{
+  "source": "T3code scripts/verify-windows-desktop-artifact.ts bundle property (seed 507, shrunk to a .ts entry, spaced leaf): entry.ts imports bridge.vibe, bridge.vibe has export { value } from \"./with space.vibe\"; esbuild reported Could not resolve \"./with%20space.js\"; the Unicode control failed on \"./unicode-%C3%A9.js\"",
+  "cases": [
+    { "name": "with space", "form": "export-from", "entry": "ts" },
+    { "name": "unicode-é", "form": "export-from", "entry": "ts" },
+    { "name": "with space", "form": "export-from", "entry": "mjs" }
+  ]
+}
