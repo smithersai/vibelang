@@ -1,0 +1,7 @@
+{
+  "property": "scaffold-filesystem-errors",
+  "rule": "docs/user/src/setup/new-project.md: 1. Create the project; filesystem failure reports target, code and recovery",
+  "input": { "name": "parent", "state": "parent-file", "sentinel": [112, 114, 101, 115, 101, 114, 118, 101] },
+  "generatorVersion": 1,
+  "command": "node --test packages/create-vibelang/test/filesystem.property.test.mjs"
+}

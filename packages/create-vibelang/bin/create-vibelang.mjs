@@ -28,47 +28,52 @@ for (const arg of process.argv.slice(2)) {
 }
 target ??= "vibelang-app"
 const directory = resolve(target)
-if (existsSync(directory)) {
-  if (!statSync(directory).isDirectory()) fail(`${target} is not a directory. Choose a new directory name.`)
-  if (readdirSync(directory).length > 0) fail(`${target} is not empty. Choose a new directory name.`)
-}
-
-// The published package carries the template in template/; a checkout uses
-// templates/app directly.
-const packaged = fileURLToPath(new URL("../template", import.meta.url))
-const template = existsSync(packaged) ? packaged : fileURLToPath(new URL("../../../templates/app", import.meta.url))
-mkdirSync(directory, { recursive: true })
-cpSync(template, directory, {
-  recursive: true,
-  filter: (path) => !["node_modules", "dist", "bun.lock", ".prototype"].includes(basename(path))
-})
-// npm drops .gitignore from published packages, so the template stores dotfiles without the dot.
-for (const name of ["gitignore", "gitattributes"]) {
-  if (existsSync(join(directory, name))) renameSync(join(directory, name), join(directory, `.${name}`))
-}
-
-const manifestPath = join(directory, "package.json")
-const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
-manifest.name = packageName(basename(directory))
-manifest.version = "0.0.0"
-manifest.dependencies["vibelang-runtime"] = own.version
-manifest.devDependencies["vibelang"] = own.version
-manifest.devDependencies["vibelang-vite"] = own.version
-writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
-
 const manager = packageManager()
-// AGENTS.md names the commands with the manager that created the app, as the
-// next steps below do, so an agent's first command is one this machine has.
-const agentsPath = join(directory, "AGENTS.md")
-if (existsSync(agentsPath)) writeFileSync(agentsPath, readFileSync(agentsPath, "utf8").replaceAll("bun run ", `${manager} run `))
-const readmePath = join(directory, "README.md")
-if (existsSync(readmePath)) {
-  const add = manager === "npm" ? "npm install" : `${manager} add`
-  writeFileSync(readmePath, readFileSync(readmePath, "utf8")
-    .replaceAll("bun run ", `${manager} run `)
-    .replaceAll("bun install", `${manager} install`)
-    .replaceAll("bun add -d ", `${add} ${manager === "yarn" ? "--dev" : "--save-dev"} `)
-    .replaceAll("bun add ", `${add} `))
+try {
+  if (existsSync(directory)) {
+    if (!statSync(directory).isDirectory()) fail(`${target} is not a directory. Choose a new directory name.`)
+    if (readdirSync(directory).length > 0) fail(`${target} is not empty. Choose a new directory name.`)
+  }
+
+  // The published package carries the template in template/; a checkout uses
+  // templates/app directly.
+  const packaged = fileURLToPath(new URL("../template", import.meta.url))
+  const template = existsSync(packaged) ? packaged : fileURLToPath(new URL("../../../templates/app", import.meta.url))
+  mkdirSync(directory, { recursive: true })
+  cpSync(template, directory, {
+    recursive: true,
+    filter: (path) => !["node_modules", "dist", "bun.lock", ".prototype"].includes(basename(path))
+  })
+  // npm drops .gitignore from published packages, so the template stores dotfiles without the dot.
+  for (const name of ["gitignore", "gitattributes"]) {
+    if (existsSync(join(directory, name))) renameSync(join(directory, name), join(directory, `.${name}`))
+  }
+
+  const manifestPath = join(directory, "package.json")
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
+  manifest.name = packageName(basename(directory))
+  manifest.version = "0.0.0"
+  manifest.dependencies["vibelang-runtime"] = own.version
+  manifest.devDependencies["vibelang"] = own.version
+  manifest.devDependencies["vibelang-vite"] = own.version
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
+
+  // AGENTS.md names the commands with the manager that created the app, as the
+  // next steps below do, so an agent's first command is one this machine has.
+  const agentsPath = join(directory, "AGENTS.md")
+  if (existsSync(agentsPath)) writeFileSync(agentsPath, readFileSync(agentsPath, "utf8").replaceAll("bun run ", `${manager} run `))
+  const readmePath = join(directory, "README.md")
+  if (existsSync(readmePath)) {
+    const add = manager === "npm" ? "npm install" : `${manager} add`
+    writeFileSync(readmePath, readFileSync(readmePath, "utf8")
+      .replaceAll("bun run ", `${manager} run `)
+      .replaceAll("bun install", `${manager} install`)
+      .replaceAll("bun add -d ", `${add} ${manager === "yarn" ? "--dev" : "--save-dev"} `)
+      .replaceAll("bun add ", `${add} `))
+  }
+} catch (error) {
+  if (typeof error?.code !== "string" || !/^E[A-Z]+$/.test(error.code)) throw error
+  fail(`Could not create ${target} (${error.code}). Check the path and directory permissions, then retry with a new or empty directory.`)
 }
 console.log(`Created ${target} with VibeLang ${own.version}.`)
 if (install) {
