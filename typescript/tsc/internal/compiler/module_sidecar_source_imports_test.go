@@ -46,7 +46,7 @@ func TestModuleBodyDeclarationSourceImports(t *testing.T) {
 					if r == nil || r.EmitSkipped || len(r.Diagnostics) > 0 {
 						t.Fatalf("round %d: emit %+v", round, r)
 					}
-					body := emitted["/src/main.vibe."+bodyName+".d.ts"]
+					body := emitted[tspath.CombinePaths("/src", layout, "main.vibe."+bodyName+".d.ts")]
 					if round == 0 && !strings.Contains(body, `from "./input.vibe"`) {
 						t.Fatalf("body imports an output instead of its source:\n%s", body)
 					}

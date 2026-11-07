@@ -1503,7 +1503,8 @@ func (p *Program) verifyCompilerOptions() {
 			// So is each body's declaration, which may be the path its ordinary
 			// declaration output already claimed.
 			for _, body := range source.EmbeddedModules() {
-				declaration := tspath.RootedFilePathFromNormalized(moduleBodyDeclarationPath(body))
+				path, _ := p.moduleBodyDeclarationPaths(body)
+				declaration := tspath.RootedFilePathFromNormalized(path)
 				if !emitFilesSeen.Has(p.PathKeyForFileName(declaration)) {
 					verifyEmitFilePath(declaration)
 				}

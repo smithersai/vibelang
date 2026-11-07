@@ -17,7 +17,11 @@ import (
 )
 
 // VIP-40 slice 5: the compatibility sidecar's re-export must resolve without
-// loading the source or the compiler's virtual files.
+// loading the source or the compiler's virtual files. The body's declaration
+// sits beside the sidecar, at the mirrored path under vibe.sidecarDir, so the
+// sidecar names it as ./main.vibe.parse.js in every layout.
+//
+// rule-evidence: docs/design/vips/0040-module-declarations.md#41699fff05dc8475
 func TestModuleDeclarationSidecars(t *testing.T) {
 	for _, layout := range []string{"", "types"} {
 		for _, noEmit := range []bool{false, true} {
@@ -43,10 +47,10 @@ func TestModuleDeclarationSidecars(t *testing.T) {
 					dir += layout + "/"
 				}
 				main := emitted[dir+"main.d.vibe.ts"]
-				body := emitted["/src/main.vibe.parse.d.ts"]
+				body := emitted[dir+"main.vibe.parse.d.ts"]
 				specifier := "./main.vibe.parse.js"
-				if layout != "" {
-					specifier = "../main.vibe.parse.js"
+				if _, beside := emitted["/src/main.vibe.parse.d.ts"]; layout != "" && beside {
+					t.Fatalf("body declaration written beside the source, not its relocated sidecar: %v", emitted)
 				}
 				if !strings.Contains(main, fmt.Sprintf("%q", specifier)) {
 					t.Fatalf("missing re-export: %q (%v)", main, emitted)
