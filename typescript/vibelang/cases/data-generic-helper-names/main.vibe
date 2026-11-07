@@ -1,3 +1,4 @@
+// rule-evidence: docs/design/vips/0028-generic-data.md#2e384c51dbec23d2 | **Amended 2026-10-29: the helper's name.** The helper for `data Outcome<A>` is named `$Outcome$Definition`; if the module already declares that name, the compiler appends `$2`, `$3`, … and takes the first free name.
 export type $One$Definition = "kept"
 export type $One$Definition$2 = 2
 export data One<A> { V { first:A } }
@@ -5,6 +6,9 @@ export data Two<A,B> { V { first:A; second:B } }
 export data Three<A,B,C> { V { first:A; second:B; third:C } }
 export data Four<A,B,C,D> { V { first:A; second:B; third:C; fourth:D } }
 export type $Two$Definition = "later"
+export type $Hole$Definition = "taken"
+export type $Hole$Definition$3 = 3
+export data Hole<A> { V { first:A } }
 export type $Fo\u0075r$Definition = "escaped"
 // expect-result: ["V",1,"V","a",2,"V",true,"b",3,"V",1,"c",false,4]
 export effect function main(): readonly unknown[]!never {

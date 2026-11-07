@@ -1,0 +1,10 @@
+// VIP-28: a generic data type takes no default; a type alias carries it.
+export data Box<A> { Full { value: A } }
+// rule-evidence: docs/design/vips/0028-generic-data.md#8fcc5bf9c4264110 | Write the default on a separate `type` alias.
+export type BoxOf<A = string> = Box<A>
+export const defaulted: BoxOf = Box.Full({ value: "text" })
+export const explicit: BoxOf<number> = Box.Full({ value: 1 })
+// expect-result: ["Full","text","Full",1]
+export effect function main(): readonly unknown[]!never {
+  return [defaulted._tag, defaulted.value, explicit._tag, explicit.value]
+}

@@ -1,31 +1,6 @@
 // Pending coverage obligations; each activation checks the whole assigned rule.
 import { test } from "node:test"
 
-// rule-evidence: docs/design/vips/0028-generic-data.md#698d7b6fa614cd8f
-// VIP-28: generic data constraints forbidden.
-// Activation: Reject constrained type parameters with EK2126; compare an unconstrained valid declaration as control.
-test.todo("rule-evidence: docs/design/vips/0028-generic-data.md#decision | cov2-vips-b generic data constraints forbidden | present | **Amended 2026-10-29: no constraints.** A constraint on a generic `data` type parameter (`<A extends string>`) is a compile error, since this VIP doesn't add them (EK2126 keeps that part).")
-
-// rule-evidence: docs/design/vips/0028-generic-data.md#f5c8ea5db0d4a804
-// VIP-28: generic data defaults forbidden.
-// Activation: Reject data Box<A=string> and require the owning diagnostic, while admitting the default on a separate alias.
-test.todo("rule-evidence: docs/design/vips/0028-generic-data.md#decision | cov2-vips-b generic data defaults forbidden | present | **Amended 2026-10-29: no defaults.** A default on a generic `data` type parameter (`data Box<A = string>`) is a compile error, as a constraint is.")
-
-// rule-evidence: docs/design/vips/0028-generic-data.md#8fcc5bf9c4264110
-// VIP-28: generic alias default admitted.
-// Activation: Declare generic data without a default, add type Alias<A=string>=Box<A>, and check defaulted and explicit consumer instantiations against a native twin.
-test.todo("rule-evidence: docs/design/vips/0028-generic-data.md#decision | cov2-vips-b generic alias default admitted | present | Write the default on a separate `type` alias.")
-
-// rule-evidence: docs/design/vips/0028-generic-data.md#2e384c51dbec23d2
-// VIP-28: deterministic generic helper suffix.
-// Activation: Occupy $Outcome$Definition and its $2 successor, require $3, then leave a hole to require the first free suffix; repeat builds.
-test.todo("rule-evidence: docs/design/vips/0028-generic-data.md#decision | cov2-vips-b deterministic generic helper suffix | present | **Amended 2026-10-29: the helper's name.** The helper for `data Outcome<A>` is named `$Outcome$Definition`; if the module already declares that name, the compiler appends `$2`, `$3`, \u2026 and takes the first free name.")
-
-// rule-evidence: docs/design/vips/0029-schema-errors.md#0e5ea29627b074f4
-// VIP-29: schema construction validation defects.
-// Activation: Run invalid schema-error construction inside an Effect and compare Die Error class/message/fields against Schema.TaggedError's native counterpart.
-test.todo("rule-evidence: docs/design/vips/0029-schema-errors.md#decision | cov2-vips-b schema construction validation defects | present | A validation failure at construction (effect 4.1.1 throws a plain `Error`) is a defect, as any implicit throw inside `Effect.gen` is.")
-
 // rule-evidence: docs/design/vips/0030-config-files.md#620eaee7d226e458
 // VIP-30: native ts js module detection.
 // Activation: Cross legacy/auto/force and package type for ordinary .ts and .js with prelude switches off, comparing script binding and diagnostics against native TypeScript.

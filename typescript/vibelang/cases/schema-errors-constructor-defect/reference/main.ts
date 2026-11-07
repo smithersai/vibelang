@@ -8,6 +8,6 @@ export const contract: Equal<ReturnType<typeof fail>, Effect.Effect<never, Inval
 export function main() {
   return Effect.gen(function* () {
     const result = yield* Effect.exit(fail())
-    return [Exit.isFailure(result), Exit.isFailure(result) && result.cause.reasons.every(r => r._tag === "Die"), Exit.isFailure(result) && Cause.squash(result.cause) instanceof Error]
+    return [Exit.isFailure(result), Exit.isFailure(result) && result.cause.reasons.every(r => r._tag === "Die"), Exit.isFailure(result) && Cause.squash(result.cause) instanceof Error, Exit.isFailure(result) && !(Cause.squash(result.cause) instanceof Invalid), Exit.isFailure(result) && String(Cause.squash(result.cause))]
   })
 }
