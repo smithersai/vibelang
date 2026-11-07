@@ -1,5 +1,0 @@
-FuzzMigrationExternalCallableContext context:function-plugin:external compiler Chapter 1: external callable projection loses genuine project resolution context; lane migfix-t3code
-FuzzMigrationExternalCallableContext context:function-vite:external compiler Chapter 1: external callable projection loses genuine project resolution context; lane migfix-t3code
-FuzzMigrationExternalCallableContext context:changed-type:external compiler Chapter 1: external callable projection loses genuine project resolution context; lane migfix-t3code
-FuzzMigrationExternalCallableContext context:changed-doc:external compiler Chapter 1: external callable projection loses genuine project resolution context; lane migfix-t3code
-FuzzMigrationExternalCallableContext corpus:t3code-external-callable-project-context compiler Chapter 1: external callable projection loses genuine project resolution context; lane migfix-t3code

@@ -1154,3 +1154,5 @@ running its directive regressions.
 The native module companion oracle isolates only the bundler framework wrapper. It loads declared plugin dependencies from the importing source’s package scope, so source-map helpers execute as installed while the keyed source-owner and exclusion checks remain strict.
 
 Generated projects use runtime `.js` specifiers for ordinary imports. A property that deliberately varies source extensions sets `rewriteRelativeImportExtensions` when emitting, or `allowImportingTsExtensions` with `noEmit` when checking only. These options belong to that fixture; the shared default and native extension-rejection properties remain strict.
+
+External callable migration witnesses cover imported function types, value exports, Vite declarations, type and documentation drift, and unresolved types in their genuine project context. Relative and absolute `rootDir`, nested archive paths, and line endings remain mutation axes. Supported shapes now compare completely; changed types and documentation stay unequal, unresolved inputs stay incomplete, and source files remain unchanged.
