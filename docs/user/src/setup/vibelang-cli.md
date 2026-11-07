@@ -10,6 +10,9 @@ Formatting an existing file path takes precedence over glob expansion, including
 If the emitted program needs `vibelang-runtime` but the package cannot be resolved, compilation reports one `TS2307` naming the missing package. Install `vibelang-runtime` at the compiler's version. Written imports of the same absent package in `.vibe` and `.ts` files share that dependency error. Independent errors in your source still report.
 
 
+Formatting reports a missing explicit file or unmatched glob before writing any file. Use `--` before paths that begin with `-`; `--check` and `--write` cannot be combined.
+
+
 VibeLang uses TypeScript 7, which rejects removed options such as `moduleResolution: "node"` / `"node10"` and `baseUrl` (TS5108 / TS5102); update an older tsconfig using the [TypeScript 7 migration notes](https://github.com/microsoft/typescript-go/blob/main/CHANGES.md).
 
 An interrupted check or build exits unsuccessfully. If the compiler handles `SIGINT` or `SIGTERM` while it is working, it prints `vibelang: compilation cancelled`; a completed compiler stage cannot make that cancelled command report success. Rerun the command to complete the check or build.

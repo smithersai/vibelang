@@ -145,6 +145,8 @@ The language server's `textDocument/formatting`, `textDocument/rangeFormatting` 
 
 `vibelang format --write` formats `.vibe` and `.vibex` files with the shared formatter; `vibelang format --check` reports files that need formatting without writing them. `vibelang format --help` lists the options. Both accept file paths or glob patterns. Both run dprint once per quote style, width and core, over all the selected files, and remember the file contents dprint left unchanged, so a check of a clean tree starts no dprint. `VIBELANG_DISABLE_CACHE=1` turns that memory off and `VIBELANG_CACHE_DIR` moves it, as for the compile cache. Cached checks validate each file's syntax kind, so clean plain VibeLang cannot hide a JSX error in a `.vibex` or marked `.tsx` file.
 
+Both formatting commands report missing explicit files, unmatched explicit glob patterns, unknown options and conflicting `--check` and `--write` modes before changing any file. A default scan with no matching source files succeeds. Use `--` before paths that begin with `-`. The companion's `vibelang-format --help` lists the same options.
+
 ## Prettier, Oxfmt and migration
 
 The compiler also ships `vibelang/prettier` and `vibelang-format`. See [Developer tools after migration](/setup/developer-tools) for the integrations, their shared formatter, and how migration extends existing checks.

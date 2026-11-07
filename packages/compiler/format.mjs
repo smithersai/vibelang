@@ -222,15 +222,32 @@ function globSync(pattern, options) {
   }
   return expandGlob(pattern, options)
 }
-export function formatFiles(args) {
-  const check = args.includes("--check")
-  const paths = args.filter(arg => arg !== "--check" && arg !== "--write")
+export function formatFiles(args, command = "vibelang-format") {
+  const separator = args.indexOf("--")
+  const flags = separator < 0 ? args : args.slice(0, separator)
+  if (flags.includes("--help") || flags.includes("-h")) {
+    console.log(command + " [--check | --write] [--] [files or glob patterns...]")
+    console.log("  --check  Report files that need formatting without writing them.")
+    console.log("  --write  Format files in place (the default).")
+    console.log("  --       Treat following arguments as file paths or glob patterns.")
+    return 0
+  }
+  const unknown = flags.find(arg => arg.startsWith("-") && arg !== "--check" && arg !== "--write")
+  if (unknown) throw new Error(command + ": unknown option " + unknown + ". Run " + command + " --help.")
+  const check = flags.includes("--check")
+  if (check && flags.includes("--write")) throw new Error(command + ": cannot combine --check and --write. Run " + command + " --help.")
+  const paths = flags.filter(arg => arg !== "--check" && arg !== "--write")
+    .concat(separator < 0 ? [] : args.slice(separator + 1))
   const inputs = paths.length ? paths : ["**/*.{vibe,vibex,ts,tsx,mts,cts}"]
+  // Validate every explicit input before formatting any file. An ignored match
+  // still exists; an empty default scan is also a valid clean project.
   const files = [...new Set(inputs.flatMap(pattern => {
     const matches = globSync(pattern, {
-    exclude: path => /(^|[/\\])(?:node_modules|dist|build|coverage|\.git|\.jj)([/\\]|$)/.test(path)
+      exclude: path => /(^|[/\\])(?:node_modules|dist|build|coverage|\.git|\.jj)([/\\]|$)/.test(path)
     })
-    if (paths.length && matches.length === 0) throw new Error("vibelang format: no files match " + JSON.stringify(pattern) + ". Check the path or glob pattern.")
+    if (paths.length && matches.length === 0 && globSync(pattern).length === 0) {
+      throw new Error(command + ": no files match " + JSON.stringify(pattern) + ". Check the path or glob pattern.")
+    }
     return matches
   }))].filter(file => /\.vibex?$/.test(file) || fileHasVibeDirective(file))
   const clean = cleanTexts()
