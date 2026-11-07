@@ -402,6 +402,7 @@ func (p *projector) callArgument(argument *ast.Node, e env) {
 			p.callArgument(element, e)
 		}
 	case ast.KindObjectLiteralExpression:
+		p.rememberComputedNames(argument, e)
 		for _, property := range argument.Properties() {
 			if property.Kind == ast.KindPropertyAssignment {
 				p.visit(property.Name(), e)

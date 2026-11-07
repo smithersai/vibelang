@@ -145,7 +145,8 @@ type env struct {
 
 // projector holds the state of one Project call.
 type projector struct {
-	cacheWitnesses map[string]bool
+	computedNameEnvs map[*ast.Node]env
+	cacheWitnesses   map[string]bool
 
 	file *ast.SourceFile
 	text string
@@ -293,6 +294,12 @@ func lower(text string, ctx FileContext) *projector {
 
 // visit walks node and records the edits that lower it.
 func (p *projector) visit(node *ast.Node, e env) {
+	if defining, ok := p.computedNameEnvs[node]; ok {
+		e = defining
+	}
+	if ast.IsClassLike(node) || ast.IsObjectLiteralExpression(node) {
+		p.rememberComputedNames(node, e)
+	}
 	if p.rejectRetiredControlSyntax(node) {
 		return
 	}
@@ -533,8 +540,30 @@ func (p *projector) visit(node *ast.Node, e env) {
 	p.visitChildren(node, e)
 }
 
+// Computed names execute where their object or class is defined, while
+// member bodies and initializers keep their separate source environments.
+func (p *projector) rememberComputedNames(node *ast.Node, e env) {
+	node.ForEachChild(func(member *ast.Node) bool {
+		name := member.Name()
+		if name != nil && name.Kind == ast.KindComputedPropertyName {
+			if p.computedNameEnvs == nil {
+				p.computedNameEnvs = make(map[*ast.Node]env)
+			}
+			if _, found := p.computedNameEnvs[name]; !found {
+				defining := e
+				defining.holdCalls = true
+				p.computedNameEnvs[name] = defining
+			}
+		}
+		return false
+	})
+}
+
 // visitChildren walks node's children in order.
 func (p *projector) visitChildren(node *ast.Node, e env) {
+	if ast.IsObjectLiteralExpression(node) {
+		p.rememberComputedNames(node, e)
+	}
 	if node.Kind == ast.KindBlock {
 		p.visitList(node.Statements(), e)
 		return
