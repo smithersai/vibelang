@@ -20,7 +20,7 @@ import { diagnosticsForFile } from "./diagnostics.mjs"
 // on disk; its JavaScript comes from the same compile.
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { dirname, join, resolve, isAbsolute } from "node:path"
-import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
+import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, projectImports, workspaceProject } from "./project.mjs"
 
 if (typeof Bun === "undefined") {
   throw new Error("vibelang/bun is a Bun preload; under Node, use node --import vibelang/register")
@@ -176,14 +176,37 @@ const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? impor
 // .vibe module through the CommonJS resolve hook above instead.
 const esImports = (code, loader) => new Bun.Transpiler({ loader }).scan(code).imports
 const relativeJs = /^\.\.?\/.*\.jsx?$/
+// The compiler writes relative output specifiers as URL paths. Bun's source
+// resolver takes filesystem names instead, so decode compiled imports once.
+function decodedImport(specifier) {
+  try { return decodeURIComponent(specifier) } catch { return specifier }
+}
+const importGraphs = new Map()
+function sourceImportPath(importer, specifier) {
+  const source = moduleDeclarationSource(importer) ?? importer
+  if (!/\.vibex?$/.test(source) || !/%[0-9a-f]{2}/i.test(specifier)) return specifier
+  const project = projectOf(source)
+  let imports = importGraphs.get(project)
+  if (imports === undefined) {
+    imports = projectImports({ project, compiler: findCompiler(dirname(project)) }).imports
+    importGraphs.set(project, imports)
+  }
+  // A written .js specifier is already a native filesystem name. Only a
+  // source-extension rewrite introduced URL escaping; preserve authored
+  // literal-percent names even when the decoded sibling also exists.
+  const original = realpathSync(source)
+  if (imports.some((entry) => entry.specifier === specifier &&
+      (entry.importer === source || realpathSync(entry.importer) === original))) return specifier
+  return decodedImport(specifier)
+}
 const escapeRegExp = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
 // What a module declaration's output imports, from its .vibe file's directory.
 // A relative .js name is the emitted name of a .vibe or .ts file beside it.
 // Bun.resolveSync would pass it to the onResolve hook below with the directory
 // as its importer, one level too high, so it is looked up here.
-function fromModuleOutput(directory, specifier) {
+function fromModuleOutput(directory, specifier, importer) {
   if (relativeJs.test(specifier)) {
-    const target = resolve(directory, specifier)
+    const target = resolve(directory, sourceImportPath(importer, specifier))
     if (existsSync(target)) return target
     const stem = target.replace(/\.jsx?$/, "")
     return [".ts", ".tsx", ".vibe", ".vibex"].map((extension) => stem + extension).find(existsSync)
@@ -207,7 +230,7 @@ function resolveImports(path, contents, loader, inNamespace = false) {
     // its own, /vibelang-module:/x, so it finds no extensionless file, package
     // or imports map, and a dynamic import reaches no onResolve hook. A module
     // declaration's output resolves from its .vibe file's directory.
-    if (source === undefined && inNamespace) source = fromModuleOutput(dirname(path), entry.path)
+    if (source === undefined && inNamespace) source = fromModuleOutput(dirname(path), entry.path, path)
     if (source !== undefined) replacements.set(entry.path, source)
   }
   if (replacements.size === 0) return { contents, loader }
@@ -343,7 +366,7 @@ Bun.plugin({
       const fromModule = importer?.startsWith(`${moduleNamespace}:`)
       importer = pathOf(importer)
       if (importer === undefined || /[\\/]node_modules[\\/]/.test(importer)) return undefined
-      const target = resolve(dirname(importer), path)
+      const target = resolve(dirname(importer), sourceImportPath(importer, path))
       if (existsSync(target)) return fromModule ? { path: target } : undefined
       if (isModuleOutput(target)) return { path: target, namespace: moduleNamespace }
       // A TypeScript module's own .ts or .tsx file still wins, as without vibelang.

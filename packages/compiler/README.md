@@ -199,6 +199,8 @@ processes that inherit the environment. The preload must run before the entry.
 
 ## Run .vibe modules in Bun
 
+Imports and re-exports preserve source filenames containing spaces, `#`, `%` and Unicode text. Encoded compiler output paths are decoded once; a literal `%25` in a filename remains literal. Written `.js` imports keep their native literal filename, even when a decoded sibling exists.
+
 Use Bun `1.4.2` or newer for the runtime loader. Bun `1.3.13` can return an asset path instead of a module for computed imports that a plugin resolves, and Bun `1.4.0` can corrupt Unicode import paths.
 
 ```sh

@@ -18,6 +18,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Errors from source loaders could include a long list of the compiler’s standard libraries. They now show only the diagnostic and its source details.
 
+- Bun could fail to import a VibeLang module whose filename contained `%`, `#` or spaces through another module. Those imports now resolve to their original source files.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
