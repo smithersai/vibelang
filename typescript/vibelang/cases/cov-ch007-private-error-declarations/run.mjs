@@ -46,7 +46,7 @@ for(const native of [true,false])for(const graph of graphs){
   files.push("consumer."+extension)
   writeFileSync(join(dir,files[2]),'import {main} from "./entry.'+(native?"js":"vibe")+'"; '+(graph.consumer==="export"?"export const program=main()":"main()")+"\n")
  }
- const options={target:"ES2022",module:"NodeNext",moduleResolution:"NodeNext",strict:true,types:[],declaration:graph.declaration,noEmitOnError:false,outDir:"dist"}
+ const options={target:"ES2022",module:"NodeNext",moduleResolution:"NodeNext",strict:true,types:[],declaration:graph.declaration,noEmitOnError:false,outDir:"dist",...(native?{}:{rewriteRelativeImportExtensions:true})}
  writeFileSync(join(dir,"tsconfig.json"),JSON.stringify({compilerOptions:options,files,vibe:{effectGlobals:false,effectModules:false}}))
  const compiled=spawnSync(native?process.execPath:binary,native?[stock,"-p",".","--pretty","false"]:["-p",".","--pretty","false"],{cwd:dir,encoding:"utf8",timeout:90000})
  const output=compiled.stdout+compiled.stderr

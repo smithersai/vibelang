@@ -8,7 +8,7 @@ import ts from "../../../../docs/tools/node_modules/typescript/lib/typescript.js
 
 const source = readFileSync(new URL("./main.vibe", import.meta.url), "utf8");
 const directory = mkdtempSync(join(tmpdir(), "callable-contracts-"));
-const options = { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true };
+const options = { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true, rewriteRelativeImportExtensions: true };
 function compile(name, files, extra = {}, succeeds = true) {
   writeFileSync(join(directory, name + ".json"), JSON.stringify({ compilerOptions: { ...options, ...extra }, files }));
   const result = spawnSync(process.env.VIBELANG_BINARY, ["-p", name + ".json", "--singleThreaded", "--pretty", "false"], { cwd: directory, encoding: "utf8", timeout: 60000 });

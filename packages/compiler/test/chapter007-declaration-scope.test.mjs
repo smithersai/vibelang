@@ -39,7 +39,7 @@ test("Chapter 007 / retired declaration styles leave package output, JavaScript 
   for (const style of [null, ".js", "extensionless", ".ts", 42, "bogus"]) {
     const dir = join(root, String(style).replace(/[^a-z0-9]/gi, ""))
     prepare(dir, "vibe", "./leaf.vibe")
-    writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: options,
+    writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: { ...options, rewriteRelativeImportExtensions: true },
       files: ["src/main.vibe", "src/leaf.vibe"], vibe: { effectGlobals: false, effectModules: false },
       ...(style === null ? {} : { vibelang: { declarationImportStyle: style } }) }))
     command(binary, ["-p", ".", "--pretty", "false"], dir)

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `.vibe` or `.vibex` file could import `./x.vibe` or `./x.ts` without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, where the same import in a `.ts` file reports `TS5097`, and its emitted JavaScript named `./x.js` even without `rewriteRelativeImportExtensions`. VibeLang sources now follow the `.ts` rules: such an import reports `TS5097`, and only `rewriteRelativeImportExtensions` rewrites it in JavaScript. Set `allowImportingTsExtensions` (with `noEmit` or `emitDeclarationOnly`) or `rewriteRelativeImportExtensions` in `compilerOptions`, as for `.ts` imports, or import `./x.js`.
+
 - An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
 
 - Returning an incomplete `Stream` type could bypass throwing-call checks or wrongly restrict a plain function. The compiler now applies `Stream` rules only to a complete `Stream` type.

@@ -16,7 +16,7 @@ const node = (run, ...args) => run(process.execPath, args)
 const json = r => { assert.equal(r.status, 0, r.text); return JSON.parse(r.stdout.trim().split("\n").at(-1)) }
 
 project(({ dir, put, read, exists, invoke, stock, run }) => {
-  put("tsconfig.json", { compilerOptions: baseOptions(), include: ["*.vibe", "*.ts"], exclude: ["consumer.ts"] })
+  put("tsconfig.json", { compilerOptions: { ...baseOptions(), rewriteRelativeImportExtensions: true }, include: ["*.vibe", "*.ts"], exclude: ["consumer.ts"] })
   put("lib.vibe", lib)
   put("tag.ts", 'export const tag = (s: string) => "<" + s + ">"\n')
   const build = invoke("-p", ".", "--pretty", "false")

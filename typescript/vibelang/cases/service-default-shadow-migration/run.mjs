@@ -20,7 +20,7 @@ for (const shadow of ["local", "import"]) {
       "flags.vibe": 'export service Flags { static readonly key = "rc40/Flags"; static readonly default: Flags.Shape = { enabled: true }; enabled: boolean }\n',
       "shadow.vibe": "export type ReturnType<T> = { wrong: true }\n",
       "main.vibe": source,
-      "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true, declaration: true, outDir: "compiled" }, files: ["main.vibe", "flags.vibe", "shadow.vibe"] }),
+      "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true, declaration: true, outDir: "compiled", rewriteRelativeImportExtensions: true }, files: ["main.vibe", "flags.vibe", "shadow.vibe"] }),
     }
     for (const [name, text] of Object.entries(files)) writeFileSync(new URL(name, dir), text)
     const args = ["-p", fileURLToPath(new URL("tsconfig.json", dir)), "--noEmit", "--pretty", "false"]

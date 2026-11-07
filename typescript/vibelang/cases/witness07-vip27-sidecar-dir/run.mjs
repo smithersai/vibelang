@@ -12,7 +12,7 @@ assert.equal(require("../../../../experiments/node_modules/typescript/package.js
 const root = mkdtempSync(join(tmpdir(), "witness07-sidecar-dir-"))
 const options = {
   target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true,
-  declaration: true, emitDeclarationOnly: true, allowArbitraryExtensions: true,
+  declaration: true, emitDeclarationOnly: true, allowArbitraryExtensions: true, allowImportingTsExtensions: true,
 }
 const vibe = { effectGlobals: false, effectModules: false }
 const x = "export const x = 1\n"
