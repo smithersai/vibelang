@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `.vibe` class constructor calling `super(...)` on a `.ts` base class whose constructor declares `@throws {RangeError}` was accepted, so constructing the class could throw from synchronous VibeLang code. The call is now `EK0401`, as any other call known to throw in a constructor.
+
 - The TypeScript content mapper ran Effects returned by plain `catch` handlers too early. It now returns those Effects as data until an explicit `try` runs them.
 
 - The TypeScript content mapper could leave a stored Effect unrun in a `catch` expression. It now runs the operand once and handles its failure.
