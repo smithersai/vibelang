@@ -251,6 +251,12 @@ Vitest JSON, Node's spec reporter and Bun's per-test output are read and
 checked against their summaries. Zero tests, missing reports, contradictory
 counts, unexplained exits, newly skipped passing tests and missing tests fail
 admission. No exit-only fallback or automatic flaky rerun is used here.
+A Node test's identity is its suite path and name, without the duration or
+the skip or todo reason the spec reporter prints after it; skips and todos,
+passing or failing, both count as skipped. Node prints a `describe.skip`
+suite like a skipped test and a `test()` with subtests like a suite, but
+counts them the other way round, so such a report fails as contradictory
+counts.
 Custom `--test-report` output must also print
 `SUMMARY total=N passed=N failed=N skipped=N`.
 

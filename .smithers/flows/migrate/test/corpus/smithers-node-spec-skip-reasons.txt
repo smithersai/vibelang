@@ -1,0 +1,23 @@
+▶ suite
+  ﹣ plain skip (0.714375ms) # SKIP
+  ﹣ reason skip (0.248753ms) # needs a host
+  ✔ reason todo (0.160138ms) # later
+  ⚠ failing todo (0.288614ms) # not yet
+  ✔ plain todo (0.147068ms) # TODO
+  ﹣ with (parens) in title (0.147867ms) # x # y
+  ✔ same (0.140957ms)
+  ﹣ same (0.139797ms) # second copy
+  ✖ fails (0.224561ms)
+✖ suite (4.813297ms)
+﹣ top skip (0.224711ms) # top reason
+✔ issue # 12 (0.188709ms)
+ℹ tests 11
+ℹ suites 1
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 5
+ℹ todo 3
+ℹ duration_ms 62.583516
+
+✖ failing tests:

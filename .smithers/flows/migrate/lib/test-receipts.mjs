@@ -21,15 +21,18 @@ export function readTestRun({ command, output, code, root, json, report }) {
     const stack = []
     for (const line of text.split("\n")) {
       if (/^✖ failing tests:/.test(line)) break
-      const m = /^( *)([▶✔✖﹣])\s(.*?)(?: \([\d.]+m?s\))?( # (?:SKIP|TODO)\b.*)?$/.exec(line)
+      // Node's spec reporter writes the name, then " (<n>ms)", then " # <reason>" for a skip or todo; a given
+      // reason replaces SKIP or TODO. A failing todo is marked ⚠ and a passing one ✔.
+      const m = /^( *)([▶✔✖﹣⚠])\s(.*)$/.exec(line)
       if (!m) continue
-      const depth = m[1].length / 2, mark = m[2], name = m[3]
+      const [, name, directive] = /^(.*?) \([\d.]+(?:e[-+]?\d+)?m?s\)( # .*)?$/.exec(m[3]) ?? /^(.*?)( # (?:SKIP|TODO)\b.*)?$/.exec(m[3])
+      const depth = m[1].length / 2, mark = m[2]
       // A closing suite repeats its name at the depth of its opening marker.
       const closing = mark !== "▶" && stack[depth] === name
       stack.length = Math.min(stack.length, depth)
       if (closing) continue
       if (mark === "▶") { stack[depth] = name; continue }
-      add([...stack, name].join(" > "), m[4] || mark === "﹣" ? "skipped" : mark === "✔" ? "passed" : "failed")
+      add([...stack, name].join(" > "), directive || mark === "﹣" || mark === "⚠" ? "skipped" : mark === "✔" ? "passed" : "failed")
     }
     const num = key => { const m = [...text.matchAll(new RegExp("^ℹ " + key + " (\\d+)$", "gm"))].at(-1); return m ? Number(m[1]) : undefined }
     summary = { total: num("tests"), passed: num("pass"), failed: (num("fail") ?? 0) + (num("cancelled") ?? 0), skipped: (num("skipped") ?? 0) + (num("todo") ?? 0) }
