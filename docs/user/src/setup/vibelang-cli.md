@@ -729,3 +729,5 @@ Use `vibelang --lsp --help` to inspect language-server options without starting 
 The language server communicates through `--stdio`. Its `--pipe` and `--socket` options are reserved for compatibility; requesting either without `--stdio` reports that only standard input/output is supported.
 
 With `--build --generateTrace traces`, each project that is compiled writes `trace.json`, `types_*.json` and `legend.json` in its own `project-*` subdirectory under `traces`. The legend identifies the project's configuration file and its trace/type files. Separate directories preserve output when projects build concurrently. Up-to-date, dry-run and clean-only projects do not compile, so they do not create traces.
+
+For a printed imported lint code, look up its rule and repair message in the [imported lint diagnostic reference](../vibelang-features/imported-lint-diagnostics.md).

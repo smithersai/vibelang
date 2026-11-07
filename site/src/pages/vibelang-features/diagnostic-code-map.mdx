@@ -161,3 +161,58 @@ The experimental `vibelang-ts-mapper` reports these codes while stock TypeScript
 | `EK9006` | The mapper cannot prove a data-method receiver or access form. Add the requested receiver type, or call the module function explicitly. |
 
 After a configuration or dependency repair, rerun the original TypeScript command. `vibelang --fix` repairs VibeLang source; it cannot repair an internal projection failure or choose dependency versions for a project.
+
+
+## Imported Effect lint rules
+
+Every imported `EK38…` code, its default category and its message templates appear in the [imported lint diagnostic reference](/vibelang-features/imported-lint-diagnostics). Use the full printed code when searching or configuring a rule.
+
+## Retained compatibility diagnostics
+
+These identities remain in the compiler registry for older source and migration paths. Their registration does not enable a retired form. New source uses the current forms below.
+
+| Code | Older form and repair |
+| --- | --- |
+| `EK1402` | A retired Effect receiver-method extension, such as `Option.some(1).map(f)`. Write `Option.map(Option.some(1), f)`, or use the preserving `vibelang --fix` migration when offered. |
+| `EK2105` | A typed legacy catch has no literal `_tag` to match. Use a `catch` expression and test its handler value with `match` or `is`. |
+| `EK2107`, `EK2110`, `EK4202` | Legacy control-handler checks. Handlers are an open proposal; express the operation with supported Effect functions and services. |
+| `EK2120` | The editor recognizes a legacy `control class` spelling. Removing `class` repairs that spelling only; it does not make the open handler proposal available. A retired `service class` instead reports `EK0909`. |
+| `EK3202` | A legacy wiring expression supplies more than one provider for a service. Use an explicit `provide` block with the intended provider. |
+| `EK4501` | A receiver-method extension is read as a value. Use the module function and pass the receiver explicitly; current code does not rely on receiver-method extensions. |
+| `EK4601` | A legacy await check found a call that already ran. Current `async` code awaits Promises; run an Effect there with `await runPromise(program)`. |
+| `EK4604`, `EK4612` | A retired hatch contains JavaScript `await` or VibeLang `join`. Put Promise-based `await` in an `async` function in a `.ts` file. In effect code, run a Promise through `try tryPromise(() => promiseCall())`, or join a fiber with `join fiber`. |
+
+
+## Additional source and migration failures
+
+| Code | Meaning and repair |
+| --- | --- |
+| `EK1011` | An Effect construct cannot resolve the Effect type. Install `effect@4.1.1` where the source resolves packages; if the diagnostic names another installed version, align it with the compiler's pinned peer. |
+| `EK1503` | A `schema` declaration lacks its body or supported alias. Write `schema Name { field: string }` or an admitted schema alias. |
+| `EK1504` | Schema fields have no separator. Insert `;` or a line break; the quick fix inserts `;`. |
+| `EK1705` | A `fork.` owner is unknown. Choose `fork.in(scope)`, `fork.scoped` or `fork.detached` for the intended lifetime. |
+| `EK1706` | A `fork.in(scope)` operand is not a `Scope.Scope`. Pass an acquired scope; a lifetime string or layer is not a scope. |
+| `EK4857` | A return channel still writes legacy `infer`. Run the preserving migration or write the inferred channel type explicitly. Remove an all-`infer` annotation only from an explicit `effect` callable when that preserves its contract. |
+
+The following compatibility reports can still occur while older source is migrated. Use current forms when repairing them.
+
+| Code | Older form and repair |
+| --- | --- |
+| `EK1003` | A legacy non-async path rejects `await using`. Use Promise-based disposal in ordinary `async` code; effect code uses scoped Effect resources. |
+| `EK1012` | A stored call never produces a success value. Propagate its failure at the call site instead of storing an unreachable value; run Effects explicitly with `try`. |
+| `EK1013` | A legacy inherited error or control body uses a comma as a class-member separator. Use native class separators; root declaration payloads retain their own separator rules. |
+| `EK2006` | A legacy Effect `finally` jumps outside its block. Replace Effect `try` statements with `ensuring` or `onExit` cleanup; native JavaScript `finally` keeps its own completion rules. |
+| `EK2106` | A legacy catch follows a handler that catches every failure. Use one catch expression with a `match` handler, or a native JavaScript catch clause. |
+| `EK2108`, `EK2119`, `EK4201` | Legacy handler clauses are incomplete, return an incompatible answer, or cross fibers. Handlers remain an open proposal; use supported Effect functions and services. |
+| `EK2114` | A catch expression appears in a retired hatch. Use a JavaScript `try` statement in a `.ts` helper or a catch expression in effect code. |
+| `EK2115` | The stock mapper finds an Effect-running call in a legacy factory's call-time body. Separate plain factory setup from an explicit `effect` function or block, or compile with the native compiler. |
+| `EK3203`, `EK3204` | Legacy automatic wiring finds a cycle or an unnamed output. Compose Layers explicitly and provide them with `provide`. |
+| `EK3205` | A legacy automatically started `main` needs a missing service. Provide its required layers and explicitly run the resulting Effect from the entry point. |
+| `EK3206` | Legacy platform imports name two hosts in one file. Select the intended platform's services explicitly; importing a namespace does not start a host. |
+| `EK3207` | A provider is not a supported operand. Supply a `Layer`, `Context`, non-empty tuple of layers or `Key = value` binding. |
+| `EK4301` | A legacy implicit Effect callback is passed to a synchronous API. Use a plain callback for synchronous work, or an API that accepts an explicit Effect callback. |
+| `EK4401` | A listed-failure wrapper names an unexported class. Export it from an imported module or use an explicit `Effect.try` boundary. |
+| `EK4410` | A legacy syntax intrinsic is stored or renamed. Replace retired hatches with explicit Effect APIs; write `fork` and `join` as syntax in effect code. |
+| `EK4502` | A legacy automatically run result is used as if it had `pipe`. Check the receiver's type and pipe an actual Effect or value with the appropriate API. |
+| `EK4602`, `EK4603` | Legacy await checks reject a Promise or another non-fiber value. Ordinary `async` functions retain JavaScript `await`; effect code uses `try tryPromise(() => promiseCall())` or `join fiber`. |
+| `EK4840` | An older Option migration suggests receiver-method syntax. Keep native `Option` calls or use `match`; do not introduce retired receiver-method extensions. |
