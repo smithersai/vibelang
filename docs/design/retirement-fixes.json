@@ -142,6 +142,10 @@
       {
         "input": "typescript/vibelang/cases/vip3-infer-slot.fail",
         "output": "typescript/vibelang/cases/vip3-infer-slot-migration-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/vip3-infer-slot-unmarked.fail",
+        "output": "typescript/vibelang/cases/vip3-infer-slot-unmarked-migration-output"
       }
     ]
   },

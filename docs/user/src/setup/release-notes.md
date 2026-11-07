@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An unmarked function or method whose Effect return annotation wrote a channel as `infer`, such as `function load(): Effect.Effect<number, infer E> { return Effect.fail("missing") }`, took that channel from an effect body instead of from the Effect it returns. Its declaration, its `EK4857` quick fix and `vibelang --fix` could write a wrong type, such as `never` for `E` or an Effect nested in an Effect, and report a spurious `TS2322`. Each `infer` channel now takes the returned Effect's channel, so the fix writes `Effect.Effect<number, string>`.
+
 - Joining a fiber in TypeScript mapper output could trigger marker traps on a proxy handle. It now calls the project's `Fiber.join` directly, preserving native observations.
 
 - Converting an `async` function could move a `throw` in an awaited expression into a plain callback and produce a compile error. The editor now withholds that conversion while keeping throws inside nested `async` functions eligible.

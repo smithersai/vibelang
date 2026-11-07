@@ -1,0 +1,1 @@
+vip3-infer-slots An unmarked expression-bodied arrow with infer channels also reports TS2322 against Effect<A, E, R>; its only error should be EK4857.
