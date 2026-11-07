@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
+
 - After an unresolved import was repaired, Rollup could stop responding to later edits. It now keeps rebuilding source and type-only changes through error recovery.
 
 - Converting a named Effect generator could narrow a generic service requirement and change its public type. The converted function now keeps the original requirement, including through pipeline stages.
