@@ -689,6 +689,9 @@ func deferredParameterScope(generator *ast.Node) string {
 	}
 	var bindingExpressions func(*ast.Node) bool
 	bindingExpressions = func(node *ast.Node) bool {
+		if node == nil {
+			return false // An array elision has no binding expression.
+		}
 		if ast.IsBindingElement(node) {
 			if property := node.PropertyName(); property != nil && ast.IsComputedPropertyName(property) && sensitive(property.Expression()) {
 				return true

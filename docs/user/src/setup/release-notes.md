@@ -93,6 +93,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration declaration checks could delete existing `.d.ts` files inside hidden source folders. They now restore those files unchanged after emission.
 
+- Running `--fix` on an `Effect.fn` or `Effect.fnUntraced` generator with omitted array elements in a parameter could crash the command. Supported bindings now migrate safely, and native forms that need their original tracing or stages stay intact.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.

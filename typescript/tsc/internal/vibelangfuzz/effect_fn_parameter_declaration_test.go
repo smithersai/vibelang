@@ -37,7 +37,7 @@ func TestEffectFnParameterDeclarationQuoted(t *testing.T) {
 // in the native twin; the contextual keys check the converted function keeps it.
 func FuzzEffectFnParameterDeclaration(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"readonly", "brand", "structural", "union", "tuple", "generic", "undefined-literal", "callback"}
+	keys := []string{"readonly", "brand", "structural", "union", "tuple", "generic", "undefined-literal", "callback", "elision", "elision-nested", "elision-only", "elision-rest", "elision-default", "elision-trailing", "elision-second"}
 	for _, key := range keys {
 		f.Add(key, uint8(0), false)
 		f.Add(key, uint8(1), true)
@@ -65,6 +65,8 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 		TestEffectFnParameterDeclarationQuoted(t)
 		typ, extra, generic := "", "", ""
 		switch key {
+		case "elision", "elision-nested", "elision-only", "elision-rest", "elision-default", "elision-trailing", "elision-second":
+			typ = "number[]"
 		case "readonly":
 			typ = "ReadonlyArray<string>"
 		case "brand", "brand-alias", "brand-array", "brand-union":
@@ -142,6 +144,29 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 			parameters, stage = "input = true", ", "+api+".orDie"
 		}
 		source := prefix + extra + "export const cleanup = " + start + "(function* " + generic + "(" + parameters + ") { return input }" + stage + ")\n"
+		if strings.HasPrefix(key, "elision") {
+			binding, parameterType, result, defaultValue := "[, input]", "number[]", "input", "[0,7]"
+			switch key {
+			case "elision-nested":
+				binding, parameterType, defaultValue = "{p:[,input]}", "{p:number[]}", "{p:[0,7]}"
+			case "elision-only":
+				binding, result = "[,]", "7"
+			case "elision-rest":
+				binding = "[, ...input]"
+			case "elision-trailing":
+				binding = "[, input,]"
+			case "elision-default":
+				optional = true
+			case "elision-second":
+				binding = "head:number, [, input]"
+			}
+			parameter := binding + ": " + parameterType
+			if optional {
+				parameter += " = " + defaultValue
+			}
+			source = prefix + "export const cleanup = " + start + "(function* (" + parameter + ") { return " + result + " })\n"
+		}
+
 		original := toolsCompile(t, w, effectFnParameterDeclarationTarget, map[string]string{"main.ts": source})
 		defer original.Remove()
 		if !toolsErrorFree(original) {
@@ -168,6 +193,17 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 				t.Fatalf("fix escaped its source: %s", rel)
 			}
 			files[rel] = file.Text
+		}
+
+		if strings.HasPrefix(key, "elision") {
+			if mode%3 == 1 {
+				originalCall := strings.TrimSpace(source[strings.Index(source, start):])
+				if !strings.Contains(files["main.vibe"], originalCall) {
+					t.Fatalf("unsupported named binding changed: %s", files["main.vibe"])
+				}
+			} else if len(result.Sites) != 0 || strings.Contains(files["main.vibe"], "function*") {
+				t.Fatalf("safe pattern was not converted: %+v\n%s", result, files["main.vibe"])
+			}
 		}
 		after := toolsCompile(t, w, effectFnParameterDeclarationTarget, files)
 		defer after.Remove()

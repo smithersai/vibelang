@@ -1,0 +1,4 @@
+go test fuzz v1
+string("elision-trailing")
+byte(2)
+bool(false)
