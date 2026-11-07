@@ -223,6 +223,16 @@ export default Alchemy.Stack(
 
 ## Test without an account
 
+Copy `src/`, `ts/` and `test/` from the complete example into the project. Add its test script to `package.json`:
+
+```json
+{
+  "scripts": {
+    "test": "vibelang -p tsconfig.json --noEmit && vitest run"
+  }
+}
+```
+
 ```sh
 bun run test
 ```
