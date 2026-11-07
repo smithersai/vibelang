@@ -95,7 +95,7 @@ func FuzzImplicitGeneratorDefectBridge(f *testing.F) {
 			}
 			result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
 			if result.Err != nil || len(result.Refused) != 0 {
-				t.Fatalf("fix: %v; refused: %v", result.Err, result.Refused)
+				t.Fatalf("mode=%d kind=%d existing=%t fix: %v; refused: %v\nsource:\n%s\nforeign:\n%s", mode%3, kind, existing, result.Err, result.Refused, files["main.vibe"], foreign)
 			}
 			fixed := maps.Clone(files)
 			for name, file := range result.Files {

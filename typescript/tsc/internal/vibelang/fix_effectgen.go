@@ -1364,6 +1364,14 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				s.pipes = append(s.pipes, node)
 			}
 			markPipeCalls(node, operands)
+		case ast.IsNewExpression(node) && own && effectCode == 0 && throwing == nil && needsGeneratorDefectBridge(c, node):
+			if holdsYield(node) || foreignInvocationHasDirectEval(node) {
+				s.why = "the constructor's operands cannot move into a defect-preserving function"
+				return true
+			}
+			s.throwing = append(s.throwing, node)
+			throwing = node
+			defer func() { throwing = nil }()
 		case isInvocation(node) && !operands[node] && effectCode == 0:
 			if why := effectGenCallMeaning(c, a, file, node, own, callback); why != "" {
 				s.why = why

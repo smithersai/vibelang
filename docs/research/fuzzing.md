@@ -132,6 +132,8 @@ The stock TypeScript declaration consumer keeps the producer's native module and
 
 Contextual `Effect.fn` factory repairs are positive declaration-identity checks, including named and unnamed wrappers in `satisfies`, returned and generic factories. Keyed mutations retain import aliases, documentation and CRLF line endings; a changed-requirements control must still fail the API comparison. The minimized factory remains in the corpus after its resolved pending records are removed.
 
+The generator defect-bridge scan includes foreign `new` expressions without changing the general call classifier. Direct, member and aliased constructor regressions require a preserving repair; constructor operands containing `yield*` or direct `eval` retain their manual boundary. The existing constructor corpus also checks exact thrown-object identity, inferred contracts and second-pass stability.
+
 The sections below record the original suite design and campaign history, including rules that accepted VIPs have since replaced.
 
 ## Summary
