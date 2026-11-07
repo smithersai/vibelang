@@ -1311,6 +1311,20 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				throwing = node
 				defer func() { throwing = nil }()
 			}
+		case isInvocation(node) && operands[node] && effectCode == 0 && own && throwing == nil && !isPipeCall(node) && needsGeneratorDefectBridge(c, node):
+			// A pipe's stage or receiver that a call builds, as
+			// effect.pipe(instances.provide(session)), runs where the pipe
+			// stands, and the generator meets its exception as a defect. What
+			// the call means follows from the pipe, so the case above passes
+			// over it, but a foreign call there needs the bridge all the same
+			// (opencode's server handlers: EK0403 in the rewrite).
+			if holdsYield(node) {
+				s.why = shortText(expressionText(file, node), "a call") + " can throw, and a yield* stands in its arguments, where the function that keeps its exception a defect could not run it"
+				return true
+			}
+			s.throwing = append(s.throwing, node)
+			throwing = node
+			defer func() { throwing = nil }()
 		}
 		return node.ForEachChild(func(child *ast.Node) bool { return visit(child, own, lexical, callback) })
 	}
