@@ -247,6 +247,44 @@ test("the native editor category cannot hide a fatal diagnostic from the content
  assert.deepEqual(auditCategories(compilerCategories(split),new Map([["EK9100","warning: editor choice"],["EK9005","error: fatal projection"]])),[])
 })
 
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | TypeScript's own diagnostics keep their `TS` codes.
+function mapperForwarderSources(argument, foreignCode, ordinals, reverse) {
+ const sources=[
+  ...source('var d = message(4804, warningCategory, "retained")'),
+  {path:"typescript/tsc/internal/vibelangmapper/codes.go",
+   text:"package vibelangmapper; const LocalCode int32 = "+ordinals[0]},
+  {path:"typescript/tsc/internal/vibelangmapper/flow.go",text:
+   "package vibelangmapper; func (p *projector) syntaxToken(n *Node, "+argument+" int32, message string) { "+
+   "p.diagnostics = append(p.diagnostics, Diagnostic{Code:"+argument+"}) }; "+
+   "func (p *projector) route(n *Node, "+argument+" int32, message string) { "+
+   "p.syntaxToken(n, "+argument+", message); p.syntaxToken(n, LocalCode, message); "+
+   "p.syntaxToken(n, "+ordinals[1]+", message) }"},
+  {path:"unrelated/first/numbers.go",text:"package first; var "+argument+" = "+(foreignCode+1)},
+  {path:"unrelated/second/numbers.go",text:"package second; const "+argument+" int32 = "+foreignCode}
+ ]
+ return reverse?sources.reverse():sources
+}
+
+test("mapper forwarder codes do not come from unrelated packages in either source order",()=>{
+ for(const reverse of [false,true]) {
+  const registered=compilerCodes(mapperForwarderSources("code",1260,[9001,9002],reverse))
+  assert.deepEqual([...registered.keys()].sort(),["EK4804","EK9001","EK9002"])
+ }
+})
+
+test("mapper forwarder registration ignores unrelated assignments across names, codes and source orders",()=>{
+ fc.assert(fc.property(
+  fc.array(fc.constantFrom("a","b","z","0","_"),{minLength:1,maxLength:8}).map(chars=>"code_"+chars.join("")),
+  fc.integer({min:1000,max:8998}),
+  fc.uniqueArray(fc.integer({min:9000,max:999999}),{minLength:2,maxLength:2}),
+  fc.boolean(),
+  (argument,foreignCode,ordinals,reverse)=>{
+   const registered=compilerCodes(mapperForwarderSources(argument,foreignCode,ordinals,reverse))
+   const expected=["EK4804",...ordinals.map(code=>"EK"+code)].sort()
+   assert.deepEqual([...registered.keys()].sort(),expected)
+  }),{seed:90011260,numRuns:300})
+})
+
 test("typed mapper helpers register actual call-site codes without registering their generic parameter",()=>{
  const registered=compilerCodes([
   ...source('var d=message(4804,warningCategory,"retained")'),
