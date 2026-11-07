@@ -2225,6 +2225,15 @@ func migrateSeverityConfigs(sys tsc.System, name tspath.RootedFilePath) error {
 	config, _ = tsoptions.GetParsedCommandLineOfConfigFilePath(name, path, nil, nil, sys.FS(), &tsc.ExtendedConfigCache{})
 	if config != nil && core.VibeNeedsLintPlugin(config.CompilerOptions()) {
 		for _, diagnostic := range config.GetConfigFileParsingDiagnostics() {
+			// A retired declarationSidecars setting in an owned config is an
+			// error this run repairs right after (sidecarConfigFixes), and it
+			// says nothing of plugins: waiting for it left the plugin entry to
+			// a second run, which then changed the config.
+			if diagnostic.File() != nil && owned(diagnostic.File().FileName()) {
+				if _, changes := sidecarConfigFixes(sys.FS(), []*ast.Diagnostic{diagnostic}); len(changes) > 0 {
+					continue
+				}
+			}
 			if diagnostic.Category() == diagnostics.CategoryError && !(diagnostic.Source() == "EK" && diagnostic.Code() == core.VibeLintPluginCode) {
 				fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: not fixed: resolve config errors before preserving inherited plugin settings.\n", relativeName(sys, name))
 				return nil
