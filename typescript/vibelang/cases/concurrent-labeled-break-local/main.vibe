@@ -1,0 +1,23 @@
+// expect-result: [[1,"a",2,"b"],"done",[1,2]]
+// Chapter 2: a labeled break that stays inside a for concurrent item keeps
+// JavaScript's meaning; only a break that would leave the item is EK1903.
+import { Effect } from "effect"
+
+export effect function main() {
+  const seen: (number | string)[] = []
+  for concurrent(1) (const x of [1, 2]) {
+    inner: for (const y of [x, 9]) { seen.push(y); break inner }
+    local: { if (x) break local; seen.push(100) }
+    switch (x) { case 1: seen.push("a"); break; default: seen.push("b") }
+  }
+  let written = ""
+  for concurrent (const x of [1]) {
+    const f = () => { loop: for (;;) { break loop } return "done" }
+    written = f()
+  }
+  const own: number[] = []
+  each: for concurrent(1) (const x of [1, 2]) {
+    nested: { own.push(x); break nested }
+  }
+  return [seen, written, own]
+}

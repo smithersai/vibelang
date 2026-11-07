@@ -1,7 +1,5 @@
 # Chapter 2 static-rule controls and rejections; each named corpus selects its rule.
 FuzzVIPDifferential exit:value/vip02.lexical-receiver compiler VIP-2: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane vip-core2
-FuzzRunningRules diagnostic:concurrent-head-break-outer compiler VIP-19: a labeled `break` in a head default's `do` draws the retired EK1019, not EK1903; lane core-block
-FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-break-outer; lane core-block
 
 FuzzDoDeclarationBytes bytes:inferred-return:depth-1 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
 FuzzDoDeclarationBytes bytes:inferred-return:depth-2 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2

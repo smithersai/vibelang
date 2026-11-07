@@ -1,0 +1,86 @@
+// expect: EK1903 TS1107
+// Chapter 2: a `break` that would leave a for concurrent body or its head
+// binding initialization is EK1903, labeled or not, the loop's own label
+// included. A break inside a function written in the body keeps TypeScript's
+// TS1107, as a jump across any written function does.
+export effect function outerLoop() {
+  outer: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      break outer
+    }
+  }
+}
+
+export effect function outerBlock() {
+  block: {
+    for concurrent (const x of [1]) {
+      if (x === 1) break block
+    }
+  }
+}
+
+export effect function ownLabel() {
+  own: for concurrent (const x of [1]) {
+    break own
+  }
+}
+
+export effect function chainedLabels() {
+  own: alias: for concurrent (const x of [1]) {
+    break alias
+  }
+}
+
+export effect function nestedNative() {
+  outer: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      for (const y of [1]) { break outer }
+    }
+  }
+}
+
+export effect function insideSwitch() {
+  outer: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      switch (x) { case 1: break outer }
+    }
+  }
+}
+
+export effect function nestedConcurrent() {
+  outer: for concurrent (const n of [1]) {
+    for concurrent (const x of [1]) {
+      break outer
+    }
+  }
+}
+
+export effect function headDefault() {
+  outer: for (const n of [1]) {
+    for concurrent (const { v = do { if (n) break outer; 7 } } of [{ v: undefined }]) {
+    }
+  }
+}
+
+export effect function headArrayDefault() {
+  outer: for (const n of [1]) {
+    for concurrent (const [v = do { break outer }] of [[undefined]]) {
+    }
+  }
+}
+
+export effect function writtenFunction() {
+  outer: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      const f = () => { break outer }
+    }
+  }
+}
+
+export effect function doOperand() {
+  outer: for (const n of [1]) {
+    for concurrent (const x of [1]) {
+      const v = Math.max(do { if (x) break outer; 1 }, 0)
+    }
+  }
+}

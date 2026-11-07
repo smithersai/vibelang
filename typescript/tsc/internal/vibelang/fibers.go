@@ -601,6 +601,10 @@ func checkConcurrentBody(c *checker.Checker, body *ast.Node) {
 			note(report(c, node, EK1903), "Use continue to end this item, or throw to stop every item.")
 			cover(c, node)
 			return false
+		case node.Kind == ast.KindBreakStatement && concurrentBreakEscapes(node, body):
+			note(report(c, node, EK1903), "Use continue to end this item, or throw to stop every item.")
+			coverCodes(c, node, 1107)
+			return false
 		case node.Kind == ast.KindReturnStatement && node.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) == 0 && isReturnKeyword(ast.GetSourceFileOfNode(body), node):
 			note(report(c, node, EK1904), "Use continue to end this item.")
 			return false
@@ -608,6 +612,42 @@ func checkConcurrentBody(c *checker.Checker, body *ast.Node) {
 		return concurrentItemChildren(ast.GetSourceFileOfNode(body), node, visit)
 	}
 	body.ForEachChild(visit)
+}
+
+// concurrentBreakEscapes reports whether a labeled break names a statement
+// outside the item, the for concurrent itself included: the break would leave
+// the loop from the item's callback. Labels inside the item keep TypeScript's
+// ordinary behavior; unresolved labels and jumps across a written function
+// keep its diagnostics.
+func concurrentBreakEscapes(node, body *ast.Node) bool {
+	label := node.Label()
+	if label == nil {
+		return false
+	}
+	file := ast.GetSourceFileOfNode(body)
+	outside := false
+	for parent := node.Parent; parent != nil; parent = parent.Parent {
+		if parent == body {
+			outside = true
+		}
+		// A for try inside the item reports its own outward jump (EK2003).
+		if !outside && isForTry(parent) {
+			return false
+		}
+		if ast.IsFunctionLikeOrClassStaticBlockDeclaration(parent) {
+			// A do expression's arrow is not a source function. A nested
+			// item's closure, met before leaving this body, makes the break
+			// that item's to report.
+			if isDoArrow(file, parent) || ast.IsArrowFunction(parent) && fiberHelper(parent.Parent) == "$forConcurrent" && outside {
+				continue
+			}
+			return false
+		}
+		if parent.Kind == ast.KindLabeledStatement && parent.Label().Text() == label.Text() {
+			return outside
+		}
+	}
+	return false
 }
 
 // concurrentContinueEscapes resolves the written label across the synthetic

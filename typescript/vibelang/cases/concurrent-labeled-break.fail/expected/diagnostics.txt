@@ -1,0 +1,11 @@
+main.vibe(9,7): error EK1903
+main.vibe(17,20): error EK1903
+main.vibe(24,5): error EK1903
+main.vibe(30,5): error EK1903
+main.vibe(37,30): error EK1903
+main.vibe(45,28): error EK1903
+main.vibe(53,7): error EK1903
+main.vibe(60,45): error EK1903
+main.vibe(67,37): error EK1903
+main.vibe(75,25): error TS1107
+main.vibe(83,38): error EK1903

@@ -2458,5 +2458,25 @@
       "reference": "docs/design/vips/0038-effect-lint-built-in.md#decision: accepted VIP-38 says a repository's Effect language-service configuration selects and configures the imported rules, severity resolves from vibe.severities, then that configuration, then the rule's default, and the plugin may enable a default-off rule. This records existing published authority, not a new language decision."
     },
     "reason": "The case's plugin entry sets schemaLiteralNonFinite to error; the expected report is unchanged and only the case header gained another code."
+  },
+  {
+    "code": "EK1903",
+    "case": "typescript/vibelang/cases/concurrent-labeled-break.fail",
+    "vip": "VIP-19",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0019-for-concurrent.md: accepted 2026-10-28; \"`break` and `return` are compile errors, because no loop runs on the body's fiber.\" docs/design/src/002-running.md assigns EK1903 to a `break` that would leave head binding initialization or the body. This records existing published authority, not a new language decision."
+    },
+    "reason": "Every program in this case was already rejected: the unchanged parent reports TS1107 at each labeled break, and TypeScript 5.9.3 rejects the same jump out of an Effect.forEach callback with TS1107. The fix only replaces that code with the rule's EK1903; it introduces no new rejection. No preserving rewrite exists: the break's target lies outside the item callback, and choosing continue or throw needs author intent."
+  },
+  {
+    "code": "TS1107",
+    "case": "typescript/vibelang/cases/concurrent-labeled-break.fail",
+    "vip": "VIP-19",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0019-for-concurrent.md: accepted 2026-10-28; \"`break` and `return` are compile errors, because no loop runs on the body's fiber.\" docs/design/src/002-running.md assigns EK1903 to a `break` that would leave head binding initialization or the body. This records existing published authority, not a new language decision."
+    },
+    "reason": "This site is a control: a break inside a function written in the loop body keeps TypeScript's TS1107, as before the fix, because the jump crosses a source function. The case adds no new rejection."
   }
 ]

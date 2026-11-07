@@ -1,0 +1,2 @@
+break cannot leave a for concurrent loop.
+Use continue to end this item, or throw to stop every item.

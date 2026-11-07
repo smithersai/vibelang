@@ -73,6 +73,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Go test progress could crash when its output reader closed and leave tests running in the background. It now cancels those tests and reports why output stopped.
 
+- A labeled `break` that left a `for concurrent` body or its head, such as `break outer` to an enclosing loop or `break own` to the loop's own label, reported TypeScript's `TS1107` ("Jump target cannot cross function boundary"). It now reports `EK1903`, as an unlabeled `break` does.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
