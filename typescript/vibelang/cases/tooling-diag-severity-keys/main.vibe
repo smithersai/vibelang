@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | Keys are whole printed codes: `EK3801` and `EK38100` identify different rules.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | A VibeLang error code, an interim `EK92xx` code, even one printed as a warning, or an unknown code is a config error (`EK3006`), including when set to `"error"` ([VIP-30](../vips/0030-config-files.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)).
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | Thus `EK0801` is configurable; `EK4701` is not.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | | `EK3006` | Error | A disallowed code or a severity entry whose value is not one of the four strings, whatever its JSON type | Remove the code or use a permitted value.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | | `EK3007` | Error | An unknown `vibe` key or a wrong-typed value other than a severity entry, including a non-object `severities` | Remove the key or supply its declared type.
+export const witness = 1
