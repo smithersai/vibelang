@@ -15,7 +15,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// Move module to a .ts file (VIP-40) turns
+// Move module to a TypeScript file (VIP-40) turns
 //
 //	module text {
 //	  export function clean(value: string): string { return value.trim() }
@@ -33,7 +33,7 @@ import (
 // (rewriteRelativeImportExtensions or allowImportingTsExtensions), and in .js
 // otherwise. It is only ever a requested edit; --fix never moves a body.
 
-const moveModuleTitle = "Move module to a .ts file"
+const moveModuleTitle = "Move module to a TypeScript file"
 
 func init() {
 	ls.RegisterRefactorProvider(moveModuleRefactor)
@@ -94,12 +94,13 @@ func moveModuleRefactor(ctx context.Context, r *ls.RefactorContext) []*ls.CodeAc
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	target := file.FileName().Directory().ResolveFile(base + bodyExtension)
 	return []*ls.CodeAction{{
 		Description: moveModuleTitle,
 		Changes:     edits,
 		CreatedFiles: []ls.CreatedFile{{
-			FileName: file.FileName().Directory().ResolveFile(base + bodyExtension),
-			Text:     moduleFileText(file, declaration, body),
+			FileName: target,
+			Text:     moduleFileText(r, target, declaration, body),
 		}},
 	}}
 }
@@ -151,9 +152,11 @@ func moduleFileBase(r *ls.RefactorContext, name string) string {
 
 // moduleFileText returns the text of the file that holds a module body: the
 // body without its surrounding blank lines and, unless a string or template
-// spans lines, without the indentation its lines share. A body with no import
-// or export gains export {}, so that its declarations keep module scope.
-func moduleFileText(file *ast.SourceFile, declaration *ast.Node, body *ast.SourceFile) string {
+// spans lines, without the indentation its lines share. A body that would be a
+// script at target under the project's options gains export {}, so that its
+// declarations keep module scope; any other body is copied unchanged (VIP-40).
+func moduleFileText(r *ls.RefactorContext, target tspath.RootedFilePath, declaration *ast.Node, body *ast.SourceFile) string {
+	file := r.SourceFile
 	span := parser.ModuleDeclarationBody(file, declaration)
 	lines := strings.Split(strings.ReplaceAll(file.Text()[span.Pos():span.End()], "\r\n", "\n"), "\n")
 	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
@@ -176,10 +179,23 @@ func moduleFileText(file *ast.SourceFile, declaration *ast.Node, body *ast.Sourc
 			lines[i] = line[min(indent, len(line)-len(strings.TrimLeft(line, " \t"))):]
 		}
 	}
-	if !core.Some(body.Statements.Nodes, ast.IsExternalModuleIndicator) {
-		lines = append(lines, "export {}")
+	text := strings.Join(lines, "\n") + "\n"
+	if isScriptAt(r, target, text) {
+		text += "export {}\n"
 	}
-	return strings.Join(lines, "\n") + "\n"
+	return text
+}
+
+// isScriptAt reports whether text, as the file target of the program, is a
+// script rather than a module: TypeScript's own module detection under the
+// project's moduleDetection, module and package scope decides.
+func isScriptAt(r *ls.RefactorContext, target tspath.RootedFilePath, text string) bool {
+	metadata := r.Program.GetSourceFileMetaData(r.SourceFile.PathKey())
+	twin := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName:                       target,
+		ExternalModuleIndicatorOptions: ast.GetExternalModuleIndicatorOptions(target, r.Program.Options(), metadata),
+	}, text, core.GetScriptKindFromFileName(target))
+	return twin.ExternalModuleIndicator == nil
 }
 
 // hasMultilineLiteral reports whether a string or template in body spans lines,

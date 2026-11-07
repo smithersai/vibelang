@@ -58,7 +58,7 @@ These are language-server capabilities, not a guarantee that every construct off
 
 **Expand Selection** follows nested source ranges in `schema` and `data` declarations, `match` and typed `catch` expressions, including mutable schema arrays with nested arrays or record values.
 
-Select a TypeScript `module` declaration and request **Move module to a .ts file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](../getting-started/012-devtools.md#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.
+Select a TypeScript `module` declaration and request **Move module to a TypeScript file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](../getting-started/012-devtools.md#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.
 
 Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as errors. Both diagnostics offer a quick fix when the rewrite preserves the declaration; changing warning settings does not make either spelling valid.
 

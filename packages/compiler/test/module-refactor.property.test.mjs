@@ -114,7 +114,7 @@ async function check(input) {
       textDocument:{uri},range:{start:{line:1,character:7},end:{line:1,character:7}},
       context:{diagnostics:[],only}
     })
-    const title="Move module to a .ts file"
+    const title="Move module to a TypeScript file"
     const actions=await request(["refactor"])
     const matches=(actions||[]).filter(action=>action.title===title)
     assert.equal(matches.length,1,"expected one module refactor")
