@@ -1,0 +1,1 @@
+tooling EK1402 is never reported: the compiler accepts legacy Effect data receiver methods such as Option.some(1).map(f) silently (only --fix rewrites them)

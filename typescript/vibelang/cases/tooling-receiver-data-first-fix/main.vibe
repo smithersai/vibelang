@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#legacy-data-receiver-methods | `vibelang --fix`, including `--fix-migration-only`, writes the resolved module's data-first call, `Option.map(Option.some(1), f)`.
+export const witness = 1

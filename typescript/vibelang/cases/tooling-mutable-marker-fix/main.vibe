@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#ordinary-mutable-marker-migration | `vibelang --fix`, including `--fix-migration-only`, removes redundant member markers; a marked plain-error payload becomes an explicit compatibility class using the existing runtime error factory, preserving tagged matching.
+// rule-evidence: docs/design/src/007-tooling.md#ordinary-mutable-marker-migration | Schema fields, schema errors, schema tuples and `data` bodies have separate rules.
+export const witness = 1
