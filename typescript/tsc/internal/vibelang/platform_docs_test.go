@@ -3,7 +3,6 @@ package vibelang
 import (
 	"cmp"
 	"os"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -57,45 +56,14 @@ func platformGlobalAnswer(name string) string {
 	return ""
 }
 
-// TestPlatformGlobalsDocumented checks the guide's page on platform globals
-// against the tables EK4402 reads (D310): every platform global has an answer,
-// an Effect API, an experimental service, or the escape to TypeScript with its
-// reason, and the page has a row for every platform global and every member
-// the tables answer, each saying what EK4402 says. The docs tools' test
-// platform-globals.test.ts checks that each row's example compiles on the page.
+// TestPlatformGlobalsDocumented keeps every diagnostic's global/member in the
+// guide, with complete Effect execution and explicit native-behavior caveats.
+// The docs tools separately compile the displayed examples on the page.
 func TestPlatformGlobalsDocumented(t *testing.T) {
-	var names []string
-	for name := range platformGlobals {
-		names = append(names, name)
-	}
-	for api := range platformAPIs {
-		root, _, _ := strings.Cut(api, ".")
-		if _, ok := platformGlobals[root]; ok && api != root && !strings.Contains(api, "*") {
-			names = append(names, api)
-		}
-	}
-	slices.Sort(names)
-	var want []string
-	for _, name := range names {
-		answer := platformGlobalAnswer(name)
-		if answer == "" {
-			t.Errorf("%s is not in a .vibe file's scope, and the tables give no answer: name an Effect API, an experimental service, or the reason to escape to TypeScript", name)
-		}
-		want = append(want, "| `"+name+"` | "+answer+" |")
-	}
-	page, err := os.ReadFile("../../../../docs/user/src/platform/platform-globals.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	skipVIPForm(t, page)
-	var got []string
-	for _, line := range strings.Split(string(page), "\n") {
-		if strings.HasPrefix(line, "| `") {
-			got = append(got, line)
-		}
-	}
-	if !slices.Equal(got, want) {
-		t.Errorf("the page's table is\n%s\nEK4402's tables give\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	page := platformGlobalsPage(t)
+	skipVIPForm(t, []byte(page))
+	for _, problem := range platformGlobalsProblems(page) {
+		t.Error(problem)
 	}
 }
 

@@ -26,7 +26,7 @@ Adding a type-only host interface augmentation in a `.ts` or `.d.ts` file does n
 
 ## Replacements
 
-Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. EK4402 reads the same table. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, `vibelang --fix` writes a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
+Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. The compiler's `EK4402` advice names these APIs; the guide runs Effect values with `try` and explains where native behavior needs a TypeScript adapter. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, `vibelang --fix` writes a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
 
 FileSystem advice gets the implementation with `try FileSystem.FileSystem` before calling a member. Run a returned Effect with `try`, as in `try (try FileSystem.FileSystem).readFileString(path)`. The module `FileSystem` supplies the service key; its methods belong to the retrieved implementation.
 
@@ -37,6 +37,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 | `BroadcastChannel` | escape to TypeScript for now: Effect has no service for messages between browser tabs; a Worker carries messages to a worker. |
 | `Buffer` | `new TextEncoder().encode(text)` |
 | `Buffer.alloc` | `new Uint8Array(size)` |
+| `Buffer.byteLength` | `new TextEncoder().encode(text).length` |
 | `Buffer.concat` | `new Uint8Array([...a, ...b])` |
 | `Buffer.from` | `new TextEncoder().encode(text)` |
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
@@ -244,6 +245,7 @@ effect function replacements(
   const roll = try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })
   const digest = try (try Digest.Digest).digest(Digest.sha256, bytes)
   const encoded = new TextEncoder().encode(text)
+  const byteLength = new TextEncoder().encode(text).length
   const empty = new Uint8Array(size)
   const joined = new Uint8Array([...a, ...b])
   const response = try HttpClient.get(url)
@@ -256,7 +258,7 @@ effect function replacements(
   try yieldNow
   const fiber = fork effect { try repeat(program, Schedule.spaced("1 second")) }
   try Fiber.interrupt(fiber)
-  return { name, args, directory, here, file, line, random, id, roll, digest, encoded, empty, joined, response, socket, stored, events, millis, nanos }
+  return { name, args, directory, here, file, line, random, id, roll, digest, encoded, byteLength, empty, joined, response, socket, stored, events, millis, nanos }
 }
 ```
 
