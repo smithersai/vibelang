@@ -3317,6 +3317,7 @@ typescript/vibelang/cases/effect-zero-parameter-metadata/main.vibe:7:15 lambda e
 typescript/vibelang/cases/effectful-plain-unknown-call.fail/main.vibe:11:19 lambda plain annotation
 typescript/vibelang/cases/effectful-plain-unknown-call.fail/main.vibe:17:57 lambda choice fallback
 typescript/vibelang/cases/effectful-plain-unknown-call.fail/main.vibe:17:94 lambda plain table
+typescript/vibelang/cases/effectful-plain-unknown-default.fail/main.vibe:9:25 lambda effectFn annotation
 typescript/vibelang/cases/effectful-subtype-returns/main.vibe:18:35 byname program table
 typescript/vibelang/cases/effectful-subtype-returns/main.vibe:19:74 lambda plain fallback
 typescript/vibelang/cases/ek0403-defect-default-fixed/main.vibe:3:105 lambda plain table

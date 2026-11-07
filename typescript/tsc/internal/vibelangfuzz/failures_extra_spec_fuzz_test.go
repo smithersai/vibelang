@@ -46,6 +46,8 @@ func failuresExtraCases() []*failCase {
 		{"exit", "import { Exit } from \"effect\"\nexport function probeBody(): Exit.Exit<number> { return Exit.succeed(⟦untagged()⟧) }"},
 		{"arrow-stream", "import { Stream } from \"effect\"\nexport const probeBody = (): Stream.Stream<number> => Stream.make(⟦untagged()⟧)"},
 		{"inferred", "export function probeBody() { const n = ⟦untagged()⟧; return Effect.succeed(n) }"},
+		{"default", "export function probeBody(p = ⟦untagged()⟧): Effect.Effect<number> { return Effect.succeed(p) }"},
+		{"arrow-default", "export const probeBody = (p = ⟦untagged()⟧): Effect.Effect<number> => Effect.succeed(p)"},
 	} {
 		add(&failCase{Name: "effectful-body-unknown-" + body.name, Quote: effectfulBody, Code: 401, Host: "none", Lib: unknownLib, Decls: body.decls})
 	}
@@ -54,6 +56,7 @@ func failuresExtraCases() []*failCase {
 		{"never", "export function probeBody(): Effect.Effect<number> { safe(); return Effect.succeed(1) }"},
 		{"partial", "export function probeBody(): Effect.Effect<number> | undefined { untagged(); return undefined }"},
 		{"plain", "export function probeBody() { return untagged() }"},
+		{"plain-default", "export function probeBody(p = untagged()) { return p }"},
 		{"nested", "export function probeBody(): Effect.Effect<number> { const f = () => untagged(); return Effect.sync(f) }"},
 	} {
 		add(&failCase{Name: "effectful-body-control-" + body.name, Quote: effectfulBody, Host: "none", Lib: unknownLib, Decls: body.decls})

@@ -741,16 +741,17 @@ func (a *analyzer) inEffectfulPlainHome(call *ast.Node) bool {
 	return fn != nil && !inHatch(call) && !ast.HasSyntacticModifier(fn, ast.ModifierFlagsAsync) && !a.isEffect(fn) && a.isEffectfulPlainHome(fn, call)
 }
 
-// isEffectfulPlainHome reports whether call runs in the body of fn, a plain
-// function or method whose return type, written or inferred, is wholly
-// effectful, outside a try block with a catch clause and outside a literal
-// whose throws belong to the call it is passed to. A plain catch handler is
-// plain code of its own: an unannotated call there stays an ordinary call.
+// isEffectfulPlainHome reports whether call runs in fn, a plain function or
+// method whose return type, written or inferred, is wholly effectful: in its
+// body or its parameter list, outside a try block with a catch clause and
+// outside a literal whose throws belong to the call it is passed to. A plain
+// catch handler is plain code of its own: an unannotated call there stays an
+// ordinary call.
 func (a *analyzer) isEffectfulPlainHome(fn *ast.Node, call *ast.Node) bool {
 	if !ast.IsFunctionLike(fn) || fn.Body() == nil || isMarkedEffect(fn) || isProducer(fn) || isCatchHandlerOf(fn) || inCatchingTry(call) {
 		return false
 	}
-	if a.plainHomeOf(call) != fn || inParameterListOf(call, fn) || a.throwsBelongToCall(fn, call) {
+	if a.plainHomeOf(call) != fn || a.throwsBelongToCall(fn, call) {
 		return false
 	}
 	signature := a.checker.GetSignatureFromDeclaration(fn)
