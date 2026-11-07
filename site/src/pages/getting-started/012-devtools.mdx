@@ -346,7 +346,7 @@ For bodyless service contracts, `EK0902`'s quick fix and `vibelang --fix` remove
 
 `@effect/language-service` 0.87.5 has 108 diagnostics and editor features. The table maps rules to VibeLang forms and existing EK diagnostics. Effect functions use `try` to run Effects, and `catch` expressions handle failures. The table also marks features not implemented.
 
-A row's answer says how to write the code in VibeLang. A rule that says Not needed or Covered stays out of builds and the language server, but `vibelang lint` with an Oxlint configuration that turns it on runs it on `.vibe` files as on `.ts`, for a file that still spells the pattern through Effect's API.
+A row's answer says how to write the code in VibeLang. The compiler, language server and `vibelang lint` use the project's resolved `@effect/language-service` plugin and its configured rules. Oxlint has its own configuration; `vibelang lint` accepts compiler options and files only.
 
 Lint leaves build outputs intact, including when `--build --clean` lists the files a compiler clean would remove.
 

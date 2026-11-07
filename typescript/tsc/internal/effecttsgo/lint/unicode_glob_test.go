@@ -160,7 +160,7 @@ func TestCommandUnicodeOverridesAndIgnores(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			put(".oxlintrc.json", `{"rules":{"effecttsgo/schema-sync":"error"}`+tc.extra+"}")
 			sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-			status := Command(context.Background(), sys, []string{"-c", ".oxlintrc.json", "src"})
+			status := oxlintAdapterCommand(context.Background(), sys, []string{"-c", ".oxlintrc.json", "src"})
 			if status != tc.status || sys.err.Len() != 0 {
 				t.Fatalf("status %d, want %d; stdout:\n%s\nstderr:\n%s", status, tc.status, sys.out.String(), sys.err.String())
 			}

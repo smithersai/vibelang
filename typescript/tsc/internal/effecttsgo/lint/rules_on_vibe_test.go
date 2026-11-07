@@ -244,7 +244,7 @@ func TestHelpUsesCompilerOptionsWithOrWithoutAConfiguration(t *testing.T) {
 			t.Error("unrelated Oxlint config changes native help")
 		}
 		explicit := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-		if status := Command(context.Background(), explicit, []string{"-c", ".oxlintrc.json", "--help"}); status != 0 || !strings.HasPrefix(explicit.out.String(), "Usage: vibelang lint") {
+		if status := oxlintAdapterCommand(context.Background(), explicit, []string{"-c", ".oxlintrc.json", "--help"}); status != 0 || !strings.HasPrefix(explicit.out.String(), "Usage: vibelang lint") {
 			t.Errorf("explicit adapter help status=%d\n%s", status, explicit.out.String())
 		}
 	}

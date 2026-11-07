@@ -85,11 +85,16 @@ func checkLintDefectBridge(t *testing.T, w *Workspace, row lintDefectBridgeRow, 
 	if variant&8 != 0 {
 		source = strings.ReplaceAll(source, "\n", "\r\n")
 	}
-	cfg := `{"compilerOptions":{"target":"es2022","module":"nodenext","moduleResolution":"nodenext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true},"files":["main.vibe","foreign.ts"]}`
+	severity := "error"
+	if variant&16 != 0 {
+		severity = "warning"
+	}
+	// This interim diagnostic keeps its supported legacy severity map.
+	cfg := fmt.Sprintf(`{"compilerOptions":{"target":"es2022","module":"nodenext","moduleResolution":"nodenext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true},"vibelang":{"diagnostics":{"EK4806":%q}},"files":["main.vibe","foreign.ts"]}`, severity)
 	// Go may place temporary projects under an ignored build-cache directory.
 	// This rule fixture has its own repository boundary for CLI discovery.
 	dir, err := w.writeProject(Project{Files: map[string]string{
-		".jj": "",
+		".jj":          "",
 		"package.json": servicesPackage, "main.vibe": source,
 		"foreign.ts": string(foreign),
 	}, Config: cfg})
@@ -113,20 +118,9 @@ func checkLintDefectBridge(t *testing.T, w *Workspace, row lintDefectBridgeRow, 
 	if count != row.Count {
 		Gap(t, "FuzzLintDefectBridge", row.Key, "VIP-23: %s; chapter 007: %s; EK4806=%d want=%d variant=%d\n%s", nativePipeLintQuote, lintDefectBridgeQuote, count, row.Count, variant, source)
 	}
-	severity := "error"
-	if variant&16 != 0 {
-		severity = "warn"
-	}
-	ox := filepath.Join(dir, ".oxlintrc.json")
-	if err := os.WriteFile(ox, []byte(fmt.Sprintf(`{"rules":{"effecttsgo/unknown-in-effect-catch":%q}}`, severity)), 0644); err != nil {
-		t.Fatal(err)
-	}
 	sys := &sidecarParitySystem{fs: w.fs, cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-	status := lint.Command(t.Context(), sys, []string{"-p", filepath.Join(dir, "tsconfig.json"), "-c", ox, filepath.Join(dir, "main.vibe")})
+	status := lint.Command(t.Context(), sys, []string{"-p", filepath.Join(dir, "tsconfig.json")})
 	output := sys.output.String()
-	if !strings.Contains(output, " in 1 .vibe file(s).") {
-		t.Fatalf("lint fixture discovery: expected one source file; status=%d project=%s source=%s\n%s", status, filepath.Join(dir, "tsconfig.json"), filepath.Join(dir, "main.vibe"), output)
-	}
 	wantStatus := 0
 	if row.Count > 0 && severity == "error" {
 		wantStatus = 1
