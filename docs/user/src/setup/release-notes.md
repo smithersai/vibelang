@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- TypeScript mapper errors had no complete user reference. The diagnostic guide now explains projection, configuration and dependency failures and how to recover.
+
 - The home page hid its installation commands on narrow screens. The npm and Bun commands now stay visible and selectable on phones.
 
 - Setting `VIBELANG_BINARY` to the JavaScript launcher could repeatedly start new compiler processes. It now stops once with guidance to select the native compiler.

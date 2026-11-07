@@ -140,3 +140,19 @@ Registration reserves a code; it does not mean the compiler already implements e
 `EK1001` is permanently retired under VIP-26. Calling an effect function constructs a cold Effect value; an explicit `try` outside Effect code is `EK0501`, and `catch` outside effect code is `EK0504` in both compiler hosts.
 
 A call or construct signature in a `service` body reports one `EK0902`. A written whole shape owns that member error; independent key and generic errors still report.
+
+
+## TypeScript mapper failures
+
+The experimental `vibelang-ts-mapper` reports these codes while stock TypeScript checks or emits a `.vibe` file. Use the [native compiler](../setup/vibelang-cli.md) to check the original source when a projection cannot be represented safely.
+
+| Code | Meaning and next step |
+| --- | --- |
+| `EK9001` | The mapper cannot safely project this source form. Follow the diagnostic's explicit annotation or helper advice, or check and build with `vibelang`. |
+| `EK9002` | The mapper produced executable text that TypeScript cannot parse. Keep a minimal source reproduction for a bug report and build with the native compiler. Editing the generated projection will be lost on the next run. |
+| `EK9003` | The mapper's `contentMappers` entry has unsupported options. Remove its `options` property or set it to `{}`; no mapper options are supported. |
+| `EK9004` | A resolved Effect or platform package differs from the mapper's pinned forms table. Install the version named in the diagnostic in the consuming project; keep the mapper and its dependency pins together when updating. |
+| `EK9005` | The mapper cannot choose a lowering from the written types. Add the requested annotation, or compile with the native compiler. |
+| `EK9006` | The mapper cannot prove a data-method receiver or access form. Add the requested receiver type, or call the module function explicitly. |
+
+After a configuration or dependency repair, rerun the original TypeScript command. `vibelang --fix` repairs VibeLang source; it cannot repair an internal projection failure or choose dependency versions for a project.
