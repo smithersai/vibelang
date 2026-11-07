@@ -290,7 +290,8 @@ func isFiniteMatchType(c *checker.Checker, t *checker.Type) bool {
 	return true
 }
 
-// Tagged intersections retain the object constituents of their finite cases.
+// Tagged intersections retain object constituents, but a primitive brand
+// does not turn its primitive value into an object.
 func isFiniteMatchObjectType(t *checker.Type) bool {
 	if t.Flags()&checker.TypeFlagsObject != 0 {
 		return true
@@ -298,12 +299,16 @@ func isFiniteMatchObjectType(t *checker.Type) bool {
 	if t.Flags()&checker.TypeFlagsIntersection == 0 {
 		return false
 	}
+	object := false
 	for _, member := range t.Types() {
+		if member.Flags()&checker.TypeFlagsPrimitive != 0 {
+			return false
+		}
 		if isFiniteMatchObjectType(member) {
-			return true
+			object = true
 		}
 	}
-	return false
+	return object
 }
 
 // isLiteralTagType reports whether t, a member's _tag type, is a literal

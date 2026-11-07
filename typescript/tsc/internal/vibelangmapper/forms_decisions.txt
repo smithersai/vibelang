@@ -5002,6 +5002,7 @@ typescript/vibelang/cases/match-arm-grammar.fail/main.vibe:32:12 lambda plain fa
 typescript/vibelang/cases/match-array-iterable-element-types/main.vibe:51:22 lambda plain table
 typescript/vibelang/cases/match-array-iterable-element-types/main.vibe:53:27 lambda plain fallback
 typescript/vibelang/cases/match-array-iterable-element-types/main.vibe:5:14 lambda plain fallback
+typescript/vibelang/cases/match-branded-primitive-domain/main.vibe:8:20 lambda plain table
 typescript/vibelang/cases/match-builtin-extractor-narrowing/main.vibe:56:22 lambda plain table
 typescript/vibelang/cases/match-builtin-extractor-narrowing/main.vibe:5:14 lambda plain fallback
 typescript/vibelang/cases/match-builtin-own-option/main.vibe:17:9 lambda plain fallback

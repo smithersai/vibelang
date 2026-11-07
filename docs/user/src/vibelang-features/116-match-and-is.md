@@ -304,6 +304,8 @@ The compiler reports `EK0705` for an `is` binding that would need formal-paramet
 
 ## Exhaustiveness
 
+A broad primitive type stays open when intersected with a brand: `string & { readonly _tag: "Text" }` still describes primitive values. Its brand does not make it a finite tagged object domain. Object and boxed-object intersections keep the ordinary tagged-member check.
+
 A complete match keeps its coverage and extracted binding types in unreachable code, such as code after an unconditional `return`. This does not make that code execute.
 
 A match after an unconditional `return` or `throw` still checks finite coverage and the types of its extracted bindings. An exhaustive unreachable match compiles; a missing case still reports `EK4701`. The unreachable subject and arms do not run. Source references keep TypeScript’s ordinary unreachable-code narrowing rules.
