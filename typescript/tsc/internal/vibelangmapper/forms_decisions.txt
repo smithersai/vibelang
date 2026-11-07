@@ -8498,6 +8498,8 @@ typescript/vibelang/cases/type-observed-signatures/main.vibe:3:20 lambda effectF
 typescript/vibelang/cases/type-observed-signatures/main.vibe:4:24 lambda effectFn keyword
 typescript/vibelang/cases/type-observed-signatures/repro.vibe:3:20 lambda effectFn keyword
 typescript/vibelang/cases/type-observed-signatures/repro.vibe:5:24 lambda plain annotation
+typescript/vibelang/cases/typed-effect-initializer-try/main.vibe:5:44 lambda plain table
+typescript/vibelang/cases/typed-effect-initializer-try/main.vibe:9:51 lambda plain table
 typescript/vibelang/cases/typeof-effect-signature.fail/main.vibe:7:24 lambda plain annotation
 typescript/vibelang/cases/typeof-effect-signature/a.vibe:21:22 lambda plain annotation
 typescript/vibelang/cases/typeof-effect-signature/a.vibe:3:20 lambda effectFn keyword

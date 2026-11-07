@@ -1,0 +1,13 @@
+// expect-result: [[7,["construct","after-bind"]],[7,["paren-construct","after-paren"]]]
+import {Effect as E} from "effect"
+export effect function main(){
+ const observations:string[]=[]
+ const program:E.Effect<number>=try E.sync(()=>{observations.push("construct");return E.succeed(7)})
+ observations.push("after-bind")
+ const value=try program
+ const parenEvents:string[]=[]
+ const parenthesized:E.Effect<number>=try (E.sync(()=>{parenEvents.push("paren-construct");return E.succeed(7)}))
+ parenEvents.push("after-paren")
+ const parenValue=try parenthesized
+ return [[value,observations],[parenValue,parenEvents]] as const
+}
