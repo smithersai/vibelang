@@ -31,6 +31,8 @@ Adding a type-only host interface augmentation in a `.ts` or `.d.ts` file does n
 
 ## Replacements
 
+Console replacement advice includes `try`: `Console.log(message)` builds a logging Effect, and `try Console.log(message)` runs it in effect code. If implicit Effect modules are disabled, import `Console` from `effect` first.
+
 Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. The compiler's `EK4402` advice names these APIs; the guide runs Effect values with `try` and explains where native behavior needs a TypeScript adapter. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, `vibelang --fix` writes a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
 
 FileSystem advice gets the implementation with `try FileSystem.FileSystem` before calling a member. Run a returned Effect with `try`, as in `try (try FileSystem.FileSystem).readFileString(path)`. The module `FileSystem` supplies the service key; its methods belong to the retrieved implementation.
