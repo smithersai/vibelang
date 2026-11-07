@@ -114,3 +114,67 @@ func FuzzNativeGeneratorRefusalReason(f *testing.F) {
 		}
 	})
 }
+
+// Constructor bridges introduce a function. Refusals must name the
+// suspension operand rather than leave the author with generic advice.
+func FuzzGeneratorConstructorRefusalReason(f *testing.F) {
+	startShortBudget(f)
+	nativeGeneratorRefusalReasonChapter(f)
+	for _, key := range []string{"yield-operand", "grouped-yield", "member-constructor", "alias-constructor"} {
+		f.Add(key, uint8(0))
+	}
+	w := NewWorkspace(f)
+	f.Fuzz(func(t *testing.T, key string, trivia uint8) {
+		nativeGeneratorRefusalReasonChapter(t)
+		constructor, operand := "Box", "yield* Effect.succeed(value)"
+		declaration := ""
+		switch key {
+		case "grouped-yield":
+			operand = "(yield* Effect.succeed(value))"
+		case "member-constructor":
+			constructor = "constructors.Box"
+			declaration = "const constructors = { Box };\n"
+		case "alias-constructor":
+			constructor = "Alias"
+			declaration = "const Alias = Box;\n"
+		default:
+			key = "yield-operand"
+		}
+		if trivia&1 != 0 {
+			operand = "/* retain operand */ " + operand
+		}
+		source := "import { Effect } from \"effect\";\nimport { Box } from './helper.js'\n" + declaration +
+			"export const main = (value: number) => Effect.gen(effect function* () { return new " + constructor + "(" + operand + ").value })\n"
+		toolsGuard(t, "FuzzGeneratorConstructorRefusalReason", func() {
+			before := toolsCompile(t, w, "FuzzGeneratorConstructorRefusalReason", map[string]string{
+				"main.vibe": source,
+				"helper.ts": "export class Box { constructor(readonly value: number) {} }\n",
+			})
+			defer before.Remove()
+			hasProducerDiagnostic := false
+			for _, diagnostic := range before.Diagnostics {
+				if diagnostic.Source() == "EK" && diagnostic.Code() == 1002 {
+					hasProducerDiagnostic = true
+				}
+			}
+			if !hasProducerDiagnostic {
+				Gap(t, "FuzzGeneratorConstructorRefusalReason", key+":producer", "VIP-21 requires the explicit producer to retain EK1002: %v", SortedKeys(Keys(before.Dir, before.Diagnostics)))
+			}
+			fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
+			if fixed.Err != nil {
+				t.Fatal(fixed.Err)
+			}
+			for name, file := range fixed.Files {
+				if filepath.Base(name.AsString()) == "main.vibe" && file.Text != source {
+					Gap(t, "FuzzGeneratorConstructorRefusalReason", key, "Chapter 7 requires a preserving repair; suspension operand source changed:\n%s", file.Text)
+				}
+			}
+			for _, site := range fixed.Sites {
+				if site.Code == "EK1002" && strings.Contains(site.Reason, "yield*") {
+					return
+				}
+			}
+			Gap(t, "FuzzGeneratorConstructorRefusalReason", key, "otherwise the diagnostic explains why it has no automatic fix; missing yield* reason: %+v", fixed.Sites)
+		})
+	})
+}

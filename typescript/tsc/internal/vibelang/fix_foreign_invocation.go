@@ -36,9 +36,12 @@ func foreignInvocationHasDirectEval(call *ast.Node) bool {
 		if isFunctionBoundary(node) {
 			return false
 		}
-		if ast.IsCallExpression(node) && ast.IsIdentifier(node.Expression()) && node.Expression().Text() == "eval" {
-			directEval = true
-			return true
+		if ast.IsCallExpression(node) {
+			callee := ast.SkipParentheses(node.Expression())
+			if ast.IsIdentifier(callee) && callee.Text() == "eval" {
+				directEval = true
+				return true
+			}
 		}
 		return node.ForEachChild(visit)
 	}
