@@ -1,0 +1,5 @@
+{
+  "key": "api-identity:transparent-type-reexport-closure",
+  "rule": "the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export",
+  "factory": "import type * as Input from \"./Input.js\"; import type * as Target from \"./Target.js\"; export declare const PackageTypeId: unique symbol; export type PackageValue<T> = Readonly<T> & { readonly [PackageTypeId]: true }; type MapValue = Target.AnyTarget | Input.File; export declare const Package: <const T extends Readonly<Record<string, MapValue>>>(options: { readonly targets: T }) => PackageValue<{ readonly [K in keyof T]: T[K] extends Target.AnyTarget ? T[K] : Target.AnyTarget }>;"
+}

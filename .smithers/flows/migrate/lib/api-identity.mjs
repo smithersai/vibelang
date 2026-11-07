@@ -595,6 +595,40 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     normalized.set(file, value)
     return value
   }
+  // A declaration-only forwarding module adds no declarations of its own.
+  // Follow it only when every exported name, symbol and value/type meaning
+  // is exactly the underlying module's. Dependency syntax and ambient closure
+  // still have to pass the ordinary one-to-one proof below.
+  const forwarding = new Map()
+  const unalias = symbol => symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+  function forwarded(file, trail = new Set()) {
+    if (forwarding.has(file)) return forwarding.get(file)
+    if (trail.has(file)) return file
+    const source = program.getSourceFile(file)
+    if (!source?.statements.length || !source.statements.every(statement =>
+      ts.isExportDeclaration(statement) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier))) return file
+    const modules = source.statements.map(statement => host.resolveModuleNameLiterals([statement.moduleSpecifier], file,
+      undefined, program.getCompilerOptions(), source)[0].resolvedModule?.resolvedFileName)
+    const target = modules[0], targetSource = target && program.getSourceFile(target)
+    if (!targetSource || modules.some(module => module !== target)) return file
+    const symbol = checker.getSymbolAtLocation(source), targetSymbol = checker.getSymbolAtLocation(targetSource)
+    if (!symbol || !targetSymbol) return file
+    const exports = checker.getExportsOfModule(symbol), targets = new Map(checker.getExportsOfModule(targetSymbol).map(symbol => [symbol.name, unalias(symbol)]))
+    if (!exports.length || exports.length !== targets.size || exports.some(symbol => {
+      const original = unalias(symbol)
+      if (targets.get(symbol.name) !== original) return true
+      // A type-only export must not make a value available to typeof import.
+      return Boolean(original.flags & ts.SymbolFlags.Value) && symbol.declarations?.some(declaration => {
+        for (let node = declaration; node && !ts.isSourceFile(node); node = node.parent)
+          if (ts.isExportDeclaration(node) && node.isTypeOnly || ts.isExportSpecifier(node) && node.isTypeOnly) return true
+        return false
+      })
+    })) return file
+    const result = forwarded(target, new Set([...trail, file]))
+    if (trail.has(result) || result === file) return file
+    forwarding.set(file, result)
+    return result
+  }
   function pair(a, b) {
     const key = a + "\0" + b
     if (nodes.has(key)) return nodes.get(key)
@@ -602,6 +636,12 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     nodes.set(key, node)
     if (a === b) return node
     if (externalOrigin(a) !== externalOrigin(b)) { node.good = false; return node }
+    const forwardedA = forwarded(a), forwardedB = forwarded(b)
+    if (forwardedA !== a || forwardedB !== b) {
+      node.forwarding = true
+      pair(forwardedA, forwardedB).parents.push(node)
+      return node
+    }
     const x = syntax(a), y = syntax(b)
     // A package's JavaScript outside the program declares no types. The same
     // package file with the same bytes is the same module on both sides.
@@ -641,7 +681,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
   }
   // Only one-to-one pairings preserve the distinct nominal identities of two
   // same-text modules in a single tree.
-  const candidates = [...nodes.values()].filter(n => n.good && n.a !== n.b)
+  const candidates = [...nodes.values()].filter(n => n.good && n.a !== n.b && !n.forwarding)
   const from = new Map(), to = new Map()
   for (const n of candidates) {
     from.set(n.b, (from.get(n.b) ?? new Set()).add(n.a))
@@ -654,7 +694,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     if (parent.good) { parent.good = false; bad.push(parent) }
   }
   // A file outside the program proves its parents but has nothing to intern.
-  const equivalent = new Map(candidates.filter(n => n.good && !n.outside).map(n => [n.b, n.a]))
+  const equivalent = new Map([...candidates, ...[...nodes.values()].filter(n => n.forwarding)].filter(n => n.good && !n.outside).map(n => [n.b, n.a]))
   // Syntax identity alone ignores comments. Reuse the same closure proof for
   // documentation only when every attached JSDoc in that closure also agrees.
   const comments = new Map()
