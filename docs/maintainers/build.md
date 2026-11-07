@@ -62,6 +62,8 @@ execution. Run the desired build or test command afterward. This mode accepts
 no target arguments. A failed install retains its diagnostic and nonzero exit
 status; provisioned `node_modules` symlinks stay with their owner.
 
+The native companion probes load source-map helpers from `packages/unplugin`. Preparation installs that package’s locked dependencies and preserves a provisioned `node_modules` link, as it does for the other package scopes.
+
 `scripts/ci.sh` installs what the targets read (`.smithers`, the runtime, the
 compiler package, `packages/compiler/test/tools`, `packages/create-vibelang`,
 `packages/vite`, `experiments`, `docs/tools`) from their lockfiles, then runs

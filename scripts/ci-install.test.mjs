@@ -6,6 +6,8 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 
 const directories = [".smithers", "packages/runtime", "packages/compiler", "packages/compiler/test/tools", "packages/create-vibelang", "packages/vite", "experiments", "docs/tools"]
+// Companion probes load the plugin helpers from their owning package.
+directories.push("packages/unplugin")
 
 function fixture(t) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "vibe-ci-install-"))
