@@ -364,6 +364,13 @@ a dangling link, or a regular file, with the package name, path and
 omitted. A remote test runner must provision the runtime and its Effect links,
 as `scripts/ci.sh` does; a fixture setup failure is not a compiler regression.
 
+The stale-import tooling witnesses run value imports, re-exports, type imports
+and dynamic imports as separate compiler cases. Each retains the default
+60-second runner deadline and all 13 source, output-extension and ownership
+combinations. Progress records identify the import form and combination,
+then report elapsed milliseconds; a loaded worker can expose the slow step
+without losing the other forms' evidence.
+
 The experimental mapper's standalone runtime-parity CLI,
 `bun packages/ts-mapper/test/parity/runtime.ts`, uses the `PARITY_*`
 paths prepared by `packages/ts-mapper/test/parity/run.sh`. It prints one

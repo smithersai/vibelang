@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | For `TS2307` on a stale relative `.ts` name with a migrated sibling, `vibelang --fix` repairs owned VibeLang sources to `.vibe`/`.vibex` with `rewriteRelativeImportExtensions`, otherwise the runtime `.js` (`.jsx` for JSX-preserving output).
+export const witness = 1
