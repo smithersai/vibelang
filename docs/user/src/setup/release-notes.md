@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration kept a module in TypeScript on every pass when a plain function returning an Effect called TypeScript that may throw, such as an eager `Effect.succeed(foreign())` factory or a listener registration. With the earlier pass's receipts listed, those declarations now move into a `module throwing { }` body, keeping their eager calls and declarations, and the rest of the module migrates.
 - An existing platform helper could block migration even when a module body needed no new sibling. Body-only repairs now proceed while preserving that helper; repairs that need its path still refuse the collision.
 
+- Two specification sections skipped a heading level, making their structure harder to follow with a screen reader. Both now use the correct section level.
+
 - Visiting an internal declaration-file URL could show a blank page with a successful status. These URLs now show the normal missing-page response.
 
 - Screen readers could miss the site logo and alpha notice when navigating by page regions. The header, home link and release notice now belong to named landmarks.

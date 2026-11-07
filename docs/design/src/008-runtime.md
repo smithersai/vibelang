@@ -349,7 +349,7 @@ if (unsafeTrace.length !== 0 || safeTrace.join() !== "dispose") throw new Error(
 ```
 
 
-### Region finalizer observations
+## Region finalizer observations
 
 ```vibe es
 // compiler-gap: pending VIP-2, VIP-12
