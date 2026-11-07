@@ -1,0 +1,17 @@
+{
+  "src/A.vibe": "module throwing { export function f(): never { throw new Error(\"bad\"); } }\nexport { f } from throwing;\n",
+  "tsconfig.json": {
+    "vibe": {
+      "sidecarDir": ".vibe/declarations",
+      "effectGlobals": false,
+      "effectModules": false
+    },
+    "compilerOptions": {
+      "rootDir": "src",
+      "noEmit": true
+    },
+    "include": [
+      "src/**/*"
+    ]
+  }
+}
