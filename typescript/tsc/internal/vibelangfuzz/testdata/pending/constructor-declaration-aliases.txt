@@ -1,6 +1,0 @@
-FuzzConstructorDeclarationAliases declaration:dot-bracket:feature:declaration-consumer-TS2300 compiler VIP-27/Chapter-1: repeated constructor writes emit duplicate namespace export aliases; lane migfix-opencode
-FuzzConstructorDeclarationAliases declaration:bracket-dot:feature:declaration-consumer-TS2300 compiler VIP-27/Chapter-1: repeated constructor writes emit duplicate namespace export aliases; lane migfix-opencode
-FuzzConstructorDeclarationAliases declaration:dot-dot:feature:declaration-consumer-TS2300 compiler VIP-27/Chapter-1: repeated constructor writes emit duplicate namespace export aliases; lane migfix-opencode
-FuzzConstructorDeclarationAliases declaration:bracket-bracket:feature:declaration-consumer-TS2300 compiler VIP-27/Chapter-1: repeated constructor writes emit duplicate namespace export aliases; lane migfix-opencode
-FuzzConstructorDeclarationAliases corpus:constructor-dot-bracket compiler VIP-27/Chapter-1: repeated constructor writes emit duplicate namespace export aliases; lane migfix-opencode
-FuzzConstructorDeclarationAliases corpus:constructor-bracket-dot compiler VIP-27/Chapter-1: repeated constructor writes emit duplicate namespace export aliases; lane migfix-opencode
