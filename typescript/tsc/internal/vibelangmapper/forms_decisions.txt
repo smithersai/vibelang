@@ -1190,6 +1190,7 @@ typescript/vibelang/cases/class-callback-contracts/main.vibe:7:38 lambda plain f
 typescript/vibelang/cases/class-computed-member-keys/main.vibe:21:34 lambda program table
 typescript/vibelang/cases/class-computed-member-keys/main.vibe:8:13 lambda plain fallback
 typescript/vibelang/cases/class-computed-member-keys/main.vibe:8:70 lambda plain table
+typescript/vibelang/cases/class-override-throws.fail/main.vibe:10:22 lambda plain annotation
 typescript/vibelang/cases/compiler-and-tooling-concurrent-code.fail/main.vibe:12:25 lambda effectFn table
 typescript/vibelang/cases/compiler-and-tooling-concurrent-code/main.vibe:5:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-any-items/main.vibe:10:23 lambda effectFn table

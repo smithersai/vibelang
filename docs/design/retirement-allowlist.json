@@ -2398,5 +2398,15 @@
       "reference": "docs/design/vips/0002-effect-blocks-and-do.md#clarification-overlapping-var-diagnostics: accepted VIP-2 reports EK0201 for a final var declaration in a do block and EK0203 for var in a do expression in a parameter list, both when both apply, instead of EK0107. This cites existing published acceptance, not a new approval."
     },
     "reason": "Witness of the existing parameter-list do early error, alone for a nonfinal var and beside EK0201 for a final one, with no EK0107 at either site. Choosing let or const for the binding needs author intent."
+  },
+  {
+    "code": "EK0402",
+    "case": "typescript/vibelang/cases/class-override-throws.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md#assignability: accepted throws contracts attach to call signatures, and the assignability rule applies wherever TypeScript checks one call signature against another, class overrides included. This instantiates that existing rule; it introduces no new rejection policy."
+    },
+    "reason": "Each rejected field overrides a base class member whose function type admits only never with a function that may throw. Choosing a catching wrapper or a base member type that admits the throw requires author intent; a mechanical rewrite must not change when or whether the override's exception surfaces."
   }
 ]

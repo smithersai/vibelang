@@ -11,7 +11,9 @@ import (
 // Class member initializers do not receive their implements clause as a
 // contextual type. Compare the retained callable contracts on the resolved
 // instance members, including inherited members and getter results (VIP-4,
-// chapter 003 Assignability). Native incompatibility remains TypeScript's.
+// chapter 003 Assignability). A member the class declares over a base class
+// member is a class override, compared the same way. Native incompatibility
+// remains TypeScript's.
 func init() { fileChecks = append(fileChecks, checkImplementedCallbackThrows) }
 
 func checkImplementedCallbackThrows(c *checker.Checker, file *ast.SourceFile) {
@@ -30,7 +32,7 @@ func checkImplementedCallbackThrows(c *checker.Checker, file *ast.SourceFile) {
 
 func checkImplementedCallbackClass(c *checker.Checker, class *ast.Node) {
 	heritage := ast.GetImplementsHeritageClauseElements(class)
-	if len(heritage) == 0 {
+	if len(heritage) == 0 && ast.GetClassExtendsHeritageElement(class) == nil {
 		return
 	}
 	symbol := c.GetSymbolOfDeclaration(class)
@@ -71,6 +73,57 @@ func checkImplementedCallbackClass(c *checker.Checker, class *ast.Node) {
 			reported[name] = true
 		}
 	}
+	overrides := map[*ast.Symbol]bool{}
+	forEachClassOverride(c, class, instance, func(actual, overridden *ast.Symbol, owner, base *checker.Type) {
+		if overrides[actual] || reported[actual.Name()] && owner == instance || implementedCallbackFits(c, c.GetTypeOfSymbol(actual), c.GetTypeOfSymbol(overridden), []*checker.Type{owner}, []*checker.Type{base}) {
+			return
+		}
+		reportClassOverride(c, class, actual, overridden)
+		overrides[actual] = true
+	})
+}
+
+// forEachClassOverride calls f for each member that class declares over a
+// member of its base class, with the owning type of each side: the instance
+// types for instance members, and the constructor types for static members,
+// whose side TypeScript checks too. A member the class inherits unchanged
+// keeps the base's own contract and is skipped.
+func forEachClassOverride(c *checker.Checker, class *ast.Node, instance *checker.Type, f func(actual, overridden *ast.Symbol, owner, base *checker.Type)) {
+	extends := ast.GetClassExtendsHeritageElement(class)
+	if extends == nil {
+		return
+	}
+	visit := func(owner, base *checker.Type) {
+		if owner == nil || base == nil || base.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsUnion|checker.TypeFlagsTypeVariable) != 0 {
+			return
+		}
+		for _, overridden := range c.GetPropertiesOfType(base) {
+			actual := c.GetPropertyOfType(owner, overridden.Name())
+			if actual == nil {
+				continue
+			}
+			if decl := actual.ValueDeclaration(); decl != nil && decl.Parent == class && decl.Name() != nil {
+				f(actual, overridden, owner, base)
+			}
+		}
+	}
+	for _, base := range c.GetBaseTypes(instance) {
+		visit(instance, base)
+	}
+	if symbol := c.GetSymbolOfDeclaration(class); symbol != nil {
+		visit(c.GetTypeOfSymbol(symbol), c.GetTypeAtLocation(extends.Expression()))
+	}
+}
+
+// reportClassOverride reports EK0402 at the overriding member's name.
+func reportClassOverride(c *checker.Checker, class *ast.Node, actual, overridden *ast.Symbol) {
+	display := overridden.Name()
+	if decl := overridden.ValueDeclaration(); decl != nil && decl.Name() != nil {
+		display = scanner.GetTextOfNode(decl.Name())
+	}
+	d := report(c, actual.ValueDeclaration().Name(), EK0402)
+	note(d, "The overridden member {0}.{1} does not admit this member's callable throws.", scanner.GetTextOfNode(ast.GetClassExtendsHeritageElement(class).Expression()), display)
+	note(d, "Use a member that catches its throw, or a base member type that admits it.")
 }
 
 // Every source union alternative must fit one native-compatible destination.
