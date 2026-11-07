@@ -155,6 +155,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` could call a `.ts` function with no `@throws` tag, although such a function must never throw. The call now reports `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare the callee's `@throws`, or move the code to a `.ts` file. The same holds for the function's parameter defaults.
 
+- In a project that emits declarations, `vibelang --fix` turned a private `Schema.Struct` constant into a `schema` declaration even when the declaration file named the constant, which added `type X = typeof X.Type` to the declaration, or exported a new type through `export { X }`. The fix now keeps such a constant as written.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |
