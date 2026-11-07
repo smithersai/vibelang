@@ -22,6 +22,13 @@ func narrowDoGuard(c *checker.Checker, reference *ast.Node, t *checker.Type, tes
 	if alias := doAssignmentAlias(c, reference, test); alias != nil {
 		return narrowAlias(alias, t, nil)
 	}
+	// A saved logical completion can itself be a later condition. Its true
+	// or false path retains assignments made while evaluating that result.
+	if origin := doValueOrigin(c, test); origin != nil &&
+		(origin.Operator == ast.KindAmpersandAmpersandToken || origin.Operator == ast.KindBarBarToken) &&
+		!c.IsMatchingReference(reference, test) {
+		return narrowDoCondition(c, reference, t, test, assumeTrue, narrowAlias)
+	}
 	if source := doGuardSource(c, test); source != nil && !c.IsMatchingReference(reference, test) {
 		return narrowDoCondition(c, reference, t, source, assumeTrue, narrowAlias)
 	}
@@ -106,7 +113,11 @@ func narrowDoCondition(c *checker.Checker, reference *ast.Node, t *checker.Type,
 		b := source.AsBinaryExpression()
 		op := b.OperatorToken.Kind
 		if op == ast.KindCommaToken {
+			t = doPatternInitialization(c, reference, t, b.Left)
 			return narrowDoCondition(c, reference, t, b.Right, assumeTrue, narrowAlias)
+		}
+		if op == ast.KindEqualsToken {
+			return doPatternInitialization(c, reference, t, source)
 		}
 		if op == ast.KindAmpersandAmpersandToken || op == ast.KindBarBarToken {
 			if (op == ast.KindAmpersandAmpersandToken) == assumeTrue {
@@ -214,4 +225,28 @@ func narrowDoNullish(c *checker.Checker, reference *ast.Node, t *checker.Type, s
 	comparison := f.NewBinaryExpression(nil, source, nil, b.OperatorToken, b.Right)
 	comparison.Parent = test.Parent
 	return narrowAlias(reference, t, comparison)
+}
+
+// doPatternInitialization follows only parser-written binding initialization.
+// A saved logical condition can prove that initialization ran even though the
+// statement lowering merged its assignment flow with the skipped path.
+func doPatternInitialization(c *checker.Checker, reference *ast.Node, t *checker.Type, source *ast.Node) *checker.Type {
+	source = ast.SkipParentheses(source)
+	if !ast.IsBinaryExpression(source) {
+		return t
+	}
+	b := source.AsBinaryExpression()
+	if b.OperatorToken.Kind == ast.KindCommaToken {
+		return doPatternInitialization(c, reference, doPatternInitialization(c, reference, t, b.Left), b.Right)
+	}
+	if b.OperatorToken.Kind != ast.KindEqualsToken || b.OperatorToken.Flags&ast.NodeFlagsReparsed == 0 ||
+		!ast.IsIdentifier(b.Left) || !c.IsMatchingReference(reference, b.Left) {
+		return t
+	}
+	symbol := c.GetSymbolAtLocation(b.Left)
+	if symbol == nil || symbol.ValueDeclaration() == nil ||
+		symbol.ValueDeclaration().Flags&ast.NodeFlagsVibeLangIsBinding == 0 {
+		return t
+	}
+	return c.NarrowTypeTo(t, c.GetTypeAtLocation(b.Right), true)
 }

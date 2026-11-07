@@ -29,6 +29,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Checking invalid JSX could silently succeed after checking the same text as plain VibeLang. Formatter cache entries now distinguish the source kinds and report the JSX error.
 
+- Using `do` in a pattern condition could falsely report a binding as unassigned. Successful conditions now retain their initialized bindings.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

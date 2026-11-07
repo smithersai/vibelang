@@ -10,6 +10,8 @@ Every arm ends in `;`, the last one included, and a new line does not separate a
 
 Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept any iterable, including strings, sets and generators, and reuse one iterator and its pulled values across arms. Their bindings keep the iterable element type, including tuple positions; a rest binding from a tuple keeps the remaining positions, including optional and variadic elements, in a mutable tuple copy. Other rest bindings contain the remaining elements in an array. An `unknown` subject gives `unknown` elements. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. Optional array, object-property and extractor bindings initialize only when a value exists. Missing bindings remain in their temporal dead zone. TypeScript reports `TS2454` when its definite-assignment checks find an uninitialized read; other reads throw `ReferenceError` while the binding is uninitialized. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
 
+An `is` binding initialized by a successful condition stays assigned through `do` expressions in that condition.
+
 Fixed `Option`, `Exit` and `Result` extractors give their bindings the type left by the container and variant guards. Open subjects give `unknown` payloads.
 
 ```vibe
