@@ -752,6 +752,13 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	}
 }
 
+// anyConstructor reports whether the new expression node constructs through
+// a value typed any, whose construction has no signature but throws unknown.
+func anyConstructor(c *checker.Checker, node *ast.Node) bool {
+	t := c.GetTypeAtLocation(node.Expression())
+	return t != nil && t.Flags()&checker.TypeFlagsAny != 0
+}
+
 // checkInvocation is checkCall for a new expression or a tagged template.
 // Chapter 3 (Calls in effect code): a call, new expression, tagged template
 // or class evaluation whose thrown type is not never is EK0403 in effect
@@ -773,9 +780,10 @@ func checkInvocation(c *checker.Checker, a *analyzer, file *ast.SourceFile, node
 	}
 	// A constructor no class declares has no signature to carry a tag, so
 	// it stays untracked, as before; so does a lib constructor or tag the
-	// shipped table does not list.
+	// shipped table does not list. A constructor typed any is not such a
+	// constructor: calls through any throw unknown (chapter 3, Thrown types).
 	decl := signatureDeclaration(c, node)
-	if decl == nil && ast.IsNewExpression(node) {
+	if decl == nil && ast.IsNewExpression(node) && !anyConstructor(c, node) {
 		return
 	}
 	t := callTrust(c, node)

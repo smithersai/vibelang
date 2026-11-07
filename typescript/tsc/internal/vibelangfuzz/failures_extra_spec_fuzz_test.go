@@ -240,6 +240,17 @@ func failuresExtraCases() []*failCase {
 	const assign = "A callable whose thrown type is `T` is assignable to a function type only when that type admits `T`: a type without `@throws` admits only `never`, `@throws {U}` admits subtypes of `U`, `@throws {unknown}` admits anything, and a parameter named by `@rethrows` admits anything."
 	add(&failCase{Name: "assign-incompatible-contract", Quote: assign, Code: 402, Host: "plain", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n" + "export type Reader = { /** @throws {number} */ (s: string): string }\n", Body: "⟦const reader: Reader = parse⟧"})
 	add(&failCase{Name: "effectful-error-value-throw", Quote: effectfulBody, Code: 401, Host: "none", Decls: "error Missing\nexport function missing(): Missing { ⟦throw new Error(\"bad\")⟧ }"})
+	// Calls through any throw unknown, and so does a new expression whose
+	// constructor is typed any: it has no signature, but it is not a class
+	// that declares no constructor.
+	const throughAny = "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives."
+	const anyLib = "export declare const Dynamic: any\n"
+	add(&failCase{Name: "new-through-any", Owner: "compiler", Quote: throughAny, Code: 403, Lib: anyLib, Body: "const v = ⟦new Dynamic()⟧"})
+	add(&failCase{Name: "new-through-any-argument", Owner: "compiler", Quote: throughAny, Code: 403, Lib: anyLib, Body: "const v = ⟦new Dynamic(s)⟧"})
+	add(&failCase{Name: "new-through-any-effectful-plain", Owner: "compiler", Quote: effectfulBody, Code: 401, Host: "none", Lib: anyLib, Decls: "export function probe(): Effect.Effect<number> { ⟦new Dynamic()⟧; return Effect.succeed(1) }"})
+	add(&failCase{Name: "new-through-any-control-plain", Owner: "compiler", Quote: throughAny, Host: "plain", Lib: anyLib, Body: "const v = new Dynamic()"})
+	add(&failCase{Name: "new-through-any-control-bridge", Owner: "compiler", Quote: throughAny, Lib: anyLib, Body: "const v = try Effect.orDie(Effect.try(() => new Dynamic()))"})
+	add(&failCase{Name: "new-through-any-control-local-class", Owner: "compiler", Quote: throughAny, Decls: "class Local { value = 1 }", Body: "const v = new Local()"})
 	// An interface named Effect that copies the `~effect/Effect` marker but
 	// declares no A, E and R parameters is not assignable to Effect.Effect, so
 	// its callers are ordinary calls with their written contracts. Checking

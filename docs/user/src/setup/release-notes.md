@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- In effect code, `new Dynamic()` where `Dynamic` is typed `any` got no diagnostic, although calling the same value does. Construction through `any` now has thrown type `unknown` too: it needs a bridge in effect code (`EK0403`) and is `EK0401` in a plain function that returns an Effect.
+
 - Editing a JavaScript dependency could leave stale type checking in the Vite dev server. Importers now report changed type errors and recover when the JavaScript is corrected.
 
 - When a `.ts` function's `@throws` named a type that is not a class, such as `@throws {typeof sentinel}` or `@throws {"default"}`, calling it in plain code reported `EK0401` saying it "may throw 'unknown'". The message now shows the written contract, as the effect-code message does.

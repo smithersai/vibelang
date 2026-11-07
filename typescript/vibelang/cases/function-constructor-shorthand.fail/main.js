@@ -1,0 +1,3 @@
+// expect: EK0107
+export const constructors = { Function };
+export function wrap() { return { Function }; }
