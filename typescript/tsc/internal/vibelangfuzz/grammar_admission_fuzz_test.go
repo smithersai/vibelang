@@ -277,6 +277,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-signature-async-parameter", "schema S = { ( async { p : static } : Missing ) : Missing }"},
 	{"schema-signature-modifier-pattern", "schema S = { (readonly [p]: Missing): Missing }"},
 	{"schema-field-initializer-modifier", "schema S = { readonly 1 ? =\nMissing }"},
+	{"native-await-identifier", "function f() { return await.target; }"},
+	{"native-await-shorthand", "async function outer() { const f = () => ({ await }); }"},
+	{"effect-await-identifier", "effect function f() { return new await; }"},
+	{"native-await-binding-label", "function f(await: number) { await: while (false) { break await; } return await; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

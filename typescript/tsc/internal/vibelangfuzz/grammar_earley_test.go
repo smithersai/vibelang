@@ -277,7 +277,11 @@ func (p *grammarEarley) match(s grammarGsym, i int) bool {
 		// token, as a lexer applying the table would make it.
 		return t.kind == 'w' && (p.mode.names || !(p.words[t.text] && p.kwAt(s, i) == grammarKwYes))
 	case "IdentifierReference", "BindingIdentifier", "LabelIdentifier":
-		if t.kind != 'w' || grammarReservedWords[t.text] {
+		reserved := grammarReservedWords[t.text]
+		if t.text == "await" && s.await == grammarAwaitNone {
+			reserved = false
+		}
+		if t.kind != 'w' || reserved {
 			return false
 		}
 		if p.words[t.text] && p.kwAt(s, i) == grammarKwYes {
