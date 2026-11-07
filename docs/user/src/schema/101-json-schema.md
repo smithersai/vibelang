@@ -138,7 +138,6 @@ function strictDocument() {
 ## Describing JSON string codecs
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try Effect.try(() => JSON.stringify(jsonTextDocument().schema)))
 const DepotText = Schema.fromJsonString(Depot)
 
@@ -148,9 +147,9 @@ function jsonTextDocument() {
 ```
 
 ```output
-{"type":"string","contentMediaType":"application/json"}
+{"type":"string","contentMediaType":"application/json","contentSchema":{"type":"object","properties":{"name":{"type":"string"},"capacity":{"type":"number"}},"required":["name","capacity"],"additionalProperties":true}}
 ```
 
-The external value is JSON text, so the root schema is a string with `contentMediaType: "application/json"`. Effect 4.1.1 does not add `contentSchema` for the embedded object; export `Depot` separately to describe it, or add `contentSchema` with `annotateEncoded`. Content keywords document the embedded format; validators vary in enforcing them.
+The external value is JSON text, so the root schema is a string with `contentMediaType: "application/json"`. Its `contentSchema` describes the embedded object's encoded representation. Content keywords document the embedded format; validators vary in enforcing them.
 
 [Upstream page](https://effect.website/docs/v4/schema/json-schema)

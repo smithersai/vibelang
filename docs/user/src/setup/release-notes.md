@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The JSON Schema guide said JSON-string codecs omitted their embedded schema. It now shows and explains the generated `contentSchema`.
+
 - The Alchemy guide's test command failed in a new project because no test script was configured. The guide now supplies the script and the example files it runs.
 
 - Logger examples in the cheat sheet could fail the platform-global check when run. They now write through Effect's console service.
