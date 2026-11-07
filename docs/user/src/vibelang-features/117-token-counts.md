@@ -87,7 +87,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| **Start Here** | **5,600** |
+| **Start Here** | **5,700** |
 | [Welcome](../001-onboarding.md) | 2,000 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 2,000 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |

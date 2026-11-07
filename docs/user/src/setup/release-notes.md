@@ -17,6 +17,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The expected-errors guide repeated its static-member restriction. It now gives the rule and all repair details together once.
 - Migration setup could omit a test package that imported a migrated module through a relative path. It now selects that package and its transitive consumers, even without a manifest dependency.
 - The error guides described working error and producer syntax as a future feature. They now describe the syntax as available.
+- The setup guide required Node 26, while the introductory guides admitted unsupported Node versions. All three now give the package requirements: Node `22.22.3` in `22.x`, or `24.11.1` or later.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 

@@ -6,7 +6,7 @@ VibeLang is a fork of TypeScript for Effect programs. These steps set it up in a
 
 ## 1. Check the tools
 
-Run `node --version` and expect `v26.0.0` or later. With Bun, run `bun --version` and expect `1.4.0` or later.
+Run `node --version`. Use Node `22.22.3` (`22.x`) or Node `24.11.1` or later. With Bun, run `bun --version` and expect `1.4.0` or later.
 
 Version 0.0.12 publishes native packages for macOS, Linux and Windows on arm64 and x64. The end-to-end npm and Bun rehearsal runs on Linux x64.
 
