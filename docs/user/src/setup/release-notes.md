@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
+
 - Returning an incomplete `Stream` type could bypass throwing-call checks or wrongly restrict a plain function. The compiler now applies `Stream` rules only to a complete `Stream` type.
 
 - A `String`, `Number`, `Boolean`, `BigInt` or `Symbol` pattern narrowed an `unknown` subject to the primitive type alone, so `when String and { length: let n }:` was rejected because the subject became `never`, and `not String` kept the boxed type. The subject now has the primitive or its boxed type, as after TypeScript's `typeof s === "string" || s instanceof String`. Code that used the subject as a primitive after `when String:` binds the value instead: `when String(let text):`.

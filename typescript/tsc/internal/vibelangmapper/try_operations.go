@@ -94,6 +94,13 @@ func tryOperandMarks(file *ast.SourceFile, text string) []tryOperandMark {
 			visit(node.Arguments()[0], true)
 			return
 		}
+		if isForkOwner(node) {
+			arguments := node.Arguments()
+			for i, argument := range arguments {
+				visit(argument, operand || i == len(arguments)-1)
+			}
+			return
+		}
 		if ast.IsFunctionLike(node) && !(ast.IsArrowFunction(node) && node.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0) {
 			operand = false
 		}
