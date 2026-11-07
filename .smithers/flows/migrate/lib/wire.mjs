@@ -21,6 +21,7 @@ import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { addVitestProjectPlugins } from "./vitest-projects.mjs"
 import { wireBunFixtureTests } from "./bun-fixtures.mjs"
 import { localPackageDependencies } from "./workspace-dependencies.mjs"
+import { sourcePackageDependencies } from "./workspace-source-dependencies.mjs"
 import { jsonStrings, workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { applyEdits } from "./imports.mjs"
 import { must, quote } from "./util.mjs"
@@ -801,7 +802,7 @@ const electronViteConfigFile = /^electron\.vite\.config\.m?[jt]s$/
 /**
  * The repository's packages that load migrated sources: each migrated package
  * and each that depends on one through workspace packages
- * (`"foldkit": "workspace:*"`). migrated holds the migrated packages' directories.
+ * or relative source/test imports. migrated holds the migrated packages' directories.
  */
 export function packagesReaching(root, migrated) {
   const all = repositoryPackages(root)
@@ -811,11 +812,13 @@ export function packagesReaching(root, migrated) {
   // A recursive walk cannot memoize false while a dependency cycle is open:
   // another branch may still connect the whole cycle to a migrated package.
   const dependents = new Map()
+  const sourceImports = sourcePackageDependencies(root, all)
   for (const pkg of all) {
-    for (const dependency of local(pkg)) {
-      const consumers = dependents.get(dependency.dir) ?? []
+    const dependencies = new Set([...local(pkg).map(dependency => dependency.dir), ...sourceImports.get(pkg.dir)])
+    for (const dependency of dependencies) {
+      const consumers = dependents.get(dependency) ?? []
       consumers.push(pkg.dir)
-      dependents.set(dependency.dir, consumers)
+      dependents.set(dependency, consumers)
     }
   }
   const reached = new Set(migrated)

@@ -1,0 +1,33 @@
+{
+  "finding": "packagesReaching:relative-test-import-consumers",
+  "nodes": [
+    {
+      "deps": [],
+      "migrated": true,
+      "test": false,
+      "js": false,
+      "extension": "vibe",
+      "kind": "import"
+    },
+    {
+      "deps": [
+        0
+      ],
+      "migrated": false,
+      "test": true,
+      "js": false,
+      "extension": "ts",
+      "kind": "import"
+    },
+    {
+      "deps": [
+        1
+      ],
+      "migrated": false,
+      "test": true,
+      "js": true,
+      "extension": "tsx",
+      "kind": "export"
+    }
+  ]
+}

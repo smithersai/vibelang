@@ -24,6 +24,10 @@ wraps. For example, `settings.vibe` beside `settings.ts` both emit
 
 Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped non-effectful foreign calls that may throw as `EK0403`, and platform calls, including the web's clock and randomness reads such as `crypto.randomUUID()`, as `EK4402` ([diagnostics](../getting-started/012-devtools.md#diagnostics-completions-and-refactors)). For non-effectful foreign calls, `@throws {never}` permits a direct call and a missing annotation means `unknown`. A written `@throws {RangeError}` or other non-`never` contract requires an `Effect.try` bridge in effect code (`EK0403`). A callable returning an `Effect`, `Stream` or `Layer` is effectful: call it directly, regardless of `@throws`. Run an Effect result with `try`; bridging its factory with `Effect.try` returns the cold program instead of its success value.
 
+Migration setup also selects packages whose source files or tests import a
+migrated package through a relative path, even without a manifest dependency.
+This includes transitive consumers and keeps their original test files unchanged.
+
 The migration inventory keeps `.vibex` modules alongside `.vibe`, `.ts` and `.tsx` sources, including their local import and test dependencies. Generated declaration sidecars do not count as source files.
 
 Literal Vite build inputs follow a migrated source to its native extension. A computed template or concatenated TypeScript filename, such as `${stem}.browser.ts`, requires a proven rewrite before its matching source can migrate. The flow refuses that rename with the entry location and source path, leaving the original build command reachable. The same check applies when resuming a prepared batch or a one-pass run. If an older interrupted run already renamed the source, use `revert` to restore it before retrying; the computed entry stays as written.

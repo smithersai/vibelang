@@ -497,6 +497,11 @@ The React Compiler sees JavaScript. On a `.vibe` module's JavaScript it
 reports the same diagnostics and writes the same output as on the module's
 `.ts` twin.
 
+Migration setup follows relative imports in source files and tests as well as
+manifest dependencies, including transitive consumers. A test package that
+imports `../other/src/module.vibe` gets the same setup as a manifest-dependent
+package. Reading these imports leaves test files unchanged.
+
 Migration setup wires each package that reaches a migrated module: it wraps
 the `metro.config` export in `withVibeLang`, adds `vibelang/babel` to the
 Babel presets, and adds `.vibe` to the `include` of each
