@@ -42,7 +42,11 @@ func (p *projector) catchExpression(call *ast.Node, e env) {
 		p.catchProgram(fallback)
 	} else {
 		p.plan.replace(left.End(), p.tokenStart(handler), ", ")
-		p.effectLambda(handler)
+		if handler.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+			p.effectLambda(handler)
+		} else {
+			p.plainCatchHandler(handler)
+		}
 		if handler.End() < call.End() {
 			// The arrow keeps its handler kind; its source parentheses are
 			// outside its AST range and must not close the generated call.
@@ -262,4 +266,29 @@ func sourceCatchEffectCode(node *ast.Node) bool {
 		}
 	}
 	return sourceCatchEffectCode(owner)
+}
+
+// plainCatchHandler keeps the written function and lifts only its result.
+// The wrapper's arrow leaves the source handler's lexical captures intact.
+func (p *projector) plainCatchHandler(handler *ast.Node) {
+	errorName := p.names.fresh("$catchError")
+	valueParameters := 0
+	for _, parameter := range handler.Parameters() {
+		if !ast.IsThisParameter(parameter) {
+			valueParameters++
+		}
+	}
+	if valueParameters == 0 {
+		// A callback with no written parameters still receives the error.
+		// Give the call an argument type without changing the source function.
+		handlerName := p.names.fresh("$catchHandler")
+		resultName := p.names.fresh("$catchResult")
+		p.plan.insert(p.tokenStart(handler), "("+errorName+" => "+p.names.prelude("Effect")+".succeed((<"+resultName+",>("+handlerName+": (error: typeof "+errorName+") => "+resultName+") => "+handlerName+"("+errorName+"))(")
+		p.visitChildren(handler, env{})
+		p.plan.insert(handler.End(), ")))")
+		return
+	}
+	p.plan.insert(p.tokenStart(handler), "("+errorName+" => "+p.names.prelude("Effect")+".succeed((")
+	p.visitChildren(handler, env{})
+	p.plan.insert(handler.End(), ")("+errorName+")))")
 }

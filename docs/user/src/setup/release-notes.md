@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The TypeScript content mapper ran Effects returned by plain `catch` handlers too early. It now returns those Effects as data until an explicit `try` runs them.
+
 - The TypeScript content mapper could leave a stored Effect unrun in a `catch` expression. It now runs the operand once and handles its failure.
 
 - In effect code, `new Dynamic()` where `Dynamic` is typed `any` got no diagnostic, although calling the same value does. Construction through `any` now has thrown type `unknown` too: it needs a bridge in effect code (`EK0403`) and is `EK0401` in a plain function that returns an Effect.

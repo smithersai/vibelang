@@ -217,7 +217,7 @@ var emitCases = []struct {
 		source: "effect function f() { return a() catch e => recover(e) }",
 		contains: []string{
 			`import { $catch, $done, $isRun, $settle } from "vibelang-runtime/internal";`,
-			"$catch(a(), e => $gen(function* () { return (($t = recover(e)), $isRun($t) ? (yield* $t) : $t); }))",
+			"$catch(a(), ($catchError => Effect.succeed((e => recover(e))($catchError))))",
 		},
 		absent: []string{"$catchExpression", "f$direct"},
 	},

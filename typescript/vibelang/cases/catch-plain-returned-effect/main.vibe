@@ -1,0 +1,21 @@
+// expect-result: [1,2,3,["after arrow","arrow","factory","after function","function","after effect call","effect call"]]
+import { Effect as E } from "effect"
+import { factory } from "./factory.js"
+
+export effect function main() {
+  const events: string[] = []
+  effect function program() {
+    events.push("effect call")
+    return 3
+  }
+  const arrow = E.fail("bad") catch () => E.sync(() => { events.push("arrow"); return 1 })
+  events.push("after arrow")
+  const a = try arrow
+  const callable = E.fail("bad") catch function recover() { return factory(events) }
+  events.push("after function")
+  const b = try callable
+  const effectCall = E.fail("bad") catch () => program()
+  events.push("after effect call")
+  const c = try effectCall
+  return [a, b, c, events]
+}

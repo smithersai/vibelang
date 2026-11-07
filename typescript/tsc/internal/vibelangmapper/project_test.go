@@ -243,7 +243,7 @@ var projectionCases = []struct {
 	{
 		name:    "catch expression contextually types a handler arrow (D238)",
 		source:  "effect function f() { return a() catch (e) => recover(e) }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a(), (e) => $gen(function* () { return (yield* $run(recover(e))) })))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a(), ($catchError => Effect.succeed(((e) => recover(e))($catchError)))))) })}",
 	},
 	{
 		name:    "catch expressions associate to the left (D237)",
@@ -273,7 +273,7 @@ var projectionCases = []struct {
 	{
 		name:    "catch handler block runs its own Effect body",
 		source:  "effect function f() { return a() catch e => { return recover(e) } }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a(), e => { return $gen(function* () { return (yield* $run(recover(e))) })}))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a(), ($catchError => Effect.succeed((e => { return recover(e) })($catchError)))))) })}",
 	},
 	{
 		name:    "catch expression retains this in both operands",
