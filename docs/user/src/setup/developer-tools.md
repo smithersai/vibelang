@@ -25,6 +25,8 @@ In bundler watch mode, creating a missing relative source also triggers a rebuil
 
 Diagnostics from source loaders retain their source details and exclude compiler file-list output.
 
+Imports between `.vibe` modules preserve Unicode, spaces and literal `%` in file names through bundler builds. Use the original source name in the import. Literal JavaScript import names retain TypeScript's filename meaning.
+
 For programmatic Rolldown builds, `vibelang-unplugin/rolldown` uses
 Rolldown's `cwd` as its default compiler root. A plugin `project` path is
 relative to that root. An explicit plugin `root` can select a different

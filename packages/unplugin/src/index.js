@@ -28,6 +28,20 @@ function sourceConditionConfig(config) {
 
 const cleanId = (id) => id.split("?")[0]
 
+// Emitted relative imports are URLs; bundler hooks resolve filesystem names.
+// Decode once so a literal percent sequence retains its filename spelling.
+function outputPath(source, importer, written) {
+  if (!importer || !isCompiled(cleanId(importer)) || !source.startsWith(".") || !/\.jsx?$/.test(source)) return source
+  let decoded
+  try { decoded = decodeURIComponent(source) } catch { return source }
+  if (decoded === source) return source
+  // Authored .js imports retain TypeScript's literal filename spelling,
+  // including when only a declaration file exists for the runtime module.
+  if (written(source, importer)) return source
+  return decoded
+}
+
+
 // Declaration sidecars are for type checkers. A *.ts entry glob can include
 // them beside the .vibe sources already selected for this build.
 function withoutSidecarEntries(input) {
@@ -247,7 +261,26 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     }
   }
 
+  const writtenImports = new Map()
+  function writtenOutput(source, importer) {
+    const file = backend.moduleDeclarationSource?.(cleanId(importer)) ?? cleanId(importer)
+    const selected = current?.projectOf?.(file) ?? backend.nearestProject(file) ?? project
+    const canonical = path => { try { return realpathSync(path) } catch { return resolve(path) } }
+    const from = canonical(file)
+    const text = readFileSync(file, "utf8")
+    let entry = writtenImports.get(from)
+    if (entry?.project !== selected || entry.text !== text) {
+      const result = backend.projectImports({ root: backend.packageRoot(selected), project: selected, compiler: compilerPath() })
+      entry = { project: selected, text, imports: new Set(result.imports.filter(item => canonical(item.importer) === from).map(item => cleanId(item.specifier))) }
+      writtenImports.set(from, entry)
+    }
+    const written = entry.imports.has(source)
+    debug(`relative output name from ${file}: ${written ? "written import" : "rewritten import"}`)
+    return written
+  }
+
   function close() {
+    writtenImports.clear()
     const pending = modules
     modules = undefined
     current = undefined
@@ -282,12 +315,14 @@ export const unplugin = createUnplugin((options = {}, meta) => {
   }
 
   function resolveFrom(source, importer, directory) {
-    const path = cleanId(source)
-    const query = source.slice(path.length)
+    const original = cleanId(source)
+    const query = source.slice(original.length)
+    const path = outputPath(original, importer, writtenOutput)
     // An absolute id is resolved; webpack sends each result back through this hook.
     if (isAbsolute(path) || (importer && !path.startsWith("."))) return
     const base = directory || (importer ? dirname(cleanId(importer)) : root || process.cwd())
     const target = resolve(base, path)
+    if (path !== original && existsSync(target)) return target + query
     // Resolve .vibe here too, so esbuild loads every .vibe module in one namespace.
     if (path.endsWith(".vibe")) return existsSync(target) ? target + query : undefined
     // TypeScript resolves `./x` to `x.vibe` when there is no `x.ts` or `x.tsx`.
@@ -430,7 +465,13 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         build.onDispose?.(close)
         build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibe(?:\?.*)?$/ }, (args) => {
           const id = resolveFrom(args.path, args.kind === "entry-point" ? undefined : args.importer, args.resolveDir)
-          if (id === undefined) return
+          if (id === undefined) {
+            const path = outputPath(args.path, args.importer, writtenOutput)
+            if (path !== args.path) return build.resolve(path, {
+              importer: args.importer, resolveDir: args.resolveDir, kind: args.kind, namespace: "file"
+            })
+            return
+          }
           // Without this, esbuild keeps every .vibe module of a package that declares
           // none has side effects, and tree shaking drops nothing it imports.
           const sideEffects = sideEffectsOf(cleanId(id))

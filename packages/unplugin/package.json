@@ -98,7 +98,8 @@
     "rolldown": "1.2.13",
     "rollup": "4.64.5",
     "vite": "8.3.4",
-    "webpack": "5.111.1"
+    "webpack": "5.111.1",
+    "vite7": "npm:vite@7.3.6"
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1"
