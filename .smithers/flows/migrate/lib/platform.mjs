@@ -471,7 +471,10 @@ export function splitBatchPlatform(root, files, ts, {
     const result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
     // Code that throws in plain code reports EK0401 in a .vibe module; a body
     // keeps it TypeScript, the 2026-10-31 ruling's "ts module using module syntax".
-    const throwing = (text) => throwBodies ? splitPlatformToModule(text, file, ts, { throws: true, platform: moduleBodies, reexports: moduleBodies }) : null
+    // An export the body holds is re-exported: its `x.vibe.throwing.d.ts`
+    // ships with the package and joins no `exports` entry, and the module's
+    // declarations keep its names, types and documentation.
+    const throwing = (text) => throwBodies ? splitPlatformToModule(text, file, ts, { throws: true, platform: moduleBodies, reexports: true }) : null
     if (!result) {
       const body = throwing(read(file))
       if (body?.refused) refused.push(body.refused)

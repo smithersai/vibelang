@@ -5,6 +5,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
+import { compareApiIdentity } from "../../../../scripts/api-identity.mjs"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
 import { canonicalize } from "../lib/declarations.mjs"
 import { splitBatchPlatform, splitPlatformToModule } from "../lib/platform.mjs"
@@ -118,12 +119,21 @@ test("the batch split moves plain throws by default, beside a platform sibling t
   assert.match(both.files["x.platform.ts"], /sep/)
   assert.match(both.files["x.ts"], /^module throwing \{$/m)
   assert.doesNotMatch(both.files["x.ts"], /node:path/)
-  // An exported throw would publish the body's declaration file: only with platformModuleBodies.
+  // An exported throw moves into the body and the module re-exports it; the
+  // body's declaration file ships with the package, with or without platformModuleBodies.
   const exported = `export function check(s: string): string { if (!s) throw new Error("x"); return s }\nexport const k = 1\n`
   const off = run(exported)
-  assert.equal(off.files["x.ts"], exported)
-  assert.match(off.result.refused[0], /check would be declared by `module throwing`, a new public declaration file/)
+  assert.deepEqual(off.result.refused, [])
+  assert.match(off.files["x.ts"], /^export \{ check \} from throwing$/m)
   assert.match(run(exported, { moduleBodies: true }).files["x.ts"], /^export \{ check \} from throwing$/m)
+  // Smithers' agent/integrations OAuthToken: exported builders that throw on bad input, beside constants.
+  const oauth = `/** Seconds of clock skew a token tolerates. */\nexport const DEFAULT_SKEW = 30\n/** The token endpoint of an issuer. */\nexport const resolveEndpoint = (issuer: string): string => {\n  if (!issuer.startsWith("https://")) throw new Error("issuer must be https")\n  return issuer + "/token"\n}\nexport const build = (issuer: string, skew = DEFAULT_SKEW): { readonly endpoint: string; readonly skew: number } => ({ endpoint: resolveEndpoint(issuer), skew })\n`
+  const token = run(oauth)
+  assert.deepEqual(token.result.refused, [])
+  assert.deepEqual(token.result.splits[0].throwing, ["resolveEndpoint"])
+  assert.match(token.files["x.ts"], /^export const build = /m)
+  assert.match(token.files["x.ts"], /^export \{ [^}]*resolveEndpoint[^}]* \} from throwing$/m)
+  assert.match(token.files["x.ts"], /^export const DEFAULT_SKEW = 30$/m)
   // A throw body takes no platform code unless platformModuleBodies asks for it.
   const dynamic = `export const read = async (p: string) => (await import("node:fs/promises")).readFile(p)\n${orchestration}`
   const plainOnly = run(dynamic)
@@ -193,6 +203,10 @@ test("a module whose throwing helpers moved compiles, runs and declares what the
         // An exported helper is declared by the body, as by a sibling .ts, and re-exported.
         assert.match(readFileSync(join(dir, "vibe/out/x.d.ts"), "utf8"), /export \{ check \} from "\.\/x\.vibe\.throwing\.js"/)
         assert.ok(existsSync(join(dir, "vibe/out/x.vibe.throwing.d.ts")))
+        // The API identity gate compares the module's published declarations unweakened.
+        for (const side of ["ts", "vibe"]) writeFileSync(join(dir, side, "out/package.json"), '{"types":"x.d.ts"}')
+        const api = compareApiIdentity(ts, join(dir, "ts/out"), join(dir, "vibe/out"), { compilerOptions: { types: [] } })
+        assert.ok(api.comparisonComplete && api.identical, JSON.stringify(api) + "\n" + result.module)
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
