@@ -1,0 +1,1 @@
+{"private":true,"type":"module","imports":{"#vibelang/emitted/counter":{"vibelang-source":"./counter.vibe","types":"./counter.vibe","default":"./emitted/counter.js"}}}

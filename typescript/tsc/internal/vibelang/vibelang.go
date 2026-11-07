@@ -16,6 +16,7 @@ import (
 )
 
 func init() {
+	compiler.RegisterScriptTransformerHook(newEmittedRouteRewriter) // before the lowering (emitted_routes.go)
 	compiler.RegisterScriptTransformerHook(newLowering)
 	compiler.RegisterDirectiveExemptSource(diagnosticSource)
 	compiler.RegisterImplicitImportHook(implicitRuntimeImport)

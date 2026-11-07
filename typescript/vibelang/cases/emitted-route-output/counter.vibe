@@ -1,0 +1,8 @@
+// The routed module. Its state is shared only when every importer loads
+// this module's own output.
+export const state = { count: 0 }
+
+export function bump(): number {
+  state.count += 1
+  return state.count
+}
