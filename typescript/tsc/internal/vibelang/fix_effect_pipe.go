@@ -185,7 +185,7 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	// Request setters were proven canonical and their arguments stable above.
 	// They can keep the data-first form without changing construction order.
 	if !requestPipeline && pipeStagesNeedCapture(c, stages) {
-		return capturedEffectPipe(file, call)
+		return capturedEffectPipe(c, file, call)
 	}
 	var edits []sourceEdit
 	open, close := "", ""
@@ -366,14 +366,22 @@ func stageReturnsProgram(c *checker.Checker, stage *ast.Node) bool {
 // capturedEffectPipe keeps JavaScript's call-argument evaluation order and
 // its extraction of stage functions. An immediately called plain arrow captures
 // them at the original construction site, without delaying them into an Effect.
-func capturedEffectPipe(file *ast.SourceFile, call *ast.Node) *formRewrite {
-	return capturedEffectPipeWithEdits(file, call, nil)
+func capturedEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
+	return capturedEffectPipeChecked(c, file, call, nil)
 }
 
 // capturedEffectPipeWithEdits carries already planned child changes through the
 // receiver and stage text copied by the capture. The outer replacement consumes
 // these edits; applying their old offsets afterwards would corrupt that text.
 func capturedEffectPipeWithEdits(file *ast.SourceFile, call *ast.Node, edits []sourceEdit) *formRewrite {
+	return capturedEffectPipeChecked(nil, file, call, edits)
+}
+
+// capturedEffectPipeChecked is capturedEffectPipeWithEdits that, given c,
+// applies each deferrable library stage (pipeStageDeferrable) data-first in
+// place instead of capturing it: built later it is the same stage, and the
+// program it receives types its callback.
+func capturedEffectPipeChecked(c *checker.Checker, file *ast.SourceFile, call *ast.Node, edits []sourceEdit) *formRewrite {
 	receiver := call.Expression().Expression()
 	kept := [][2]int{{nodeStart(file, receiver), receiver.End()}}
 	for _, stage := range call.Arguments() {
@@ -410,19 +418,149 @@ func capturedEffectPipeWithEdits(file *ast.SourceFile, call *ast.Node, edits []s
 	text.WriteString("(() => {\n" + indent + "  const " + program + " = " + editedText(receiver) + ";\n")
 	var stages []string
 	for i, stage := range call.Arguments() {
+		if body, ok := deferredPipeStage(c, file, stage, edits); ok {
+			stages = append(stages, body)
+			continue
+		}
 		name := names.freshName("pipe$stage" + strconv.Itoa(i))
 		text.WriteString(indent + "  const " + name + " = " + editedText(stage) + ";\n")
-		stages = append(stages, name)
+		stages = append(stages, name+"(%)")
 	}
 	text.WriteString(indent + "  return " + program)
 	for _, stage := range stages {
-		text.WriteString(" |> " + stage + "(%)")
+		text.WriteString(" |> " + stage)
 	}
 	text.WriteString(";\n" + indent + "})()")
 	return &formRewrite{
 		edits:       []sourceEdit{{nodeStart(file, call), call.End(), text.String()}},
 		description: "the pipeline with |> and captured stages",
 	}
+}
+
+// deferredPipeStage returns stage as a pipe body, data-first with the topic,
+// when the capture may build it in place: c is given, the stage is
+// deferrable and no planned edit falls inside it.
+func deferredPipeStage(c *checker.Checker, file *ast.SourceFile, stage *ast.Node, edits []sourceEdit) (string, bool) {
+	if c == nil || !pipeStageDeferrable(c, stage) {
+		return "", false
+	}
+	start, end := nodeStart(file, stage), stage.End()
+	if slices.ContainsFunc(edits, func(edit sourceEdit) bool { return edit.end > start && edit.start < end }) {
+		return "", false
+	}
+	stageEdits, why := pipeStageEdits(c, file, stage)
+	if why != "" {
+		return "", false
+	}
+	var relative []sourceEdit
+	for _, edit := range stageEdits {
+		if edit.start < start || edit.end > end {
+			return "", false
+		}
+		relative = append(relative, sourceEdit{edit.start - start, edit.end - start, edit.text})
+	}
+	return applyEdits(file.Text()[start:end], joinEditsAt(relative)), true
+}
+
+// pipeStageDeferrable reports whether stage, an Effect library stage, builds
+// nothing observable: its callee is a library constructor, not a runner, as
+// pipeStagesNeedCapture says, it takes the program first, and each argument evaluates later to the
+// same value (pipeArgumentDeferrable). Captured alone, a stage such as
+// Effect.mapError((e) => …) had no program to type its callback, and e was
+// unknown.
+func pipeStageDeferrable(c *checker.Checker, stage *ast.Node) bool {
+	if stage != ast.SkipParentheses(stage) {
+		return false
+	}
+	callee := stage
+	if ast.IsCallExpression(stage) {
+		callee = stage.Expression()
+	}
+	module, name := effectMember(c, callee)
+	if module == "" || strings.HasPrefix(name, "run") {
+		return false
+	}
+	if !ast.IsCallExpression(stage) {
+		return ast.IsPropertyAccessExpression(stage) || ast.IsIdentifier(stage)
+	}
+	if stage.TypeArguments() != nil || ast.IsOptionalChain(stage) || !isDataFirstStage(c, stage) {
+		return false
+	}
+	return !slices.ContainsFunc(stage.Arguments(), func(argument *ast.Node) bool { return !pipeArgumentDeferrable(c, argument) })
+}
+
+// pipeArgumentDeferrable reports whether evaluating node later gives the same
+// value and runs no code: a function, a literal, an object or array of such
+// values, an immutable binding, an Effect library member, or an Effect library
+// call with such arguments.
+func pipeArgumentDeferrable(c *checker.Checker, node *ast.Node) bool {
+	node = ast.SkipParentheses(node)
+	switch {
+	case ast.IsArrowFunction(node) || ast.IsFunctionExpression(node):
+		return true
+	case ast.IsStringLiteral(node) || ast.IsNumericLiteral(node) || ast.IsBigIntLiteral(node) || ast.IsNoSubstitutionTemplateLiteral(node):
+		return true
+	case node.Kind == ast.KindTrueKeyword || node.Kind == ast.KindFalseKeyword || node.Kind == ast.KindNullKeyword:
+		return true
+	case ast.IsAsExpression(node) || ast.IsSatisfiesExpression(node):
+		return pipeArgumentDeferrable(c, node.Expression())
+	case ast.IsObjectLiteralExpression(node):
+		for _, property := range node.AsObjectLiteralExpression().Properties.Nodes {
+			switch property.Kind {
+			case ast.KindPropertyAssignment:
+				if ast.IsComputedPropertyName(property.Name()) || !pipeArgumentDeferrable(c, property.Initializer()) {
+					return false
+				}
+			case ast.KindShorthandPropertyAssignment:
+				if !pipeArgumentDeferrable(c, property.Name()) {
+					return false
+				}
+			case ast.KindMethodDeclaration:
+				if ast.IsComputedPropertyName(property.Name()) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	case ast.IsArrayLiteralExpression(node):
+		for _, element := range node.AsArrayLiteralExpression().Elements.Nodes {
+			if ast.IsSpreadElement(element) || !pipeArgumentDeferrable(c, element) {
+				return false
+			}
+		}
+		return true
+	case ast.IsIdentifier(node):
+		return immutableBinding(c, node)
+	case ast.IsPropertyAccessExpression(node):
+		module, _ := effectMember(c, node)
+		return module != ""
+	case ast.IsCallExpression(node):
+		module, name := effectMember(c, node.Expression())
+		if module == "" || strings.HasPrefix(name, "run") || node.QuestionDotToken() != nil {
+			return false
+		}
+		return !slices.ContainsFunc(node.Arguments(), func(argument *ast.Node) bool { return !pipeArgumentDeferrable(c, argument) })
+	}
+	return false
+}
+
+// immutableBinding reports whether node names a binding no code can change:
+// an import, a function, a class, an enum or a const, or undefined.
+func immutableBinding(c *checker.Checker, node *ast.Node) bool {
+	symbol := c.GetSymbolAtLocation(node)
+	if symbol == nil {
+		return false
+	}
+	if symbol.Flags()&(ast.SymbolFlagsAlias|ast.SymbolFlagsFunction|ast.SymbolFlagsClass|ast.SymbolFlagsEnum) != 0 {
+		return true
+	}
+	if node.Text() == "undefined" && len(symbol.Declarations()) == 0 {
+		return true
+	}
+	declaration := symbol.ValueDeclaration()
+	return declaration != nil && ast.IsVariableDeclaration(declaration) && ast.GetCombinedNodeFlags(declaration)&ast.NodeFlagsConst != 0
 }
 
 // orderedEditRangesValid checks the source-coordinate ranges after edits at

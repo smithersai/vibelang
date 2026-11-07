@@ -435,7 +435,7 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 			if os.Getenv("VIBELANG_FIX_EDIT_TRACE") == "1" && len(nested) != 0 {
 				fmt.Fprintf(os.Stderr, "[fix-edit-plan] compose file=%s call=%d:%d nested=%d\n", file.FileName(), start, end, len(nested))
 			}
-			rewrite = capturedEffectPipeWithEdits(file, pipe, nested)
+			rewrite = capturedEffectPipeChecked(c, file, pipe, nested)
 			if !rewrite.fixable() {
 				return refuse("nested pipeline changes cannot retain their original source positions")
 			}
@@ -572,7 +572,7 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() {
 			block := sourceEdit{start, end, program}
 			if len(rewrite.edits) == 1 && rewrite.edits[0].start == nodeStart(file, pipe) && rewrite.edits[0].end == pipe.End() {
-				captured := capturedEffectPipeWithEdits(file, pipe, []sourceEdit{block})
+				captured := capturedEffectPipeChecked(c, file, pipe, []sourceEdit{block})
 				if !captured.fixable() {
 					return refuse("nested pipeline changes cannot retain their original source positions")
 				}

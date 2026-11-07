@@ -35,11 +35,15 @@ var generatorReceiverStages = map[string]string{
 	"custom":           `traced`,
 	"custom-span":      `traced, Effect.withSpan("named", attributes(name))`,
 	"map":              `Effect.map((value) => (value.length > 0 ? value : undefined))`,
+	// A custom stage captures the pipe; the library stages after it take the
+	// program first in place, so their callbacks keep its types.
+	"custom-flatmap": `traced, Effect.flatMap((value) => Effect.succeed(value.length > 0 ? value : undefined))`,
+	"custom-catch":   `traced, Effect.catch((error) => Effect.succeed(String(error)))`,
 }
 
 func generatorReceiverKeys() []string {
 	var keys []string
-	for _, stages := range []string{"span-call", "span-plain", "span-call-asvoid", "custom", "custom-span", "map"} {
+	for _, stages := range []string{"span-call", "span-plain", "span-call-asvoid", "custom", "custom-span", "map", "custom-flatmap", "custom-catch"} {
 		for _, form := range []string{"arrow", "block", "function"} {
 			keys = append(keys, stages+":"+form)
 		}
@@ -50,7 +54,7 @@ func generatorReceiverKeys() []string {
 func FuzzGeneratorPipeReceiverMigration(f *testing.F) {
 	startShortBudget(f)
 	keys := generatorReceiverKeys()
-	for _, key := range []string{"span-call:arrow", "span-call-asvoid:block", "custom-span:function", "span-plain:arrow", "map:block"} {
+	for _, key := range []string{"span-call:arrow", "span-call-asvoid:block", "custom-span:function", "span-plain:arrow", "map:block", "custom-flatmap:arrow", "custom-catch:function"} {
 		f.Add(key)
 	}
 	w := NewWorkspace(f)
