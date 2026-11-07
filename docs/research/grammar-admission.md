@@ -585,3 +585,15 @@ close (`tryParseTypeArgumentsInExpression`), but an Earley set keeps that
 reading alive, and a token it can scan blocks automatic semicolon insertion
 for the reading TypeScript keeps. A sentence with no derivation is read again
 without the instantiation alternatives of `MemberExpression`.
+
+The next sweep keyed three more programs into existing families and found one
+new form. A `readonly` method signature in a schema object-type alias is
+`admission:schema-readonly-method`: TypeScript rejects `readonly` on a method
+with TS1024, and the alias's `EK2109` for the method covers it. An untyped
+alias member with `=`, such as `{ id? = Missing }`, is TS1247 and joins
+`admission:schema-field-initializer`. An angle-bracket assertion and a type
+argument list hold an `EffectType` too, so `<A!E!>x` and `f<A!E!>` join
+`admission:effect-type-trailing-bang`.
+Type-literal `get` and `set` accessor signatures were TypeScript the lab had
+left out; TypeScript reads them with no line-break restriction after the
+keyword.

@@ -26,7 +26,8 @@ func TestGrammarAdmissionRelationalReadingDropsTypeArguments(t *testing.T) {
 // parameters (ClassExpression: class BindingIdentifier? TypeParameters?
 // ClassHeritage? { ClassBody }), a class field's definite assignment `!` on
 // the name's line (parsePropertyDeclaration), an exported import alias, a type parameter list's
-// trailing comma, and a relational `<` whose right operand starts a type operator, which
+// trailing comma, type-literal accessor signatures (parseTypeMember reads `get`
+// and `set` with no line-break rule), and a relational `<` whose right operand starts a type operator, which
 // TypeScript's rewound type-argument parse leaves to ASI.
 func TestGrammarAdmissionLabTypeScriptReadings(t *testing.T) {
 	for _, source := range []string{
@@ -47,6 +48,10 @@ func TestGrammarAdmissionLabTypeScriptReadings(t *testing.T) {
 		"export\nimport value = of ;",
 		"export import type Value = of;",
 		"const C = class < T , > { a ?\n: T } ;",
+		"type T = { get service ( ) };",
+		"type async = { get service\n( ) : void } ;",
+		"type T = { get\nsize(): number; set size(v: number) };",
+		"type T = { get: number; set(v: number): void };",
 		"function f<T,>(x: T) { return x; }",
 	} {
 		if mismatch, detail := grammarAdmissionMismatch(source); mismatch {
@@ -69,6 +74,8 @@ func TestGrammarAdmissionLabTypeScriptReadings(t *testing.T) {
 		"class C { a\n!: number }",
 		"class C { a?!: number }",
 		"x = class <T,,> {};",
+		"type T = { get size() { return 1; } };",
+		"type T = { set size() };",
 		"export import value from \"missing\";",
 	} {
 		toks := grammarLexSource(source)

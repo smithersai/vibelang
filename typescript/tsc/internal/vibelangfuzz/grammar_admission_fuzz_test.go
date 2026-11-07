@@ -249,6 +249,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-duplicate-readonly", "schema S { readonly readonly id : Missing }"},
 	{"schema-duplicate-readonly-alias", "schema S = { readonly readonly id: Missing };"},
 	{"schema-async-untyped-alias", "schema S = { async async\nid : Missing\n}"},
+	{"schema-readonly-method", "schema S = { readonly id ( ) }"},
+	{"schema-field-initializer-untyped-alias", "schema S = { id ? = Missing }"},
+	{"effect-type-assertion-trailing-bang", "x = <number ! string !> y;"},
+	{"native-type-accessor-signatures", "type T = { get size(): number; set size(v: number) };"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -362,14 +366,13 @@ func grammarPatternCombinator(word, before grammarToken) bool {
 
 // grammarSchemaFieldInitializer reports a field type followed by `=` in a
 // schema body. Field has no initializer, and an unresolved type's EK2109 covers
-// the native TS1247 rejection.
+// the native TS1247 rejection. In an object-type alias an untyped member's
+// `=` (`{ id? = Missing }`) is the same TS1247.
 func grammarSchemaFieldInitializer(ts []grammarToken) bool {
-	for i, tok := range ts {
-		if tok.text != "schema" || i+2 >= len(ts) || ts[i+1].kind != 'w' || ts[i+2].text != "{" {
-			continue
-		}
+	return grammarSchemaBodies(ts, func(open int, alias bool) bool {
 		depth, typed := 0, false
-		for _, next := range ts[i+2:] {
+		for k, next := range ts[open:] {
+			k += open
 			switch next.text {
 			case "{", "(", "[":
 				depth++
@@ -389,6 +392,44 @@ func grammarSchemaFieldInitializer(ts []grammarToken) bool {
 				typed = false
 			case typed && next.text == "=":
 				return true
+			case alias && next.text == "=" && k >= 2 && (ts[k-1].text == "?" && ts[k-2].kind == 'w' || ts[k-1].kind == 'w' && (ts[k-2].text == "{" || ts[k-2].text == ";" || ts[k-2].text == "," || ts[k-1].nl)):
+				return true
+			}
+		}
+		return false
+	})
+}
+
+// An angle-bracket assertion and a type argument list hold a Type, so
+// `<A!E!>x` and `f<A!E!>` end their EffectType in a dangling bang as
+// `type T = A!E!;` does. A relational `<` here is a syntax error anyway.
+func grammarAssertionEffectTrailingBang(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.text != "<" {
+			continue
+		}
+		depth, angle, last := 0, 1, -1
+		for k := i + 1; k < len(ts) && depth >= 0 && angle > 0 && ts[k].text != ";"; k++ {
+			switch ts[k].text {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				depth--
+			case "<":
+				if depth == 0 {
+					angle++
+				}
+			case ">":
+				if depth == 0 {
+					angle--
+				}
+			case "!":
+				if depth == 0 && angle == 1 {
+					if last >= 0 && last != k-1 && k+1 < len(ts) && ts[k+1].text == ">" {
+						return true
+					}
+					last = k
+				}
 			}
 		}
 	}
@@ -944,7 +985,7 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
-	if grammarParenthesizedEffectTrailingBang(ts) {
+	if grammarParenthesizedEffectTrailingBang(ts) || grammarAssertionEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
 	}
 	if grammarThrowAssertionLookahead(ts) {
@@ -961,6 +1002,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarSchemaDuplicateReadonlyField(ts) {
 		return "admission:schema-duplicate-readonly"
+	}
+	if grammarSchemaReadonlyMethod(ts) {
+		return "admission:schema-readonly-method"
 	}
 	if grammarInvalidImportMeta(ts) {
 		return "admission:import-meta-property"

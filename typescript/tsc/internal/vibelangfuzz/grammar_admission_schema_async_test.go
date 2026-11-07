@@ -38,6 +38,48 @@ func grammarSchemaModifiedField(ts []grammarToken, modifier string) bool {
 }
 
 func grammarSchemaRepeatedModifierField(ts []grammarToken, modifier string, need int) bool {
+	return grammarSchemaBodies(ts, func(open int, alias bool) bool {
+		return grammarSchemaBodyModifier(ts, open, modifier, need, alias)
+	})
+}
+
+// A readonly method signature in an object-type alias is native TS1024
+// ('readonly' only on a property or index signature); schema mapping reports
+// EK2109 for the method and covers it.
+func grammarSchemaReadonlyMethod(ts []grammarToken) bool {
+	return grammarSchemaBodies(ts, func(open int, alias bool) bool {
+		if !alias {
+			return false
+		}
+		depth := 1
+		for k := open + 1; k < len(ts) && depth > 0; k++ {
+			start := k == open+1 || ts[k].nl || ts[k-1].text == ";" || ts[k-1].text == ","
+			if depth == 1 && start && ts[k].text == "readonly" && k+2 < len(ts) && !ts[k+1].nl {
+				at := k + 1
+				if ts[at].kind == 'w' || ts[at].kind == 's' || ts[at].kind == 'n' {
+					at++
+					if ts[at].text == "?" {
+						at++
+					}
+					if at < len(ts) && (ts[at].text == "(" || ts[at].text == "<") {
+						return true
+					}
+				}
+			}
+			switch ts[k].text {
+			case "{", "(", "[":
+				depth++
+			case "}", ")", "]":
+				depth--
+			}
+		}
+		return false
+	})
+}
+
+// grammarSchemaBodies calls body with each schema body's opening brace: a
+// named body, or each top-level object type of an alias.
+func grammarSchemaBodies(ts []grammarToken, body func(open int, alias bool) bool) bool {
 	for i, tok := range ts {
 		if tok.kind != 'w' || tok.text != "schema" || i+2 >= len(ts) ||
 			ts[i+1].kind != 'w' || ts[i+1].nl ||
@@ -49,7 +91,7 @@ func grammarSchemaRepeatedModifierField(ts []grammarToken, modifier string, need
 			continue // Schema-error members retain their separate static rejection.
 		}
 		if ts[name+1].text != "=" {
-			if ts[name+1].text == "{" && grammarSchemaBodyModifier(ts, name+1, modifier, need, false) {
+			if ts[name+1].text == "{" && body(name+1, false) {
 				return true
 			}
 			continue
@@ -64,7 +106,7 @@ func grammarSchemaRepeatedModifierField(ts []grammarToken, modifier string, need
 			}
 			switch ts[k].text {
 			case "{":
-				if depth == 0 && grammarSchemaBodyModifier(ts, k, modifier, need, true) {
+				if depth == 0 && body(k, true) {
 					return true
 				}
 				depth++

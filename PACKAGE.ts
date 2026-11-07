@@ -149,6 +149,8 @@ const specTests = [
   "TestGrammarAdmissionSchemaJSDocRegression",
   "TestGrammarAdmissionOptionalTuples",
   "TestGrammarAdmissionDynamicImport",
+  "TestGrammarAdmissionSchemaAliasMemberKeys",
+  "TestGrammarAdmissionSchemaAliasMemberRegression",
   "TestGrammarAdmissionSchemaDuplicateReadonlyKeys",
   "TestGrammarAdmissionSchemaAsyncUntypedAliasKeys",
   "TestGrammarAdmissionSchemaDuplicateReadonlyRegression",
