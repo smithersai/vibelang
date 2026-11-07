@@ -11,10 +11,24 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
+const implicitDefectBridgeQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+
+func TestImplicitGeneratorDefectBridgeQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("007-tooling.md"), implicitDefectBridgeQuote) {
+		t.Fatal("missing preserving quick-fix rule")
+	}
+	if !strings.Contains(SpecText("007-tooling.md"), "The inline catch mapper provably cannot throw and preserves the exact thrown value as a defect.") {
+		t.Fatal("missing native defect identity rule")
+	}
+}
+
 // Every generated synchronous defect bridge compiles with zero
 // diagnostics and retains the stock Effect Exit (proxy ruling, 2026-11-04).
 func FuzzImplicitGeneratorDefectBridge(f *testing.F) {
 	startShortBudget(f)
+	if !strings.Contains(SpecText("007-tooling.md"), implicitDefectBridgeQuote) {
+		f.Fatal("missing preserving quick-fix rule")
+	}
 	for mode := uint8(0); mode < 3; mode++ {
 		for kind := uint8(0); kind < 45; kind++ {
 			f.Add(mode, kind, false)
@@ -69,7 +83,9 @@ func FuzzImplicitGeneratorDefectBridge(f *testing.F) {
 				t.Fatalf("stock diagnostics: %v", SortedKeys(Keys(stock.Dir, stock.Diagnostics)))
 			}
 			sourcePrefix := prefix
-			if mode%3 == 1 { sourcePrefix = strings.Replace(prefix, "import { Effect } from \"effect\"\n", "", 1) }
+			if mode%3 == 1 {
+				sourcePrefix = strings.Replace(prefix, "import { Effect } from \"effect\"\n", "", 1)
+			}
 			files := map[string]string{"main.vibe": sourcePrefix + sourceBody, "foreign.ts": foreign, "runner.ts": runner}
 			before := toolsCompile(t, w, target, files)
 			defer before.Remove()
@@ -87,7 +103,7 @@ func FuzzImplicitGeneratorDefectBridge(f *testing.F) {
 			}
 			text := fixed["main.vibe"]
 			hasBridge := strings.Contains(text, "catch: (e) => e")
-			requiredBridge := mode%3 == 2 || !safe && kind/5%3 == 0
+			requiredBridge := mode%3 == 2 || !safe
 			forbiddenBridge := safe && mode%3 != 2
 			if requiredBridge && !hasBridge || forbiddenBridge && hasBridge || strings.Count(text, "effect/Function") != strings.Count(prefix, "effect/Function") {
 				t.Fatalf("missing inline bridge or changed imports:\n%s", text)
@@ -97,10 +113,23 @@ func FuzzImplicitGeneratorDefectBridge(f *testing.F) {
 			if len(after.Diagnostics) != 0 {
 				t.Fatalf("generated bridge diagnostics: %v\n%s", SortedKeys(Keys(after.Dir, after.Diagnostics)), text)
 			}
-			if mismatch := toolsContractMismatch(t,w,stock,after,false); mismatch != "" { t.Fatalf("native contract changed: %s",mismatch) }
+			if mismatch := toolsContractMismatch(t, w, stock, after, false); mismatch != "" {
+				t.Fatalf("native contract changed: %s", mismatch)
+			}
 			was, is := node.Run(stock, "out/runner.js", "main"), node.Run(after, "out/runner.js", "main")
 			if toolsInvalidOutcome(was) || toolsInvalidOutcome(is) || was.Kind != is.Kind || string(was.Value) != string(is.Value) {
 				t.Fatalf("Exit changed: stock=%+v fixed=%+v\n%s", was, is, text)
+			}
+			againConfig := toolsConfig(w, after.Dir)
+			again := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), againConfig, vibelang.FixOptions{})
+			if again.Err != nil || len(again.Refused) != 0 {
+				t.Fatalf("second fix: %v; refused: %v", again.Err, again.Refused)
+			}
+			for name, file := range again.Files {
+				relative := strings.TrimPrefix(name.AsString(), filepath.ToSlash(after.Dir)+"/")
+				if prior, ok := fixed[relative]; ok && file.Text != prior {
+					t.Fatalf("bridge changed on the second fix: %s", relative)
+				}
 			}
 		})
 	})

@@ -1348,6 +1348,18 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				s.pipes = append(s.pipes, node)
 			}
 			markPipeCalls(node, operands)
+		case ast.IsNewExpression(node) && effectCode == 0 && own && throwing == nil && needsGeneratorDefectBridge(c, node):
+			if foreignInvocationHasDirectEval(node) {
+				s.why = "a throwing constructor has direct eval in its operands"
+				return true
+			}
+			if holdsYield(node) {
+				s.why = "a throwing constructor has a yield* in its operands"
+				return true
+			}
+			s.throwing = append(s.throwing, node)
+			throwing = node
+			defer func() { throwing = nil }()
 		case isInvocation(node) && !operands[node] && effectCode == 0:
 			if why := effectGenCallMeaning(c, a, file, node, own, callback); why != "" {
 				s.why = why
