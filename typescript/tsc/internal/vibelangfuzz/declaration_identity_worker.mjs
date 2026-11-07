@@ -21,10 +21,11 @@ for await (const line of input){
  let request
  try{
   request=JSON.parse(line)
+  const started=process.cpuUsage(), wall=performance.now()
   const result=compareApiIdentity(ts,request.baseline,request.current,{dependencyDiagnosticsCache,dependencyDocuments,lazyAmbientDocumentation:true})
   process.stdout.write(JSON.stringify(result.comparisonComplete===false
-   ?{id:request.id,error:formatResult(result),stats:stats()}
-   :{id:request.id,diff:result.identical?"":formatResult(result),stats:stats()})+"\n")
+   ?{id:request.id,error:formatResult(result),stats:{...stats(),cpu:process.cpuUsage(started),wallMs:performance.now()-wall}}
+   :{id:request.id,diff:result.identical?"":formatResult(result),stats:{...stats(),cpu:process.cpuUsage(started),wallMs:performance.now()-wall}})+"\n")
  }catch(error){
   process.stdout.write(JSON.stringify({id:request?.id,error:String(error?.stack??error),stats:stats()})+"\n")
  }

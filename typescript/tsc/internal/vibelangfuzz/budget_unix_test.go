@@ -46,6 +46,9 @@ func startShortBudget(f *testing.F) {
 
 func enforceFuzzBudget(t testing.TB, limit time.Duration) {
 	t.Helper()
+	var startSelf, startChildren syscall.Rusage
+	_ = syscall.Getrusage(syscall.RUSAGE_SELF, &startSelf)
+	_ = syscall.Getrusage(syscall.RUSAGE_CHILDREN, &startChildren)
 	start, err := fuzzCPU()
 	if err != nil {
 		t.Fatal(err)
@@ -56,6 +59,13 @@ func enforceFuzzBudget(t testing.TB, limit time.Duration) {
 			t.Fatal(err)
 		}
 		used := end - start
+		var endSelf, endChildren syscall.Rusage
+		_ = syscall.Getrusage(syscall.RUSAGE_SELF, &endSelf)
+		_ = syscall.Getrusage(syscall.RUSAGE_CHILDREN, &endChildren)
+		seconds := func(r syscall.Rusage) float64 {
+			return float64(r.Utime.Sec+r.Stime.Sec) + float64(r.Utime.Usec+r.Stime.Usec)/1e6
+		}
+		declarationCostRecord(t.Name(), "cpu", map[string]any{"self_cpu_seconds": seconds(endSelf) - seconds(startSelf), "children_cpu_seconds": seconds(endChildren) - seconds(startChildren), "limit_seconds": limit.Seconds()})
 		if path := os.Getenv("VIBELANG_FUZZ_BUDGET_LOG"); path != "" {
 			file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 			if err == nil {

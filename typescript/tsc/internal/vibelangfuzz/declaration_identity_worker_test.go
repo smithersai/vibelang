@@ -69,6 +69,7 @@ func (p *declarationIdentityProbePool) Compare(ctx context.Context, api, before,
 		return "", ctx.Err()
 	case worker := <-p.slots:
 		defer func() { p.slots <- worker }()
+		worker.label = p.label
 		return worker.compare(ctx, before, after)
 	}
 }
@@ -93,6 +94,7 @@ type declarationIdentityWorker struct {
 	documentReads, documentHits, documentResets, lastDocumentReads, lastDocumentHits, lastDocumentResets, peakDocumentText, peakRSS int64
 	parent                                                                                                                          context.Context
 	api                                                                                                                             string
+	label                                                                                                                           string
 	cmd                                                                                                                             *exec.Cmd
 	input                                                                                                                           io.WriteCloser
 	scanner                                                                                                                         *bufio.Scanner
@@ -178,6 +180,8 @@ func (w *declarationIdentityWorker) compare(ctx context.Context, before, after s
 			Lookups, Hits int64
 			Entries       int
 			RSS           int64
+			CPU           struct{ User, System int64 }
+			WallMs        float64
 			Documents     struct{ Reads, Hits, Resets, TextBytes int64 }
 		}
 	}
@@ -220,6 +224,7 @@ func (w *declarationIdentityWorker) compare(ctx context.Context, before, after s
 		w.lastDocumentReads, w.lastDocumentHits, w.lastDocumentResets = result.reply.Stats.Documents.Reads, result.reply.Stats.Documents.Hits, result.reply.Stats.Documents.Resets
 		w.peakDocumentText = max(w.peakDocumentText, result.reply.Stats.Documents.TextBytes)
 		w.peakRSS = max(w.peakRSS, result.reply.Stats.RSS)
+		declarationCostRecord(w.label, "worker", map[string]any{"probe": w.serial, "cpu_seconds": float64(result.reply.Stats.CPU.User+result.reply.Stats.CPU.System) / 1e6, "wall_seconds": result.reply.Stats.WallMs / 1000, "rss_bytes": result.reply.Stats.RSS, "cache_hits": result.reply.Stats.Hits, "cache_lookups": result.reply.Stats.Lookups})
 		w.uses++
 		// Release V8/compiler state on a fixed request bound, without dropping or
 		// retrying an input. The next distinct request starts a fresh worker.
