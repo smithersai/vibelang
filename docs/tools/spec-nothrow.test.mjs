@@ -276,6 +276,13 @@ test("user docs, the cheat sheet and SKILL.md say plain VibeLang code never thro
   const expected = read("docs/user/src/error-management/014-expected-errors.md")
   assert.doesNotMatch(expected, /A plain function may throw, and its thrown type is inferred/)
   assert.match(expected, /A plain function can't throw: a `throw` there is `EK0401`/)
+  const unexpected = read("docs/user/src/error-management/015-unexpected-errors.md")
+  assert.doesNotMatch(unexpected, /In a plain or async function, `throw` is JavaScript's/)
+  assert.match(unexpected, /A `throw` in a plain function is `EK0401`/)
+  const fallback = read("docs/user/src/error-management/016-fallback.md")
+  assert.doesNotMatch(fallback, /a plain arrow returns a success value, where a `throw` is a defect/)
+  assert.match(fallback, /A `throw` in a plain handler is `EK0401`; write `catch effect` for a typed failure/)
+
   assert.match(read("docs/user/src/vibelang-features/115-cheat-sheet.md"), /In a plain function it is `EK0401`: make the function `effect`, or move the code to a `\.ts` file\. In an `async` function it rejects the Promise\./)
   assert.doesNotMatch(read("docs/user/src/getting-started/005-creating-effects.md"), /VibeLang infers throws from non-effectful plain `\.vibe` functions/)
   assertPublishedNoThrowNote(read("docs/user/src/setup/release-notes.md"))

@@ -147,7 +147,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Getting Started](../013-getting-started.md) | 1,300 |
 | **Error Management** | **24,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 12,000 |
-| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,500 |
+| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,600 |
 | [Fallback](../error-management/016-fallback.md) | 2,900 |
 | [Matching](../error-management/017-matching.md) | 790 |
 | [Retrying](../error-management/018-retrying.md) | 780 |
