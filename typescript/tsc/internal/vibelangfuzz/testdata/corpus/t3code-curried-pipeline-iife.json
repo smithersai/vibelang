@@ -1,0 +1,4 @@
+{
+  "original": "import * as Effect from \"effect/Effect\";\nconst descriptor = Effect.fnUntraced(function* () { return 1; });\nexport const factory = () => descriptor().pipe(Effect.withSpan(\"check\"));\n",
+  "native": "import * as Effect from \"effect/Effect\";\nconst descriptor = effect () => { return 1 }\nexport const factory = () => (() => {\n  const program = descriptor()\n  const stage = withSpan(\"check\")\n  return program |> stage(%)\n})()\n"
+}
