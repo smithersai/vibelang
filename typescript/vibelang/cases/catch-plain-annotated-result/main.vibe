@@ -1,0 +1,14 @@
+// expect-result: [0,7,8,9,10,11,12]
+import { Effect as E } from "effect"
+type Job = E.Effect<number>
+export effect function main() {
+  let runs = 0
+  const a = E.fail("x") catch function (): E.Effect<number> { return E.succeed(7) }
+  const b = E.fail("x") catch (): E.Effect<number> => E.sync(() => { runs++; return 8 })
+  const c = E.fail("x") catch ((e: string): number!! => E.succeed(e.length + 8))
+  const d = E.fail("x") catch function recover(): Job { return E.succeed(10) }
+  const f = E.fail("x") catch (): number => 11
+  const g = E.fail("x") catch function (): number { return 12 }
+  const before = runs
+  return [before, try a, try b, try c, try d, f, g]
+}

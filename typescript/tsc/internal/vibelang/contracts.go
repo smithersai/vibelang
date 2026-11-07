@@ -154,7 +154,23 @@ func inferredReturnInference(c *checker.Checker, fn *ast.Node, t *checker.Type) 
 	if hasInferredReturn(fn) {
 		return nil
 	}
+	if effect := plainCatchHandlerContract(c, fn, t); effect != nil {
+		return effect
+	}
 	return t
+}
+
+// plainCatchHandlerContract gives the Effect type a plain catch handler with
+// return type t has, or nil for any other function. The checker types a plain
+// handler as an Effect function whose body runs nothing (markedForm), but its
+// written return type is what the function itself returns, as on any plain
+// function (VIP-1, VIP-5): x catch (): T => v is
+// Effect.catch(x, () => Effect.succeed(v)), so the Effect succeeds with T.
+func plainCatchHandlerContract(c *checker.Checker, fn *ast.Node, t *checker.Type) *checker.Type {
+	if t == nil || !isLowerable(fn) || !isPlainCatchHandler(fn) || hasInferredReturn(fn) {
+		return nil
+	}
+	return analyzerFor(c).effectTypeOf(fn, t)
 }
 
 // unwrappedReturnType checks an effect function's returned values against
@@ -179,6 +195,9 @@ func unwrappedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *che
 func annotatedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *checker.Type {
 	if !isLowerable(fn) {
 		return t
+	}
+	if effect := plainCatchHandlerContract(c, fn, t); effect != nil {
+		return effect
 	}
 	a := analyzerFor(c)
 	k := a.contractOf(fn)

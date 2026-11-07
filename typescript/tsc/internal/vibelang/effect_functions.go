@@ -76,6 +76,13 @@ func isCatchHandlerOf(fn *ast.Node) bool {
 	return call != nil && call.Arguments()[1] == fn
 }
 
+// isPlainCatchHandler reports whether fn is a catch handler without the
+// effect modifier in effect code: a plain function the checker types as an
+// Effect function that runs nothing.
+func isPlainCatchHandler(fn *ast.Node) bool {
+	return isCatchHandlerOf(fn) && !isMarkedEffect(fn) && markedForm(fn) == formEffect
+}
+
 // holdsTry reports whether node holds a try outside the functions nested in
 // it.
 func holdsTry(node *ast.Node) bool {

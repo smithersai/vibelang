@@ -1,0 +1,7 @@
+// expect: TS2322 TS2322
+import { Effect as E } from "effect"
+export effect function main() {
+  const a = E.fail("x") catch (): E.Effect<string> => E.succeed(7)
+  const b = E.fail("x") catch function (): number { return E.succeed(7) }
+  return [a, b]
+}

@@ -497,6 +497,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The `EK4810` warning, for an assertion that drops a type from an Effect's channel, printed its "No automatic fix" note twice. It prints the note once.
 
+- A plain `catch` handler with a written return type, such as `x catch (): number => 0` or `x catch (): Effect.Effect<number> => Effect.succeed(7)`, was rejected with `TS2322`, `TS2345` or `EK0502`: the compiler read the annotation as an `effect` function's Effect type. The annotation now types what the handler returns, as on any plain function, and the `catch` gives that value, an Effect included, unrun.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |
