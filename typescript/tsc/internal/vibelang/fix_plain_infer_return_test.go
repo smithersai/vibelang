@@ -16,7 +16,8 @@ func TestPlainInferWrappedCallbackRepair(t *testing.T) {
 		{"parameter comment", "export const make = Effect.try((value?: number /* ) */): infer _ => value ?? 1);"},
 		{"newline", "export const make = Effect.try(()\n: infer _ => 1);"},
 		{"sync", "export const make = sync((): infer _ => 1);"},
-		{"callback", "export const make = callback<number>((resume): infer _ => { resume(1); });"},
+		{"callback", "export const make = callback<number>((resume): infer _ => { resume(Effect.succeed(1)); });"},
+		{"native callback", "export const make = Effect.callback<number>((resume): infer _ => { resume(Effect.succeed(1)); });"},
 		{"nested function", "export const make = sync(() => { function read(): infer _ { return 1 }; return read(); });"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An explicit `try` in a computed method name could be skipped in TypeScript mapper output. Key Effects now run once in the defining context, while method bodies stay deferred and untried Effects remain cold.
 
 - The migrate flow's lost-wrapper check flagged every export the platform split keeps as a wrapper that calls the moved function in `<Name>.platform.ts`, since a program handed back through a call counts as no Effect. Such a wrapper now pairs through the moved function, and a wrapper that does anything else is still compared.
+- `vibelang --fix` could leave a retired `: infer _` return annotation on a plain callback after switching to native `callback`. It now removes that annotation while preserving ordinary return inference.
+
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.

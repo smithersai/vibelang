@@ -2,10 +2,14 @@ package vibelang
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 const plainInferReturnTitle = "Remove the legacy plain inference return annotation"
@@ -17,8 +21,8 @@ func init() {
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{ErrorCodes: []int32{1338}, GetCodeActions: plainInferReturnActions})
 }
 
-// Wrapped callbacks are TypeScript code. The retired whole-return marker
-// has no native meaning there; removing it retains ordinary return inference.
+// The retired whole-return marker has no native meaning on a plain
+// callable; removing it retains ordinary TypeScript return inference.
 func plainInferReturnActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 	if fix.SourceFile == nil || !isVibeLangFile(fix.SourceFile) {
 		return nil, nil
@@ -34,7 +38,7 @@ func plainInferReturnActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls
 			fn := node.Parent
 			if fn != nil && ast.IsFunctionLikeDeclaration(fn) && fn.Type() == node && fn.Body() != nil &&
 				ast.GetFunctionFlags(fn)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) == 0 &&
-				fn.Flags&ast.NodeFlagsVibeLangEffect == 0 && inHatch(fn) {
+				fn.Flags&ast.NodeFlagsVibeLangEffect == 0 {
 				annotation = node
 				return true
 			}
@@ -45,6 +49,64 @@ func plainInferReturnActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls
 	if annotation == nil {
 		return nil, nil
 	}
+	edit := plainInferReturnEdit(file, annotation)
+	if edit == nil {
+		return nil, nil
+	}
+	return []*ls.CodeAction{{Description: plainInferReturnTitle, Changes: replaceRange(fix, edit.start, edit.end, edit.text)}}, nil
+}
+
+// Outside a TypeScript boundary, the compatibility checker can already
+// infer this return type and suppress TS1338. The CLI still retires the
+// written marker; it cannot depend on that native diagnostic being present.
+func plainInferReturnFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
+	p := proposal{file: file}
+	if !isVibeLangFile(file) {
+		return p
+	}
+	c, done := program.GetTypeCheckerForFile(ctx, file)
+	defer done()
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if parser.IsVibeLangModuleDeclaration(node) {
+			return false
+		}
+		if ast.IsFunctionLikeDeclaration(node) && node.Type() != nil && nativeCallbackRegistration(c, node) {
+			annotation := node.Type()
+			key := fmt.Sprintf("plain-infer-return:%d", annotation.Pos())
+			if !refused[key] {
+				if edit := plainInferReturnEdit(file, annotation); edit != nil {
+					p.fixes = append(p.fixes, fileFix{code: 1338, key: key, edits: []sourceEdit{*edit}})
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return p
+}
+
+// Native callback registration code is ordinary plain code, even when its
+// compatibility annotation causes the checker to infer its return type.
+func nativeCallbackRegistration(c *checker.Checker, node *ast.Node) bool {
+	for ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
+	}
+	call := node.Parent
+	return call != nil && ast.IsCallExpression(call) && len(call.Arguments()) > 0 &&
+		call.Arguments()[0] == node && isEffectFunction(c, call.Expression(), "Effect", "callback")
+}
+
+func plainInferReturnEdit(file *ast.SourceFile, annotation *ast.Node) *sourceEdit {
+	if !isInferredReturnAnnotation(annotation) {
+		return nil
+	}
+	fn := annotation.Parent
+	if fn == nil || !ast.IsFunctionLikeDeclaration(fn) || fn.Type() != annotation || fn.Body() == nil ||
+		ast.GetFunctionFlags(fn)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) != 0 ||
+		fn.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+		return nil
+	}
 	text := file.Text()
 	skipSpace := func(at int) int {
 		for at > 0 && strings.ContainsRune(" \t\r\n", rune(text[at-1])) {
@@ -54,11 +116,11 @@ func plainInferReturnActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls
 	}
 	start := skipSpace(nodeStart(file, annotation))
 	if start == 0 || text[start-1] != ':' {
-		return nil, nil
+		return nil
 	}
 	start = skipSpace(start - 1)
 	if start == 0 || text[start-1] != ')' || hasComment(text[start:annotation.End()]) {
-		return nil, nil
+		return nil
 	}
-	return []*ls.CodeAction{{Description: plainInferReturnTitle, Changes: replaceRange(fix, start, annotation.End(), "")}}, nil
+	return &sourceEdit{start, annotation.End(), ""}
 }
