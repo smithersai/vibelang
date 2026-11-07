@@ -1,0 +1,15 @@
+// expect-result: {"boxed":true,"unboxed":1,"nested":true,"flat":3}
+// rule-evidence: docs/design/src/002-running.md#await | The imported `returnEffectInGen` lint reports returned Effects in generators under `EK38103`, with the pinned eligibility, configuration and default `"suggestion"` category ([imported lint codes](900-appendices.md#imported-lint-codes); VIP-38).
+// rule-evidence: docs/design/src/002-running.md#await | Returning an Effect is not a separate `EK4802` trigger; that code covers [inferred Effect arguments](#inferred-effect-arguments).
+// EK4802 is an error in this project and the Effect plugin is enabled. gen.ts
+// gets the default-category suggestion; returning a program from an effect
+// function reports nothing and returns the program itself, unrun.
+import { nested, flat } from "./gen.ts"
+export effect function boxedReturn(inner: number!!) { return inner }
+export effect function unboxedReturn(inner: number!!) { return try inner }
+export effect function main() {
+  const inner = Effect.succeed(1)
+  const boxed = try boxedReturn(inner)
+  const program = try nested
+  return { boxed: boxed === inner, unboxed: try unboxedReturn(inner), nested: Effect.isEffect(program), flat: try flat }
+}

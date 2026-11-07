@@ -1,0 +1,10 @@
+// expect-result: {"nested":true,"flat":3}
+// rule-evidence: docs/design/src/002-running.md#await | The imported `returnEffectInGen` lint reports returned Effects in generators under `EK38103`, with the pinned eligibility, configuration and default `"suggestion"` category ([imported lint codes](900-appendices.md#imported-lint-codes); VIP-38).
+// A vibe.severities entry configures the imported code: here EK38103 is a
+// warning instead of the default suggestion, and the returned value is unchanged.
+// ignoreEffectWarningsInTscExitCode keeps the printed warning out of the exit status.
+import { nested, flat } from "./gen.ts"
+export effect function main() {
+  const program = try nested
+  return { nested: Effect.isEffect(program), flat: try flat }
+}

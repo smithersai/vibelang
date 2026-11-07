@@ -1,0 +1,17 @@
+// expect-result: {"coldAfterCall":0,"same":true,"value":7,"runs":1}
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | This rule follows [VIP-1’s dated amendment](../vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03); `EK4802` is advisory, keeps its configured severity and changes neither inference nor execution.
+// With no severity setting EK4802 is a warning: the program compiles, the call receives the unrun program, and nothing runs it.
+function expect<T>(actual: T): { readonly value: T } { return { value: actual } }
+export effect function main() {
+  let runs = 0
+  const program = effect { runs++; return 7 }
+  const observed = expect(program)
+  // Inference is unchanged: the type argument is the Effect, not its success.
+  const held: number!! = observed.value
+  // @ts-expect-error An unrun Effect is not a number.
+  const wrong: number = observed.value
+  const coldAfterCall = runs
+  const same = observed.value === program
+  const value = try held
+  return { coldAfterCall, same, value, runs }
+}

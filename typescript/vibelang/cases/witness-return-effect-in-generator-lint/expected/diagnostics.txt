@@ -1,0 +1,3 @@
+gen.ts(4,3): suggestion EK38103
+gen.ts(7,21): suggestion EK38124
+main.vibe(10,24): suggestion EK3858
