@@ -1,0 +1,1 @@
+EK0407 reports resolved trusted(f, []) wrappers only
