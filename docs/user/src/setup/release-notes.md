@@ -404,6 +404,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An Electron app built with electron-vite failed to build a web worker that imported a migrated `.vibe` module, with a parse error, because the migrate flow added the VibeLang plugin to the app's main, preload and renderer builds but not to the renderer's worker build. The flow now also adds it to the renderer's `worker.plugins` when the app or a workspace package it bundles starts a worker, including in a config it wired earlier.
 
+- With a compiler before VIP-1, the migrate flow also marked a function `: infer _` when it returned a call into a module converted in an earlier batch that had no declaration file yet, and the converted module failed `EK9203`. The flow now leaves such a function unmarked for the compiler, which reads the converted module.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |
