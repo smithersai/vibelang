@@ -1,0 +1,35 @@
+import { executor, risky } from "./foreign.js"
+const Saved = Promise
+const holder = { Promise }
+class LiteralPromise extends Promise<number> {
+  static get [Symbol.species]() { return Promise }
+  constructor() { super(resolve => resolve(risky())) } }
+/** @throws {never} */
+export function literal(kind: number): Promise<number> {
+  switch (kind) {
+    case 0: return new Promise<number>(resolve => resolve(risky()))
+    case 1: return new (Promise)<number>(resolve => resolve(risky()))
+    case 2: return new globalThis.Promise<number>(resolve => resolve(risky()))
+    case 3: return new globalThis["Promise"]<number>(resolve => resolve(risky()))
+    case 4: return new Saved<number>(resolve => resolve(risky()))
+    case 5: return new holder.Promise<number>(resolve => resolve(risky()))
+    case 6: return new holder["Promise"]<number>(resolve => resolve(risky()))
+    default: return new LiteralPromise()
+  }
+}
+class ForeignPromise extends Promise<number> {
+  static get [Symbol.species]() { return Promise }
+  constructor() { super(executor) } }
+/** @throws {never} */
+export function foreign(kind: number): Promise<number> {
+  switch (kind) {
+    case 0: return new Promise<number>(executor)
+    case 1: return new (Promise)<number>(executor)
+    case 2: return new globalThis.Promise<number>(executor)
+    case 3: return new globalThis["Promise"]<number>(executor)
+    case 4: return new Saved<number>(executor)
+    case 5: return new holder.Promise<number>(executor)
+    case 6: return new holder["Promise"]<number>(executor)
+    default: return new ForeignPromise()
+  }
+}

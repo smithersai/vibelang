@@ -418,7 +418,7 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 	}
 	declFile := ast.GetSourceFileOfNode(decl)
 	if isLibFile(c, declFile) {
-		if ast.IsNewExpression(call) && parameter == "executor" {
+		if isIntrinsicPromiseConstruction(c, call, decl) && parameter == "executor" {
 			return true // new Promise(executor): the executor admits unknown
 		}
 		owner := ownerOf(decl)

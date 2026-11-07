@@ -168,6 +168,17 @@ func isRetiredHatchFunction(c *checker.Checker, fn *ast.Node) bool {
 	return len(arguments) > 0 && ast.SkipParentheses(arguments[0]) == fn
 }
 
+// isIntrinsicPromiseConstruction recognizes the selected native construct
+// signature, so parentheses, aliases and superclass calls keep the executor
+// contract without granting it to a user-defined constructor named Promise.
+func isIntrinsicPromiseConstruction(c *checker.Checker, call, decl *ast.Node) bool {
+	return (ast.IsNewExpression(call) || ast.IsSuperCall(call)) &&
+		decl != nil && decl.Kind == ast.KindConstructSignature &&
+		decl.Parent != nil && decl.Parent.Kind == ast.KindInterfaceDeclaration &&
+		declarationName(decl.Parent) == "PromiseConstructor" &&
+		isLibFile(c, ast.GetSourceFileOfNode(decl))
+}
+
 // admitsThrows reports whether fn, a function literal, is an argument whose
 // parameter admits throws: the executor of the global Promise, or a parameter
 // whose function type's call signature carries a @throws other than never.
@@ -196,8 +207,7 @@ func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 	if signature == nil {
 		return false
 	}
-	if decl := signature.Declaration(); ast.IsNewExpression(call) && decl != nil && isLibFile(c, ast.GetSourceFileOfNode(decl)) &&
-		ast.IsIdentifier(call.Expression()) && call.Expression().Text() == "Promise" {
+	if isIntrinsicPromiseConstruction(c, call, signature.Declaration()) {
 		return true
 	}
 	// The argument's effective parameter type: a fixed parameter's, a rest

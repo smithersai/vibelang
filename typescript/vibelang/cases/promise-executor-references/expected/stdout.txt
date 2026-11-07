@@ -1,0 +1,1 @@
+Promise executor references: 16 native rejection contracts preserved

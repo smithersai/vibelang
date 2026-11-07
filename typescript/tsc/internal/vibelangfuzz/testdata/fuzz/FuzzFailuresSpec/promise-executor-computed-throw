@@ -1,0 +1,3 @@
+go test fuzz v1
+string("promise-executor-computed-throw")
+byte(0)

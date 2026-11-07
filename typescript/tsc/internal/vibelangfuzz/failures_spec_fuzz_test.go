@@ -1262,6 +1262,7 @@ func failuresCases() []*failCase {
 	for _, c := range failuresExplicitAnyCases() {
 		add(c)
 	}
+	cases = append(cases, failuresPromiseExecutorCases()...)
 	return foreignFixtures(append(append(cases, failuresExtraCases()...), failuresNoThrowCases()...))
 }
 

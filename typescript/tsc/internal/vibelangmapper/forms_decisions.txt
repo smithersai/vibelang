@@ -7065,6 +7065,14 @@ typescript/vibelang/cases/programs/main.vibe:60:72 lambda effectFn keyword
 typescript/vibelang/cases/programs/main.vibe:66:10 lambda effectFn keyword
 typescript/vibelang/cases/programs/main.vibe:70:38 lambda effectFn keyword
 typescript/vibelang/cases/programs/main.vibe:82:33 lambda program table
+typescript/vibelang/cases/promise-executor-references/main.vibe:10:42 lambda choice fallback
+typescript/vibelang/cases/promise-executor-references/main.vibe:11:51 lambda choice fallback
+typescript/vibelang/cases/promise-executor-references/main.vibe:12:54 lambda choice fallback
+typescript/vibelang/cases/promise-executor-references/main.vibe:13:38 lambda choice fallback
+typescript/vibelang/cases/promise-executor-references/main.vibe:14:47 lambda choice fallback
+typescript/vibelang/cases/promise-executor-references/main.vibe:15:50 lambda choice fallback
+typescript/vibelang/cases/promise-executor-references/main.vibe:6:25 lambda choice fallback
+typescript/vibelang/cases/promise-executor-references/main.vibe:9:40 lambda choice fallback
 typescript/vibelang/cases/promise-result-call-gate-fixed/main.vibe:4:107 lambda plain table
 typescript/vibelang/cases/promise-result-call-gate-fixed/main.vibe:4:30 byname program table
 typescript/vibelang/cases/promise-result-call-gate-fixed/main.vibe:4:48 lambda plain table
