@@ -101,6 +101,10 @@ func tryOperandMarks(file *ast.SourceFile, text string) []tryOperandMark {
 			}
 			return
 		}
+		if node.Kind == ast.KindComputedPropertyName {
+			visit(node.Expression(), true)
+			return
+		}
 		if ast.IsFunctionLike(node) && !(ast.IsArrowFunction(node) && node.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0) {
 			operand = false
 		}

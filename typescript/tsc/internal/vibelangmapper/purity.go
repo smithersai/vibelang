@@ -220,8 +220,10 @@ func (p *projector) plainEdits(fn *ast.Node) bool {
 }
 
 // bodyObstacle returns the worst obstacle in fn's body, outside the
-// functions and classes nested in it, except immediately invoked functions
-// whose bodies execute here. callee answers for a call of a name:
+// deferred function and class bodies, while computed names execute here.
+// Immediately invoked functions also execute here, so visit their bodies.
+// For other calls, callee answers
+// for a call of a name:
 // the obstacle a same-file function's call is, and whether the name is one.
 func (p *projector) bodyObstacle(fn *ast.Node, callee func(name string) (obstacle, bool)) obstacle {
 	if p.plainBuiltinBodies[fn] != nil {
@@ -234,7 +236,7 @@ func (p *projector) bodyObstacle(fn *ast.Node, callee func(name string) (obstacl
 			worst = max(worst, o)
 			return worst == obstacleBlocking
 		}
-		if node.Flags&(ast.NodeFlagsVibeLang|ast.NodeFlagsReparsed) != 0 {
+		if node.Flags&(ast.NodeFlagsVibeLang|ast.NodeFlagsReparsed|ast.NodeFlagsVibeLangTry) != 0 {
 			return raise(obstacleBlocking)
 		}
 		switch node.Kind {
@@ -268,7 +270,18 @@ func (p *projector) bodyObstacle(fn *ast.Node, callee func(name string) (obstacl
 				return true
 			}
 		}
-		if ast.IsFunctionLike(node) || ast.IsClassLike(node) {
+		if ast.IsClassLike(node) {
+			for _, member := range node.Members() {
+				if name := member.Name(); name != nil && name.Kind == ast.KindComputedPropertyName && visit(name) {
+					return true
+				}
+			}
+			return false
+		}
+		if ast.IsFunctionLike(node) {
+			if name := node.Name(); name != nil && name.Kind == ast.KindComputedPropertyName {
+				return visit(name)
+			}
 			return false
 		}
 		return node.ForEachChild(visit)

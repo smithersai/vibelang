@@ -1,0 +1,7 @@
+// expect-result: [true,["key"]]
+import { Effect as E } from "effect"
+export effect function main() {
+ const trace: string[] = []
+ const items = try.all [E.succeed({ [try E.sync((): string => { trace.push("key"); return "method" })](): number { return 7 } })]
+ return ["method" in items[0], trace] as const
+}

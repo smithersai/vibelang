@@ -66,6 +66,8 @@ Group a comma expression used as a limit with extra parentheses: `for concurrent
 
 A written concurrency limit must be assignable to Effect's `Types.Concurrency` (`number | "unbounded"`). Other types, including explicit `undefined` and `null`, report `EK1907`. Omitting the limit runs unbounded. Ordinary TypeScript assignability still admits `any` and `never`. If an unchecked written limit evaluates to `undefined` or `null`, Effect receives that value unchanged and runs items sequentially. The `"unbounded"` sentinel also works through a variable, parameter, type alias or generic constrained to `Types.Concurrency`.
 
+An explicit `try` in an object or class computed method name runs as the operands are built, before the collection starts. The method body remains deferred.
+
 ## Interrupting computations
 
 ```vibe
