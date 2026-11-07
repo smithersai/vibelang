@@ -1724,13 +1724,10 @@ typescript/vibelang/cases/cov-ch004-error-trust-tag/main.vibe:11:66 lambda plain
 typescript/vibelang/cases/cov-ch004-error-trust-tag/main.vibe:8:86 lambda dual fallback
 typescript/vibelang/cases/cov-ch004-extract-nonobject/main.vibe:5:16 lambda plain annotation
 typescript/vibelang/cases/cov-ch004-extract-nonobject/main.vibe:7:65 lambda plain fallback
-typescript/vibelang/cases/cov-ch004-finish-order-errors/main.vibe:10:39 lambda dual fallback
-typescript/vibelang/cases/cov-ch004-finish-order-errors/main.vibe:10:71 lambda plain fallback
-typescript/vibelang/cases/cov-ch004-finish-order-errors/main.vibe:7:130 lambda choice fallback
-typescript/vibelang/cases/cov-ch004-finish-order-errors/main.vibe:7:54 lambda plain protocol
-typescript/vibelang/cases/cov-ch004-finish-order-errors/main.vibe:7:87 lambda plain fallback
-typescript/vibelang/cases/cov-ch004-implicit-defect-close/main.vibe:6:202 lambda plain fallback
-typescript/vibelang/cases/cov-ch004-implicit-defect-close/main.vibe:6:85 byname program table
+typescript/vibelang/cases/cov-ch004-finish-order-errors/main.vibe:31:28 byname program table
+typescript/vibelang/cases/cov-ch004-finish-order-errors/main.vibe:32:28 byname program table
+typescript/vibelang/cases/cov-ch004-implicit-defect-close/main.vibe:13:186 lambda plain fallback
+typescript/vibelang/cases/cov-ch004-implicit-defect-close/main.vibe:13:85 byname program table
 typescript/vibelang/cases/cov-ch004-inferred-bindings/main.vibe:6:66 lambda plain table
 typescript/vibelang/cases/cov-ch004-inferred-object-fields/main.vibe:10:66 lambda plain table
 typescript/vibelang/cases/cov-ch004-inferred-readonly-undefined/main.vibe:4:66 lambda plain table

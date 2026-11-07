@@ -2,16 +2,36 @@ import { Effect } from "effect"
 // Chapter 004, finish-order-errors: docs/design/src/004-match.md#be940783bf26cb71
 // Chapter 004, finish-order-errors: docs/design/src/004-match.md#1fef4e4772f443b4
 
-function probe(): unknown {
-const log:string[]=[]
-function iterator(name:string,value:unknown){return {[Symbol.iterator](){return this},next(){return {done:false as const,value}},return(){log.push(name);throw name+"-close"},get Value(){throw "private Value read"},get IteratorsToClose(){throw "private registry read"}}}
-const inner=iterator("inner",1),outer=iterator("outer",inner)
-let errors:unknown
-try{match(outer){when [[0]]:0;default:throw "body";}}catch(e){errors=((x:unknown)=>x instanceof AggregateError?x.errors:x)(e)}
-return [errors,log]
+// The iterators' JavaScript throws live in TypeScript. In effect code an
+// implicit throw from a match, the no-match TypeError and closing errors
+// included, is a defect.
+module iterators {
+  import { Exit } from "effect"
+  /** @throws {never} */
+  export function iterator(log: string[], name: string, value: unknown): Iterable<unknown> {
+    const it = { [Symbol.iterator]() { return it }, next() { return { done: false as const, value } }, return(): IteratorResult<unknown> { log.push(name); throw name + "-close" }, get Value(): never { throw "private Value read" }, get IteratorsToClose(): never { throw "private registry read" } }
+    return it
+  }
+  /** @throws {never} */
+  export function errorsOf(exit: Exit.Exit<unknown, unknown>): unknown {
+    if (exit._tag === "Success") return exit.value
+    const defect = exit.cause.reasons.map((r) => r._tag === "Die" ? r.defect : r._tag)[0]
+    return defect instanceof AggregateError ? defect.errors.map((e) => e instanceof TypeError ? "TypeError" : e) : defect
+  }
 }
+import { iterator, errorsOf } from iterators
 
-export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+// The no-match TypeError is the pending throw; both closing errors follow it.
+effect function noMatch(outer: Iterable<unknown>): number!! { return match (outer) { when [[0]]: 0; } }
+// The first closing error replaces the value; the second makes an AggregateError.
+effect function valued(outer: Iterable<unknown>): number!! { return match (outer) { when [[0]]: 0; default: 1; } }
+
+export effect function main(): unknown!! {
+  const thrown: string[] = [], replaced: string[] = []
+  const pending = try exit(noMatch(iterator(thrown, "outer", iterator(thrown, "inner", 1))))
+  const closing = try exit(valued(iterator(replaced, "outer", iterator(replaced, "inner", 1))))
+  return [errorsOf(pending), thrown, errorsOf(closing), replaced]
+}
 
 // Chapter 004 rule: Iterator registration/closing stays in insertion order and skips empty registry slots; bookkeeping never reads user properties named `Value` or `IteratorsToClose`.
 
