@@ -26,6 +26,8 @@ Each row is checked by driving the tool itself. The table names each test file.
 
 Bundlers can inline a string held in a compiler temporary. Its composed map may name the original string or the temporary's source expression. The checks retain that distinction when a generated import uses the same module name, including dynamic imports.
 
+Service key strings keep their written positions. The `key` metadata name is erased; a generated producer property with the same name has no corresponding written token. Mapping checks distinguish these from retained object and class properties.
+
 ## Limits
 
 - **Bun's runtime:** Bun reads a source map only from a module it runs without transpiling. `vibelang/bun` can do that for a module whose emitted JavaScript is ASCII and that needs nothing from Bun's transpiler: no JSX left in the output, no decorators at `target: "ESNext"`, and no `require`, `__dirname` or `__filename`. In any other module a stack frame names the `.vibe` file with the line of its compiled JavaScript.

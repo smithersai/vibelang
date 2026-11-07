@@ -1,0 +1,12 @@
+{
+  "property": "source-map-programs",
+  "rule": "docs/maintainers/source-maps.md: Tokens, Sugar and service key strings; erased metadata names are not retained identifiers",
+  "input": {
+    "key": "service-producer-helper",
+    "variant": "plain",
+    "bundler": "none",
+    "files": {
+      "main.vibe": "service Store {\n  static readonly key = \"app/Store\"\n  value: number\n}\nexport effect function* values() { yield 1 }\n"
+    }
+  }
+}

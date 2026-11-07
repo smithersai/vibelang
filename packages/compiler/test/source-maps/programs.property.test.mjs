@@ -11,6 +11,7 @@ import { TraceMap, decodedMappings, originalPositionFor } from "@jridgewell/trac
 import fc from "fast-check"
 import { SourceMapConsumer, SourceMapGenerator } from "source-map"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 import { compiler, fixtures, position, project, run, succeed } from "./helpers.mjs"
 
 const programs = readFileSync(join(fixtures, "programs.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line))
@@ -76,6 +77,14 @@ function quoted(text, includeModules = true) {
   return new Map([...found].filter(([, at]) => at >= 0))
 }
 
+// A service's metadata declaration supplies a constructor argument; its "key"
+// identifier is erased. A generated producer property with that spelling is
+// not the same token. Ordinary object and class properties remain eligible.
+function erasedServiceKey(source, at) {
+  return /\bservice\s+[A-Za-z_$][\w$]*(?:\s*:[^{};]+)?\s*\{[^{}]*\bstatic\s+readonly\s*$/.test(
+    blank(source.slice(0, at), "\0"))
+}
+
 async function checkMap(map, code, source) {
   const trace = new TraceMap(map)
   const mozilla = await new SourceMapConsumer(map)
@@ -90,12 +99,12 @@ async function checkMap(map, code, source) {
     assert.deepEqual(new Set(theirs), new Set(ours), "the consumers decode other segments")
     // An import the compiler adds has no segments, and a name in it is not the program's.
     const added = ({ line }) => (decodedMappings(trace)[line - 1] ?? []).length === 0
-    // A word each text spells once is the same token: it maps to where it is.
+    // A retained word each text spells once maps to where it is written.
     const inCode = once(code), inSource = once(source)
     let read = 0
     for (const [text, sourceAt] of inSource) {
       const codeAt = inCode.get(text)
-      if (codeAt === undefined || generatedWords.test(text)) continue
+      if (codeAt === undefined || generatedWords.test(text) || text === "key" && erasedServiceKey(source, sourceAt)) continue
       const at = position(code, codeAt), want = position(source, sourceAt)
       if (added(at) || helper.test(code.slice(Math.max(0, codeAt - 24), codeAt))) continue
       const first = originalPositionFor(trace, at)
@@ -124,8 +133,8 @@ async function checkMap(map, code, source) {
 let compiled = 0, wordsRead = 0, bundlesRead = 0, bundleTokensRead = 0
 let activeProgram
 
-async function checkProgram({ program, variant, bundler, key: programKey }) {
-  const selected = programKey === undefined ? programs[program % programs.length] : programs.find(({ key }) => key === programKey)
+async function checkProgram({ program, variant, bundler, key: programKey, files: savedFiles }) {
+  const selected = savedFiles ? { key: programKey, files: savedFiles } : programKey === undefined ? programs[program % programs.length] : programs.find(({ key }) => key === programKey)
   assert.ok(selected, `unknown generated program ${programKey ?? program}`)
   const { key, files } = selected
   const context = { program, key, variant, bundler, stage: "compile" }
@@ -339,6 +348,81 @@ test("generated module imports do not hide an inlined temporary's string", async
       assert.equal(temporaryReads(map.toJSON(), 'const repeat = ' + text + ';' + newline + compiled).size, 0)
     }
   ), { numRuns: 48, seed: 405097 })
+})
+
+test("service metadata lowering remains quoted", () => {
+  const spec = readFileSync(SpecPath("005-services.md"), "utf8")
+  assert.ok(spec.includes('class Clock extends Context.Service<Clock, $Clock$Shape>()("app/Clock") {}'))
+  const rules = readFileSync(new URL("../../../../docs/maintainers/source-maps.md", import.meta.url), "utf8")
+  assert.ok(rules.includes("An identifier or literal emit keeps reads back as itself"))
+  assert.ok(rules.includes("| `service` | `class S extends runtime.$service(key)` | `S` maps to the name, and a written key to its string |"))
+})
+
+test("erased service metadata is distinct from a generated helper property", async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom("\n", "\r\n", "\u2028"),
+    fc.integer({ min: 1, max: 9 }),
+    fc.constantFrom("", "  /* metadata */ "),
+    async (newline, index, comment) => {
+      const service = "Store" + index, retained = "retained" + index
+      const source = [
+        "service " + service + " {",
+        "  static readonly " + comment + 'key = "app/' + service + '"',
+        "  value: number",
+        "}",
+        "export const " + retained + " = 1"
+      ].join(newline)
+      const code = 'const generated = { key: "vibelang-runtime/ProducerQueue" }; const ' + retained + " = 1"
+      const make = (text, output, shifted = false) => {
+        const map = new SourceMapGenerator({ file: "main.js" })
+        map.addMapping({ generated: position(output, output.indexOf(retained)),
+          original: { ...position(text, text.indexOf(retained)), column: position(text, text.indexOf(retained)).column + (shifted ? 1 : 0) },
+          source: "main.vibe" })
+        return map
+      }
+      const correct = make(source, code)
+      // Keep a mapped segment before the generated property too: an empty
+      // generated line is not the reason to distinguish these tokens.
+      correct.addMapping({ generated: { line: 1, column: 0 },
+        original: { line: 1, column: 0 }, source: "main.vibe" })
+      assert.equal(await checkMap(correct.toJSON(), code, source), 1)
+      await assert.rejects(checkMap(make(source, code, true).toJSON(), code, source),
+        undefined, "a shifted retained token still fails")
+      const missing = new SourceMapGenerator({ file: "main.js" })
+      missing.addMapping({ generated: { line: 1, column: 0 }, original: { line: 1, column: 0 }, source: "main.vibe" })
+      await assert.rejects(checkMap(missing.toJSON(), code, source),
+        undefined, "a missing retained token still fails")
+
+      // Ordinary object and class properties keep their written positions.
+      // The spelling of the producer's private key is no exemption.
+      for (const written of [
+        'const object = { key: "vibelang-runtime/ProducerQueue" }; const ' + retained + " = 1",
+        "class " + service + ' { static readonly key = "app/' + service + '"; } const ' + retained + " = 1"
+      ]) {
+        const output = written.replace("readonly ", "")
+        const buildWritten = (keyMapping) => {
+          const map = make(written, output)
+          for (const [token, at] of once(written)) {
+            const generatedAt = once(output).get(token)
+            if (generatedAt === undefined || generatedWords.test(token)) continue
+            if (token === "key" && keyMapping === "missing") continue
+            const original = position(written, at)
+            if (token === "key" && keyMapping === "shifted") original.column++
+            map.addMapping({ generated: position(output, generatedAt), original, source: "main.vibe" })
+          }
+          for (const [text, at] of quoted(written)) map.addMapping({
+            generated: position(output, output.indexOf(text)), original: position(written, at), source: "main.vibe"
+          })
+          return map.toJSON()
+        }
+        assert.ok(await checkMap(buildWritten("correct"), output, written) > 1)
+        for (const defect of ["missing", "shifted"]) {
+          await assert.rejects(checkMap(buildWritten(defect), output, written),
+            /trace-mapping: key/, "only the written key's mapping is changed")
+        }
+      }
+    }
+  ), { numRuns: 48, seed: 710641 })
 })
 
 test("generated programs keep their tokens at both ends", async () => {

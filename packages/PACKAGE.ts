@@ -265,7 +265,8 @@ const sourceMapToolsTest = S.Shell.Test({
   shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/compiler/test/source-maps/run.sh",
   // The fuzz generator's programs come from a Go command in the module's sources.
   data: [compilerToolsTest, compilerNative, Tsc.srcs, S.file("//typescript/go.work"), S.glob("compiler/**"), S.glob("vite/**"), S.glob("unplugin/**"),
-    S.file("//scripts/testing/property.mjs"), S.file("//experiments/package.json"), S.file("//experiments/bun.lock"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"),
+    S.file("//docs/design/src/005-services.md"), S.file("//docs/maintainers/source-maps.md"), S.file("//experiments/package.json"), S.file("//experiments/bun.lock"),
     S.file("//typescript/vibelang/lsp-connection.mjs"), S.file("//typescript/vibelang/lsp-framing.mjs"),
     ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("go")],
