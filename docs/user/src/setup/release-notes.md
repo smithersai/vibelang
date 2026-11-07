@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A lint suppression containing only a reason could still report warnings after upgrading Oxlint. Suppressions now follow the installed Oxlint release on both TypeScript and VibeLang source.
 
+- A file-list lint command could succeed when an explicitly named source file did not exist. It now reports the missing path and exits with an error.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

@@ -39,6 +39,20 @@ for (let i = 0; i < args.length; i++) {
 }
 if (!native.includes("--threads")) native.push("--threads", "8")
 
+// Empty globs remain valid for a mixed-tool pass; a named source is an input
+// the caller expects to exist, including in a native-only invocation.
+const missing = paths.filter(path => /\.vibex?$/.test(path) && !/[*?{\[]/.test(path) && !statSync(path, { throwIfNoEntry: false }))
+if (missing.length) {
+  if (format === "json") process.stdout.write(JSON.stringify({
+    diagnostics: missing.map(filename => ({ code: "vibelang(file-not-found)", severity: "error", message: "File not found: " + filename, filename, labels: [] })),
+    number_of_files: 0, number_of_rules: 0, threads_count: 8
+  }) + "\n")
+  else for (const path of missing) process.stderr.write("vibelang-oxlint: file not found: " + path + "\n")
+  process.exit(2)
+}
+
+
+
 const vibe = path => /\.vibex?$/.test(path)
 const directory = path => statSync(path, { throwIfNoEntry: false })?.isDirectory()
 const vibeGlob = path => path.replace(/\.\{([^}]+)\}/g, (all, parts) => {

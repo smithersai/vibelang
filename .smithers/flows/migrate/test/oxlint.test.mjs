@@ -556,3 +556,25 @@ test("adapter preserves JSX file-list and glob scope across source extensions", 
     }
   ), { numRuns: 48 })
 })
+
+test("adapter rejects explicitly named missing source files with a useful diagnostic", t => {
+  const { root, run } = adapterFixture(t)
+  const verify = (name, extension, nativeOnly) => {
+    const file = "src/missing-" + name + "." + extension
+    const result = run(...(nativeOnly ? ["--vibe-native"] : []), file)
+    assert.equal(result.status, 2, "a missing explicit input is a command error")
+    assert.deepEqual(result.output.diagnostics.map(d => [d.code, d.filename, d.severity]),
+      [["vibelang(file-not-found)", file, "error"]])
+    assert.match(result.output.diagnostics[0].message, /file not found/i)
+    assert.equal(result.output.number_of_files, 0)
+    assert.equal(existsSync(join(root, ".eslint-paths.json")), false, "do not scan the directory instead")
+  }
+  verify("source", "vibe", false)
+  fc.assert(fc.property(
+    fc.stringMatching(/^[a-z][a-z0-9]{0,6}$/),
+    fc.constantFrom("vibe", "vibex"),
+    fc.boolean(),
+    verify
+  ), { numRuns: 36 })
+  assert.equal(run("src/*.vibe").status, 0, "an unmatched glob retains the runner's existing empty-selection policy")
+})

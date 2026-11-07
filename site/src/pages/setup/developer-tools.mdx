@@ -249,7 +249,7 @@ that selects only `.tsx` adds only `.vibex`; repeated setup also repairs older
 filters that added `.vibe` but omitted `.vibex`. Unsupported filter
 shapes produce a setup warning naming the runner.
 
-File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter. Explicit `.vibex` paths reach the same source and native passes as `.vibe` paths; both declaration sidecar extensions are excluded. A `.tsx` glob selects `.vibex`, and a mixed `{ts,tsx}` glob selects both source extensions.
+File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter. An explicitly named source file must exist; a missing file reports its path and exits with status `2`, including with `--vibe-native`. Unmatched globs retain the adapter's empty-selection policy. Explicit `.vibex` paths reach the same source and native passes as `.vibe` paths; both declaration sidecar extensions are excluded. A `.tsx` glob selects `.vibex`, and a mixed `{ts,tsx}` glob selects both source extensions.
 Upstream Oxlint checks their TypeScript files; ESLint and the native pass
 check their VibeLang files on the original source tree. The
 generated configuration retains rule names, options, severities and directory
