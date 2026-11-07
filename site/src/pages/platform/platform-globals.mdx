@@ -421,11 +421,11 @@ export function loadModule(specifier: string) {
 ```
 
 ```vibe
-// fragment
 import { loadModule } from "./load-module.ts"
 effect function loadData() {
   return try Effect.tryPromise(() => loadModule("data:text/javascript,export default 1"))
 }
+// Output: 1
 ```
 
 A computed `import(specifier)` stays unchecked by this rule. Type-level `import(…)` queries keep their TypeScript meaning.

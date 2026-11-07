@@ -416,12 +416,12 @@ export function loadModule(specifier: string) {
 ```
 
 ```vibe
-// fragment
-// pending: VIP-1, VIP-4, VIP-5, VIP-14
+// run: const value = try loadData(); try Console.log(value.default)
 import { loadModule } from "./load-module.ts"
 effect function loadData() {
   return try Effect.tryPromise(() => loadModule("data:text/javascript,export default 1"))
 }
+// Output: 1
 ```
 
 A computed `import(specifier)` stays unchecked by this rule. Type-level `import(…)` queries keep their TypeScript meaning.
