@@ -62,7 +62,6 @@ func keepThrowDefects(c *checker.Checker, a *analyzer, file *ast.SourceFile, gen
 		return n.ForEachChild(names)
 	}
 	generator.ForEachChild(names)
-	byStatement := map[*ast.Node]*throwHoist{}
 	wrapped := map[*ast.Node]bool{}
 	for i, call := range throwing {
 		target := targets[i]
@@ -73,6 +72,18 @@ func keepThrowDefects(c *checker.Checker, a *analyzer, file *ast.SourceFile, gen
 			continue // one wrapper holds the guard and the calls in it
 		}
 		wrapped[target] = true
+		// A foreign type predicate an if tests keeps its proof in a const
+		// that holds the tested value or undefined, as EK0403's fix writes:
+		// a boolean from the wrapper would prove nothing.
+		if target == call {
+			if bridge, _ := foreignPredicateBridge(c, file, call); bridge != nil && ast.IsBlock(bridge.statement.Parent) {
+				name, _, _ := strings.Cut(strings.TrimPrefix(bridge.declaration, "const "), " ")
+				taken[name] = true
+				plan.add(bridge.statement, false, bridge.declaration)
+				plan.edits = append(plan.edits, bridge.edits...)
+				continue
+			}
+		}
 		plan.edits = append(plan.edits, keepThrowDefect(file, target)...)
 		if target != call || !readsNarrowedProperty(c, call) {
 			continue
@@ -81,15 +92,21 @@ func keepThrowDefects(c *checker.Checker, a *analyzer, file *ast.SourceFile, gen
 		if !ok {
 			continue
 		}
-		if existing := byStatement[hoist.statement]; existing != nil {
-			existing.consts = append(existing.consts, hoist.consts...)
-		} else {
-			byStatement[hoist.statement] = hoist.throwHoist
-			plan.hoists = append(plan.hoists, hoist.throwHoist)
-		}
+		plan.add(hoist.statement, hoist.branch, hoist.consts...)
 		plan.edits = append(plan.edits, hoist.edits...)
 	}
 	return plan
+}
+
+// add puts consts before statement, after those the plan already holds there.
+func (p *throwDefects) add(statement *ast.Node, branch bool, consts ...string) {
+	for _, h := range p.hoists {
+		if h.statement == statement {
+			h.consts = append(h.consts, consts...)
+			return
+		}
+	}
+	p.hoists = append(p.hoists, &throwHoist{statement: statement, branch: branch, consts: consts})
 }
 
 // A narrowedHoist is the consts one call needs, and the edits that read them.
