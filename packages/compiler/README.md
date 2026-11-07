@@ -637,3 +637,5 @@ or CommonJS calls. Literal bundle entry filenames remain unchanged.
 ## Last resort: keep TypeScript file names
 
 Prefer the CLI, plugins, loaders and editor integrations above with `.vibe` or `.vibex` files. Only when a project cannot rename its TypeScript files, consider the experimental [TypeScript shim](https://vibelang.sh/setup/typescript-shim). It runs the compiler as `tsc`, but stock readers can accept a marked file with different meaning.
+
+Loader diagnostics distinguish sources outside the compilation root from sources absent from a project. An outside source needs a containing root or its own package and project; a source excluded by `tsconfig.json` still receives `include` guidance.
