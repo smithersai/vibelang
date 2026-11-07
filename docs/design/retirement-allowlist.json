@@ -2310,76 +2310,6 @@
     "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
   },
   {
-    "code": "EK4837",
-    "case": "typescript/vibelang/cases/w01-007-ek4837-exemptions.fail",
-    "vip": "VIP-29",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0029-schema-errors.md: Status accepted, 2026-10-29; docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms defines the EK4830 and EK4837 advisories and their spread and static-tag exemptions. This cites existing published acceptance, not a new approval."
-    },
-    "reason": "Both codes are default warnings; the case raises them to errors only through its own vibe.severities, so it can pin their positions. The default severity is unchanged and the compiler before this commit reports the same diagnostics, so no form that compiled before is rejected."
-  },
-  {
-    "code": "EK4830",
-    "case": "typescript/vibelang/cases/w01-007-ek4837-exemptions.fail",
-    "vip": "VIP-29",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0029-schema-errors.md: Status accepted, 2026-10-29; docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms defines the EK4830 and EK4837 advisories and their spread and static-tag exemptions. This cites existing published acceptance, not a new approval."
-    },
-    "reason": "Both codes are default warnings; the case raises them to errors only through its own vibe.severities, so it can pin their positions. The default severity is unchanged and the compiler before this commit reports the same diagnostics, so no form that compiled before is rejected."
-  },
-  {
-    "code": "EK4833",
-    "case": "typescript/vibelang/cases/w01-007-ek4833-qualified-alias.fail",
-    "vip": "VIP-3",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0003-effect-type-shorthand.md: Status accepted by Will, 2026-10-28; docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms states when the EK4833 advisory treats a qualified alias named Effect as an equivalent spelling. This cites existing published acceptance, not a new approval."
-    },
-    "reason": "EK4833 is a default warning; the case raises it to an error only through its own vibe.severities, so it can pin its positions. The default severity is unchanged and the compiler before this commit reports the same diagnostics, so no form that compiled before is rejected."
-  },
-  {
-    "code": "EK0403",
-    "case": "typescript/vibelang/cases/w01-007-trusted-packages-ignored.fail",
-    "vip": "VIP-4",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended 2026-11-02 to retire trustedPackages; docs/design/src/007-tooling.md#config-files ignores the key with EK3010, so an unannotated npm call in effect code is still EK0403. This cites existing published acceptance, not a new approval."
-    },
-    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
-  },
-  {
-    "code": "TS2339",
-    "case": "typescript/vibelang/cases/w01-004-custom-matcher-standalone-ts.fail",
-    "vip": "VIP-7",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns makes the runtime SymbolConstructor.customMatcher augmentation program-wide and states that a standalone .ts program without the provider does not see it. This cites existing published acceptance, not a new approval."
-    },
-    "reason": "A standalone .ts program reads Symbol.customMatcher without the provider; TypeScript itself reports TS2339 there, as stock tsc does, and the compiler before this commit reports the same code at the same position, so no form that compiled before is rejected."
-  },
-  {
-    "code": "TS2322",
-    "case": "typescript/vibelang/cases/w01-004-custom-matcher-key-identity.fail",
-    "vip": "VIP-7",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns gives Symbol.customMatcher the same unique symbol type as the runtime customMatcher export. This cites existing published acceptance, not a new approval."
-    },
-    "reason": "The negative controls show that another unique symbol is not assignable to or comparable with the key; TypeScript itself reports TS2322 and TS2367, and the compiler before this commit reports the same codes at the same positions, so no form that compiled before is rejected."
-  },
-  {
-    "code": "TS2367",
-    "case": "typescript/vibelang/cases/w01-004-custom-matcher-key-identity.fail",
-    "vip": "VIP-7",
-    "approval": {
-      "by": "Will",
-      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns gives Symbol.customMatcher the same unique symbol type as the runtime customMatcher export. This cites existing published acceptance, not a new approval."
-    },
-    "reason": "The negative controls show that another unique symbol is not assignable to or comparable with the key; TypeScript itself reports TS2322 and TS2367, and the compiler before this commit reports the same codes at the same positions, so no form that compiled before is rejected."
-  },
-  {
     "code": "TS2454",
     "case": "typescript/vibelang/cases/w01-004-is-definite-assignment.fail",
     "vip": "VIP-7",
@@ -2398,5 +2328,15 @@
       "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#is-expressions sends reads of a binding that may not have run, including a for update read of a test binding, through TypeScript definite-assignment checks (TS2454) and a read before the binding position to TS2448. This cites existing published acceptance, not a new approval."
     },
     "reason": "The case pins TypeScript own TS2454 and TS2448 reports, which stock tsc 5.9.3 gives at the same positions on the .ts twin. The compiler before this commit reports these and more (TS2454 on exempt types); this commit only removes errors, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effectful-unknown-promise.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: the accepted effectful-callables amendment forbids throws in wholly effectful functions; docs/design/src/003-failures.md (Plain code never throws) applies the stricter rule to effectful parameter lists. A Promise return alone supplies no synchronous never-throw contract."
+    },
+    "reason": "Choosing a foreign never-throw contract, moving the computation into an effect body, or moving the declaration to TypeScript requires author intent and can change its call-time behavior."
   }
 ]

@@ -61,6 +61,28 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "effectful-body-control-" + body.name, Quote: effectfulBody, Host: "none", Lib: unknownLib, Decls: body.decls})
 	}
+	// A Promise return alone does not establish synchronous non-throwing.
+	const unknownPromise = "export declare function raw(): Promise<number>\n/** @throws {never} */\nexport declare function safe(): Promise<number>"
+	for _, body := range []struct{ name, decls string }{
+		{"effect-default", "export effect function probe(p = ⟦raw()⟧) { return p }"},
+		{"producer-default", "export effect function* probe(p = ⟦raw()⟧) { yield p }"},
+		{"factory-body", "export function probe(): Effect.Effect<number> { ⟦raw()⟧; return Effect.succeed(1) }"},
+		{"factory-default", "export function probe(p = ⟦raw()⟧): Effect.Effect<number> { return Effect.succeed(1) }"},
+		{"arrow-default", "export const probe = (p = ⟦raw()⟧): Effect.Effect<number> => Effect.succeed(1)"},
+		{"binding-default", "export effect function probe({ p = ⟦raw()⟧ }: { p?: Promise<number> }) { return p }"},
+	} {
+		add(&failCase{Name: "unknown-promise-" + body.name, Quote: effectfulBody, Code: 401, Host: "none", Lib: unknownPromise, Decls: body.decls})
+	}
+	for _, body := range []struct{ name, decls string }{
+		{"caught", "export function probe(): Effect.Effect<number> { try { raw() } catch {} return Effect.succeed(1) }"},
+		{"ordinary", "export function probe(p = raw()) { return p }"},
+		{"async", "export async function probe(p = raw()) { return p }"},
+		{"never", "export effect function probe(p = safe()) { return p }"},
+		{"intrinsic", "export effect function probe(p = Promise.resolve(1)) { return p }"},
+		{"local", "async function local() { return 1 }\nexport effect function probe(p = local()) { return p }"},
+	} {
+		add(&failCase{Name: "unknown-promise-control-" + body.name, Quote: effectfulBody, Host: "none", Lib: unknownPromise, Decls: body.decls})
+	}
 	const methods = "[ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13)."
 	const rejected = "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |"
 	const priority = "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form."
