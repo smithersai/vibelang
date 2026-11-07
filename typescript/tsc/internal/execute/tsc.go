@@ -58,13 +58,44 @@ func CommandLine(ctx context.Context, sys tsc.System, commandLineArgs []string, 
 	if len(commandLineArgs) > 0 {
 		switch strings.ToLower(commandLineArgs[0]) {
 		case "-b", "--b", "-build", "--build":
-			return tscBuildCompilation(ctx, sys, tsoptions.ParseBuildCommandLine(commandLineArgs, sys.FS(), sys.GetCurrentDirectory()), testing)
+			command := tsoptions.ParseBuildCommandLine(commandLineArgs, sys.FS(), sys.GetCurrentDirectory())
+			return withCPUProfile(sys, command.CompilerOptions, func() tsc.CommandLineResult {
+				return tscBuildCompilation(ctx, sys, command, testing)
+			})
 			// case "-f":
 			// 	return fmtMain(sys, commandLineArgs[1], commandLineArgs[1])
 		}
 	}
 
-	return tscCompilation(ctx, sys, tsoptions.ParseCommandLine(commandLineArgs, sys.FS(), sys.GetCurrentDirectory()), testing)
+	command := tsoptions.ParseCommandLine(commandLineArgs, sys.FS(), sys.GetCurrentDirectory())
+	return withCPUProfile(sys, command.CompilerOptions(), func() tsc.CommandLineResult {
+		return tscCompilation(ctx, sys, command, testing)
+	})
+}
+
+func withCPUProfile(sys tsc.System, options *core.CompilerOptions, run func() tsc.CommandLineResult) (result tsc.CommandLineResult) {
+	path := options.GenerateCpuProfile
+	if path == "" {
+		return run()
+	}
+	if options.PprofDir != "" {
+		fmt.Fprintln(sys.ErrorWriter(), "vibelang: --generateCpuProfile cannot be combined with --pprofDir; choose one profiler.")
+		return tsc.CommandLineResult{Status: tsc.ExitStatusDiagnosticsPresent_OutputsSkipped}
+	}
+	session, err := pprof.BeginJSONProfile(path.AsString())
+	if err != nil {
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang: --generateCpuProfile: cannot start profiling: %v\n", err)
+		return tsc.CommandLineResult{Status: tsc.ExitStatusDiagnosticsPresent_OutputsSkipped}
+	}
+	defer func() {
+		if err := session.Stop(); err != nil {
+			fmt.Fprintf(sys.ErrorWriter(), "vibelang: --generateCpuProfile: cannot write profile: %v\n", err)
+			if result.Status == tsc.ExitStatusSuccess {
+				result.Status = tsc.ExitStatusDiagnosticsPresent_OutputsSkipped
+			}
+		}
+	}()
+	return run()
 }
 
 func fmtMain(sys tsc.System, input, output string) tsc.ExitStatus {

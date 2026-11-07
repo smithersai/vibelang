@@ -20,6 +20,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Bun could fail to import a VibeLang module whose filename contained `%`, `#` or spaces through another module. Those imports now resolve to their original source files.
 
+- Requesting a CPU profile could finish successfully without writing a file. Compilation and project builds now write the requested profile and report output-path errors.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
