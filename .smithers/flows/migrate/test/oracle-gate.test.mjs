@@ -8,12 +8,13 @@ import { makeConfig, paths, setup, verify } from "../lib/steps.mjs"
 import { commitId } from "../lib/jj.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
 import { must, writeJson } from "../lib/util.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const packCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-verify-pack-prerequisites.json", import.meta.url), "utf8"))
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-stock-oracle-builders.json", import.meta.url), "utf8"))
 
-async function fixture(action, { identical = false, stock = true, stockExit = 0, privatePackage = false, mixed = false, custom = false, includePrivate = false, publishDeclarations = true } = {}) {
+async function fixture(action, { identical = false, stock = true, stockExit = 0, stockDiagnostic = "src/Ok.ts(1,1): error TS2322: stock source cannot be checked", privatePackage = false, mixed = false, custom = false, includePrivate = false, publishDeclarations = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), "alchemy-stock-gate-"))
   const target = join(root, "repo"), run = join(root, "run")
   const put = (name, text) => {
@@ -32,7 +33,7 @@ async function fixture(action, { identical = false, stock = true, stockExit = 0,
       '    fs.mkdirSync(path.dirname(path.join(out, name)), { recursive: true })',
       '    fs.writeFileSync(path.join(out, name), text)',
       '  }',
-      '  if (' + exit + ') console.log("src/Ok.ts(1,1): error TS2322: stock source cannot be checked")',
+      '  if (' + exit + ') console.log(' + JSON.stringify(stockDiagnostic) + ')',
       '  process.exitCode = ' + exit,
       '}'
     ].join("\n") + "\n")
@@ -162,4 +163,52 @@ test("generated stock-oracle gates distinguish shipped declarations from source-
       assert.deepEqual(result.declarationOracle.unproven.map(x => x.file), unproven ? ["src/Pipes/builders.vibe"] : [])
     }, { publishDeclarations, identical })
   }), { seed: 551109, numRuns: 12 })
+})
+
+
+const layoutCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-stock-oracle-layout.json", import.meta.url), "utf8"))
+test("stock layout corpus quotes the API identity rule", () => {
+  assert.ok(readFileSync(SpecPath("001-functions.md"), "utf8").includes(layoutCorpus.quote))
+})
+
+test("T3 Code original layout diagnostics retain a complete stock API oracle", async () => {
+  await fixture(async ({ run, p }) => {
+    const oracle = JSON.parse(readFileSync(join(p.baseline, "declaration-oracle.json"), "utf8"))["."]
+    assert.equal(oracle.unavailable, undefined, JSON.stringify(oracle))
+    assert.equal(oracle.code, 2)
+    assert.equal(oracle.diagnostics.filter(d => d.category === "error")[0].code, "TS5011")
+    assert.equal(oracle.identical, true)
+    assert.equal(oracle.unavailable, undefined)
+    const result = await verify({ run, batch: "01" })
+    assert.equal(result.ok, true)
+    assert.equal(result.checks.declarationOracle, true)
+  }, { identical: true, stockExit: 2, stockDiagnostic: layoutCorpus.diagnostic })
+})
+
+test("layout diagnostics never replace the stock API comparison", async () => {
+  await fixture(async ({ run, baseline }) => {
+    assert.equal(baseline.declarationOracle["."].unavailable, undefined)
+    const result = await verify({ run, batch: "01" })
+    assert.equal(result.ok, false)
+    assert.equal(result.checks.declarationOracle, false)
+    assert.ok(result.declarationOracle.unproven.length > 0)
+  }, { stockExit: 2, stockDiagnostic: layoutCorpus.diagnostic })
+})
+
+test("property: original stock layout failures require a complete unchanged API and no source errors", async () => {
+  const variants = [
+    { identical: true, stockDiagnostic: layoutCorpus.diagnostic, accepted: true },
+    { identical: false, stockDiagnostic: layoutCorpus.diagnostic, accepted: false },
+    { identical: true, stockDiagnostic: "", accepted: false },
+    { identical: true, stockExit: 99, stockDiagnostic: layoutCorpus.diagnostic, accepted: false },
+    { identical: true, stockDiagnostic: "src/Ok.ts(1,1): error TS2322: source error", accepted: false },
+    { identical: true, stockDiagnostic: layoutCorpus.diagnostic + "\nsrc/Ok.ts(1,1): error TS2322: source error", accepted: false }
+  ]
+  await fc.assert(fc.asyncProperty(fc.constantFrom(...variants), async options => {
+    await fixture(async ({ run }) => {
+      const result = await verify({ run, batch: "01" })
+      assert.equal(result.checks.declarationOracle, options.accepted)
+      if (!options.accepted) assert.equal(result.ok, false)
+    }, { stockExit: 2, ...options })
+  }), { seed: 7075011, numRuns: 5, examples: variants.map(value => [value]) })
 })

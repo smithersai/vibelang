@@ -664,6 +664,8 @@ Migration API snapshots retain native compatibility declarations when a project 
 
 JavaScript emission preserves the project's declaration source root when `vibe.sidecarDir` is configured. Package `types` targets keep pointing to the emitted declarations, including projects with a source root inside or outside the package. Runtime JavaScript remains under `.vibelang/js/` at its package-relative path.
 
+An original declaration emit that exits with TypeScript's emit-error status and only `TS5011` layout diagnostics retains its compiler, exit status, files and diagnostics in the stock API oracle. Qualification still requires a complete stock/native declaration comparison; changed APIs, unresolved declarations, source errors and unexplained compiler exits remain unavailable.
+
 Migration setup installs the selected dependencies before formatting the files it writes, so newly selected formatter plugins are available. The same order applies when adding workspace packages to an existing setup. If installation fails, setup stops before formatting; formatter failures after a successful install remain recorded warnings.
 
 Setup refreshes matching whole-file Markdown code blocks marked `<!-- source: relative/path.ts -->` after rewriting and formatting their owned source. It preserves prose, named excerpts such as `#start`, markers quoted inside code fences, and already mismatched snippets. A mismatch or a document changed during setup produces a review warning. The `sourceSnippets` receipt records changed documents and before/after source hashes.

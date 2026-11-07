@@ -145,6 +145,8 @@ Public declarations reachable from `exports` or `types` must remain API-identica
 
 When a project layout error leaves a native module's ordinary declaration outside the snapshot, the snapshot retains its compiler-generated compatibility declaration with its original location and project context. Saved TypeScript sources can therefore resolve their native siblings, including relocated sidecars. These declarations are frozen per snapshot and participate in the exported-name/type/JSDoc proof; missing sidecars, unresolved imports, non-layout declaration errors and changed types remain conservative. A metadata refresh without a new emit retains the frozen declaration.
 
+An original stock declaration emit with exit `2` and only `TS5011` output-layout errors keeps its complete emit receipt and proceeds to the canonical stock/native API comparison. That comparison must complete; layout diagnostics do not excuse missing declarations, unresolved inputs or API differences. Source errors, mixed diagnostics and unexplained compiler failures still make the oracle unavailable.
+
 Declaration checks load each snapshot's ambient type packages from its project's `types` and `typeRoots` settings, including inherited configuration and automatic type discovery. An unavailable configured type package makes the comparison incomplete and blocks API qualification.
 
 Declaration-only comparisons resolve a TypeScript source target in conditional exports through its existing adjacent emitted declaration. TypeScript still chooses conditions and fallbacks in their written order; a missing selected declaration remains unavailable. The saved publication manifest and declaration files stay unchanged.

@@ -1295,9 +1295,14 @@ async function emitStockOracle(config, p, logs) {
     }
     try {
       const emitted = await emitPackageDeclarations({ compiler: found.path, ts, t, pkg, outDir: join(p.baseline, "stock-dts", slug(pkg.dir)), log: join(logs, `stock-dts-${slug(pkg.dir)}.log`) })
-      oracle[pkg.dir] = emitted.code === 0
-        ? { compiler: found.name, path: found.path, code: emitted.code, files: emitted.files }
-        : { unavailable: found.name + " failed while emitting the original declarations (exit " + emitted.code + ")", compiler: found.name, code: emitted.code }
+      // TS5011 concerns declaration output layout, not the original API's
+      // type validity. Keep its full receipt and require the canonical stock/
+      // native comparison below to prove completeness and identity.
+      const errors = emitted.diagnostics.filter(d => d.category === "error")
+      const layoutOnly = emitted.code === 2 && errors.length > 0 && errors.every(d => d.code === "TS5011")
+      oracle[pkg.dir] = emitted.code === 0 || layoutOnly
+        ? { compiler: found.name, path: found.path, code: emitted.code, files: emitted.files, diagnostics: emitted.diagnostics }
+        : { unavailable: found.name + " failed while emitting the original declarations (exit " + emitted.code + ")", compiler: found.name, code: emitted.code, diagnostics: emitted.diagnostics }
     } catch (error) {
       oracle[pkg.dir] = { unavailable: `${found.name} emitted no declarations: ${String(error.message).split("\n")[0]}` }
     }
