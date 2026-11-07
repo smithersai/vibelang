@@ -1,0 +1,16 @@
+// expect-result: [1,2,true,true]
+// An interface named Effect that copies effect's `~effect/Effect` marker but
+// declares no A, E and R parameters is not assignable to Effect.Effect, so a
+// call returning one is an ordinary call and its value is data (chapter 3,
+// Effectful callables). The untagged call is bridged in effect code and is
+// ordinary at the top level and in plain code.
+import { copy, untaggedCopy } from "./lib.js"
+const atTop = untaggedCopy()
+function plain() { return untaggedCopy() }
+export effect function main() {
+  const value = copy()
+  const bridged = try Effect.orDie(Effect.try(() => untaggedCopy()))
+  const one = try (value as unknown as number!!)
+  const two = try (bridged as unknown as number!!)
+  return [one, two, Effect.isEffect(atTop), Effect.isEffect(plain())]
+}

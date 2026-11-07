@@ -31,6 +31,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An object pattern could reject a computed key such as `[chooseKey()]` as unsupported syntax. Computed key expressions now compile and keep their source type, evaluation order and property-key conversion.
 - When migration refused previously created import routes, its report could omit the affected modules. Refusals now name those modules on repeated runs too.
 - The editor status labeled the VibeLang version as a TypeScript version and repeated the TypeScript label. It now displays the server’s reported version unchanged.
+- Calling a function whose return type is an interface named `Effect` that copies Effect's `~effect/Effect` marker without declaring its type parameters crashed the compiler. Such a value is now ordinary data, and the call follows the usual throw-contract rules.
 
 - An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
 

@@ -495,13 +495,16 @@ func isEffectType(c *checker.Checker, t *checker.Type) bool {
 
 // effectInterfaceSymbol returns the symbol of the interface named Effect that
 // declares t's `~effect/Effect` property, or nil if t has no such property.
+// Only an interface with the three channel parameters A, E and R is the
+// Effect interface: a non-generic one that copies the marker has no channels
+// to instantiate, so its values are at most Effect-shaped.
 func effectInterfaceSymbol(c *checker.Checker, t *checker.Type) *ast.Symbol {
 	property := c.GetPropertyOfType(t, effectTypeID)
 	if property == nil {
 		return nil
 	}
 	for _, decl := range property.Declarations() {
-		if parent := decl.Parent; parent != nil && ast.IsInterfaceDeclaration(parent) && parent.Name().Text() == "Effect" {
+		if parent := decl.Parent; parent != nil && ast.IsInterfaceDeclaration(parent) && parent.Name().Text() == "Effect" && len(parent.TypeParameters()) == 3 {
 			return c.GetSymbolOfDeclaration(parent)
 		}
 	}

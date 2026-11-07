@@ -3156,6 +3156,8 @@ typescript/vibelang/cases/effect-hatch-bindings/main.vibe:11:47 lambda plain hat
 typescript/vibelang/cases/effect-hatch-bindings/main.vibe:8:25 lambda plain table
 typescript/vibelang/cases/effect-hatch-bindings/main.vibe:9:37 lambda effectFn table
 typescript/vibelang/cases/effect-heritage/main.vibe:11:48 lambda program keyword
+typescript/vibelang/cases/effect-interface-copy/main.vibe:12:36 byname program table
+typescript/vibelang/cases/effect-interface-copy/main.vibe:12:47 lambda plain table
 typescript/vibelang/cases/effect-lambda-self-value/main.vibe:2:22 lambda effectFn keyword
 typescript/vibelang/cases/effect-lambda-self-value/main.vibe:3:22 lambda effectFn keyword
 typescript/vibelang/cases/effect-lambda-self-value/main.vibe:4:20 lambda effectFn keyword
