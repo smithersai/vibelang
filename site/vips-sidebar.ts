@@ -207,6 +207,10 @@ export const vipsSidebar = [
           {
             "text": "43. theorem and spec, proofs in TypeScript's own syntax",
             "link": "/vips/0043-theorems-open"
+          },
+          {
+            "text": "53. Renaming VibeLang to SmithersScript",
+            "link": "/vips/0053-rename-smithersscript-open"
           }
         ]
       }

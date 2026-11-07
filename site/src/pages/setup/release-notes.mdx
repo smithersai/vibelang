@@ -13,7 +13,48 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
+
+- Returning an incomplete `Stream` type could bypass throwing-call checks or wrongly restrict a plain function. The compiler now applies `Stream` rules only to a complete `Stream` type.
+
+- A `String`, `Number`, `Boolean`, `BigInt` or `Symbol` pattern narrowed an `unknown` subject to the primitive type alone, so `when String and { length: let n }:` was rejected because the subject became `never`, and `not String` kept the boxed type. The subject now has the primitive or its boxed type, as after TypeScript's `typeof s === "string" || s instanceof String`. Code that used the subject as a primitive after `when String:` binds the value instead: `when String(let text):`.
+
+- An unmarked function or method whose Effect return annotation wrote a channel as `infer`, such as `function load(): Effect.Effect<number, infer E> { return Effect.fail("missing") }`, took that channel from an effect body instead of from the Effect it returns. Its declaration, its `EK4857` quick fix and `vibelang --fix` could write a wrong type, such as `never` for `E` or an Effect nested in an Effect, and report a spurious `TS2322`. Each `infer` channel now takes the returned Effect's channel, so the fix writes `Effect.Effect<number, string>`.
+
+- Joining a fiber in TypeScript mapper output could trigger marker traps on a proxy handle. It now calls the project's `Fiber.join` directly, preserving native observations.
+
+- Converting an `async` function could move a `throw` in an awaited expression into a plain callback and produce a compile error. The editor now withholds that conversion while keeping throws inside nested `async` functions eligible.
+
+- Converting an `async` function could move a jump in an awaited `do` expression into a `Promise` callback, changing its target or producing invalid code. The editor now withholds that conversion while keeping local jumps eligible.
+
+- Services in packages with an empty name used the directory name in their keys. Keys now retain the empty package prefix, and the legacy migration writes explicit keys to keep existing service identities.
+
+- Knip could miss duplicate exports created by `export default value`. It now reports those aliases as TypeScript does.
+
+- The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.
+
+- The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
+
+- File-list lint runners could return no usage text for `--help` or mix findings into `--print-config`. They now return the requested information without linting input files.
+
+- Node stack traces from esbuild bundles could show escaped or altered source filenames. They now preserve Unicode, spaces and literal percent sequences at the original source position.
+
+- Calling a value typed `any` or `Function` in an Effect function’s or producer’s parameter default could bypass the no-throw check. These calls now report `EK0401` because their thrown type is unknown.
+
+- An unannotated foreign function returning a Promise could bypass the no-throw check in an Effect function’s parameter default or a plain factory returning an Effect, Stream or Layer. These calls now report `EK0401`, since they may throw before returning the Promise.
+
+- JSX imports could fail in bundlers with missing-loader or module-resolution errors. Explicit JSX sources, module queries and rewritten dependencies now build with the project's JSX settings and original source maps.
+
+- A `for` loop update that read an `is` binding from the loop test reported `TS2454` even when the binding was typed `any`, `unknown` or `void`, included `undefined`, or was read with `!`. The update now follows TypeScript's definite-assignment exemptions, and still reports `TS2454` for other types.
+
+- A `while` condition that held a binding `is` below `||`, `!`, a conditional or a call argument, such as `while (done || (next() is let v))`, was rejected with `EK4703`. It now compiles, and each evaluation of the condition gets fresh bindings that its body shares, as for any other `while` condition.
+
+- `vibelang --fix --fix-vip-only` kept the `try` before a legacy wrapper whose success data was an Effect value, such as `function make() { return Effect.void }`, so the migrated call ran that Effect instead of returning it. The migration now removes that `try` and writes none before such a call; a wrapper whose returned call ran, such as `return Effect.succeed(7)`, keeps its `try`.
+
+- TypeScript-mapper output could reject an Effect run in a `for concurrent` head default or computed key. Head initialization now runs inside each item's Effect, with the body in its own scope.
+
 - The migration kept a module in TypeScript when a top-level statement read the host, such as `if (process.env.FLAG) { … }` or a runner's `NodeRuntime.runMain(…)` reading `process.argv`, because that statement cannot move into a `module` body without running early. The statement now stays where it is, and only its host reads and writes move into the body as helpers it calls in place.
+- The migrate flow kept a module in TypeScript when `EK4402` reported a host global read through a cast, such as `(globalThis as { readonly location?: … }).location is platform code`, because the platform split read no global from a message that starts with the cast. It now reads the cast's global and moves the declarations that read it to `<Name>.platform.ts`.
 - After an unresolved import was repaired, Rollup could stop responding to later edits. It now keeps rebuilding source and type-only changes through error recovery.
 
 - Converting a named Effect generator could narrow a generic service requirement and change its public type. The converted function now keeps the original requirement, including through pipeline stages.
@@ -39,6 +80,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` rewrote `Effect.sync(() => { ... })` with a block into an `effect` block or function, which the compiler builds with `Effect.gen` or `Effect.fnUntraced`, so a converted module built a wrapper its TypeScript did not and the migration's run-phase check returned it. Such an `Effect.sync` now stays as written; `Effect.sync(() => value)` still becomes `effect { return value }`.
 - A migration on a compiler before plain-function inference wrote a `Generator<...>` return type on generators handed to `Effect.fn`, which erased their requirements, so a provider layer declared `unknown` where TypeScript declared its services. The migration now leaves an Effect's generator body unannotated.
 - Migration kept a module in TypeScript when its platform code found files beside the module through `dirname(fileURLToPath(import.meta.url))` or `import.meta.dirname`, because moved code must not read `import.meta`. The `.platform.ts` companion shares the module's directory, so such code now moves; code that reads the module's own file name or `import.meta.main` still stays.
+- The migrate flow kept a module in TypeScript when `vibelang --fix` had qualified a host constructor the prelude hides, so `EK4402` named `globalThis.Response` while the source the platform split reads spells `new Response(…)`. When the source never spells that member through `globalThis`, the declarations that read the bare global now move to `<Name>.platform.ts`.
+- `vibelang --fix` checked every file of the project for each set of fixes it tried, so a 25-module batch of a 5,510-file project took about 15 minutes and 18 GB. It now checks only the files the fixes change and the files that read them, which a check of the whole program confirms whenever a fix adds an error, and writes the same fixes; the run's last stderr line says what it cost.
 - Checking the compact language guides rejected current descriptions of foreign calls and `Effect` factories. Checks now recognize that guidance while still rejecting missing failure rules.
 
 - A throw expression stored as an array element, an object field or a binding, such as `[a, throw e]`, reported warning `EK1012` as if it were a call that never succeeds, and its suggestion added `()` after the throw. A throw expression no longer reports `EK1012`.
@@ -86,6 +129,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang lint` could switch configurations and reject compiler options when an old lint flag was present. It now uses compiler options consistently and reports old lint flags as unknown options.
 - An inferred declaration could name a private package subpath blocked by `exports`, causing `TS2307` in TypeScript consumers. It now respects the selected export entry and uses the available public type.
 - `vibelang --fix --only` refused a list naming a file outside the project with `lists 1 file that is not .vibe module of this project`, which left out `.vibex` modules. It now says `lists 1 file that is not a .vibe or .vibex module of this project`.
+- The callback example could fail to compile because a direct `callback` call expected a plain completion value. Direct calls now use Effect's callback signature and accept the Effects passed to `resume`.
+- Under `NodeNext`, an import of a `.vibe` or `.vibex` module written without an extension reported `TS2834` with no suggestion. It now reports `TS2835` with the runtime name to write, such as `./user.js`, as TypeScript does for `.ts` and `.tsx` modules.
 - The migrate flow sent a module back to TypeScript with `EK4402` when it read `import.meta.filename`, `import.meta.dirname` or `import.meta.env`, or called `import.meta.resolve` with a computed or second argument. It now serves these reads from the `.platform.ts` companion, passing the module's own `import.meta.url` where the value names the module, so `main: import.meta.filename` still names the module after migration.
 
 - A migrated lint runner could drop JSX files in its extension filter before linting them. Setup now includes JSX source, preserves directory scope, and repairs filters from earlier setup runs.
@@ -289,6 +334,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - With a compiler before VIP-1, the migrate flow marked a function `: infer _` when it returned the Effect of a module converted in the same batch, and the converted module failed `EK9203`. The flow now reads that module's types from its TypeScript source and keeps such functions Effect functions.
 
 - The migrate flow kept a factory in TypeScript when its platform code read a private type of the module, even when the factory's return type never mentioned that type. The flow now checks the return type with the module's own tsconfig, and a factory whose result does not expose the private type converts; one that exposes it, or whose type it cannot fully resolve, still stays in TypeScript.
+- After the migrate flow moved a `crypto.randomUUID()`, `crypto.getRandomValues()` or `performance.now()` call into a module body, the module still failed `EK4402` on the helper call that replaced it. Those reads now get a helper with a signature of its own, so the module compiles.
+
+- `EK4402` on an `import.meta` member other than `url` told you to use "the Path or Config service" without naming the call that reads configuration. It now names the Path service or `Config.String`, or moving the use to a `.ts` file.
 
 - Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
 
@@ -300,6 +348,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| Implicit service keys in a package with `"name": ""` | Keys now begin with `/`. Run `vibelang --fix --fix-legacy-service-keys` on existing source to retain its earlier directory-prefixed keys explicitly. |
 | `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
 
