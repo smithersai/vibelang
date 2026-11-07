@@ -14,10 +14,12 @@ const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/nati
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const ts = createRequire(import.meta.url)(join(modules, "typescript"))
 const stock = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "typescript/bin/tsc")
-// Accepted VIP-40, "Emit, declarations, source maps":
-// "When the file's VIP-27 sidecar main.d.vibe.ts refers to the body,
-// main.vibe.parse.d.ts is also written beside main.vibe, so stock tsc resolves it."
-const rule = "VIP-40: a body's TypeScript declaration and JSDoc are available beside the source to stock tsc"
+// Accepted VIP-40, "Declarations": "When the file's VIP-27 sidecar
+// main.d.vibe.ts refers to the body, main.vibe.parse.d.ts is also written
+// beside that sidecar, so stock tsc resolves the sidecar's relative import
+// from the sidecar's actual location: beside main.vibe by default, or at the
+// mirrored path under vibe.sidecarDir."
+const rule = "VIP-40: a body's TypeScript declaration and JSDoc are available beside its sidecar to stock tsc"
 let diagnostics = ""
 
 function check(input, { cli = false } = {}) {
@@ -62,8 +64,10 @@ function check(input, { cli = false } = {}) {
     }))
     run("emit", binary, ["-p", "tsconfig.json", "--pretty", "false"], root)
     // Names here use lowercase ASCII, whose generated filenames VIP-40 keeps.
-    const declaration = join(sourceDir, "main.vibe." + input.name + ".d.ts")
-    assert.ok(existsSync(declaration), "missing declaration beside source: " + input.name)
+    // The sidecar sits beside the source, or at its mirrored path under sidecarDir.
+    const sidecarDir = input.layout ? join(root, input.layout, "src") : sourceDir
+    const declaration = join(sidecarDir, "main.vibe." + input.name + ".d.ts")
+    assert.ok(existsSync(declaration), "missing declaration beside sidecar: " + input.name)
     assert.match(readFileSync(declaration, "utf8"), /@throws \{RangeError\}/)
     run("repeat-emit", binary, ["-p", "tsconfig.json", "--pretty", "false"], root)
     // A consumer names the source; stock TypeScript finds its sidecar through
