@@ -783,8 +783,14 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
       if (published) {
         const manifest = saved?.apiMetadata?.manifest ?? JSON.parse(readFileSync(join(projection.directory, "package.json"), "utf8"))
         if ((manifest.publishConfig?.exports ?? manifest.exports) == null) {
+          // A module body's companion is emitted support (VIP-40), not a deep entry.
+          const internal = new Set(saved?.apiMetadata?.companions ?? [])
           for (const stored of saved?.roots ?? []) {
-            const logical = saved?.apiMetadata?.logicalPaths?.[stored] ?? stored
+            if (internal.has(stored)) continue
+            // A paired .d.mts -> .d.ts rename keeps its original entry name.
+            const source = originalName.get(stored)
+            const logical = source ? aSurface?.apiMetadata?.logicalPaths?.[source] ?? source
+              : saved?.apiMetadata?.logicalPaths?.[stored] ?? stored
             const name = "./" + logical.replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs").replace(/\.d\.ts$/, ".js")
             const target = projection.destinations.get(stored) ?? stored
             published[name] = join(projection.directory, target)

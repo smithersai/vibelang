@@ -148,6 +148,41 @@ export function nativeViteScripts(scripts = {}, { root, dir, configs }) {
   return { scripts: next, wired: [...wired] }
 }
 
+// Vite's JavaScript API discovers vite.config.ts by name unless configFile
+// names another file; it never looks for vite.config.vibe.
+const configApis = new Set(["resolveConfig", "createServer", "build", "preview", "createBuilder"])
+
+/** The first module beside a Vite config that calls Vite's config-loading API, which a rename would leave without its config. */
+export function viteConfigApiCaller({ root, file, ts }) {
+  for (const path of listSources(root, posix.dirname(file))) {
+    if (path === file || isTestFile(path) || isFixtureFile(path)) continue
+    const text = readFileSync(join(root, path), "utf8")
+    if (!text.includes("vite")) continue
+    const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true)
+    const namespaces = new Set()
+    let found = false
+    for (const statement of source.statements) {
+      if (!ts.isImportDeclaration(statement) || statement.moduleSpecifier.text !== "vite") continue
+      const clause = statement.importClause
+      if (!clause || clause.isTypeOnly) continue
+      const bindings = clause.namedBindings
+      if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text)
+      else if (bindings) found ||= bindings.elements.some(e => !e.isTypeOnly && configApis.has((e.propertyName ?? e.name).text))
+    }
+    const visit = node => {
+      if (found) return
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && ts.isStringLiteral(node.arguments[0] ?? node) && node.arguments[0].text === "vite") found = true
+      else if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && namespaces.has(node.expression.text) && configApis.has(node.name.text)) found = true
+      else if (ts.isVariableDeclaration(node) && node.initializer && ts.isIdentifier(node.initializer) && namespaces.has(node.initializer.text) && ts.isObjectBindingPattern(node.name))
+        found = node.name.elements.some(e => configApis.has((e.propertyName ?? e.name).getText(source)))
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    if (found) return path
+  }
+  return undefined
+}
+
 export function wireNativeViteConfigs({ root, packages, configs, manifests, ts, specsFor }) {
   const needed = configs.filter(file => nativeConfigDependency({ root, file, packages, ts }))
   const changed = [], warnings = [], wired = new Set()
@@ -169,7 +204,13 @@ export function wireNativeViteConfigs({ root, packages, configs, manifests, ts, 
     changed.push(file)
   }
   for (const file of needed) if (!wired.has(file)) warnings.push(`${file}: config imports migrated sources before plugins exist; run Vite with ${preload.trim()} and --configLoader native (Node ESM resolution applies)`)
-  return { changed, warnings, configs: needed, wired: [...wired] }
+  // Scripts keep the native loader; only a config no API caller discovers may be renamed.
+  const renamable = [...wired].filter(file => {
+    const caller = viteConfigApiCaller({ root, file, ts })
+    if (caller) warnings.push(`${file}: ${caller} loads it through Vite's JavaScript API, which finds the config by its TypeScript name; it keeps that name`)
+    return !caller
+  })
+  return { changed, warnings, configs: needed, wired: renamable }
 }
 
 /**

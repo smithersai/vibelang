@@ -1,4 +1,0 @@
-FuzzMigrationMainEntries entry:private-companion compiler VIP-40: main-only API discovery adds a recorded private module companion; lane migfix-t3code
-FuzzMigrationMainEntries corpus:t3code-main-private-companion compiler VIP-40: an internal body is not a new main-package entry; lane migfix-t3code
-FuzzMigrationMainEntries entry:mts-normalization compiler VIP-34: main-only API entries do not normalize a paired MTS/native declaration rename; lane migfix-t3code
-FuzzMigrationMainEntries corpus:t3code-main-mts-entry compiler VIP-34: declaration identity must preserve the logical renamed MTS entry; lane migfix-t3code
