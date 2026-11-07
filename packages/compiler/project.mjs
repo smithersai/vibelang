@@ -80,6 +80,10 @@ export function parseOutput(output, root) {
       diagnostics.push(diagnostic)
     } else if (/^\s/.test(line)) {
       if (diagnostic) diagnostic.text += "\n" + line
+    } else if (/^bundled:\/\/\/libs\/lib\.[^/\s]+\.d\.ts$/.test(line)) {
+      // Embedded standard libraries belong to the compiler's file listing.
+      // They have no filesystem path to watch or fingerprint.
+      diagnostic = undefined
     } else if (isAbsolute(line.trim()) &&
       // A multiline message can quote source comments at column zero.
       // Keep existing input paths even when their spelling resembles a

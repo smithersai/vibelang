@@ -77,3 +77,33 @@ test("an existing listed input remains a file immediately after a warning", (t) 
   assert.deepEqual(parsed.files, [listed])
   assert.equal(parsed.diagnostics[0].text, "warning")
 })
+
+test("embedded library listings terminate diagnostics without becoming filesystem inputs", async () => {
+  const root = resolve("project")
+  await checkProperty(fc, {
+    name: "project-embedded-library-listings",
+    rule: "Only listed source files become watched project inputs; compiler file lists are not diagnostic text.",
+    command: "node --test packages/compiler/test/project-diagnostic-excerpts.property.test.mjs",
+    numRuns: 100,
+    arbitrary: fc.record({
+      libraries: fc.array(fc.constantFrom("lib.es5.d.ts", "lib.es2022.full.d.ts", "lib.dom.d.ts", "lib.esnext.iterator.d.ts"), { minLength: 1, maxLength: 30 }),
+      category: fc.constantFrom("error", "warning"),
+      indent: fc.constantFrom("  ", "\t"),
+      eol: fc.constantFrom("\n", "\r\n")
+    }),
+    check: ({ libraries, category, indent, eol }) => {
+      const excerpt = indent + "bundled:///libs/lib.es5.d.ts"
+      const file = join(root, "main.vibe")
+      const parsed = parseOutput([
+        `main.vibe(3,2): ${category} TS2322: wrong type`,
+        excerpt,
+        ...libraries.map(name => "bundled:///libs/" + name),
+        file
+      ].join(eol), root)
+      assert.deepEqual(parsed.files, [file])
+      assert.equal(parsed.diagnostics.length, 1)
+      assert.equal(parsed.diagnostics[0].text, "wrong type\n" + excerpt)
+      assert.equal(parsed.diagnostics[0].category, category)
+    }
+  })
+})

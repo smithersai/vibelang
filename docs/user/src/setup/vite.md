@@ -4,7 +4,7 @@
 
 ![Hot reload and type errors in Vite](/videos/vite-dev.mp4)
 
-Unicode file names and diagnostic text are preserved, including in large compiler output.
+Unicode file names and diagnostic text are preserved, including in large compiler output. Source diagnostics retain their excerpts without appending compiler file-list output.
 
 Plugin instances in one process share project compiles when their root,
 project configuration and compiler match, including main and worker bundles.

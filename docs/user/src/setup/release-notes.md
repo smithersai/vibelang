@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A file-list lint command could succeed when an explicitly named source file did not exist. It now reports the missing path and exits with an error.
 
+- Errors from source loaders could include a long list of the compiler’s standard libraries. They now show only the diagnostic and its source details.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
