@@ -985,7 +985,7 @@ effect function syncAll(ids: string[]) {
 effect function run(ids: string[]) {
   for concurrent(1) (const id of ids) { fork sync(() => id) }   // each child is owned by run's fiber
   for concurrent(2) (const id of ids) { fork sync(() => id) }   // each child is interrupted when its item ends
-  for concurrent(NaN) (const id of ids) { fork sync(() => id) } // one item at a time, each on its own fiber, as at 2
+  for concurrent(NaN) (const id of ids) { fork sync(() => id) } // each item on its own fiber, as at 2, but one at a time
 }
 ```
 

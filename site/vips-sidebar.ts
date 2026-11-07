@@ -147,6 +147,10 @@ export const vipsSidebar = [
             "link": "/vips/0041-throw-expressions"
           },
           {
+            "text": "43. theorem and spec, proofs in TypeScript's own syntax",
+            "link": "/vips/0043-theorems"
+          },
+          {
             "text": "44. Durable values",
             "link": "/vips/0044-durable-values"
           }
@@ -203,10 +207,6 @@ export const vipsSidebar = [
           {
             "text": "42. VibeLang in .ts files",
             "link": "/vips/0042-vibelang-in-ts-files-open"
-          },
-          {
-            "text": "43. theorem and spec, proofs in TypeScript's own syntax",
-            "link": "/vips/0043-theorems-open"
           },
           {
             "text": "53. Renaming VibeLang to SmithersScript",

@@ -656,7 +656,7 @@ schema Exact {
 import { Schema } from "effect"
 const Exact = Schema.Struct({
   name: Schema.optionalKey(Schema.String),
-  explicit: Schema.optional(Schema.Union([Schema.String, Schema.Undefined]))
+  explicit: Schema.optional(Schema.String)
 })
 type Exact = typeof Exact.Type
 ```

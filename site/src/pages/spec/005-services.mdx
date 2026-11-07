@@ -233,8 +233,6 @@ Service members keep exactly the source's written `readonly` modifiers: a proper
 
 A service's `Shape` is the written member object, so self- and mutually recursive member contracts are allowed. `service Name: Type { … }` supplies the exact whole Shape: its body permits only `key` and `defaultValue`, and the type passes straight to `Context.Service<Name, Type>`, or to `Context.Reference<Type>` with a default. Any other body member is `EK0902`: put it in the supplied shape type. So `service Port: Shape { static readonly key = "probe/Port" }` means `class Port extends Context.Service<Port, Shape>()("probe/Port") {}`.
 
-A `defaultValue` initializer has class-field context even inside an Effect body: `try` there is `EK0501`.
-
 ### Using a service
 
 There is no `Users.find(id)` shorthand ([VIP-10](/vips/0010-service-call-shorthand-denied), denied). Get the service with `try`, then call it:
