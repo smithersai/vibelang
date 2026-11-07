@@ -228,6 +228,19 @@ func failuresExtraCases() []*failCase {
 	add(&failCase{Name: "catch-tracked-template", Owner: "nothrow-impl", Quote: nothrowQ.handler, Code: 401, Lib: "/** @throws {Error} */\nexport declare function tag(parts: TemplateStringsArray): never\n", Body: "const p = Effect.fail(\"bad\") catch () => ⟦tag`x`⟧"})
 	const producing = "| In effect code, a call (runtime `import()` included), `new` expression, tagged template or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |"
 	add(&failCase{Name: "promise-new", Quote: producing, Code: 404, Body: "const p = ⟦new Promise<number>((resolve) => resolve(1))⟧"})
+	// A super(...) call runs the base class constructor in a constructor,
+	// which is plain code: a base constructor known to throw is EK0401 there.
+	const knownCall = "A call, `new` expression, tagged template or class evaluation *known to throw* is `EK0401`"
+	const superLib = "export declare class Known {\n  /** @throws {RangeError} */\n  constructor(n: number)\n}\nexport declare class Safe {\n  /** @throws {never} */\n  constructor(n: number)\n}\nexport declare class Untagged { constructor(n: number) }\n"
+	add(&failCase{Name: "super-known", Owner: "compiler", Quote: knownCall, Code: 401, Host: "none", Lib: superLib, Decls: "export class C extends Known { constructor() { ⟦super(1)⟧ } }"})
+	add(&failCase{Name: "super-known-field", Owner: "compiler", Quote: knownCall, Code: 401, Host: "none", Lib: superLib, Decls: "export class C extends Known {\n  readonly v = 1\n  constructor(n: number) { ⟦super(n)⟧ }\n}"})
+	for _, row := range []struct{ name, decls string }{
+		{"untagged", "export class C extends Untagged { constructor() { super(1) } }"},
+		{"never", "export class C extends Safe { constructor() { super(1) } }"},
+		{"implicit", "export class C extends Known {}"},
+	} {
+		add(&failCase{Name: "super-control-" + row.name, Owner: "compiler", Quote: knownCall, Host: "none", Lib: superLib, Decls: row.decls})
+	}
 
 	const signatures = "Tags attach to call signatures: each overload and a returned callable's own signature carry their own. `const g = f` preserves `f`'s contract; a tag on an alias of a function type does not attach, so in a foreign declaration write `type Reader = { /** @throws {E} */ (): string }`."
 	add(&failCase{Name: "inferred-callable-alias", Quote: signatures, Code: 403, Decls: failParse + "\nconst alias = parse", Body: "⟦alias(s)⟧"})

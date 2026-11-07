@@ -99,7 +99,9 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 	if !ast.IsCallExpression(node) && !ast.IsNewExpression(node) && !ast.IsTaggedTemplateExpression(node) || inCatchingTry(node) {
 		return nil
 	}
-	if ast.IsCallExpression(node) && (ast.IsSuperCall(node) || ast.IsImportCall(node)) {
+	// A super(...) call runs the base class constructor, so its contract
+	// applies as to any call; a constructor is plain code.
+	if ast.IsCallExpression(node) && ast.IsImportCall(node) {
 		return nil
 	}
 	t := callTrust(a.checker, node)
