@@ -1,6 +1,7 @@
 // Real generated programs, in each text variant, read at both ends by two
 // independent consumers, alone and through a bundler. The programs come from
 // the fuzz generator (run.sh). Rules: docs/maintainers/source-maps.md.
+import { transform } from "esbuild"
 import { strict as assert } from "node:assert"
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -146,6 +147,7 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
     wordsRead += await checkMap(JSON.parse(readFileSync(output + ".map", "utf8")), readFileSync(output, "utf8"), source)
     // Rollup reads JavaScript alone, and some programs import a .ts helper.
     if (bundler === "none" || bundler === "rollup" && Object.keys(files).some((name) => name.endsWith(".ts"))) return
+    if (bundler === "esbuild" && labelChain.test(source)) return
     context.stage = "bundle"
     console.log(`source-map program ${JSON.stringify(context)}`)
     const built = await run(process.execPath, [bundle, bundler], { cwd: root, timeout: 30000, env: { VIBELANG_SOURCE_MAP_TRACE: "1" } })
@@ -164,6 +166,19 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
     for (const remove of cleanup) remove()
   }
 }
+
+// esbuild 0.28.2 rejects `continue` to an outer label of a consecutive chain, as
+// in `a: b: for (…) continue a`, which JavaScript allows. Such a program skips its
+// esbuild stage. The test below fails once esbuild accepts it.
+const labelChain = /[\p{ID_Continue}$]+\s*:\s*[\p{ID_Continue}$]+\s*:\s*(?:for|while|do)\b/u
+
+test("esbuild still rejects continue to an outer label of a chain", async () => {
+  const chain = "a: b: for (const x of [1]) { continue a }"
+  assert.ok(labelChain.test(chain))
+  assert.ok(!labelChain.test("a: for (const x of [1]) { continue a }"))
+  assert.doesNotThrow(() => new Function(chain))
+  await assert.rejects(transform(chain), /Cannot continue to label "a"/)
+})
 
 // Strings survive a bundler, whose map holds one source among others.
 async function checkBundle(map, code, source, sourceName, mapURL) {
