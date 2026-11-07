@@ -121,10 +121,10 @@ function formatText(text, filePath, style, flags = []) {
     throw new Error(`${requestedPath}: ${error.message}`, { cause: error })
   }
 }
-// discoverable lists the absolute paths dprint would format, which is what
+// discoverable lists every supported source path dprint would format, which is what
 // `--stdin` formats too: it returns a gitignored file's text unchanged.
 function discoverable(config) {
-  const result = spawnDprint(["output-file-paths", "--config", config, "**/*.vibe"])
+  const result = spawnDprint(["output-file-paths", "--config", config, "**/*.{vibe,vibex,ts,tsx,mts,cts}"])
   return result.status === 0 ? new Set(result.stdout.split("\n").filter(Boolean)) : new Set()
 }
 // cleanTexts remembers, across runs and per working directory, the texts dprint
@@ -203,7 +203,7 @@ function formatBatch(files, clean) {
     if (listed.length === 0) return
     const dir = dirname(config)
     const shards = Math.max(1, Math.min(availableParallelism(), Math.floor(listed.length / shardSize)))
-    const places = listed.map((entry, index) => join(dir, `shard${index % shards}`, String(index).padStart(7, "0") + ".vibe"))
+    const places = listed.map((entry, index) => join(dir, `shard${index % shards}`, String(index).padStart(7, "0") + (/\.(?:vibex|tsx)$/.test(entry.file) ? ".vibex" : ".vibe")))
     for (let shard = 0; shard < shards; shard++) {
       mkdirSync(join(dir, `shard${shard}`))
       // dprint takes a run's base from its config's directory when given no paths.
@@ -211,7 +211,7 @@ function formatBatch(files, clean) {
     }
     listed.forEach((entry, index) => writeFileSync(places[index], entry.input))
     const run = spawnSync(process.execPath, ["--input-type=module", "-e", parallelDprint, createRequire(import.meta.url).resolve("dprint/bin.cjs"), dir, String(shards)], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })
-    const refused = new Set([...`${run.stderr}${run.stdout}`.matchAll(/Error formatting .*?(\d+\.vibe)\. Message:/g)].map(match => match[1]))
+    const refused = new Set([...`${run.stderr}${run.stdout}`.matchAll(/Error formatting .*?(\d+\.vibex?)\. Message:/g)].map(match => match[1]))
     if (run.error || (run.status !== 0 && refused.size === 0)) return
     listed.forEach((entry, index) => {
       if (!refused.has(basename(places[index]))) results.set(entry.file, { input: entry.input, output: readFileSync(places[index], "utf8"), key: entry.key })

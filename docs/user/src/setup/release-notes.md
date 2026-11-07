@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Formatting many JSX or marked TypeScript files started a formatter process for every file, even on repeated clean checks. These files now share batch runs, and a clean cached check starts no formatter process.
+
 - The migrate flow kept a module in TypeScript when a provider that read the host also read a value with a type of the same name, such as a resource and its interface: moving the provider took the value, its type and so every value of the module. The module now keeps all its declarations, both meanings of the name included, and only the host calls and reads move into the module body.
 
 - A loop that updated a narrowed URL could report `TS7022` on a response and `TS18048` on the URL. Calls with a known return type now preserve TypeScript inference and narrowing.
