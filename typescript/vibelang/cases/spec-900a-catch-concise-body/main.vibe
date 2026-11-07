@@ -1,0 +1,11 @@
+// expect-result: ["outer",3]
+// Appendix A: catch, expression-bodied arrow handler — spec-rule: docs/design/src/900-appendices.md#09b1dc13f99505c0
+import { Effect } from "effect"
+export effect function main() {
+  // The later catch belongs to the arrow body, so its handler can still read the outer `e`.
+  const scoped = Effect.fail("outer") catch effect (e) => Effect.fail("inner") catch () => e
+  // The conditional is part of the ConciseBody: a catch (() => (flag ? 2 : 3)).
+  const flag: boolean = false
+  const conditional = Effect.fail("x") catch () => flag ? 2 : 3
+  return [scoped, conditional]
+}

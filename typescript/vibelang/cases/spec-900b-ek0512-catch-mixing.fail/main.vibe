@@ -1,0 +1,18 @@
+// expect: EK0512 EK0512 EK0512 EK0512 EK0512 EK0512 EK0512
+// Appendix B: EK0512 — spec-rule: docs/design/src/900-appendices.md#3be887d085155571
+import { Effect } from "effect"
+declare const a: Effect.Effect<number, string>
+declare const b: number | undefined
+export effect function main() {
+  const coalesce = b ?? a catch () => 1
+  const or = b || a catch () => 1
+  const and = b && a catch () => 1
+  const parenthesized = a catch (() => 1).toFixed()
+  const functionExpression = a catch function () { return 1 }.toFixed()
+  const blockArrow = a catch () => { return 1 }()
+  const parenthesizedCall = a catch (() => 1)()
+  // The repairs: parenthesize the mixed operands, or the whole catch expression.
+  const mixedRepair = b ?? (a catch () => 1)
+  const memberRepair = (a catch function () { return 1 }).toFixed()
+  return [coalesce, or, and, parenthesized, functionExpression, blockArrow, parenthesizedCall, mixedRepair, memberRepair]
+}
