@@ -114,7 +114,7 @@ func TestThunkKeepsTypeScriptCall(t *testing.T) {
 		{"an argument", "export const v = Effect.sync(() => [label()])\n", "Effect.sync(() => [label()])"},
 		{"a built-in that lists its failures", "export const f = (s: string) => Effect.sync(() => JSON.parse(s))\n", "Effect.sync(() => $invoke(JSON,() => (s)))"},
 		{"a thunk returned", "export const f = () => Effect.sync(() => label())\n", "() => Effect.sync(() => label())"},
-		{"a suspend's operand", "const p = (s: string) => Effect.succeed(s)\nexport const v = Effect.suspend(() => p(label()))\n", "Effect.suspend(() => p(label()))"},
+		{"a suspend's operand", "const p = (s: string) => Effect.succeed(s)\nexport const v = Effect.suspend(() => p(label()))\n", "Effect.suspend(() => { try { return p(label()) } catch (thrown) { return die(thrown) } })"}, // the fiber callback repair: the throw stays the same defect
 		{"a plain function in the thunk moves", "export const v = Effect.sync(() => () => label())\n", "effect { return () => label() }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

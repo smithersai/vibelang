@@ -1974,11 +1974,21 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	for _, d := range fixable {
 		key := fixKey(file, d)
 		if d.Code() == EK0401.Code {
-			site := reportedNode(file, core.NewTextRange(d.Pos(), d.End()), func(n *ast.Node) bool {
+			span := core.NewTextRange(d.Pos(), d.End())
+			site := reportedNode(file, span, func(n *ast.Node) bool {
 				return n.Kind == ast.KindThrowStatement || ast.IsCallExpression(n) && !isProgramArrow(ast.SkipParentheses(n.Expression())) || ast.IsNewExpression(n)
 			})
 			c, done := program.GetTypeCheckerForFile(ctx, file)
 			safe := site != nil && site.Kind != ast.KindThrowStatement && automaticNothrowFix(c, file, site)
+			if site == nil {
+				// A foreign call in an effectful plain function reports its
+				// callee (trust.go checkCall); the repairs take the call.
+				if callee := reportedNode(file, span, func(n *ast.Node) bool {
+					return n.Parent != nil && ast.IsCallExpression(n.Parent) && n.Parent.Expression() == n && !isProgramArrow(ast.SkipParentheses(n))
+				}); callee != nil {
+					site = callee.Parent
+				}
+			}
 			if site != nil && !refused[key] {
 				candidate, ok := preservingThrowFix(c, file, site, key)
 				if !ok {
