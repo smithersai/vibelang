@@ -480,11 +480,25 @@ function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
   return selected
 }
 
+// The deepest directory holding every file, as TypeScript computes a common
+// source directory when no rootDir is configured.
+function commonDirectory(files) {
+  if (!files.length) return undefined
+  let parts = dirname(resolve(files[0])).split(sep)
+  for (const file of files.slice(1)) {
+    const other = dirname(resolve(file)).split(sep)
+    let same = 0
+    while (same < parts.length && same < other.length && parts[same] === other[same]) same++
+    parts = parts.slice(0, same)
+  }
+  return parts.join(sep) || sep
+}
+
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 const absentSourceDir = ".migrate-absent-sources"
 
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir } = {}) {
-  const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), companions = new Set()
+  const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), projectOutputs = new Map(), companions = new Set()
   // Why a declaration was not emitted is known only at emit; a later record keeps it.
   const recorded = join(dir, "public-surface.json")
   const absentDeclarations = emitDiagnostics || !existsSync(recorded) ? {}
@@ -527,6 +541,19 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     projectDeclarations.set(context, new Set(parsed.fileNames.filter(file => /\.d\.[cm]?ts$/.test(file)).map(file => rel(packageDir, file))))
     const emitted = recordedOutputLayout(ts, parsed, resolve(dir, prefix), path, tsconfig)
     context.outputLayout = emitted.receipt
+    // Where this project would write a declaration for a source at a given
+    // path. The root stays the one the emitted files selected (TypeScript's
+    // rootDir, composite or common-source rule), so no extra input widens it.
+    const outputFileNames = parsed.fileNames.map(file => file.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts"))
+    projectOutputs.set(context, source => {
+      const options = emitted.originalOptions
+      const root = options.rootDir ?? (options.composite && options.configFilePath ? dirname(options.configFilePath)
+        : commonDirectory(outputFileNames.filter(file => !/\.d\.[cm]?ts$/.test(file))))
+      const inside = root && relative(root, source)
+      if (!inside || inside.startsWith("..") || isAbsolute(inside)) return []
+      return ts.getOutputFileNames({ ...parsed, fileNames: [...outputFileNames, source], options: { ...options, rootDir: root } },
+        source, false).filter(file => /\.d\.[cm]?ts$/.test(file))
+    })
     const present = new Set(emitted.present.map(({ output }) => output))
     for (const { source, output, originals } of emitted.outputs) {
       if (present.has(output)) continue
@@ -613,7 +640,23 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     writeFileSync(join(dir, stored), bytes)
     aliases[file] = stored
     logicalPaths[stored] = file
-    for (const context of projectContexts) if (projectDeclarations.get(context).has(file)) context.files.push(stored)
+    for (const context of projectContexts) {
+      if (!projectDeclarations.get(context).has(file)) continue
+      context.files.push(stored)
+      // TypeScript does not emit an input declaration. A package build that
+      // copies it publishes it where the project writes declarations, as
+      // dist/esm/x.d.ts for src/x.d.ts beside src/x.js, and the manifest names
+      // that path. Only module declarations stand for an entry point, and an
+      // emitted declaration keeps its own path.
+      if (!ts.isExternalModule(ts.createSourceFile(file, String(bytes), ts.ScriptTarget.Latest))) continue
+      const source = resolve(packageDir, file.replace(/\.d\.([cm]?)ts$/, ".$1ts"))
+      for (const output of projectOutputs.get(context)(source)) {
+        const published = rel(packageDir, output)
+        if (published === file || published === ".." || published.startsWith("../")) continue
+        aliases[published] ??= stored
+        aliases[published.replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] ??= stored
+      }
+    }
   }
   const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir),
     ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}),
