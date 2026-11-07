@@ -23,6 +23,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow's lost-wrapper check flagged every export the platform split keeps as a wrapper that calls the moved function in `<Name>.platform.ts`, since a program handed back through a call counts as no Effect. Such a wrapper now pairs through the moved function, and a wrapper that does anything else is still compared.
 - `vibelang --fix` could leave a retired `: infer _` return annotation on a plain callback after switching to native `callback`. It now removes that annotation while preserving ordinary return inference.
 
+- Callback migration examples could pass a plain value to native `resume`. They now pass an Effect and show how an explicit runtime import keeps the legacy adapter.
+
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.

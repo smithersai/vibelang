@@ -28,7 +28,12 @@ func FuzzPlainInferCallbackFix(f *testing.F) {
 	f.Add("try-options", byte(2), false)
 	f.Add("try-direct", byte(0), true)
 	f.Add("sync", byte(1), false)
-	f.Add("callback", byte(2), true)
+	for outer := byte(0); outer < 3; outer++ {
+		for _, namespace := range []bool{false, true} {
+			f.Add("callback", outer, namespace)
+			f.Add("callback-legacy", outer, namespace)
+		}
+	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, outer byte, namespace bool) {
 		TestPlainInferCallbackFixQuoted(t)
@@ -45,7 +50,9 @@ func FuzzPlainInferCallbackFix(f *testing.F) {
 		case "sync":
 			wrapper = "sync((): infer _ => 1)"
 		case "callback":
-			wrapper = "callback<number>((resume): infer _ => { resume(1); })"
+			wrapper = "callback<number>((resume): infer _ => { resume(Effect.succeed(1)); })"
+		case "callback-legacy":
+			wrapper = "legacyCallback<number>((resume): infer _ => { resume(1); })"
 		default:
 			key = "promise-options"
 			wrapper = "Effect.tryPromise({ try: (): infer _ => Promise.resolve(1), catch: (cause) => String(cause) })"
@@ -53,6 +60,9 @@ func FuzzPlainInferCallbackFix(f *testing.F) {
 		prelude := "import { Effect } from \"effect\"\n"
 		if namespace {
 			prelude = "import * as Effect from \"effect/Effect\"\n"
+		}
+		if key == "callback-legacy" {
+			prelude += "import { callback as legacyCallback } from \"vibelang-runtime\"\n"
 		}
 		body := "const run = effect () => try " + wrapper + "; return { run };"
 		source := ""
@@ -65,9 +75,6 @@ func FuzzPlainInferCallbackFix(f *testing.F) {
 			source = "export effect function make() { " + body + " }\n"
 		}
 		nativeWrapper := strings.ReplaceAll(wrapper, ": infer _", "")
-		if key == "callback" {
-			nativeWrapper = strings.ReplaceAll(nativeWrapper, "resume(1)", "resume(Effect.succeed(1))")
-		}
 		if key == "sync" || key == "callback" {
 			nativeWrapper = "Effect." + nativeWrapper
 		}
