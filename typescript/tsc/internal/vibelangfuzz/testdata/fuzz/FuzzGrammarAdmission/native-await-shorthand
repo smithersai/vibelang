@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-await-shorthand\nasync function outer() { const f = () => ({ await }); }")
