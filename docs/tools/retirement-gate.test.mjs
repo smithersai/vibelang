@@ -48,6 +48,24 @@ test("quick-fix proof rejects no-op, wrong output, introduced errors and standal
     assert.throws(() => verifyWitness("EK7777", fixes[0].cases[0], witness, ".", process.execPath, compiler(mode)), undefined, mode)
   assert.throws(() => verifyWitness("EK7777", fixes[0].cases[0], witness, ".", "/missing-compiler"), /missing built compiler/)
 })
+test("declaration snapshots are reference outputs rather than fixed sources", () => {
+  const files = Object.fromEntries(witness.paths.map(p => [p, witness.read(p)]))
+  files[output + "/expected/main.d.ts"] = "export declare const value: number"
+  verifyWitness("EK7777", fixes[0].cases[0], snapshot(files), ".", process.execPath, compiler())
+})
+test("nested declaration snapshots do not change migration source coverage", () => {
+  fc.assert(fc.property(
+    fc.array(fc.array(fc.constantFrom("nested", "module", "types"), { maxLength: 3 }), { minLength: 1, maxLength: 6 }),
+    directories => {
+      const files = Object.fromEntries(witness.paths.map(p => [p, witness.read(p)]))
+      for (const [i, segments] of directories.entries())
+        files[output + "/expected/" + [...segments, "file" + i + ".d.ts"].join("/")] = "reference declaration"
+      verifyWitness("EK7777", fixes[0].cases[0], snapshot(files), ".", process.execPath, compiler())
+      files[output + "/extra.ts"] = "unmatched source"
+      assert.throws(() => verifyWitness("EK7777", fixes[0].cases[0], snapshot(files), ".", process.execPath, compiler()),
+        /must change exactly the witnessed sources/)
+    }), { seed: 7441001, numRuns: 40 })
+})
 test("widened errors need their own case, not an unrelated working fix", () => {
   const existing = registry(7777, "errorCategory")
   const required = requiredRetirements(existing, existing, [{ path: input, codes: ["EK7777"] }])
