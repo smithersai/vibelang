@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Formatting a standalone `do` expression could fail with `'while' expected`. The formatter now keeps the parentheses that distinguish it from a `do`/`while` statement.
+
 - Migration examples with contextual plugin factories could still be reported as unsupported after their inferred contracts were preserved. They now verify the supported repair, including named wrappers and generic factories.
 - The HTTP handler migration example could report missing `Request` or `Response` types when its declarations were checked. Both the original and repaired examples now load the web types their signatures require.
 - Migration examples could reject the expected source-extension diagnostic as a failed conversion. They now follow TypeScript for value and type-only imports, including when neither extension option is enabled.

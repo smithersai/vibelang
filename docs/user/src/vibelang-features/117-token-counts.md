@@ -120,7 +120,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [vibelang CLI](../setup/vibelang-cli.md) | 20,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,400 |
 | **Format and lint** | **14,000** |
-| [Format with dprint](../setup/formatting.md) | 3,300 |
+| [Format with dprint](../setup/formatting.md) | 3,400 |
 | [Developer tools](../setup/developer-tools.md) | 11,000 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |

@@ -88,6 +88,13 @@ type placeholder struct {
 	// parenthesized marks a catch whose left side the encoding parenthesized
 	// for the property access it projects to; decoding removes them.
 	parenthesized bool
+	// doExpression identifies a call projection of a do expression.
+	doExpression bool
+	// doStatement marks a do expression at the start of an expression statement.
+	// Its call projection must not lose the grouping the restored keyword needs.
+	doStatement bool
+	// doWholeStatement retains parentheses around the entire source expression.
+	doWholeStatement bool
 	// noBody marks an error declaration written without fields or, for one
 	// written as a class, without a body, and a service of any shape (D281)
 	// written without a body.
@@ -827,8 +834,78 @@ func (e *encoder) expressionBlock(form parser.VibeSyntax, block string) {
 		head += newline + lineIndent(e.source, form.Word.Pos())
 	}
 	name := e.hold(placeholderText, head, form.Word.Pos(), 0)
+	if form.Kind == parser.VibeSyntaxDo {
+		e.holders[len(e.holders)-1].doExpression = true
+	}
 	e.add(edit{pos: form.Word.Pos(), end: form.Open.End(), text: name + block, opaque: true})
 	e.replace(form.Close.Pos(), form.Close.End(), "})")
+}
+
+// recordDoStatements uses the TypeScript projection before formatting. Unlike
+// the lowered VibeLang tree, it keeps final do-body expressions as statements.
+// Documentation wrappers are transparent when recovering that source context.
+func (enc *encoding) recordDoStatements(file *ast.SourceFile) {
+	d := decoder{enc: enc}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindCallExpression {
+			index := d.placeholderOf(node.Expression())
+			if index >= 0 && enc.placeholders[index].doExpression {
+				expression := enc.doStatementExpression(node)
+				enc.placeholders[index].doStatement = expression != nil
+				enc.placeholders[index].doWholeStatement = expression != nil && expression.Kind == ast.KindParenthesizedExpression
+			}
+		}
+		node.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+}
+
+// doStatementExpression follows only expression edges whose first token
+// is the child's. Parentheses are transparent: a TypeScript formatter can drop
+// them around the call projection even when the restored do keyword needs them.
+func (enc *encoding) doStatementExpression(node *ast.Node) *ast.Node {
+	if node == nil {
+		return nil
+	}
+	for parent := node.Parent; parent != nil; node, parent = parent, parent.Parent {
+		switch parent.Kind {
+		case ast.KindExpressionStatement:
+			return node
+		case ast.KindParenthesizedExpression, ast.KindNonNullExpression,
+			ast.KindAsExpression, ast.KindSatisfiesExpression,
+			ast.KindExpressionWithTypeArguments, ast.KindPropertyAccessExpression,
+			ast.KindElementAccessExpression:
+			if parent.Expression() != node {
+				return nil
+			}
+		case ast.KindCallExpression:
+			if parent.Expression() != node {
+				d := decoder{enc: enc}
+				index := d.placeholderOf(parent.Expression())
+				if index < 0 || enc.placeholders[index].kind != placeholderDocumentedExpression {
+					return nil
+				}
+				return node
+			}
+		case ast.KindBinaryExpression:
+			if parent.AsBinaryExpression().Left != node {
+				return nil
+			}
+		case ast.KindConditionalExpression:
+			if parent.AsConditionalExpression().Condition != node {
+				return nil
+			}
+		case ast.KindTaggedTemplateExpression:
+			if parent.AsTaggedTemplateExpression().Tag != node {
+				return nil
+			}
+		default:
+			return nil
+		}
+	}
+	return nil
 }
 
 // catch writes x catch y as x.$v(y), keeping the space before catch, so a
@@ -1090,6 +1167,7 @@ func (e *encoder) finish() (*encoding, error) {
 	if result.scriptKind == core.ScriptKindTSX {
 		result.jsxText = jsxTextLayouts(file, result.text)
 	}
+	result.recordDoStatements(file)
 	result.recordPatternBodies(file)
 	result.recordLabels(file)
 	result.recordReturnTypes(file)

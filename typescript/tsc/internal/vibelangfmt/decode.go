@@ -263,6 +263,27 @@ func (d *decoder) isBlockMarker(node *ast.Node) bool {
 	return name.Kind == ast.KindIdentifier && name.Text() == d.enc.sentinel
 }
 
+// groupDoStatement restores the source grouping that a call projection can
+// lose. Keeping a whole-expression group whole also keeps the formatter's ASI
+// guard decision stable on the next pass.
+func (d *decoder) groupDoStatement(call *ast.Node) {
+	index := d.placeholderOf(call.Expression())
+	if index < 0 || !d.enc.placeholders[index].doStatement {
+		return
+	}
+	expression := call
+	if d.enc.placeholders[index].doWholeStatement {
+		expression = d.enc.doStatementExpression(call)
+		if expression == nil || expression.Kind == ast.KindParenthesizedExpression {
+			return
+		}
+	} else if call.Parent != nil && call.Parent.Kind == ast.KindParenthesizedExpression {
+		return
+	}
+	d.replace(d.start(expression), d.start(expression), "(")
+	d.replace(expression.End(), expression.End(), ")")
+}
+
 // nextToken returns the start and end of the single-character token after pos.
 func (d *decoder) nextToken(pos int, want byte) (int, int, bool) {
 	at := scanner.SkipTrivia(d.text, pos)
@@ -288,6 +309,7 @@ func (d *decoder) node(node *ast.Node) error {
 				head = "{"
 			}
 			d.replace(call.Expression.End(), open+1, head)
+			d.groupDoStatement(node)
 			d.replace(block.End()-1, node.End(), "}")
 		}
 	}

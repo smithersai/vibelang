@@ -77,6 +77,8 @@ Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line
 
 Service members and class-form `error` fields accept comma separators. Formatting preserves these separators, nested type commas and comments on either side of a separator.
 
+A standalone `do` expression keeps the parentheses that distinguish it from a `do`/`while` statement: `(do { 1; });`. The same grouping is preserved in a function, a conditional body or a labeled statement.
+
 A `provide` list never wraps at a comma between providers. Line breaks inside a provider expression are allowed; the opening `{` stays on the line where the final provider ends.
 
 Pattern expressions in classic `for (init; test; update)` heads, including bindings introduced by `is`, keep their original head position and parse when formatted. The formatter keeps `is` on the same line as its subject and the start of its pattern, including when a narrow print width or the `operatorPosition` setting wraps the condition.
