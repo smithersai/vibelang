@@ -62,3 +62,10 @@ test("without a layout error the missing declaration still blocks the comparison
   assert.equal(result.comparisonComplete, false)
   assert.ok(blockers(result).some(d => /TS2307/.test(d.diagnostic)), JSON.stringify(result.environmentDiagnostics))
 }))
+
+test("a body error in the saved source above the tsconfig blocks the comparison", () => fixture(root => {
+  const broken = helper + 'const wrong: number = "text"\nexport { wrong }\n'
+  const result = compare(snapshot(root, "before", { source: broken }), snapshot(root, "after", { source: broken }))
+  assert.equal(result.comparisonComplete, false)
+  assert.ok(blockers(result).some(d => /TS2322/.test(d.diagnostic)), JSON.stringify(result.environmentDiagnostics))
+}))
