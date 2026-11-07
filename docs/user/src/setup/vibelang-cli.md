@@ -121,6 +121,8 @@ In `package.json`, replace `tsc` with `vibelang` in every script. `vibelang` run
 
 `vibelang --fix` reports its phase, round, applied and pending fixes, program-check counts and memory use on standard error during long runs. When the migration runner has a log path, it also saves those structured counters with the process ID and invocation number in `.progress.jsonl` files beside the completed diagnostic logs.
 
+With `--pprofDir <dir>`, `vibelang --fix` also writes CPU and memory profiles of the repair itself to `<dir>/fix`. The compile that follows the repair writes its own profiles to `<dir>`. On a large project, most of a `--fix` run's time goes to the repair's program checks.
+
 Built project references retain native exports through TypeScript barrels. When a declaration uses the native twin's relative `.ts` or `.tsx` name, the compiler can resolve the native module's emitted declaration even though its source is `.vibe` or `.vibex`. Ordinary written TypeScript imports keep their resolution rules. Inferred declarations also retain the package export that names a referenced native type, including a type reached indirectly through another emitted declaration. A private module absent from the package's exports remains private.
 
 

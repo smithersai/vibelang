@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/module"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/pprof"
 	"github.com/microsoft/TypeScript/tsc/internal/sourcemap"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -174,6 +176,21 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	if err != nil {
 		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+	}
+	// --pprofDir profiles the repair too, whose checks are most of a large
+	// project's run. It writes to dir/fix: the compile after it writes its
+	// own profiles to dir, named by the same process id.
+	if dir := flags.PprofDir; dir != "" {
+		session, err := pprof.BeginProfiling(filepath.Join(dir.AsString(), "fix"), sys.ErrorWriter())
+		if err != nil {
+			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: --pprofDir: cannot start profiling: %v\n", err)
+			return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+		}
+		defer func() {
+			if err := session.Stop(); err != nil {
+				fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: --pprofDir: cannot write profiles: %v\n", err)
+			}
+		}()
 	}
 	if len(args) > 0 {
 		switch strings.ToLower(args[0]) {
