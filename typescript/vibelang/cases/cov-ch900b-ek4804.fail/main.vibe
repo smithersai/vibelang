@@ -1,0 +1,15 @@
+// expect:
+// Appendix B: EK4804 — spec-rule: docs/design/src/900-appendices.md#400e2e503efb36a8
+// A global Error thrown as an Effect failure is a warning by default; a
+// tagged error is not.
+error Negative { n: number }
+
+export effect function global(n: number) {
+  if (n < 0) throw new Error("negative")
+  return n
+}
+
+export effect function tagged(n: number) {
+  if (n < 0) throw new Negative({ n })
+  return n
+}

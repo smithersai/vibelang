@@ -1,0 +1,31 @@
+// expect:
+// Appendix B: EK4808 — spec-rule: docs/design/src/900-appendices.md#18e027056cd55ac0
+// A provide block whose whole body is another provide block is a warning by
+// default; a provide block with other statements is not.
+service Directory { lookup(id: string): string!! }
+service Users { find(id: string): string!! }
+
+const DirectoryLive = Layer.succeed(Directory, {
+  effect lookup(id) { return id }
+})
+
+const UsersLive = Layer.succeed(Users, {
+  effect find(id) { return id }
+})
+
+export effect function nested() {
+  provide DirectoryLive {
+    provide UsersLive {
+      return try (try Users).find("1")
+    }
+  }
+}
+
+export effect function sequenced() {
+  provide DirectoryLive {
+    const id = try (try Directory).lookup("1")
+    provide UsersLive {
+      return try (try Users).find(id)
+    }
+  }
+}
