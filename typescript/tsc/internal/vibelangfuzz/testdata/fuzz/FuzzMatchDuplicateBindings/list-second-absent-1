@@ -1,0 +1,3 @@
+go test fuzz v1
+string("list-second-absent")
+uint8(1)

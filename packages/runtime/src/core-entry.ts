@@ -62,6 +62,7 @@ export const {
   $noMatch,
   $normal,
   $patternError,
+  $duplicateBinding,
   $plainOf,
   $plainSync,
   $produce,

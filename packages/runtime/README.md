@@ -151,6 +151,7 @@ or runtime references valid in first-release `.vibe` source.
 | `$bindingReference` | Preserve native read and write ordering for pattern bindings | VIP-7 |
 | `$noMatch` | Throw for a value that no match arm handled | — |
 | `$patternError` | Mark an unsupported pattern during checking | — |
+| `$duplicateBinding` | Throw `ReferenceError` when a pattern initializes one binding twice | VIP-7 |
 | `$provideEntries` | Provide a block's `Layer` providers and `Key = value` entries through `Effect.provide` in source order | VIP-12 |
 | `$provideService` | Supply a service implementation | — |
 | `$registerErrorMatcher` | Record and return a generated error matcher so error subclasses retain tag matching | D278, VIP-7 |

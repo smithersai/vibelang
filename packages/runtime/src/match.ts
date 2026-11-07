@@ -356,6 +356,15 @@ export function $patternError(_code: number, _detail?: string): boolean {
   throw new TypeError("This pattern is not supported")
 }
 
+/**
+ * Compiler ABI: a binding pattern that runs again for a name one top-level
+ * pattern already initialized, outside an or's replacement of a failed
+ * alternative's binding (VIP-7).
+ */
+export function $duplicateBinding(name: string): never {
+  throw new ReferenceError(`Cannot initialize the pattern binding ${name} twice`)
+}
+
 const createBindingSentinel = Symbol
 
 /** Compiler ABI: create a private identity for one compiled module's TDZ. */

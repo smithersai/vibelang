@@ -169,6 +169,13 @@ type matchCompile struct {
 	// no coverage is checked, and the arms narrow as TypeScript does.
 	uncovered bool
 	bound     map[string]bool // the names an alternative has hoisted, with their keyword
+	// checked maps the key of each name two binding patterns of this
+	// top-level pattern can both initialize to its flag (vibelang_match_repeated.go);
+	// nil until the top-level pattern's first compilePattern.
+	checked      map[string]string
+	checkedOrder []string
+	orNumbers    *int  // the last number given to an or that binds a checked name
+	laterIn      []int // the numbers of the ors this pattern stands in a later alternative of
 }
 
 // ---------------------------------------------------------------- parsing
@@ -1693,6 +1700,9 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		}()
 	}
 	test := func(t *ast.Node) { *steps = append(*steps, matchStep{test: t}) }
+	if ctx.checked == nil {
+		p.startCheckedBindings(pat, steps, ctx)
+	}
 	if pat.code == 4705 {
 		// Combinators sharing a level have no meaning to compile; EK4705 reports them.
 		test(p.patternErrorCall(4705, "", at))
@@ -1720,6 +1730,10 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			test(p.matcherTest(pat, path))
 		}
 	case patternBinding:
+		if flag := ctx.checked[bindingKey(pat)]; flag != "" && pat.name != nil {
+			test(p.checkedBinding(pat, path, flag, ctx))
+			return
+		}
 		if ctx.inline {
 			test(p.inlineBinding(pat, path, ctx))
 			return
@@ -1901,6 +1915,10 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			p.markUncovered(*steps, first, ctx, at)
 		}
 	case patternOr:
+		if flags := p.checkedOrFlags(pat, ctx); len(flags) > 0 {
+			test(p.mParens(p.compileCheckedOr(pat, path, flags, ctx, at), at))
+			return
+		}
 		var alternatives []*ast.Node
 		for _, item := range pat.items {
 			alternatives = append(alternatives, p.mParens(p.inlinePattern(item, path, ctx), at))
@@ -2244,7 +2262,7 @@ func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) 
 	if ctx.bound == nil {
 		ctx.bound = map[string]bool{}
 	}
-	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound, cache: ctx.cache, inlineLocals: ctx.inlineLocals}
+	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound, cache: ctx.cache, inlineLocals: ctx.inlineLocals, checked: ctx.checked, checkedOrder: ctx.checkedOrder, orNumbers: ctx.orNumbers, laterIn: ctx.laterIn}
 	mark := len(p.reparseList)
 	var steps []matchStep
 	if subjectReads(pat) >= 2 {

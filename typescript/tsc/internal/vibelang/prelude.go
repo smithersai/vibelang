@@ -132,16 +132,17 @@ var preludeModules = map[string]string{
 	"$interruptibleBlock":   runtimeModule,
 	// Pattern matching (D206-D225, match.go): the parser writes match and is
 	// with these helpers; customMatcher is the proposal's Symbol.customMatcher.
-	"$is":           runtimeModule,
-	"$extract":      runtimeModule,
-	"$matchCache":   runtimeModule,
-	"$relation":     runtimeModule,
-	"$relates":      runtimeModule,
-	"$rest":         runtimeModule,
-	"$propertyKey":  runtimeModule,
-	"$noMatch":      runtimeModule,
-	"$patternError": runtimeModule,
-	"customMatcher": runtimeModule,
+	"$is":               runtimeModule,
+	"$extract":          runtimeModule,
+	"$matchCache":       runtimeModule,
+	"$relation":         runtimeModule,
+	"$relates":          runtimeModule,
+	"$rest":             runtimeModule,
+	"$propertyKey":      runtimeModule,
+	"$noMatch":          runtimeModule,
+	"$patternError":     runtimeModule,
+	"$duplicateBinding": runtimeModule,
+	"customMatcher":     runtimeModule,
 }
 
 // implicitRuntimeImport makes a .vibe file that may use the prelude resolve the

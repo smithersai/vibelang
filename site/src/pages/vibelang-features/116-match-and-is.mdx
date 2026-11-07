@@ -99,6 +99,8 @@ A matcher, a value pattern or a relational operand is a member expression: a nam
 
 Bindings inside `or` and `not` patterns follow the same lexical rules as other pattern bindings. Alternatives that bind the same name with the same keyword share one cell; a later alternative can replace a value from an earlier alternative that failed. A saved closure observes that replacement. A `const` binding remains immutable in user code, and a name bound in every alternative gets the union of its extracted types.
 
+Within one top-level pattern, a name may also appear in several binding patterns joined by `and`, a list or an object, as long as each uses the same keyword. They share one cell, and running a second of them throws `ReferenceError`: `[let x, let x]` matching `[1, 2]` throws, and in effect code the match dies. Only a later alternative of the `or` whose failed alternative bound the name may replace it, so `([let x and 5] or [6]) and let x` throws for `[6]`.
+
 `var` is not allowed in pattern bindings (`EK0107`). Binding names may start with `$`, as ordinary TypeScript identifiers do; a `const` binding keeps its assignment checks. Use `let` or `const`, including inside an `is` pattern; the quick fix and `vibelang --fix` replace `var` with `let`.
 
 ```vibe
