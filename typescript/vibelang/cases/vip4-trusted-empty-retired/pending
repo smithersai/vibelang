@@ -1,0 +1,1 @@
+witness-06 EK0407 is registered but never reported: trusted(f, []) in a .vibe file compiles, or reports EK0402 when f is an unannotated foreign function, and vibelang --fix has no migration to the Effect.try / Effect.orDie bridge.

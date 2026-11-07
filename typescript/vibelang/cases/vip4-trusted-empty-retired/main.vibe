@@ -1,0 +1,11 @@
+// rule-evidence: docs/design/vips/0004-throw.md#retirement-of-the-empty-legacy-trust-wrapper
+// VIP-4 retires the historical trusted(f, []) wrapper with EK0407, which
+// names vibelang --fix. run.mjs compiles legacy.vibe.txt, a private wrapper
+// called directly in an explicit Effect body, then runs --fix and checks the
+// identity-mapped Effect.try / Effect.orDie bridge over f, its result and its
+// unchanged declaration output.
+import { measure } from "./helpers.ts"
+
+export effect function main() {
+  return try Effect.orDie(Effect.try({ try: () => measure("abc"), catch: (e) => e }))
+}

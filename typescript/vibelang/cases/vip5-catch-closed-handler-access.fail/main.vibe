@@ -1,0 +1,18 @@
+// expect: EK0512 EK0512 EK0512 EK0512 EK0512 EK0512 EK0512
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#decision
+// VIP-5, amended: catch mixed with ??, || or && without parentheses is
+// EK0512, as is a member access or call after any closed handler: a
+// parenthesized handler, a function expression or a block-bodied arrow.
+// a catch () => { }.call(o) is EK0512, not an unassigned syntax error.
+// expected/diagnostics.txt pins one EK0512 per function.
+const o = { n: 1 }
+declare const b: number | undefined
+export effect function nullish(e: number!string) { return b ?? e catch (_x) => 0 }
+export effect function or(e: number!string) { return b || e catch (_x) => 0 }
+export effect function and(e: number!string) { return e catch ((_x) => 0) && 1 }
+export effect function parenthesized(e: number!string) { return e catch ((_x) => 0).name }
+export effect function expression(e: number!string) { return e catch function (_x) { return 0 }.name }
+export effect function block(e: number!string) { return e catch (_x) => { return 0 }.toString() }
+export effect function called(e: number!string) { return e catch () => { }.call(o) }
+// Parenthesizing the whole catch expression attaches the call to its result.
+export effect function whole(e: number!string) { return (e catch () => { return 0 }).toString() }
