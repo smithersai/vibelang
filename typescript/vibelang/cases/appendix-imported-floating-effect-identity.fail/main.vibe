@@ -1,0 +1,6 @@
+// expect: EK3801
+// Appendix B: EK4801, the imported floatingEffect rule has its single EK38… identity — spec-rule: docs/design/src/900-appendices.md#25a38cb81cd5fbd5
+// With the Effect plugin enabled, a discarded Effect statement prints only
+// EK3801 floatingEffect, not the legacy EK4801 port as well.
+import { Effect } from "effect"
+export effect function main() { const p = Effect.succeed(1); p; return 1 }

@@ -1,0 +1,32 @@
+// expect: EK3501
+// Appendix B: interim EK1013, emission witness pending: the archived input does not reach this reporter on the current compiler — spec-rule: docs/design/src/900-appendices.md#8eddfd40a674356e
+// The archived EK1013 input below reports only EK3501, at its control
+// declaration. Without that declaration, its inherited error's commas are
+// EK1013, as in appendix-ek1013-inherited-error-comma.fail.
+
+// Root error payload fields below admit shared comma separators. Other
+// declaration/class punctuation retains its existing EK1013 diagnostic.
+
+error OutOfStock { sku: string, available: number }
+
+abstract error Missing {
+  path: string,
+  reason: string,
+}
+
+error Gone extends Missing { since: number, by: string }
+
+schema error Rejected { sku: string, reason: string }
+
+service Stock {
+  region: string,
+  count(sku: string): number!!
+}
+
+control Ask {
+  limit: number,
+  ask(): number!!
+}
+
+// A schema declaration separates its fields with ; , or a new line (Appendix A Separator).
+schema Item { readonly sku: string, readonly available: number }

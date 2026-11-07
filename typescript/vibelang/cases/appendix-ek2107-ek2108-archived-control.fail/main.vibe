@@ -1,0 +1,71 @@
+// expect: EK3501
+// Appendix B: interim EK2107, emission witness pending: its archived control input is rejected earlier by EK3501 — spec-rule: docs/design/src/900-appendices.md#c77deb65cfb96be5
+// Appendix B: interim EK2108, emission witness pending: its archived control input is rejected earlier by EK3501 — spec-rule: docs/design/src/900-appendices.md#e6d3a36dc09bca1f
+// The archived EK2107 and EK2108 input below reports only EK3501.
+
+control Approval {
+  approve(request: string): boolean!!
+  note(text: string): void!!
+}
+
+service Users {
+  find(id: string): string!!
+}
+
+// EK2108: Approval.note has no clause.
+effect function partial() {
+  try {
+    return try Approval.approve("x")
+  } handle Approval.approve(request) {
+    try resume(true)
+  }
+}
+
+// EK2108: Approval.approve already has a clause.
+effect function twice() {
+  try {
+    return try Approval.approve("x")
+  } handle Approval.approve(request) {
+    try resume(true)
+  } handle Approval.approve(request) {
+    try resume(false)
+  } handle Approval.note(text) {
+    try resume()
+  }
+}
+
+// EK2107: Users is a service.
+effect function service() {
+  try {
+    return try Users.find("1")
+  } handle Users.find(id) {
+    try resume("Ada")
+  }
+}
+
+service Secret {
+  read(): string!!
+}
+
+control Ask {
+  ask(question: string): string!!
+}
+
+// EK2005: the program passed to resumeWith needs Secret, which the try block
+// does not provide.
+effect function secret() {
+  try {
+    return try Ask.ask("password")
+  } handle Ask.ask(question) {
+    try resumeWith(effect { return try Secret.read() })
+  }
+}
+
+// EK1001: a module's top level runs no program.
+try {
+  Approval.approve("top")
+} handle Approval.approve(request) {
+  resume(true)
+} handle Approval.note(text) {
+  resume()
+}

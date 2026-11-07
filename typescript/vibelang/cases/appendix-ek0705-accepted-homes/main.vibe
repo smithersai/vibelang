@@ -1,0 +1,14 @@
+// expect-result: [true,[true,1],true,1]
+// Appendix B: EK4703 successor, accepted binding homes follow the chapter — spec-rule: docs/design/src/900-appendices.md#15e5342f210b2816
+// A binding-free test, an explicit block, a nested body and a caller's block
+// are accepted homes; formal/catch parameter homes are EK0705
+// (appendix-ek0705-parameter-homes.fail).
+function consume(value: boolean) { return value }
+function testOnly(a = (1 is 1)) { return a }
+function good(a = do { const ok = 1 is let captured; [ok, captured] }) { return a }
+function body(a = () => (1 is let captured)) { return a }
+function caller() { consume(1 is let captured); return captured }
+
+export effect function main() {
+  return [testOnly(), good(), body()(), caller()]
+}

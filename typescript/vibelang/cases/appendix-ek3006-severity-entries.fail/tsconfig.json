@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["esnext", "dom"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [],
+    "outDir": "out"
+  },
+  "include": ["*.vibe"],
+  "vibe": {
+    "severities": {
+      "EK4701": "warning",
+      "EK9204": "off",
+      "EK7999": "warning",
+      "EK4830": "loud",
+      "EK4831": 1,
+      "EK4832": true,
+      "EK4833": null,
+      "EK4834": {},
+      "EK4835": ["off"],
+      "EK4836": "off"
+    }
+  }
+}

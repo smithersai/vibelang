@@ -1,0 +1,5 @@
+main.vibe(7,28): 
+main.vibe(8,33): 
+main.vibe(9,27): 
+main.vibe(10,62): 
+EK0705: This `is` binding has no lexical home.
