@@ -26,7 +26,7 @@ func TestVarDenialQuoted(t *testing.T) { requireVarDenialQuotes(t) }
 func FuzzVarDenial(f *testing.F) {
 	startShortBudget(f)
 	requireVarDenialQuotes(f)
-	for _, key := range []string{"conformance-witness", "plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "do", "do-call-argument", "do-nested", "do-for-head", "generator-do-loop-head", "generator-for-of-head", "property-control", "literal-control", "let-control", "for-in-assignment-control", "for-of-assignment-control", "for-of-array-assignment-control", "for-of-object-assignment-control"} {
+	for _, key := range []string{"conformance-witness", "plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "global-augmentation", "namespace-ambient", "global-augmentation-let-control", "do", "do-call-argument", "do-nested", "do-for-head", "generator-do-loop-head", "generator-for-of-head", "property-control", "literal-control", "let-control", "for-in-assignment-control", "for-of-assignment-control", "for-of-array-assignment-control", "for-of-object-assignment-control"} {
 		for _, mode := range []uint8{0, 1, 2} {
 			f.Add(key, mode)
 		}
@@ -60,6 +60,13 @@ func FuzzVarDenial(f *testing.F) {
 			source = "export function load(): number { var" + gap + "{ value } = { value: 1 }; return value }"
 		case "ambient":
 			source = "declare var" + gap + "provided: number; export { provided }"
+		case "global-augmentation":
+			// The smithers sandbox flow declares its limit this way.
+			source = "export {}\ndeclare global { var" + gap + "__LIMIT__: number | undefined }"
+		case "namespace-ambient":
+			source = "declare namespace Limits { var" + gap + "max: number }\nexport const limit = Limits.max"
+		case "global-augmentation-let-control":
+			source, want = "export {}\ndeclare global { let __LIMIT__: number | undefined }", 0
 		case "do":
 			source = "export function load(): number { return do { " + declaration + "; value } }"
 		case "do-call-argument":
