@@ -1,0 +1,45 @@
+// expect: EK4802 EK4802 EK4802 EK4802
+// rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03
+// VIP-1, inferred Effect arguments: where the check looks. Only ordinary
+// calls are inspected, never the execution syntax itself; an ordinary call in
+// an operand is still inspected. A module declaration body is TypeScript code
+// and is excluded. Nested plain and async functions keep TypeScript inference,
+// and a nested effect body is inspected on its own.
+function held<T>(a: T): T { return a }
+
+export effect function forms(e: number!string, s: Stream.Stream<number>) {
+  const a = try e
+  const b = try.all [e, e]
+  const c = try.race [e, e]
+  const d = try.any [e, e]
+  const f = try.allSettled [e, e]
+  const fiber = fork e
+  const g = join fiber
+  const h = e catch (_x) => 0
+  for try (const n of s) { }
+  for concurrent(2) (const n of [1, 2]) { }
+  provide Layer.empty { try e }
+  uninterruptible { try e; restore { try e } }
+  interruptible { try e }
+  return 0
+}
+
+export effect function operands(e: number!!) {
+  const b = try.all [held(e), e]
+  const fiber = fork held(e)
+  return 0
+}
+
+export effect function nested(e: number!!) {
+  function plain() { return held(e) }
+  async function later() { return held(e) }
+  effect function again() { return held(e) }
+  const arrow = effect () => held(e)
+  return 0
+}
+
+module m {
+  import { Effect } from "effect"
+  function held<T>(a: T): T { return a }
+  export const program = Effect.gen(function* () { return held(Effect.succeed(1)) })
+}

@@ -1,0 +1,4 @@
+main.vibe(28,27): error EK4802
+main.vibe(29,27): error EK4802
+main.vibe(36,41): error EK4802
+main.vibe(37,35): error EK4802
