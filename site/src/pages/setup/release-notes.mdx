@@ -360,6 +360,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `EK4402` on an `import.meta` member other than `url` told you to use "the Path or Config service" without naming the call that reads configuration. It now names the Path service or `Config.String`, or moving the use to a `.ts` file.
 
+- An Electron app built with electron-vite failed to build a web worker that imported a migrated `.vibe` module, with a parse error, because the migrate flow added the VibeLang plugin to the app's main, preload and renderer builds but not to the renderer's worker build. The flow now also adds it to the renderer's `worker.plugins` when the app or a workspace package it bundles starts a worker, including in a config it wired earlier.
 - Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
 
 - The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.

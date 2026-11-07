@@ -360,6 +360,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
 
+- An Electron app built with electron-vite failed to build a web worker that imported a migrated `.vibe` module, with a parse error, because the migrate flow added the VibeLang plugin to the app's main, preload and renderer builds but not to the renderer's worker build. The flow now also adds it to the renderer's `worker.plugins` when the app or a workspace package it bundles starts a worker, including in a config it wired earlier.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |
