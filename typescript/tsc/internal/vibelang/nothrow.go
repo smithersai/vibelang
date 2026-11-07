@@ -186,8 +186,8 @@ func isIntrinsicPromiseConstruction(c *checker.Checker, call, decl *ast.Node) bo
 // arguments in its positions.
 func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 	node := fn
-	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
-		node = node.Parent
+	for parent := callbackValueParent(node); parent != nil; parent = callbackValueParent(node) {
+		node = parent
 	}
 	call := node.Parent
 	if call != nil && call.Kind == ast.KindTemplateSpan {

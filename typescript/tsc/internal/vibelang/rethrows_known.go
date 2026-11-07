@@ -240,32 +240,33 @@ func (a *analyzer) rethrownThrows(call *ast.Node) []*checker.Type {
 		if argument == nil {
 			continue
 		}
-		literal := ast.SkipParentheses(argument)
-		if !ast.IsFunctionExpressionOrArrowFunction(literal) || !rethrowsArgument(a.checker, call, index) {
+		if !rethrowsArgument(a.checker, call, index) {
 			continue
 		}
-		// Ordinary async initialization rejects its Promise. Generator
-		// initialization still runs at the call; only its body is deferred.
-		flags := ast.GetFunctionFlags(literal)
-		if flags&ast.FunctionFlagsAsync != 0 && flags&ast.FunctionFlagsGenerator == 0 || a.runsAsEffect(literal) {
-			continue
-		}
-		if signature := a.checker.GetSignatureFromDeclaration(literal); signature != nil && isEffectfulType(a.checker, a.checker.GetReturnTypeOfSignature(signature)) {
-			continue
-		}
-		var visit func(*ast.Node) bool
-		visit = func(n *ast.Node) bool {
-			// Use the same source owner as the admission check. Class bases,
-			// enum initializers and transparent expressions execute here;
-			// nested callable bodies and class fields keep their own owners.
-			if (ast.IsCallExpression(n) || ast.IsNewExpression(n) || ast.IsTaggedTemplateExpression(n)) &&
-				a.plainHomeOf(n) == literal && (flags&ast.FunctionFlagsGenerator == 0 || inParameterListOf(n, literal)) && !caughtWithinLiteral(n, literal) {
-				thrown = append(thrown, a.knownThrows(n)...)
-				thrown = append(thrown, a.rethrownThrows(n)...)
+		for _, literal := range inlineCallbackLiterals(argument) {
+			// Ordinary async initialization rejects its Promise. Generator
+			// initialization still runs at the call; only its body is deferred.
+			flags := ast.GetFunctionFlags(literal)
+			if flags&ast.FunctionFlagsAsync != 0 && flags&ast.FunctionFlagsGenerator == 0 || a.runsAsEffect(literal) {
+				continue
 			}
-			return n.ForEachChild(visit)
+			if signature := a.checker.GetSignatureFromDeclaration(literal); signature != nil && isEffectfulType(a.checker, a.checker.GetReturnTypeOfSignature(signature)) {
+				continue
+			}
+			var visit func(*ast.Node) bool
+			visit = func(n *ast.Node) bool {
+				// Use the same source owner as the admission check. Class bases,
+				// enum initializers and transparent expressions execute here;
+				// nested callable bodies and class fields keep their own owners.
+				if (ast.IsCallExpression(n) || ast.IsNewExpression(n) || ast.IsTaggedTemplateExpression(n)) &&
+					a.plainHomeOf(n) == literal && (flags&ast.FunctionFlagsGenerator == 0 || inParameterListOf(n, literal)) && !caughtWithinLiteral(n, literal) {
+					thrown = append(thrown, a.knownThrows(n)...)
+					thrown = append(thrown, a.rethrownThrows(n)...)
+				}
+				return n.ForEachChild(visit)
+			}
+			literal.ForEachChild(visit)
 		}
-		literal.ForEachChild(visit)
 	}
 	return thrown
 }

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-inline-value-function-call-caught")
+byte(0)

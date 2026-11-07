@@ -23,6 +23,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration could leave `bun check -b --no-script` on Bun's built-in checker, which reported missing extensionless imports of converted modules. Setup now selects `vibelang` for supported forced checks in any flag order while preserving the build's projects and compiler errors.
 
+- A caught rethrowing call could still reject an inline callback selected by a conditional or logical expression. Known callback throws now belong to the enclosing call, so its catch or wrapper handles them.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.
