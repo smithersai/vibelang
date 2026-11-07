@@ -1,0 +1,10 @@
+// expect-result: [7,["outer","after","inner"]]
+import {Effect as E} from "effect"
+type Job=E.Effect<E.Effect<number>>
+export effect function main(){
+ const events:string[]=[]
+ const program=try (E.sync(()=>{events.push("outer");return E.sync(()=>{events.push("inner");return 7})}) as Job)
+ events.push("after")
+ const value=try program
+ return [value,events] as const
+}

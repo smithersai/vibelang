@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `try` around a type assertion or conditional could run a returned Effect too early in TypeScript mapper output. It now runs only the operand's outer Effect, preserving the returned Effect for its own execution site.
+
 - An explicit `try` in an Effect-annotated `const` initializer could be rejected or skipped. It now runs at the binding site and stores the Effect's success value.
 
 - A class field that overrode a base class member with a function that may throw, such as `class C extends Reader { read = parse }` where `parse` declares `@throws {RangeError}` and `Reader.read` admits no throw, was accepted. It now reports `EK0402`, as the same member does under `implements`.
