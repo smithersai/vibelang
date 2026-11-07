@@ -863,26 +863,42 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
   // `restored` lists the modules whose committed bytes the rounds put back.
   const restored = []
   let last
+  // A compiler older than --only (VibeLang 0.0.11) rejects it with TS5023 and
+  // fixes nothing. The round reruns without it: the snapshot above puts back
+  // every nonselected source after each round, and the report keeps the
+  // selected files only, so the batch still changes only its own files.
+  let onlySupported = true
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
     let result, pid
     const audit = log && resolve(`${log}.${round}.audit`)
     const progressLog = log && `${log}.${round}.progress.jsonl`
     if (progressLog) writeFileSync(progressLog, "")
-    const progress = fixProgressStream(event => {
-      const record = { event: "compiler-fix-progress", invocation: round, pid, ...event }
-      if (progressLog) appendFileSync(progressLog, JSON.stringify(record) + "\n")
-      onProgress?.(record)
-    })
-    try {
-      const selection = selectionFile ? ` --only ${quote("@" + selectionFile)}` : ""
+    const invoke = async selection => {
+      const progress = fixProgressStream(event => {
+        const record = { event: "compiler-fix-progress", invocation: round, pid, ...event }
+        if (progressLog) appendFileSync(progressLog, JSON.stringify(record) + "\n")
+        onProgress?.(record)
+      })
       try {
-        result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, {
+        return await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, {
           cwd, log: log && `${log}.${round}.log`, timeoutMs,
           ...(audit ? { env: { VIBELANG_FIX_AUDIT_DIR: audit } } : {}),
           onStderr: (chunk, process) => { pid = process.pid; progress.write(chunk) }
         })
       } finally { progress.end() }
+    }
+    try {
+      const selected = selectionFile && onlySupported
+      result = await invoke(selected ? ` --only ${quote("@" + selectionFile)}` : "")
+      if (selected && result.code !== 0 && /TS5023: Unknown compiler option ['"]--only['"]/i.test(result.stdout + result.stderr)) {
+        onlySupported = false
+        if (log) {
+          writeFileSync(`${log}.${round}.only-unsupported.log`, readFileSync(`${log}.${round}.log`))
+          appendFileSync(`${log}.scope.log`, `# fix scope ${JSON.stringify({ stage: "only-unsupported", round, restoring: others.size })}\n`)
+        }
+        result = await invoke("")
+      }
     } finally {
       // An interrupted compiler may keep verified writes without printing
       // per-file statistics. Restore the whole nonselected byte snapshot.
@@ -914,7 +930,8 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
     if (parsed.total === 0) break
   }
   const settled = rounds.at(-1).fixes === 0
-  return { settled, rounds, byFile, refused, restored: [...new Set(restored)].sort(), diagnostics: parseDiagnostics(last.stdout + last.stderr, { cwd, root }) }
+  return { settled, rounds, byFile, refused, restored: [...new Set(restored)].sort(), diagnostics: parseDiagnostics(last.stdout + last.stderr, { cwd, root }),
+    ...(selectionFile && !onlySupported ? { onlyUnsupported: true } : {}) }
 }
 
 /** Totals of the rewrites that fired, by kind, over every file. */
