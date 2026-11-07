@@ -492,10 +492,10 @@ export function splitBatchPlatform(root, files, ts, {
     // A body cannot hold import.meta (EK4009), so a module whose import.meta
     // reads need the companion's helpers keeps the sibling.
     if (!refusal && moduleBodies && !result.importText && owningManifest(root, file, { exists, read })?.private === true) {
-      const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies })
+      const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies, wrap: true })
       if (body && !body.refused) {
         write(file, body.module)
-        splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+        splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: body.wrapped, ...(body.throwing.length ? { throwing: body.throwing } : {}) })
         continue
       }
     }
@@ -817,10 +817,10 @@ function wrapperOf(statement, source, ts) {
   for (const p of params) for (const n of readNames(p, ts)) reads.add(n)
   if (fn.type) for (const n of readNames(fn.type, ts)) reads.add(n)
   for (const t of fn.typeParameters ?? []) for (const n of readNames(t, ts)) reads.add(n)
-  const text = (namespace) => {
+  const text = (namespace, callee = `${namespace}.${name}`) => {
     // An inferred result may name a type parameter the arguments do not fix.
     const typeArgs = inferred && fn.typeParameters ? `<${fn.typeParameters.map((t) => t.name.text).join(", ")}>` : ""
-    const call = `${namespace}.${name}${typeArgs}(${args})`
+    const call = `${callee}${typeArgs}(${args})`
     const declaration = kind === "const"
       ? `export ${constKeyword} ${name} = ${asyncWord}${typeParams}(${paramText})${ret} => ${asyncWord ? "await " : ""}${call}`
       : `export ${asyncWord}function ${name}${typeParams}(${paramText})${ret} {\n  return ${call}\n}`
@@ -918,10 +918,10 @@ function firstLine(source, statement) {
 
 /**
  * Splits the TypeScript module text of file into a module with a module body.
- * Returns { module, moved, kept, name }, or { refused } saying why the module
+ * Returns { module, moved, kept, name, wrapped }, or { refused } saying why the module
  * keeps its platform code, or null when it reaches no platform code.
  */
-export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, platform: platformCode = true, reexports = true } = {}) {
+export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, platform: platformCode = true, reexports = true, wrap = false } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
@@ -985,11 +985,23 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   const kept = declarations.filter((d) => !moved.has(d))
   const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
   if (inferredTypes.refused) return inferredTypes
-  if (!kept.some((d) => !typeOnly(d) && !reexport(d))) return { refused: platformSeed.length ? `${file} is platform code only` : `${file}: every value of the module reaches a throw, so it stays TypeScript` }
-  const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
+  const isDefault = (d) => ts.isExportAssignment(d.statement) || (d.statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+  // With wrap, a module whose every value is platform code keeps each export
+  // as a function with its written signature that calls the body, as the
+  // sibling split's wrappers do; any other export leaves the module TypeScript.
+  let wrappers = []
+  if (!kept.some((d) => !typeOnly(d) && !reexport(d))) {
+    const exportedValues = platformSeed.length && wrap ? [...moved].filter((d) => d.exported && !typeOnly(d)) : []
+    // A type of a wrapped name would lose its export beside the wrapper.
+    wrappers = exportedValues.map((d) => !isDefault(d) && ![...d.names].some((n) => declared.get(n).some(typeOnly)) && wrapperOf(d.statement, source, ts)).map((w, i) => w && { d: exportedValues[i], ...w })
+    if (!wrappers.length || !wrappers.every(Boolean)) return { refused: platformSeed.length ? `${file} is platform code only` : `${file}: every value of the module reaches a throw, so it stays TypeScript` }
+  }
+  const keptReads = new Set([...kept.flatMap((d) => [...d.reads]), ...wrappers.flatMap((w) => [...w.reads])])
   const taken = new Set([...declared.keys(), ...imported, ...declarations.flatMap((d) => [...d.reads]), ...(operations?.helpers.map((h) => h.name) ?? [])])
   const name = uniqueName(platformSeed.length ? "platform" : "throwing", taken)
-  const isDefault = (d) => ts.isExportAssignment(d.statement) || (d.statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+  taken.add(name)
+  const alias = new Map()
+  for (const w of wrappers) { const a = uniqueName(w.name + "$platform", taken); taken.add(a); alias.set(w.name, a) }
   const movedList = declarations.filter((d) => moved.has(d))
   // What the module reads from the body, and what it re-exports, by meaning.
   const imports_ = [], typeImports = [], exports_ = [], typeExports = []
@@ -1006,6 +1018,7 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
       seen.add(n)
       const all = declared.get(n)
       const value = all.some((x) => !typeOnly(x))
+      if (alias.has(n)) { imports_.push(`${n} as ${alias.get(n)}`); continue }
       if (keptReads.has(n)) (value ? imports_ : typeImports).push(n)
       if (all.some((x) => x.exported && !typeOnly(x))) exports_.push(n)
       else if (all.some((x) => x.exported)) typeExports.push(n)
@@ -1051,9 +1064,9 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (!reexports && (exports_.length || typeExports.length || reexportsDefault)) {
     return { refused: `${file}: ${[...exports_, ...typeExports, ...(reexportsDefault ? ["default"] : [])].join(", ")} would be declared by \`module ${name}\`, a new public declaration file; platformModuleBodies allows it` }
   }
-  const module = joinParts(leadingHeader(source), head, [body], from, kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))))
+  const module = joinParts(leadingHeader(source), head, [body], from, [...kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))), ...wrappers.map((w) => w.text(name, alias.get(w.name)))])
   return { module, name, moved: [...movedList.flatMap((d) => [...d.names]), ...(operations?.helpers.map((h) => h.name) ?? [])], kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]),
-    ...(operations ? { hostOperations: operations.helpers.map((h) => h.name) } : {}) }
+    ...(operations ? { hostOperations: operations.helpers.map((h) => h.name) } : {}), wrapped: wrappers.map((w) => w.name) }
 }
 
 const intersect = (a, b) => new Set([...a].filter((x) => b.has(x)))

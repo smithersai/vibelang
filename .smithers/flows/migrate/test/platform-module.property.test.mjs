@@ -216,6 +216,39 @@ test("a private package keeps the sibling when a body refuses", () => {
   assert.deepEqual(files, plain)
 })
 
+test("a private package's all-platform function module takes a body and keeps its wrappers", () => {
+  // t3code Web waitForAtomValue.ts, discardComposerDraft.ts, threadContextAttachment.ts
+  // (dp-t3code-01 2026-11-07T04:45Z): every value is platform code, so the body
+  // refused, and the sibling's x.platform.d.ts became a new API entry.
+  const text = `import type { Stats } from "node:fs"\nimport { sep } from "node:path"\n/** Joins. */\nexport async function a<T>(s: string, t: T, st?: Stats): Promise<string> { return s + sep + String(t) + String(st) }\nexport const b = (n: number): string => sep.repeat(n)\nexport type K = string\n`
+  const run = (manifest, options) => {
+    const files = { "package.json": manifest, "w.ts": text }
+    const result = splitBatchPlatform("/none", ["w.ts"], ts, { exists: (f) => f in files, read: (f) => files[f], write: (f, t) => { files[f] = t }, ...options })
+    return { result, files }
+  }
+  const priv = run('{"private":true}', { moduleBodies: true })
+  assert.deepEqual(priv.result.refused, [])
+  assert.deepEqual(priv.result.splits.map((s) => [s.file, s.platform, s.module ?? null, s.wrapped]), [["w.ts", null, "platform", ["a", "b"]]])
+  assert.equal(priv.files["w.platform.ts"], undefined)
+  const module = priv.files["w.ts"]
+  assert.match(module, /^module platform \{$/m)
+  assert.match(module, /^import \{ a as a\$platform, b as b\$platform \} from platform$/m)
+  assert.match(module, /^export async function a<T>\(s: string, t: T, st\?: Stats\): Promise<string> \{\n  return a\$platform\(s, t, st\)\n\}$/m)
+  assert.match(module, /^export const b = \(n: number\): string => b\$platform\(n\)$/m)
+  assert.match(module, /^import type \{ Stats \} from "node:fs"$/m)
+  assert.doesNotMatch(module, /^export \{ [ab]/m)
+  // Without the private preference nothing changes: the sibling serves an
+  // exported package, and the body alone still refuses.
+  const exported = run('{"name":"p","exports":{".":"./w.js"}}', { moduleBodies: true })
+  assert.deepEqual(exported.result.splits.map((s) => [s.file, s.platform]), [["w.ts", "w.platform.ts"]])
+  assert.match(splitPlatformToModule(text, "w.ts", ts).refused, /platform code only/)
+  // A module with an export no wrapper can keep still takes the sibling's refusal path.
+  const untyped = `import { sep } from "node:path"\nexport function a(s: string): string { return s + sep }\nexport const c = sep\n`
+  assert.match(splitPlatformToModule(untyped, "w.ts", ts, { wrap: true }).refused, /platform code only/)
+  const twin = `import { sep } from "node:path"\nexport function a(s: string): string { return s + sep }\nexport type a = string\n`
+  assert.match(splitPlatformToModule(twin, "w.ts", ts, { wrap: true }).refused, /platform code only/)
+})
+
 // A generated module, compiled by the real compiler as a .vibe file against the
 // original as .ts: same exports at run time, and the declarations name the same API.
 const ambient = `declare module "node:path" { export const sep: string }\ndeclare const process: { pid: number }\n`
@@ -273,3 +306,35 @@ test("a split module compiles, and exports what the TypeScript module exports", 
     return true
   }
 }))
+
+// The all-platform wrapper route, compiled by the real compiler against the
+// original: same exports at run time, the wrapper's written signature, and the
+// body's declaration beside the source (t3code Web waitForAtomValue.ts).
+test("an all-platform module's body and wrappers compile and keep the module's exports", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+  const text = `import { sep } from "node:path"\n/** Doc of join. */\nexport async function join<T>(a: string, t: T): Promise<string> { return a + sep + String(t) }\nexport const line = (n: number): string => sep.repeat(n)\nexport type K = string\n`
+  const dir = mkdtempSync(join(tmpdir(), "platform-module-wrap-"))
+  try {
+    for (const side of ["ts", "vibe"]) {
+      const root = join(dir, side)
+      mkdirSync(join(root, "src"), { recursive: true })
+      writeFileSync(join(root, "src/ambient.d.ts"), ambient)
+      writeFileSync(join(root, "package.json"), '{"type":"module","private":true}')
+      writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "esnext", module: "esnext", moduleResolution: "bundler", strict: true, declaration: true, skipLibCheck: true, types: [], outDir: "out", rootDir: "src" }, include: ["src"] }))
+    }
+    writeFileSync(join(dir, "ts/src/x.ts"), text)
+    const result = splitPlatformToModule(text, "src/x.ts", ts, { wrap: true })
+    assert.deepEqual(result.wrapped, ["join", "line"])
+    writeFileSync(join(dir, "vibe/src/x.vibe"), result.module)
+    for (const side of ["ts", "vibe"]) {
+      const r = spawnSync(compiler, ["-p", "tsconfig.json"], { cwd: join(dir, side), encoding: "utf8" })
+      assert.equal(r.status, 0, `${side}: ${r.stdout}\n${result.module}`)
+    }
+    assert.equal(exportsOf(join(dir, "vibe/out"), "x.js"), exportsOf(join(dir, "ts/out"), "x.js"))
+    const declaration = readFileSync(join(dir, "vibe/out/x.d.ts"), "utf8")
+    assert.match(declaration, /export declare function join<T>\(a: string, t: T\): Promise<string>;/)
+    assert.match(declaration, /export declare const line: \(n: number\) => string;/)
+    assert.ok(readFileSync(join(dir, "vibe/out/x.vibe.platform.d.ts"), "utf8").includes("/** Doc of join. */"))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
