@@ -1,0 +1,2 @@
+go test fuzz v1
+string("// expect: EK4007 EK4007 EK4007 EK4007\nmodule first { export const n = 1; export type N = number }\nmodule second {\n  import first\n  import * as ns from first\n  import type { N } from first\n  export * from first\n}\nimport second\n")
