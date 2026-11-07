@@ -23,7 +23,7 @@ var platformGlobalDocVariants = map[string]struct{ diagnostic, documented string
 	"crypto.subtle":           {"`try (try Mac.Mac).sign(key, data)`", "`try (try Mac.Mac).sign(macKey, data)`"},
 	"crypto.webcrypto":        {"`try (try Mac.Mac).sign(key, data)`", "`try (try Mac.Mac).sign(macKey, data)`"},
 	"importScripts":           {"Worker and WorkerRunner", "`effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`"},
-	"performance.now":         {"`Number(try Clock.monotonicTimeNanos) / 1e6`", "For elapsed intervals, subtract readings from the same clock: `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6`. The clock has an arbitrary origin; keep reads requiring the native origin in a `.ts` adapter."},
+	"performance.now":         {"`Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6`", "For elapsed intervals, subtract readings from the same clock: `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6`. The clock has an arbitrary origin; keep reads requiring the native origin in a `.ts` adapter."},
 	"process.argv":            {"`try (try Stdio.Stdio).args`", "`try (try Stdio.Stdio).args` for user arguments, matching `process.argv.slice(2)`; read the full array in a `.ts` adapter."},
 	"process.getuid":          {"`try (try Experimental.Process.Process).currentUid`", "`try (try Experimental.Process.Process).currentUid`; absent is `undefined`, root is `0`, native errors stay typed failures"},
 	"process.version":         {"`\"v\" + (try (try Experimental.Process.Process).versions).node`", "`\"v\" + (try (try Experimental.Process.Process).versions).node` on Node; `versions` itself is a map of component versions."},

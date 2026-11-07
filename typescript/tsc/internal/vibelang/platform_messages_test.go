@@ -279,7 +279,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"clock", `export const run = () => Date.now()`, nil},
 		{"monotonic clock", `export const run = () => performance.now()`, []string{
 			"performance.now() is platform code, which VibeLang code does not use directly.",
-			"Use Number(try Clock.monotonicTimeNanos) / 1e6: Clock.monotonicTimeNanos yields bigint nanoseconds, and performance.now() returns number milliseconds.",
+			"Use Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6: Clock.monotonicTimeNanos has an arbitrary origin: record startNanos from the same clock before work and subtract it afterward. Keep reads requiring the native origin of performance.now() in a .ts adapter.",
 			"In a test, TestClock sets it.",
 		}},
 		{"date call", `export const run = () => Date()`, nil},

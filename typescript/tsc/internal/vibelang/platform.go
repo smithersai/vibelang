@@ -317,7 +317,7 @@ var platformAPIs = map[string]platformAPI{
 	"BroadcastChannel":              {note: "Effect has no service for messages between browser tabs; a Worker carries messages to a worker."},
 	"Bun":                           {note: runtimeGap},
 	"Deno":                          {note: runtimeGap},
-	"performance.now":               {"Clock", "Number(try Clock.monotonicTimeNanos) / 1e6", "Clock.monotonicTimeNanos yields bigint nanoseconds, and performance.now() returns number milliseconds."},
+	"performance.now":               {"Clock", performanceNowExample, performanceNowGuidance + "."},
 	"performance.timeOrigin":        {"ExperimentalProcess", "try (try Experimental.Process.Process).timeOrigin", "Clock reads the time now; it has no time origin."},
 	"window.matchMedia":             {service: "ExperimentalMediaQuery"},
 	"window.FileReader":             {service: "ExperimentalFileReader"},
@@ -475,8 +475,10 @@ type clockRead struct {
 }
 
 const (
-	testClock  = "In a test, TestClock sets it."
-	testCrypto = `In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.`
+	performanceNowExample  = "Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6"
+	performanceNowGuidance = "Clock.monotonicTimeNanos has an arbitrary origin: record startNanos from the same clock before work and subtract it afterward. Keep reads requiring the native origin of performance.now() in a .ts adapter"
+	testClock              = "In a test, TestClock sets it."
+	testCrypto             = `In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.`
 )
 
 // clockReads lists host clock and randomness reads (EK4402), by the
@@ -485,7 +487,7 @@ const (
 var clockReads = map[string]clockRead{
 	"Crypto.randomUUID":      {"try (try SecureRandom.SecureRandom).uuidV4()", "Crypto", testCrypto},
 	"Crypto.getRandomValues": {"try (try SecureRandom.SecureRandom).randomBytes(size), which returns new bytes instead of filling an array", "Crypto", testCrypto},
-	"Performance.now":        {"Number(try Clock.monotonicTimeNanos) / 1e6: Clock.monotonicTimeNanos yields bigint nanoseconds, and performance.now() returns number milliseconds", "", testClock},
+	"Performance.now":        {performanceNowExample + ": " + performanceNowGuidance, "", testClock},
 }
 
 // platformModule is EK4402's text for an import of a platform module that

@@ -1,0 +1,19 @@
+// expect-result: [0,0,12.5,2]
+import { Clock, Effect } from "effect"
+
+let reads = 0
+let ticks = 0n
+const clock: Clock.Clock = {
+  ...Effect.runSync(Clock.Clock),
+  monotonicTimeNanos: Effect.sync(() => { reads++; return 123_456_789_000_000n + ticks++ * 12_500_000n })
+}
+export effect function main() {
+  const before = reads
+  const program = effect {
+    const startNanos = try Clock.monotonicTimeNanos
+    return Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6
+  }
+  const cold = reads
+  const elapsed = try Effect.provideService(program, Clock.Clock, clock)
+  return [before, cold, elapsed, reads]
+}

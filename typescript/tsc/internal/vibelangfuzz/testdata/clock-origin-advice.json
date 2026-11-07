@@ -1,0 +1,67 @@
+[
+  {
+    "key": "clock-origin:direct",
+    "source": "export const value = () => performance.now()",
+    "host": true
+  },
+  {
+    "key": "clock-origin:global",
+    "source": "export const value = () => globalThis.performance.now()",
+    "host": true
+  },
+  {
+    "key": "clock-origin:computed",
+    "source": "export const value = () => performance[\"now\"]()",
+    "host": true
+  },
+  {
+    "key": "clock-origin:global-computed",
+    "source": "export const value = () => globalThis[\"performance\"][\"now\"]()",
+    "host": true
+  },
+  {
+    "key": "clock-origin:optional",
+    "source": "export const value = () => performance?.now()",
+    "host": true
+  },
+  {
+    "key": "clock-origin:parenthesized",
+    "source": "export const value = () => (performance.now)()",
+    "host": true
+  },
+  {
+    "key": "clock-origin:method",
+    "source": "export const value = () => performance.now",
+    "host": true
+  },
+  {
+    "key": "clock-origin:computed-method",
+    "source": "export const value = () => performance[\"now\"]",
+    "host": true
+  },
+  {
+    "key": "clock-origin:global-method",
+    "source": "export const value = () => globalThis.performance.now",
+    "host": true
+  },
+  {
+    "key": "clock-origin:local",
+    "source": "const performance = {now: () => 7}; export const value = () => performance.now()",
+    "host": false
+  },
+  {
+    "key": "clock-origin:parameter",
+    "source": "export const value = (performance: {now(): number}) => performance.now()",
+    "host": false
+  },
+  {
+    "key": "clock-origin:date",
+    "source": "export const value = () => Date.now()",
+    "host": false
+  },
+  {
+    "key": "clock-origin:random",
+    "source": "export const value = () => Math.random()",
+    "host": false
+  }
+]

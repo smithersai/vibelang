@@ -6879,6 +6879,8 @@ typescript/vibelang/cases/platform-clock-native-errors.fail/main.vibe:5:23 lambd
 typescript/vibelang/cases/platform-clock-native-errors.fail/main.vibe:6:21 lambda choice fallback
 typescript/vibelang/cases/platform-clock-native-errors.fail/main.vibe:7:22 lambda choice fallback
 typescript/vibelang/cases/platform-clock-native-errors.fail/main.vibe:8:24 lambda choice fallback
+typescript/vibelang/cases/platform-clock-origin-advice/main.vibe:12:19 lambda program table
+typescript/vibelang/cases/platform-clock-origin-advice/main.vibe:8:35 lambda plain table
 typescript/vibelang/cases/platform-host-augmentation/main.vibe:2:33 lambda plain annotation
 typescript/vibelang/cases/platform-host-file-scope-warning/main.vibe:3:56 lambda plain table
 typescript/vibelang/cases/platform-host-file-scope-warning/main.vibe:4:72 lambda plain table
