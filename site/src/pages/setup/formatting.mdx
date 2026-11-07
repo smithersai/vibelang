@@ -120,6 +120,8 @@ The plugin reports the file and leaves it unchanged when:
 
 This check also covers ordinary `/* @internal */` comments on fields, methods and accessors. Parameter comments follow the compiler's parameter attachment rules; a line break that keeps the same meaning can still format.
 
+The formatter commands include the original file path before each syntax-error location, so a failure in a multi-file check identifies the file to repair. A refused file keeps its original bytes.
+
 Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are supported and follow dprint’s TypeScript formatting.
 
 Comments between `catch` and its literal handler are preserved, including line comments.

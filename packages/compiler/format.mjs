@@ -227,17 +227,21 @@ export function formatFiles(args) {
   let failed = false
   try {
     for (const file of files) {
-      const before = readFileSync(file, "utf8")
-      const result = batched.get(file)
-      // formatText selects the plugin from the source kind, including marked TSX.
-      const after = result?.input === before ? result.output : formatText(before, file, repositoryStyle(file))
-      if (before === after) {
-        // A gitignored file comes back unchanged without being formatted, so it never counts as clean.
-        if (result?.input === before) keys.add(result.key)
-        continue
+      try {
+        const before = readFileSync(file, "utf8")
+        const result = batched.get(file)
+        // formatText selects the plugin from the source kind, including marked TSX.
+        const after = result?.input === before ? result.output : formatText(before, file, repositoryStyle(file))
+        if (before === after) {
+          // A gitignored file comes back unchanged without being formatted, so it never counts as clean.
+          if (result?.input === before) keys.add(result.key)
+          continue
+        }
+        if (check) { console.error(file + ": needs formatting"); failed = true }
+        else writeFileSync(file, after)
+      } catch (error) {
+        throw new Error(file + ": " + error.message, { cause: error })
       }
-      if (check) { console.error(file + ": needs formatting"); failed = true }
-      else writeFileSync(file, after)
     }
   } finally { clean.save(keys) }
   return failed ? 1 : 0
