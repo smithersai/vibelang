@@ -444,13 +444,19 @@ function workspaceOrigin(file) {
 // What a module adds to the shared environment: its ambient blocks and every
 // local declaration they reach, printed. Source and declaration differ in
 // everything else, so only this part of each file can be compared.
+// A relative module specifier without its extension, as a conversion may
+// respell `./work` as `./work.ts` or `./work.js` in the same declaration.
+const specifierStem = specifier => specifier.replace(/\.[cm]?[jt]sx?$|\.vibex?$/, "")
+
 function ambientContribution(ts, source) {
   const printer = ts.createPrinter()
+  // An inferred import type names the module the same way a named import does.
   const print = node => printer.printNode(ts.EmitHint.Unspecified, node, source).replace(/\s+/gu, " ")
+    .replace(/\bimport\((["'])(\.{1,2}\/[^"']*)\1\)/gu, (_, quote, specifier) => "import(" + quote + specifierStem(specifier) + quote + ")")
   const locals = new Map()
   for (const statement of source.statements) {
     if (ts.isImportDeclaration(statement)) {
-      const clause = statement.importClause, specifier = statement.moduleSpecifier.text.replace(/\.[cm]?[jt]sx?$|\.vibex?$/, "")
+      const clause = statement.importClause, specifier = specifierStem(statement.moduleSpecifier.text)
       const bindings = clause?.namedBindings
       const names = [...(clause?.name ? [clause.name] : []), ...(bindings ? ts.isNamespaceImport(bindings) ? [bindings.name] : bindings.elements.map(element => element.name) : [])]
       for (const name of names) locals.set(name.text, "import " + name.text + " from " + specifier)

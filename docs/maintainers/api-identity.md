@@ -132,6 +132,9 @@ Equal complete environments may share declarations after their syntax,
 comments, source load order and every resolved dependency edge agree. This keeps
 intrinsic array types in their original environment. External module
 augmentations still require equivalent isolated ambient closures and comments.
+A closure names a relative module without its extension, in an import and in
+an inferred `import("./work")` type alike, so a conversion that respells it
+`./work.ts` leaves the closure the same; a different module or path does not.
 An unproved external augmentation makes the comparison unavailable with exit
 status `2`; it cannot silently pass or count as an API difference.
 

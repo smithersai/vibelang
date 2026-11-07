@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The migration's API identity check refused a package with "Ambient declaration closures differ" when a declaration that augments a module, such as a router's TanStack Router `Register`, reached an inferred `import("./work").WorkFilter` that the converted side spelled `import("./work.ts")`. Such a respelling of the same module now leaves the closure the same; a changed type or a different module still refuses.
+
 - `new Response(…)`, `new Headers(…)` or `x instanceof Response` inside an `Effect.try` or `Effect.tryPromise` thunk reported `TS2351` or `TS2359` with no note, so a migration kept the module in TypeScript instead of moving the host constructor to a `.ts` companion. The error now carries the note it gets anywhere else in the module: the name is Effect's module, and the global is platform code that lives in a `.ts` file.
 
 - The migration's API identity check failed with `TS2307` on both sides, and refused every export of the package, when a declaration imported another workspace package's module by a relative path, such as `../../../packages/smithers/gateway/src/RuntimeBridge.js`: its comparison copy held only the package itself. That module now resolves as it does in the repository, so the exports compare.

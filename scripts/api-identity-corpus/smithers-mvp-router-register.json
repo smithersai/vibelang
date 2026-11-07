@@ -1,0 +1,8 @@
+{
+  "repository": "smithers",
+  "module": "apps/mvp/src/router.ts",
+  "pattern": "A router declaration with TanStack Router's Register module augmentation reaches an inferred import type of a converted neighbour; after conversion the specifier gains an extension.",
+  "router": "import type { ViewsView } from \"{views}\";\nexport declare const router: {\n    readonly views: ViewsView;\n    readonly work: import(\"{work}\").WorkFilter;\n};\ndeclare module \"base\" {\n    interface Register {\n        router: typeof router;\n    }\n}\n",
+  "views": "export interface ViewsView { readonly id: string }\n",
+  "work": "export interface WorkFilter { readonly q: string }\n"
+}
