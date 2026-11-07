@@ -1,0 +1,30 @@
+// expect-result: [["tdz",1],["tdz",1]]
+// rule-evidence: docs/design/src/004-match.md#is-expressions | In `for (init; test; update)`, a direct read in `update` of a binding from `test` follows the same type-dependent `TS2454` checks: `update` starts in a fresh iteration environment before the `test` that initializes that cell.
+// An unknown or undefined-including binding is exempt from TS2454, so the
+// read compiles; the update still runs in the next iteration's fresh
+// environment, where the test has not yet initialized the cell, so it throws
+// ReferenceError instead of seeing the body's value.
+import { Effect } from "effect"
+function unknownCell(xs: readonly unknown[]): readonly unknown[] {
+  let i = 0
+  let seen: unknown = "none"
+  try {
+    for (; i < xs.length && (xs[i] is let v); seen = v) i++
+  } catch (e) {
+    return [e instanceof ReferenceError ? "tdz" : "other", i]
+  }
+  return [seen, i]
+}
+function optionalCell(xs: readonly (number | undefined)[]): readonly unknown[] {
+  let i = 0
+  let seen: number | undefined = -1
+  try {
+    for (; i < xs.length && (xs[i] is let v); seen = v) i++
+  } catch (e) {
+    return [e instanceof ReferenceError ? "tdz" : "other", i]
+  }
+  return [seen, i]
+}
+export function main(): Effect.Effect<readonly unknown[]> {
+  return Effect.sync(() => [unknownCell([1, 2]), optionalCell([1, 2])])
+}
