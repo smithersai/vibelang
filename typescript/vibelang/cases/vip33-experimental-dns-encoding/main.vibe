@@ -1,0 +1,66 @@
+import * as NodeDns from "@effect/platform-node/NodeDns"
+import { Dns as EffectDns } from "effect/net"
+import { ExperimentalNodeDns } from "vibelang-runtime/experimental/platform-node"
+import { ExperimentalWorkerDns } from "vibelang-runtime/experimental/platform-worker"
+import { connect, discovery } from "./fixture.ts"
+
+const name = "_acme-challenge.example.test"
+
+effect function txtAt(server: string) {
+  const dns = try Experimental.Dns.Dns
+  return dns.resolveTxtAt(server, name) catch (error) => error.reason
+}
+
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#4f9357df863bf830 | The additions include `Experimental.Dns` (Effect's `effect/net/Dns` service extended only with TXT queries sent directly to a supplied authority) and `Experimental.Encoding.decodeBase64Lenient` (pure `Result`, no service or layer).
+// rule-evidence: docs/design/src/005-services.md#the-platform-standard-library | The additions include `Experimental.Dns` (Effect's `effect/net/Dns` service extended only with TXT queries sent directly to a supplied authority) and `Experimental.Encoding.decodeBase64Lenient` (pure `Result`, no service or layer).
+export effect function extension() {
+  const base = try effectService()
+  const extended = try extendedService()
+  return {
+    added: Object.keys(extended.service).filter((key) => !(key in base)),
+    missing: Object.keys(base).filter((key) => !(key in extended.service)),
+    shared: extended.shared,
+  }
+}
+
+effect function effectService() {
+  provide NodeDns.layer { return try EffectDns.Dns }
+}
+
+effect function extendedService() {
+  provide ExperimentalNodeDns.layer {
+    const service = try Experimental.Dns.Dns
+    return { service, shared: service === try EffectDns.Dns }
+  }
+}
+
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#b586edf41bb119d5 | Node DNS queries only the supplied server for TXT; Worker DNS uses TCP with recursion disabled and requires AA, or fails typed `Unsupported` when the host lacks that transport.
+// rule-evidence: docs/design/src/005-services.md#the-platform-standard-library | Node DNS queries only the supplied server for TXT; Worker DNS uses TCP with recursion disabled and requires AA, or fails typed `Unsupported` when the host lacks that transport.
+export effect function node(authority: string, configured: string) {
+  provide ExperimentalNodeDns.layerWith({ nameServers: [configured], timeout: 500, tries: 1 }) {
+    return try txtAt(authority)
+  }
+}
+
+export effect function worker(flags: number) {
+  provide Layer.provide(ExperimentalWorkerDns.layerWith({ connect: connect(flags) }), discovery) {
+    return try txtAt("192.0.2.53")
+  }
+}
+
+export effect function workerWithoutSockets() {
+  provide Layer.provide(ExperimentalWorkerDns.layer, discovery) {
+    return try txtAt("192.0.2.53")
+  }
+}
+
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#aba0a6ae09d5b176 | Effect already supplies strict `Base64` and `Base64Url`; only Node-compatible leniency is added.
+// rule-evidence: docs/design/src/005-services.md#the-platform-standard-library | Effect already supplies strict `Base64` and `Base64Url`; only Node-compatible leniency is added.
+export function decode(input: string) {
+  const lenient = Experimental.Encoding.decodeBase64Lenient(input)
+  return {
+    lenient: Result.isSuccess(lenient) ? Array.from(lenient.success) : null,
+    strict: Result.isSuccess(Base64.decode(input)),
+    url: Result.isSuccess(Base64Url.decode(input)),
+  }
+}
