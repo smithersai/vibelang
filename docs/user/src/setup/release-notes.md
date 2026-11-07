@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
+
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.
 
 - TypeScript mapper errors had no complete user reference. The diagnostic guide now explains projection, configuration and dependency failures and how to recover.
