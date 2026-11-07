@@ -115,9 +115,10 @@ function greet(name: string) { return `Hello, ${name}!` }
 
 The optional header comment `// run: <expression>` runs that expression inside
 a generated VibeLang entry function, with the block's declarations and imports
-in scope. Without it, Node runs the emitted block as the entry module:
-export `function main()` or include an explicit top-level runner. Markers never
-make a function run in the published example itself.
+in scope. Without it, Node executes the emitted module. Start a standalone
+program with an explicit top-level runner. A hook imports the module first, so
+its top-level statements still run; examples with a runner must finish on
+their own. Markers never make a function run in the published example itself.
 
 The `check:snippets` package script and the pre-deploy snippet check both use
 `--run`. Both also test the locally scaffolded starter, including Vitest without

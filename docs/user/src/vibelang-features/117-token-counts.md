@@ -207,7 +207,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Testing** | **1,400** |
 | [TestClock](../testing/063-testclock.md) | 1,400 |
 | **Code Style** | **8,700** |
-| [Guidelines](../code-style/064-guidelines.md) | 850 |
+| [Guidelines](../code-style/064-guidelines.md) | 810 |
 | [Dual APIs](../code-style/065-dual.md) | 1,000 |
 | [Branded Types](../code-style/066-branded-types.md) | 1,200 |
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,900 |

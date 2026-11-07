@@ -6,17 +6,13 @@ Run a VibeLang application through its platform runtime, keep its lifetime in `m
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17, VIP-26
-// run: provide TestClock.layer() { const worker = fork main(); try TestClock.adjust("2 seconds"); try Fiber.interrupt(worker) }
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 export effect function main() {
   try ensuring(effect {
     try Console.log("worker started")
-    while (true) {
-      try sleep("2 seconds")
-      try Console.log("checking work")
-    }
+    try sleep("2 seconds")
+    try Console.log("checking work")
   }, Console.log("worker stopped"))
 }
 
@@ -28,6 +24,8 @@ worker started
 checking work
 worker stopped
 ```
+
+The example finishes after one check. Put repeated work in a loop to keep the process running; press Ctrl-C to interrupt it and run cleanup.
 
 Call `NodeRuntime.runMain(main())` from the entry module. Calling `main()` builds an Effect. The runner starts it and coordinates interruption and shutdown. `ensuring` runs cleanup when the worker stops, including on interruption. Use `scoped(effect { ... })` for application resources, and provide the application layer once around the Effect passed to the runner so its services share one lifetime.
 

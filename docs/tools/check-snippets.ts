@@ -475,8 +475,9 @@ export async function runBlock(dir: string, blocks: Block[], result: Result, com
   const emitted = filename.replace(/\.(?:vibe|ts)$/, ".js")
   let entry = join(dir, "dist", emitted)
   if (result.run) {
-    // Importing suppresses the example's native main entry. TypeScript
-    // helpers can return values or Promises; VibeLang helpers return Effects.
+    // The hook runs after importing the example; an explicit top-level
+    // runner still executes during that import. TypeScript helpers can return
+    // values or Promises; VibeLang helpers return Effects.
     entry = join(dir, "dist", "$docs-entry.js")
     const lateStart = process.env.VIBELANG_LATE_START === "1"
     const scheduler = lateStart
