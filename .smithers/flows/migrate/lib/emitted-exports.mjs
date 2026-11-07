@@ -254,6 +254,18 @@ function emittedTarget(source, outputs) {
   return matched ? prefix + "*" + suffix : undefined
 }
 
+// { types: "./x.d.vibe.ts" or a relocated sidecar, default: "./x.vibe" }, exactly.
+function legacyVibeEntry(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).sort().join(",") !== "default,types") return false
+  return typeof value.types === "string" && /\.d\.vibex?\.ts$/.test(value.types) && typeof value.default === "string" && /\.vibex?$/.test(value.default)
+}
+
+function vibeTarget(source, outputs) {
+  if (!source.startsWith("./") || source.includes("*")) return undefined
+  const output = outputs["./" + posix.normalize(source.slice(2))]
+  return typeof output === "string" && output.startsWith("./.vibelang/js/") ? output : undefined
+}
+
 /** Route native entries only to files the package's actual compile produced. */
 export function routeEmittedExports(packageDir, outputs, { restore = false, onGraph, onPacking, typescript, moduleOutputs } = {}) {
   const path = join(packageDir, "package.json")
@@ -266,6 +278,11 @@ export function routeEmittedExports(packageDir, outputs, { restore = false, onGr
   const walk = (value, condition) => {
     const prior = original(value)
     if (prior !== undefined) value = prior
+    // An earlier toolchain wrote a converted module's entry as { types: its
+    // sidecar, default: ./x.vibe }; a bare `bun build` reads that .vibe as an
+    // asset. With the module's emitted JavaScript, it takes the current layout.
+    const legacy = !restore && legacyVibeEntry(value) ? vibeTarget(value.default, active) : undefined
+    if (legacy !== undefined) return { types: value.types, "vibelang-source": value.default, default: legacy }
     if (typeof value === "string") {
       if (restore || metadata.has(condition)) return value
       const target = component && value.includes("*") ? undefined : emittedTarget(value, active)
