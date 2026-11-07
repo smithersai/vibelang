@@ -31,6 +31,13 @@ function fixture(t, windows = false) {
   const writer = `#!${process.execPath}
 const fs = require("node:fs")
 const args = process.argv.slice(2)
+if (args[0] === "env") {
+  const value = { GOHOSTOS: "linux", GOHOSTARCH: "amd64" }[args[1]]
+  if (!value) process.exit(2)
+  process.stdout.write(value + "\\n")
+  process.exit(0)
+}
+if (args[0] === "test") process.exit(0)
 const out = args.includes("-o") ? args[args.indexOf("-o") + 1] : args.at(-1)
 const fd = fs.openSync(out, "w")
 fs.writeSync(fd, fs.readFileSync("/bin/true"))

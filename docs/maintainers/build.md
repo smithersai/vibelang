@@ -1695,6 +1695,8 @@ The workspace-package cache regression uses TypeScript's `strictNullChecks` sett
 
 ### Grammar admission tables
 
+The developer build, `sh scripts/build-vibelang.sh`, runs `TestTableAccountsForEveryHook` before generating Effect globals or replacing compiler outputs. The census reads parser and lowering sources, the generated inventory and its cited specification chapters; it does not link the compiler. A failure prints the missing hook or invalid row and preserves the command's exit status and existing outputs. Repair the canonical table and regenerate its projections before building again. The census runs for the host even when `GOOS` or `GOARCH` selects a different compiler target. This source-checkout check is separate from the native artifact's build inputs: editing documentation does not invalidate the Smithers compiler artifact.
+
 Edit `docs/design/registry/grammar-admission.tsv`, one reviewed hook per line.
 The five columns are hook, form, specification authority, status and reason.
 The source preserves the census's existing order and records exactly; it does

@@ -3,6 +3,12 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 command -v go >/dev/null 2>&1 || { echo "build-vibelang: Go is required." >&2; exit 1; }
 export GOFLAGS="${GOFLAGS:+$GOFLAGS }-trimpath"
+# The inventory reads source and specification files, without linking the compiler.
+# Run it for this host even when the compiler targets another platform.
+echo "build-vibelang: checking grammar admission"
+host_os=$(go env GOHOSTOS)
+host_arch=$(go env GOHOSTARCH)
+(cd "$root/typescript/tsc" && GOOS="$host_os" GOARCH="$host_arch" CGO_ENABLED=0 go test -count=1 -p 8 -run '^TestTableAccountsForEveryHook$' ./internal/vibelangfuzz/grammaradmission/)
 mkdir -p "$root/packages/compiler/native"
 exe=vibelang
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) exe=vibelang.exe ;; esac

@@ -51,7 +51,15 @@ A grammatical operand can still violate a VIP's type or semantic rule:
 calls are TypeScript grammar. The inventory and the grammar oracle serve
 different checks.
 
-Run the census from `typescript/tsc/`:
+Run the standard-library census from `typescript/tsc/`:
+
+```sh
+go test -count=1 -p 8 -run '^TestTableAccountsForEveryHook$' ./internal/vibelangfuzz/grammaradmission/
+```
+
+The developer build, `sh scripts/build-vibelang.sh` from the repository root, runs this census before generating or replacing compiler artifacts. Missing registrations fail the build with the hook's identity; the check runs on the host even for a cross-compiled compiler.
+
+The full fuzz package retains its inventory assertion too:
 
 ```sh
 go test -count=1 -run '^TestGrammarAdmissionInventory$' ./internal/vibelangfuzz
