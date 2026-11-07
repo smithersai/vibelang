@@ -61,8 +61,3 @@ test.todo("rule-evidence: docs/design/vips/0033-platform-stdlib.md#decision | co
 // Activation: Run pinned Prettier/dprint/Oxfmt commands over .vibe fixtures through their plugins; compare semantic projection and second-run idempotence.
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b formatter plugin integrations | present | Prettier, dprint and Oxfmt reach it through plugins, so a repo's existing formatter command covers `.vibe` files.")
 
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#8b7166d0d577488c
-// VIP-34: fix convergence and pass limit.
-// Activation: Run chained fixes to a fixed point, assert a second invocation changes no bytes, and force pass-limit exhaustion to require a remaining-fixes error.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b fix convergence and pass limit | present | **Amended 2026-10-31: `--fix` reaches a fixed point, and a missing runtime is one error.** One `vibelang --fix` run applies fixes until none applies; running it again changes nothing, and a run that has not converged within its pass limit reports the remaining fixes as an error.")
-

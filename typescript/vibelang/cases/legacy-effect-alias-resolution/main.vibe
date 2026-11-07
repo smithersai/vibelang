@@ -1,0 +1,7 @@
+// expect:
+// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#c8a9f8f09355bffa | **Amended 2026-11-01: legacy Effect alias migration.** VIP-3 allocates migration warning `EK4856` to uses resolving to the retired prelude `Effect<A, E, R>` alias.
+// Each use that resolves to the prelude alias warns; imported.vibe and
+// shadow.vibe spell the same name for an imported and a local type and stay quiet.
+export type Bare = Effect<number>
+export type Full = Effect<number, string, never>
+export type Nested = ReadonlyArray<Effect<string>>

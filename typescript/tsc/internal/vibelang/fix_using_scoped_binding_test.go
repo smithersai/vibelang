@@ -67,12 +67,14 @@ func TestUsingScopedFixBindingBoundary(t *testing.T) {
 								t.Errorf("invalid scoped conversion: %s\n%s", d.String(), got)
 							}
 						}
+						// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#433e4356640327a8 | Its context-safe quick fix uses `acquireDisposable` inside `scoped`.
 						if !strings.Contains(got, "try acquireDisposable(") || !strings.Contains(got, "return try scoped(effect {") {
 							t.Errorf("missing acquisition: %s", got)
 						}
 					}
 				}
 			}
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#433e4356640327a8 | Its context-safe quick fix uses `acquireDisposable` inside `scoped`.
 			want := 0
 			if tc.offer {
 				want = 1
