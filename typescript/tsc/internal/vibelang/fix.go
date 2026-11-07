@@ -103,12 +103,14 @@ const FixFlag = "--fix"
 // when not 0, replace fixIsolationChecks and fixCheckpointFirst
 // (fix_gate.go): FuzzFixGateBounds varies them, and no command line sets
 // them. Only, when not nil, limits the run to those modules (fix_only.go),
-// and --only sets it.
+// and --only sets it. LegacyServiceKeys explicitly retains historical keys of
+// services in empty-name packages without applying former readonly defaults.
 type FixOptions struct {
 	// programBuilt observes allocation lifetimes in the fixer resource tests.
 	// It must not retain the program. No command line or external caller sets it.
 	programBuilt                         func(*compiler.Program)
 	MigrationOnly, VIPOnly, CheckEachFix bool
+	LegacyServiceKeys                    bool
 	Only                                 []tspath.RootedFilePath
 	onlyGiven, onlyNoValue               bool
 	onlyValues                           []string
@@ -133,6 +135,8 @@ func FixOptionsArguments(args []string) ([]string, FixOptions) {
 			options.MigrationOnly = true
 		} else if strings.EqualFold(arg, "--fix-vip-only") {
 			options.VIPOnly = true
+		} else if strings.EqualFold(arg, "--fix-legacy-service-keys") {
+			options.LegacyServiceKeys = true
 		} else if strings.EqualFold(arg, FixOnlyFlag) {
 			i = options.onlyArgument(args, i)
 		} else {
@@ -594,6 +598,13 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			program = build(texts)
 			verified(texts)
 		}
+		if done.Err() != nil {
+			return result
+		}
+	}
+	if options.LegacyServiceKeys && materializeLegacyEmptyPackageKeys(ctx, program, scope, texts, result) {
+		program = build(texts)
+		verified(texts)
 		if done.Err() != nil {
 			return result
 		}

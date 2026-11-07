@@ -7647,6 +7647,8 @@ typescript/vibelang/cases/service-default-try-context.fail/main.vibe:14:55 lambd
 typescript/vibelang/cases/service-default-try-context.fail/main.vibe:3:51 lambda plain annotation
 typescript/vibelang/cases/service-default-try-context.fail/main.vibe:6:54 lambda plain annotation
 typescript/vibelang/cases/service-empty-literal-key/input/reference/main.vibe:3:34 lambda plain annotation
+typescript/vibelang/cases/service-empty-package-key/main.vibe:6:67 lambda plain fallback
+typescript/vibelang/cases/service-empty-package-key/main.vibe:9:46 lambda program table
 typescript/vibelang/cases/service-identity-dts/consumer/src/use.vibe:14:55 lambda effectFn keyword
 typescript/vibelang/cases/service-identity-dts/consumer/src/use.vibe:25:53 lambda effectFn keyword
 typescript/vibelang/cases/service-identity-dts/main.vibe:18:9 lambda effectFn keyword

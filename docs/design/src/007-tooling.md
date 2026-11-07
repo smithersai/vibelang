@@ -325,6 +325,10 @@ These [Appendix B compatibility codes](900-appendices.md#transitional-compiler-d
 
 The remaining migrations below rewrite retired forms to their VIP form or equivalent Effect TypeScript under the same preservation rule. The legacy `fork(program, options)` call becomes `try Effect.forkChild(program, options)`. The user guide's *Migrating retired forms* page is explanatory, not normative.
 
+### Legacy service-key upgrade
+
+`vibelang --fix --fix-legacy-service-keys` writes explicit historical directory-prefixed keys for services in packages with `"name": ""`, preserving their runtime identity and declaration key types. This opt-in modifier leaves writable shapes writable and does not select former readonly defaults. Ordinary `--fix` uses the current derived identity; explicit keys stay unchanged. The modifier requires `--fix`, follows its owned-source and `--only` boundaries, and is idempotent.
+
 ### Ordinary mutable-marker migration
 
 `EK3410` rejects a retired `mutable` marker on an ordinary interface or object-type property or index signature, or a plain `error` payload. `vibelang --fix`, including `--fix-migration-only`, removes redundant member markers; a marked plain-error payload becomes an explicit compatibility class using the existing runtime error factory, preserving tagged matching. Schema fields, schema errors, schema tuples and `data` bodies have separate rules. A method or identifier named `mutable` keeps its TypeScript meaning.

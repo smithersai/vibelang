@@ -1,0 +1,11 @@
+// expect-result: ["/main#Named","/main#Whole","/main#Reference","/entry.part#Nested",5,7]
+import { Nested } from "./nested/entry.part.js"
+
+export service Named { readonly value: number }
+export service Whole: number {}
+export service Reference: number { static readonly defaultValue = () => 5 }
+
+export effect function main() {
+  const observed = try Effect.provideService(effect { return (try Named).value }, Named, { value: 7 })
+  return [Named.key, Whole.key, Reference.key, Nested.key, try Reference, observed]
+}
