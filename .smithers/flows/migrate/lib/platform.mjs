@@ -1002,7 +1002,10 @@ function headerEnd(source) {
   if (!first) return 0
   const leading = source.text.slice(0, first.getStart(source))
   const at = leading.lastIndexOf("\n\n")
-  return at > 0 && leading.slice(0, at).trim() ? at : 0
+  // A shebang belongs to the entry, even without a detached comment header.
+  // Exclude it from the first statement's trivia before moving that statement.
+  const shebangEnd = /^#![^\r\n]*(?:\r?\n|$)/.exec(leading)?.[0].length ?? 0
+  return Math.max(shebangEnd, at > 0 && leading.slice(0, at).trim() ? at : 0)
 }
 
 function leadingComments(source, statement) {

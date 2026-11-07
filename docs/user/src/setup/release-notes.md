@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migration's API identity check reported an unchanged generic type alias as changed when the alias used a mapped type with an `as` clause, such as `{ [K in keyof A as K extends string ? K : never]: A[K] }`, and anything else in its declaration file changed, for example a declaration moved behind a re-export; the module then stayed TypeScript. The check now proves such an alias identical, and still reports a change to its `as` type, template, key constraint or modifiers.
 - Generated `import.meta.dirname` companions could fail projects that reject named Node imports or `node:path`. They now use a namespace `node:url` import and preserve directory names, including drive and network-share roots.
 - Migration could report a returned Effect as lost after a plain identity pipeline stage. Its wrapper check now follows unchanged arguments through proven identity returns, while still rejecting discarded programs and async results.
+- Migrating an executable script could move its shebang into a platform companion and cause a parse error. The shebang now stays at the start of the entry module.
 
 - A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
 
