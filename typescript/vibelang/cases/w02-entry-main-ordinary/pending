@@ -1,0 +1,1 @@
+witness-02 an exported zero-parameter main without a marker still gets the legacy runtime.$entry startup, so starting the module runs it (007-tooling.md, Legacy entry-dispatch migration; VIP-26)

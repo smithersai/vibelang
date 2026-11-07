@@ -1,0 +1,7 @@
+import "vibelang/platform/browser"
+
+// @effect/platform-browser is not installed, so BrowserRuntime.runMain is
+// unavailable: the migration refuses and the marker stays.
+export effect function main() {
+  try Console.log("browser main ran")
+}

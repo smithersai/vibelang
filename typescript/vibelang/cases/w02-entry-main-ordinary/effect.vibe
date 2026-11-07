@@ -1,0 +1,5 @@
+// An exported, zero-parameter effect function named main, with no marker, is
+// an ordinary function: the emitted module does not run it when started.
+export effect function main() {
+  try Console.log("effect main ran")
+}

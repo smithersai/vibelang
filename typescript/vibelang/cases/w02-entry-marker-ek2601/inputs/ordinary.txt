@@ -1,0 +1,4 @@
+// An exported main without a marker is ordinary source: no entry diagnostic.
+export effect function main() {
+  try Console.log("ordinary main")
+}
