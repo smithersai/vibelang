@@ -57,7 +57,8 @@ const globalMessage = new RegExp(String.raw`^(?:new )?([A-Za-z_$][\w$]*)(?:\??\.
 /**
  * The host globals that EK4402 messages name, as the identifiers a
  * declaration reads: "process.env is platform code" names process,
- * "globalThis.crypto.subtle is platform code" names globalThis, "Blob
+ * "globalThis.crypto.subtle is platform code" names globalThis and
+ * globalThis.crypto (globalNames reads that entry against the source), "Blob
  * reads a host global" (a global VIP-33 derives) names Blob, and
  * "AbortSignal.timeout reaches the host" (a platform member) names
  * AbortSignal. A builtin import ("createHash from node:crypto is platform
@@ -77,6 +78,12 @@ export function platformGlobalsOf(messages) {
     if (/^\S+ from \S+ is platform code/.test(text)) continue
     const m = globalMessage.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
+    // vibelang --fix qualifies a constructor the prelude hides, so
+    // `new Response(…)` is checked as `new globalThis.Response(…)` and the
+    // message names globalThis. The qualified member is named too, for the
+    // split to read against the TypeScript, which may spell it bare.
+    const member = m?.[1] === "globalThis" && /^(?:new )?globalThis(?:\??\.([A-Za-z_$][\w$]*)|\??\.?\[(["'`])([A-Za-z_$][\w$]*)\2\])/.exec(text)
+    if (member) names.add("globalThis." + (member[1] ?? member[3]))
   }
   return [...names].sort()
 }
@@ -161,6 +168,24 @@ export function splitPlatform(text, file, ts, { globals = [], returnsAvoid } = {
   return { ...declarations, importMeta: meta.importMeta, importText: meta.importText,
     platform: meta.platform + "\n" + moved,
     moved: [...meta.moved, ...declarations.moved] }
+}
+
+// The identifiers a split moves the readers of, for the globals the messages
+// name. A "globalThis.X" entry is a qualified read the message reports: when
+// the source spells it so, globalThis already names its readers; when the
+// source never does, vibelang --fix qualified a bare X (a constructor the
+// prelude hides), and the bare X is what the source reads.
+function globalNames(globals, source, ts) {
+  const qualified = new Set()
+  const visit = (node) => {
+    if ((ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) && ts.isIdentifier(node.expression) && node.expression.text === "globalThis") {
+      const key = ts.isPropertyAccessExpression(node) ? node.name.text : ts.isStringLiteralLike(node.argumentExpression) ? node.argumentExpression.text : undefined
+      if (key !== undefined) qualified.add(key)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return [...new Set([...globals].flatMap((name) => !name.startsWith("globalThis.") ? [name] : qualified.has(name.slice("globalThis.".length)) ? [] : [name.slice("globalThis.".length)]))]
 }
 
 const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -1006,7 +1031,7 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   }))
   const declared = new Map()
   for (const d of declarations) for (const name of d.names) declared.set(name, [...(declared.get(name) ?? []), d])
-  for (const name of globals) if (!imported.has(name) && !declared.has(name)) platform.add(name)
+  for (const name of globalNames(globals, source, ts)) if (!imported.has(name) && !declared.has(name)) platform.add(name)
   const platformSeed = !platformCode ? [] : declarations.filter((d) => !reexport_(d, ts) && ([...d.reads].some((n) => platform.has(n) && !declared.has(n)) || importsPlatform(d.statement, ts)))
   const throwSeed = throws ? declarations.filter((d) => !reexport_(d, ts) && !platformSeed.includes(d) && throwsPlainly(d.statement, ts)) : []
   if (!platformSeed.length && !throwSeed.length) return null

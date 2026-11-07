@@ -1,0 +1,27 @@
+{
+  "finding": "Smithers flows/artifacts ImmutableCache.ts, apps/mvp flows/credentials.ts and effect-electric ElectricCollection.ts construct `new Response(...)`. vibelang --fix qualifies the constructor the prelude hides (`new globalThis.Response(...)`), so the settle receipt's EK4402 reads `globalThis.Response reads a host global`, and platformGlobalsOf named only globalThis. The split read the TypeScript, which spells Response bare, found no platform code, and the module stayed TypeScript.",
+  "note": "Minimized; the shape and the receipt text are the partition's.",
+  "file": "src/ImmutableCache.ts",
+  "text": "/**\n * An immutable cache of response bodies, keyed by URL.\n *\n * @since 1.0.0\n */\n\n/**\n * A cached body and the headers it was stored with.\n *\n * @category models\n * @since 1.0.0\n */\nexport interface Entry {\n  readonly bytes: Uint8Array\n  readonly headers: Readonly<Record<string, string>>\n}\n\n/**\n * The response a cached entry serves, over a copy of its bytes.\n *\n * @category constructors\n * @since 1.0.0\n */\nexport const respond = (entry: Entry): Response => new Response(entry.bytes.slice(), { headers: entry.headers })\n\n/**\n * The key a URL is cached under.\n *\n * @category constructors\n * @since 1.0.0\n */\nexport const key = (url: string): string => url.toLowerCase()\n",
+  "ambient": "declare class Response { constructor(body?: Uint8Array | string | null, init?: { readonly headers?: Readonly<Record<string, string>> }) }\n",
+  "settleCauses": {
+    "src/ImmutableCache.vibe": {
+      "cause": "platform access",
+      "codes": [
+        "EK4402"
+      ],
+      "diagnostics": [
+        {
+          "code": "EK4402",
+          "message": "globalThis.Response reads a host global. Use an injected Effect service, or move the platform code to a .ts file."
+        }
+      ]
+    }
+  },
+  "moved": [
+    "respond"
+  ],
+  "wrapped": [
+    "respond"
+  ]
+}
