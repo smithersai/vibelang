@@ -489,7 +489,9 @@ in JavaScript and in declarations, so no route reaches a published package and
 the program loads one copy of the module.
 Migration's record emit checks this: when a published package's compiled
 declarations still name a route, it restores that package's routes and
-reports the declaration files, so the modules its tests bundle stay TypeScript.
+reports the declaration files and every affected module, including targets of
+routes retained from an earlier emit, so the modules its tests bundle stay
+TypeScript.
 
 Setup records every selected source, output and alias in
 `setup.json`'s `wired.emittedImports.modules`. It uses exact entries instead
