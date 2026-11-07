@@ -124,6 +124,10 @@ The pinned Vocs outline renders a decorative position marker directly inside its
 
 The navigation patch names the top menu and documentation sidebar, and the outline patch names the page outline. Its browser regression checks distinct navigation landmarks in both themes. The same source/runtime integrity and dependency ownership checks apply. Run `npm ci` after changing a patch so the reviewed upstream files are restored before patching.
 
+### Temporary Vocs page landmark patch
+
+The layout patch places the header, home link and release notice in named landmarks. The browser regression checks all page content belongs to a landmark, and that dismissing the release notice still persists after reload, at mobile and desktop widths in both themes. The same reviewed source/runtime checks and dependency ownership rules apply.
+
 ### Temporary Vocs missing-page landmark patch
 
 The missing-page patch gives the error content a main landmark. Its browser regression checks phone and desktop widths in both themes, then follows the home link. The install, development and build hooks use the same reviewed source/runtime hashes and dependency ownership checks as the outline patch. Run `npm ci` to restore upstream files after changing a patch.

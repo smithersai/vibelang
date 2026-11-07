@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration kept a module in TypeScript on every pass when a plain function returning an Effect called TypeScript that may throw, such as an eager `Effect.succeed(foreign())` factory or a listener registration. With the earlier pass's receipts listed, those declarations now move into a `module throwing { }` body, keeping their eager calls and declarations, and the rest of the module migrates.
 - An existing platform helper could block migration even when a module body needed no new sibling. Body-only repairs now proceed while preserving that helper; repairs that need its path still refuse the collision.
 
+- Screen readers could miss the site logo and alpha notice when navigating by page regions. The header, home link and release notice now belong to named landmarks.
+
 - Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.
 
 - Constructor and base-class references could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`, and `vibelang --fix` preserves the reference and the original binding's name.

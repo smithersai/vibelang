@@ -32,6 +32,8 @@ const runs = [
   ["site/scripts/patch-vocs-navigation.test.mjs", "site/package.json", "scripts/patch-vocs-navigation.test.mjs"],
   ["site/scripts/not-found-landmarks.test.mjs", "site/package.json", "scripts/not-found-landmarks.test.mjs"],
   ["site/scripts/patch-vocs-not-found.test.mjs", "site/package.json", "scripts/patch-vocs-not-found.test.mjs"],
+  ["site/scripts/page-landmarks.test.mjs", "site/package.json", "scripts/page-landmarks.test.mjs"],
+  ["site/scripts/patch-vocs-page-landmarks.test.mjs", "site/package.json", "scripts/patch-vocs-page-landmarks.test.mjs"],
   [`scripts/!(api-identity*|${buildContractExclusions}).test.mjs`, "PACKAGE.ts", "\" + buildContractExclusions + \""],
   ["scripts/api-identity*.test.mjs", "PACKAGE.ts", "node --test scripts/api-identity*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
