@@ -105,7 +105,7 @@ func (p *fileLoader) isProjectReferenceModuleBodyOutput(name string, emitted *mo
 					if p.tracing != nil {
 						p.tracing.Instant(tracing.PhaseProgram, "vibeProjectReferenceBodyOutput", map[string]any{
 							"sourceKind":       extension,
-							"priorDeclaration": p.host.FS().FileExists(tspath.RootedFilePathFromNormalized(moduleBodyDeclarationPath(body))),
+							"priorDeclaration": p.host.FS().FileExists(tspath.RootedFilePathFromNormalized(tspath.RemoveFileExtension(string(body.FileName())) + tspath.ExtensionDts)),
 						})
 					}
 					return true

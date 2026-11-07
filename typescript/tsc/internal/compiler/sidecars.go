@@ -79,8 +79,8 @@ var (
 //
 // A module declaration's body has no sidecar of its own. A sidecar that refers
 // to one, ./main.vibe.parse.js, reaches TypeScript's declaration of the body,
-// which it also writes, beside the .vibe file (VIP-40), so that a checker
-// without the .vibe file resolves it.
+// which it also writes beside that sidecar (VIP-40), so that a checker without
+// the .vibe file resolves it from the sidecar's own location.
 func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileName string, text string) error, outputs ...vfs.FS) *EmitResult {
 	var output vfs.FS
 	if len(outputs) != 0 {
@@ -110,11 +110,14 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	// refer records the body a relative specifier names, in any of the
 	// spellings of vibelang.declarationImportStyle: ./main.vibe.parse.js,
 	// ./main.vibe.parse or ./main.vibe.parse.ts.
-	refer := func(target string) {
-		body := bodies[target]
-		if body == nil {
-			body = bodies[tspath.RemoveFileExtension(target)]
+	bodyAt := func(target string) *ast.SourceFile {
+		if body := bodies[target]; body != nil {
+			return body
 		}
+		return bodies[tspath.RemoveFileExtension(target)]
+	}
+	refer := func(target string) {
+		body := bodyAt(target)
 		if body == nil {
 			return
 		}
@@ -142,7 +145,12 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				isBody := data.SourceFile.EmbeddedModule() != nil
 				var sidecar, stale string
 				if isBody {
-					sidecar = moduleBodyDeclarationPath(data.SourceFile)
+					sidecar, stale = p.moduleBodyDeclarationPaths(data.SourceFile)
+					// The other layout's place may be the project's own declaration
+					// output or an input; neither is a stale copy.
+					if stale != "" && (p.emitsDeclarationAt(data.SourceFile, stale) || p.GetSourceFile(tspath.RootedFilePathFromNormalized(stale)) != nil) {
+						stale = ""
+					}
 				} else {
 					sidecar, stale = p.vibeSidecarPaths(source)
 				}
@@ -160,14 +168,20 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				// relative to the final compatibility output. Another project's
 				// checker never inherits this project's rootDirs (opencode-53).
 				resolve := func(specifier string) string {
-					refer(tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier))
+					target := tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier)
+					refer(target)
+					// A body's declaration sits beside its file's sidecar.
+					if body := bodyAt(target); body != nil {
+						declaration, _ := p.moduleBodyDeclarationPaths(body)
+						return tspath.CombinePaths(tspath.GetDirectoryPath(declaration), tspath.GetBaseFileName(target))
+					}
 					resolved, _, _ := resolver.ResolveModuleName(specifier, data.SourceFile.FileName(), p.GetDefaultResolutionModeForFile(data.SourceFile), nil)
-					// A body declaration stays beside the source. Keep its source
-					// identity: a relocated output is not a second VibeLang input.
-					// A .vibex target, however the import spells it, is named by its
-					// own compatibility declaration exactly as a .vibe target is.
+					// A body's declaration sits beside the sidecars, so it names a
+					// VibeLang module where the sidecars name it. A .vibex target,
+					// however the import spells it, is named by its own compatibility
+					// declaration exactly as a .vibe target is.
 					// A written ./App.jsx or ./App names App.vibex by its source too.
-					if !isBody && resolved != nil && (resolved.Extension == tspath.ExtensionVibe || resolved.Extension == tspath.ExtensionVibex) {
+					if resolved != nil && (resolved.Extension == tspath.ExtensionVibe || resolved.Extension == tspath.ExtensionVibex) {
 						target, _ := p.vibeSidecarPaths(string(resolved.ResolvedFileName))
 						return strings.TrimSuffix(target, ".d"+resolved.Extension+".ts") + resolved.Extension
 					}
@@ -266,11 +280,19 @@ func (p *Program) declarationSidecarSources() []*ast.SourceFile {
 	return sources
 }
 
-// moduleBodyDeclarationPath returns where a module declaration's body writes
-// the declaration its .vibe file's sidecar reaches: main.vibe.parse.d.ts beside
-// main.vibe, under every sidecar layout (VIP-40).
-func moduleBodyDeclarationPath(body *ast.SourceFile) string {
-	return tspath.RemoveFileExtension(string(body.FileName())) + tspath.ExtensionDts
+// moduleBodyDeclarationPaths returns where a module declaration's body writes
+// the declaration its .vibe file's sidecar reaches, beside that sidecar
+// (VIP-40): main.vibe.parse.d.ts beside main.vibe by default, or at the
+// mirrored path under vibe.sidecarDir. The second path is where the other
+// layout puts it, or "".
+func (p *Program) moduleBodyDeclarationPaths(body *ast.SourceFile) (string, string) {
+	sidecar, stale := p.vibeSidecarPaths(string(body.CanonicalSourceFile().FileName()))
+	name := tspath.GetBaseFileName(tspath.RemoveFileExtension(string(body.FileName()))) + tspath.ExtensionDts
+	path := tspath.CombinePaths(tspath.GetDirectoryPath(sidecar), name)
+	if stale == "" {
+		return path, ""
+	}
+	return path, tspath.CombinePaths(tspath.GetDirectoryPath(stale), name)
 }
 
 // emitsDeclarationAt reports whether the project's ordinary emit writes file's
