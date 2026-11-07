@@ -1,5 +1,7 @@
-import { helper } from "./lib.vibe"
+import { helper } from "./lib.js"
 
 export effect function main() {
   try Console.log(`app main ran with ${helper()}`)
 }
+
+Effect.runSync(main())

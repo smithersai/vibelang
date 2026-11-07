@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The bundler entry-point example still expected automatic `main` startup. It now writes its runner explicitly and keeps an imported library's `main` inert.
+
 - The bundled entry-point example reported `TS5097` for its `.vibe` import. Its configuration now enables source-extension rewriting, as TypeScript requires.
 
 - Fresh checkout checks could fail to load the Vite plugin because its runtime dependencies were missing. Starter and isolated tool checks now install and resolve those dependencies.

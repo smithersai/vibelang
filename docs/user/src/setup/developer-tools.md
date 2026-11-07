@@ -5,6 +5,10 @@ rather than accepting a green command that skips VibeLang.
 
 ## Build entry points
 
+Write an explicit runner such as `Effect.runSync(main())` at the application
+entry. Bundlers execute that call; exporting or importing a function named
+`main` does not start it.
+
 When setup removes an old loader wrapper from a shell probe but keeps a sibling launch of TypeScript or VibeLang sources, it refreshes the retained helper in the same pass. Replaying setup leaves the resulting file unchanged.
 
 
