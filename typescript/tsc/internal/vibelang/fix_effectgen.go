@@ -283,12 +283,34 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 					return g, ""
 				}
 				if returned := c.GetReturnTypeOfSignature(signatures[0]); isEffectType(c, returned) {
-					g.returns = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+					g.returns = contextualFnContract(c, generator, returned, c.GetTypeAtLocation(call))
 				}
 			}
 		}
 	}
 	return g, ""
+}
+
+// contextualFnContract writes the contract of an Effect.fn whose result type
+// comes from its context. The contextual success type stays, since it types
+// the body's return expressions (a literal such as schemaVersion: 1). The
+// error and requirement channels come from the checked call, as TypeScript
+// infers them: a context that also feeds inference, such as satisfies or a
+// generic parameter, would otherwise widen the inferred and declared type.
+func contextualFnContract(c *checker.Checker, generator *ast.Node, contextual *checker.Type, checked *checker.Type) string {
+	format := func(t *checker.Type) string {
+		return c.TypeToStringEx(t, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+	}
+	signature := singleCallSignature(c, checked)
+	if signature == nil {
+		return format(contextual)
+	}
+	actual := c.GetReturnTypeOfSignature(signature)
+	success, errors, requirements := channelType(c, contextual, "_A"), channelType(c, actual, "_E"), channelType(c, actual, "_R")
+	if success == nil || errors == nil || requirements == nil {
+		return format(contextual)
+	}
+	return bangText(format(success), format(errors), format(requirements))
 }
 
 // effectFnOpenRequirement finds a generic requirement even inside a union,
