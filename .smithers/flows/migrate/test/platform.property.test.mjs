@@ -72,8 +72,11 @@ test("smithers flows/database: a module's platform code moves to a sibling and i
 test("a module keeps its platform code when an export that uses it cannot stay in the .vibe module", () => {
   const value = 'import { readFileSync } from "node:fs"\nexport const config = readFileSync("config.json")\n'
   assert.match(splitPlatform(value, "src/Config.ts", ts).refused, /export config uses platform code/)
+  const untyped = 'import { readFileSync } from "node:fs"\nexport const read = (path) => readFileSync(path)\n'
+  assert.match(splitPlatform(untyped, "src/Read.ts", ts).refused, /written parameter types/)
+  // An inferred return type stays inferred (platform-inferred-return.property.test.mjs).
   const inferred = 'import { readFileSync } from "node:fs"\nexport const read = (path: string) => readFileSync(path)\n'
-  assert.match(splitPlatform(inferred, "src/Read.ts", ts).refused, /written parameter and return types/)
+  assert.ok(!splitPlatform(inferred, "src/Read.ts", ts).refused)
   // A private type the platform code reads stays, and the sibling gets a copy.
   const privateType = 'import { readFileSync } from "node:fs"\ntype Text = string\nconst decode = (t: Text): Text => readFileSync(t)\nexport const read = (path: Text): Text => decode(path)\n'
   const { files } = splitProject("Typed.ts", privateType)

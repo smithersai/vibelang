@@ -24,6 +24,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Formatting a file in a bracketed route folder could select another file or leave the requested file untouched. Both formatter commands now select existing file paths before expanding globs.
 
+- Migration kept a module in TypeScript when an exported function that used platform code had no written return type, such as `export const digestNpmrc = async (npmrc: string) => { ... }`. The function now stays in the module with the same inferred type and calls its `.platform.ts` companion, unless that type could name something only the companion declares.
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

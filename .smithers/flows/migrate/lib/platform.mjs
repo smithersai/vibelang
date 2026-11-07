@@ -6,8 +6,8 @@ import { splitImportMeta, privateResolverExports } from "./import-meta-platform.
 // that uses one, with the module's own declarations it needs, into
 // <Name>.platform.ts beside the module, verbatim. The module keeps every
 // export: an exported function that moved stays as a function with the same
-// written signature that calls the moved one, so the module's declarations
-// are unchanged. A module whose moved exports are not such functions keeps
+// signature that calls the moved one, so the module's declarations are
+// unchanged. A module whose moved exports are not such functions keeps
 // its platform code, and EK4402 sends it back to TypeScript as before.
 //
 // A host global (process.env, globalThis.fetch) is moved only when the
@@ -284,8 +284,20 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   for (const d of moved) {
     if (!d.exported) continue
     const wrapper = wrapperOf(d.statement, source, ts)
-    if (!wrapper) return { refused: `${file}: export ${[...d.names].join(", ")} uses platform code and is not a function with written parameter and return types, so it cannot stay in the .vibe module` }
+    if (!wrapper) return { refused: `${file}: export ${[...d.names].join(", ")} uses platform code and is not a function with written parameter types, so it cannot stay in the .vibe module` }
     wrappers.push({ d, ...wrapper })
+  }
+  // An inferred return type is written into the module's declarations from
+  // the sibling. A type only the sibling declares, a private copy or a moved
+  // private class or enum, has no name there (TS4058), so an exported type the
+  // moved code reads is imported from the module instead of copied, and a
+  // private one keeps the module in TypeScript.
+  const inferred = wrappers.find((w) => w.inferred)
+  if (inferred) {
+    const unnamed = [...copied].find((d) => typeOnly(d) && !d.exported) ??
+      [...moved].find((d) => !d.exported && (ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement)))
+    if (unnamed) return { refused: `${file}: export ${inferred.name} has an inferred return type that may name ${[...unnamed.names].join(", ")}, which only ${posix.basename(platformPath(file))} would declare, so the module's declarations would change` }
+    for (const d of [...copied]) if (typeOnly(d)) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
   }
   if (moved.size === declarations.length && !wrappers.length) return { refused: `${file} is platform code only` }
   const namespace = uniqueName("$platform", new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name))]))
@@ -671,10 +683,10 @@ function isMovable(statement, ts) {
   return ts.isVariableStatement(statement) || ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isEnumDeclaration(statement)
 }
 
-// A function with written parameter and return types, written again in the
-// module to call the moved one: export const f = (a: A, b = 1): R => ...,
-// or export function f(a: A): R { ... }. The declaration file prints the
-// same signature for both.
+// A function with written parameter types, written again in the module to
+// call the moved one: export const f = (a: A, b = 1): R => ..., or export
+// function f(a: A) { ... }. The declaration file prints the same signature
+// for both; a return type the original leaves to inference stays inferred.
 function wrapperOf(statement, source, ts) {
   let fn, name, kind
   if (ts.isFunctionDeclaration(statement) && statement.body && statement.name) {
@@ -689,7 +701,7 @@ function wrapperOf(statement, source, ts) {
   } else {
     return null
   }
-  if (!fn.type || fn.asteriskToken) return null
+  if (fn.asteriskToken) return null
   const params = []
   for (const p of fn.parameters) {
     if (!ts.isIdentifier(p.name) || p.name.text === "this") return null
@@ -700,21 +712,26 @@ function wrapperOf(statement, source, ts) {
   const typeParams = fn.typeParameters ? `<${fn.typeParameters.map((t) => t.getText(source)).join(", ")}>` : ""
   const paramText = params.map((p) => p.getText(source)).join(", ")
   const args = params.map((p) => (p.dotDotDotToken ? "..." : "") + p.name.text).join(", ")
-  const ret = fn.type.getText(source)
-  const asyncWord = (fn.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ? "async " : ""
+  // An inferred return type stays inferred: the wrapper returns the moved
+  // function's result, a value of the same type, and an async one's promise as is.
+  const inferred = !fn.type
+  const ret = inferred ? "" : ": " + fn.type.getText(source)
+  const asyncWord = !inferred && (fn.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ? "async " : ""
   const constKeyword = kind === "const" ? statement.declarationList.getText(source).match(/^(const|let|var)/)[1] : ""
   const reads = new Set()
   for (const p of params) for (const n of readNames(p, ts)) reads.add(n)
-  for (const n of readNames(fn.type, ts)) reads.add(n)
+  if (fn.type) for (const n of readNames(fn.type, ts)) reads.add(n)
   for (const t of fn.typeParameters ?? []) for (const n of readNames(t, ts)) reads.add(n)
   const text = (namespace) => {
-    const call = `${namespace}.${name}(${args})`
+    // An inferred result may name a type parameter the arguments do not fix.
+    const typeArgs = inferred && fn.typeParameters ? `<${fn.typeParameters.map((t) => t.name.text).join(", ")}>` : ""
+    const call = `${namespace}.${name}${typeArgs}(${args})`
     const declaration = kind === "const"
-      ? `export ${constKeyword} ${name} = ${asyncWord}${typeParams}(${paramText}): ${ret} => ${asyncWord ? "await " : ""}${call}`
-      : `export ${asyncWord}function ${name}${typeParams}(${paramText}): ${ret} {\n  return ${call}\n}`
+      ? `export ${constKeyword} ${name} = ${asyncWord}${typeParams}(${paramText})${ret} => ${asyncWord ? "await " : ""}${call}`
+      : `export ${asyncWord}function ${name}${typeParams}(${paramText})${ret} {\n  return ${call}\n}`
     return doc + declaration
   }
-  return { name, text, reads }
+  return { name, text, reads, inferred }
 }
 
 function exportedText(source, statement) {
