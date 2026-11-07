@@ -25,6 +25,18 @@ func TestPreludeCollisionNotes(t *testing.T) {
 		{"instanceof of an Effect module", `export const isResponse = (x: object) => x instanceof Response`, 2359,
 			"The global Response is platform code, which lives in a .ts file."},
 		{"DOM type", "export function size(c: Cache<string>) { return c }", 2315, ""},
+		// Code that Effect.try or Effect.tryPromise wraps resolves the name as
+		// the module does (alchemy's tryPromise(() => new Response(...))).
+		{"DOM constructor in an Effect.tryPromise thunk", `export const make = (input: string) => Effect.tryPromise(() => Promise.resolve(new Response(input)))`, 2351,
+			"The global Response is platform code, which lives in a .ts file."},
+		{"DOM constructor in an Effect.try thunk", `export const make = () => Effect.try(() => new Headers())`, 2351,
+			"Headers is Effect's Headers module (effect/http/Headers), in scope without an import."},
+		{"DOM constructor in Effect.try's try option", `export const make = () => Effect.try({ try: () => new Request("http://x"), catch: (e) => e })`, 2351,
+			"The global Request is platform code, which lives in a .ts file."},
+		{"instanceof in an Effect.try thunk", `export const is = (x: object) => Effect.try(() => x instanceof Response)`, 2359,
+			"The global Response is platform code, which lives in a .ts file."},
+		{"static member in an Effect.tryPromise thunk", `export const reply = (b: object) => Effect.tryPromise(() => Promise.resolve(Response.json(b)))`, 2339,
+			"The global Response has Response.json, and it is platform code, which lives in a .ts file."},
 		{"explicit Effect type", `export function post(w: Worker.Worker<string, string>) { return w.postMessage("x") }`, 2339, ""},
 		{"JavaScript global", "export function add() { return Number.sum(1, 2) }", 2339,
 			`Number is JavaScript's Number here, which wins over Effect's Number module (effect/Number). To call Effect's Number.sum, import the module under another name: import { Number as EffectNumber } from "effect".`},

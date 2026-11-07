@@ -22,6 +22,8 @@ func FuzzPreludeGlobalValue(f *testing.F) {
 		"dom/Request/new", "dom/Response/instanceof", "dom/Response/new", "dom/Headers/new",
 		"dom/Worker/new", "dom/Event/instanceof", "workers/Response/new", "workers/Response/instanceof",
 		"class/Response/new", "class/Response/instanceof",
+		"dom/Response/new/tryPromise", "dom/Headers/new/try", "dom/Request/new/try-option",
+		"dom/Response/instanceof/try", "dom/Worker/new/sync", "workers/Response/new/tryPromise",
 	} {
 		f.Add([]byte("prelude-global-value:" + seed))
 	}
@@ -33,23 +35,48 @@ func FuzzPreludeGlobalValue(f *testing.F) {
 
 var preludeGlobalValueNames = []string{"Request", "Response", "Headers", "Event", "Worker"}
 
+// preludeGlobalValueContexts place the form in the module's own code or in
+// code a wrapper runs as TypeScript: the thunk of Effect.tryPromise or
+// Effect.try, Effect.try's try option, and the sync hatch. Wrapped code
+// resolves names as the module does (alchemy's
+// Effect.tryPromise(() => Promise.resolve(new Response(input)))).
+var preludeGlobalValueContexts = []string{"plain", "tryPromise", "try", "try-option", "sync"}
+
 type preludeGlobalValueInput struct {
-	lib  unionChoice
-	name string
-	form string
+	lib     unionChoice
+	name    string
+	form    string
+	context string
 }
 
 func (in preludeGlobalValueInput) expression(x string) string {
+	parameters, value := "()", "new "+x+`("http://x")`
 	if in.form == "instanceof" {
-		return "export const v = (o: object) => o instanceof " + x + "\n"
+		parameters, value = "(o: object)", "o instanceof "+x
 	}
-	return "export const v = () => new " + x + `("http://x")` + "\n"
+	switch in.context {
+	case "tryPromise":
+		value = "Effect.tryPromise(() => Promise.resolve(" + value + "))"
+	case "try":
+		value = "Effect.try(() => " + value + ")"
+	case "try-option":
+		value = "Effect.try({ try: () => " + value + ", catch: (e) => e })"
+	case "sync":
+		value = "sync(() => " + value + ")"
+	}
+	return "export const v = " + parameters + " => " + value + "\n"
+}
+
+// plain is in with its form in the module's own code.
+func (in preludeGlobalValueInput) plain() preludeGlobalValueInput {
+	in.context = "plain"
+	return in
 }
 
 // parsePreludeGlobalValue reads `prelude-global-value:<lib>/<name>/<form>`
 // (RULES.md 11), and otherwise picks from the bytes.
 func parsePreludeGlobalValue(data []byte) preludeGlobalValueInput {
-	in := preludeGlobalValueInput{preludeGlobalLibs[0], preludeGlobalValueNames[0], "new"}
+	in := preludeGlobalValueInput{preludeGlobalLibs[0], preludeGlobalValueNames[0], "new", "plain"}
 	if rest, ok := strings.CutPrefix(string(data), "prelude-global-value:"); ok {
 		parts := append(strings.Split(rest, "/"), "", "", "")
 		for _, lib := range preludeGlobalLibs {
@@ -65,6 +92,11 @@ func parsePreludeGlobalValue(data []byte) preludeGlobalValueInput {
 		if parts[2] == "instanceof" {
 			in.form = parts[2]
 		}
+		for _, context := range preludeGlobalValueContexts {
+			if context == parts[3] {
+				in.context = context
+			}
+		}
 		return in
 	}
 	at := func(i int) int {
@@ -78,6 +110,7 @@ func parsePreludeGlobalValue(data []byte) preludeGlobalValueInput {
 	if at(2)%2 == 1 {
 		in.form = "instanceof"
 	}
+	in.context = preludeGlobalValueContexts[at(3)%len(preludeGlobalValueContexts)]
 	return in
 }
 
@@ -122,6 +155,13 @@ func CheckPreludeGlobalValue(t *testing.T, w *Workspace, in preludeGlobalValueIn
 	}
 	if banned && len(got) != 0 && strings.Contains(note, "in scope without an import") && !strings.Contains(note, "platform code, which lives in a .ts file") {
 		g.Add("feature:prelude-global-value:note-platform", "VIP-33: %s is EK4402, so the note must send the reader to a .ts file:\n%s", reach, note)
+	}
+	// The same name, the same error, in wrapped code: the note the module's
+	// own code gets holds there too (RULES.md 1, one compiler, two inputs).
+	if in.context != "plain" && len(got) != 0 && !strings.Contains(note, "in scope without an import") {
+		if own := strings.Join(errors(in.plain().expression(x)), "\n"); strings.Contains(own, "in scope without an import") {
+			g.Add("feature:prelude-global-value:note-in-wrapped-code", "005-services: EK4402 holds \"anywhere in a `.vibe` file\", so %s code gets the note its module does:\n%s\nmodule code:\n%s", in.context, note, own)
+		}
 	}
 	if strings.Contains(note, "inside a hatch") {
 		g.Add("feature:prelude-global-value:note-hatch", "005-services: EK4402 holds \"anywhere in a `.vibe` file\", so a hatch is no way to the global:\n%s", note)

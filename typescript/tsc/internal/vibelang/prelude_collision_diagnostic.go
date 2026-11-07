@@ -58,7 +58,11 @@ func explainPreludeCollisions(c *checker.Checker, file *ast.SourceFile, all []*a
 			}
 		}
 		token := astnav.GetTokenAtPosition(file, d.Pos())
-		if token == nil || !ast.IsIdentifier(token) || token.Parent == nil || inHatch(token) {
+		// Wrapped code (the thunk of Effect.try or Effect.tryPromise, a sync
+		// hatch) resolves names as the module does, so a prelude name there
+		// draws the same error, and the note is as true: a host global is
+		// platform code "anywhere in a .vibe file" (005-services).
+		if token == nil || !ast.IsIdentifier(token) || token.Parent == nil {
 			continue
 		}
 		parent := token.Parent

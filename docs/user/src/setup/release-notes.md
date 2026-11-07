@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- `new Response(…)`, `new Headers(…)` or `x instanceof Response` inside an `Effect.try` or `Effect.tryPromise` thunk reported `TS2351` or `TS2359` with no note, so a migration kept the module in TypeScript instead of moving the host constructor to a `.ts` companion. The error now carries the note it gets anywhere else in the module: the name is Effect's module, and the global is platform code that lives in a `.ts` file.
+
 - The migration's API identity check failed with `TS2307` on both sides, and refused every export of the package, when a declaration imported another workspace package's module by a relative path, such as `../../../packages/smithers/gateway/src/RuntimeBridge.js`: its comparison copy held only the package itself. That module now resolves as it does in the repository, so the exports compare.
 
 - In a `.vibe` file, a check that ports an Effect lint rule, such as `unnecessaryArrowBlock` or `extendsNativeError`, ignored the severity the `@effect/language-service` plugin entry's `diagnosticSeverity` gave the rule, while a `.ts` file followed it. The check now runs at that severity, per-file overrides included; `vibe.severities` still comes first.
