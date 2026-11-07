@@ -1,0 +1,5 @@
+{
+  "source": "opencode stats/core/src/stat-sync.vibe: try Effect.promise(loadCatalogIdentity), minimized",
+  "foreign": "export async function load() { return 1 }\nexport function sync() { return 1 }\nexport function promised(): Promise<number> { return Promise.resolve(1) }\n",
+  "main": "import { load, sync, promised } from \"./foreign.js\"\n\nexport effect function probe() {\n  const a = try Effect.promise(⟦load⟧)\n  const b = try Effect.promise(⟦promised⟧)\n  const c = try Effect.sync(⟦sync⟧)\n  const d = try Effect.promise(⟦() => load()⟧)\n  const e = try Effect.promise(⟦() => promised()⟧)\n  const f = try Effect.sync(⟦() => sync()⟧)\n  return a + b + c + d + e + f\n}\n"
+}
