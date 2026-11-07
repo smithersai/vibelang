@@ -111,25 +111,37 @@ These host-side checks run the emitted entries in separate processes to verify s
 import type {} from "./startup-rejected.vibe"
 import type {} from "./invalid-batch.vibe"
 import type {} from "./custom-entry.vibe"
-import { spawnSync } from "node:child_process"
+import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
-function launch(file: string) {
-  return spawnSync(process.execPath, [fileURLToPath(new URL(file, import.meta.url))], { encoding: "utf8" })
+// Each check is its own Node process; the four run at the same time.
+function launch(...args: string[]) {
+  return new Promise<{ status: number | null; stdout: string; stderr: string }>((done, failed) => {
+    const child = spawn(process.execPath, args, { cwd: fileURLToPath(new URL(".", import.meta.url)) })
+    let stdout = "", stderr = ""
+    child.stdout.setEncoding("utf8").on("data", (chunk: string) => { stdout += chunk })
+    child.stderr.setEncoding("utf8").on("data", (chunk: string) => { stderr += chunk })
+    child.on("error", failed)
+    child.on("close", (status) => done({ status, stdout, stderr }))
+  })
 }
 
-const rejected = launch("./startup-rejected.js")
-console.log(`rejected: ${rejected.status}, silent: ${rejected.stdout === "" && rejected.stderr === ""}`)
-console.log(`custom: ${launch("./custom-entry.js").status}`)
-const batch = launch("./invalid-batch.js")
-console.log(`batch: ${batch.status}, cleaned: ${batch.stdout.includes("Export cleanup finished")}`)
-const failedCustom = spawnSync(process.execPath, ["--input-type=module", "-e", `
-  import { Effect } from "effect"
-  import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
-  import { launchOptions } from "./launch-options.js"
-  NodeRuntime.runMain(Effect.fail("rejected"), { ...launchOptions, disableErrorReporting: true })
-`], { cwd: fileURLToPath(new URL(".", import.meta.url)), encoding: "utf8" })
-console.log(`custom failure: ${failedCustom.status}`)
+Promise.all([
+  launch("./startup-rejected.js"),
+  launch("./custom-entry.js"),
+  launch("./invalid-batch.js"),
+  launch("--input-type=module", "-e", `
+    import { Effect } from "effect"
+    import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+    import { launchOptions } from "./launch-options.js"
+    NodeRuntime.runMain(Effect.fail("rejected"), { ...launchOptions, disableErrorReporting: true })
+  `)
+]).then(([rejected, custom, batch, failedCustom]) => {
+  console.log(`rejected: ${rejected.status}, silent: ${rejected.stdout === "" && rejected.stderr === ""}`)
+  console.log(`custom: ${custom.status}`)
+  console.log(`batch: ${batch.status}, cleaned: ${batch.stdout.includes("Export cleanup finished")}`)
+  console.log(`custom failure: ${failedCustom.status}`)
+})
 // Output: rejected: 1, silent: true
 // Output: custom: 0
 // Output: batch: 1, cleaned: true
