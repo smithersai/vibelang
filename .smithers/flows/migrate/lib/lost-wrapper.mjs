@@ -355,18 +355,62 @@ const keepsProgram = fn => fn.generator || fn.factory || (fn.returns > 0 && fn.e
 const forwardedArms = (fn, counterpart) => fn.named.filter(members => members.every(member => counterpart.forwards.includes(member))).length
 
 /**
+ * The module's top-level functions that only call the export of their own name
+ * in a companion, by name path: the platform split keeps an export as such a
+ * wrapper, `export const load = () => $platform.load()`, and the companion's
+ * function is the original's, moved verbatim, so it is the one that pairs.
+ */
+function delegatingWrappers(ts, text, path, companions) {
+  const found = new Map()
+  if (!companions.length) return found
+  const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+  const namespaces = new Map()
+  for (const statement of source.statements) {
+    const bindings = ts.isImportDeclaration(statement) && statement.importClause?.namedBindings
+    if (!bindings || !ts.isNamespaceImport(bindings) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
+    const target = companions.find(c => posix.basename(c.path) === posix.basename(statement.moduleSpecifier.text))
+    if (target) namespaces.set(bindings.name.text, target.path)
+  }
+  const delegatesTo = (fn, name) => {
+    let body = fn.body
+    if (body && ts.isBlock(body)) body = body.statements.length === 1 && ts.isReturnStatement(body.statements[0]) ? body.statements[0].expression : undefined
+    while (body && ts.isParenthesizedExpression(body)) body = body.expression
+    if (!body || !ts.isCallExpression(body) || !ts.isPropertyAccessExpression(body.expression)) return undefined
+    const callee = body.expression
+    return ts.isIdentifier(callee.expression) && callee.name.text === name ? namespaces.get(callee.expression.text) : undefined
+  }
+  for (const statement of source.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name) {
+      const target = delegatesTo(statement, statement.name.text)
+      if (target) found.set("/" + statement.name.text, target)
+    } else if (ts.isVariableStatement(statement)) {
+      for (const d of statement.declarationList.declarations) {
+        const init = d.initializer
+        if (!ts.isIdentifier(d.name) || !init || !(ts.isArrowFunction(init) || ts.isFunctionExpression(init))) continue
+        const target = delegatesTo(init, d.name.text)
+        if (target) found.set("/" + d.name.text, target)
+      }
+    }
+  }
+  return found
+}
+
+/**
  * The functions the original had that return Effect values and the emitted
  * text lost, and those it has no function for. companions are the emitted
  * JavaScript of the module's VIP-40 bodies, `[{ path, text }]`: a body holds
  * the original's declarations verbatim, under their own names, and the
  * module imports or re-exports them, so a body's function pairs with the
- * original function of its name.
+ * original function of its name. The platform split's `<Name>.platform.js`
+ * is one too: a wrapper that only calls its moved function of the same name
+ * pairs through that function (delegatingWrappers).
  */
 export function lostWrappers({ ts, original, originalPath = "original.ts", emitted, emittedPath = "emitted.js", companions = [] }) {
   const before = functionsOf(ts, original, originalPath), after = functionsOf(ts, emitted, emittedPath)
   const programs = programValuesOf(ts, emitted, emittedPath)
+  const delegating = delegatingWrappers(ts, emitted, emittedPath, companions)
   for (const companion of companions) {
-    for (const [name, fn] of functionsOf(ts, companion.text, companion.path)) if (!after.has(name)) after.set(name, fn)
+    for (const [name, fn] of functionsOf(ts, companion.text, companion.path)) if (!after.has(name) || delegating.get(name) === companion.path) after.set(name, fn)
     for (const name of programValuesOf(ts, companion.text, companion.path)) programs.add(name)
   }
   // Direct-style lowering inlines a callback into the program around it:
@@ -405,10 +449,13 @@ export function readAllowList(path) {
  */
 export function bodyCompanionsOf(file, emitted, read = path => existsSync(path) ? readFileSync(path, "utf8") : null) {
   const base = posix.basename(file)
+  // The platform split's sibling, x.platform.ts beside x.vibe, emits as x.platform.js.
+  const stem = base.replace(/\.vibex?$/, "")
   const companions = new Map()
   for (const m of emitted.text.matchAll(/\b(?:from|import)\s*["']\.\/([^"'/]+)["']/g)) {
     const name = m[1]
-    if (!name.startsWith(base + ".") || !/^[A-Za-z_$][\w$]*\.jsx?$/.test(name.slice(base.length + 1))) continue
+    const sibling = name === stem + ".platform.js" || name === stem + ".platform.jsx"
+    if (!sibling && (!name.startsWith(base + ".") || !/^[A-Za-z_$][\w$]*\.jsx?$/.test(name.slice(base.length + 1)))) continue
     const path = join(dirname(emitted.path), name)
     if (companions.has(path)) continue
     const text = read(path)
