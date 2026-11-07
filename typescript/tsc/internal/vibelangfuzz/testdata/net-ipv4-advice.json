@@ -1,0 +1,32 @@
+[
+  {
+    "key": "net:ipv4:direct",
+    "source": "import { isIPv4 } from \"net\"; export const value=(address:string)=>isIPv4(address)",
+    "host": true
+  },
+  {
+    "key": "net:ipv4:alias",
+    "source": "import { isIPv4 as Native } from \"net\"; export const value=(address:string)=>Native(address)",
+    "host": true
+  },
+  {
+    "key": "node:net:ipv4:direct",
+    "source": "import { isIPv4 } from \"node:net\"; export const value=(address:string)=>isIPv4(address)",
+    "host": true
+  },
+  {
+    "key": "node:net:ipv4:alias",
+    "source": "import { isIPv4 as Native } from \"node:net\"; export const value=(address:string)=>Native(address)",
+    "host": true
+  },
+  {
+    "key": "ipv4:local",
+    "source": "const isIPv4=(address:string)=>address===\"local\"; export const value=(address:string)=>isIPv4(address)",
+    "host": false
+  },
+  {
+    "key": "ipv4:parameter",
+    "source": "export const value=(isIPv4:(address:string)=>boolean,address:string)=>isIPv4(address)",
+    "host": false
+  }
+]

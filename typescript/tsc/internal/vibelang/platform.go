@@ -267,7 +267,7 @@ var platformAPIs = map[string]platformAPI{
 	"net.createServer": {"SocketServer", "", ""},
 	"net.Server":       {"SocketServer", "", ""},
 	"net.isIP":         {"NetAddress", "", ""},
-	"net.isIPv4":       {"NetAddress", "", ""},
+	"net.isIPv4":       {"NetAddress", "Result.isSuccess(NetAddress.ipv4FromString(address))", "This is a boolean predicate; ipFromString returns a Result for either IP family."},
 	"net.isIPv6":       {"ExperimentalNetAddress", "", "Effect parses the address; this predicate preserves Node's numeric and ASCII zone syntax."},
 	"tls.createServer": {"SocketServerTls", "", ""},
 	"tls.Server":       {"SocketServerTls", "", ""},

@@ -1,0 +1,8 @@
+// expect-result: [true,false,false,false,true,false]
+import { Result } from "effect"
+import * as NetAddress from "effect/net/NetAddress"
+export effect function main() {
+  return ["127.0.0.1", "::1", "not-an-address", "127.0.0.01", "255.255.255.255", "256.0.0.1"].map(
+    (address) => Result.isSuccess(NetAddress.ipv4FromString(address))
+  )
+}

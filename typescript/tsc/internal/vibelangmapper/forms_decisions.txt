@@ -6909,6 +6909,7 @@ typescript/vibelang/cases/platform-host-members/input/main.vibe:19:63 lambda pla
 typescript/vibelang/cases/platform-host-members/main.vibe:4:43 lambda plain annotation
 typescript/vibelang/cases/platform-host-members/main.vibe:5:30 lambda plain annotation
 typescript/vibelang/cases/platform-host-members/main.vibe:7:54 lambda plain annotation
+typescript/vibelang/cases/platform-net-ipv4-advice/main.vibe:6:5 lambda plain table
 typescript/vibelang/cases/platform-postmessage.fail/main.vibe:5:22 lambda plain fallback
 typescript/vibelang/cases/platform-postmessage.fail/main.vibe:6:28 lambda plain fallback
 typescript/vibelang/cases/platform-process-version-advice/main.vibe:10:60 byname program table
