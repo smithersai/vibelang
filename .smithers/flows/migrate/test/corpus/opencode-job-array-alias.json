@@ -1,0 +1,14 @@
+{
+  "key": "EK4842:named-import-rename-writes-alias",
+  "repository": "opencode",
+  "pattern": "packages/core/src/job.ts imports { Array } from effect beside the repository's no-import-alias and no-star-import ast-grep rules",
+  "fixed": "import { Array as Arr, Result } from \"effect\"\nexport const recover = (entries: ReadonlyArray<{ readonly value: string }>, decode: (value: string) => Result.Result<number, string>) => {\n  const recovered: number[] = []\n  recovered.push(...Arr.filterMap(entries, (entry) => decode(entry.value)))\n  return Arr.isArray(recovered) ? recovered : []\n}\n",
+  "rules": {
+    "alias": "id: no-import-alias\nlanguage: TypeScript\nmessage: Do not alias value imports. For type name collisions, alias inside a dedicated `import type` statement.\nseverity: error\nrule:\n  all:\n    - kind: import_specifier\n    - has:\n        field: alias\n        kind: identifier\n    - not:\n        inside:\n          pattern: import type { $$$SPECS } from \"$MOD\"\n          stopBy: end\n",
+    "star": "id: no-star-import\nlanguage: TypeScript\nmessage: Do not use star imports.\nseverity: error\nrule:\n  all:\n    - kind: namespace_import\n    - inside:\n        kind: import_statement\n        stopBy: end\n"
+  },
+  "expected": {
+    "aliases": "import { Result } from \"effect\"\nimport * as Arr from \"effect/Array\"\nexport const recover = (entries: ReadonlyArray<{ readonly value: string }>, decode: (value: string) => Result.Result<number, string>) => {\n  const recovered: number[] = []\n  recovered.push(...Arr.filterMap(entries, (entry) => decode(entry.value)))\n  return Arr.isArray(recovered) ? recovered : []\n}\n",
+    "both": "import { Result } from \"effect\"\nimport { filterMap, isArray } from \"effect/Array\"\nexport const recover = (entries: ReadonlyArray<{ readonly value: string }>, decode: (value: string) => Result.Result<number, string>) => {\n  const recovered: number[] = []\n  recovered.push(...filterMap(entries, (entry) => decode(entry.value)))\n  return isArray(recovered) ? recovered : []\n}\n"
+  }
+}

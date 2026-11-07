@@ -27,6 +27,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An implicit `Effect.gen` repair could be refused when its body constructed a foreign class. It now preserves those constructor exceptions as defects, including member and aliased constructors.
 
+- Migrating a module that imported `Array` from `effect` wrote `import { Array as Arr } from "effect"`, which fails the lint of a repository that forbids aliased imports. The migrate flow now writes `import * as Arr from "effect/Array"` there, and where star imports are forbidden too, imports the used members by name, such as `import { filterMap } from "effect/Array"`.
+
 - Screen-reader navigation could not distinguish the site menu, documentation sidebar and page outline. Each navigation landmark now has its own name.
 
 - The homepage suggested Node versions that the packages do not support. It now lists both supported Node release lines and their minimum versions.

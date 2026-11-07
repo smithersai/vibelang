@@ -45,6 +45,7 @@ import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
 import { isProtectedFile, testDiffMarkdown } from "./test-diff.mjs"
 import { vibeParser } from "./test-diff-format.mjs"
+import { applyRepositoryImportStyle } from "./import-style.mjs"
 import { measureTests } from "./measurement.mjs"
 import { regenerate } from "./hooks.mjs"
 import { countTokens } from "./tokens.mjs"
@@ -1760,9 +1761,14 @@ export async function codemod(options) {
       saveState(p.codemodState(b), state)
     }
   }
+  // EK4842's `Array as Arr` is the default. A repository whose lint forbids
+  // aliased value imports, or star imports too, gets the form its rules
+  // accept (lib/import-style.mjs).
+  const importStyle = applyRepositoryImportStyle(t, renames.map((r) => r.to), await Jj.trackedFiles(t), vibeParser(() => compiler))
   // Format only files authored by this transaction. A widened .vibe
   // specifier can break the target's width check in a remaining .ts file.
   const sourceFiles = [...new Set([
+    ...importStyle.rewritten.map(rewrite => rewrite.file),
     ...(state.writes ?? []).map(write => write.file),
     ...(state.referenceWrites ?? []).map(write => write.file),
     ...platform.splits.flatMap(split => split.platform ?? []),
@@ -1795,6 +1801,7 @@ export async function codemod(options) {
     buildEntries,
     importEdits,
     lintPaths: state.lintPaths,
+    importStyle,
     refEdits,
     scriptEdits,
     packageScriptEdits,
