@@ -21,7 +21,7 @@ entries, including expanded `tsdown` entry globs. Array order and named
 entry aliases stay as configured; `.ts` and `.vibe` sources still build.
 Use the `.vibe` source when choosing a single entry.
 
-In bundler watch mode, creating a missing relative source also triggers a rebuild. This includes directory indexes and source imports written with their emitted `.js` extension. Set `VIBELANG_UNPLUGIN_DEBUG=1` to see which missing source candidates the plugin watches.
+In bundler watch mode, creating a missing relative source also triggers a rebuild. Rollup continues watching source, type-only dependencies and configuration after recovering from errors. This includes directory indexes and source imports written with their emitted `.js` extension. Set `VIBELANG_UNPLUGIN_DEBUG=1` to see which missing source candidates the plugin watches.
 
 Diagnostics from source loaders retain their source details and exclude compiler file-list output.
 

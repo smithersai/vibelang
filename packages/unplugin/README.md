@@ -6,7 +6,7 @@ Compile `.vibe` modules with the native VibeLang compiler in webpack, Rspack,
 Rollup, Rolldown, esbuild, and Bun. The compiler owns type and language
 diagnostics. The plugin serves its JavaScript and source maps, reports its
 diagnostics as build errors with file, line, and column, and recompiles in
-watch mode. For Vite and Vitest, use [vibelang-vite](../vite/README.md).
+watch mode. Source and type-only edits remain active after error recovery. For Vite and Vitest, use [vibelang-vite](../vite/README.md).
 Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning.
 The shared load hook also compiles explicit `.vibex` JSX sources, including
 module IDs with query strings, using the project's `jsx` compiler option.

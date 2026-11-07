@@ -1,3 +1,4 @@
+import { missingSourceWatcher } from "./missing-watcher.js"
 import { extensionlessImport, missingRelativeInputs } from "./relative-imports.js"
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { readFile } from "node:fs/promises"
@@ -340,20 +341,33 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     for (const extension of sources) if (existsSync(stem + extension)) return stem + extension + query
   }
 
+  let missingWatcher, watchClosed = false, buildNumber = 0
   return {
     name: "vibelang",
     enforce: "pre",
     // Every build, and every watch rebuild, compiles each project once.
     async buildStart() {
+      watchClosed = false
+      missingWatcher?.begin()
       ;(await loaded()).invalidate()
-      debug("build start")
+      debug(`build ${++buildNumber} start`)
     },
     closeBundle: close,
-    closeWatcher: close,
+    async closeWatcher() {
+      watchClosed = true
+      try { await close() }
+      finally {
+        missingWatcher?.close()
+        missingWatcher = undefined
+      }
+    },
     // Bun/esbuild and webpack/Rspack do not forward closeBundle. Every
     // adapter awaits buildEnd, so dispose after each build, including watch
     // rebuilds, and start a fresh backend on the next one.
-    buildEnd: close,
+    async buildEnd(error) {
+      await close()
+      missingWatcher?.finish(error)
+    },
     watchChange(id) {
       if (/\.(?:vibe|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
       debug(`watch change ${id}`)
@@ -368,9 +382,11 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     load: meta.framework === "bun" ? undefined : async function load(id) {
       const { project, code, map, inputs, errors, warnings, error } = await loadModule(id)
       // Any project source or the tsconfig can change the contracts this module compiles against.
-      const nativeWatch = ["rollup", "rolldown", "vite"].includes(meta.framework)
+      const rollupWatch = meta.framework === "rollup" && this.meta?.watchMode && !watchClosed
+      const nativeWatch = ["rolldown", "vite"].includes(meta.framework)
       const watch = new Set()
       for (const input of [project, ...inputs]) {
+        if (rollupWatch && !existsSync(input)) continue
         if (!nativeWatch || existsSync(input)) watch.add(input)
         else {
           // Native watchers can ignore absent paths. Register their existing
@@ -383,6 +399,14 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         }
       }
       for (const input of watch) this.addWatchFile(input)
+      if (rollupWatch) {
+        const missing = missingRelativeInputs(errors)
+        if (missing.length) {
+          missingWatcher ??= missingSourceWatcher(debug)
+          this.addWatchFile(missingWatcher.file)
+          missingWatcher.add(missing)
+        }
+      }
       // Reject this source's errors even after another clean module was loaded.
       if (errors.length) {
         const first = errors.find((diagnostic) => diagnostic.file) || {}
