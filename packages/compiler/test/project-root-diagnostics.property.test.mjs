@@ -16,10 +16,10 @@ test("project diagnostics distinguish included sources outside the compilation r
   async function check(name) {
     const root = await mkdtemp(join(tmpdir(), "vibelang-root-guidance-"))
     try {
-    const app = join(root, "app"), shared = join(root, name), project = join(root, "tsconfig.json")
+    const app = join(root, "app"), shared = join(root, name), project = join(app, "tsconfig.json")
     await mkdir(app); await mkdir(shared)
     await writeFile(join(root, "package.json"), '{"type":"module"}')
-    await writeFile(project, JSON.stringify({ compilerOptions: options, include: ["app/main.vibe", name] }))
+    await writeFile(project, JSON.stringify({ compilerOptions: options, include: ["main.vibe", "../" + name] }))
     const source = join(shared, "value.vibe"), excluded = join(app, "excluded.vibe")
     await writeFile(source, "export const value = 42\n")
     await writeFile(join(app, "main.vibe"), "export const main = 1\n")
@@ -62,7 +62,7 @@ test("project diagnostics distinguish included sources outside the compilation r
   for (const name of ["shared", "shared space", "shared-é%20"]) await check(name)
   await checkProperty(fc, {
     name: "project-outside-root-guidance",
-    rule: "packages/vite/README.md: The Vite root must contain the project's source files",
+    rule: "docs/user/src/setup/developer-tools.md: An included source outside the compilation root reports that boundary directly",
     arbitrary: fc.array(fc.constantFrom("a", "é", "日", " ", "%", "2", "0"), { minLength: 1, maxLength: 8 }).map(chars => "shared-" + chars.join("")),
     numRuns: 12, check, command: "node --test test/project-root-diagnostics.property.test.mjs"
   })
