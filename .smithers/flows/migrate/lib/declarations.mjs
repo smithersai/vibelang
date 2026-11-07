@@ -496,6 +496,8 @@ function commonDirectory(files) {
 
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 const absentSourceDir = ".migrate-absent-sources"
+// Project errors for a source outside the declaration output root.
+const layoutErrors = new Set(["TS5011", "TS6059"])
 
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir } = {}) {
   const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), projectOutputs = new Map(), companions = new Set()
@@ -557,7 +559,12 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     const present = new Set(emitted.present.map(({ output }) => output))
     for (const { source, output, originals } of emitted.outputs) {
       if (present.has(output)) continue
-      const reasons = (emitDiagnostics ?? []).filter(d => d.category === "error" && d.file && resolve(emitRoot, d.file) === resolve(source))
+      const errors = (emitDiagnostics ?? []).filter(d => d.category === "error")
+      let reasons = errors.filter(d => d.file && resolve(emitRoot, d.file) === resolve(source))
+      // Without rootDir, a source above the tsconfig fails emit with a project
+      // layout error, and its declaration lands outside the snapshot.
+      if (!reasons.length && output && !resolve(output).startsWith(resolve(dir, prefix) + sep))
+        reasons = errors.filter(d => layoutErrors.has(d.code))
       const logical = originals.find(file => /\.d\.[cm]?ts$/.test(file))
       if (reasons.length && logical) absentDeclarations[rel(packageDir, logical)] =
         reasons.map(({ code, file, line, column }) => ({ code, file, line, column }))
