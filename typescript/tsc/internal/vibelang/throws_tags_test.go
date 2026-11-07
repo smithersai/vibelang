@@ -32,7 +32,7 @@ func TestVibeThrowsTagFix(t *testing.T) {
 	}
 }
 func TestQuickFixKeepsThrowsComments(t *testing.T) {
-	for _, comment := range []string{"/** @throws {never} */", "/** @rethrows f */", "/** Keeps this documentation.\n * @throws {never}\n */"} {
+	for _, comment := range []string{"/** @throws {never} */", "/** @exception {never} */", "/** @rethrows f */", "/** Keeps this documentation.\n * @throws {never}\n */"} {
 		for _, crlf := range []bool{false, true} {
 			source := comment + "\nexport function main(){return 7}\n"
 			if crlf {

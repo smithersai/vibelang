@@ -326,6 +326,26 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "class-override-control-" + row.name, Owner: "compiler", Quote: overrides, Host: "none", Lib: overrideLib, Decls: row.decls})
 	}
+
+	// @exception is TypeScript's alternate spelling of a JSDocThrowsTag.
+	const exceptionSource = "A written `@throws` or `@rethrows` tag there, on a function, service member or function-type signature, is `EK0406`"
+	for _, row := range []struct{ name, source string }{
+		{"function", "/** ⟦@exception⟧ {RangeError} */\nexport function read() { return 1 }"},
+		{"arrow", "/** ⟦@exception⟧ {never} */\nexport const read = () => 1"},
+		{"effect", "/** ⟦@exception⟧ */\nexport effect function read() { return 1 }"},
+		{"async", "/** ⟦@exception⟧ {RangeError} */\nexport async function read() { return 1 }"},
+		{"method", "export class Reader {\n/** ⟦@exception⟧ {RangeError} */\nread() { return 1 }\n}"},
+		{"signature", "export type Reader = {\n/** ⟦@exception⟧ {RangeError} */\n(): number\n}"},
+		{"service", "service Reader {\nstatic readonly key = \"fuzz/exception-reader\"\n/** ⟦@exception⟧ {RangeError} */\nread(): number\n}"},
+		{"prose", "/** ⟦@exception⟧ A failure when parsing. */\nexport function read() { return 1 }"},
+		{"unknown-control", "/** @exceptions {RangeError} */\nexport function read() { return 1 }"},
+		{"module-control", "module foreign {\n/** @exception {RangeError} */\nexport function read() { return 1 }\n}"},
+	} {
+		add(&failCase{Name: "exception-tag-" + row.name, Owner: "compiler", Quote: exceptionSource, Host: "none", Code: 406, Decls: row.source})
+	}
+	add(&failCase{Name: "exception-tag-foreign-known", Owner: "compiler", Quote: "| `/** @throws {T} */` on it or its call signature | `T`, trusted, not checked |", Code: 403, Lib: "/** @exception {RangeError} */\nexport declare function read(): number", Body: "const value = ⟦read()⟧"})
+	add(&failCase{Name: "exception-tag-foreign-never", Owner: "compiler", Quote: "| `/** @throws {T} */` on it or its call signature | `T`, trusted, not checked |", Lib: "/** @exception {never} */\nexport declare function read(): number", Body: "const value = read()"})
+
 	// A @throws tag that writes no type, with no braces or with empty ones,
 	// names no thrown type: its callee keeps the untagged contract, unknown.
 	const noTag = "| no tag | `unknown` |"

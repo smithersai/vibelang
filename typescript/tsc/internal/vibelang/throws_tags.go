@@ -54,7 +54,8 @@ func checkVibeThrowsTags(c *checker.Checker, file *ast.SourceFile) {
 
 func isContractTag(tag *ast.Node) bool {
 	name := tag.TagName()
-	return name != nil && (name.Text() == "throws" || name.Text() == "rethrows")
+	// TypeScript also spells JSDocThrowsTag as @exception.
+	return name != nil && (ast.IsJSDocThrowsTag(tag) || name.Text() == "rethrows")
 }
 
 // tagNameRange is the range of @name at the start of tag.

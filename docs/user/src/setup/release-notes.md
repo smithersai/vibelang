@@ -77,6 +77,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Relative-URL migration guidance could imply that whitespace-only paths were safe to move. It now explains why references that retain the source file name stay in TypeScript.
 
+- A VibeLang declaration could use `@exception`, TypeScript's alias for `@throws`, and emit a throwing contract. The alias now receives `EK0406`, just like `@throws`; remove the tag manually while retaining the documentation.
+
 - A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
 
 - An implicit `Effect.gen` repair could be refused when its body constructed a foreign class. It now preserves those constructor exceptions as defects, including member and aliased constructors.
