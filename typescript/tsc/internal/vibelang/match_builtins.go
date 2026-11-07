@@ -207,8 +207,10 @@ func builtinVariantProperty(c *checker.Checker, node *ast.Node, receiver *checke
 }
 
 // narrowBuiltinPattern narrows the subject of a built-in matcher's $is call
-// as the test the lowering writes for it does: as typeof does for the class
-// of a primitive, and as the module's guard does for a variant.
+// as the test the lowering writes for it does: for the class of a primitive,
+// as typeof s === "string" || s instanceof String does, to the primitive or
+// its boxed object (chapter 004, Typing); for a variant, as the module's
+// guard does.
 func narrowBuiltinPattern(c *checker.Checker, reference *ast.Node, t *checker.Type, test *ast.Node, assumeTrue bool, _ func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
 	if !isPatternCall(test, "$is") || !c.IsMatchingReference(reference, test.Arguments()[1]) {
 		return nil
@@ -238,6 +240,9 @@ func narrowBuiltinPattern(c *checker.Checker, reference *ast.Node, t *checker.Ty
 		if candidate == nil {
 			return nil
 		}
+	}
+	if builtin.TypeOf != "" {
+		candidate = c.GetUnionType([]*checker.Type{candidate, c.GetApparentType(candidate)})
 	}
 	return c.NarrowTypeTo(t, candidate, assumeTrue)
 }
