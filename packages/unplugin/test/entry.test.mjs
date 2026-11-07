@@ -1,16 +1,15 @@
-// D135 in bundles: a bundle runs its entry module's main and no other. This
-// compiles test/entry, whose main.vibe imports lib.vibe and both export a
-// main, with the vibelang binary, bundles the compiled dist/main.js with each
-// bundler, without the plugin, as an ES module and as CommonJS, and runs each
-// bundle. Run test/run.sh, which builds the compiler and the runtime and
-// links the fixtures' node_modules first.
+// An explicit application runner executes through every bundle format.
+// A library can export main without acquiring startup behavior (VIP-26).
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { cp, mkdtemp, rm } from "node:fs/promises"
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import { after, before, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
 import { runChild } from "./child.mjs"
+import fc from "fast-check"
+import { checkProperty } from "../../../scripts/testing/property.mjs"
+import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 
 const here = fileURLToPath(new URL(".", import.meta.url))
 const hasBun = spawnSync("bun", ["--version"]).status === 0
@@ -90,16 +89,16 @@ async function run(file) {
   return { code, stdout, stderr }
 }
 
-describe("an entry module's main in a bundle (D135)", () => {
-  it("runs from the compiled module itself, and the imported module's does not", async () => {
+describe("an explicit entry runner in a bundle (VIP-26)", () => {
+  it("runs the written entry runner and leaves the library main inert", async () => {
     assert.deepEqual(await run("dist/main.js"), { code: 0, stdout: expected, stderr: "" })
-    assert.deepEqual(await run("dist/lib.js"), { code: 0, stdout: "lib main ran\n", stderr: "" })
+    assert.deepEqual(await run("dist/lib.js"), { code: 0, stdout: "", stderr: "" })
   })
 
   for (const [bundler, bundle] of Object.entries(bundlers)) {
     for (const format of ["esm", "cjs"]) {
       const skip = bundler === "bun" && !hasBun && "bun is not installed"
-      it(`${bundler}, ${format === "esm" ? "an ES module" : "CommonJS"}: runs only the entry module's main`, { skip }, async () => {
+      it(`${bundler}, ${format === "esm" ? "an ES module" : "CommonJS"}: runs only the written entry runner`, { skip }, async () => {
         const name = `${bundler.replace(/\W+/g, "-")}-${format}`
         const outfile = join(root, "out", name, format === "esm" ? "main.mjs" : "main.cjs")
         await bundle(join(root, "dist/main.js"), outfile, format)
@@ -107,4 +106,38 @@ describe("an entry module's main in a bundle (D135)", () => {
       })
     }
   }
+  it("generated entry names, runners and values preserve explicit startup", async () => {
+    const rule = "gets no entry diagnostic and causes no implicit startup"
+    assert.ok((await readFile(SpecPath("007-tooling.md"), "utf8")).includes(rule))
+    const file = join(root, "src/main.vibe")
+    const original = await readFile(file, "utf8")
+    try {
+      await checkProperty(fc, {
+        name: "explicit-entry-runner", rule,
+        arbitrary: fc.record({
+          bundler: fc.constantFrom(...Object.keys(bundlers)),
+          format: fc.constantFrom("esm", "cjs"),
+          runner: fc.constantFrom("runSync", "runPromise"),
+          entryName: fc.constantFrom("main", "start", "run"),
+          value: fc.integer({ min: -1000, max: 1000 })
+        }),
+        numRuns: 16, regressions: new URL("./entry-regressions/", import.meta.url),
+        command: 'node --test --test-name-pattern="generated entry names" test/entry.test.mjs',
+        async check({ bundler, format, runner, entryName, value }) {
+          const source = original
+            .replace("function main()", `function ${entryName}()`)
+            .replace("Effect.runSync(main())", `Effect.${runner}(${entryName}())`)
+            .replace("app main ran", `app ${value} ran`)
+          await writeFile(file, source)
+          const compiled = spawnSync(process.env.VIBELANG_BINARY, ["-p", "tsconfig.json"], { cwd: root, encoding: "utf8" })
+          assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr)
+          const outfile = join(root, "out", "generated", format === "esm" ? "main.mjs" : "main.cjs")
+          await bundlers[bundler](join(root, "dist/main.js"), outfile, format)
+          assert.deepEqual(await run(outfile), { code: 0, stdout: `app ${value} ran with helper\n`, stderr: "" })
+          assert.deepEqual(await run("dist/lib.js"), { code: 0, stdout: "", stderr: "" })
+        }
+      })
+    } finally { await writeFile(file, original) }
+  })
+
 })

@@ -1,5 +1,4 @@
-// A module that is also a program: node dist/lib.js runs its main, and
-// importing it runs nothing (D135).
+// Exporting main does not run it: this library has no written runner.
 export effect function main() {
   try Console.log("lib main ran")
 }

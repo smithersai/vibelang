@@ -203,12 +203,21 @@ export default class Api extends Cloudflare.Worker<Api>()("Api", {
 The bundlers that await plugins are Rolldown, Rollup, and Vite;
 `deferred` refuses the others.
 
-### An entry module's main
+### Explicit application startup
 
-A module that exports a parameterless `main` runs it when the host starts the
-module (D135). A bundle runs the `main` of its entry module and no other, as
-an ES module or as CommonJS, with this plugin or from the compiler's output:
-the runtime asks the file the host started which `main` it exports.
+A function named `main` is ordinary source. Exporting or importing it does not
+start the application. Write a runner at the application entry, as in Effect
+TypeScript:
+
+```vibe
+export effect function main() {
+  try Console.log("Hello")
+}
+Effect.runSync(main())
+```
+
+A bundle executes its written top-level runner. A library that only exports
+`main` remains inert, including when the host starts that library directly.
 
 Rolldown input arrays and named entry maps exclude generated `.d.vibe.ts`
 sidecars, including those selected by `tsdown` entry globs. This includes
