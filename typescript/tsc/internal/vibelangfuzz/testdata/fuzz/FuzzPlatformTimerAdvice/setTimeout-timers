@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("setTimeout-timers\x00\x1f")

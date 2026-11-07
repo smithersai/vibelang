@@ -469,6 +469,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
 
 - With a compiler before VIP-1, the migrate flow also marked a function `: infer _` when it returned a call into a module converted in an earlier batch that had no declaration file yet, and the converted module failed `EK9203`. The flow now leaves such a function unmarked for the compiler, which reads the converted module.
+- Timer replacement diagnostics could suggest Effects without starting them. They now show a running delay or background repetition.
 
 - The `EK4810` warning, for an assertion that drops a type from an Effect's channel, printed its "No automatic fix" note twice. It prints the note once.
 

@@ -1,0 +1,134 @@
+[
+  {
+    "Key": "setTimeout-bare",
+    "Source": "export const timer = setTimeout",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-global",
+    "Source": "export const timer = globalThis.setTimeout",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-key",
+    "Source": "export const timer = globalThis[\"setTimeout\"]",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-shorthand",
+    "Source": "export const timer = { setTimeout }",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-node-timers",
+    "Source": "import { setTimeout as timer } from \"node:timers\"; export const host = timer",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-timers",
+    "Source": "import { setTimeout as timer } from \"timers\"; export const host = timer",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-node-timers-promises",
+    "Source": "import { setTimeout as timer } from \"node:timers/promises\"; export const host = timer",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-timers-promises",
+    "Source": "import { setTimeout as timer } from \"timers/promises\"; export const host = timer",
+    "Advice": "try sleep(\"1 second\")",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { try sleep(\"1 second\"); return 1 }",
+    "Want": 1
+  },
+  {
+    "Key": "setTimeout-local",
+    "Source": "export function local(setTimeout: string) { return setTimeout }",
+    "Want": 0
+  },
+  {
+    "Key": "setTimeout-type",
+    "Source": "export type Timer = typeof setTimeout",
+    "Want": 0
+  },
+  {
+    "Key": "setInterval-bare",
+    "Source": "export const timer = setInterval",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-global",
+    "Source": "export const timer = globalThis.setInterval",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-key",
+    "Source": "export const timer = globalThis[\"setInterval\"]",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-shorthand",
+    "Source": "export const timer = { setInterval }",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-node-timers",
+    "Source": "import { setInterval as timer } from \"node:timers\"; export const host = timer",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-timers",
+    "Source": "import { setInterval as timer } from \"timers\"; export const host = timer",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-node-timers-promises",
+    "Source": "import { setInterval as timer } from \"node:timers/promises\"; export const host = timer",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-timers-promises",
+    "Source": "import { setInterval as timer } from \"timers/promises\"; export const host = timer",
+    "Advice": "fork effect { try repeat(program, Schedule.spaced(\"1 second\")) }",
+    "Replacement": "import { Effect, Schedule } from \"effect\"; const { sleep, repeat } = Effect; const program = Effect.succeed(1); export effect function run() { return fork effect { try repeat(program, Schedule.spaced(\"1 second\")) } }",
+    "Want": 1
+  },
+  {
+    "Key": "setInterval-local",
+    "Source": "export function local(setInterval: string) { return setInterval }",
+    "Want": 0
+  },
+  {
+    "Key": "setInterval-type",
+    "Source": "export type Timer = typeof setInterval",
+    "Want": 0
+  }
+]

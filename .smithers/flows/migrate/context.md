@@ -907,6 +907,8 @@ Every service example in platform advice obtains the injected service first, the
 
 Timer-cancellation advice uses `try Fiber.interrupt(fiber)`. The public `Fiber` module function returns an Effect; `try` runs it.
 
+Timer advice runs a delay with `try sleep("1 second")`. Repetition runs in the background with `fork effect { try repeat(program, Schedule.spaced("1 second")) }`; keep its fiber when it needs interruption. Constructing either Effect alone starts no timer.
+
 Clipboard advice first obtains the injected `Clipboard.Clipboard` service. Its `readString` member is an Effect value: `try (try Clipboard.Clipboard).readString` reads the text.
 
 The `versions` member of the `Experimental.Process.Process` service supplies a map of component versions, matching `process.versions`. On Node, `process.version` is the `node` entry with a leading `v`; selecting that entry alone omits the prefix. Keep a runtime-specific version read in a `.ts` adapter when it does not follow Node’s spelling.
