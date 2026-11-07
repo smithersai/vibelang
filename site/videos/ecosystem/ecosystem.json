@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "kind": "composition",
+  "segments": [
+    {
+      "file": "eco-tsc.mp4",
+      "sha256": "b1c43e4f21778378130f627402faf5d31af6500a89e624683cbb71fbf85a3892",
+      "duration": 12.08
+    },
+    {
+      "file": "eco-format.mp4",
+      "sha256": "261fea118e36381560ee26766a5c4a9cc169e38acd582182c192f3a734f224ae",
+      "duration": 9.24
+    },
+    {
+      "file": "eco-lint-effect.mp4",
+      "sha256": "53dd05f8bb03bddeaa976fa35ab0570fad76e729988e4b169a51fea1a8e9c76d",
+      "duration": 11.68
+    },
+    {
+      "file": "eco-lint-eslint.mp4",
+      "sha256": "dba0d247493b117855b014d50e173a2eb30348ce5dbd5b2ec76d8ca36979c84f",
+      "duration": 7.24
+    },
+    {
+      "file": "eco-lint-oxlint.mp4",
+      "sha256": "66fef2297e5d59ffa617213cf888ebffafdf199404a19110848ce6a47e46a01c",
+      "duration": 10.28
+    },
+    {
+      "file": "eco-vitest.mp4",
+      "sha256": "1008958c2c12437bd773cbbf13d2af71e9e72c2e9e92041f74ea00d8daa5b8cb",
+      "duration": 6.88
+    },
+    {
+      "file": "webpack.mp4",
+      "sha256": "2ab05178f588003d4a3db531d09c90b239a9bbc68b0fe65ef9db242c9eb026fd",
+      "duration": 10.44
+    },
+    {
+      "file": "nvim-lsp.mp4",
+      "sha256": "ea3f74eb2efa5cac3638b3d990943814b67b6d27daeae354007d691dadaf4e92",
+      "duration": 15.96
+    }
+  ],
+  "videoSha256": "5b7de65dc183c58fd696d8209b904ab6c79eb6d7d641ab8f0dcba77810bcd645",
+  "posterSha256": "cb7b9769cdfd993116ab8ca11812f31b9c729e71cd045541e487e439f6827388"
+}

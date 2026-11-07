@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "compilerVersion": "0.0.12",
+  "effectVersion": "4.1.1",
+  "inputs": {
+    "index.html": "239c5ad91b9d93ede973cfdca2dcfbcb074e5d479445247ad4d7039824226a33",
+    "main.ts": "e89e909a896d4d620d4c427e1573724b87705cded0ef507e8ed0f0f33c2483be",
+    "greet.vibe": "1646612b0f193f13830106a1c1b28006d2a2501041f939351ab2180fff843685",
+    "vite.config.ts": "56dc681e6b51ffbe7dc7a276271399d1151594413560753628ea462880ad848d",
+    "tsconfig.json": "51589ec1bf4893a6a5ef15628e84a3ae34610a4715d0bd6fd16844b10af8639d"
+  },
+  "stages": [
+    {
+      "stage": "initial",
+      "source": "export effect function greet(name: string) {\n  return `Hello, ${name}!`\n}\n",
+      "output": "Hello, Ada!"
+    },
+    {
+      "stage": "type-error",
+      "source": "export effect function greet(name: string): number {\n  return `Hello, ${name}!`\n}\n",
+      "diagnostic": "[plugin:vibelang] \nmy-app/src/greet.vibe:1:45 - error EK0106: An effect function returns an Effect, so its return type can't be number: write number!!, or leave the return type out.\n  Its quick fix writes number!!.\nmy-app/src/greet.vibe:2:3 - error TS2322: Type 'string' is not assignable to type 'number'.\n\nmy-app/src/greet.vibe:1:44\nClick outside, press \nEsc\n key, or fix the code to dismiss.\nYou can also disable this overlay by setting \nserver.hmr.overlay\n to \nfalse\n in \nvite.config.ts\n."
+    },
+    {
+      "stage": "recovered",
+      "source": "export effect function greet(name: string) {\n  return `Hi, ${name}!`\n}\n",
+      "output": "Hi, Ada!"
+    }
+  ],
+  "videoSha256": "deff3320c13ccc4e291b02d6dbd9002529b0e9add8c3d86568814ad44ad240e9",
+  "posterSha256": "76839394414ebacf6df78f63be3ae5249fe016ac379a947f47f8cdce076a2ddd"
+}

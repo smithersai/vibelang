@@ -169,6 +169,8 @@ Existing dprint JSON configs gain the shipped plugin and `.vibe` includes. A con
 
 ![ESLint rules on .vibe files](/videos/eco-lint-eslint.mp4)
 
+The recording runs ESLint on a published-package project. Diagnostic paths are relative to that project.
+
 A repository that runs ESLint itself names its files as `*.ts`, in its
 configurations and in the helpers they share, so its rules would miss a `.vibe`
 module and `eslint src` would pass without reading it. Setup writes

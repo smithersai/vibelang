@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "kind": "composition",
+  "segments": [
+    {
+      "file": "contract.mp4",
+      "sha256": "f227d6afcccbab54d6500b60318dca4fa5cf8fbd9a119ebea463a8df547d175c",
+      "duration": 9
+    },
+    {
+      "file": "infer.mp4",
+      "sha256": "52c5b315419b0c8442596d7daf694f966c25ef9c309c44c2ead214225f57c84d",
+      "duration": 15
+    },
+    {
+      "file": "type-flip.mp4",
+      "sha256": "2f05f6b80c3bf46f67360bbcf4caf3402548ca62f10f244b864abae354b6cca1",
+      "duration": 10
+    },
+    {
+      "file": "retry.mp4",
+      "sha256": "740c65d833160ac2648ecb450051edd0847da1c8efcef1567f966f87177864fb",
+      "duration": 11
+    },
+    {
+      "file": "race.mp4",
+      "sha256": "f33b610c88779cacbee70a531d49b637dd3b12e7368eb1bec8270b23c7da812f",
+      "duration": 8
+    },
+    {
+      "file": "concurrent.mp4",
+      "sha256": "3bc64724229217da66d537b70724c1da37c9d14756b9cc6919304fadf93366e9",
+      "duration": 10
+    },
+    {
+      "file": "vite-dev.mp4",
+      "sha256": "deff3320c13ccc4e291b02d6dbd9002529b0e9add8c3d86568814ad44ad240e9",
+      "duration": 12.6
+    },
+    {
+      "file": "ecosystem.mp4",
+      "sha256": "5b7de65dc183c58fd696d8209b904ab6c79eb6d7d641ab8f0dcba77810bcd645",
+      "duration": 83.737
+    }
+  ],
+  "videoSha256": "7f35e4ca52b558a34e60ed34e504288ec8def55e2d3d10e4bf690289e7510b09",
+  "posterSha256": "cb7b9769cdfd993116ab8ca11812f31b9c729e71cd045541e487e439f6827388"
+}

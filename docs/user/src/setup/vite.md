@@ -6,6 +6,8 @@ The project must provide Vite 7 or 8. Yarn does not install that peer automatica
 
 ![Hot reload and type errors in Vite](/videos/vite-dev.mp4)
 
+The recording uses a live published-package project: it introduces a type error, displays the compiler diagnostic and recovers after an edit. Displayed paths are relative to the project.
+
 Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. Source diagnostics retain their excerpts without appending compiler file-list output.
 
 Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
@@ -171,6 +173,8 @@ Vite's own module queries name the module itself: `?import`, `?v=` and `?t=`, wh
 ## 4. Test with Vitest
 
 ![Tests in .vibe with Vitest](/videos/eco-vitest.mp4)
+
+The recording runs the published starter's two tests and shows project-relative paths.
 
 The starter's app project excludes test sources. Create `tsconfig.test.json` so Vitest checks and compiles them too:
 

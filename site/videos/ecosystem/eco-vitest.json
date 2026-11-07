@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "compilerVersion": "0.0.12",
+  "effectVersion": "4.1.1",
+  "source": "import { assert, it } from \"@effect/vitest\"\nimport { EmptyName, greeting } from \"./greeting.vibe\"\n\nit.effect(\"greets a name\", effect () => {\n  const message = try greeting(\"Ada\")\n  try Effect.try(() => assert.strictEqual(message, \"Hello, Ada!\"))\n})\n\nit.effect(\"recovers from an empty name\", effect () => {\n  const result = greeting(\"\") catch (error) => error instanceof EmptyName\n  try Effect.try(() => assert.strictEqual(result, true))\n})\n",
+  "sourceSha256": "2fe319ca16e332494c2173cb3531acabdb2f41879f1527fbfad0d29e18ce6cae",
+  "command": "bun run test",
+  "exitCode": 0,
+  "output": "RUN  v5.1.0 my-app\n\n ✓ src/greeting.test.vibe (2 tests) 9ms\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Duration  925ms (transform 74%, import 24%, tests 1%)\n\n$ vitest run",
+  "videoSha256": "1008958c2c12437bd773cbbf13d2af71e9e72c2e9e92041f74ea00d8daa5b8cb",
+  "posterSha256": "cb7b9769cdfd993116ab8ca11812f31b9c729e71cd045541e487e439f6827388"
+}

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["vite/client"],
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src/main.ts", "src/greet.vibe"]
+}

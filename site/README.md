@@ -124,6 +124,8 @@ The pinned Vocs outline renders a decorative position marker directly inside its
 
 The navigation patch names the top menu and documentation sidebar, and the outline patch names the page outline. Its browser regression checks distinct navigation landmarks in both themes. The same source/runtime integrity and dependency ownership checks apply. Run `npm ci` after changing a patch so the reviewed upstream files are restored before patching.
 
+The ESLint and Vitest recordings are reproduced with `node scripts/record-ecosystem.mjs`. Their fixtures and command receipts are in `videos/ecosystem`.
+
 The pinned Vocs route filter runs with `node scripts/patch-vocs-routes.mjs` during installation, development and production preparation. It excludes `.d.ts` modules from built-in and project page discovery, including middleware discovery. Source and compiled modules are checked together before either is changed; an unknown version or modified artifact stops preparation. A generated fixture checks that declaration neighbours neither create routes nor shadow real pages.
 
 ### Temporary Vocs page landmark patch

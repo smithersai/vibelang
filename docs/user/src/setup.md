@@ -4,6 +4,8 @@ VibeLang is a fork of TypeScript for Effect programs. These steps set it up in a
 
 ![VibeLang with your TypeScript tools](/videos/ecosystem.mp4)
 
+The overview combines the individual tooling recordings, using project-relative display paths.
+
 ## 1. Check the tools
 
 Run `node --version`. Use Node `22.22.3` (`22.x`) or Node `24.11.1` or later. With Bun, run `bun --version` and expect `1.4.0` or later.
