@@ -1,9 +1,12 @@
 package vibelang
 
 import (
+	"cmp"
 	"fmt"
 	"io"
+	stdmaps "maps"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -28,8 +31,14 @@ const fixProgressEvery = 5 * time.Second
 // checks the whole program once for each fix it refuses grows with the
 // square of it.
 //
-// A ticker prints during a long check. The report on stdout is as it was.
-// A nil fixProgress prints nothing.
+// A ticker prints during a long check. When a run that printed a line
+// ends, it prints what it cost: its time, its checks, the largest heap
+// the ticker saw, and the time it spent in each stage, most first
+// (fixProgress.cost):
+//
+//	vibelang --fix: cost: 12m15s; 55 checks (20 whole, 35 partial); peak heap 9607 MiB, 11002 MiB from the system; checking diagnostics 6m2s (20), building program 1m30s (55), ...
+//
+// The report on stdout is as it was. A nil fixProgress prints nothing.
 type fixProgress struct {
 	w     io.Writer
 	every time.Duration
@@ -54,6 +63,21 @@ type fixProgress struct {
 	stageSince   time.Time
 	activity     string
 	since        time.Time
+	// The time the run spent in each stage, or in its phase when no stage
+	// is named, the times it entered each, and when the time was last
+	// charged (charge); the peak heap and memory from the system the
+	// ticker saw.
+	spent            map[string]time.Duration
+	entered          map[string]int
+	charged          time.Time
+	whole            int
+	peakHeap, peakOS uint64
+	// The checks of only the files a trial changed and their readers, the
+	// files they checked, those a check of the whole program was made
+	// again for, and those whose errors it found different
+	// (fix_incremental.go).
+	changedChecks, changedFiles, changedDiffered int
+	changedWhole                                 map[string]int
 }
 
 // newFixProgress returns the progress of a run that prints to w each
@@ -67,7 +91,7 @@ func newFixProgress(w io.Writer, every time.Duration) *fixProgress {
 		every = fixProgressEvery
 	}
 	start := time.Now()
-	p := &fixProgress{w: w, every: every, stop: make(chan struct{}), start: start, printed: start, since: start, phase: "start", activity: "reading the project"}
+	p := &fixProgress{w: w, every: every, stop: make(chan struct{}), start: start, printed: start, since: start, phase: "start", activity: "reading the project", spent: map[string]time.Duration{}, entered: map[string]int{}, charged: start}
 	ticker := time.NewTicker(every)
 	p.done.Add(1)
 	go func() {
@@ -76,7 +100,12 @@ func newFixProgress(w io.Writer, every time.Duration) *fixProgress {
 		for {
 			select {
 			case <-ticker.C:
-				p.update(func() {})
+				var memory runtime.MemStats
+				runtime.ReadMemStats(&memory)
+				p.update(func() {
+					p.peakHeap = max(p.peakHeap, memory.HeapAlloc)
+					p.peakOS = max(p.peakOS, memory.Sys-memory.HeapReleased)
+				})
 			case <-p.stop:
 				return
 			}
@@ -85,7 +114,8 @@ func newFixProgress(w io.Writer, every time.Duration) *fixProgress {
 	return p
 }
 
-// close stops the ticker; nothing prints once it returns.
+// close stops the ticker and, when the run printed a line, prints what
+// it cost; nothing prints once it returns.
 func (p *fixProgress) close() {
 	if p == nil {
 		return
@@ -93,8 +123,63 @@ func (p *fixProgress) close() {
 	close(p.stop)
 	p.done.Wait()
 	p.mu.Lock()
+	if p.w != nil && p.printed.After(p.start) {
+		fmt.Fprintln(p.w, p.cost(time.Now()))
+	}
 	p.w = nil
 	p.mu.Unlock()
+}
+
+// charge adds the time since it last charged to the stage, or the phase
+// when no stage is named.
+func (p *fixProgress) charge(now time.Time) {
+	name := p.stageName
+	if name == "" {
+		name = p.phase
+	}
+	p.spent[name] += now.Sub(p.charged)
+	p.charged = now
+}
+
+// cost says what the run cost to now: its time, its checks, its peak
+// memory, and the time of each stage it spent at least a second in.
+func (p *fixProgress) cost(now time.Time) string {
+	p.charge(now)
+	var b strings.Builder
+	fmt.Fprintf(&b, "vibelang --fix: cost: %s; %d %s (%d whole, %d partial); peak heap %d MiB, %d MiB from the system", now.Sub(p.start).Round(time.Second), p.checks, plural(p.checks, "check", "checks"), p.whole, p.checks-p.whole, p.peakHeap>>20, p.peakOS>>20)
+	if p.changedChecks > 0 {
+		fmt.Fprintf(&b, "; %d %s of changed files, %d files each", p.changedChecks, plural(p.changedChecks, "check", "checks"), p.changedFiles/p.changedChecks)
+		if p.changedDiffered > 0 {
+			fmt.Fprintf(&b, ", %d differed", p.changedDiffered)
+		}
+	}
+	if len(p.changedWhole) > 0 {
+		reasons := slices.Sorted(stdmaps.Keys(p.changedWhole))
+		for i, why := range reasons {
+			reasons[i] = fmt.Sprintf("%s %d", why, p.changedWhole[why])
+		}
+		fmt.Fprintf(&b, "; whole for %s", strings.Join(reasons, ", "))
+	}
+	names := make([]string, 0, len(p.spent))
+	for name, spent := range p.spent {
+		if spent >= time.Second {
+			names = append(names, name)
+		}
+	}
+	slices.SortFunc(names, func(a, c string) int {
+		if n := cmp.Compare(p.spent[c], p.spent[a]); n != 0 {
+			return n
+		}
+		return strings.Compare(a, c)
+	})
+	for i, name := range names {
+		sep := ", "
+		if i == 0 {
+			sep = "; "
+		}
+		fmt.Fprintf(&b, "%s%s %s (%d)", sep, name, p.spent[name].Round(time.Second), p.entered[name])
+	}
+	return b.String()
 }
 
 // update applies change, and prints a line when the last is every old.
@@ -141,17 +226,21 @@ func (p *fixProgress) line(now time.Time) string {
 }
 
 func (p *fixProgress) doing(activity string) {
-	p.activity, p.since = activity, time.Now()
-	p.stageName, p.stageSince = "", p.since
+	now := time.Now()
+	p.charge(now)
+	p.activity, p.since = activity, now
+	p.stageName, p.stageSince = "", now
 }
 
 // enter starts phase, in round when it is not 0, with the fixes applied
 // and refused so far, and what it does first.
 func (p *fixProgress) enter(phase string, round, applied, refused int, activity string) {
 	p.update(func() {
+		p.charge(time.Now())
 		p.phase, p.round, p.applied, p.pending, p.refused = phase, round, applied, 0, refused
 		p.phaseChecks, p.phasePartial = 0, 0
 		p.doing(activity)
+		p.entered[phase]++
 	})
 }
 
@@ -209,6 +298,8 @@ func (p *fixProgress) building() {
 		p.phaseChecks++
 		if p.nextPartial {
 			p.phasePartial++
+		} else {
+			p.whole++
 		}
 		p.nextPartial = false
 		if p.next == "" {
@@ -216,12 +307,54 @@ func (p *fixProgress) building() {
 		}
 		p.doing(p.next)
 		p.stageName, p.stageSince = "building program", p.since
+		p.entered[p.stageName]++
 		p.next = ""
+	})
+}
+
+// checkedChanged says the last program built, which building counted
+// whole, was checked only in the files it changed and their readers, files
+// files of it.
+func (p *fixProgress) checkedChanged(files int) {
+	p.update(func() {
+		if p.whole > 0 && p.phasePartial < p.phaseChecks {
+			p.whole--
+			p.phasePartial++
+		}
+		p.changedChecks++
+		p.changedFiles += files
+	})
+}
+
+// wholeInstead says a check of the whole program stands in for a check of
+// the changed files, and why.
+func (p *fixProgress) wholeInstead(why string) {
+	p.update(func() {
+		if p.changedWhole == nil {
+			p.changedWhole = map[string]int{}
+		}
+		p.changedWhole[why]++
+	})
+}
+
+// differed prints line, which says a check of the whole program found
+// other errors than a check of the changed files, and counts it.
+func (p *fixProgress) differed(line string) {
+	p.update(func() {
+		p.changedDiffered++
+		if p.w != nil {
+			fmt.Fprintln(p.w, line)
+		}
 	})
 }
 
 // stage distinguishes program construction, checking and fix analysis within
 // the same trial. It contains only a fixed label, never source text or paths.
 func (p *fixProgress) stage(name string) {
-	p.update(func() { p.stageName, p.stageSince = name, time.Now() })
+	p.update(func() {
+		now := time.Now()
+		p.charge(now)
+		p.stageName, p.stageSince = name, now
+		p.entered[name]++
+	})
 }

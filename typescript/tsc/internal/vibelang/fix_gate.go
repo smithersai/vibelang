@@ -265,7 +265,7 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 		whole = true
 	}
 	if whole {
-		errors = r.g.errors(program)
+		program, errors = r.g.errorsOf(program, maps(r.texts, overlay))
 		added = r.addedBy(errors)
 	}
 	if r.g.recordPrelude {
@@ -559,7 +559,7 @@ func (r *gateRound) verify(parts []part) checked {
 	r.checks++
 	program := fresh(maps(r.texts, overlay))
 	r.g.progress.label("")
-	errors := r.g.errors(program)
+	program, errors := r.g.errorsOf(program, maps(r.texts, overlay))
 	return checked{program, fixes, errors, r.addedBy(errors), true}
 }
 
@@ -626,15 +626,34 @@ func (r *gateRound) textsOf(fixes map[int][]int) map[tspath.RootedFilePath]strin
 	return maps(r.texts, overlay)
 }
 
-// fileErrors returns the errors of files in program.
+// fileErrors returns the errors of files in program, file by file in their
+// order. Each checker checks its files in that order, as when they are asked
+// for one by one, and the checkers run at once: the 1,459 files a slice of
+// Smithers' apps/mvp worker reaches took 38 s one by one, and 13 s the whole
+// program of 2,392 (2026-11-07).
 func fileErrors(ctx context.Context, program *compiler.Program, files []tspath.RootedFilePath) []*ast.Diagnostic {
-	var errors []*ast.Diagnostic
+	var sources, checked []*ast.SourceFile
 	for _, name := range files {
 		if file := program.GetSourceFile(name); file != nil {
-			for _, d := range slices.Concat(program.GetSyntacticDiagnostics(ctx, file), program.GetSemanticDiagnostics(ctx, file)) {
-				if d.Category() == diagnostics.CategoryError {
-					errors = append(errors, d)
-				}
+			sources = append(sources, file)
+			if !program.SkipTypeChecking(file, false) {
+				checked = append(checked, file)
+			}
+		}
+	}
+	syntactic := make([][]*ast.Diagnostic, len(sources))
+	for i, file := range sources {
+		syntactic[i] = program.GetSyntacticDiagnostics(ctx, file)
+	}
+	semantic := map[*ast.SourceFile][]*ast.Diagnostic{}
+	for i, diagnostics := range program.GetSemanticDiagnosticsOfFiles(ctx, checked) {
+		semantic[checked[i]] = diagnostics
+	}
+	var errors []*ast.Diagnostic
+	for i, file := range sources {
+		for _, d := range slices.Concat(syntactic[i], semantic[file]) {
+			if d.Category() == diagnostics.CategoryError {
+				errors = append(errors, d)
 			}
 		}
 	}

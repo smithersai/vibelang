@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"weak"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
@@ -116,6 +117,9 @@ type FixOptions struct {
 	Progress                             io.Writer
 	ProgressEvery                        time.Duration
 	IsolationChecks, CheckpointFirst     int
+	// Checks says how the gate checks a trial's whole program
+	// (fix_incremental.go); the command line reads VIBELANG_FIX_CHECKS.
+	Checks FixChecks
 }
 
 // FixOptionsArguments removes the optional scope flags after --fix was found.
@@ -191,6 +195,12 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 				fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: --pprofDir: cannot write profiles: %v\n", err)
 			}
 		}()
+	}
+	if options.Checks == FixChecksChanged {
+		if options.Checks, err = fixChecksFromEnvironment(); err != nil {
+			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
+			return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+		}
 	}
 	if len(args) > 0 {
 		switch strings.ToLower(args[0]) {
@@ -550,16 +560,20 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// the last one when the overlay is the same.
 	var lastOverlay [32]byte
 	var last *compiler.Program
+	built := &fixBuilt{}
 	build := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
 		key := overlayKey(overlay)
 		if last == nil || key != lastOverlay {
 			progress.building()
 			last = nil // the last program can go while the next is built
 			last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), key
+			built.program, built.again = weak.Make(last), false
 			progress.stage("program built")
 			if options.programBuilt != nil {
 				options.programBuilt(last)
 			}
+		} else {
+			built.again = true
 		}
 		return last
 	}
@@ -595,13 +609,27 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		progress.building()
 		last = nil
 		last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), overlayKey(overlay)
+		built.program, built.again = weak.Make(last), false
 		progress.stage("program built")
 		if options.programBuilt != nil {
 			options.programBuilt(last)
 		}
 		return last
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineFrom(program, scope.errors(ctx, program)), scope: scope, refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst}
+	// The same errors as scope.errors, and when there is no scope the
+	// semantic ones apart, which a check of changed files carries over for
+	// the files it does not check again (fix_incremental.go).
+	var baselineErrors, baselineSemantic []*ast.Diagnostic
+	if scope == nil {
+		baselineErrors, baselineSemantic = programErrorsOf(ctx, program)
+	} else {
+		baselineErrors = scope.errors(ctx, program)
+	}
+	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineFrom(program, baselineErrors), scope: scope, refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst, checks: options.Checks, built: built}
+	if scope == nil {
+		g.checked, g.known = checkedOf(program, baselineErrors, baselineSemantic), knownErrors{program: weak.Make(program), errors: baselineErrors}
+		g.changedOnly = changedOnly(ctx, program)
+	}
 	g.original = g.baseline
 	var roundRefusals []FixRefusal
 	sites := newFixSites(func(name tspath.RootedFilePath) string {
@@ -661,7 +689,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		}
 		roundRefusals = nil
 		g.refused = map[string]bool{}
-		g.baseline = g.baseline.with(baselineOf(ctx, program))
+		g.baseline = g.baseline.with(baselineFrom(program, g.programErrors(program)))
 	}
 	// Legacy running calls must become explicit before a retired infer slot
 	// is frozen: before try is inserted its error channel can look like never.
@@ -670,6 +698,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// propose returns a round's fixes: in each fixable file of program, the
 	// fixes options select whose edits do not overlap.
 	propose := func(program *compiler.Program) []proposal {
+		g.checkFixable(program, scope.fixable(program))
 		hatchTypes := legacyPreludeCompatibilityFixes(ctx, program, g.refused, options.MigrationOnly, options.VIPOnly)
 		if !options.VIPOnly && !options.MigrationOnly {
 			if p := cliThrowsNeverFixes(ctx, program, scope, g.refused); len(p) > 0 {
@@ -821,6 +850,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			// program that a later round or rewrite repaired is no site, and
 			// one the run moved is where it now stands.
 			final := build(texts)
+			g.checkFixable(final, fixableFiles(final))
 			progress.stage("finding remaining fix sites")
 			for _, file := range fixableFiles(final) {
 				declined := fileFixes(ctx, final, file, g.refused, codes).declined
@@ -897,11 +927,17 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				accept = g.acceptEach
 			}
 			refusedBefore := len(roundRefusals)
+			names := make([]tspath.RootedFilePath, len(proposals))
+			for i, p := range proposals {
+				names[i] = p.file.FileName()
+			}
+			g.beginRound(program, names)
 			// Proposals hold the immutable source and edits they need, not the
 			// old checker. Keeping program live across accept retains all its
 			// type caches while the trial checks another complete program.
 			program = nil
 			accepted := accept(texts, proposals, refuse)
+			g.endRound()
 			if done.Err() != nil {
 				return result
 			}
@@ -1177,7 +1213,13 @@ func fixState(program *compiler.Program) [32]byte {
 // as fixGate.accept keeps a round's fixes. It records them in result and
 // texts.
 func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
-	rewrites := preludeRewriteProject(g.ctx, program, g.scope.fixable(program), texts, g.fresh)
+	g.progress.stage("finding rewrites")
+	fresh := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
+		program := g.fresh(overlay)
+		g.progress.stage("emitting declarations")
+		return program
+	}
+	rewrites := preludeRewriteProject(g.ctx, program, g.scope.fixable(program), texts, fresh)
 	if len(rewrites) == 0 {
 		return
 	}
@@ -1745,15 +1787,29 @@ type fixGate struct {
 	// isolationChecks and checkpointFirst replace fixIsolationChecks and
 	// fixCheckpointFirst when not 0 (FixOptions).
 	isolationChecks, checkpointFirst int
+	// checks says how errorsOf checks a trial's whole program, built the
+	// program build or fresh built last, checked what the last check of a
+	// program found, known the errors errorsOf last returned, changedOnly
+	// whether the run may check only changed files and their readers, and
+	// round the program the round under way started from
+	// (fix_incremental.go).
+	checks      FixChecks
+	built       *fixBuilt
+	checked     *checkedProgram
+	known       knownErrors
+	changedOnly bool
+	round       *fixRound
 }
 
 // passes reports whether the program with overlay over texts adds no error,
 // and returns the first error it adds.
 func (g *fixGate) passes(texts, overlay map[tspath.RootedFilePath]string) (string, bool) {
 	g.progress.checkFiles(len(overlay))
-	program := g.build(maps(texts, overlay))
+	trial := maps(texts, overlay)
+	program := g.build(trial)
 	g.progress.label("")
-	added := addedKeys(g.errors(program), g.baseline)
+	program, errors := g.errorsOf(program, trial)
+	added := addedKeys(errors, g.baseline)
 	if len(added) > 0 {
 		g.lastFailed = program
 		return added[0], false
