@@ -1,0 +1,17 @@
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | Composition calls such as `pipe(e, Effect.map(f))` and `e.pipe(Effect.map(f))` follow the same argument-position test, including callback contracts; `pipe` has no name-based exemption.
+// The whole sentence, with its consumption exemption: docs/design/src/002-running.md#953bdcc875340d8b
+const f = (n: number) => n + 1
+export effect function composed(e: number!!) {
+  // pipe infers its type parameters from e and the mapped callback, so both arguments report.
+  const a = pipe(e, Effect.map(f))
+  // The method form infers from the callback contract alone.
+  const b = e.pipe(Effect.map(f))
+  // A call whose own type arguments are not Effects reports nothing.
+  const c = pipe(1, f)
+  // A callback whose result infers an Effect reports through its contract.
+  const h = pipe(1, (n: number) => Effect.succeed(n))
+  // Consumed by try, the inferred Effect runs at once.
+  const d = try pipe(e, Effect.map(f))
+  const g = try e.pipe(Effect.map(f))
+  return c + d + g
+}
