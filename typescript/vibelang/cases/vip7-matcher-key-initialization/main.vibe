@@ -1,0 +1,17 @@
+// rule-evidence: docs/design/vips/0007-match.md#decision
+// VIP-7, clarified: runtime initialization defines the global
+// Symbol.customMatcher when absent as Symbol.for("Symbol.customMatcher"),
+// non-writable, non-enumerable and non-configurable, and a module that uses
+// the key requests that initialization before its other imports. run.mjs
+// checks the descriptor, and probe.ts, imported first in source, sees the key.
+import { seen } from "./probe.ts"
+
+class Even {
+  static [Symbol.customMatcher](value: unknown): false | [] { return typeof value === "number" && value % 2 === 0 ? [] : false }
+}
+
+export function classify(value: unknown): string {
+  return match (value) { when Even(): "even"; default: "other"; }
+}
+
+export const observed = seen

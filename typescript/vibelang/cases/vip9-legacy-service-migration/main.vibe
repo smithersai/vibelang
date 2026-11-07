@@ -1,0 +1,9 @@
+// rule-evidence: docs/design/vips/0009-service-declarations.md#decision
+// VIP-9, migration warnings: EK4854 migrates the retired abstract-class
+// service spelling to a service declaration, and EK4855 migrates a legacy
+// cached static readonly default to an equivalent native Context.Service
+// class. run.mjs compiles legacy.vibe.txt, runs --fix, and checks that the
+// key, the cached identity and value, and the missing-provider failure are
+// unchanged. The fix never adopts defaultValue: only a written defaultValue
+// factory is a Reference fallback.
+export const anchor = true
