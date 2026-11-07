@@ -264,7 +264,27 @@ function needsTranspiler(code) {
   }
 }
 
-function withSourceMap({ contents, loader }, map) {
+function withSourceMap({ contents, loader }, map, source) {
+  // A runtime onLoad result has no native file descriptor for Bun to watch.
+  // A distinct file-attribute import registers the original source without
+  // parsing it or sharing its compiled module identity. Bun retains the file
+  // dependency for a bound import; a side-effect-only asset import is elided.
+  const names = contents.replace(/\\u(?:\{([0-9a-f]+)\}|([0-9a-f]{4}))/gi, (text, braced, fixed) => {
+    const character = parseInt(braced ?? fixed, 16)
+    return character < 128 ? String.fromCharCode(character) : text
+  })
+  let binding = "__vibelangSourceWatch"
+  while (names.includes(binding)) binding += "_"
+  const dependency = JSON.stringify(source + "?vibelang-watch")
+    .replace(/[^\x00-\x7f]/g, (character) => "\\u" + character.charCodeAt(0).toString(16).padStart(4, "0"))
+  const line = contents.split("\n").length
+  contents += `\nimport ${binding} from ${dependency} with { type: "file" };\n`
+  if (map !== undefined) {
+    const mappings = map.mappings.split(";")
+    while (mappings.length <= line) mappings.push("")
+    mappings[line] = "A"
+    map = { ...map, mappings: mappings.join(";") }
+  }
   if (map === undefined || needsTranspiler(contents)) return { contents, loader }
   // The mark is a line above the code the map describes.
   return { contents: `// @bun\n${contents}\n${inlineSourceMap({ ...map, mappings: ";" + map.mappings })}\n`, loader: "js" }
@@ -385,7 +405,12 @@ Bun.plugin({
       claim(source)
       return { contents: reexportOf(source, exportsDefault(source, emitted, loaderOf)), loader: "js" }
     })
-    build.onLoad({ filter: /\.vibex?$/ }, ({ path }) => { const { code, map } = emitted(path), loader = path.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader), map) })
-    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const { code, map } = emitted(path), loader = moduleDeclarationSource(path)?.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader, true), map) })
+    build.onLoad({ filter: /\.vibex?$/ }, ({ path, loader: requestedLoader }) => {
+      if (requestedLoader === "file" || requestedLoader === "text") return undefined
+      const { code, map } = emitted(path), loader = path.endsWith(".vibex") ? "jsx" : "js"
+      discover(path, code, loader)
+      return withSourceMap(resolveImports(path, code, loader), map, path)
+    })
+    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const { code, map } = emitted(path), loader = moduleDeclarationSource(path)?.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader, true), map, moduleDeclarationSource(path)) })
   }
 })

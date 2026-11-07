@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Bun watch mode could keep passing stale tests after an imported VibeLang file changed. It now watches those source files and reruns tests after changes and recovery.
+
 - Oxlint could fail with a valid project loader in `NODE_OPTIONS`. Linting and configuration output now keep the loader working.
 
 - Health reports could mistake output from an expected test failure for a real resource failure or timeout. They now show file-level output separately from attributed test errors.

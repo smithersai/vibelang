@@ -569,9 +569,9 @@ adapter follows a missing source to its `.vibe` sibling. Existing native
 files, in-memory entries, and imports marked external retain their priority.
 Inherited aliases are reread for each build.
 
-### Bun runtime watch limitation
+### Watch source modules in Bun
 
-With Bun 1.4.1, `bun --watch --preload vibelang/bun` does not reliably restart after a `.vibe` save. The preload compiles once per process and does not invalidate that result during watch. For development, use the starter's `npm run dev` or `bun run dev`: its compiler watch and Node process rebuild and restart the app.
+With the `vibelang/bun` preload configured, `bun test --watch` reruns tests after an imported `.vibe` source changes, including through re-exports. `bun --watch --preload vibelang/bun src/main.ts` restarts an application after those changes. Each restart reads the changed source and reuses a cached compile only while its inputs remain unchanged.
 
 Bun sets each test’s time budget through `--timeout`. For service-initialization tests that need more than the default five seconds, use `bun test --timeout 30000`. This changes the test deadline, not the Effect’s cancellation or service lifetime.
 
