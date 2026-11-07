@@ -13,7 +13,41 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Checking the compact language guides rejected current descriptions of foreign calls and `Effect` factories. Checks now recognize that guidance while still rejecting missing failure rules.
+
+- A throw expression stored as an array element, an object field or a binding, such as `[a, throw e]`, reported warning `EK1012` as if it were a call that never succeeds, and its suggestion added `()` after the throw. A throw expression no longer reports `EK1012`.
+
+- File-list lint commands accepted `--fix` but left source findings unchanged. They now apply source fixes to the selected files and report what remains.
+
+- Creating a missing source file could leave Vite's error overlay open. The page now recovers automatically, including after deleting and restoring an imported source.
+
+- Linting TypeScript containing JSDoc type operators could stop with an unsupported node error. The lint parser now preserves the stock parser's nodes and source ranges.
+
+- Lint rules could read numeric concurrency limits as variable names. Limits now keep the token kinds written in the source.
+
+- The formatter companion ignored help requests and mistyped options, and formatter commands accepted conflicting modes. Both commands now show help, reject invalid options and mode combinations, and keep explicitly ignored files unchanged.
+
+- Bun could load the wrong sibling file when a module mixed source-extension and `.js` imports for percent-containing filenames. Each import now keeps its own target.
+
+- Imports between `.vibe` files with Unicode, spaces or `%` in their names could fail in bundler builds. They now resolve to the original source files.
+
+- Bun watch mode could keep passing stale tests after an imported VibeLang file changed. It now watches those source files and reruns tests after changes and recovery.
+
+- Oxlint could fail with a valid project loader in `NODE_OPTIONS`. Linting and configuration output now keep the loader working.
+
+- Health reports could mistake output from an expected test failure for a real resource failure or timeout. They now show file-level output separately from attributed test errors.
+
+- Multiline warnings could lose source excerpts containing a library URL; the complete warning now stays visible.
+
+- Project-reference builds accepted `--generateTrace` without creating trace files. They now write trace events, type data and a legend for every project they compile.
+
+- The migrate flow kept a published package's platform code in TypeScript when its export map had a wildcard naming a fixed file, such as `"./*/neon": "./dist/*/neon.js"`, although such an entry can never publish a `.platform.ts` companion. Those packages now get the companion, as packages with explicit exports do.
+
+- The migrate flow kept a module in TypeScript when a declaration that reached the platform also read `import.meta`, such as a resource's `main: import.meta.url`, and its sibling split could move such code so that `import.meta.url` named the `.platform.ts` companion. The declaration now stays in the module and only its host calls and reads move into the module body, so `import.meta.url` still names the module.
+
 - `vibelang --fix` left an `Effect.gen` or `Effect.fn` generator unconverted when one of its throwing calls read a property that a guard had proved, such as `content.text ? Lifecycle.textDelta(content.text) : 0`, because the converted call lost the guard's proof (`TS2345`). The fix now moves the guard into the call's wrapper, or reads the property into a `const` before the statement, and converts the generator.
+- A migration on a compiler before plain-function inference wrote `: infer _` into a TypeScript `module` body and into callbacks of an object passed as an argument, such as `Effect.try({ try, catch })`, so the module failed with `TS1338` or its `Effect.gen` repair was refused. The migration now leaves those functions as written.
+- The installation guide asked existing projects to run an undefined `dev` script. Its command list now uses the `start` script supplied by the setup.
 - The migrate flow sent a module back to TypeScript with `EK4402` when it read `import.meta.filename`, `import.meta.dirname` or `import.meta.env`, or called `import.meta.resolve` with a computed or second argument. It now serves these reads from the `.platform.ts` companion, passing the module's own `import.meta.url` where the value names the module, so `main: import.meta.filename` still names the module after migration.
 
 - A migrated lint runner could drop JSX files in its extension filter before linting them. Setup now includes JSX source, preserves directory scope, and repairs filters from earlier setup runs.
@@ -52,6 +86,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Asking for language-server help returned an error exit status. `vibelang --lsp --help` and `-h` now print usage and exit successfully without starting a server.
 
 - Language-server help advertised named-pipe and socket transports that the server could not use. It now identifies these options as reserved and states that standard input/output is the supported transport.
+
+- The editor reported a `var` in a `do` expression twice, once as `EK0107` and again as `EK0201` or `EK0203`. It now reports only the `do` diagnostic for that declaration.
 
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
@@ -110,6 +146,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The Data guide said object patterns were still awaiting compiler support. It now describes the patterns without that outdated warning.
 - The expected-errors guide repeated its static-member restriction. It now gives the rule and all repair details together once.
 - The migration's API identity check could not compare a package entry point declared by a handwritten `.d.ts` beside a plain `.js`, which the package build copies to its declaration output, so it refused every module of that package, changed or not. The check now reads that declaration where the package publishes it, and still reports a change to it.
+- A `.vibe` class that implemented an overloaded interface method, such as Effect's `Pipeable.pipe`, with fewer overloads reported `EK0402`, although TypeScript accepts the class. The check now pairs overloads as TypeScript does: a VibeLang method passes, and an untagged TypeScript function still reports `EK0402`.
 - Migration setup could omit a test package that imported a migrated module through a relative path. It now selects that package and its transitive consumers, even without a manifest dependency.
 - The error guides described working error and producer syntax as a future feature. They now describe the syntax as available.
 - The setup guide required Node 26, while the introductory guides admitted unsupported Node versions. All three now give the package requirements: Node `22.22.3` in `22.x`, or `24.11.1` or later.
@@ -196,6 +233,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` could call a `.ts` function with no `@throws` tag, although such a function must never throw. The call now reports `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare the callee's `@throws`, or move the code to a `.ts` file. The same holds for the function's parameter defaults.
 
 - In a project that emits declarations, `vibelang --fix` turned a private `Schema.Struct` constant into a `schema` declaration even when the declaration file named the constant, which added `type X = typeof X.Type` to the declaration, or exported a new type through `export { X }`. The fix now keeps such a constant as written.
+- With a project pinned to a compiler older than `--only`, such as VibeLang 0.0.11, the migrate flow's ordinary repairs failed with `TS5023` and each batch was reported settled with no fixes. The flow now reruns that repair without `--only` and still keeps only the batch's own files changed.
 
 ### Upgrade from 0.0.12
 
