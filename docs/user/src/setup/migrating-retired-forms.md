@@ -168,3 +168,11 @@ The global `callback` is `Effect.callback`, including in a direct call. Removing
 Code using the older `resume(value)`, `resume.fail(error)`, `resume.exit(exit)`, explicit input arguments or cleanup functions can keep the legacy adapter with `import { callback } from "vibelang-runtime"` while migrating. That import keeps the adapter's existing type and behavior.
 
 A bare `: infer _` return annotation on a plain callback has no TypeScript meaning. `vibelang --fix` removes it for native `callback` and `Effect.callback` registration functions too; native completion still passes an Effect to `resume`, such as `resume(Effect.succeed(value))`.
+
+## Legacy return-slot inference
+
+For a plain function that returns an `Effect`, the legacy return-slot repair infers
+channels from the returned program. A retired placeholder does not become a
+requirement of a generic call or its handler. The repair keeps real errors and
+service requirements introduced by callbacks, and keeps the function's own type
+parameters when they describe those channels.

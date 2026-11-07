@@ -260,6 +260,25 @@ func requiredParameterCount(fn *ast.Node) int {
 // function returns what its body gives, so an Effect expected of it types its
 // body as TypeScript does: Effect.succeed({ kind: "a" }) keeps the literal.
 func contextualReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type, getContextual func() *checker.Type) *checker.Type {
+	// A retired inference slot describes the output, not a contextual input.
+	// Neutral channels keep its placeholder out of generic returned calls;
+	// their operands and callbacks still supply the actual channels.
+	if isLowerable(fn) && !isMarkedEffect(fn) && fn.Type() != nil {
+		if k := analyzerFor(c).contractOf(fn); k != nil && k.inferredAny() {
+			if base := effectInterface(c, t); base != nil {
+				channels := []*checker.Type{successType(c, t), channelType(c, t, "_E"), channelType(c, t, "_R")}
+				for i := range channels {
+					if k.inferred(i) {
+						channels[i] = c.GetNeverType()
+						if i == channelA {
+							channels[i] = c.GetUnknownType()
+						}
+					}
+				}
+				return c.NewTypeReference(base, channels)
+			}
+		}
+	}
 	if !isLowerable(fn) || inlineCatchLeft(fn) || markedForm(fn) == formNone && !isProducer(fn) {
 		return t
 	}

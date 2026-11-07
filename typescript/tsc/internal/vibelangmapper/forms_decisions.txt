@@ -8976,6 +8976,9 @@ typescript/vibelang/cases/vip3-annotation-twins/main.vibe:64:22 lambda effectFn 
 typescript/vibelang/cases/vip3-annotation-twins/main.vibe:8:27 lambda effectFn table
 typescript/vibelang/cases/vip3-infer-slot-fixed/main.vibe:10:3 lambda effectFn keyword
 typescript/vibelang/cases/vip3-infer-slot-fixed/main.vibe:32:27 lambda effectFn keyword
+typescript/vibelang/cases/vip3-infer-slot-fixed/main.vibe:45:42 byname program table
+typescript/vibelang/cases/vip3-infer-slot-fixed/main.vibe:45:53 lambda effectFn keyword
+typescript/vibelang/cases/vip3-infer-slot-fixed/main.vibe:49:43 lambda effectFn keyword
 typescript/vibelang/cases/vip3-infer-slot-migration-output/main.vibe:12:3 lambda effectFn keyword
 typescript/vibelang/cases/vip3-infer-slot-migration-output/main.vibe:34:27 lambda effectFn keyword
 typescript/vibelang/cases/vip3-infer-slot-unmarked-arrow.fail/main.vibe:5:22 lambda effectFn annotation
@@ -8983,6 +8986,9 @@ typescript/vibelang/cases/vip3-infer-slot-unmarked-migration-output/main.vibe:10
 typescript/vibelang/cases/vip3-infer-slot-unmarked.fail/main.vibe:10:25 lambda effectFn annotation
 typescript/vibelang/cases/vip3-infer-slot.fail/main.vibe:12:3 lambda effectFn keyword
 typescript/vibelang/cases/vip3-infer-slot.fail/main.vibe:34:27 lambda effectFn keyword
+typescript/vibelang/cases/vip3-infer-slot.fail/main.vibe:47:42 byname program table
+typescript/vibelang/cases/vip3-infer-slot.fail/main.vibe:47:53 lambda effectFn keyword
+typescript/vibelang/cases/vip3-infer-slot.fail/main.vibe:51:43 lambda effectFn keyword
 typescript/vibelang/cases/vip33-experimental-dns-encoding/main.vibe:11:10 lambda effectFn table
 typescript/vibelang/cases/vip33-experimental-dns-encoding/main.vibe:11:47 lambda effectFn table
 typescript/vibelang/cases/vip33-experimental-dns-encoding/main.vibe:20:49 lambda plain fallback

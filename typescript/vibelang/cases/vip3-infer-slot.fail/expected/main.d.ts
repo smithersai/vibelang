@@ -23,4 +23,6 @@ export declare function value(id: string): Effect.Effect<{
 export declare function bang(id: string): Effect.Effect<string, Gone, Users>;
 export declare const everything: (id: string) => Effect.Effect<string, Gone, Users>;
 export declare function main(): Effect.Effect<string[], Gone, never>;
+export declare function recover(error: Gone): Effect.Effect<string, never, never>;
+export declare function recoverUsingUsers(program: Effect.Effect<never, Gone, never>): Effect.Effect<string, Gone, Users>;
 export {};

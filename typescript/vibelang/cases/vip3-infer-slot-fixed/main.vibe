@@ -38,3 +38,16 @@ export effect function main() {
 }
 // Chapter 007: a call whose handlers hold an - spec-rule: docs/design/src/007-tooling.md#c4f94b604fb5354e
 // Chapter 900: EK1010 diagnostic - spec-rule: docs/design/src/900-appendices.md#0e765a0946d1e3ad
+
+effect function raise<E>(error: E): never!E { throw error }
+
+export function recover(error: Gone): Effect.Effect<string, never, never> {
+  return raise(error) |> Effect.catchTag(%, "Gone", effect (caught) => caught.id)
+}
+
+export function recoverUsingUsers(program: Effect.Effect<never, Gone, never>): Effect.Effect<string, Gone, Users> {
+  return Effect.catchTag(program, "Gone", effect (caught) => {
+    const users = try Users
+    return try users.find(caught.id)
+  })
+}
