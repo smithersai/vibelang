@@ -269,6 +269,9 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 			return nil
 		}
 		promise := await.Expression()
+		if asyncAwaitOperandThrows(rc.file, promise) {
+			return nil
+		}
 		if asyncAwaitOperandJumps(rc.file, promise) {
 			return nil
 		}

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Converting an `async` function could move a `throw` in an awaited expression into a plain callback and produce a compile error. The editor now withholds that conversion while keeping throws inside nested `async` functions eligible.
+
 - Converting an `async` function could move a jump in an awaited `do` expression into a `Promise` callback, changing its target or producing invalid code. The editor now withholds that conversion while keeping local jumps eligible.
 
 - Services in packages with an empty name used the directory name in their keys. Keys now retain the empty package prefix, and the legacy migration writes explicit keys to keep existing service identities.
