@@ -712,7 +712,11 @@ function planAbsentDeclarations(before, after, supplied, exists) {
   }
   for (const [declaration, reasons] of [...names].sort(([a], [b]) => a.localeCompare(b))) {
     const paths = { before: resolve(before, declaration), after: resolve(after, declaration) }
-    const present = Object.entries(paths).filter(([, path]) => declarationTwins(path).some(exists)).map(([side]) => side)
+    // A side's saved source can itself be a twin, such as a native sidecar the
+    // checker reads in place of the absent declaration; it is not an emitted one.
+    const saved = side => supplied.sources?.[side]?.[declaration]
+    const present = Object.entries(paths).filter(([side, path]) => declarationTwins(path)
+      .some(twin => twin !== saved(side) && exists(twin))).map(([side]) => side)
     if (present.length) {
       plan.diagnostics.push({ declaration, blocking: true, diagnostic: "Declaration listed as absent exists on the " +
         present.join(" and ") + " side; a one-sided absence never compares equal: " + declaration })

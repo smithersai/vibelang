@@ -597,13 +597,17 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       if (reasons.length && logical) absentDeclarations[rel(packageDir, logical)] =
         reasons.map(({ code, file, line, column }) => ({ code, file, line, column }))
       const absent = logical && rel(packageDir, logical)
-      if (absent && absentDeclarations[absent] && !absentSources[absent] && !/\.vibex?$/.test(source) && existsSync(source)) {
+      // A native source is read through the sidecar the native compiler wrote
+      // beside it, which is what a saved TypeScript sibling's import reaches.
+      const sidecar = /\.vibex?$/.test(source) ? source.replace(/\.(vibex?)$/, ".d.$1.ts") : null
+      const saved = sidecar ?? source
+      if (absent && absentDeclarations[absent] && !absentSources[absent] && existsSync(saved)) {
         // The checker can still read what declaration emit refused to write.
-        const extension = source.slice(source.lastIndexOf("."))
+        const extension = sidecar ? sidecar.slice(sidecar.lastIndexOf(".d.")) : source.slice(source.lastIndexOf("."))
         const original = absent.replace(/\.d\.[cm]?ts$/, extension)
         const stored = posix.join(absentSourceDir, encodeURIComponent(original))
         mkdirSync(join(dir, absentSourceDir), { recursive: true })
-        writeFileSync(join(dir, stored), readFileSync(source))
+        writeFileSync(join(dir, stored), readFileSync(saved))
         absentSources[absent] = { source: original, stored }
         context.files.push(stored)
       }
