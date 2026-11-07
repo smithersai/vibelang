@@ -93,7 +93,11 @@ export function apiProjection(ts, directory, surface, files, { published = true,
     for (const file of files) {
       const layout = (metadata.layouts ?? []).filter(entry => typeof entry.directory === "string" &&
         (entry.prefix === "." || file.startsWith(entry.prefix + "/"))).sort((a,b) => b.prefix.length - a.prefix.length)[0]
-      const destination = metadata.logicalPaths[file] ?? (layout ? posix.join(layout.directory, posix.relative(layout.prefix, file)) : file)
+      // A layout directory above the package re-enters it by its real name,
+      // which the projection's ancestors do not have: resolve it there.
+      const placed = layout && slash(relative(metadata.packageDir,
+        resolve(metadata.packageDir, layout.directory, posix.relative(layout.prefix, file))))
+      const destination = metadata.logicalPaths[file] ?? (layout ? placed || "." : file)
       const text = readFileSync(join(original, file), "utf8")
       if (originals.has(destination) && !sameSnapshotDeclaration(ts, readFileSync(path(destination), "utf8"), text))
         throw new Error("Conflicting declaration snapshot paths: " + destination)
