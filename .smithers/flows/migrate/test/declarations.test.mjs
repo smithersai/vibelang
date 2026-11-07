@@ -234,3 +234,38 @@ exit 1
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// An import that --fix leaves unused is removed under noUnusedLocals, and the
+// declaration then writes the Effect import it needs first, where the native
+// twin had it after its own imports. Import order is outside API identity, so
+// the gate passes it; the same reordering with a changed type still fails.
+// Witness minimized from opencode's server media handler.
+test("compareDeclarations passes a declaration whose imports only moved", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-dts-"))
+  const write = (file, text) => {
+    mkdirSync(join(root, file, ".."), { recursive: true })
+    writeFileSync(join(root, file), text)
+  }
+  try {
+    // One stub effect package above both trees, so both sides resolve the same Effect type.
+    write("node_modules/effect/package.json", `{"name":"effect","types":"index.d.ts"}\n`)
+    write("node_modules/effect/index.d.ts", "export declare namespace Effect {\n  interface Effect<A, E = never, R = never> { readonly a: A; readonly e: E; readonly r: R }\n}\n")
+    const foreign = "export interface Box { readonly n: number }\nexport declare const a: import(\"effect\").Effect.Effect<Box>;\n"
+    const compare = (main) => {
+      for (const [dir, text] of [["ts", `import { type Box } from "./foreign.js";\nimport { Effect } from "effect";\nexport type Kept = Box;\nexport declare const f: Effect.Effect<Box, never, never>;\n`], ["vibe", main]]) {
+        rmSync(join(root, dir), { recursive: true, force: true })
+        write(`${dir}/foreign.d.ts`, foreign)
+        write(`${dir}/main.d.ts`, text)
+      }
+      return compareDeclarations(ts, join(root, "ts"), join(root, "vibe"))
+    }
+    const moved = compare(`import { Effect } from "effect";\nimport { type Box } from "./foreign.js";\nexport type Kept = Box;\nexport declare const f: Effect.Effect<Box, never, never>;\n`)
+    assert.equal(moved.identical, true, JSON.stringify(moved.changed))
+    assert.equal(moved.comparison, "API identity")
+    const changed = compare(`import { Effect } from "effect";\nimport { type Box } from "./foreign.js";\nexport type Kept = Box;\nexport declare const f: Effect.Effect<number, never, never>;\n`)
+    assert.equal(changed.identical, false)
+    assert.deepEqual(changed.changed.map((c) => c.file), ["main.d.ts"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
