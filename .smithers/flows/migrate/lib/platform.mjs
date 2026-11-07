@@ -269,11 +269,15 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
   if (inferredTypes.refused) return inferredTypes
   // A kept type that reads a moved value, `type Shape = typeof Shape.Type`,
-  // would make the module's declaration import it from the sibling.
+  // would make the module's declaration import it from the sibling. A moved
+  // export that stays as a wrapper of its own name and signature is still the
+  // module's value, so `type Timer = ReturnType<typeof createTimer>` reads the
+  // wrapper and its declaration does not change.
   const movedValues = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
+  const wrapped = new Set([...moved].filter((d) => d.exported && !typeOnly(d) && wrapperOf(d.statement, source, ts)).flatMap((d) => [...d.names]))
   for (const d of kept) {
     if (!typeOnly(d)) continue
-    const read = [...d.valueReads].find((name) => movedValues.has(name))
+    const read = [...d.valueReads].find((name) => movedValues.has(name) && !wrapped.has(name))
     if (read) return { refused: `${file}: the type ${[...d.names].join(", ")} reads the value ${read}, which ${posix.basename(platformPath(file))} would take, so the module's declarations would change` }
   }
   // A type stays in the module, and its declaration carries the value of the

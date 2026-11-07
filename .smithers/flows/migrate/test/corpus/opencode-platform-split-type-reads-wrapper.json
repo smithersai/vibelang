@@ -1,0 +1,19 @@
+{
+  "source": "opencode p05 cause A (app composer/editor/interaction, gui-plugins browser/chromium, core instance), minimized",
+  "ambient": "declare module \"node:fs\" { export function readFileSync(path: string, encoding: \"utf8\"): string }\ndeclare function setTimeout(handler: () => void, ms?: number): number\ndeclare function clearTimeout(id: number | undefined): void\n",
+  "modules": [
+    {
+      "file": "src/timer.ts",
+      "text": "export function createTimer() {\n  let id: ReturnType<typeof setTimeout> | undefined\n  return { start: (ms: number) => { id = setTimeout(() => {}, ms) }, stop: () => clearTimeout(id) }\n}\n\nexport type Timer = ReturnType<typeof createTimer>\n",
+      "globals": [
+        "setTimeout",
+        "clearTimeout"
+      ]
+    },
+    {
+      "file": "src/load.ts",
+      "text": "import { readFileSync } from \"node:fs\"\n\nexport function load(path: string) {\n  return { text: readFileSync(path, \"utf8\") }\n}\n\nexport type Loaded = ReturnType<typeof load>\n",
+      "globals": []
+    }
+  ]
+}
