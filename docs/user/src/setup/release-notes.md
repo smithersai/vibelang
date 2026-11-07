@@ -37,6 +37,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The timing examples could reject their output code as a fiber operation outside an effect function. They now join the fiber before formatting its result.
 - The basic Schema examples appeared unfinished and included invalid runner code. They now run and display the documented results.
 
+- Generating `throws.json` inspected implementation bodies for values that cannot be called. It now resolves sources only for callable exports, keeping the same contracts.
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
 - The editor and TypeScript mapper treated producer function expressions as JavaScript generators. They now preserve their lazy `Stream` behavior for anonymous, named and nested expressions.

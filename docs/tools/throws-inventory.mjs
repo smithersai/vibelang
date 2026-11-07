@@ -307,16 +307,17 @@ export function generateThrowsInventory() {
       if (!declaration) continue
       const type = checker.getTypeOfSymbolAtLocation(symbol, declaration)
       const sourceFile = declaration.getSourceFile().fileName.replace(/\.d\.ts$/, ".js")
-      const callable = sources.callable(sourceFile, symbol.name)
       const calls = type.getCallSignatures()
       const constructs = type.getConstructSignatures()
-      const dualArity = sources.dualArity(sourceFile, symbol.name)
-      for (const sig of calls) add(module, name, sig, "call", callable, dualArity)
-      for (const sig of constructs) add(module, name, sig, "construct", callable)
       if (!calls.length && !constructs.length) {
         const key = JSON.stringify([module, name, "value", ""])
         entries.set(key, { module, declaration: name, signature: "", kind: "value", ownThrows: null, rethrows: [], callbacks: [], returns: [], evidence: "non-callable value" })
+        continue
       }
+      const callable = sources.callable(sourceFile, symbol.name)
+      const dualArity = calls.length ? sources.dualArity(sourceFile, symbol.name) : undefined
+      for (const sig of calls) add(module, name, sig, "call", callable, dualArity)
+      for (const sig of constructs) add(module, name, sig, "construct", callable)
     }
   }
   const input = (file, prefix, base) => ({ file: prefix + relative(base, file), sha256: hash(read(file)) })

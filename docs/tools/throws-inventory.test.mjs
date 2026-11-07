@@ -25,14 +25,36 @@ import { SourceAnalysis } from "./throws-source.mjs"
 // docs/design/src/900-appendices.md#dd1857ebbe980673 — Chapter 900: regeneration retains pinned hashes and version.
 // docs/design/src/900-appendices.md#1dc003daa4fd712c — Chapter 900: regeneration retains pinned hashes and version.
 test("the normative throws inventory is current for the exact pinned inputs", { timeout: 300_000 }, () => {
+  // Count real source work while generating every pinned overload and contract.
+  const resolutions = { callable: new Set(), dualArity: new Set() }
+  const originals = {}
+  for (const method of Object.keys(resolutions)) {
+    originals[method] = SourceAnalysis.prototype[method]
+    SourceAnalysis.prototype[method] = function(path, name) {
+      if (path.endsWith("/Duration.js")) resolutions[method].add(name)
+      return originals[method].call(this, path, name)
+    }
+  }
+  let inventory
+  try { inventory = generateThrowsInventory() }
+  finally {
+    for (const method of Object.keys(originals)) SourceAnalysis.prototype[method] = originals[method]
+  }
   const actual = readFileSync(resolve(root, artifactPath), "utf8")
-  const expected = serializeInventory(generateThrowsInventory())
+  const expected = serializeInventory(inventory)
   if (actual !== expected) {
     let difference = 0
     while (difference < actual.length && actual[difference] === expected[difference]) difference++
     assert.fail("run node docs/tools/throws-inventory.mjs --write; first difference at " + difference + ": " +
       JSON.stringify(actual.slice(Math.max(0, difference - 60), difference + 100)) + " vs " +
       JSON.stringify(expected.slice(Math.max(0, difference - 60), difference + 100)))
+  }
+  const values = inventory.entries.filter(entry => entry.module === "effect/Duration" && entry.kind === "value")
+  assert.ok(values.some(entry => entry.declaration === "zero"), "the pinned non-callable control is present")
+  for (const [method, names] of Object.entries(resolutions)) {
+    assert.ok(names.has("fromInput"), method + " still resolves callable exports")
+    for (const entry of values) assert.equal(names.has(entry.declaration), false,
+      method + " must not analyze non-callable " + entry.declaration)
   }
 })
 

@@ -1444,6 +1444,13 @@ or a missing or corrupt receipt, runs the analysis again; a failed check never
 saves a receipt. Delete the receipt to force analysis. The direct inventory
 regression test always regenerates the expected inventory without this cache.
 
+Generation classifies each exported value with the pinned TypeScript checker
+before resolving its implementation. Values without call or construct signatures
+retain their non-callable entries and need no source or dual-arity resolution.
+Callable exports retain the full source analysis. The complete inventory test
+checks unchanged output and counts real resolution calls for callable and
+non-callable `Duration` exports.
+
 ## Example compile diagnostics
 
 `sh scripts/check-examples.sh` keeps complete logs in `.cache/check-examples/`. A compiler failure includes the child's exit status in the summary and prints the last `40` log lines, capped at `8192` bytes, to stderr so retained CI receipts show the cause. It continues checking later examples and returns failure if any example failed.
