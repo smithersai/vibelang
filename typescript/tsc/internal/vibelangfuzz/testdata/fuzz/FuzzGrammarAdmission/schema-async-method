@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-async-method\nschema S = { async readonly (\n) }")

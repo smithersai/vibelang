@@ -47,6 +47,14 @@ func grammarSchemaRepeatedModifierField(ts []grammarToken, modifier string, need
 // ('readonly' only on a property or index signature); schema mapping reports
 // EK2109 for the method and covers it.
 func grammarSchemaReadonlyMethod(ts []grammarToken) bool {
+	return grammarSchemaModifiedMethod(ts, "readonly")
+}
+
+func grammarSchemaAsyncMethod(ts []grammarToken) bool {
+	return grammarSchemaModifiedMethod(ts, "async")
+}
+
+func grammarSchemaModifiedMethod(ts []grammarToken, modifier string) bool {
 	return grammarSchemaBodies(ts, func(open int, alias bool) bool {
 		if !alias {
 			return false
@@ -54,11 +62,11 @@ func grammarSchemaReadonlyMethod(ts []grammarToken) bool {
 		depth := 1
 		for k := open + 1; k < len(ts) && depth > 0; k++ {
 			start := k == open+1 || ts[k].nl || ts[k-1].text == ";" || ts[k-1].text == ","
-			if depth == 1 && start && ts[k].text == "readonly" && k+2 < len(ts) && !ts[k+1].nl {
-				at := k + 1
-				if ts[at].kind == 'w' || ts[at].kind == 's' || ts[at].kind == 'n' {
-					at++
-					if ts[at].text == "?" {
+			if depth == 1 && start {
+				at, seen := grammarSchemaModifierPrefix(ts, k, modifier)
+				if seen > 0 {
+					at = grammarSchemaPropertyEnd(ts, at)
+					if at < len(ts) && ts[at].text == "?" {
 						at++
 					}
 					if at < len(ts) && (ts[at].text == "(" || ts[at].text == "<") {
@@ -124,26 +132,14 @@ func grammarSchemaBodies(ts []grammarToken, body func(open int, alias bool) bool
 // ts[open] whose modifier prefix holds modifier at least need times.
 func grammarSchemaBodyModifier(ts []grammarToken, open int, modifier string, need int, alias bool) bool {
 	depth := 1
+	typedBefore := false
 	for k := open + 1; k < len(ts) && depth > 0; k++ {
-		at := k
+		if depth == 1 && ts[k].text == ":" {
+			typedBefore = true
+		}
 		start := k == open+1 || ts[k].nl || ts[k-1].text == ";" || ts[k-1].text == ","
 		if depth == 1 && start {
-			seen := 0
-		modifiers:
-			// Native static modifiers may span a line break; the other modifiers may not.
-			// Mixed effect modifiers retain the same mapped-field diagnostic gap.
-			for at+1 < len(ts) && (!ts[at+1].nl || ts[at].text == "static") && (ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static" || ts[at].text == "effect") {
-				// The last keyword may itself be the property name, typed or
-				// ended by a separator.
-				switch ts[at+1].text {
-				case ":", "?", "(", "<", ";", ",":
-					break modifiers
-				}
-				if ts[at].text == modifier {
-					seen++
-				}
-				at++
-			}
+			at, seen := grammarSchemaModifierPrefix(ts, k, modifier)
 			if seen >= need {
 				if ts[at].text == "[" {
 					brackets := 1
@@ -175,8 +171,9 @@ func grammarSchemaBodyModifier(ts []grammarToken, open int, modifier string, nee
 					return true
 				}
 				// An alias's last untyped repeated-readonly member may end the
-				// object type. A last untyped async member keeps native TS1070.
-				if alias && need > 1 && at < len(ts) && ts[at].text == "}" {
+				// object type. A last untyped async member can also lose TS1070
+				// when mapping an earlier typed member already failed.
+				if alias && (need > 1 || modifier == "async" && typedBefore) && at < len(ts) && ts[at].text == "}" {
 					return true
 				}
 				// TS1030 rejects a repeated modifier on any member, so an
@@ -312,4 +309,83 @@ func TestGrammarAdmissionSchemaAsyncRegression(t *testing.T) {
 			}
 		})
 	}
+}
+
+// grammarSchemaModifierPrefix separates modifiers from a member named with
+// the same word. Only static can continue its modifier across a line break.
+func grammarSchemaModifierPrefix(ts []grammarToken, at int, modifier string) (int, int) {
+	seen := 0
+modifiers:
+	for at+1 < len(ts) && (!ts[at+1].nl || ts[at].text == "static") &&
+		(ts[at].text == "async" || ts[at].text == "readonly" || ts[at].text == "static" || ts[at].text == "effect") {
+		switch ts[at+1].text {
+		case ":", "?", "(", "<", ";", ",":
+			break modifiers
+		}
+		if ts[at].text == modifier {
+			seen++
+		}
+		at++
+	}
+	return at, seen
+}
+
+// grammarSchemaPropertyEnd skips one direct property name, including a
+// computed name. It leaves other tokens in place.
+func grammarSchemaPropertyEnd(ts []grammarToken, at int) int {
+	if at >= len(ts) {
+		return at
+	}
+	if ts[at].text == "[" {
+		depth := 1
+		for at++; at < len(ts) && depth > 0; at++ {
+			switch ts[at].text {
+			case "[":
+				depth++
+			case "]":
+				depth--
+			}
+		}
+		return at
+	}
+	if ts[at].kind == 'w' || ts[at].kind == 's' || ts[at].kind == 'n' {
+		return at + 1
+	}
+	return at
+}
+
+// A schema alias can cover the native rejection of a parameter modifier in
+// a call or method signature with EK2109 for the unsupported member.
+func grammarSchemaSignatureParameterModifier(ts []grammarToken) bool {
+	return grammarSchemaBodies(ts, func(open int, alias bool) bool {
+		if !alias {
+			return false
+		}
+		depth := 1
+		for k := open + 1; k < len(ts) && depth > 0; k++ {
+			if depth == 1 && ts[k].text == "(" {
+				for at, nested := k+1, 1; at+1 < len(ts) && nested > 0; at++ {
+					if nested == 1 && (at == k+1 || ts[at-1].text == ",") && ts[at+1].kind == 'w' {
+						switch ts[at].text {
+						case "static", "readonly", "public", "private", "protected":
+							return true
+						}
+					}
+					switch ts[at].text {
+					case "(", "[", "{":
+						nested++
+					case ")", "]", "}":
+						nested--
+					}
+				}
+			}
+			switch ts[k].text {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				depth--
+			}
+		}
+		return false
+	})
 }

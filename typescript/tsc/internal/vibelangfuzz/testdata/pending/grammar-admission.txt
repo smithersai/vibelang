@@ -75,3 +75,13 @@ FuzzGrammarAdmission admission:throw-assertion-lookahead compiler VIP-41 and App
 FuzzGrammarAdmission corpus:throw-assertion-lookahead compiler VIP-41 and Appendix A: `??` is a ThrowExpressionInvalidPunctuator, but the compiler checks only the token after a bare operand, so `throw 1 as 1 ?? 1` reports no EK1010; lane impl-hunt-admission
 FuzzGrammarAdmission admission:schema-field-initializer compiler VIP-15 and Appendix A: Field has no initializer; `schema S { key : string = "k" }` reports TS1247, but an unresolved field type reports only EK2109 and covers that rejection; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:schema-field-initializer compiler VIP-15 and Appendix A: Field has no initializer; `schema S { key : string = "k" }` reports TS1247, but an unresolved field type reports only EK2109 and covers that rejection; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:schema-readonly-method-static compiler VIP-15 and Appendix A: a mixed modifier prefix retains the readonly-method rejection hidden by schema mapping
+FuzzGrammarAdmission corpus:schema-readonly-method-async compiler VIP-15 and Appendix A: a mixed modifier prefix retains the readonly-method rejection hidden by schema mapping
+FuzzGrammarAdmission corpus:schema-field-initializer-numeric compiler VIP-15 and Appendix A: literal property names retain the native initializer rejection hidden by schema mapping
+FuzzGrammarAdmission admission:schema-async-method compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for an async method signature, covering native TS1070
+FuzzGrammarAdmission corpus:schema-async-method compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for an async method signature, covering native TS1070
+FuzzGrammarAdmission admission:schema-signature-parameter-modifier compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for a call signature, covering native parameter-modifier rejection
+FuzzGrammarAdmission corpus:schema-signature-parameter-modifier compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for a call signature, covering native parameter-modifier rejection
+FuzzGrammarAdmission corpus:schema-async-last-alias-field compiler VIP-15 and Appendix A: mapping an earlier unresolved field covers the last untyped async alias member's TS1070
+FuzzGrammarAdmission admission:schema-static-method compiler VIP-15 and Appendix A: a static schema-alias method reports only `EK2109`, covering native `TS1070`
+FuzzGrammarAdmission corpus:schema-static-method compiler VIP-15 and Appendix A: a static schema-alias method reports only `EK2109`, covering native `TS1070`

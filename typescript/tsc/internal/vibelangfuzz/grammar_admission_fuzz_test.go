@@ -253,6 +253,17 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-field-initializer-untyped-alias", "schema S = { id ? = Missing }"},
 	{"effect-type-assertion-trailing-bang", "x = <number ! string !> y;"},
 	{"native-type-accessor-signatures", "type T = { get size(): number; set size(v: number) };"},
+	{"schema-readonly-method-static", "schema S = { static readonly id() }"},
+	{"schema-readonly-method-async", "schema S = { async readonly id() }"},
+	{"schema-field-initializer-numeric", "schema S = { 1 ? = Missing }"},
+	{"native-literal-initializer-rejection", "schema S = { 'id' = Missing }"},
+	{"native-getter-parameter", "type T = { get size(x: number): number }"},
+	{"native-setter-arity", "type T = { set size() }"},
+	{"schema-async-method", "schema S = { async readonly (\n) }"},
+	{"schema-signature-parameter-modifier", "schema S = { readonly; (static static) }"},
+	{"schema-async-last-alias-field", "schema S = { fork:\nasync\nasync Missing\n}"},
+	{"native-static-schema-error", "schema error S { static async async\nid: Missing }"},
+	{"schema-static-method", "schema S = { static id() }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -392,8 +403,22 @@ func grammarSchemaFieldInitializer(ts []grammarToken) bool {
 				typed = false
 			case typed && next.text == "=":
 				return true
-			case alias && next.text == "=" && k >= 2 && (ts[k-1].text == "?" && ts[k-2].kind == 'w' || ts[k-1].kind == 'w' && (ts[k-2].text == "{" || ts[k-2].text == ";" || ts[k-2].text == "," || ts[k-1].nl)):
-				return true
+			case alias && next.text == "=":
+				// Match a complete direct property name, rather than only a
+				// word before '='. Numeric, string and computed names have the
+				// same native initializer rejection.
+				for start := open + 1; start < k; start++ {
+					if start != open+1 && !ts[start].nl && ts[start-1].text != ";" && ts[start-1].text != "," {
+						continue
+					}
+					at := grammarSchemaPropertyEnd(ts, start)
+					if at < len(ts) && ts[at].text == "?" {
+						at++
+					}
+					if at == k {
+						return true
+					}
+				}
 			}
 		}
 		return false
@@ -1005,6 +1030,15 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarSchemaReadonlyMethod(ts) {
 		return "admission:schema-readonly-method"
+	}
+	if grammarSchemaAsyncMethod(ts) {
+		return "admission:schema-async-method"
+	}
+	if grammarSchemaModifiedMethod(ts, "static") {
+		return "admission:schema-static-method"
+	}
+	if grammarSchemaSignatureParameterModifier(ts) {
+		return "admission:schema-signature-parameter-modifier"
 	}
 	if grammarInvalidImportMeta(ts) {
 		return "admission:import-meta-property"
@@ -1941,6 +1975,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 2125: // A data Field requires its Type.
 		return true
+	case 1302: // VIP-13: user-written static error members, including their recovered native shape.
+		return true
 	case 1304: // RejectedElement: an error body element that parses, then a static rule rejects.
 		return true
 	case 909, 2121: // Retired declaration recovery supports only diagnosis and migration.
@@ -1996,6 +2032,10 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	case 1024, 1028, 1029, 1030, 1031, 1038, 1040, 1042, 1044,
 		1070, 1071, 1079, 1089, 1090, 1091, 1097, 1098, 1120, 1123, 1184, 1187, 1188, 1189, 1190, 1191, 1193, 1242, 1243, 1248,
 		1273, 1274, 1275, 1277, 1317, 1433, 1491, 1495, 5086, 18010, 18019:
+		return true
+	// checkGrammarAccessor rejects accessor arity, type parameters, setter
+	// return annotations, and optional/rest/initialized setter parameters.
+	case 1049, 1051, 1052, 1053, 1054, 1094, 1095, 2784:
 		return true
 	// checkGrammarIndexSignatureParameters (checker/grammarchecks.go): an
 	// IndexSignature is "[" one BindingIdentifier TypeAnnotation "]"

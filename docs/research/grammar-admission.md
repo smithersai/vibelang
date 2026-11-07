@@ -597,3 +597,47 @@ argument list hold an `EffectType` too, so `<A!E!>x` and `f<A!E!>` join
 Type-literal `get` and `set` accessor signatures were TypeScript the lab had
 left out; TypeScript reads them with no line-break restriction after the
 keyword.
+
+
+The readonly-method family follows the complete modifier prefix, including
+`static readonly` and `async readonly`, and accepts literal and computed
+property names in its classifier. A member named `readonly` is separate:
+`readonly()` carries no modifier. The field-initializer family likewise
+recognizes numeric, string and computed names, such as `{ 1? = Missing }`. String-literal initializers that already
+produce native parse errors remain rejection controls.
+These programs stay pending; the classifier changes no compiler admission.
+
+Native accessor diagnostics also reject grammar: getters cannot have value
+parameters, setters require one value parameter, accessors have no type
+parameters, and setters have no return annotation or optional, rest or
+initialized value parameter. These checks already run in TypeScript's
+`checkGrammarAccessor`. The oracle counts their error diagnostics while
+preserving the category and diagnostic-source boundaries.
+
+
+An `async` method signature in a schema alias is the separate
+`admission:schema-async-method` family. A call or method signature with an
+illegal parameter modifier is `admission:schema-signature-parameter-modifier`.
+Both report only `EK2109` for the unsupported member, covering native
+grammar rejection. Mapping an earlier unresolved field can also cover
+`TS1070` on the final untyped `async` member; it retains
+`admission:schema-async-field`.
+
+VIP-13's `EK1302` rejects user-written static error members and owns their
+recovered native shape diagnostics. The oracle counts that existing error,
+including in a `schema error`, rather than recording another pending gap.
+Accessor `this` parameters are likewise rejected by TypeScript's
+`TS2784`.
+
+The deep campaign also found a `static` method in a schema alias:
+`admission:schema-static-method`. The same unsupported-member mapping
+covers its native `TS1070`; a method named `static` without a modifier
+remains separate.
+
+The alias mapping explains these masked diagnostics.
+`parseSchemaAliasDeclaration` maps the written type through
+`vibelangSchemaOf` and synthesizes `typeof S.Type` as its companion.
+`vibelangSchemaProperties` replaces an unsupported member with a property
+whose value is a flagged `Schema.Unknown` placeholder;
+`checkSchemaValue` reports `EK2109` for that placeholder. The generated
+companion type does not retain the original unsupported member shape.
