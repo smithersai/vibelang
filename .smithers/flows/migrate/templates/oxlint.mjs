@@ -39,9 +39,26 @@ for (let i = 0; i < args.length; i++) {
 }
 if (!native.includes("--threads")) native.push("--threads", "8")
 
+// Informational commands belong to the installed CLI and do not inspect lint inputs.
+const usage = native.some(arg => ["--help", "-h", "--version", "-V"].includes(arg))
+const projectedConfig = nativeOnly && native.includes("--print-config") && !usage && !native.includes("--init")
+function invokeNative(selectedPaths) {
+  const pkg = require.resolve("oxlint/package.json")
+  const bin = resolve(dirname(pkg), JSON.parse(readFileSync(pkg, "utf8")).bin.oxlint)
+  const run = spawnSync(process.execPath, [bin, ...native, ...selectedPaths], { encoding: "utf8" })
+  if (run.error) throw run.error
+  return run
+}
+if (!projectedConfig && (usage || native.some(arg => ["--print-config", "--init"].includes(arg)))) {
+  const run = invokeNative([])
+  if (run.stdout) process.stdout.write(run.stdout)
+  if (run.stderr) process.stderr.write(run.stderr)
+  process.exit(run.status ?? 1)
+}
+
 // Empty globs remain valid for a mixed-tool pass; a named source is an input
 // the caller expects to exist, including in a native-only invocation.
-const missing = paths.filter(path => /\.vibex?$/.test(path) && !/[*?{\[]/.test(path) && !statSync(path, { throwIfNoEntry: false }))
+const missing = projectedConfig ? [] : paths.filter(path => /\.vibex?$/.test(path) && !/[*?{\[]/.test(path) && !statSync(path, { throwIfNoEntry: false }))
 if (missing.length) {
   if (format === "json") process.stdout.write(JSON.stringify({
     diagnostics: missing.map(filename => ({ code: "vibelang(file-not-found)", severity: "error", message: "File not found: " + filename, filename, labels: [] })),
@@ -59,16 +76,13 @@ const vibeGlob = path => path.replace(/\.\{([^}]+)\}/g, (all, parts) => {
   const extensions = [...new Set(parts.split(",").map(ext => ext === "tsx" ? "vibex" : /^[cm]?ts$/.test(ext) ? "vibe" : ext))]
   return extensions.length === 1 ? "." + extensions[0] : ".{" + extensions.join(",") + "}"
 }).replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
-const vibePaths = suppliedPaths ? paths.flatMap(path => vibe(path) || directory(path) ? [resolve(path)] : /[*?{]/.test(path) ? [resolve(vibeGlob(path))] : []) : [process.cwd()]
+const vibePaths = projectedConfig ? [process.cwd()] : suppliedPaths ? paths.flatMap(path => vibe(path) || directory(path) ? [resolve(path)] : /[*?{]/.test(path) ? [resolve(vibeGlob(path))] : []) : [process.cwd()]
 const nativePaths = paths.filter(path => !vibe(path))
-if (vibePaths.length && (!suppliedPaths || nativePaths.some(path => directory(path) || /[*?{]/.test(path))) && !native.includes("--no-error-on-unmatched-pattern")) native.push("--no-error-on-unmatched-pattern")
+if (!projectedConfig && vibePaths.length && (!suppliedPaths || nativePaths.some(path => directory(path) || /[*?{]/.test(path))) && !native.includes("--no-error-on-unmatched-pattern")) native.push("--no-error-on-unmatched-pattern")
 let output = { diagnostics: [], number_of_files: 0, number_of_rules: 0, threads_count: 8 }
 let nativeStatus = 0
 if (!nativeOnly && (!suppliedPaths || nativePaths.length)) {
-  const pkg = require.resolve("oxlint/package.json")
-  const bin = resolve(dirname(pkg), JSON.parse(readFileSync(pkg, "utf8")).bin.oxlint)
-  const run = spawnSync(process.execPath, [bin, ...native, ...nativePaths], { encoding: "utf8" })
-  if (run.error) throw run.error
+  const run = invokeNative(nativePaths)
   if (run.stderr) process.stderr.write(run.stderr)
   nativeStatus = run.status ?? 1
   if (format === "json") {
@@ -133,7 +147,7 @@ if (vibePaths.length) {
   const elsewhere = new Set(configs.flatMap(config => Object.entries(config.rules ?? {}).filter(([, setting]) => ![0, "off"].includes([setting].flat()[0])).map(([name]) => oxlintRuleName(name))))
   const { lintProjected, formatUnix, printProjectedConfig } = await import("vibelang/oxlint")
   const { written, base } = writtenConfigs.get(config ?? null)
-  if (nativeOnly && native.includes("--print-config")) {
+  if (projectedConfig) {
     process.stdout.write(printProjectedConfig({ config: written, base, elsewhere }))
     process.exit(0)
   }
