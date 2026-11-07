@@ -191,7 +191,7 @@ const temporaryAssignment = /(?<![\w$])(\$[A-Za-z_]+\d+)\s*=\s*$/
 function temporaryReads(map, code) {
   const trace = new TraceMap(map)
   const reads = new Map()
-  for (const [text, at] of quoted(code)) {
+  for (const [text, at] of quoted(code, false)) {
     const name = temporaryAssignment.exec(code.slice(Math.max(0, at - 64), at))?.[1]
     if (!name) continue
     const positions = []
@@ -292,6 +292,53 @@ test("a string inlined from a compiler temporary may take that temporary's read 
   // A written name is no compiler temporary.
   const written = 'let t;\n{\n    t = "length";\n}\nexport const x = u[(t)];\n'
   assert.equal(temporaryReads(generator.toJSON(), written).size, 0)
+})
+
+test("generated module imports do not hide an inlined temporary's string", async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom("effect", "vibelang-runtime", "length", "specifier"),
+    fc.constantFrom("side-effect", "namespace", "named"),
+    fc.constantFrom("\n", "\r\n", "\u2028"),
+    fc.integer({ min: 1, max: 9 }),
+    async (value, kind, newline, index) => {
+      const text = JSON.stringify(value)
+      const source = 'export const x = u[(do { ' + text + ' })]' + newline
+      const keyword = position(source, source.indexOf("do {"))
+      const quote = position(source, source.indexOf(text))
+      const imported = kind === "side-effect" ? 'import ' + text :
+        kind === "namespace" ? 'import * as library from ' + text :
+        'import { member } from ' + text
+      const name = "$do" + index
+      const body = ['let ' + name + ';', '{', '    ' + name + ' = ' + text + ';',
+        '}', 'export const x = u[(' + name + ')];'].join(newline) + newline
+      const compiled = imported + ';' + newline + body
+      const map = new SourceMapGenerator({ file: "main.js" })
+      const add = (token, original) => map.addMapping({
+        generated: position(compiled, compiled.indexOf(token)), original, source: "main.vibe"
+      })
+      add(name + ";", keyword)
+      add(name + " =", quote)
+      // The import is synthesized and has no source segment.
+      map.addMapping({ generated: position(compiled, compiled.lastIndexOf(text)), original: quote, source: "main.vibe" })
+      add("u[", position(source, source.indexOf("u[")))
+      add(name + ")", keyword)
+      const reads = temporaryReads(map.toJSON(), compiled)
+      assert.deepEqual(reads.get(text), [keyword], "an import specifier is not a second value")
+      const code = 'const x = u[' + text + '];' + newline
+      const bundled = original => {
+        const result = new SourceMapGenerator({ file: "main.js" })
+        result.addMapping({ generated: position(code, code.indexOf(text)), original, source: "main.vibe" })
+        return result.toJSON()
+      }
+      assert.equal(await checkBundle(bundled(keyword), code, source, "main.vibe", undefined, reads), 1)
+      assert.equal(await checkBundle(bundled(quote), code, source, "main.vibe", undefined, reads), 1)
+      await assert.rejects(checkBundle(bundled({ ...keyword, column: keyword.column + 1 }),
+        code, source, "main.vibe", undefined, reads), undefined, "shifted read")
+      await assert.rejects(checkBundle(bundled(keyword), code, source, "main.vibe"), undefined, "no temporary")
+      // A second runtime value remains ambiguous, unlike an import specifier.
+      assert.equal(temporaryReads(map.toJSON(), 'const repeat = ' + text + ';' + newline + compiled).size, 0)
+    }
+  ), { numRuns: 48, seed: 405097 })
 })
 
 test("generated programs keep their tokens at both ends", async () => {

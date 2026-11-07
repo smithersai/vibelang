@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Bundled dynamic imports could be reported as having an incorrect source position when a generated import used the same module name. Valid positions are now recognized while shifted mappings still fail.
+
 - Generating the diagnostic reference from sources with same-named constants could replace a diagnostic with another package's code. It now keeps the code selected by the source package and imports.
 
 - Vite SSR stacks could show generated JavaScript positions after a compiler cache write. Cache entries now preserve loaded modules and their original source locations.

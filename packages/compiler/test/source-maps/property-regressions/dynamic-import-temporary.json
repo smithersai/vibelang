@@ -1,0 +1,9 @@
+{
+  "property": "source-map-programs",
+  "rule": "docs/maintainers/source-maps.md: Tokens and Sugar; synthesized imports do not hide a temporary's retained string",
+  "input": {
+    "key": "vip02.do-import-both-plain",
+    "variant": "plain",
+    "bundler": "rolldown"
+  }
+}
