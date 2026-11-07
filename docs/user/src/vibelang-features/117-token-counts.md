@@ -136,8 +136,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Keep .ts file names** | **1,400** |
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
-| **Upgrade** | **170,000** |
-| [Release notes](../setup/release-notes.md) | 170,000 |
+| **Upgrade** | **180,000** |
+| [Release notes](../setup/release-notes.md) | 180,000 |
 | **All 22 pages** | **240,000** |
 
 ### Guides
