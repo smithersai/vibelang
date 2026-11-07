@@ -1,0 +1,7 @@
+// expect: EK4601
+// Appendix B: EK4601 — spec-rule: docs/design/src/900-appendices.md#92880f15baa127b9
+// Plain code that awaits a call returning an Effect reports EK4601 at the
+// await. A native async function keeps JavaScript await.
+export function run() { return await Effect.succeed(1) }
+
+export async function native() { return await Promise.resolve(1) }

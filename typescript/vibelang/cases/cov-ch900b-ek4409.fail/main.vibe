@@ -1,0 +1,9 @@
+// expect: EK0403
+// Appendix B: EK4409 — spec-rule: docs/design/src/900-appendices.md#5048abc92958c40b
+// A legacy Effect function that returns a call of a value typed any is a
+// warning by default, beside EK0403. cov-ch900b-ordinary-any-return keeps
+// TypeScript's treatment of any in an ordinary return.
+export effect function genuineAny(value: any) {
+  try Effect.yieldNow
+  return value()
+}

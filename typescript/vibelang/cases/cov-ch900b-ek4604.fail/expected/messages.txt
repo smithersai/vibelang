@@ -1,0 +1,1 @@
+await in a hatch body is JavaScript's await, which needs an async function.
