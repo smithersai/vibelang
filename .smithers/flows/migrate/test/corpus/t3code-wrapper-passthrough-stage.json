@@ -1,0 +1,7 @@
+{
+  "key": "t3code-wrapper-passthrough-stage",
+  "quote": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "original": "const through = program => program; export const factory = (on = true) => { if (!on) return Effect.succeed(null); return Effect.succeed(1).pipe(program => through(program)); };",
+  "emitted": "const through = program => program; export const factory = (on = true) => { if (!on) return Effect.succeed(null); return ((program) => through(program))(Effect.succeed(1)); };",
+  "pattern": "A plain pipeline identity stage returns the original Effect argument through an inline function."
+}

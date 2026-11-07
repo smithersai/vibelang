@@ -660,6 +660,8 @@ Migration API snapshots retain native compatibility declarations when a project 
 
 Generated `import.meta.filename` and `import.meta.dirname` companions use a namespace `node:url` import. Directory helpers resolve the source module's parent URL without adding `node:path`; POSIX, drive and network-share roots keep their separators. Non-file URLs still produce `undefined`, and invalid file URL encodings keep their original errors.
 
+The migration wrapper check follows an Effect argument returned by a plain inline function, including a call through an immutable identity helper in its actual scope. A helper with an opaque body, shadowed binding, mutable declaration or changed parameter does not prove preservation. An async or generator call returns a promise or iterator; constructing an Effect argument does not make that result an Effect.
+
 JavaScript emission preserves the project's declaration source root when `vibe.sidecarDir` is configured. Package `types` targets keep pointing to the emitted declarations, including projects with a source root inside or outside the package. Runtime JavaScript remains under `.vibelang/js/` at its package-relative path.
 
 An original declaration emit that exits with TypeScript's emit-error status and only `TS5011` layout diagnostics retains its compiler, exit status, files and diagnostics in the stock API oracle. Qualification still requires a complete stock/native declaration comparison; changed APIs, unresolved declarations, source errors and unexplained compiler exits remain unavailable.

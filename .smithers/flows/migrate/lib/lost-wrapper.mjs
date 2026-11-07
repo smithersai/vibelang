@@ -24,7 +24,8 @@
 // `Effect.fn(…)` makes a function with its own path, not a program of the
 // function holding it, and a pipeline ending in `Effect.runSync` hands back a
 // value. A program handed back through a parameter or a helper counts on
-// neither side: the text cannot see it, and it needs types. A member named in
+// neither side unless an inline call directly forwards its argument, possibly
+// through a nearest const identity function. Other helpers need types. A member named in
 // an arm, `{ onSome: Effect.succeed }`, reads as Effect there and sits inside a
 // nested function once the codemod writes `(value) => Effect.succeed(value)`,
 // so that spelling of the same member counts for the original's arm. A call
@@ -200,6 +201,60 @@ function inlineFunction(ts, node) {
   return fn.asteriskToken || fn.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) ? undefined : fn
 }
 
+// A single plain return cannot mutate a parameter before forwarding it.
+function simpleReturn(ts, fn) {
+  if ((!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) || fn.asteriskToken ||
+      fn.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) ||
+      fn.parameters.some(p => !ts.isIdentifier(p.name) || p.initializer || p.dotDotDotToken) ||
+      new Set(fn.parameters.map(p => p.name.text)).size !== fn.parameters.length) return undefined
+  const body = fn.body
+  return ts.isBlock(body) ? body.statements.length === 1 && ts.isReturnStatement(body.statements[0])
+    ? body.statements[0].expression : undefined : body
+}
+const bindsName = (ts, binding, name) => {
+  let found = false
+  const visit = node => { if (ts.isIdentifier(node) && node.text === name) found = true; else ts.forEachChild(node, visit) }
+  visit(binding)
+  return found
+}
+
+// Resolve only a nearest, unique const function. Any parameter, destructuring,
+// mutable binding, import or named declaration with that name blocks the proof.
+function constantFunction(ts, name, from) {
+  for (let at = from; at; at = at.parent) {
+    if (ts.isFunctionLike(at) && (at.parameters.some(p => bindsName(ts, p.name, name)) || at.name?.text === name)) return undefined
+    if (ts.isCatchClause(at) && at.variableDeclaration && bindsName(ts, at.variableDeclaration.name, name)) return undefined
+    if (!ts.isBlock(at) && !ts.isSourceFile(at)) continue
+    if (at.statements.some(statement => statement.name?.text === name ||
+        ts.isImportDeclaration(statement) && statement.importClause && bindsName(ts, statement.importClause, name))) return undefined
+    const declarations = ownNodes(ts, { body: at }, node =>
+      ts.isVariableDeclaration(node) && bindsName(ts, node.name, name) ? node : undefined)
+    if (!declarations.length) continue
+    const declaration = declarations[0]
+    if (declarations.length !== 1 || !ts.isIdentifier(declaration.name) ||
+        !(declaration.parent.flags & ts.NodeFlags.Const) || !declaration.initializer) return undefined
+    const fn = unwrap(ts, declaration.initializer)
+    return simpleReturn(ts, fn) ? fn : undefined
+  }
+}
+
+// The parameter a plain inline call returns directly, or through a proven
+// const identity function. Unknown callees and every other body stay opaque.
+function forwardedParameter(ts, fn) {
+  const returned = simpleReturn(ts, fn)
+  if (!returned) return undefined
+  let value = unwrap(ts, returned)
+  if (ts.isCallExpression(value) && !value.questionDotToken && ts.isIdentifier(unwrap(ts, value.expression))) {
+    const helper = constantFunction(ts, unwrap(ts, value.expression).text, fn)
+    const result = helper && unwrap(ts, simpleReturn(ts, helper))
+    const index = result && ts.isIdentifier(result) ? helper.parameters.findIndex(p => p.name.text === result.text) : -1
+    if (index < 0 || value.arguments.length !== helper.parameters.length || value.arguments.some(ts.isSpreadElement)) return undefined
+    value = unwrap(ts, value.arguments[index])
+  }
+  const index = ts.isIdentifier(value) ? fn.parameters.findIndex(p => p.name.text === value.text) : -1
+  return index < 0 ? undefined : index
+}
+
 /**
  * The Effect operator a call applies through a local, or undefined: `stage`
  * in `stage(program)` after `const stage = Effect.withSpan("check")` or
@@ -255,10 +310,17 @@ function arms(ts, expression, scope, bound, followed = new Set()) {
   }
   const inline = inlineFunction(ts, node)
   if (inline) {
+    const forwarded = forwardedParameter(ts, inline)
+    if (forwarded !== undefined && node.arguments.length === inline.parameters.length && !node.arguments.some(ts.isSpreadElement))
+      return arms(ts, node.arguments[forwarded], scope, bound, new Set(followed))
     const results = ts.isBlock(inline.body) ? ownNodes(ts, inline, n => ts.isReturnStatement(n) && n.expression) : [inline.body]
     if (results.length) return results.flatMap(result => arms(ts, result, inline, bound, new Set())
       .map(arm => passedOperand(ts, arm, inline, node, bound) ?? arm))
   }
+  // An async/generator IIFE returns a Promise/iterator, even when constructing
+  // an Effect argument. Its argument is not the call's returned program.
+  const called = ts.isCallExpression(node) && unwrap(ts, node.expression)
+  if (called && (ts.isArrowFunction(called) || ts.isFunctionExpression(called)) && !inline) return [called]
   const operator = curriedOperator(ts, node, scope, bound)
   if (operator) return [operator]
   return [node]
