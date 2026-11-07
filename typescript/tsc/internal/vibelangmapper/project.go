@@ -242,10 +242,10 @@ func lower(text string, ctx FileContext) *projector {
 		operandTries = append(operandTries, tryBlockMarks(file, text, keywords)...)
 	}
 	if len(keywords) > 0 {
-		methods := producerMethodMarks(file)
+		methods := producerCallableMarks(file)
 		text = blank(text, keywords)
 		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true, VibeLangFiberOperations: fiberOperations}, text, kind)
-		restoreProducerMethodMarks(file, methods)
+		restoreProducerCallableMarks(file, methods)
 	}
 	restoreWrittenEffectLambdaMarks(file, effectLambdas)
 	restoreWrittenEffectBlockMarks(file, effectBlocks)
