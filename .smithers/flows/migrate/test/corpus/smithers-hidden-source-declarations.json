@@ -1,0 +1,17 @@
+{
+  "contract": "Declaration-only checks preserve existing source declarations, including files in hidden directories.",
+  "directories": [
+    "shared",
+    ".smithers/dep",
+    ".hidden",
+    ".private/with space",
+    "nested/.private/caf\u00e9"
+  ],
+  "suffixes": [
+    ".d.ts",
+    ".d.mts",
+    ".d.cts",
+    ".d.vibe.ts"
+  ],
+  "seed": 719031
+}

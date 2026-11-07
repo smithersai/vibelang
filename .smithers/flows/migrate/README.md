@@ -151,6 +151,8 @@ When a project layout error leaves a native module's ordinary declaration outsid
 
 An original stock declaration emit with exit `2` and only `TS5011` output-layout errors keeps its complete emit receipt and proceeds to the canonical stock/native API comparison. That comparison must complete; layout diagnostics do not excuse missing declarations, unresolved inputs or API differences. Source errors, mixed diagnostics and unexplained compiler failures still make the oracle unavailable.
 
+Declaration-only checks preserve existing source declarations, including files in hidden directories. An emit can write beside a source outside its output root; the migration restores the exact previous bytes there and removes only declarations that the emit created. Dependency and version-control metadata directories are not source inputs.
+
 Declaration checks load each snapshot's ambient type packages from its project's `types` and `typeRoots` settings, including inherited configuration and automatic type discovery. An unavailable configured type package makes the comparison incomplete and blocks API qualification.
 
 Declaration-only comparisons resolve a TypeScript source target in conditional exports through its existing adjacent emitted declaration. TypeScript still chooses conditions and fallbacks in their written order; a missing selected declaration remains unavailable. The saved publication manifest and declaration files stay unchanged.

@@ -69,7 +69,7 @@ test("opencode-22: the emit keeps the tracked declarations it rewrote and remove
   }
 })
 
-const directory = fc.constantFrom("packages/stories/playwright", "packages/tui/src", "src", "lib/deep/er", "packages/ai/src/protocols")
+const directory = fc.constantFrom("packages/stories/playwright", "packages/tui/src", "src", "lib/deep/er", "packages/ai/src/protocols", ".smithers/flows", ".private/with space", "nested/.hidden/café")
 const name = fc.constantFrom("config", "story", "theme", "index", "fal-queue")
 const extension = fc.constantFrom(".d.ts", ".d.mts", ".d.cts", ".d.vibe.ts")
 const file = fc.tuple(directory, name, extension).map(([d, n, e]) => `${d}/${n}${e}`)

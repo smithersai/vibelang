@@ -954,9 +954,9 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
 // sidecar every compile writes beside x.vibe.
 const declarationOutput = /\.d\.(?:vibex?\.)?[cm]?ts$/
 
-// The contents of each declaration file under directory, outside node_modules,
-// dot directories and skip, by absolute path.
-function declarationFiles(directory, skip, pattern = declarationOutput) {
+// Emission cleanup also snapshots hidden source directories. API discovery keeps
+// its existing scope. Dependency and VCS metadata, and skip, stay outside both scans.
+function declarationFiles(directory, skip, pattern = declarationOutput, includeHidden = false) {
   const files = new Map()
   const walk = (path) => {
     let entries
@@ -968,7 +968,7 @@ function declarationFiles(directory, skip, pattern = declarationOutput) {
     for (const entry of entries) {
       const child = join(path, entry.name)
       if (entry.isDirectory()) {
-        if (entry.name !== "node_modules" && !entry.name.startsWith(".") && child !== skip) walk(child)
+        if (!["node_modules", ".git", ".jj"].includes(entry.name) && (includeHidden || !entry.name.startsWith(".")) && child !== skip) walk(child)
       } else if (entry.isFile() && pattern.test(entry.name)) files.set(child, readFileSync(child))
     }
   }
@@ -1084,7 +1084,7 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
   const typescriptDirectories = [packageDir, scope, fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))]
   const ts = loadTypeScript(typescriptDirectories)
   const layoutPlans = []
-  const existing = declarationFiles(scope, resolve(out), /\.(?:[cm]?js(?:\.map)?|jsx(?:\.map)?|d\.[cm]?ts)$/)
+  const existing = declarationFiles(scope, resolve(out), /\.(?:[cm]?js(?:\.map)?|jsx(?:\.map)?|d\.[cm]?ts)$/, true)
   mkdirSync(out, { recursive: true })
   const flags = "--noEmit false --declaration false --emitDeclarationOnly false --declarationMap false --sourceMap true --inlineSourceMap false --inlineSources false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
   const inside = `${resolve(out)}${sep}`
@@ -1318,7 +1318,7 @@ function emittedAssetImports(text, source, output, ts) {
  */
 export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, root, typescript }) {
   rmSync(outDir, { recursive: true, force: true })
-  const existing = declarationFiles(resolve(root ?? cwd), resolve(outDir))
+  const existing = declarationFiles(resolve(root ?? cwd), resolve(outDir), declarationOutput, true)
   mkdirSync(outDir, { recursive: true })
   let flags = "--singleThreaded --noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --inlineSourceMap false --inlineSources false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
   let result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --outDir ${quote(outDir)}`, { cwd, log })
