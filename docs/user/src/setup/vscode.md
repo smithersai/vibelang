@@ -27,7 +27,7 @@ vibelang.vibelang
 
 ## 3. Open your project in the editor
 
-Open the project directory and trust the workspace: the extension runs the workspace's `node_modules/.bin/vibelang`, so it does not run in an untrusted workspace. When it cannot find `vibelang`, the status item next to the language mode reads "vibelang not found".
+Open the project directory and trust the workspace: the extension runs the workspace's `node_modules/.bin/vibelang`, so it does not run in an untrusted workspace. When it cannot find `vibelang`, the status item next to the language mode reads "vibelang not found". When the server is running, its status detail shows the compiler path and the version reported by the server, including its TypeScript version.
 
 Without adjacent declaration sidecars, VS Code's built-in TypeScript cannot resolve `.vibe` imports. To have VibeLang check a `.ts` file that imports a `.vibe` module, run **VibeLang: Serve TypeScript Files in This Workspace** from the command palette. In Cursor, the command turns the built-in TypeScript features off for the workspace; in VS Code, it shows the extension to disable, "TypeScript and JavaScript Language Features". Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](vibelang-cli.md#let-typescript-tools-read-vibe-modules).
 
