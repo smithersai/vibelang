@@ -280,6 +280,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow kept a component or a function that returns nothing in TypeScript when its platform code read a private type of the module, on the grounds that the inferred return type might name that type. A function that returns only JSX, `null` or `undefined`, or no value, now keeps its wrapper and the module converts; a function that may return the private type still stays in TypeScript.
 - With a compiler before VIP-1, the migrate flow marked a function `: infer _` when it returned the Effect of a module converted in the same batch, and the converted module failed `EK9203`. The flow now reads that module's types from its TypeScript source and keeps such functions Effect functions.
 
+- The migrate flow kept a factory in TypeScript when its platform code read a private type of the module, even when the factory's return type never mentioned that type. The flow now checks the return type with the module's own tsconfig, and a factory whose result does not expose the private type converts; one that exposes it, or whose type it cannot fully resolve, still stays in TypeScript.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |
