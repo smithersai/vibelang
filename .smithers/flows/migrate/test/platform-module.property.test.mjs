@@ -82,7 +82,9 @@ test("a module the split cannot serve keeps its platform code, with the reason",
   assert.match(kept.module, /^module platform \{\nimport \{ sep \} from "node:path"/m)
   assert.doesNotMatch(kept.module.replace(/^module platform \{[^]*?^\}$/m, ""), /node:path/)
   assert.match(split(`export const a = () => { if (!import.meta.url) throw new Error("x") }\nexport const k = 1\n`, { throws: true }).refused, /EK4009/)
-  assert.match(split(`import { rmSync } from "node:fs"\nrmSync("x")\nexport const k = 1\n`).refused, /runs in order/)
+  // A statement that runs in order stays where it stands; only its host operation moves (alchemy-platform-module-order).
+  assert.match(split(`import { rmSync } from "node:fs"\nrmSync("x")\nexport const k = 1\n`).module, /^\$rmSync\("x"\)$/m)
+  assert.match(split(`import { Worker } from "node:worker_threads"\nnew Worker("x")\nexport const k = 1\n`).refused, /runs in order among the module's statements, so it cannot move to a module body, and its host operations cannot move on their own/)
   assert.match(split(`import { sep } from "node:path"\nconst a = sep\nexport = a\n`).refused, /EK4008/)
   assert.equal(split(`export const k = 1\n`), null)
   assert.equal(split(`import type { Stats } from "node:fs"\nexport const k = (s: Stats) => s\n`), null)
@@ -368,4 +370,37 @@ test("a moved const's narrowing compiles in a closure", { skip: !compiler && "se
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+// alchemy-platform-module-order (8 partition sources: alchemy-test Core and
+// cli, neon PackageRunner and TraceRunner among them): a top-level statement
+// that reads the host runs in order among the module's statements, and a body
+// evaluates when imported, so the split refused. The statement now stays where
+// it stands and only its host operations move, called in place.
+test("corpus: an ordered statement that reads the host stays in place, its host operations called where they ran", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-platform-module-order.json", import.meta.url), "utf8"))
+  for (const sample of corpus.samples) {
+    const { module, refused } = split(sample.before, { globals: sample.globals })
+    assert.equal(refused, undefined, sample.key)
+    assert.equal(module, sample.after, sample.key)
+  }
+})
+
+test("property: the module's own statements keep their order, with only host operations replaced", () => {
+  const statements = {
+    value: (i) => `export const v${i} = "m${i}"`,
+    env: (i) => `if (process.env.F${i}) { process.env.G${i} = "m${i}" }`,
+    argv: (i) => `export const a${i} = [process.argv, "m${i}"]`,
+    fn: (i) => `export const f${i} = (n: number) => n + "m${i}".length`,
+  }
+  fc.assert(fc.property(fc.array(fc.constantFrom(...Object.keys(statements)), { minLength: 1, maxLength: 6 }), (keys) => {
+    if (!keys.includes("env") || !keys.some((k) => k === "value" || k === "fn")) return
+    const lines = keys.map((k, i) => statements[k](i))
+    const result = split(lines.join("\n") + "\n", { globals: ["process"] })
+    assert.equal(result.refused, undefined, lines.join("\n"))
+    const out = result.module
+    const bodyEnd = out.indexOf("\n}\n")
+    const at = lines.map((_, i) => out.indexOf(`"m${i}"`))
+    for (let i = 0; i < at.length; i++) assert.ok(at[i] > bodyEnd, out)
+    for (let i = 1; i < at.length; i++) assert.ok(at[i - 1] < at[i], out)
+  }), { seed: 4009, numRuns: 120 })
 })

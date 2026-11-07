@@ -1,0 +1,23 @@
+{
+  "repo": "alchemy",
+  "cause": "alchemy-platform-module-order",
+  "note": "Minimized from the drive's module-order witness and alchemy's runner scripts (neon Website/PackageRunner, alchemy-test cli): a top-level statement that reads the host stays where it stands, and only its host operations move into the module body, called in place.",
+  "samples": [
+    {
+      "key": "ordered-env-write",
+      "globals": [
+        "process"
+      ],
+      "before": "import * as Effect from \"effect/Effect\";\nif (process.env.FLAG) { process.env.VALUE = \"set\"; }\nexport const value = Effect.void;\n",
+      "after": "import * as Effect from \"effect/Effect\";\n\nmodule platform {\n/** @throws {never} */\nexport function $process_env_FLAG() { return process.env.FLAG }\n/** @throws {never} */\nexport function $set_process_env_VALUE(value: typeof process.env.VALUE) { return process.env.VALUE = value }\n}\n\nimport { $process_env_FLAG, $set_process_env_VALUE } from platform\n\nif ($process_env_FLAG()) { $set_process_env_VALUE(\"set\"); }\nexport const value = Effect.void;\n"
+    },
+    {
+      "key": "top-level-runner-argv",
+      "globals": [
+        "process"
+      ],
+      "before": "import * as Effect from \"effect/Effect\";\nconst run = (program: Effect.Effect<void>) => Effect.runFork(program);\nrun(Effect.gen(function* () { const input = process.argv[2]; yield* Effect.log(input); }));\nexport const ready = true;\n",
+      "after": "import * as Effect from \"effect/Effect\";\n\nmodule platform {\n/** @throws {never} */\nexport function $process_argv() { return process.argv }\n}\n\nimport { $process_argv } from platform\n\nconst run = (program: Effect.Effect<void>) => Effect.runFork(program);\nrun(Effect.gen(function* () { const input = $process_argv()[2]; yield* Effect.log(input); }));\nexport const ready = true;\n"
+    }
+  ]
+}
