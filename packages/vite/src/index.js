@@ -279,6 +279,40 @@ export default function vibelang(options = {}) {
     }
   }
 
+  async function hotUpdate(context, environment) {
+    if (isGeneratedDeclaration(context.file)) { debug(`ignore generated declaration ${context.file}`); return [] }
+    if (!/\.(?:vibex?|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
+    const graph = environment?.moduleGraph ?? context.server.moduleGraph
+    const channel = environment?.hot ?? context.server.ws
+    debug(`hot ${context.type ?? "update"} ${context.file}; environment=${environment?.name ?? "legacy"}, modules=${context.modules.length}`)
+    const projects = await loaded()
+    projects.invalidate()
+    // Any source can change the contracts used to compile a .vibe importer.
+    const affected = new Set()
+    const visit = (module) => {
+      if (affected.has(module)) return
+      affected.add(module)
+      for (const importer of module.importers) visit(importer)
+    }
+    for (const module of context.modules) visit(module)
+    for (const module of graph.idToModuleMap.values()) {
+      if (module.file && isCompiled(module.file)) visit(module)
+    }
+    for (const module of affected) graph.invalidateModule(module)
+    // Recompile the sources Vite has loaded. A watched TypeScript source
+    // can change their contracts without making its own errors loader errors.
+    const errors = []
+    const sources = new Set([...affected].map((module) => module.file).filter((file) => file && isCompiled(file)))
+    for (const file of sources) errors.push(...(await projects.load(sourceFile(file))).errors)
+    if (errors.length) {
+      const { message, id, loc } = diagnostics(errors, context.file)
+      context.server.config.logger.error(message)
+      channel.send({ type: "error", err: { message, stack: "", plugin: "vibelang", id, loc } })
+      return []
+    }
+    return [...affected]
+  }
+
   return {
     name: "vibelang",
     enforce: "pre",
@@ -400,35 +434,11 @@ export default function vibelang(options = {}) {
       if (isGeneratedDeclaration(id)) { debug(`ignore generated declaration ${id}`); return }
       if (/\.(?:vibex?|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
     },
+    async hotUpdate(context) {
+      return hotUpdate(context, this.environment)
+    },
     async handleHotUpdate(context) {
-      if (isGeneratedDeclaration(context.file)) { debug(`ignore generated declaration ${context.file}`); return [] }
-      if (!/\.(?:vibex?|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
-      const projects = await loaded()
-      projects.invalidate()
-      // Any source can change the contracts used to compile a .vibe importer.
-      const affected = new Set()
-      const visit = (module) => {
-        if (affected.has(module)) return
-        affected.add(module)
-        for (const importer of module.importers) visit(importer)
-      }
-      for (const module of context.modules) visit(module)
-      for (const module of context.server.moduleGraph.idToModuleMap.values()) {
-        if (module.file && isCompiled(module.file)) visit(module)
-      }
-      for (const module of affected) context.server.moduleGraph.invalidateModule(module)
-      // Recompile the sources Vite has loaded. A watched TypeScript source
-      // can change their contracts without making its own errors loader errors.
-      const errors = []
-      const sources = new Set([...affected].map((module) => module.file).filter((file) => file && isCompiled(file)))
-      for (const file of sources) errors.push(...(await projects.load(sourceFile(file))).errors)
-      if (errors.length) {
-        const { message, id, loc } = diagnostics(errors, context.file)
-        context.server.config.logger.error(message)
-        context.server.ws.send({ type: "error", err: { message, stack: "", plugin: "vibelang", id, loc } })
-        return []
-      }
-      return [...affected]
+      return hotUpdate(context)
     },
     closeBundle: close,
     closeWatcher: close

@@ -11,6 +11,8 @@ description: "vibelang-vite compiles .vibe modules for Vite (7 and 8) and Vitest
 
 Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. Source diagnostics retain their excerpts without appending compiler file-list output.
 
+Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
+
 Plugin instances in one process share project compiles when their root,
 project configuration and compiler match, including main and worker bundles.
 Edits invalidate the shared result. Closing one instance leaves other instances

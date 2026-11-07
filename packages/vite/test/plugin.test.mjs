@@ -239,8 +239,9 @@ test("Vite serves JS and maps, invalidates importers, reports diagnostics and re
     server: { host: "127.0.0.1", port: 0, watch }
   })
   const messages = []
-  const originalSend = server.ws.send.bind(server.ws)
-  server.ws.send = (...args) => { messages.push(args[0]); return originalSend(...args) }
+  const channel = server.environments.client.hot
+  const originalSend = channel.send.bind(channel)
+  channel.send = (...args) => { messages.push(args[0]); return originalSend(...args) }
   await server.listen()
   const address = server.httpServer.address()
   const base = `http://127.0.0.1:${address.port}`

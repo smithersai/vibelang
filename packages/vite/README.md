@@ -19,6 +19,8 @@ when its default export points at emitted JavaScript under `.vibelang/js`.
 Delegated package imports retain Vite and Rollup resolver options, including SSR mode and CommonJS metadata. This keeps optional native dependencies optional when a CommonJS package is bundled for Node.
 
 
+Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
+
 ## Install
 
 ```sh
