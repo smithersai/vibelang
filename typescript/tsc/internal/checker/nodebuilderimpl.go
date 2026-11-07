@@ -41,10 +41,11 @@ type SerializedTypeEntry struct {
 }
 
 type CompositeTypeCacheIdentity struct {
-	typeId              TypeId
-	flags               nodebuilder.Flags
-	internalFlags       nodebuilder.InternalFlags
-	inferTypeParameters CacheHashKey
+	historicalReverseMapped bool
+	typeId                  TypeId
+	flags                   nodebuilder.Flags
+	internalFlags           nodebuilder.InternalFlags
+	inferTypeParameters     CacheHashKey
 }
 
 type NodeBuilderLinks struct {
@@ -84,6 +85,8 @@ type NodeBuilderContext struct {
 	trackedSymbols                  []*TrackedSymbolArgs
 	mapper                          *TypeMapper
 	reverseMappedStack              []*ast.Symbol
+	historicalReverseMapped         bool
+	reverseMappedCycleTypes         map[*Type]bool
 	enclosingSymbolTypes            map[ast.SymbolId]*Type
 	suppressReportInferenceFallback bool
 	remappedSymbolReferences        map[ast.SymbolId]*ast.Symbol
@@ -2516,10 +2519,6 @@ func (b *NodeBuilderImpl) serializeTypeForDeclaration(declaration *ast.Declarati
 const MAX_REVERSE_MAPPED_NESTING_INSPECTION_DEPTH = 3
 
 func (b *NodeBuilderImpl) shouldUsePlaceholderForProperty(propertySymbol *ast.Symbol) bool {
-	// Reverse mapped type placeholders are for display, not declaration emit.
-	if b.ctx.flags&nodebuilder.FlagsAllowAnonymousIdentifier == 0 {
-		return false
-	}
 	// Use placeholders for reverse mapped types we've either
 	// (1) already descended into, or
 	// (2) are nested reverse mappings within a mapping over a non-anonymous type, or
@@ -2531,6 +2530,9 @@ func (b *NodeBuilderImpl) shouldUsePlaceholderForProperty(propertySymbol *ast.Sy
 	// come from mappings over library functions.
 	// Condition (3) limits printing of possibly infinitely deep reverse mapped types.
 	if propertySymbol.CheckFlags()&ast.CheckFlagsReverseMapped == 0 {
+		return false
+	}
+	if b.ctx.flags&nodebuilder.FlagsAllowAnonymousIdentifier == 0 && !b.ctx.historicalReverseMapped {
 		return false
 	}
 	// (1)
@@ -3054,6 +3056,65 @@ func (b *NodeBuilderImpl) shouldEmitTypeOfSymbol(forceExpansion bool, forceClass
 	return b.shouldWriteTypeOfFunctionSymbol(symbol, typeId)
 }
 
+// reverseMappedTypeHasCycle follows reconstructed mappings, not every property
+// of their input. A cyclic input property excluded by a mapped key constraint
+// does not introduce a declaration cycle.
+func (b *NodeBuilderImpl) reverseMappedTypeHasCycle(root *Type) bool {
+	if b.ctx.reverseMappedCycleTypes == nil {
+		b.ctx.reverseMappedCycleTypes = make(map[*Type]bool)
+	}
+	if cyclic, ok := b.ctx.reverseMappedCycleTypes[root]; ok {
+		return cyclic
+	}
+	active := make(map[*Type]bool)
+	finished := make(map[*Type]bool)
+	var visit func(*Type, int) bool
+	visit = func(t *Type, depth int) bool {
+		if t == nil {
+			return false
+		}
+		if active[t] {
+			return true
+		}
+		if finished[t] || depth >= 100 {
+			return false
+		}
+		active[t] = true
+		defer delete(active, t)
+		if t.flags&TypeFlagsUnionOrIntersection != 0 {
+			for _, member := range t.Types() {
+				if visit(member, depth+1) {
+					return true
+				}
+			}
+		} else if b.ch.isArrayType(t) {
+			if visit(b.ch.getTypeArguments(t)[0], depth+1) {
+				return true
+			}
+		} else if isTupleType(t) {
+			for _, element := range b.ch.getElementTypes(t) {
+				if visit(element, depth+1) {
+					return true
+				}
+			}
+		} else if t.objectFlags&ObjectFlagsReverseMapped != 0 && t.AsReverseMappedType().source.flags&TypeFlagsObject != 0 {
+			for _, property := range b.ch.getPropertiesOfType(t) {
+				if visit(b.ch.getNonMissingTypeOfSymbol(property), depth+1) {
+					return true
+				}
+			}
+			if index := b.ch.getIndexInfoOfType(t, b.ch.stringType); index != nil && visit(index.valueType, depth+1) {
+				return true
+			}
+		}
+		finished[t] = true
+		return false
+	}
+	cyclic := visit(root, 0)
+	b.ctx.reverseMappedCycleTypes[root] = cyclic
+	return cyclic
+}
+
 func (b *NodeBuilderImpl) createAnonymousTypeNodeEx(t *Type, forceClassExpansion bool, forceExpansion bool) *ast.TypeNode {
 	typeId := t.id
 	symbol := t.symbol
@@ -3127,13 +3188,23 @@ func (b *NodeBuilderImpl) createAnonymousTypeNodeEx(t *Type, forceClassExpansion
 			return b.visitAndTransformType(t, (*NodeBuilderImpl).createTypeNodeFromObjectType)
 		}
 	} else if t.objectFlags&ObjectFlagsReverseMapped != 0 && b.ctx.flags&nodebuilder.FlagsAllowAnonymousIdentifier == 0 {
-		if b.ctx.visitedTypes.Has(typeId) {
-			// A reverse mapped type met again is an anonymous-type cycle:
-			// TypeScript 5.9 and 7.0.2 elide it as /*elided*/ any, where 7.1
-			// reports TS5088 (VIP-27, anonymous-type cycle sites).
+		savedHistorical := b.ctx.historicalReverseMapped
+		if !savedHistorical {
+			b.ctx.historicalReverseMapped = b.reverseMappedTypeHasCycle(t)
+		}
+		defer func() { b.ctx.historicalReverseMapped = savedHistorical }()
+		// Historical anonymous reverse mappings expand directly. Tracking their
+		// inferred type identity here elides a source structure before its own
+		// anonymous cycle is reached. Keep the existing mapped-origin bound.
+		origin := CompositeSymbolIdentity{nodeId: ast.GetNodeId(t.AsReverseMappedType().mappedType.AsMappedType().declaration.AsNode())}
+		depth := b.ctx.symbolDepth[origin]
+		if depth >= 100 {
+			b.ctx.truncating = true
 			return b.createElidedInformationPlaceholder()
 		}
-		return b.visitAndTransformType(t, (*NodeBuilderImpl).createTypeNodeFromObjectType)
+		b.ctx.symbolDepth[origin] = depth + 1
+		defer func() { b.ctx.symbolDepth[origin] = depth }()
+		return b.createTypeNodeFromObjectType(t)
 	} else {
 		// Reverse mapped types use property and index signature placeholders for display.
 		return b.createTypeNodeFromObjectType(t)
@@ -3418,9 +3489,10 @@ func (b *NodeBuilderImpl) visitAndTransformType(t *Type, transform func(b *NodeB
 	// of types allows us to catch circular references to instantiations of the same anonymous type
 
 	key := CompositeTypeCacheIdentity{
-		typeId:        typeId,
-		flags:         b.ctx.flags,
-		internalFlags: b.ctx.internalFlags,
+		typeId:                  typeId,
+		historicalReverseMapped: b.ctx.historicalReverseMapped,
+		flags:                   b.ctx.flags,
+		internalFlags:           b.ctx.internalFlags,
 	}
 	if len(b.ctx.inferTypeParameters) != 0 {
 		key.inferTypeParameters = getTypeListKey(b.ctx.inferTypeParameters)

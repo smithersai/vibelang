@@ -9833,6 +9833,10 @@ typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/main.vibe:6:21
 typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/main.vibe:7:21 lambda plain fallback
 typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/main.vibe:7:68 lambda plain fallback
 typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/main.vibe:9:19 lambda dual fallback
+typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/reversed-vibe.vibe:10:15 lambda dual fallback
+typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/reversed-vibe.vibe:11:27 lambda choice fallback
+typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/reversed-vibe.vibe:8:21 lambda dual fallback
+typescript/vibelang/cases/witness07-vip27-anonymous-cycle-elision/reversed-vibe.vibe:9:22 lambda choice fallback
 typescript/vibelang/cases/witness07-vip27-recursion-diagnostics/project/main.vibe:1:28 lambda plain table
 typescript/vibelang/cases/witness07-vip27-recursion-diagnostics/project/main.vibe:3:21 lambda dual fallback
 typescript/vibelang/cases/witness07-vip27-recursion-diagnostics/project/main.vibe:4:24 lambda plain fallback

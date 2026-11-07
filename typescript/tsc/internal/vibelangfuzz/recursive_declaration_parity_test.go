@@ -15,6 +15,13 @@ func FuzzRecursiveDeclarationParity(f *testing.F) {
 		f.Add([]byte("recursive:" + shape.name + "/1/exported"))
 		f.Add([]byte("recursive:" + shape.name + "/2/local"))
 	}
+	for _, depth := range []string{"0", "3"} {
+		for _, scope := range []string{"exported", "local"} {
+			f.Add([]byte("recursive:reverse/" + depth + "/" + scope))
+		}
+	}
+	f.Add([]byte("recursive:reverse/1/local"))
+	f.Add([]byte("recursive:reverse/2/exported"))
 	f.Add([]byte("iterator"))
 	f.Add([]byte("mixed"))
 	f.Fuzz(func(t *testing.T, data []byte) {
