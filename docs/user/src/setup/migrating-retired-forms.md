@@ -156,3 +156,9 @@ Migration setup excludes generated declaration sidecars, including `x.vibe.platf
 The migration's canonical API comparison uses freshly emitted declarations for native `module` bodies. Existing compatibility copies can spell imports differently; they do not replace the current emit. Handwritten neighbouring declarations remain checked.
 
 In Vite+ projects, these generated-output exclusions also go in `vite.config.ts` under `fmt.ignorePatterns` and `lint.ignorePatterns`. Existing rules, test settings and authored implementation checks stay in place. Setup reports a warning when those sections are computed and require an explicit edit.
+
+## Callback completion values
+
+The global `callback` is `Effect.callback`, including in a direct call. Complete it with `resume(succeed(value))`, `resume(fail(error))` or `resume(exit)`. Return a cleanup Effect, such as `sync(cleanup)`, for interruption.
+
+Code using the older `resume(value)`, `resume.fail(error)`, `resume.exit(exit)`, explicit input arguments or cleanup functions can keep the legacy adapter with `import { callback } from "vibelang-runtime"` while migrating. That import keeps the adapter's existing type and behavior.

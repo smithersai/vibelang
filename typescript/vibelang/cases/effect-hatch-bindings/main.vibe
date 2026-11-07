@@ -8,6 +8,6 @@ export effect function main() {
   const viaSync = try f(() => input + 1)
   const viaCallback = try g<number>((resume) => resume(Effect.succeed(input + 2)))
   const directSync = try sync(() => input + 3)
-  const directCallback = try callback<number>((resume) => resume(input + 4))
+  const directCallback = try callback<number>((resume) => resume(succeed(input + 4)))
   return [f === Effect.sync, g === Effect.callback, n === Effect.never, viaSync, viaCallback, directSync, directCallback]
 }

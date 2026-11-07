@@ -1,3 +1,4 @@
+import { callback } from "vibelang-runtime"
 import { schedule } from "./timers.js"
 import { Effect, Fiber } from "effect"
 

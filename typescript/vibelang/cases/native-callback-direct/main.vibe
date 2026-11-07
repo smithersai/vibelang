@@ -1,0 +1,21 @@
+// expect-result: [7,"failed",9,true,true]
+error Failed
+
+effect function fromCallback() {
+  return try callback<number>((resume) => resume(succeed(7)))
+}
+
+effect function failure() {
+  return try callback<number, Failed>((resume) => resume(fail(new Failed())))
+}
+
+export effect function main() {
+  const value = try fromCallback()
+  const recovered = failure() catch () => "failed"
+  const exited = try callback<number>((resume) => resume(Exit.succeed(9)))
+  const registration = (resume: (program: number!!) => void) => resume(succeed(11))
+  const held = callback
+  const registered = try callback<number>(registration)
+  const indirect = try held<number>(registration)
+  return [value, recovered, exited, registered === indirect, callback === Effect.callback]
+}
