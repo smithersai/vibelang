@@ -1,8 +1,8 @@
 // expect: EK2109
 // EK2109: a function type has no schema form.
 schema Run = () => void
-// EK2109: Date is a class, not a schema.
-schema When = Date
+// EK2109: ArrayBuffer is a class, not a schema.
+schema When = ArrayBuffer
 // EK2109: a generic type other than an array or a record.
 schema Parts = Partial<{ readonly a: string }>
 // EK2109: one member of a union.

@@ -2408,5 +2408,25 @@
       "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md#assignability: accepted throws contracts attach to call signatures, and the assignability rule applies wherever TypeScript checks one call signature against another, class overrides included. This instantiates that existing rule; it introduces no new rejection policy."
     },
     "reason": "Each rejected field overrides a base class member whose function type admits only never with a function that may throw. Choosing a catching wrapper or a base member type that admits the throw requires author intent; a mechanical rewrite must not change when or whether the override's exception surfaces."
+  },
+  {
+    "code": "EK2109",
+    "case": "typescript/vibelang/cases/decl-schema-alias.fail",
+    "vip": "VIP-44",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0044-durable-values.md#schema-mapping: accepted VIP-44 maps the TypeScript-library Date to Schema.Date. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case's class-without-a-schema example changes from Date, which VIP-44 now maps, to ArrayBuffer, which still has no schema form. It rejects no new form and keeps the same diagnostics at the same positions."
+  },
+  {
+    "code": "EK2109",
+    "case": "typescript/vibelang/cases/nested-schema-alias.fail",
+    "vip": "VIP-44",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0044-durable-values.md#schema-mapping: accepted VIP-44 maps the TypeScript-library Date to Schema.Date. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case's class-without-a-schema example changes from Date, which VIP-44 now maps, to ArrayBuffer, which still has no schema form. It rejects no new form and keeps the same diagnostics at the same positions."
   }
 ]

@@ -1,0 +1,5 @@
+// A local schema named Date shadows the library type: Local uses it.
+import { Schema } from "effect"
+schema Date { readonly iso: string }
+schema Local { readonly at: Date }
+export const isLocal = Schema.is(Local)

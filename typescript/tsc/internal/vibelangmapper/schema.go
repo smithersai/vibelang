@@ -180,6 +180,12 @@ func schemaKeyEffectFrame(node *ast.Node, lexical bool) *ast.Node {
 // Unsupported forms and undecidable names are diagnosed at their source span.
 func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 	for _, reference := range p.file.VibeLangSchemaGenerics {
+		if reference.Expression == node && reference.Library != nil && p.libraryReference(reference) {
+			return p.schemaExpression(reference.Library, schema)
+		}
+		if reference.Expression == node && reference.Library != nil && reference.Arity == 0 {
+			break // a shadowing declaration keeps the written name
+		}
 		if reference.Expression == node && !reference.Legacy {
 			p.schemaDiagnostic(node, "This generic schema needs project type bindings; compile it with vibelang.")
 			return schema + ".Unknown"
@@ -231,7 +237,32 @@ func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 // whose schema nature requires type information unavailable to the projector.
 func (p *projector) checkSchemaName(node *ast.Node) {
 	name := p.text[p.tokenStart(node):node.End()]
-	known, found := false, false
+	if known, _ := p.schemaNameBinding(node, name); !known {
+		p.schemaDiagnostic(node, "Cannot establish that "+name+" is a schema (EK2109); provide a schema annotation or an explicit Schema value.")
+	}
+}
+
+// libraryReference reports whether reference spells a VIP-44 library type
+// that no lexical declaration shadows; the projector has no type bindings.
+func (p *projector) libraryReference(reference ast.SchemaGenericReference) bool {
+	if !ast.IsIdentifier(reference.Name) {
+		return false
+	}
+	name := reference.Name.Text()
+	switch {
+	case reference.Arity == 0:
+	case reference.Arity == 1 && name == "ReadonlySet":
+	case reference.Arity == 2 && name == "ReadonlyMap":
+	default:
+		return false
+	}
+	_, found := p.schemaNameBinding(reference.Expression, name)
+	return !found
+}
+
+// schemaNameBinding finds the lexical declaration of name around node:
+// found when one exists, known when it is evidently a schema value.
+func (p *projector) schemaNameBinding(node *ast.Node, name string) (known, found bool) {
 	// Search lexical scopes from the field outward; a declaration in an
 	// unrelated block cannot establish the value of this reference.
 	for scope := node.Parent; scope != nil && !found; scope = scope.Parent {
@@ -273,9 +304,7 @@ func (p *projector) checkSchemaName(node *ast.Node) {
 		}
 		scope.ForEachChild(visit)
 	}
-	if !known {
-		p.schemaDiagnostic(node, "Cannot establish that "+name+" is a schema (EK2109); provide a schema annotation or an explicit Schema value.")
-	}
+	return known, found
 }
 
 // annotatedSchemaValue accepts a written schema contract, leaving TypeScript

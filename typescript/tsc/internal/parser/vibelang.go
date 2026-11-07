@@ -1509,6 +1509,9 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 		}
 		switch {
 		case len(arguments) == 0:
+			if ast.IsIdentifier(name) && vibelangSchemaLibraryTypes[name.Text()] {
+				return p.vibelangLibrarySchemaReference(name)
+			}
 			return p.vibelangEntityExpression(name)
 		case ast.IsIdentifier(name) && (name.Text() == "Array" || name.Text() == "ReadonlyArray") && len(arguments) == 1:
 			value := p.vibelangSchemaCall("Array", name.Loc, p.vibelangSchemaOf(arguments[0]))
@@ -1527,6 +1530,10 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 	}
 	return p.vibelangUnsupportedSchema(typeNode.Loc)
 }
+
+// vibelangSchemaLibraryTypes are the TypeScript-library types without type
+// arguments that have a Schema of the same name (VIP-44).
+var vibelangSchemaLibraryTypes = map[string]bool{"Date": true, "URL": true, "RegExp": true, "Uint8Array": true}
 
 // vibelangSchemaKeywords names the schema of each primitive keyword type
 // (VIP-15). unknown, any, never, object and void are not primitives, so they

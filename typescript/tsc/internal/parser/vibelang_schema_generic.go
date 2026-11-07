@@ -12,6 +12,7 @@ func (p *Parser) vibelangArraySchemaReference(name, value, visible *ast.Node, mu
 	}
 	readonly := p.vibelangSchemaCall("Array", name.Loc, argument)
 	mutableValue := p.vibelangSchemaCall("mutable", name.Loc, p.vibelangSchemaCall("Array", name.Loc, argument))
+	set := p.vibelangSchemaCall("ReadonlySet", name.Loc, argument)
 	link := func(root *ast.Node) {
 		var visit func(*ast.Node, *ast.Node)
 		visit = func(node, parent *ast.Node) {
@@ -25,6 +26,7 @@ func (p *Parser) vibelangArraySchemaReference(name, value, visible *ast.Node, mu
 	}
 	link(readonly)
 	link(mutableValue)
+	link(set)
 	// Codec construction reparents its arguments. Restore the visible tree
 	// before the binder sees it; detached alternatives share only the argument.
 	ast.SetParentInChildren(visible)
@@ -32,7 +34,7 @@ func (p *Parser) vibelangArraySchemaReference(name, value, visible *ast.Node, mu
 	clonedName.Parent.Parent = visible
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
 		Arity: 1, Name: clonedName, Expression: visible, MutableArray: mutableValue, ReadonlyArray: readonly,
-		DefaultMutable: mutable, Legacy: legacy,
+		Library: set, DefaultMutable: mutable, Legacy: legacy,
 	})
 	return visible
 }
@@ -61,18 +63,48 @@ func (p *Parser) attachVibeLangSchemaGenericScopes(file *ast.SourceFile) {
 		if ref.ReadonlyArray != nil && ref.ReadonlyArray != ref.Expression {
 			ref.ReadonlyArray.Parent = scope
 		}
+		if ref.Library != nil && ref.Library != ref.Expression {
+			ref.Library.Parent = scope
+		}
 	}
 }
 
 // A two-argument candidate is a Record only when its source name resolves to
 // the library's type alias. Unknown spellings have no previous codec to keep.
 func (p *Parser) vibelangRecordSchemaReference(name, value *ast.Node, legacy bool) *ast.Node {
+	key, mapped := value.Arguments()[0], value.Arguments()[1].Arguments()[0]
+	library := p.vibelangSchemaCall("ReadonlyMap", name.Loc, key, mapped)
+	var link func(*ast.Node, *ast.Node)
+	link = func(node, parent *ast.Node) {
+		if node == key || node == mapped {
+			return
+		}
+		node.Parent = parent
+		node.ForEachChild(func(child *ast.Node) bool { link(child, node); return false })
+	}
+	link(library, value)
+	ast.SetParentInChildren(value)
 	clonedName := p.vibelangSchemaGenericName(name)
 	clonedName.Parent.Parent = value
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
-		Arity: 2, Name: clonedName, Expression: value, Legacy: legacy,
+		Arity: 2, Name: clonedName, Expression: value, Library: library, Legacy: legacy,
 	})
 	return value
+}
+
+// vibelangLibrarySchemaReference keeps the written name as the visible codec,
+// the value a Schema of that name would be, and Schema.Date and so on as the
+// codec the checker selects when the name's type binding is the TypeScript
+// library's (VIP-44). A shadowing declaration keeps the written value.
+func (p *Parser) vibelangLibrarySchemaReference(name *ast.Node) *ast.Node {
+	library := p.vibelangSchemaMember(nil, name.Text(), p.vibelangCalleeAnchor(name.Loc))
+	ast.SetParentInChildren(library)
+	clonedName := p.vibelangSchemaGenericName(name)
+	clonedName.Parent.Parent = name
+	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
+		Arity: 0, Name: clonedName, Expression: name, Library: library,
+	})
+	return name
 }
 
 // A detached name still has ordinary type-reference context for editor

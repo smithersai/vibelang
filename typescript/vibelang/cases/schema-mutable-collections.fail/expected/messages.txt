@@ -1,0 +1,2 @@
+Effect has no mutable Set schema. Write ReadonlySet, which maps to Schema.ReadonlySet.
+Effect has no mutable Map schema. Write ReadonlyMap, which maps to Schema.ReadonlyMap.

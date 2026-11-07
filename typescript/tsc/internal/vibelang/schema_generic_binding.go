@@ -14,8 +14,16 @@ type schemaGenericState struct {
 
 func init() {
 	checker.RegisterCallExpressionTypeHook(schemaGenericCallType)
+	checker.RegisterExpressionTypeHook(schemaLibraryNameType)
 	fileChecks = append(fileChecks, checkSchemaGenericReferences)
 }
+
+// The library kinds a schema reference can select (VIP-44).
+const (
+	schemaLibrarySet   = 5
+	schemaLibraryMap   = 6
+	schemaLibraryValue = 7
+)
 
 func schemaGenericReferences(c *checker.Checker, file *ast.SourceFile) map[*ast.Node]*ast.SchemaGenericReference {
 	state := c.ExtensionState(schemaGenericStateKey{}, func() any {
@@ -44,6 +52,12 @@ func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int 
 	if !isGlobal(c, symbol) {
 		return 0
 	}
+	if ref.Arity == 0 {
+		if ref.Library != nil && ast.IsIdentifier(ref.Name) && symbol.Name() == ref.Name.Text() {
+			return schemaLibraryValue
+		}
+		return 0
+	}
 	if ref.InnerName != nil {
 		inner := c.ResolveEntityName(ref.InnerName, ast.SymbolFlagsType)
 		if !isGlobal(c, inner) || inner.Name() != "Record" {
@@ -66,11 +80,22 @@ func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int 
 		if ref.Arity == 2 {
 			return 3
 		}
+	case "ReadonlySet":
+		if ref.Arity == 1 && ref.Library != nil {
+			return schemaLibrarySet
+		}
+	case "ReadonlyMap":
+		if ref.Arity == 2 && ref.Library != nil {
+			return schemaLibraryMap
+		}
 	}
 	return 0
 }
 
 func schemaGenericReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
+	if ast.IsIdentifier(node) {
+		return schemaLibraryNameReplacement(c, node)
+	}
 	if !ast.IsCallExpression(node) || node.Expression().Flags&ast.NodeFlagsReparsed == 0 {
 		return nil
 	}
@@ -106,8 +131,41 @@ func schemaGenericReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
 		if ref.DefaultMutable {
 			return ref.ReadonlyArray
 		}
+	case schemaLibrarySet, schemaLibraryMap:
+		return ref.Library
 	}
 	return nil
+}
+
+// schemaLibraryNameReplacement returns Schema.Date for a schema field's Date
+// whose type binding is the TypeScript library's, and nil for any other name.
+// Only a field codec's own position can hold one, so other names return fast.
+func schemaLibraryNameReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
+	parent := node.Parent
+	if parent == nil || !(ast.IsPropertyAssignment(parent) || ast.IsCallExpression(parent) || ast.IsArrayLiteralExpression(parent) || ast.IsVariableDeclaration(parent)) {
+		return nil
+	}
+	file := ast.GetSourceFileOfNode(node)
+	if file == nil || len(file.VibeLangSchemaGenerics) == 0 {
+		return nil
+	}
+	ref := schemaGenericReferences(c, file)[node]
+	if ref == nil || ref.Arity != 0 || schemaGenericKind(c, ref) != schemaLibraryValue {
+		return nil
+	}
+	return ref.Library
+}
+
+// schemaLibraryNameType gives a selected library name its Schema's type, as
+// schemaGenericCallType does for a generic call's replacement.
+func schemaLibraryNameType(c *checker.Checker, node *ast.Node, t *checker.Type) *checker.Type {
+	if !ast.IsIdentifier(node) {
+		return t
+	}
+	if replacement := schemaLibraryNameReplacement(c, node); replacement != nil {
+		return c.GetTypeAtLocation(replacement)
+	}
+	return t
 }
 
 func schemaGenericCallType(c *checker.Checker, node *ast.Node, t *checker.Type) *checker.Type {
@@ -123,6 +181,9 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 	}
 	for i := range file.VibeLangSchemaGenerics {
 		ref := &file.VibeLangSchemaGenerics[i]
+		if ref.Arity == 0 {
+			continue // the written name's ordinary Schema-value check applies
+		}
 		if ast.GetSourceFileOfNode(ref.Name) == file && schemaGenericKind(c, ref) == 0 {
 			names := []*ast.Node{ref.Name}
 			if ref.InnerName != nil {
@@ -139,10 +200,32 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 			for _, name := range names {
 				span := core.NewTextRange(scanner.SkipTrivia(file.Text(), name.Pos()), name.End())
 				d := reportAt(c, file, span, EK2109.With("This generic type does not name a mapped TypeScript-library schema type."))
+				if mutable := schemaMutableCollection(c, ref); mutable != "" {
+					note(d, "Effect has no mutable "+mutable+" schema. Write Readonly"+mutable+", which maps to Schema.Readonly"+mutable+".")
+				}
 				note(d, "Name a schema value without type arguments, or write the decoder with explicit Effect Schema codecs.")
 			}
 		}
 	}
+}
+
+// schemaMutableCollection returns "Set" or "Map" when ref names the library's
+// mutable collection, which VIP-44 leaves without a schema.
+func schemaMutableCollection(c *checker.Checker, ref *ast.SchemaGenericReference) string {
+	if ref.InnerName != nil {
+		return ""
+	}
+	symbol := c.ResolveEntityName(ref.Name, ast.SymbolFlagsType)
+	if !isGlobal(c, symbol) {
+		return ""
+	}
+	switch {
+	case symbol.Name() == "Set" && ref.Arity == 1:
+		return "Set"
+	case symbol.Name() == "Map" && ref.Arity == 2:
+		return "Map"
+	}
+	return ""
 }
 
 // A normalizer writes canonical names. Their source bindings must denote the

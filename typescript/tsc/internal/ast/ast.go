@@ -2381,6 +2381,9 @@ type SchemaOptionalReference struct {
 // SchemaGenericReference retains candidate codecs until the checker resolves
 // a mapped generic's TypeScript type binding (VIP-15, detail 286).
 type SchemaGenericReference struct {
+	// Library is the Schema a TypeScript-library type maps to (VIP-44):
+	// Schema.Date for Date, Schema.ReadonlySet(S) for ReadonlySet<T>.
+	Library        *Node
 	RestArray      bool
 	Arity          int
 	InnerName      *Node

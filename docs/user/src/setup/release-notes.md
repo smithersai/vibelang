@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `.vibe` class constructor calling `super(...)` on a `.ts` base class whose constructor declares `@throws {RangeError}` was accepted, so constructing the class could throw from synchronous VibeLang code. The call is now `EK0401`, as any other call known to throw in a constructor.
 
+- A `schema` field typed `Date`, `URL`, `RegExp`, `Uint8Array`, `ReadonlySet<T>` or `ReadonlyMap<K, V>` reported `EK2109`. These TypeScript-library types now map to Effect's `Schema.Date`, `Schema.URL`, `Schema.RegExp`, `Schema.Uint8Array`, `Schema.ReadonlySet` and `Schema.ReadonlyMap`. `Set` and `Map` still report `EK2109`, now with a note that names the read-only form.
+
 - The TypeScript content mapper ran Effects returned by plain `catch` handlers too early. It now returns those Effects as data until an explicit `try` runs them.
 
 - The TypeScript content mapper could leave a stored Effect unrun in a `catch` expression. It now runs the operand once and handles its failure.

@@ -1,0 +1,4 @@
+// expect: EK2109 EK2109
+// VIP-44: Effect has no mutable Set or Map schema, so Set<T> and Map<K, V>
+// keep EK2109, with a note that names the read-only form.
+schema Tags { readonly tags: Set<string>; readonly counts: Map<string, number> }

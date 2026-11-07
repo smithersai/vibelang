@@ -265,6 +265,10 @@ A `schema` declaration retains the runtime `Schema` dependency used by its gener
 
 For an older function-local or namespace `schema` alias, unsupported named, optional or rest tuples used to become `Schema.Unknown`. The explicit compatibility upgrade `vibelang --fix --fix-migration-only` writes that old codec at the affected tuple position, retaining enclosing array or union mappings. Ordinary `--fix` keeps valid new tuple schemas. Module-level aliases and struct fields keep their existing tuple behavior.
 
+## Dates, URLs, bytes and read-only collections
+
+A `schema` field typed with the TypeScript library's `Date`, `URL`, `RegExp` or `Uint8Array` maps to `Schema.Date`, `Schema.URL`, `Schema.RegExp` or `Schema.Uint8Array`. `ReadonlySet<T>` maps to `Schema.ReadonlySet(S)` and `ReadonlyMap<K, V>` to `Schema.ReadonlyMap(K, V)`, with each type argument mapped as usual. The names mean the library's types, found by ordinary type lookup: a local `schema Date { … }` keeps its own Schema, and a local type-only declaration of the name supplies none, which reports `EK2109`. Effect has no mutable `Set` or `Map` schema, so `Set<T>` and `Map<K, V>` report `EK2109` with a note that names the read-only form. A field typed `Error` still reports `EK2109`.
+
 Schema aliases use the same mappings inside functions and namespaces. An unsupported type or a reference without a Schema value reports `EK2109` there too; for example, write `Schema.Unknown` instead of `unknown`.
 
 Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Their first quick fix, also used by `vibelang --fix`, writes `Schema.Unknown` to preserve the codec and decoded type. The keyword’s explicit schema remains a separate editor action; module-level aliases and struct fields keep their existing suggestions.

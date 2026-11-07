@@ -1,7 +1,7 @@
 // expect: EK2109 EK1505
 schema Event {
-  // EK2109: Date is a class, not a schema.
-  readonly when: Date
+  // EK2109: ArrayBuffer is a class, not a schema.
+  readonly when: ArrayBuffer
   // EK1505: a method is not a field.
   run(): void
   // EK2109: a generic type other than an array or a record.

@@ -1023,11 +1023,11 @@ func TestSchemaDiagnostics(t *testing.T) {
 	assert.Equal(t, unsupported.Diagnostics[1].Code, int32(2109))
 
 	for _, source := range []string{
-		"schema Event { when: Date; run(): void; parts: Partial<{ a: string }> }",
+		"schema Event { when: ArrayBuffer; run(): void; parts: Partial<{ a: string }> }",
 		"type Alias = string; schema Event { value: Alias }",
 		"import type { Remote } from './remote'; schema Event { value: Remote }",
 		"schema Run = () => void",
-		"schema When = Date",
+		"schema When = ArrayBuffer",
 	} {
 		projection := Project(source, testContext)
 		assert.Assert(t, len(projection.Diagnostics) > 0, source)

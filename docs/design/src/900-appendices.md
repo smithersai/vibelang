@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1032 records)</summary>
+<summary>Parser and lowering hooks (1033 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1840,6 +1840,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_data.go:dataPayloadTypeScript ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration `, ` 006-data.md ` | ` support ` | VIP-16: TaggedEnum owns variant-field readonlyness; nested payload types preserve written TypeScript mutability |
 | ` parser/vibelang_schema_generic.go:Parser.attachVibeLangSchemaGenericScopes ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` support ` | VIP-15: mapped Array/ReadonlyArray/Record/Readonly references preserve resolved library bindings, codec flags and ordinary shadowing |
 | ` parser/vibelang_schema_generic.go:Parser.vibelangArraySchemaReference ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` support ` | VIP-15: mapped Array/ReadonlyArray/Record/Readonly references preserve resolved library bindings, codec flags and ordinary shadowing |
+| ` parser/vibelang_schema_generic.go:Parser.vibelangLibrarySchemaReference ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` support ` | VIP-44: library Date, URL, RegExp and Uint8Array keep their written name until the checker selects their Schema |
 | ` parser/vibelang_schema_generic.go:Parser.vibelangReadonlyRecordReference ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` support ` | VIP-15: mapped Array/ReadonlyArray/Record/Readonly references preserve resolved library bindings, codec flags and ordinary shadowing |
 | ` parser/vibelang_schema_generic.go:Parser.vibelangRecordSchemaReference ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` support ` | VIP-15: mapped Array/ReadonlyArray/Record/Readonly references preserve resolved library bindings, codec flags and ordinary shadowing |
 | ` parser/vibelang_schema_generic.go:Parser.vibelangSchemaGenericName ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` support ` | VIP-15: mapped Array/ReadonlyArray/Record/Readonly references preserve resolved library bindings, codec flags and ordinary shadowing |

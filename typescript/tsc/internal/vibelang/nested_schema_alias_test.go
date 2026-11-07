@@ -10,7 +10,7 @@ import (
 )
 
 func TestNestedSchemaAliasesCheckTypes(t *testing.T) {
-	source := "namespace Models { export schema Bad = unknown }\nfunction local() { schema Bad = Date; return Bad }\n"
+	source := "namespace Models { export schema Bad = unknown }\nfunction local() { schema Bad = Set<string>; return Bad }\n"
 	program, file, _, _ := editorProgram(t, source)
 	count := 0
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {

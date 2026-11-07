@@ -1,0 +1,29 @@
+// expect-result: [true,false,false,false,false,false,false,true,true,[true,false]]
+// VIP-44 amends the schema mapping: the TypeScript-library Date, URL, RegExp,
+// Uint8Array, ReadonlySet<T> and ReadonlyMap<K, V> map to Effect's Schema.Date,
+// Schema.URL, Schema.RegExp, Schema.Uint8Array, Schema.ReadonlySet and
+// Schema.ReadonlyMap. A local declaration of the same name keeps its own Schema.
+import { Schema } from "effect"
+import { isLocal } from "./shadow.js"
+schema Order {
+  readonly id: string
+  readonly at: Date
+  readonly site: URL
+  readonly pattern: RegExp
+  readonly bytes: Uint8Array
+  readonly tags: ReadonlySet<string>
+  readonly counts: ReadonlyMap<string, number>
+}
+schema Writable { at: Date; tags: ReadonlySet<number>; site?: URL; stamps: Date[] }
+export effect function main() {
+  const is = Schema.is(Order)
+  const good = { id: "a", at: new Date(0), site: new URL("https://x.dev/a"), pattern: /a.b/gi, bytes: new Uint8Array([1, 2]), tags: new Set(["x"]), counts: new Map([["a", 1]]) }
+  const w: Writable = { at: new Date(0), tags: new Set([1]), stamps: [new Date(0)] }
+  w.at = new Date(1)
+  return [
+    is(good), is({ ...good, at: "1970-01-01T00:00:00.000Z" }), is({ ...good, site: "https://x.dev/a" }), is({ ...good, pattern: "a.b" }),
+    is({ ...good, bytes: [1, 2] }), is({ ...good, tags: ["x"] }), is({ ...good, counts: new Map([["a", "1"]]) }),
+    Schema.is(Writable)(w), Schema.is(Writable)({ at: new Date(0), tags: new Set([2]), site: new URL("https://x.dev"), stamps: [] }),
+    [isLocal({ at: { iso: "x" } }), isLocal({ at: new Date(0) })]
+  ]
+}
