@@ -683,3 +683,14 @@ reports only `TS2339`. A non-null assertion inside the head, as in
 the family. A nested plain callable resets the context, as do plain code
 and a member name such as `new x.join`, and these remain ordinary
 identifiers. The compiler is unchanged and the witnesses remain pending.
+
+The `admission:schema-signature-parameter-modifier` family also covers an
+`async` parameter modifier and a modifier before a binding pattern or rest
+parameter, as TypeScript's `canFollowModifier` reads them.
+`schema S = { (async {p}: Missing): Missing }` reports only `EK2109`; its
+`type` twin reports `TS1090`. `async` must share the line with what follows,
+as TypeScript requires. A parameter named `async`, as in `(async: T)`,
+`(async, b)` or `(async?: T)`, is not a modifier. `(static {p})` and
+`(public ...p)` were keyed as reserved bindings; they now key as parameter
+modifiers. `(static: T)` and `(...static: T[])` remain reserved bindings.
+The compiler is unchanged and the witnesses remain pending.

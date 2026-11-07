@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-signature-async-parameter\nschema S = { ( async { p : static } : Missing ) : Missing }")
