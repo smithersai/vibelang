@@ -1,10 +1,11 @@
 import { missingSourceWatcher } from "./missing-watcher.js"
+import { jsxConfigReader } from "./jsx-config.js"
 import { extensionlessImport, missingRelativeInputs } from "./relative-imports.js"
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { createUnplugin } from "unplugin"
 import { isVibeLangFile } from "./vibe-directive.js"
 
@@ -280,15 +281,40 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     return written
   }
 
+  let jsxReader
+  const jsxImports = new Map()
+  function competingJsxSource(path, importer) {
+    const file = cleanId(importer)
+    const selected = current?.projectOf?.(file) ?? backend.nearestProject(file) ?? project
+    const text = readFileSync(file, "utf8")
+    let entry = jsxImports.get(file)
+    if (entry?.project !== selected || entry.text !== text) {
+      const result = backend.projectImports({ project: selected, compiler: compilerPath() })
+      const canonical = path => { try { return realpathSync(path) } catch { return resolve(path) } }
+      entry = { project: selected, text, imports: result.imports.filter(item => canonical(item.importer) === canonical(file)) }
+      jsxImports.set(file, entry)
+    }
+    // A written JavaScript import keeps the compiler's source priority.
+    // An explicit source import instead names its rewritten output.
+    const exact = entry.imports.find(item => cleanId(item.specifier) === path)
+    const rewritten = entry.imports.find(item => {
+      const specifier = cleanId(item.specifier)
+      return /\.(?:vibex?|tsx?)$/.test(specifier) &&
+        resolve(dirname(file), specifier.replace(/\.(?:vibex?|tsx?)$/, "")) === resolve(dirname(file), path.replace(/\.jsx?$/, ""))
+    })
+    return (exact ?? rewritten)?.file
+  }
   function close() {
     writtenImports.clear()
+    jsxImports.clear()
+    const jsxClosing = jsxReader?.close()
     const pending = modules
     modules = undefined
     current = undefined
     const work = Promise.resolve(closing).then(async () => {
       // A backend that failed to load failed its build already; it has nothing to close.
       const projects = await pending?.catch(() => undefined)
-      await projects?.close()
+      await Promise.all([projects?.close(), jsxClosing])
     })
     closing = work
     return work
@@ -325,19 +351,27 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     const target = resolve(base, path)
     if (path !== original && existsSync(target)) return target + query
     // Resolve .vibe here too, so esbuild loads every .vibe module in one namespace.
-    if (path.endsWith(".vibe")) return existsSync(target) ? target + query : undefined
+    if (/\.vibex?$/.test(path)) return existsSync(target) ? target + query : undefined
     // TypeScript resolves `./x` to `x.vibe` when there is no `x.ts` or `x.tsx`.
     const vibe = importer ? extensionlessVibe(base, path) : undefined
     if (vibe !== undefined) return vibe + query
     // vibelang rewrites `./x.vibe` and `./x.ts` imports to `./x.js`. Map them back to the source.
-    if (!importer || !path.endsWith(".js") || existsSync(target)) return
+    if (!importer || !/\.jsx?$/.test(path) || existsSync(target)) return
     if (isModuleOutput(target)) return target + query
-    const stem = target.slice(0, -3)
+    const stem = target.replace(/\.jsx?$/, "")
+    if (existsSync(stem + ".vibex") && [".ts", ".tsx", ".vibe"].some(extension => existsSync(stem + extension))) {
+      const selected = isCompiled(importer) ? competingJsxSource(path, importer) : undefined
+      if (selected && /\.vibex?$/.test(selected)) return selected + query
+      // Keep ordinary TypeScript in the host's native namespace.
+      if (meta.framework === "esbuild" || meta.framework === "bun") return
+      if (selected) return selected + query
+      return
+    }
     // Only a compiled module has rewritten .ts imports. esbuild maps those itself,
     // and a plugin result would load the .ts file in the vibelang namespace.
     // Bun also maps these itself; its hook serves only .vibe and module outputs.
-    const sources = isCompiled(importer) && meta.framework !== "esbuild" && meta.framework !== "bun"
-      ? [".vibe", ".ts", ".tsx"] : [".vibe"]
+    const sources = path.endsWith(".jsx") ? [".vibex"] : isCompiled(importer) && meta.framework !== "esbuild" && meta.framework !== "bun"
+      ? [".vibe", ".vibex", ".ts", ".tsx"] : [".vibe", ".vibex"]
     for (const extension of sources) if (existsSync(stem + extension)) return stem + extension + query
   }
 
@@ -350,6 +384,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       watchClosed = false
       missingWatcher?.begin()
       ;(await loaded()).invalidate()
+      if (meta.framework === "esbuild") jsxReader = jsxConfigReader({ compiler: compilerPath(), compilerCommand: backend.compilerCommand, debug })
       debug(`build ${++buildNumber} start`)
     },
     closeBundle: close,
@@ -487,7 +522,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       onResolveFilter: /a^/,
       setup(build) {
         build.onDispose?.(close)
-        build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibe(?:\?.*)?$/ }, (args) => {
+        build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibex?(?:\?.*)?$/ }, (args) => {
           const id = resolveFrom(args.path, args.kind === "entry-point" ? undefined : args.importer, args.resolveDir)
           if (id === undefined) {
             const path = outputPath(args.path, args.importer, writtenOutput)
@@ -501,7 +536,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           const sideEffects = sideEffectsOf(cleanId(id))
           return { path: id, namespace: "vibelang", ...(sideEffects === undefined ? {} : { sideEffects }) }
         })
-        build.onLoad({ filter: /\.(?:vibe(?:\.[^./\\]+\.js)?|tsx?|[cm]ts)(?:\?.*)?$/ }, async ({ path }) => {
+        build.onLoad({ filter: /\.(?:vibex?(?:\.[^./\\]+\.js)?|tsx?|[cm]ts)(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
           const { project, code, map, inputs, errors, warnings, error } = await loadModule(path)
           const messages = []
@@ -512,13 +547,30 @@ export const unplugin = createUnplugin((options = {}, meta) => {
             })
           }
           if (error) messages.push({ text: error.message })
+          // Inline source-map sources are URLs. Keep percent signs literal
+          // when esbuild resolves and combines this map with its JSX output.
+          const outputMap = map && cleanId(path).endsWith(".vibex")
+            ? { ...map, sources: map.sources.map(source => isAbsolute(source) ? pathToFileURL(source).href : source) }
+            : map
+          let contents = outputMap
+            ? `${code}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(JSON.stringify(outputMap)).toString("base64")}`
+            : code
+          let jsxWarnings = []
+          if (cleanId(path).endsWith(".vibex") && !messages.length) {
+            const transformed = await build.esbuild.transform(contents, {
+              loader: "jsx", sourcefile: cleanId(path), sourcemap: "inline",
+              tsconfigRaw: await jsxReader.read(project),
+              ...Object.fromEntries(["jsx", "jsxFactory", "jsxFragment", "jsxImportSource", "jsxDev", "jsxSideEffects"].filter(key => build.initialOptions[key] !== undefined).map(key => [key, build.initialOptions[key]]))
+            })
+            contents = transformed.code
+            jsxWarnings = transformed.warnings
+          }
           return {
-            contents: map
-              ? `${code}\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(JSON.stringify(map)).toString("base64")}`
-              : code,
-            loader: "js", resolveDir: dirname(path), watchFiles: [project, ...inputs],
+            contents,
+            loader: cleanId(path).endsWith(".vibex") ? "jsx" : "js", resolveDir: dirname(path), watchFiles: [project, ...inputs],
             errors: messages,
-            warnings: !errors.length ? await Promise.all(warnings.map((warning) => esbuildMessage(backend.formatDiagnostic, warning))) : []
+            warnings: !errors.length ? [...await Promise.all(warnings.map((warning) => esbuildMessage(backend.formatDiagnostic, warning))), ...jsxWarnings] : []
           }
         })
       }
