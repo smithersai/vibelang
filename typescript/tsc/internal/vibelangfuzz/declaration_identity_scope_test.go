@@ -9,9 +9,11 @@ import (
 
 type declarationIdentityScope struct {
 	sync.Mutex
-	ctx  context.Context
-	name string
-	pool *declarationIdentityProbePool
+	ctx   context.Context
+	name  string
+	pool  *declarationIdentityProbePool
+	stock *stockDeclarationWorker
+	tb    testing.TB
 }
 
 var declarationIdentityScopes = struct {
@@ -25,7 +27,7 @@ var declarationIdentityScopes = struct {
 // are stopped before the fuzz window starts, never charged to a later target.
 func registerDeclarationIdentityScope(tb testing.TB) {
 	name := tb.Name()
-	scope := &declarationIdentityScope{ctx: tb.Context(), name: name}
+	scope := &declarationIdentityScope{ctx: tb.Context(), name: name, tb: tb}
 	declarationIdentityScopes.Lock()
 	if _, exists := declarationIdentityScopes.fuzz[name]; exists {
 		declarationIdentityScopes.Unlock()
@@ -46,10 +48,17 @@ func (s *declarationIdentityScope) close() {
 	}
 	s.Lock()
 	p := s.pool
+	stock := s.stock
+	s.stock = nil
 	s.pool = nil
 	s.Unlock()
 	if p != nil {
 		p.Close()
+	}
+	if stock != nil {
+		if err := stock.Close(); err != nil {
+			s.tb.Errorf("stock declaration worker shutdown: %v", err)
+		}
 	}
 }
 func closeDeclarationIdentityUnitWorkers() {

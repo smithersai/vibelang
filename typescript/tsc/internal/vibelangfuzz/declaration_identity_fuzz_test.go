@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime/pprof"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -33,6 +34,7 @@ import (
 // exported names, tsc type identity and JSDoc under the shared API gate.
 func FuzzDeclarationIdentity(f *testing.F) {
 	startShortBudget(f)
+	startDeclarationCost(f)
 	tsc := StockTypeScript(f)
 	api := declarationIdentityAPI(f)
 	w := NewWorkspace(f)
@@ -41,7 +43,10 @@ func FuzzDeclarationIdentity(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, archive string) {
 		t.Parallel() // the seed corpus only; fuzzing ignores it
-		CheckDeclarationIdentity(t, w, tsc, api, archive)
+		pprof.Do(t.Context(), pprof.Labels("input", SeedName(archive)), func(ctx context.Context) {
+			pprof.SetGoroutineLabels(ctx)
+			CheckDeclarationIdentity(t, w, tsc, api, archive)
+		})
 	})
 }
 
@@ -228,14 +233,19 @@ func CheckDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive string, probe declarationIdentityProbe) {
 	const target = "FuzzDeclarationIdentity"
 	defer recoverCompilerPanic(t, target)
+	cost := newDeclarationCost(t, archive)
+	defer cost.finish()
 	c, stock := compileDeclarationIdentity(t, w, archive)
+	cost.stage("compile")
 	defer c.Remove()
 	dir := emitDeclarationIdentityStock(t, w, tsc, stock) // skips a program stock tsc rejects
 	defer os.RemoveAll(dir)
+	cost.stage("stock")
 
 	preflight, cancelPreflight := context.WithTimeout(t.Context(), 2*HangLimit)
 	reason, preflightErr := declarationIdentitySuppressedStockAPI(preflight, api, dir, stock)
 	cancelPreflight()
+	cost.stage("preflight")
 	if preflightErr != nil {
 		t.Fatal(preflightErr)
 	}
@@ -272,6 +282,7 @@ func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 		}
 	}
 	diff, err := declarationIdentityDiff(ctx, probe, api, filepath.Join(dir, "__identity_out"), current)
+	cost.stage("identity")
 	if err != nil {
 		t.Fatalf("declaration fixture %s: %v", SeedName(archive), err)
 	}
@@ -360,16 +371,15 @@ func emitDeclarationIdentityStock(t *testing.T, w *Workspace, tsc string, stock 
 	}()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
-	cmd := stockCompile(ctx, tsc, "-p", ".", "--pretty", "false")
-	cmd.Dir = dir
-	out, runErr := cmd.CombinedOutput()
+	result, runErr := runStockDeclaration(ctx, t, tsc, dir)
+	out := result.Output
 	if ctx.Err() != nil {
 		t.Fatalf("stock declaration emit did not finish: %v", ctx.Err())
 	}
-	if exit, ok := runErr.(*exec.ExitError); runErr != nil && (!ok || exit.ExitCode() != 1 && exit.ExitCode() != 2) {
+	if runErr != nil {
 		t.Fatalf("stock declaration emit failed to run: %v\n%s", runErr, out)
 	}
-	if runErr != nil {
+	if result.Rejected {
 		// A crashed compiler did not check the baseline. Only a real
 		// TypeScript error makes a generated project ineligible.
 		reportedError := false
