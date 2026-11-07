@@ -267,6 +267,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-signature-reserved-binding", "schema S = { readonly; (static) }"},
 	{"schema-signature-reserved-destructure", "schema S = { ({p: static}: Missing): Missing }"},
 	{"schema-signature-reserved-rest", "schema S = { (...static: Missing[]): Missing }"},
+	{"effect-type-second-bang-line-break", "{ type T = (\nnumber ! string\n! 1 )\nboolean }"},
+	{"effect-type-second-bang-nested", "type T = [number, (number!string\n!boolean)];"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1013,6 +1015,9 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarSecondBangLineBreak(ts) {
+		return "admission:effect-type-line-break"
+	}
 	if grammarParenthesizedEffectTrailingBang(ts) || grammarAssertionEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
 	}

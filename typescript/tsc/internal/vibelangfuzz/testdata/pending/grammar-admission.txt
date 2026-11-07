@@ -89,3 +89,5 @@ FuzzGrammarAdmission admission:schema-signature-reserved-binding compiler VIP-15
 FuzzGrammarAdmission corpus:schema-signature-reserved-binding compiler VIP-15 and Appendix A: schema-alias signature mapping reports only EK2109 for a strict-mode reserved parameter binding, covering native TS1212
 FuzzGrammarAdmission corpus:schema-signature-reserved-destructure compiler VIP-15 and Appendix A: schema-alias signature mapping reports only EK2109 for a strict-mode reserved parameter binding, covering native TS1212
 FuzzGrammarAdmission corpus:schema-signature-reserved-rest compiler VIP-15 and Appendix A: schema-alias signature mapping reports only EK2109 for a strict-mode reserved parameter binding, covering native TS1212
+FuzzGrammarAdmission corpus:effect-type-second-bang-line-break compiler VIP-3 and Appendix A: a line break before the second bang in a grouped Effect type is consumed without syntax rejection
+FuzzGrammarAdmission corpus:effect-type-second-bang-nested compiler VIP-3 and Appendix A: a line break before the second bang in a grouped Effect type is consumed without syntax rejection
