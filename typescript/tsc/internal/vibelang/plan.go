@@ -16,6 +16,7 @@ type plan struct {
 	isBindingDeclarations map[*ast.Node]bool
 	isBindingReferences   map[*ast.Node]*ast.Node
 
+	patternDispatch  map[*ast.Node]string // static call or construct path for matcher helpers
 	schemaGenerics   map[*ast.Node]*ast.Node
 	collisionModules map[*ast.Node]string
 
@@ -65,6 +66,7 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 
 func newFilePlan() *plan {
 	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, servicePlan: newServicePlan(), trustedPlan: newTrustedPlan(), scopePlan: newScopePlan()}
+	p.patternDispatch = map[*ast.Node]string{}
 	p.schemaGenerics = map[*ast.Node]*ast.Node{}
 	p.parameterWrites = map[*ast.Node]bool{}
 	p.sourceTryDelegation = map[*ast.Node]bool{}
@@ -158,6 +160,16 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 		p.planAcquisitionReference(c, node)
 		p.planExhaustiveMatch(c, node) // D294 (match_lower.go)
 		p.planVariantTest(c, node)     // D307 (data_lower.go)
+		if isPatternCall(node, "$is") || isPatternCall(node, "$extract") {
+			matcherType := c.TypeOfPatternMatcher(node.Arguments()[0])
+			if matcherType != nil {
+				if len(c.GetConstructSignatures(matcherType)) > 0 {
+					p.patternDispatch[node] = "construct"
+				} else if len(c.GetCallSignatures(matcherType)) > 0 {
+					p.patternDispatch[node] = "call"
+				}
+			}
+		}
 		node.ForEachChild(visit)
 		return false
 	}

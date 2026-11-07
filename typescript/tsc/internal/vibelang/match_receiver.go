@@ -11,8 +11,10 @@ func (tx *lowering) visitPatternReceiver(node *ast.Node) *ast.Node {
 	// This private emit-only argument selects own class matcher lookup. Keep
 	// source type checking and the public runtime overloads unchanged.
 	ownClassOnly := f.NewKeywordExpression(ast.KindTrueKeyword)
+	// Signature selection belongs to the checker, not runtime prototype inspection.
+	dispatch := f.NewStringLiteral(tx.plan.patternDispatch[node], ast.TokenFlagsNone)
 	if !ast.IsPropertyAccessExpression(matcher) && !ast.IsElementAccessExpression(matcher) {
-		result := tx.runtimeCall(node.Expression().Text(), tx.visit(node.Arguments()[0]), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindNullKeyword), ownClassOnly)
+		result := tx.runtimeCall(node.Expression().Text(), tx.visit(node.Arguments()[0]), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindNullKeyword), ownClassOnly, dispatch)
 		tx.EmitContext().SetOriginal(result, node)
 		result.Loc = node.Loc
 		return result
@@ -20,7 +22,7 @@ func (tx *lowering) visitPatternReceiver(node *ast.Node) *ast.Node {
 	if matcher.Expression().Kind == ast.KindSuperKeyword {
 		// super is not a value to capture: read the member where it stands,
 		// with this as the receiver the member's own call would get.
-		result := tx.runtimeCall(node.Expression().Text(), tx.visit(matcher), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindThisKeyword), ownClassOnly)
+		result := tx.runtimeCall(node.Expression().Text(), tx.visit(matcher), tx.visit(node.Arguments()[1]), f.NewKeywordExpression(ast.KindThisKeyword), ownClassOnly, dispatch)
 		tx.EmitContext().SetOriginal(result, node)
 		result.Loc = node.Loc
 		return result
@@ -39,7 +41,7 @@ func (tx *lowering) visitPatternReceiver(node *ast.Node) *ast.Node {
 		arguments = append(arguments, tx.visit(matcher.AsElementAccessExpression().ArgumentExpression))
 		member = f.NewElementAccessExpression(receiver, nil, key, ast.NodeFlagsNone)
 	}
-	body := tx.runtimeCall(node.Expression().Text(), member, tx.visit(node.Arguments()[1]), receiver, ownClassOnly)
+	body := tx.runtimeCall(node.Expression().Text(), member, tx.visit(node.Arguments()[1]), receiver, ownClassOnly, dispatch)
 	arrow := tx.arrow(parameters, body)
 	result := f.NewCallExpression(f.NewParenthesizedExpression(arrow), nil, nil, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	tx.EmitContext().SetOriginal(result, node)

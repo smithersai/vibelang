@@ -1,0 +1,28 @@
+// expect-result: {"predicates":[true,false,true,false,true,true,true],"extracted":[7,0,7,7],"constructors":[true,false,true,false,true],"events":["boolean","boolean","boolean","boolean","boolean","boolean","boolean","extractor","extractor","extractor","extractor"]}
+// VIP-7 selects call or construct dispatch from static signatures, independent
+// of prototype members and the runtime function's source spelling.
+import { predicate, extractor, Box, BoundBox, Constructor, constructed, events, optionalPredicate } from "./matchers.js"
+const holder = { limit: 2, predicate, extractor }
+export function narrow(value: unknown) {
+  return match (value) { when predicate: value + 1; default: 0; }
+}
+export effect function main() {
+  const predicates = [
+    7 is predicate, -1 is predicate,
+    match (7) { when predicate: true; default: false; },
+    1 is holder.predicate, 7 is holder["predicate"],
+    7 is not not predicate, 7 is optionalPredicate
+  ]
+  const extracted = [
+    match (7) { when extractor(let n): n; default: 0; },
+    match (-1) { when extractor(let n): n; default: 0; },
+    match (7) { when holder.extractor(let n): n; default: 0; },
+    match (7) { when holder["extractor"](let n): n; default: 0; }
+  ]
+  const constructors = [
+    new Box() is BoundBox, {} is BoundBox,
+    constructed is Constructor, {} is Constructor,
+    match (new Box()) { when BoundBox: true; default: false; }
+  ]
+  return { predicates, extracted, constructors, events }
+}

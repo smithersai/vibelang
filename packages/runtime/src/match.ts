@@ -167,14 +167,16 @@ export function $is<C extends abstract new(...args: any) => any>(matcher: C, sub
 export function $is<S, T extends S>(matcher: (subject: S, hint: MatchHint) => subject is T, subject: unknown, receiver?: unknown): subject is T
 export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown) | RegExp, subject: unknown, receiver?: unknown): boolean
 export function $is<const T>(matcher: T, subject: unknown, receiver?: unknown): subject is T
-export function $is(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false): boolean {
+export function $is(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false, dispatch: "" | "call" | "construct" = ""): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
     const custom = matcherOf(matcher, ownClassOnly)
     if (custom !== undefined) return !!Reflect.apply(custom, matcher, [subject, { matchType: "boolean" }, receiver])
     const builtin = builtinTest(matcher, subject)
     if (builtin !== undefined) return builtin
     if (typeof matcher === "function") {
-      return isClass(matcher) ? subject instanceof (matcher as any) : !!Reflect.apply(matcher, receiver, [subject, { matchType: "boolean" }])
+      return (dispatch === "construct" || dispatch === "" && isClass(matcher))
+        ? subject instanceof (matcher as any)
+        : !!Reflect.apply(matcher, receiver, [subject, { matchType: "boolean" }])
     }
   }
   return sameValue(matcher, subject)
@@ -257,7 +259,7 @@ export function $extract<C extends abstract new(...args: any) => any>(matcher: C
 export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown, receiver?: unknown): readonly [PrimitiveForConstructor<C> | BoxForConstructor<C>] | false
 export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown, receiver?: unknown): Extracted<R> | false
 export function $extract(matcher: unknown, subject: unknown, receiver?: unknown): ReadonlyArray<any> | false
-export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false): unknown {
+export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false, dispatch: "" | "call" | "construct" = ""): unknown {
   const custom = matcherOf(matcher, ownClassOnly)
   if (custom !== undefined) return extractedList(Reflect.apply(custom, matcher, [subject, { matchType: "extractor" }, receiver]))
   if (matcher instanceof RegExp) return regExpExtract(matcher, subject)
@@ -270,7 +272,7 @@ export function $extract(matcher: unknown, subject: unknown, receiver: unknown =
       const primitive = primitiveTypes.get(matcher)
       return [primitive !== undefined && typeof subject !== primitive ? (subject as { valueOf(): unknown }).valueOf() : subject]
     }
-    if (isClass(matcher)) {
+    if (dispatch === "construct" || dispatch === "" && isClass(matcher)) {
       if (!(subject instanceof (matcher as any))) return false
       if (instanceExtractors.has(matcher)) return [subject]
       throw new TypeError("An ordinary class used as an extractor must return an object")

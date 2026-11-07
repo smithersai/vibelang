@@ -97,6 +97,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The `performance.now()` replacement hint could mix native timestamps with an injected clock's origin. It now shows elapsed time from two readings of the same clock and explains when a TypeScript adapter is needed.
 
+- Class patterns could mistake predicates with prototype members for constructors, or call bound constructors as predicates. They now follow the matcher’s call or construct signature and preserve member receivers.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
