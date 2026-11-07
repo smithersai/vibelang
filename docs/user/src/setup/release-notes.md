@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The Data guide said object patterns were still awaiting compiler support. It now describes the patterns without that outdated warning.
 - The expected-errors guide repeated its static-member restriction. It now gives the rule and all repair details together once.
 - Migration setup could omit a test package that imported a migrated module through a relative path. It now selects that package and its transitive consumers, even without a manifest dependency.
+- The error guides described working error and producer syntax as a future feature. They now describe the syntax as available.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
