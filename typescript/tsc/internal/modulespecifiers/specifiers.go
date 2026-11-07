@@ -1054,7 +1054,7 @@ func tryGetModuleNameFromExportsWorker(
 				mode = MatchingModePattern
 			}
 			result := tryGetModuleNameFromExportsOrImportsWorker(options, host, targetFileName, packageDirectory, subPackageName, subk, conditions, mode /*isImports*/, false /*preferTsExtension*/, false, allowSidecar)
-			if len(result) > 0 {
+			if len(result) > 0 && exportedSubpathSelectsKey(exports, packageName, result, k) {
 				return tspath.ToModuleSpecifier(result)
 			}
 		}
@@ -1072,6 +1072,33 @@ func tryGetModuleNameFromExportsWorker(
 		/*preferTsExtension*/ false,
 		allowSidecar,
 	))
+}
+
+// A reverse wildcard match is usable only when forward package resolution
+// selects that key. An exact or more specific entry can block or redirect it;
+// printing the wildcard anyway makes an inferred declaration unresolvable.
+func exportedSubpathSelectsKey(exports packagejson.ExportsOrImports, packageName, specifier, key string) bool {
+	subpath := "." + strings.TrimPrefix(specifier, packageName)
+	entries := exports.AsObject()
+	if !strings.HasSuffix(subpath, "/") && !strings.Contains(subpath, "*") {
+		if _, ok := entries.Get(subpath); ok {
+			return key == subpath
+		}
+	}
+	best := ""
+	for candidate := range entries.Keys() {
+		matches := false
+		if strings.Count(candidate, "*") == 1 {
+			pattern := core.TryParsePattern(candidate)
+			matches = pattern.Matches(subpath)
+		} else if strings.HasSuffix(candidate, "/") {
+			matches = strings.HasPrefix(subpath, candidate)
+		}
+		if matches && (best == "" || module.ComparePatternKeys(candidate, best) < 0) {
+			best = candidate
+		}
+	}
+	return best == key
 }
 
 func tryGetModuleNameFromPackageJsonImports(
