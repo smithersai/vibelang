@@ -154,11 +154,20 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   meta.platform = [...directives, meta.platform].join("\n")
   if (!declarations) return meta
   // Both repairs share the fresh companion. Moved declarations call its local
-  // resolver instead of importing the companion from itself.
-  return { ...declarations, importMeta: meta.importMeta,
-    platform: meta.platform + "\n" + declarations.platform.replace(meta.importText + "\n", ""),
+  // helpers instead of importing the companion from itself.
+  const companion = posix.basename(platformPath(file))
+  const self = new RegExp("^import \\{[^}\\n]*\\} from \"\\./" + escapeRegExp(companion) + "\"\\n?", "m")
+  const moved = declarations.platform.replace(self, "")
+  // A helper given import.meta.url names the module. The same call in the
+  // companion would name the companion.
+  const identity = meta.identity.find(name => new RegExp("(?<![\\w$])" + escapeRegExp(name) + "\\(").test(moved))
+  if (identity) return { refused: file + ": code that reads import.meta." + meta.members[identity] + " uses platform code, and moving it to " + companion + " would read that file's location instead" }
+  return { ...declarations, importMeta: meta.importMeta, importText: meta.importText,
+    platform: meta.platform + "\n" + moved,
     moved: [...meta.moved, ...declarations.moved] }
 }
+
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
@@ -402,7 +411,9 @@ export function splitBatchPlatform(root, files, ts, {
     const refusal = result.refused ?? (risk && !privateExports && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
     // Every module of a private package is an API entry, so a sibling adds one;
     // a VIP-40 body adds none. With moduleBodies, prefer it and keep the sibling as fallback.
-    if (!refusal && moduleBodies && owningManifest(root, file, { exists, read })?.private === true) {
+    // A body cannot hold import.meta (EK4009), so a module whose import.meta
+    // reads need the companion's helpers keeps the sibling.
+    if (!refusal && moduleBodies && !result.importText && owningManifest(root, file, { exists, read })?.private === true) {
       const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies })
       if (body && !body.refused) {
         write(file, body.module)
