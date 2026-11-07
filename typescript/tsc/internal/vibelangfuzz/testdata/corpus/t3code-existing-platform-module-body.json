@@ -1,0 +1,11 @@
+{
+  "source": "packages/provider-opencode/src/server/OpenCodeRuntime.ts",
+  "native": "import * as Effect from \"effect/Effect\";\nexport const pure = 1;\nexport const program: Effect.Effect<string> = Effect.sync(() => process.cwd());\n",
+  "sibling": "/** Existing public helper. */\nexport const legacy = 1;\n",
+  "keys": [
+    "body-existing",
+    "body-absent",
+    "sibling-existing",
+    "metadata-existing"
+  ]
+}
