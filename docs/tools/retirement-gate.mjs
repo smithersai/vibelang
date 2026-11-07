@@ -182,7 +182,8 @@ export function verifyWitness(code, witness, snapshot, root, binary, invoke = ru
   const temp = mkdtempSync(join(tmpdir(), "retirement-fix-"))
   try {
     const inputPaths = materialize(snapshot, witness.input, temp, root)
-    const outputs = snapshot.paths.filter(p => p.startsWith(witness.output + "/") && /\.(vibe|vibex|ts|tsx)$/.test(p))
+    const outputs = snapshot.paths.filter(p => p.startsWith(witness.output + "/") &&
+      !p.startsWith(witness.output + "/expected/") && /\.(vibe|vibex|ts|tsx)$/.test(p))
     if (!outputs.length) throw new Error(code + ": missing fixed source output")
     const compile = args => {
       const p = invoke(binary, ["--pretty", "false", "--noEmit", ...args], temp)
@@ -210,7 +211,8 @@ export function verifyWitness(code, witness, snapshot, root, binary, invoke = ru
       if (actual !== snapshot.read(witness.output + "/" + name)) throw new Error(code + ": unexpected fixed output for " + name)
       changed ||= actual !== snapshot.read(input)
     }
-    if (!changed || expectedNames.size) throw new Error(code + ": --fix must change exactly the witnessed sources")
+    if (!changed || expectedNames.size) throw new Error(code + ": --fix must change exactly the witnessed sources" +
+      (expectedNames.size ? ": unmatched output sources: " + [...expectedNames].sort().join(", ") : ": no source changed"))
     const clean = compile([])
     if (clean.status !== 0 || /\berror (?:EK|TS)\d+\b/.test(clean.text))
       throw new Error(code + ": fixed output fails standalone compilation: " + clean.text.slice(-1200))

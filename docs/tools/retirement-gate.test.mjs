@@ -266,3 +266,15 @@ test("a per-form error cannot hide behind a warning default or native diagnostic
     }), { seed: 48381703, numRuns: 512 })
   })
 }
+
+
+test("fixed-output declaration snapshots are metadata while authored sources remain exact", () => {
+  fc.assert(fc.property(fc.constantFrom("main.d.ts", "nested/module.d.ts", "main.d.vibe.ts"), fc.string(), (name, text) => {
+    const files = Object.fromEntries(witness.paths.map(p => [p, witness.read(p)]))
+    files[output + "/expected/" + name] = text
+    files[input + "/expected/" + name] = text
+    verifyWitness("EK7777", fixes[0].cases[0], snapshot(files), ".", process.execPath, compiler())
+    files[output + "/extra.ts"] = "export const extra = 1"
+    assert.throws(() => verifyWitness("EK7777", fixes[0].cases[0], snapshot(files), ".", process.execPath, compiler()), /exactly the witnessed sources/)
+  }), { seed: 777734, numRuns: 80 })
+})

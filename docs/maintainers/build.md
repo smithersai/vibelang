@@ -1780,6 +1780,10 @@ Register a fix in `docs/design/retirement-fixes.json`:
 ```
 
 Both directories are committed fixtures; the input includes `tsconfig.json`.
+Files under either fixture’s `expected/` directory are saved harness output,
+including declaration snapshots, rather than sources to compare or compile.
+Every authored fixed-output source must have a corresponding input source;
+unmatched sources are named in the failure diagnostic.
 Every widened failing case needs its own matching input. The runner requires
 the original error, a nonzero applied-fix count for that diagnostic, exact
 expected source output, unchanged configuration, and successful compilation

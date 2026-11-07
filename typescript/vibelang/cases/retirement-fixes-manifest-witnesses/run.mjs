@@ -36,7 +36,7 @@ try {
       const snapshot = { paths, read: p => fs.readFileSync(path.join(repo, p), "utf8") }
       witnesses++
       try { verifyWitness(entry.code, witness, snapshot, root, compiler) }
-      catch (e) { failures.push(witness.input + ": " + e.message.split("\n")[0]) }
+      catch (e) { failures.push(witness.input + ": " + e.message) }
     }
   }
 } finally { fs.rmSync(root, { recursive: true, force: true }) }
