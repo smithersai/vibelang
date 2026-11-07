@@ -115,7 +115,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **10,000** |
 | [New project](../setup/new-project.md) | 670 |
 | [Existing project](../setup/existing-project.md) | 4,400 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,100 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,200 |
 | **Build and test** | **24,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 20,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,400 |
@@ -259,7 +259,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,500 |
 | [Terminal](../platform/110-terminal.md) | 1,700 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 10,000 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 11,000 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,600 |
 | **All 101 pages** | **190,000** |
