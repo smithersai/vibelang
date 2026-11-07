@@ -274,6 +274,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fiber-primary-reference", "effect function f() { return new join.target; }"},
 	{"fiber-primary-reference-extends", "effect function f() { return class extends fork.C {}; }"},
 	{"fiber-primary-reference-spaced", "effect function f ( ) { return new join . target ; }"},
+	{"schema-signature-async-parameter", "schema S = { ( async { p : static } : Missing ) : Missing }"},
+	{"schema-signature-modifier-pattern", "schema S = { (readonly [p]: Missing): Missing }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

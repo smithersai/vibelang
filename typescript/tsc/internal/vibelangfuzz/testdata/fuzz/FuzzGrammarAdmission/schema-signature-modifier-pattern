@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-signature-modifier-pattern\nschema S = { (readonly [p]: Missing): Missing }")

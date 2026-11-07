@@ -82,6 +82,8 @@ FuzzGrammarAdmission admission:schema-async-method compiler VIP-15 and Appendix 
 FuzzGrammarAdmission corpus:schema-async-method compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for an async method signature, covering native TS1070
 FuzzGrammarAdmission admission:schema-signature-parameter-modifier compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for a call signature, covering native parameter-modifier rejection
 FuzzGrammarAdmission corpus:schema-signature-parameter-modifier compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for a call signature, covering native parameter-modifier rejection
+FuzzGrammarAdmission corpus:schema-signature-async-parameter compiler VIP-15 and Appendix A: an async parameter modifier before a binding pattern shares the EK2109 cover of native TS1090
+FuzzGrammarAdmission corpus:schema-signature-modifier-pattern compiler VIP-15 and Appendix A: a parameter modifier before a binding pattern or rest parameter shares the EK2109 cover of native modifier rejection
 FuzzGrammarAdmission corpus:schema-async-last-alias-field compiler VIP-15 and Appendix A: mapping an earlier unresolved field covers the last untyped async alias member's TS1070
 FuzzGrammarAdmission admission:schema-static-method compiler VIP-15 and Appendix A: a static schema-alias method reports only `EK2109`, covering native `TS1070`
 FuzzGrammarAdmission corpus:schema-static-method compiler VIP-15 and Appendix A: a static schema-alias method reports only `EK2109`, covering native `TS1070`

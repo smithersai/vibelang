@@ -354,8 +354,16 @@ func grammarSchemaPropertyEnd(ts []grammarToken, at int) int {
 	return at
 }
 
+// grammarParameterPatternStart reports a binding pattern or rest parameter
+// after a parameter modifier.
+func grammarParameterPatternStart(t grammarToken) bool {
+	return t.text == "{" || t.text == "[" || t.text == "..."
+}
+
 // A schema alias can cover the native rejection of a parameter modifier in
-// a call or method signature with EK2109 for the unsupported member.
+// a call or method signature with EK2109 for the unsupported member. A
+// modifier precedes a name, a binding pattern or a rest parameter, as
+// TypeScript's canFollowModifier allows; async must share the line with it.
 func grammarSchemaSignatureParameterModifier(ts []grammarToken) bool {
 	return grammarSchemaBodies(ts, func(open int, alias bool) bool {
 		if !alias {
@@ -365,10 +373,17 @@ func grammarSchemaSignatureParameterModifier(ts []grammarToken) bool {
 		for k := open + 1; k < len(ts) && depth > 0; k++ {
 			if depth == 1 && ts[k].text == "(" {
 				for at, nested := k+1, 1; at+1 < len(ts) && nested > 0; at++ {
-					if nested == 1 && (at == k+1 || ts[at-1].text == ",") && ts[at+1].kind == 'w' {
+					if nested == 1 && (at == k+1 || ts[at-1].text == ",") {
+						next := ts[at+1]
 						switch ts[at].text {
 						case "static", "readonly", "public", "private", "protected":
-							return true
+							if next.kind == 'w' || grammarParameterPatternStart(next) {
+								return true
+							}
+						case "async":
+							if !next.nl && (next.kind == 'w' || grammarParameterPatternStart(next)) {
+								return true
+							}
 						}
 					}
 					switch ts[at].text {
