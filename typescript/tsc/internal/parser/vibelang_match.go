@@ -2004,16 +2004,29 @@ func IsSignedNumberZero(expr *ast.Node) bool {
 // checker narrows them. <, >, <=, >= and in call $relation, which is false
 // for a subject the proposal does not compare: not a string, number or
 // bigint, or for in, not a property key or with an operand that is not an
-// object.
+// object. The proposal rejects such a subject before it evaluates the
+// operand, so $relates tests it first: $relates("<=", s) && $relation("<=",
+// s, bound). Neither narrows the subject, as chapter 004's Typing says.
 func (p *Parser) relationTest(pat *pattern, path matchPath) *ast.Node {
 	at := pat.anchor
-	switch pat.operator {
-	case ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken, ast.KindEqualsEqualsToken,
-		ast.KindExclamationEqualsToken, ast.KindInstanceOfKeyword:
+	if !isAdmittedRelation(pat.operator) {
 		return p.mParens(p.mBinary(path(), pat.operator, pat.expr, testsSpan(at, pat.expr)), at)
 	}
 	operator := scanner.TokenToString(pat.operator)
-	return p.mCall(p.vibelangIntrinsic("$relation", at), []*ast.Node{p.mString(operator, at), path(), pat.expr}, testsSpan(at, pat.expr))
+	admits := p.mCall(p.vibelangIntrinsic("$relates", at), []*ast.Node{p.mString(operator, at), path()}, at)
+	compare := p.mCall(p.vibelangIntrinsic("$relation", at), []*ast.Node{p.mString(operator, at), path(), pat.expr}, testsSpan(at, pat.expr))
+	return p.mParens(p.mBinary(admits, ast.KindAmpersandAmpersandToken, compare, testsSpan(at, pat.expr)), at)
+}
+
+// isAdmittedRelation reports whether a relational pattern with operator
+// tests its subject before it evaluates its operand: <, >, <=, >= and in.
+func isAdmittedRelation(operator ast.Kind) bool {
+	switch operator {
+	case ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken, ast.KindEqualsEqualsToken,
+		ast.KindExclamationEqualsToken, ast.KindInstanceOfKeyword:
+		return false
+	}
+	return true
 }
 
 // enterSubject returns the path through which pat, the pattern of a part of a
@@ -2059,7 +2072,12 @@ func subjectReads(pat *pattern) int {
 	}
 	n := 0
 	switch pat.kind {
-	case patternLiteral, patternValue, patternBinding, patternRelation:
+	case patternRelation:
+		if isAdmittedRelation(pat.operator) {
+			return 2 // $relates and $relation
+		}
+		return 1
+	case patternLiteral, patternValue, patternBinding:
 		return 1
 	case patternArray:
 		n = 2 // Array.isArray and length

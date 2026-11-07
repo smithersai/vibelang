@@ -45,6 +45,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The editor status labeled the VibeLang version as a TypeScript version and repeated the TypeScript label. It now displays the server’s reported version unchanged.
 - Calling a function whose return type is an interface named `Effect` that copies Effect's `~effect/Effect` marker without declaring its type parameters crashed the compiler. Such a value is now ordinary data, and the call follows the usual throw-contract rules.
 
+- A relational pattern such as `when <= limits.max:` or `when in table:` evaluated its operand, running a getter or index read, even for a subject that could not match, such as an object for `<=` or a number for `in`. The subject's type is now tested first, so the operand runs only for a string, number or bigint, or a property key for `in`.
+
 - An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
 
 - Returning an incomplete `Stream` type could bypass throwing-call checks or wrongly restrict a plain function. The compiler now applies `Stream` rules only to a complete `Stream` type.

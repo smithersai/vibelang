@@ -761,6 +761,10 @@ func init() {
 }
 
 func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.relational-bound-order-plain", Chapter: "004-match.md", Quote: "other subject types fail before bound evaluation", Vibe: "function witness(){let reads=0;const limits={get bound():number{reads++;return 2},get table():object{reads++;return {a:1}}};const xs:unknown[]=[1,{},\"x\",null,\"a\",2];const ordered=xs.map(s=>match(s){when <= limits.bound:\"small\";default:\"other\";});const keyed=xs.map(s=>match(s){when in limits.table:\"key\";default:\"other\";});return [ordered,keyed,reads]}", Effect: "function witness(){let reads=0;const limits={get bound(){reads++;return 2},get table(){reads++;return {a:1}}};const xs=[1,{},\"x\",null,\"a\",2];const ordered=xs.map(s=>(typeof s===\"string\"||typeof s===\"number\"||typeof s===\"bigint\")&&s<=limits.bound?\"small\":\"other\");const keyed=xs.map(s=>(typeof s===\"string\"||typeof s===\"symbol\")&&s in limits.table?\"key\":\"other\");return [ordered,keyed,reads]}", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
 	registerWitness(7, ChapterWitness{Key: "vip07.async-match", Chapter: "004-match.md", Quote: "subject evaluation, tests and the selected arm run inside the async function.", Vibe: "effect function witness(){return try Effect.promise(()=>async match(await Promise.resolve(\"sent\")){when \"sent\":await Promise.resolve(\"sent\");})}", Effect: "function witness(){return Effect.gen(function*(){return yield* Effect.promise(()=>(async()=>{const subject=await Promise.resolve(\"sent\");if(subject===\"sent\")return await Promise.resolve(\"sent\");throw new TypeError()})())})}", Modules: []string{}, Requires: []string{"vip01.effect-function", "vip05.try"}, Cite: vip7Cite("return")})
 }
 

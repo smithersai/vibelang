@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
-import { $extract, $is, $relation } from "vibelang-runtime"
+import fc from "fast-check"
+import { $extract, $is, $relation, $relates } from "vibelang-runtime"
 
 test("match: a regular expression matches as RegExp.prototype[Symbol.customMatcher] does", () => {
   expect($is(/^a+$/, "aaa")).toBe(true)
@@ -38,4 +39,24 @@ test("match: in tests a property key against an object", () => {
   expect($relation("in", "b", { a: 1 })).toBe(false)
   expect($relation("in", 1, { 1: 1 })).toBe(false)
   expect($relation("in", "a", null)).toBe(false)
+})
+
+test("match: a relation admits its subject by type alone, before its operand runs", () => {
+  for (const operator of ["<", ">", "<=", ">="] as const) {
+    expect([1, "a", 1n, NaN].map(s => $relates(operator, s))).toEqual([true, true, true, true])
+    expect([{}, null, undefined, true, Symbol("s"), new Number(1)].map(s => $relates(operator, s))).toEqual([false, false, false, false, false, false])
+  }
+  expect(["a", Symbol("s")].map(s => $relates("in", s))).toEqual([true, true])
+  expect([1, {}, null, new String("a")].map(s => $relates("in", s))).toEqual([false, false, false, false])
+})
+
+test("match: $relation is false for every subject $relates rejects", () => {
+  const operators = fc.constantFrom("<" as const, ">" as const, "<=" as const, ">=" as const, "in" as const)
+  fc.assert(fc.property(operators, fc.anything(), fc.anything(), (operator, subject, value) => {
+    const admitted = operator === "in"
+      ? typeof subject === "string" || typeof subject === "symbol"
+      : typeof subject === "string" || typeof subject === "number" || typeof subject === "bigint"
+    expect($relates(operator, subject)).toBe(admitted)
+    if (!admitted) expect($relation(operator, subject, value)).toBe(false)
+  }), { numRuns: 500 })
 })
