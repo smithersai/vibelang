@@ -1191,7 +1191,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:conjuncts ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.conditionSteps ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:endsInJump ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
-| ` parser/vibelang_match.go:Parser.restructureVibeLangWhile ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
+| ` parser/vibelang_match.go:Parser.restructureVibeLangWhile ` | ` admission:is-binding-tdz ` | ` 004-match.md ` | ` support ` | VIP-7: give `while` conditions fresh loop-head binding cells, including bindings below the condition's `&&` chain |
 | ` parser/vibelang_match.go:Parser.keywordRangeAt ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.mPatternRead ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 marks property and positional reads for match binding type inference |
 | ` parser/vibelang_match.go:Parser.hoistVibeLangIs ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes |

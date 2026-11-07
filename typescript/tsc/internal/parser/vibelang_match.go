@@ -2561,13 +2561,28 @@ func endsInJump(statement *ast.Node) bool {
 //
 //	while (true) { if (...) { const name = ...; if (...) { S; continue } } break }
 //
+// An is that binds below the && chain, as in while (a || x is P) S, has the
+// same loop-head home (chapter 004, Pattern bindings): each evaluation of the
+// condition starts with fresh uninitialized cells that a true result shares
+// with S. That is the home hoistForHead gives a for statement's test, so the
+// loop becomes for (<cells>; condition; ) S, as restructureVibeLangDo does.
 // It returns nil when no is in the condition binds names.
 func (p *Parser) restructureVibeLangWhile(condition, body *ast.Node, pos int) *ast.Node {
+	anchor := p.keywordRangeAt(pos, "while")
+	nested := false
+	for _, part := range conjuncts(condition) {
+		if p.vibelangIsBindings[part] == nil && p.bindsIs(part) {
+			nested = true
+		}
+	}
+	if nested {
+		initializer := p.hoistForHead(nil, condition, nil, anchor)
+		return p.finishNode(p.factory.NewForStatement(initializer, condition, nil, body), pos)
+	}
 	steps := p.conditionSteps(condition)
 	if steps == nil {
 		return nil
 	}
-	anchor := p.keywordRangeAt(pos, "while")
 	success := []*ast.Node{body}
 	if !endsInJump(body) {
 		success = append(success, p.vibelangSpanning(p.factory.NewContinueStatement(nil), anchor))

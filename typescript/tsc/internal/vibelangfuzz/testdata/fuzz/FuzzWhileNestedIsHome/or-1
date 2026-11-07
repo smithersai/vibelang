@@ -1,0 +1,3 @@
+go test fuzz v1
+string("or")
+uint8(1)
