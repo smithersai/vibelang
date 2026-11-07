@@ -11,10 +11,11 @@ function prepareVocsModule(root, spec) {
   if (realpathSync(vendor) !== vendor) throw new Error('Refusing to patch borrowed Vocs dependencies.')
   const version = JSON.parse(readFileSync(join(vendor, 'package.json'), 'utf8')).version
   if (version !== '2.8.5') throw new Error('Unsupported Vocs ' + version + '; review the accessibility patch before upgrading.')
+  const directory = spec.directory ?? 'react/internal'
   const files = [
-    join(vendor, 'src/react/internal', spec.name + '.tsx'),
-    join(vendor, 'dist/react/internal', spec.name + '.js'),
-    join(vendor, 'dist/react/internal', spec.name + '.js.map'),
+    join(vendor, 'src', directory, spec.name + '.tsx'),
+    join(vendor, 'dist', directory, spec.name + '.js'),
+    join(vendor, 'dist', directory, spec.name + '.js.map'),
   ]
   for (const file of files) if (realpathSync(file) !== file) throw new Error('Refusing to patch borrowed Vocs file: ' + basename(file))
   let source = readFileSync(files[0], 'utf8')
@@ -31,7 +32,7 @@ function prepareVocsModule(root, spec) {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
       jsx: ts.JsxEmit.ReactJSX, sourceMap: true, inlineSources: true,
-      sourceRoot: '../../../src/react/internal', newLine: ts.NewLineKind.LineFeed,
+      sourceRoot: spec.sourceRoot ?? '../../../src/react/internal', newLine: ts.NewLineKind.LineFeed,
     },
   })
   if (output.diagnostics?.some(item => item.category === ts.DiagnosticCategory.Error)) throw new Error('Patched Vocs module did not compile.')

@@ -505,3 +505,9 @@
   font-size: 0.875rem;
   margin-top: 0.5rem;
 }
+
+/* Keep wide tables reachable and visibly focused for keyboard scrolling. */
+[data-v-table-wrapper]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
