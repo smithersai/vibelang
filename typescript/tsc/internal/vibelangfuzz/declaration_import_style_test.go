@@ -111,6 +111,9 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 							}
 							got := vibe.Outputs["out/main.d.ts"]
 							want := stockDeclaration(t, w, tsc, Project{Files: twinFiles, Config: cfg}, "out/main.d.ts")
+							// The retired setting cannot change the declaration: every style value
+							// declares what stock tsc declares for the twin.
+							// rule-evidence: docs/design/vips/0030-config-files.md#af110eae679bbb0b | **Amended 2026-11-03: declaration import spelling follows TypeScript.** There is no `declarationImportStyle` setting.
 							if got != want {
 								t.Errorf("main.vibe:\n%s\ndeclares:\n%s\nstock tsc declares main.ts:\n%s\nfrom:\n%s", source, got, want, twin)
 							}
