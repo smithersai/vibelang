@@ -614,3 +614,37 @@ export const factory = (program) => program.pipe(Effect.withSpan("check"));`
     assert.deepEqual(lostWrappers({ ts, original, emitted: `import * as Effect from "effect/Effect";
 export const factory = (program) => (() => { ${stage} return stage(program); })();` }).flags.map(f => f.function), ["/factory"], stage)
 })
+
+test("an inline stage that passes the program through a plain helper keeps it (t3code GitHubPullRequestApi)", () => {
+  const original = `import * as Effect from "effect/Effect";
+const through = <A>(program: A): A => program;
+export const factory = (on = true) => {
+  if (!on) return Effect.succeed(null);
+  return Effect.succeed(1).pipe((program) => through(program));
+};`
+  for (const stage of [`((program) => through(program))`, `((program) => program)`, `((program) => { const kept = through(program); return kept; })`])
+    assert.deepEqual(lostWrappers({ ts, original, emitted: `import * as Effect from "effect/Effect";
+const through = (program) => program;
+export const factory = (on = true) => {
+  if (!on) return Effect.succeed(null);
+  return ${stage}(Effect.succeed(1));
+};` }).flags, [], stage)
+})
+
+test("an inline stage that runs, drops or never names the program still loses the wrapper", () => {
+  const original = `import * as Effect from "effect/Effect";
+const through = <A>(program: A): A => program;
+export const factory = (on = true) => {
+  if (!on) return Effect.succeed(null);
+  return Effect.succeed(1).pipe((program) => through(program));
+};`
+  for (const stage of [`((program) => Effect.runSync(program))(Effect.succeed(1))`, `((program) => program.pipe(Effect.runSync))(Effect.succeed(1))`,
+    `((program) => through(1))(Effect.succeed(1))`, `((program) => through(other))(Effect.succeed(1))`, `((program) => () => program)(Effect.succeed(1))`,
+    `((program) => through(program))(1)`, `((value, program) => through(value))(1, Effect.succeed(1))`])
+    assert.deepEqual(lostWrappers({ ts, original, emitted: `import * as Effect from "effect/Effect";
+const through = (program) => program;
+export const factory = (on = true) => {
+  if (!on) return Effect.succeed(null);
+  return ${stage};
+};` }).flags.map(f => f.function), ["/factory"], stage)
+})

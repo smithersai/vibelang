@@ -29,7 +29,8 @@
 // nested function once the codemod writes `(value) => Effect.succeed(value)`,
 // so that spelling of the same member counts for the original's arm. A call
 // of a local `const stage = Effect.withSpan("check")`, which the compiler
-// writes for `program |> stage(%)`, hands back what that operator does.
+// writes for `program |> stage(%)`, hands back what that operator does, and
+// an inline `((p) => through(p))(program)` hands back the program it names.
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, posix } from "node:path"
 const isTestFile = (path) => /\.(?:test|spec)\.[^/]+$/.test(path)
@@ -217,6 +218,28 @@ function curriedOperator(ts, node, scope, bound) {
   return /^Effect\.[A-Za-z]+$/.test(name) && !/^Effect\.(run|is)[A-Z]/.test(name) && !factories.test(name) && !generatorRunners.test(name) ? init : undefined
 }
 
+/**
+ * The argument an inline call's result arm hands on, or undefined: the
+ * compiler writes `program |> ((p) => through(p))(%)` as
+ * `((p) => through(p))(program)`, and the original `program.pipe((p) =>
+ * through(p))` shows that program in its arm. An arm that names a parameter
+ * bound to an argument reading Effect reads that argument; an arm that
+ * already reads Effect, runs a program or is a function keeps its own reading.
+ */
+function passedOperand(ts, arm, inline, call, bound) {
+  if (ts.isFunctionLike(arm) || readsEffect(ts, arm, bound) || runsProgram(ts, arm, bound)) return undefined
+  const named = new Set()
+  const visit = (node) => {
+    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (ts.isIdentifier(node)) named.add(node.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(arm)
+  const index = inline.parameters.findIndex((parameter, i) => ts.isIdentifier(parameter.name) && !parameter.dotDotDotToken &&
+    named.has(parameter.name.text) && call.arguments[i] && readsEffect(ts, call.arguments[i], bound))
+  return index < 0 ? undefined : call.arguments[index]
+}
+
 /** A returned expression's arms: each result a `?:`, `??`, `||`, `&&`, an inline call, a local of `scope` or a local curried operator's application can hand back. */
 function arms(ts, expression, scope, bound, followed = new Set()) {
   const node = unwrap(ts, expression)
@@ -233,7 +256,8 @@ function arms(ts, expression, scope, bound, followed = new Set()) {
   const inline = inlineFunction(ts, node)
   if (inline) {
     const results = ts.isBlock(inline.body) ? ownNodes(ts, inline, n => ts.isReturnStatement(n) && n.expression) : [inline.body]
-    if (results.length) return results.flatMap(result => arms(ts, result, inline, bound, new Set()))
+    if (results.length) return results.flatMap(result => arms(ts, result, inline, bound, new Set())
+      .map(arm => passedOperand(ts, arm, inline, node, bound) ?? arm))
   }
   const operator = curriedOperator(ts, node, scope, bound)
   if (operator) return [operator]

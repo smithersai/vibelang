@@ -1,2 +1,0 @@
-FuzzMigrationCurriedWrapperAudit wrapper:passthrough-identity compiler VIP-27: an identity pipeline stage still returns its Effect but the static audit reports a lost wrapper; lane migfix-t3code
-FuzzMigrationCurriedWrapperAudit corpus:t3code-passthrough-identity-stage compiler VIP-27: minimized early-return identity-stage witness reproduces the static wrapper flag; lane migfix-t3code
