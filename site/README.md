@@ -119,3 +119,7 @@ Watch builds bypass the cache, a new resolved build clears it, and a failed gene
 ### Temporary Vocs outline markup patch
 
 The pinned Vocs outline renders a decorative position marker directly inside its list. The install, development and build hooks change it to an aria-hidden presentational list item and recompile that module. The patch checks the reviewed source and runtime hashes, refuses borrowed dependencies and keeps the upstream MIT license in the package. Remove it when a Vocs upgrade supplies valid list markup. The browser regression checks list semantics and heading navigation in both themes.
+
+### Temporary Vocs navigation label patch
+
+The navigation patch names the top menu and documentation sidebar, and the outline patch names the page outline. Its browser regression checks distinct navigation landmarks in both themes. The same source/runtime integrity and dependency ownership checks apply. Run `npm ci` after changing a patch so the reviewed upstream files are restored before patching.

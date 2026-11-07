@@ -6,7 +6,7 @@ import * as ts from 'typescript'
 const sha = value => createHash('sha256').update(value).digest('hex')
 
 // Review source and compiled artifacts together, before writing any of them.
-export function patchVocsModule(root, spec) {
+function prepareVocsModule(root, spec) {
   const vendor = join(realpathSync(root), 'node_modules/vocs')
   if (realpathSync(vendor) !== vendor) throw new Error('Refusing to patch borrowed Vocs dependencies.')
   const version = JSON.parse(readFileSync(join(vendor, 'package.json'), 'utf8')).version
@@ -20,8 +20,10 @@ export function patchVocsModule(root, spec) {
   let source = readFileSync(files[0], 'utf8')
   const hash = sha(source)
   if (hash === spec.hashes.source) {
-    if (source.split(spec.before).length !== 2) throw new Error('Vocs ' + spec.name + ' source patch does not match exactly once.')
-    source = source.replace(spec.before, spec.after)
+    for (const edit of spec.edits ?? [spec]) {
+      if (source.split(edit.before).length !== 2) throw new Error('Vocs ' + spec.name + ' source patch does not match exactly once.')
+      source = source.replace(edit.before, edit.after)
+    }
   } else if (hash !== spec.hashes.patched) throw new Error('Vocs ' + spec.name + ' source hash changed; review the patch.')
   if (sha(source) !== spec.hashes.patched) throw new Error('Patched Vocs source hash did not match the reviewed patch.')
   const output = ts.transpileModule(source, {
@@ -40,14 +42,27 @@ export function patchVocsModule(root, spec) {
     const current = sha(readFileSync(files[i]))
     if (current !== original[i] && current !== sha(values[i])) throw new Error('Vocs ' + basename(files[i]) + ' has unexpected changes; refusing to overwrite it.')
   }
-  let changed = false
-  for (let i = 0; i < files.length; i++) {
-    if (sha(readFileSync(files[i])) === sha(values[i])) continue
-    const staged = files[i] + '.vibelang-' + process.pid
-    try { writeFileSync(staged, values[i]); renameSync(staged, files[i]) }
-    finally { rmSync(staged, { force: true }) }
-    changed = true
+  return () => {
+    let changed = false
+    for (let i = 0; i < files.length; i++) {
+      if (sha(readFileSync(files[i])) === sha(values[i])) continue
+      const staged = files[i] + '.vibelang-' + process.pid
+      try { writeFileSync(staged, values[i]); renameSync(staged, files[i]) }
+      finally { rmSync(staged, { force: true }) }
+      changed = true
+    }
+    return { changed, version }
   }
-  return { changed, version }
 }
 
+
+export function patchVocsModule(root, spec) {
+  return prepareVocsModule(root, spec)()
+}
+
+// Prepare the complete group before writing, so an unsupported sibling stays intact.
+export function patchVocsModules(root, specs) {
+  const apply = specs.map(spec => prepareVocsModule(root, spec))
+  const results = apply.map(commit => commit())
+  return { changed: results.some(result => result.changed), version: '2.8.5' }
+}
