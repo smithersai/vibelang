@@ -145,6 +145,10 @@ export const vipsSidebar = [
           {
             "text": "41. TC39 throw expressions",
             "link": "/vips/0041-throw-expressions"
+          },
+          {
+            "text": "44. Durable values",
+            "link": "/vips/0044-durable-values"
           }
         ]
       },

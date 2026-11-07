@@ -39,6 +39,7 @@ A retirement is any change that makes source accepted by an earlier toolchain fa
 | [39](0039-vibex.md) | `.vibex`: VibeLang with JSX | accepted 2026-10-31 |
 | [40](0040-module-declarations.md) | `module` declarations: TypeScript inside a `.vibe` file | accepted 2026-11-03 |
 | [41](0041-throw-expressions.md) | TC39 throw expressions | accepted 2026-11-02 |
+| [44](0044-durable-values.md) | Durable values | accepted 2026-11-06 |
 
 
 ## Denied
