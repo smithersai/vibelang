@@ -233,7 +233,10 @@ async function hotGraph(root, input) {
   try {
     const affected = await plugin.handleHotUpdate({ file: changed.file, modules: [changed],
       server: { moduleGraph: graph, config: { logger: { error: assert.fail } }, ws: { send: assert.fail } } })
-    assert.deepEqual(new Set(affected), expected)
+    // Contract invalidation reaches every importer. HMR dispatch starts
+    // at the changed source and compiled outputs, preserving native accept boundaries.
+    const expectedUpdates = new Set([...expected].filter(node => node === changed || node.file.endsWith(".vibe")))
+    assert.deepEqual(new Set(affected), expectedUpdates)
     assert.deepEqual(invalidated, expected)
     for (const node of nodes) assert.equal(node.transformResult === null, expected.has(node))
     for (const method of ["defineCacheKeyGenerator", "experimental_defineCacheKeyGenerator"]) {

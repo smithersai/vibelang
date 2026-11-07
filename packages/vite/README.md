@@ -21,6 +21,8 @@ Delegated package imports retain Vite and Rollup resolver options, including SSR
 
 Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
 
+Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
+
 ## Install
 
 ```sh

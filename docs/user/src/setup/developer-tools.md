@@ -27,6 +27,8 @@ Explicit `.vibex` imports work through `vibelang-unplugin`, including module que
 
 Source maps in esbuild bundles keep original source filenames, including Unicode, spaces and literal `%` sequences, when Node prints mapped stack traces.
 
+Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
+
 Diagnostics from source loaders retain their source details and exclude compiler file-list output.
 
 For a custom compiler, set `VIBELANG_BINARY` to its native executable. Selecting the package's JavaScript launcher reports an error before another compiler starts.
