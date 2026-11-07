@@ -155,6 +155,14 @@ func Fix(ctx context.Context, sys tsc.System, args []string) int {
 }
 
 func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options FixOptions) int {
+	commandLine := tsoptions.ParseCommandLine(args, sys.FS(), sys.GetCurrentDirectory())
+	flags := commandLine.CompilerOptions()
+	buildMode := len(args) > 0 && slices.Contains([]string{"-b", "--b", "-build", "--build"}, strings.ToLower(args[0]))
+	// Inspection and initialization keep the compiler's normal command-line
+	// precedence. They must not discover a repair project or write its sources.
+	if !buildMode && (flags.Help.IsTrue() || flags.All.IsTrue() || flags.Version.IsTrue() || flags.ShowConfig.IsTrue() || flags.Init.IsTrue()) {
+		return 0
+	}
 	for _, arg := range args {
 		switch strings.ToLower(arg) {
 		case "-w", "--w", "-watch", "--watch":
@@ -173,7 +181,6 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 			return fixBuild(ctx, sys, args, options)
 		}
 	}
-	commandLine := tsoptions.ParseCommandLine(args, sys.FS(), sys.GetCurrentDirectory())
 	if len(commandLine.Errors) > 0 {
 		return 0 // the compilation reports them
 	}

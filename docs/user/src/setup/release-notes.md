@@ -31,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The browser entry guide used a crypto API that no longer compiled. Its HMAC example now uses Effect's crypto service and browser layer.
 
 - Migration kept a module in TypeScript when its platform code read an exported constant such as `export const MAX_QUEUED_FRAMES = 64`, because the platform split could only keep exported functions in the module. The constant now stays exported in the module and the `.platform.ts` companion gets a private copy, unless kept code above it could run the platform code before the constant exists.
+- Asking for help, the version or configuration with `--fix` could fail or rewrite project files. These commands now run without applying repairs, and initialization no longer requires an existing project.
+
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
 - The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
 - The error guides described plain-function throws as JavaScript exceptions or defects. They now explain the compile error and show how to choose a typed failure or defect.
