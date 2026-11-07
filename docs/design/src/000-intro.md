@@ -48,7 +48,7 @@ The table abbreviates the full translations: preserve [source function bindings]
 
 Classes without an own `Symbol.customMatcher` use `instanceof`, built-ins use `Array.isArray` or `instanceof`, and primitives test `typeof` too, because compiled JavaScript can't read the pinned draft's engine slots. [Class patterns](004-match.md#class-patterns) gives the full rule.
 
-What VibeLang leaves out is just as deliberate. The [appendix](900-appendices.md#denied-vips) lists the denied VIPs: no Effect meaning for `using`, no `Users.find(id)` shorthand, no trailing blocks, no `wire`. The open VIPs (handlers, the declaration manifest, Effectify the universe) are not part of the language.
+What VibeLang leaves out is just as deliberate. The [appendix](900-appendices.md#denied-vips) lists the denied VIPs: no Effect meaning for `using`, no `Users.find(id)` shorthand, no trailing blocks, no `wire`. The open VIPs (handlers, the declaration manifest, Effectify the universe, VibeLang in `.ts` files, theorems) are not part of the language.
 
 ## How to read this specification
 
@@ -75,7 +75,7 @@ The compiler is being changed to match the VIPs. Until it does, a VibeLang examp
 6. [Data](006-data.md): VIP-15, VIP-16, VIP-28, VIP-44.
 7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38, VIP-39.
 8. [Runtime guarantees](008-runtime.md): VIP-31.
-9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, and flipping pending examples.
+9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, flipping pending examples, and the draft of open VIP-43, which is not part of the language.
 
 ## Retired continuation forms
 
