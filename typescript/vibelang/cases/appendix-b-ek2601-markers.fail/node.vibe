@@ -1,0 +1,6 @@
+// A retired node marker beside an eligible main.
+import "vibelang/platform/node"
+
+export effect function main() {
+  try Console.log("node main ran")
+}

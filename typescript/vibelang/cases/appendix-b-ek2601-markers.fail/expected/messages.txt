@@ -1,0 +1,1 @@
+legacy platform entry marker: run vibelang --fix and write an explicit runner

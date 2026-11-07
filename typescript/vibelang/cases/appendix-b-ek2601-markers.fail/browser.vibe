@@ -1,0 +1,6 @@
+// expect: EK2601
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK2601` | a retired `vibelang/platform/node`, `vibelang/platform/bun` or `vibelang/platform/browser` entry marker; run `vibelang --fix` to preserve startup with an explicit runner, or migrate manually when preservation cannot be proved | 26 | [Migration](007-tooling.md#legacy-entry-dispatch-migration) |
+// Each retired marker is an error, with or without main.
+import "vibelang/platform/browser"
+
+export const page = "browser"
