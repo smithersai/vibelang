@@ -3,9 +3,10 @@
 // probes, owned declaration checks, options and global diagnostics always run.
 import { createHash } from "node:crypto"
 import { dirname, resolve } from "node:path"
+import { ownsFile } from "./api-identity-ownership.mjs"
 
 export function dependencyDiagnosticsPlan(ts, program, compilerOptions, snapshots, resolutions, files) {
-  const own = file => snapshots.some(base => file.startsWith(base + "/") && !file.includes("/node_modules/"))
+  const own = file => snapshots.some(base => ownsFile(base, file) && !file.includes("/node_modules/"))
   const sources = program.getSourceFiles()
   const unsafe = source => {
     if (!ts.isExternalModule(source)) return true
