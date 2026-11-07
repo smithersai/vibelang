@@ -248,8 +248,9 @@ func pipeReceiverEnd(file *ast.SourceFile, receiver *ast.Node) int {
 }
 
 // pipeStageReceiverSafe checks the receiver supplied by Effect's pipeArguments.
-// Arrow stages retain their lexical this. A non-arrow stage must have a body
-// that does not observe this; an opaque custom callable cannot prove that.
+// Arrow stages retain their lexical this, and the pinned library runners do
+// not observe their receiver. Other non-arrow stages must have a body that
+// does not observe this; an opaque custom callable cannot prove that.
 func pipeStageReceiverSafe(c *checker.Checker, stage *ast.Node) bool {
 	inner := ast.SkipParentheses(stage)
 	callee := inner
@@ -263,6 +264,9 @@ func pipeStageReceiverSafe(c *checker.Checker, stage *ast.Node) bool {
 	// module. Their partially applied stages do not observe a receiver,
 	// just like the top-level Effect operators recognized above.
 	if ast.IsCallExpression(inner) && isDataFirstStage(c, inner) {
+		return true
+	}
+	if pipePlatformRunner(c, callee) {
 		return true
 	}
 	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(stage), checker.SignatureKindCall)
@@ -287,6 +291,41 @@ func pipeStageReceiverSafe(c *checker.Checker, stage *ast.Node) bool {
 		}
 	}
 	return true
+}
+
+// pipePlatformRunner recognizes the pinned platform runMain implementations.
+// Runtime.makeRunMain's body and its partially applied stage ignore this.
+// Resolve the actual export, not a callable's type: an opaque local value or
+// object property typed as typeof runMain may still observe its receiver.
+func pipePlatformRunner(c *checker.Checker, expression *ast.Node) bool {
+	if ast.IsPropertyAccessExpression(expression) {
+		namespace := c.GetSymbolAtLocation(expression.Expression())
+		if namespace != nil && namespace.Flags()&ast.SymbolFlagsAlias != 0 {
+			namespace = c.GetAliasedSymbol(namespace)
+		}
+		if namespace == nil || !slices.ContainsFunc(namespace.Declarations(), ast.IsSourceFile) {
+			return false
+		}
+		expression = expression.Name()
+	}
+	if !ast.IsIdentifier(expression) {
+		return false
+	}
+	symbol := c.GetSymbolAtLocation(expression)
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol == nil {
+		return false
+	}
+	for _, declaration := range symbol.Declarations() {
+		file := ast.GetSourceFileOfNode(declaration)
+		d := identity{pkg: packageOf(c, file), module: moduleOf(file), name: declarationName(declaration), owner: declaration}
+		if d.pkg != "effect" && isRootRunnerIdentity(d) {
+			return true
+		}
+	}
+	return false
 }
 
 // pipeOptionsPlain proves that inspecting options cannot invoke an accessor.
@@ -346,6 +385,19 @@ func pipeStagesNeedCapture(c *checker.Checker, stages []*ast.Node) bool {
 				}
 			}
 			continue
+		}
+		// A canonical platform export is an immutable namespace member.
+		// Reading it after earlier stages has no observable work, and it
+		// ignores the receiver, so no capture is needed for the bare runner.
+		if pipePlatformRunner(c, callee) {
+			if i == len(stages)-1 && !ast.IsCallExpression(inner) {
+				continue
+			}
+			// Construct an options stage before applying earlier stages,
+			// including any observable reads in the runner's partial call.
+			if ast.IsCallExpression(inner) && len(stages) > 1 {
+				return true
+			}
 		}
 		if i < len(stages)-1 || ast.IsPropertyAccessExpression(inner) || ast.IsElementAccessExpression(inner) {
 			return true

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- `vibelang --fix` refused pipelines ending in a platform's `runMain`, treating the runner as an unknown custom stage. It now converts the pinned platform runners while preserving stage construction order and public types.
+
 - Formatting a file with several adjacent conditional returns could fail with `Formatting not stable`. The bundled TypeScript formatter now reaches a stable layout for these files.
 
 - Migration could refuse matching APIs when a declaration was emitted on only one side. It now compares the saved original source against the other side's declaration, while still rejecting changed types, documentation and invalid source.

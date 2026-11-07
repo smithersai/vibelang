@@ -1,0 +1,4 @@
+import * as Effect from "effect/Effect"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import { program, record, options } from "./foreign.js"
+export const result = program.pipe(Effect.map(record("a")), Effect.map(record("b")), NodeRuntime.runMain(options()))
