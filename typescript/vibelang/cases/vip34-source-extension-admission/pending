@@ -1,0 +1,1 @@
+witness-08 VIP-34 source-extension admission: a .vibe importer is exempt from TS5097 (AllowImportingTsExtensionsFrom treats VibeLang sources as allowed) and its JavaScript rewrites ./x.vibe without rewriteRelativeImportExtensions; matching the .ts twin changes how existing projects compile and awaits Will.

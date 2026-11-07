@@ -2,7 +2,12 @@
 // VIP-34: escaped directive versus strict directive semantic oracle rejects changed meaning.
 package vibelangfuzz
 
-import "testing"
+import (
+	"strings"
+	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
+)
 
 // Chapter 007 / semantic comparison preserves directives, receivers, literal values and raw templates: docs/design/src/007-tooling.md#acf50e7788cd53bb
 // Chapter 007 / semantic comparison preserves directives, receivers, literal values and raw templates: docs/design/src/007-tooling.md#9ce5d03719823cde
@@ -54,6 +59,43 @@ func TestToolsFormatSemanticContract(t *testing.T) {
 			difference := toolsFormatDifference(before, after)
 			if (difference == "") != c.same {
 				t.Fatalf("same=%v, difference=%q", c.same, difference)
+			}
+		})
+	}
+}
+
+// A real formatter run keeps an escaped string a non-directive. The oracle
+// above rejects the opposite rewrite, so the two prologues stay distinct.
+func TestToolsFormatEscapedDirectiveWitness(t *testing.T) {
+	w := NewWorkspace(t)
+	formatter := toolsFormatter(t)
+	for _, c := range []struct{ name, source, kept string }{
+		{"escaped", "'use\\x20strict'\nexport function f() {\n    'use\\u0020strict'\n    return 1\n}\n", "use\\x20strict|use\\u0020strict"},
+		{"directive", "'use strict'\nexport function f() {\n    \"use strict\"\n    return 1\n}\n", ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			once, err := vibelangfmt.Format("main.vibe", c.source, formatter)
+			if err != nil {
+				t.Fatal(err)
+			}
+			before, err := w.Compile(t.Context(), Single(c.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer before.Remove()
+			after := toolsRecompile(t, w, before, Single(once).Files)
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#acf50e7788cd53bb | For example, changing an escaped string into an actual `use strict` directive changes meaning.
+			for _, escape := range strings.Split(c.kept, "|") {
+				if escape != "" && !strings.Contains(once, escape) {
+					t.Fatalf("formatting dropped the escape %s:\n%s", escape, once)
+				}
+			}
+			if difference := toolsFormatDifference(before, after); difference != "" {
+				t.Fatalf("%s\n%s\n---\n%s", difference, c.source, once)
+			}
+			escaped := &Result{Outputs: map[string]string{"out/main.js": strings.ReplaceAll(strings.ReplaceAll(after.Outputs["out/main.js"], "use\\x20strict", "use strict"), "use\\u0020strict", "use strict")}}
+			if c.kept != "" && toolsFormatDifference(after, escaped) == "" {
+				t.Fatalf("the oracle accepts an escaped string turned into a directive:\n%s", after.Outputs["out/main.js"])
 			}
 		})
 	}

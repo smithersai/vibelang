@@ -61,27 +61,13 @@ test.todo("rule-evidence: docs/design/vips/0033-platform-stdlib.md#decision | co
 // Activation: Require the correct service replacement for Path/Config.String cases and safe sibling-.ts alternatives for unsupported globals.
 test.todo("rule-evidence: docs/design/vips/0033-platform-stdlib.md#decision | cov2-vips-b platform quick fix service names | present | The quick fix names the Effect service (`Path`, `Config.String`) or moves the code to a `.ts` file.")
 
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#6f0eb19b09ab0119
-// VIP-34: proposal diagnostic ownership.
-// Activation: Cross Vibe-only productions, adopted proposal early errors and ordinary embedded TypeScript errors; require owning EK versus native TS codes.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b proposal diagnostic ownership | present | A rejection that depends on a VibeLang production, placement rule, proposal-specific early error or explicitly adopted reconciliation uses its owning VIP's `EK` code, even when a TypeScript parser helper implements it.")
-
 // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#b800f23f36b5c9ca
 // VIP-34: formatter plugin integrations.
 // Activation: Run pinned Prettier/dprint/Oxfmt commands over .vibe fixtures through their plugins; compare semantic projection and second-run idempotence.
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b formatter plugin integrations | present | Prettier, dprint and Oxfmt reach it through plugins, so a repo's existing formatter command covers `.vibe` files.")
-
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#acf50e7788cd53bb
-// VIP-34: escaped strict directive meaning.
-// Activation: Format an escaped string-literal directive and a real use-strict directive; compare directive status and observable native behavior before/after.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b escaped strict directive meaning | present | For example, changing an escaped string into an actual `use strict` directive changes meaning.")
 
 // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#8b7166d0d577488c
 // VIP-34: fix convergence and pass limit.
 // Activation: Run chained fixes to a fixed point, assert a second invocation changes no bytes, and force pass-limit exhaustion to require a remaining-fixes error.
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b fix convergence and pass limit | present | **Amended 2026-10-31: `--fix` reaches a fixed point, and a missing runtime is one error.** One `vibelang --fix` run applies fixes until none applies; running it again changes nothing, and a run that has not converged within its pass limit reports the remaining fixes as an error.")
 
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#313dd1003a2ff858
-// VIP-34: one missing runtime diagnostic.
-// Activation: Compile helper-requiring forms without vibelang-runtime and require exactly one TS2307 naming the package, with no generated helper unresolved-name cascade.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b one missing runtime diagnostic | present | A compilation that needs `vibelang-runtime` and cannot resolve it fails with one error naming the package (`TS2307`), as a missing dependency does in TypeScript, not with an unresolved name per compiler-generated helper.")
