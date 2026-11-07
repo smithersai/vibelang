@@ -1,0 +1,11 @@
+// expect: EK0707 EK0707 EK0707 EK0707 EK0707
+// Chapter 004: a relational pattern's operand is a literal, a member
+// expression or its signed form. A call is invalid pattern grammar, EK0707,
+// and the following arms still parse.
+declare function limit(): number
+declare const table: { lookup(): object }
+export function arm(s: unknown) { return match (s) { when <= limit(): "small"; when String: "text"; default: "other"; } }
+export function strict(s: unknown) { return match (s) { when === limit(): "same"; default: "other"; } }
+export function keyed(s: unknown) { return match (s) { when in table.lookup(): "key"; default: "other"; } }
+export function nested(s: unknown) { return match (s) { when { v: > limit() }: "big"; default: "other"; } }
+export function test(s: unknown) { return s is < limit() }

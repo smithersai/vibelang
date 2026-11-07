@@ -5455,6 +5455,7 @@ typescript/vibelang/cases/match-relational-bound-order/main.vibe:16:21 lambda pl
 typescript/vibelang/cases/match-relational-bound-order/main.vibe:22:102 lambda effectFn fallback
 typescript/vibelang/cases/match-relational-bound-order/main.vibe:22:19 lambda dual fallback
 typescript/vibelang/cases/match-relational-bound-order/main.vibe:22:50 lambda effectFn fallback
+typescript/vibelang/cases/match-relational-call-bound.fail/main.vibe:11:45 lambda plain fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:74:92 lambda plain table
 typescript/vibelang/cases/match-relational-regex/main.vibe:91:22 lambda plain fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:91:43 lambda plain fallback

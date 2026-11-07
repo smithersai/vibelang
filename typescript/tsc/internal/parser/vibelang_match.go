@@ -488,7 +488,15 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 		}
 		operator := p.token
 		p.nextToken()
-		return &pattern{kind: patternRelation, anchor: anchor, operator: operator, expr: p.parseMatchRelationOperand(operator)}
+		expr := p.parseMatchRelationOperand(operator)
+		if p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak() {
+			// The pinned operand is a literal, a member expression or its
+			// signed form, never a call. Read the arguments, so the arm
+			// goes on at its colon instead of reading an arrow head there.
+			p.parseArgumentList()
+			return &pattern{kind: patternInvalid, anchor: anchor, code: 707, detail: "A relational pattern compares with a literal or a property, not a call. Bind the value and compare it in a guard: when let v and if (v <= limit()): …."}
+		}
+		return &pattern{kind: patternRelation, anchor: anchor, operator: operator, expr: expr}
 	}
 	// A contextual keyword is a name here too, undefined and of among them.
 	if p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword || p.isIdentifier() {
