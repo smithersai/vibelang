@@ -9,11 +9,12 @@ const pages = [
   "013-getting-started.md",
   "setup.md",
   "getting-started/004-installation.md"
-]
+].map(page => "docs/user/src/" + page)
+pages.push("site/src/index.mdx")
 
 for (const page of pages) {
   test(page + ": Node prerequisites agree with the installed packages", () => {
-    const text = read("docs/user/src/" + page).replaceAll(String.fromCharCode(96), "")
+    const text = read(page).replaceAll(String.fromCharCode(96), "")
     const prerequisite = /Node (\d+\.\d+\.\d+) \((\d+)\.x\) or Node (\d+\.\d+\.\d+) or later/.exec(text)
     assert.ok(prerequisite, "state both supported Node release lines, with their minimum patches")
     assert.equal(prerequisite[1].split(".")[0], prerequisite[2])

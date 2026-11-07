@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The homepage suggested Node versions that the packages do not support. It now lists both supported Node release lines and their minimum versions.
+
 - Copying either homepage greeting example printed nothing. Both examples now start their Effect and print `Hello, Ada`.
 
 - File-system replacement hints could construct an operation without running it. They now show the outer `try` for reads, writes and other operations that return Effects.
