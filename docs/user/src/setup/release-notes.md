@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Checking the compact language guides rejected current descriptions of foreign calls and `Effect` factories. Checks now recognize that guidance while still rejecting missing failure rules.
+
 - A throw expression stored as an array element, an object field or a binding, such as `[a, throw e]`, reported warning `EK1012` as if it were a call that never succeeds, and its suggestion added `()` after the throw. A throw expression no longer reports `EK1012`.
 
 - File-list lint commands accepted `--fix` but left source findings unchanged. They now apply source fixes to the selected files and report what remains.

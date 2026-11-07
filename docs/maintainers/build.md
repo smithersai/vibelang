@@ -1315,7 +1315,7 @@ The [specification contracts](#specification-contracts) run in `//:spec-lint`. A
 
 The release documentation check, `node docs/tools/release-docs.mjs --check`, rejects unresolved merge-conflict boundaries in its Markdown and MDX inputs, including historical release notes and generated site copies. It reports the first marker's file and line. The `--write` mode also rejects these pages and leaves their text intact for manual resolution; regeneration cannot discard a conflict inside a generated compatibility box. Markdown heading underlines and inline marker examples remain valid. `node --test docs/tools/release-conflicts.test.mjs` checks real jj conflicts in `diff`, `snapshot` and `git` marker styles, resolved notes retaining both fixes, and generated marker widths, line endings and page locations.
 
-The `//:docs-tools` target runs its test files with `bun test --timeout 60000 --parallel=3 --no-isolate`.
+The `//:docs-tools` target runs its test files with `bun test --timeout 60000 --parallel=3 --no-isolate`. The compact-guide check accepts `non-Effect` and `non-effectful` when the same guidance explains `@throws`; missing annotations or an unrelated mention do not satisfy that check. The factory guidance must still explain direct calls to `Effect`, `Stream` and `Layer` factories, their error channels and the cold-program result of an `Effect.try` bridge.
 Three worker processes run files in parallel; tests within each file retain their normal order.
 Each worker reuses its module registry between files, as the serial runner does.
 All `docs/tools/*.test.*` files are discovered on each run, except the separately declared
