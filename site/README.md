@@ -57,6 +57,8 @@ The check serves `dist/public` on a temporary loopback port and routes Vocs' pub
 
 Set `CONTRAST_ARTIFACTS` to save 1366px home and first-code-block cheat sheet screenshots in each theme, plus `contrast.json` with all measured colors, failures and axe findings. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects an existing Chromium.
 
+The selected outline link is also audited at 1376px and 1440px in both themes, where wide layouts use the accent color.
+
 ### Temporary Vocs search accessibility patch
 
 [`#1`](https://github.com/smithersai/vibelang/issues/1) tracks the search combobox's missing active-result relationship. npm has no native `patchedDependencies` mechanism here. The checked-in patch targets Vocs 2.8.5's `Search.tsx`; npm's `postinstall`, `prebuild` and `predev` hooks apply it with exact version/source checks and zero patch fuzz. The script recompiles only that module because Vocs loads its shipped `dist` JavaScript. It preserves the upstream [MIT license](https://github.com/wevm/vocs/blob/main/LICENSE), package and normal Vocs commands. Node, the existing TypeScript dependency, and the standard `patch` utility are required.
