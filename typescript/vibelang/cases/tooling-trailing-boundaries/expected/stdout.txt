@@ -1,0 +1,1 @@
+EK1101 replaces only its own separator error; boundary forms stay native

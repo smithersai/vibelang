@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#formatting-and-existing-tools | Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`.
+export const witness = 1

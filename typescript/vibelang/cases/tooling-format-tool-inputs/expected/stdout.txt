@@ -1,0 +1,1 @@
+type checkers read x.d.vibe.ts; linter, Knip, bundler and test runner read x.vibe

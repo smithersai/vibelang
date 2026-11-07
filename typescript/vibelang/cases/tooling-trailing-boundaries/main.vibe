@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#trailing-block-migration | `EK1101` suppresses only the redundant missing-separator `TS1005` for the same rejection; independent native errors remain.
+// rule-evidence: docs/design/src/007-tooling.md#trailing-block-migration | A newline before the block, an optional chain, a heritage clause and `provide` providers are outside this form.
+export const witness = 1

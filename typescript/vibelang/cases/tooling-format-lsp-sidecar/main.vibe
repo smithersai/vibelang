@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#formatting-and-existing-tools | The language server prefers an in-program `./x.vibe` source to its stale adjacent or relocated `x.d.vibe.ts`.
+export const witness = 1

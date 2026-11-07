@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#formatting-and-existing-tools | JavaScript source-extension rewriting requires `rewriteRelativeImportExtensions`.
+export const witness = 1
