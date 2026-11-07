@@ -589,3 +589,28 @@ test("property: lowering a pipeline into the program around it inlines its callb
     }
   }), { seed: 4402, numRuns: 120 })
 })
+
+test("a curried Effect operator applied through a local keeps the program (t3code client-runtime driver)", () => {
+  const original = `import * as Effect from "effect/Effect";
+const descriptor = Effect.fnUntraced(function* () { return 1; });
+export const factory = () => descriptor().pipe(Effect.withSpan("check"));
+export const piped = (flag) => read(flag).pipe(Effect.orDie);`
+  for (const emitted of [`import * as Effect from "effect/Effect";
+const descriptor = Effect.fnUntraced(function* () { return 1; });
+export const factory = () => (() => { const program = descriptor(); const stage = Effect.withSpan("check"); return stage(program); })();
+export const piped = (flag) => (() => { const pipe$stage0 = Effect.orDie; return pipe$stage0(read(flag)); })();`,
+  `import { withSpan, orDie, fnUntraced } from "effect/Effect";
+const descriptor = fnUntraced(function* () { return 1; });
+export const factory = () => { const value = (() => (() => { const first = descriptor(); const program = first; const stage = withSpan("check"); return stage(program); })())(); return value; };
+export const piped = (flag) => (() => { const pipe$stage0 = orDie; return pipe$stage0(read(flag)); })();`])
+    assert.deepEqual(lostWrappers({ ts, original, emitted }).flags, [], emitted)
+})
+
+test("a local that is no Effect operator still loses the wrapper", () => {
+  const original = `import * as Effect from "effect/Effect";
+export const factory = (program) => program.pipe(Effect.withSpan("check"));`
+  for (const stage of [`const stage = Effect.runSync;`, `const stage = Effect.isEffect;`, `const stage = Effect.fn("x");`, `const stage = helper(Effect.succeed(1));`,
+    `let stage = Effect.withSpan("check"); stage = (x) => 1;`, `const stage = Effect.withSpan("check"); { const stage = (x) => 1; }`])
+    assert.deepEqual(lostWrappers({ ts, original, emitted: `import * as Effect from "effect/Effect";
+export const factory = (program) => (() => { ${stage} return stage(program); })();` }).flags.map(f => f.function), ["/factory"], stage)
+})

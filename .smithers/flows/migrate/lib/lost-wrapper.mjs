@@ -27,7 +27,9 @@
 // neither side: the text cannot see it, and it needs types. A member named in
 // an arm, `{ onSome: Effect.succeed }`, reads as Effect there and sits inside a
 // nested function once the codemod writes `(value) => Effect.succeed(value)`,
-// so that spelling of the same member counts for the original's arm.
+// so that spelling of the same member counts for the original's arm. A call
+// of a local `const stage = Effect.withSpan("check")`, which the compiler
+// writes for `program |> stage(%)`, hands back what that operator does.
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, posix } from "node:path"
 const isTestFile = (path) => /\.(?:test|spec)\.[^/]+$/.test(path)
@@ -197,24 +199,44 @@ function inlineFunction(ts, node) {
   return fn.asteriskToken || fn.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) ? undefined : fn
 }
 
-/** A returned expression's arms: each result a `?:`, `??`, `||`, `&&`, an inline call or a local of `scope` can hand back. */
-function arms(ts, expression, scope, followed = new Set()) {
+/**
+ * The Effect operator a call applies through a local, or undefined: `stage`
+ * in `stage(program)` after `const stage = Effect.withSpan("check")` or
+ * `const stage = Effect.orDie`, the compiler's lowering of `program |> stage(%)`.
+ * Only a `const` declared once in `scope` and initialized by an Effect member
+ * or a call of one counts; a runner, a predicate, `Effect.gen` and `Effect.fn`
+ * hand back a value, a boolean or a function, not a program.
+ */
+function curriedOperator(ts, node, scope, bound) {
+  const callee = ts.isCallExpression(node) && node.arguments.length === 1 ? unwrap(ts, node.expression) : undefined
+  if (!callee || !ts.isIdentifier(callee)) return undefined
+  const declared = ownNodes(ts, scope, n => ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === callee.text ? n : undefined)
+  const init = declared.length === 1 && declared[0].parent.flags & ts.NodeFlags.Const ? declared[0].initializer && unwrap(ts, declared[0].initializer) : undefined
+  if (!init) return undefined
+  const name = calleeName(ts, ts.isCallExpression(init) ? init.expression : init, bound)
+  return /^Effect\.[A-Za-z]+$/.test(name) && !/^Effect\.(run|is)[A-Z]/.test(name) && !factories.test(name) && !generatorRunners.test(name) ? init : undefined
+}
+
+/** A returned expression's arms: each result a `?:`, `??`, `||`, `&&`, an inline call, a local of `scope` or a local curried operator's application can hand back. */
+function arms(ts, expression, scope, bound, followed = new Set()) {
   const node = unwrap(ts, expression)
-  if (ts.isConditionalExpression(node)) return [...arms(ts, node.whenTrue, scope, followed), ...arms(ts, node.whenFalse, scope, followed)]
-  if (ts.isBinaryExpression(node) && [ts.SyntaxKind.QuestionQuestionToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.AmpersandAmpersandToken].includes(node.operatorToken.kind)) return [...arms(ts, node.left, scope, followed), ...arms(ts, node.right, scope, followed)]
+  if (ts.isConditionalExpression(node)) return [...arms(ts, node.whenTrue, scope, bound, followed), ...arms(ts, node.whenFalse, scope, bound, followed)]
+  if (ts.isBinaryExpression(node) && [ts.SyntaxKind.QuestionQuestionToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.AmpersandAmpersandToken].includes(node.operatorToken.kind)) return [...arms(ts, node.left, scope, bound, followed), ...arms(ts, node.right, scope, bound, followed)]
   if (ts.isIdentifier(node) && !followed.has(node.text)) {
     const names = n => ts.isIdentifier(n) && n.text === node.text
     const values = ownNodes(ts, scope, n =>
       ts.isVariableDeclaration(n) && names(n.name) ? n.initializer :
       ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && names(n.left) ? n.right : undefined)
     followed.add(node.text)
-    if (values.length) return values.flatMap(value => arms(ts, value, scope, followed))
+    if (values.length) return values.flatMap(value => arms(ts, value, scope, bound, followed))
   }
   const inline = inlineFunction(ts, node)
   if (inline) {
     const results = ts.isBlock(inline.body) ? ownNodes(ts, inline, n => ts.isReturnStatement(n) && n.expression) : [inline.body]
-    if (results.length) return results.flatMap(result => arms(ts, result, inline, new Set()))
+    if (results.length) return results.flatMap(result => arms(ts, result, inline, bound, new Set()))
   }
+  const operator = curriedOperator(ts, node, scope, bound)
+  if (operator) return [operator]
   return [node]
 }
 
@@ -222,7 +244,7 @@ function arms(ts, expression, scope, followed = new Set()) {
 function bodyShape(ts, fn, bound) {
   const shape = { effects: 0, returns: 0, throws: 0, castReturn: false, named: [], forwards: [] }
   const count = (expression) => {
-    for (const arm of arms(ts, expression, fn)) {
+    for (const arm of arms(ts, expression, fn, bound)) {
       shape.returns++
       if (readsEffect(ts, arm, bound)) {
         shape.effects++
