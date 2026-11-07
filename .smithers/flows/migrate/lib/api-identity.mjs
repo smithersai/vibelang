@@ -1459,6 +1459,14 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     return Boolean(type.flags & ts.TypeFlags.Object) && !(type.objectFlags & ts.ObjectFlags.Instantiated) && sharedSymbol(type.symbol) &&
       (!(type.objectFlags & ts.ObjectFlags.Reference) || checker.getTypeArguments(type).every(sharedDeclaration))
   }
+  // A union lists its members by type id, and each side creates its own
+  // types: `Crypto | RelayDb` with a side's RelayDb can list them in another
+  // order on the other side, which would make equal frontiers differ. Walk
+  // shared members by id, the same on both sides, then a side's by their text.
+  const sidelessOrder = types => types.map((type, index) => ({ type, index,
+    key: sharedDeclaration(type) ? "0" + String(type.id).padStart(16, "0")
+      : "1" + checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseFullyQualifiedType) }))
+    .sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : a.index - b.index).map(entry => entry.type)
   function walkErrors(root, bounded) {
     const cache = bounded ? boundedErrorCache : errorCache
     if (cache.has(root)) { errorWalkCacheHits++; return cache.get(root) }
@@ -1481,7 +1489,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       cache.set(root, walk)
       return walk
     }
-    const nested = [...(type.types ?? []), ...(type.aliasTypeArguments ?? [])]
+    const nested = [...(type.flags & ts.TypeFlags.Union ? sidelessOrder(type.types) : type.types ?? []), ...(type.aliasTypeArguments ?? [])]
     if (type.flags & ts.TypeFlags.TypeParameter) nested.push(checker.getBaseConstraintOfType(type), type.getDefault?.())
     if (type.flags & ts.TypeFlags.Conditional) nested.push(type.checkType, type.extendsType, type.resolvedTrueType, type.resolvedFalseType)
     if (type.flags & ts.TypeFlags.IndexedAccess) nested.push(type.objectType, type.indexType)
