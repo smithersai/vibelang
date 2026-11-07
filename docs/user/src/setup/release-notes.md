@@ -33,6 +33,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Passing a relative profiling or trace path with a project build could crash the compiler. Build-mode path options now resolve from the working directory, like ordinary compiler options.
 
+- The compiler help suggested configuring retired package-trust settings. It now identifies the legacy diagnostics section and points to `vibe.severities`.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
