@@ -108,6 +108,10 @@
       {
         "input": "typescript/vibelang/cases/platform-host-shorthand.fail",
         "output": "typescript/vibelang/cases/platform-host-shorthand-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-host-alias-type-query.fail",
+        "output": "typescript/vibelang/cases/platform-host-alias-type-query-fixed-output"
       }
     ]
   },

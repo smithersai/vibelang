@@ -1,0 +1,16 @@
+// expect: EK4402
+module $platformBindings {
+export const timeout = AbortSignal.timeout
+export const create = URL.createObjectURL
+export const revoke = URL.revokeObjectURL
+}
+import { timeout, create, revoke } from $platformBindings
+import $platformBindings;
+export type Timer = ReturnType<typeof timeout>
+export type Creator = Parameters<typeof create>
+export type Revoker = typeof revoke
+export interface Signatures { timeout: typeof timeout; create: typeof create; revoke: typeof revoke }
+export const reads = { timeout, create, revoke }
+export function local(timeout: number, create: string, revoke: boolean) {
+  return { timeout, create, revoke }
+}

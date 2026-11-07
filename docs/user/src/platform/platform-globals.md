@@ -443,3 +443,5 @@ To construct a native `Request` at a different URL while retaining its body, hea
 Replace `node:net`'s `isIPv6` with the pure `Experimental.NetAddress.isIPv6(address)` when Node's scoped-host syntax must be retained. It needs no layer or `try`. It delegates bare IPv6 parsing to Effect and preserves Node's ASCII zone syntax, including numeric scope strings beyond the unsigned 32-bit range. Effect's own `NetAddress.ipv6FromString` remains the bare-address decoder.
 
 Object shorthand keeps a host alias's identity: reading `{ timeout }` after `const timeout = AbortSignal.timeout` has the same platform restriction as reading `timeout` directly. A local parameter or another shadowing binding keeps its own meaning.
+
+A type query such as `typeof timeout` is erased and does not read the host, even when `timeout` aliases `AbortSignal.timeout`. Value uses of the same alias still follow the platform rule.

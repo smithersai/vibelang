@@ -162,6 +162,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Putting an alias of a host method in an object could hide a platform error. Object shorthand now reports the same restriction as the original host method.
 
+- A type query of a platform-method alias could receive a platform error even though it runs nothing. Erased `typeof` queries now keep their TypeScript meaning.
+
 
 - A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` could call a `.ts` function with no `@throws` tag, although such a function must never throw. The call now reports `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare the callee's `@throws`, or move the code to a `.ts` file. The same holds for the function's parameter defaults.
 

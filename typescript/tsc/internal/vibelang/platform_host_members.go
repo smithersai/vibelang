@@ -201,6 +201,9 @@ func checkPlatformHostMembers(c *checker.Checker, file *ast.SourceFile) {
 
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindTypeQuery {
+			return false
+		}
 		var at *ast.Node
 		var selected platformHostValue
 		switch {
