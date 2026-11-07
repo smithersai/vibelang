@@ -1,0 +1,3 @@
+go test fuzz v1
+string("decl-factory-class")
+byte(5)

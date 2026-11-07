@@ -12,6 +12,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/ls/change"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -287,20 +288,57 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		plain = append(slices.Clone(adoption), plain...)
 		mapped = append(slices.Clone(adoption), mapped...)
 	}
-	declarationStart := nodeStart(rc.file, fn)
-	if ast.IsVariableDeclaration(fn.Parent) || ast.IsPropertyAssignment(fn.Parent) || ast.IsCallExpression(fn.Parent) || !ast.IsFunctionDeclaration(fn) {
-		declarationStart = -1 // a function expression: its errors go above its statement
-		for s := fn; s != nil; s = s.Parent {
-			if s.Parent != nil && (ast.IsSourceFile(s.Parent) || ast.IsBlock(s.Parent)) {
-				declarationStart = nodeStart(rc.file, s)
-				break
-			}
+	// Module-level errors remain nameable in exported factory declarations and
+	// are initialized before any source call can reach the converted function.
+	declarationStart := change.GetInsertionPositionAtSourceFileTop(rc.file)
+	namedErrorsSafe := true
+	fileHeaderStart := len(scanner.GetShebang(text))
+	docScanStart := fileHeaderStart
+	for _, statement := range rc.file.Statements.Nodes {
+		if !ast.IsPrologueDirective(statement) {
+			break
+		}
+		docScanStart = statement.End()
+		if declarationStart == statement.End() {
+			declarationStart = scanner.SkipTriviaEx(text, declarationStart, &scanner.SkipTriviaOptions{StopAfterLineBreak: true})
 		}
 	}
+	// Blank lines do not detach JSDoc from its source declaration. The native
+	// header heuristic may otherwise put the generated class after that JSDoc.
+	headerComments := slices.Concat(
+		slices.Collect(scanner.GetLeadingCommentRanges(&ast.NodeFactory{}, text, docScanStart)),
+		slices.Collect(scanner.GetTrailingCommentRanges(&ast.NodeFactory{}, text, docScanStart)),
+	)
+	docStart := -1
+	for _, comment := range headerComments {
+		if strings.HasPrefix(text[comment.Pos():], "/**") && (docStart < 0 || comment.Pos() < docStart) {
+			docStart = comment.Pos()
+		}
+	}
+	if docStart >= 0 && declarationStart > docStart {
+		declarationStart = docStart
+	}
+	firstToken := scanner.SkipTrivia(text, fileHeaderStart)
+	for _, pragma := range rc.file.Pragmas {
+		if pragma.End() <= firstToken && pragma.End() > declarationStart {
+			// A file pragma attached as JSDoc cannot move to a generated class.
+			if declarationStart <= pragma.Pos() && strings.HasPrefix(text[pragma.Pos():], "/**") {
+				namedErrorsSafe = false
+			}
+			declarationStart = pragma.End()
+		}
+	}
+	if docStart >= 0 && declarationStart > docStart {
+		// A later file pragma cannot cross the declaration's documentation.
+		namedErrorsSafe = false
+	}
 	actions := []*ls.CodeAction{{Description: "Convert to a VibeLang function", Changes: plain}}
-	if len(errorNames) > 0 && declarationStart >= 0 {
+	if len(errorNames) > 0 && namedErrorsSafe {
 		indent := lineIndent(text, declarationStart)
 		var declarations strings.Builder
+		if declarationStart > 0 && text[declarationStart-1] != '\n' && text[declarationStart-1] != '\r' {
+			declarations.WriteByte('\n')
+		}
 		for _, name := range errorNames {
 			declarations.WriteString("error " + name + " { cause: unknown }\n" + indent)
 		}

@@ -448,7 +448,8 @@ try {
     const plain = await refactor("async function", "Convert to a VibeLang function")
     assert(plain.includes("export effect function size(text: string) {") && plain.includes("const length = try Effect.tryPromise(() => Promise.resolve(text.length))") && plain.includes("return try Effect.tryPromise(async () => "), `async: ${plain.split("\n").filter((l) => l.includes("size") || l.includes("length =")).join(" / ")}`)
     const mapped = await refactor("async function", "Convert to a VibeLang function with an error per await")
-    assert(mapped.includes("error ResolveFailed { cause: unknown }\nexport effect function size(") && mapped.includes("try Effect.tryPromise({ try: () => Promise.resolve(text.length), catch: (cause) => new ResolveFailed({ cause }) })"), "errors not written")
+    const errorDeclaration = "error ResolveFailed { cause: unknown }\n"
+    assert(mapped.includes(errorDeclaration) && mapped.indexOf(errorDeclaration) < mapped.indexOf("service Name {") && mapped.includes("export effect function size(") && mapped.includes("try Effect.tryPromise({ try: () => Promise.resolve(text.length), catch: (cause) => new ResolveFailed({ cause }) })"), "module error declaration or Promise bridge not written")
     const toPipe = await refactor("inc(double(1))", "Convert to a pipe")
     assert(toPipe.includes("export const piped = 1 |> double(%) |> inc(%)"), "pipe not written")
     const toCalls = await refactor("1 |> double", "Convert the pipe to calls", { offset: 2 })

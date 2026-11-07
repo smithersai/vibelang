@@ -18,6 +18,10 @@ func FuzzAsyncCallablePropertyContracts(f *testing.F) {
 	startShortBudget(f)
 	requireAsyncRefactorBridgeQuote(f)
 	keys := []string{"implements-field", "extends-field", "implements-expression", "static-field", "index-method", "class-index", "class-method-index", "number-index", "template-index", "symbol-index", "untyped-field-control", "object-base-field-control", "any-index-control", "unknown-class-index-control", "other-number-index-control", "other-template-index-control"}
+	keys = append(keys, "decl-factory-class", "decl-factory-field", "decl-factory-object", "decl-factory-arrow", "decl-factory-declaration", "decl-static-factory", "decl-getter-factory", "decl-generic-factory", "decl-symbol-inherited", "decl-collision", "decl-documented", "decl-directive", "decl-hashbang", "decl-multiple-await", "decl-private-control", "decl-annotated-control")
+	keys = append(keys, "decl-nocheck-control", "decl-triple-reference", "decl-pinned-header", "decl-directive-tail", "decl-hoisted-factory")
+	keys = append(keys, "decl-pragma-documentation")
+	keys = append(keys, "decl-documentation-gap", "decl-documentation-crlf", "decl-pinned-documentation-gap", "decl-check-documentation-gap", "decl-documentation-pragma-gap", "decl-documentation-before-pragma", "decl-directive-documentation-gap", "decl-hashbang-documentation-gap")
 	keys = append(keys, "computed-number-string", "computed-number-number", "computed-template", "computed-union", "computed-number-class", "computed-string-class", "computed-template-class", "computed-number-inherited", "computed-union-string", "computed-any-control", "computed-unknown-control", "computed-other-index-control", "computed-untyped-control")
 	keys = append(keys, "computed-template-number-contract", "computed-template-other-contract", "named-other-inferred-contract", "literal-other-inferred-contract", "computed-string-union-number", "computed-template-untyped-control", "computed-literal-untyped-control")
 	keys = append(keys, "computed-numeric-template-number", "computed-number-numeric-template", "computed-numeric-template-control")
@@ -72,6 +76,13 @@ func FuzzAsyncCallablePropertyContracts(f *testing.F) {
 				if edited == nil {
 					Gap(t, "FuzzAsyncCallablePropertyContracts", "async-property:edit:"+key, "cannot apply offered action")
 				}
+				// TypeScript keeps attached JSDoc across blank lines; an edit must
+				// keep it with the same source declaration.
+				if factoryStart := strings.Index(source, "export function create"); factoryStart >= 0 {
+					if docStart := strings.LastIndex(source[:factoryStart], "/** Factory docs."); docStart >= 0 && !strings.Contains(edited["main.vibe"], source[docStart:factoryStart]+"export function create") {
+						Gap(t, "FuzzAsyncCallablePropertyContracts", "async-property:documentation:"+key, "%s; action %s moves attached documentation%s", asyncRefactorPreservationQuote, action.Title, Archive(edited))
+					}
+				}
 				fixed := toolsCompile(t, w, "FuzzAsyncCallablePropertyContracts", edited)
 				added := toolsAddedErrors(result, fixed)
 				fixed.Remove()
@@ -90,6 +101,66 @@ func FuzzAsyncCallablePropertyContracts(f *testing.F) {
 func asyncCallablePropertySource(key string, mode uint8) (string, int, bool) {
 	source, offer := "", false
 	switch key {
+	case "decl-factory-class":
+		source, offer = "export function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-factory-field":
+		source, offer = "export function create() { return class Loader { load = ASYNC (input: Promise<number>) => await input } }", true
+	case "decl-factory-object":
+		source, offer = "export function create() { return { load: ASYNC (input: Promise<number>) => await input } }", true
+	case "decl-factory-arrow":
+		source, offer = "export function create() { return ASYNC (input: Promise<number>) => await input }", true
+	case "decl-factory-declaration":
+		source, offer = "export function create() { ASYNC function load(input: Promise<number>) { return await input }; return load }", true
+	case "decl-static-factory":
+		source, offer = "export class Factory { static create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } } }", true
+	case "decl-getter-factory":
+		source, offer = "export class Factory { get loader() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } } }", true
+	case "decl-generic-factory":
+		source, offer = "export function create<K extends number | symbol>(key: K) { return class Loader { ASYNC [key](input: Promise<number>) { return await input } } }", true
+	case "decl-symbol-inherited":
+		source, offer = "class Base { [key: number]: (input: Promise<number>) => Promise<number> }; export function create<K extends symbol>(key: K) { return class Loader extends Base { ASYNC [key](input: Promise<number>) { return await input } } }", true
+	case "decl-collision":
+		source, offer = "const PromiseFailed = 0; export function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-documented":
+		source, offer = "/** Factory docs. */\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-directive":
+		source, offer = "\"use strict\";\n/** Factory docs. */\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-hashbang":
+		source, offer = "#!vibelang\n\"use strict\";\n/** Factory docs. */\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-multiple-await":
+		source, offer = "export function create() { return class Loader { ASYNC load(input: Promise<number>, other: Promise<number>) { const value = await input; return value + await other } } }", true
+	case "decl-private-control":
+		source, offer = "export {}; function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-annotated-control":
+		source, offer = "export function create(): { new(): { load(input: Promise<number>): unknown } } { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-nocheck-control":
+		source, offer = "// @ts-nocheck\nconst wrong: number = \"text\"; export function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-triple-reference":
+		source, offer = "/// <reference lib=\"esnext.disposable\" />\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-pinned-header":
+		source, offer = "/*! Factory license */\n/** Factory docs. */\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-directive-tail":
+		source, offer = "\"use strict\"; // keep directive comment\n/** Factory docs. */\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-hoisted-factory":
+		source, offer = "export const Loader = create();\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-pragma-documentation":
+		source, offer = "/** Factory docs.\n * @jsx factory\n */\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", false
+	case "decl-documentation-gap":
+		source, offer = "/** Factory docs. */\n\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-documentation-crlf":
+		source, offer = "/** Factory docs. */\r\n\r\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-pinned-documentation-gap":
+		source, offer = "/*! Factory license */\n/** Factory docs. */\n\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-check-documentation-gap":
+		source, offer = "// @ts-nocheck\n/** Factory docs. */\n\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-documentation-pragma-gap":
+		source, offer = "/** Factory docs.\n * @jsx factory\n */\n\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", false
+	case "decl-documentation-before-pragma":
+		source, offer = "/** Factory docs. */\n\n// @ts-nocheck\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", false
+	case "decl-directive-documentation-gap":
+		source, offer = "\"use strict\";\n/** Factory docs. */\n\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
+	case "decl-hashbang-documentation-gap":
+		source, offer = "#!vibelang\n/** Factory docs. */\n\nexport function create() { return class Loader { ASYNC load(input: Promise<number>) { return await input } } }", true
 	case "implements-field":
 		source, offer = "interface Contract { load(input: Promise<number>): Promise<number> }; export class Loader implements Contract { load = ASYNC (input: Promise<number>) => await input }", false
 	case "extends-field":
@@ -214,7 +285,20 @@ func asyncCallablePropertySource(key string, mode uint8) (string, int, bool) {
 		source = strings.ReplaceAll(source, "=> Promise<number>", "=> PromiseLike<number>")
 	}
 	if mode&1 != 0 {
-		source = `const café = "😀"; ` + source
+		prefix := `const café = "😀"; `
+		start := 0
+		for {
+			header := source[start:]
+			if !strings.HasPrefix(header, "#!") && !strings.HasPrefix(header, "///") && !strings.HasPrefix(header, "// @ts-") {
+				break
+			}
+			end := strings.IndexByte(header, '\n')
+			if end < 0 {
+				break
+			}
+			start += end + 1
+		}
+		source = source[:start] + prefix + source[start:]
 	}
 	cursor := strings.Index(source, "ASYNC")
 	source = strings.Replace(source, "ASYNC", fmt.Sprintf("async /* keep %d */", mode), 1)

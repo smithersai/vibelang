@@ -45,13 +45,13 @@ func TestEditorAsyncRefactorKindsAndTrivia(t *testing.T) {
 				if chosen == nil {
 					t.Fatalf("missing async refactor %q", title)
 				}
-				want := test.want
+				want := prefix + test.want
 				if title != titles[0] {
-					want = "error PromiseFailed { cause: unknown }\n" + strings.ReplaceAll(want, "try Effect.tryPromise(() => input)", "try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) })")
+					want = "error PromiseFailed { cause: unknown }\n" + prefix + strings.ReplaceAll(test.want, "try Effect.tryPromise(() => input)", "try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) })")
 				}
 				got := applyEditorEdits(t, file, converters, chosen.Changes)
-				if got != prefix+want {
-					t.Fatalf("async rewrite differs:\ngot: %s\nwant: %s", got, prefix+want)
+				if got != want {
+					t.Fatalf("async rewrite differs:\ngot: %s\nwant: %s", got, want)
 				}
 				checked, edited, _, _ := editorProgram(t, got)
 				all := append(checked.GetSyntacticDiagnostics(t.Context(), edited), checked.GetSemanticDiagnostics(t.Context(), edited)...)
