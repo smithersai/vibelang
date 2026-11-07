@@ -283,6 +283,11 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-await-binding-label", "function f(await: number) { await: while (false) { break await; } return await; }"},
 	{"effect-for-await-placement", "effect {\nfor await ( const of xs ) { x ; } }"},
 	{"effect-function-for-await-placement", "export effect function g ( ) { for await ( let of xs ) { } }"},
+	{"rest-binding-pattern", "function f(...[p]: number[]) { return p; }"},
+	{"schema-signature-rest-pattern", "schema S = { ( ... [ p ] : Missing ) : Missing }"},
+	{"rest-initializer", "function f(...p = []) { return p; }"},
+	{"rest-pattern-optional", "function f(...[p]?: number[]) { return p; }"},
+	{"binding-pattern-optional", "function f ( [ p ] ? : number [ ] ) { return p ; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -2111,6 +2116,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// Native MetaProperty spelling and new.target placement.
 	case 17012, 17013:
 		return true
+	// checkGrammarParameterList: a rest parameter that is not last (TS1014),
+	// optional (TS1047) or initialized (TS1048). ECMAScript's
+	// FunctionRestParameter is a final BindingRestElement with neither.
+	case 1014, 1047, 1048:
+		return true
 	// checkGrammarArrowFunction: a line break before => (TS1200); the
 	// checker's throw check: a line break after throw (TS1142).
 	case 1200, 1142:
@@ -2298,6 +2308,11 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-for-await-placement-warning", "", diagnostics.CategoryWarning, 1103, false},
 		{"external-for-await-code-collision", "other", diagnostics.CategoryError, 1103, false},
 		{"ek-for-await-code-collision", "EK", diagnostics.CategoryError, 1103, false},
+		{"native-rest-not-last", "", diagnostics.CategoryError, 1014, true},
+		{"native-rest-optional", "", diagnostics.CategoryError, 1047, true},
+		{"native-rest-initializer", "", diagnostics.CategoryError, 1048, true},
+		{"native-rest-initializer-warning", "", diagnostics.CategoryWarning, 1048, false},
+		{"ek-rest-initializer-code-collision", "EK", diagnostics.CategoryError, 1048, false},
 		{"effect-for-await-placement", "EK", diagnostics.CategoryError, 102, true},
 		{"effect-for-await-placement-warning", "EK", diagnostics.CategoryWarning, 102, false},
 		{"native-effect-await-code-collision", "", diagnostics.CategoryError, 102, false},

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:rest-pattern-optional\nfunction f(...[p]?: number[]) { return p; }")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:rest-initializer\nfunction f(...p = []) { return p; }")
