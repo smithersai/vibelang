@@ -1,4 +1,4 @@
-import { splitImportMeta, privateResolverExports } from "./import-meta-platform.mjs"
+import { splitImportMeta, privateResolverExports, isWritten } from "./import-meta-platform.mjs"
 // Platform code in a module the batch migrates (spec 005, EK4402: "The quick
 // fix and the codemod move the code into a sibling `.ts` module, or point to
 // the Effect service"). A .vibe file does not import a Node or Bun builtin as
@@ -158,10 +158,6 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   const companion = posix.basename(platformPath(file))
   const self = new RegExp("^import \\{[^}\\n]*\\} from \"\\./" + escapeRegExp(companion) + "\"\\n?", "m")
   const moved = declarations.platform.replace(self, "")
-  // A helper given import.meta.url names the module. The same call in the
-  // companion would name the companion.
-  const identity = meta.identity.find(name => new RegExp("(?<![\\w$])" + escapeRegExp(name) + "\\(").test(moved))
-  if (identity) return { refused: file + ": code that reads import.meta." + meta.members[identity] + " uses platform code, and moving it to " + companion + " would read that file's location instead" }
   return { ...declarations, importMeta: meta.importMeta, importText: meta.importText,
     platform: meta.platform + "\n" + moved,
     moved: [...meta.moved, ...declarations.moved] }
@@ -262,6 +258,13 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   }
   const early = earlyConstant(declarations, moved, copied, constants, ts)
   if (early) return { refused: `${file}: export ${[...early.names].join(", ")} uses platform code and is not a function with written parameter and return types, so it cannot stay in the .vibe module` }
+  // import.meta.url names the module that reads it, so in the sibling it would
+  // name the sibling. A URL resolved against it for a path beside the module
+  // means the same in either file.
+  const requires = createRequireNames(imports, ts)
+  for (const d of moved) {
+    if (namesModule(d.statement, ts, requires)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which would name ${posix.basename(platformPath(file))} after the move` }
+  }
   const kept = declarations.filter((d) => !moved.has(d))
   const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
   if (inferredTypes.refused) return inferredTypes
@@ -401,6 +404,30 @@ export function splitBatchPlatform(root, files, ts, {
 } = {}) {
   const splits = []
   const refused = []
+  // A body cannot hold import.meta (EK4009): the import.meta reads the
+  // companion serves keep it beside the body, private as for the sibling split.
+  const bodySplit = (file, sibling) => {
+    const text = read(file)
+    const meta = splitImportMeta(text, file, sibling, ts)
+    if (meta?.refused) return meta
+    const body = splitPlatformToModule(meta ? meta.module : text, file, ts, { globals: globalsOf(file), throws: throwBodies })
+    if (!body || body.refused || !meta) return body
+    const risk = publishedSiblingRisk(root, file, { exists, read })
+    const privateExports = risk && meta.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
+    if (risk && !privateExports) return { refused: file + ": refusing " + sibling + " for the import.meta helpers beside module " + body.name + ": " + risk }
+    const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
+    return { ...body, platform: [...directives, meta.platform].join("\n"), privateExports, moved: [...meta.moved, ...body.moved] }
+  }
+  const writeBody = (file, sibling, body) => {
+    write(file, body.module)
+    if (body.platform) write(sibling, body.platform)
+    if (body.privateExports) {
+      const pkg = JSON.parse(read(body.privateExports.manifest))
+      for (const key of body.privateExports.keys) pkg.exports[key] = null
+      write(body.privateExports.manifest, JSON.stringify(pkg, null, 2) + "\n")
+    }
+    splits.push({ file, platform: body.platform ? sibling : null, ...(body.privateExports ? { privateExports: body.privateExports } : {}), module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+  }
   for (const file of files) {
     if (!/\.(?:m?ts|tsx|vibex)$/.test(file) || /\.d\.(?:m?ts|tsx|vibex)$/.test(file)) continue
     const sibling = platformPath(file)
@@ -435,10 +462,9 @@ export function splitBatchPlatform(root, files, ts, {
     }
     if (refusal) {
       // A sibling cannot serve this module. With moduleBodies, a VIP-40 body may.
-      const body = moduleBodies ? splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies }) : null
+      const body = moduleBodies ? bodySplit(file, sibling) : null
       if (!body || body.refused) { refused.push(body?.refused ? refusal + "; " + body.refused : refusal); continue }
-      write(file, body.module)
-      splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+      writeBody(file, sibling, body)
       continue
     }
     const body = throwing(result.module)
@@ -850,18 +876,37 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (source.statements.some((s) => ts.isExportAssignment(s) && s.isExportEquals)) return { refused: `${file}: export = has no place beside a module body (EK4008)` }
   const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement) || typeNamespace(d.statement, ts)
   const reexport = (d) => ts.isExportDeclaration(d.statement)
-  const moved = new Set([...platformSeed, ...throwSeed])
-  for (let grew = true; grew; ) {
-    grew = false
-    const add = (d) => { if (!moved.has(d)) { moved.add(d); grew = true } }
-    for (const d of [...moved]) {
-      for (const name of new Set([...d.reads, ...d.valueReads])) for (const needed of declared.get(name) ?? []) add(needed)
-      for (const name of d.names) for (const twin of declared.get(name) ?? []) add(twin)
+  const close = (seed) => {
+    const moved = new Set(seed)
+    for (let grew = true; grew; ) {
+      grew = false
+      const add = (d) => { if (!moved.has(d)) { moved.add(d); grew = true } }
+      for (const d of [...moved]) {
+        for (const name of new Set([...d.reads, ...d.valueReads])) for (const needed of declared.get(name) ?? []) add(needed)
+        for (const name of d.names) for (const twin of declared.get(name) ?? []) add(twin)
+      }
+      const values = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
+      for (const d of declarations) if (typeOnly(d) && [...d.valueReads].some((n) => values.has(n))) add(d)
+      // An import is read-only (TS2632): whatever writes a moved binding moves with it.
+      for (const d of declarations) if (!reexport(d) && [...writtenNames(d.statement, ts)].some((n) => values.has(n))) add(d)
     }
-    const values = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
-    for (const d of declarations) if (typeOnly(d) && [...d.valueReads].some((n) => values.has(n))) add(d)
-    // An import is read-only (TS2632): whatever writes a moved binding moves with it.
-    for (const d of declarations) if (!reexport(d) && [...writtenNames(d.statement, ts)].some((n) => values.has(n))) add(d)
+    return moved
+  }
+  let moved = close([...platformSeed, ...throwSeed])
+  // VIP-40: "A body that needs metadata receives it as an argument." A
+  // declaration that would move and reads import.meta stays where it is; only
+  // the host operations of the module's kept code move into the body
+  // (hostOperations), and import.meta stays in the module. Throwing code still
+  // moves whole.
+  const metaReader = platformCode ? [...moved].find((d) => readsImportMeta(d.statement, ts)) : undefined
+  let operations = null
+  if (metaReader) {
+    moved = close(throwSeed)
+    const names = new Set()
+    const collect = (node) => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, collect) }
+    collect(source)
+    operations = hostOperations(source, declarations.filter((d) => !moved.has(d)).map((d) => d.statement), platform, ts, names, file)
+    if (operations.refused) return { refused: `${file}: ${firstLine(source, metaReader.statement)} reads import.meta, which a module body cannot (EK4009), and its host operations cannot move on their own: ${operations.refused}` }
   }
   const movable = (s) => ts.isVariableStatement(s) || ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isEnumDeclaration(s) || ts.isExportAssignment(s) || typeNamespace(s, ts)
   for (const d of moved) {
@@ -873,7 +918,7 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (inferredTypes.refused) return inferredTypes
   if (!kept.some((d) => !typeOnly(d) && !reexport(d))) return { refused: platformSeed.length ? `${file} is platform code only` : `${file}: every value of the module reaches a throw, so it stays TypeScript` }
   const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
-  const taken = new Set([...declared.keys(), ...imported, ...declarations.flatMap((d) => [...d.reads])])
+  const taken = new Set([...declared.keys(), ...imported, ...declarations.flatMap((d) => [...d.reads]), ...(operations?.helpers.map((h) => h.name) ?? [])])
   const name = uniqueName(platformSeed.length ? "platform" : "throwing", taken)
   const isDefault = (d) => ts.isExportAssignment(d.statement) || (d.statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
   const movedList = declarations.filter((d) => moved.has(d))
@@ -905,10 +950,15 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
     return i === source.statements[0] ? source.text.slice(i.getStart(source), i.end) : statementText(source, i)
   }
   const fileComment = imports[0] === source.statements[0] ? leadingComments(source, imports[0]).trimEnd() : ""
-  const head = imports.map((i) => bare(i, (b) => moduleReads.has(b.name))).filter(Boolean)
+  const builtin = (i) => ts.isStringLiteral(i.moduleSpecifier) && isPlatformModule(i.moduleSpecifier.text)
+  const head = imports.map((i) => operations && builtin(i)
+    ? typeImportText(i, source, ts, (b) => operations.typeReads.has(b.name) || (b.type && moduleReads.has(b.name)))
+    : bare(i, (b) => moduleReads.has(b.name))).filter(Boolean)
   if (fileComment) head.unshift(fileComment)
   const movedReads = new Set(movedList.flatMap((d) => [...d.reads]))
-  const bodyImports = imports.map((i) => i.importClause ? bare(i, (b) => movedReads.has(b.name)) : null).filter(Boolean)
+  const bodyImports = imports.map((i) => i.importClause ? bare(i, (b) => movedReads.has(b.name) || (!!operations && !b.type && operations.roots.has(b.name)))
+    // A builtin loaded for its effect loads from the body, with the host operations.
+    : operations && builtin(i) ? statementText(source, i) : null).filter(Boolean)
   // A body exports a private declaration that kept code reads, and every one a
   // kept declaration's inferred type may name, which TypeScript could do in one
   // file (TS4023 across two): a type, class, enum or function, and a variable
@@ -919,7 +969,8 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   const queried = typeQueryNames(source, ts)
   const seam = (d) => !ts.isVariableStatement(d.statement) || [...d.names].some((n) => keptReads.has(n) || queried.has(n)) || namesItsOwnType(d.statement, ts)
   const bodyStatements = movedList.map((d) => (!d.exported && !isDefault(d) && d.names.size && seam(d) ? exportedText(source, d.statement) : statementText(source, d.statement)))
-  const body = [`module ${name} {`, joinParts(fileDirectives(source, ts), bodyImports, bodyStatements).trimEnd(), "}"].join("\n")
+  const body = [`module ${name} {`, joinParts(fileDirectives(source, ts), bodyImports, bodyStatements, operations?.helpers.map((h) => h.text) ?? []).trimEnd(), "}"].join("\n")
+  imports_.push(...(operations?.helpers.map((h) => h.name) ?? []))
   const from = []
   if (imports_.length) from.push(`import { ${[...imports_].sort().join(", ")} } from ${name}`)
   if (typeImports.length) from.push(`import type { ${[...typeImports].sort().join(", ")} } from ${name}`)
@@ -931,8 +982,9 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (!reexports && (exports_.length || typeExports.length || reexportsDefault)) {
     return { refused: `${file}: ${[...exports_, ...typeExports, ...(reexportsDefault ? ["default"] : [])].join(", ")} would be declared by \`module ${name}\`, a new public declaration file; platformModuleBodies allows it` }
   }
-  const module = joinParts(leadingHeader(source), head, [body], from, kept.map((d) => inferredTypes.text(d.statement)))
-  return { module, name, moved: movedList.flatMap((d) => [...d.names]), kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]) }
+  const module = joinParts(leadingHeader(source), head, [body], from, kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))))
+  return { module, name, moved: [...movedList.flatMap((d) => [...d.names]), ...(operations?.helpers.map((h) => h.name) ?? [])], kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]),
+    ...(operations ? { hostOperations: operations.helpers.map((h) => h.name) } : {}) }
 }
 
 const intersect = (a, b) => new Set([...a].filter((x) => b.has(x)))
@@ -990,12 +1042,12 @@ function inferredFactoryTypeText(source, kept, moved, declarations, imported, ts
       insertions.set(declaration.statement, edits)
     }
   }
-  return { text: statement => {
+  return { text: (statement, extra = []) => {
     let text = statementText(source, statement)
     const start = statement.end - text.length
-    for (const edit of (insertions.get(statement) ?? []).sort((a, b) => b.at - a.at)) {
+    for (const edit of [...(insertions.get(statement) ?? []), ...extra].sort((a, b) => b.at - a.at)) {
       const at = edit.at - start
-      text = text.slice(0, at) + edit.text + text.slice(at)
+      text = text.slice(0, at) + edit.text + text.slice((edit.end ?? edit.at) - start)
     }
     return text
   } }
@@ -1031,11 +1083,109 @@ function namesItsOwnType(statement, ts) {
   })
 }
 
+// The host operations of statements, moved into a module body as helpers the
+// module calls where it performed them (VIP-40: a body that needs metadata
+// receives it as an argument; the compiler's platformCallSplit does the same
+// inside wrappers). Each free reference to a name in platform, a value import
+// of a builtin or a host global the compiler named, becomes:
+//   a call      fileURLToPath(new URL("./x", import.meta.url))  ->  $fileURLToPath(new URL("./x", import.meta.url))
+//   a read      process.env.TOKEN                                ->  $process_env_TOKEN()
+//   a typeof    typeof Bun                                       ->  $typeof_Bun()
+//   a write     process.exitCode = 1                             ->  $set_process_exitCode(1)
+// A called helper has the callee's own type, overloads and generics included,
+// and calls it on the same receiver. Arguments, type arguments and callbacks
+// stay where they were, so they run in order and still see the module's
+// import.meta. A read, typeof or write helper performs that one operation
+// when the module reaches it, and throws only what the operation throws.
+// What cannot move this way is refused: new, a tagged template, an optional
+// call of a member, a write other than =, delete, a re-export of the name.
+// Returns { edits: Map(statement -> [{ at, end, text }]), helpers: [{ name, text }],
+// typeReads, roots } or { refused }.
+function hostOperations(source, statements, platform, ts, taken, file) {
+  const helpers = new Map(), edits = new Map(), typeReads = new Set(), roots = new Set()
+  const where = (node) => file + ":" + (source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1)
+  const fresh = (base) => { let name = base; for (let i = 2; taken.has(name); i++) name = base + i; taken.add(name); return name }
+  const helper = (key, base, text) => {
+    let h = helpers.get(key)
+    if (!h) { const name = fresh(base); h = { name, text: text(name) }; helpers.set(key, h) }
+    return h.name
+  }
+  const never = "/** @throws {never} */\n"
+  for (const statement of statements) {
+    if (ts.isExportDeclaration(statement) && !statement.moduleSpecifier && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+      const named = statement.exportClause.elements.find((e) => platform.has((e.propertyName ?? e.name).text))
+      if (named) return { refused: `${where(statement)}: export { ${named.getText(source)} } re-exports platform code` }
+    }
+    const sites = []
+    freeNames(statement, ts, false, (node, type) => { if (platform.has(node.text)) { if (type) typeReads.add(node.text); else sites.push(node) } })
+    const own = []
+    for (const id of sites) {
+      roots.add(id.text)
+      if (ts.isShorthandPropertyAssignment(id.parent) && id.parent.name === id) {
+        const name = helper("read " + id.text, "$" + id.text, (h) => `${never}export function ${h}() { return ${id.text} }`)
+        own.push({ at: id.getStart(source), end: id.end, text: `${id.text}: ${name}()` })
+        continue
+      }
+      let top = id
+      const path = [id.text]
+      while (ts.isPropertyAccessExpression(top.parent) && top.parent.expression === top && !top.parent.questionDotToken && ts.isIdentifier(top.parent.name)) {
+        top = top.parent
+        path.push(top.name.text)
+      }
+      if (/\/[*/]/.test(top.getText(source))) return { refused: `${where(id)}: ${path.join(".")} has comments that cannot move unchanged` }
+      const chain = path.join("."), base = "$" + path.join("_")
+      const parent = top.parent
+      if (ts.isExportAssignment(parent)) return { refused: `${where(id)}: export default ${chain} exports platform code` }
+      if (ts.isCallExpression(parent) && parent.expression === top && !(parent.questionDotToken && top !== id)) {
+        if (parent.questionDotToken) {
+          const name = helper("read " + chain, base, (h) => `${never}export function ${h}() { return ${chain} }`)
+          own.push({ at: top.getStart(source), end: top.end, text: name + "()" })
+        } else {
+          const name = helper("call " + chain, base, (h) => `export const ${h}: typeof ${chain} = ((...args: Parameters<typeof ${chain}>) => ${chain}(...args)) as typeof ${chain}`)
+          own.push({ at: top.getStart(source), end: top.end, text: name })
+        }
+      } else if (ts.isCallExpression(parent) && parent.expression === top) {
+        return { refused: `${where(id)}: ${chain}?.() would lose its receiver` }
+      } else if (ts.isNewExpression(parent) && parent.expression === top) {
+        return { refused: `${where(id)}: new ${chain} constructs platform code` }
+      } else if (ts.isTaggedTemplateExpression(parent) && parent.tag === top) {
+        return { refused: `${where(id)}: ${chain} tags a template` }
+      } else if (ts.isTypeOfExpression(parent) && top === id) {
+        const name = helper("typeof " + chain, "$typeof_" + id.text, (h) => `${never}export function ${h}() { return typeof ${id.text} }`)
+        own.push({ at: parent.getStart(source), end: parent.end, text: name + "()" })
+      } else if (isWritten(top, ts)) {
+        if (!(ts.isBinaryExpression(parent) && parent.left === top && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && top !== id)) return { refused: `${where(id)}: ${chain} is written in place` }
+        const name = helper("set " + chain, "$set_" + path.join("_"), (h) => `${never}export function ${h}(value: typeof ${chain}) { return ${chain} = value }`)
+        own.push({ at: parent.getStart(source), end: parent.right.getStart(source), text: name + "(" }, { at: parent.end, end: parent.end, text: ")" })
+      } else {
+        const name = helper("read " + chain, base, (h) => `${never}export function ${h}() { return ${chain} }`)
+        own.push({ at: top.getStart(source), end: top.end, text: name + "()" })
+      }
+    }
+    if (own.length) edits.set(statement, own)
+  }
+  return { edits, helpers: [...helpers.values()], typeReads, roots }
+}
+
+// An import type declaration for the bindings of i that keep keeps, or null.
+// A default and named bindings take two statements, as import type requires.
+function typeImportText(i, source, ts, keep) {
+  const kept = bindingsOf(i, ts).filter(keep)
+  if (!kept.length) return null
+  const specifier = i.moduleSpecifier.getText(source)
+  const out = []
+  const def = kept.find((b) => b.kind === "default"), ns = kept.find((b) => b.kind === "namespace"), named = kept.filter((b) => b.kind === "named")
+  if (def) out.push(`import type ${def.name} from ${specifier}`)
+  if (ns) out.push(`import type * as ${ns.name} from ${specifier}`)
+  if (named.length) out.push(`import type { ${named.map((b) => (b.property ? b.property + " as " : "") + b.name).join(", ")} } from ${specifier}`)
+  return out.join("\n")
+}
+
 // The names statement reads that it does not bind itself at the read: a
 // parameter or local of the name is no read of the top-level binding, and an
 // import no kept code reads would be TS6133. Values and types have scopes of
 // their own, `(session: session) => session`. With valuesOnly, value reads alone.
-function freeNames(statement, ts, valuesOnly = false) {
+function freeNames(statement, ts, valuesOnly = false, onFree) {
   const free = new Set()
   const bindingNames = (name, into) => {
     if (ts.isIdentifier(name)) into.add(name.text)
@@ -1084,7 +1234,7 @@ function freeNames(statement, ts, valuesOnly = false) {
     if (ts.isTypeQueryNode(node)) {
       let name = node.exprName
       while (ts.isQualifiedName(name)) name = name.left
-      if (ts.isIdentifier(name) && !v.some((s) => s.has(name.text))) free.add(name.text)
+      if (ts.isIdentifier(name) && !v.some((s) => s.has(name.text))) { free.add(name.text); onFree?.(name, true) }
       for (const a of node.typeArguments ?? []) walk(a, v, t, true)
       return
     }
@@ -1096,8 +1246,8 @@ function freeNames(statement, ts, valuesOnly = false) {
     if (ts.isIdentifier(node) && node.parent && !isDeclarationName(node, node.parent) && !isMemberName(node, node.parent)) {
       const parent = node.parent
       const typeRead = typeHere || (ts.isHeritageClause(parent.parent ?? parent)) || ts.isExpressionWithTypeArguments(parent) && !ts.isClassLike(parent.parent?.parent ?? parent)
-      if (typeRead && !ts.isTypePredicateNode(parent)) { if (!valuesOnly && !t.some((s) => s.has(node.text))) free.add(node.text) }
-      else if (!v.some((s) => s.has(node.text))) free.add(node.text)
+      if (typeRead && !ts.isTypePredicateNode(parent)) { if (!valuesOnly && !t.some((s) => s.has(node.text))) { free.add(node.text); onFree?.(node, true) } }
+      else if (!v.some((s) => s.has(node.text))) { free.add(node.text); onFree?.(node, false) }
     }
     if (ts.isShorthandPropertyAssignment(node) && !v.some((s) => s.has(node.name.text))) free.add(node.name.text)
     ts.forEachChild(node, (child) => walk(child, v, t, typeHere))
@@ -1147,6 +1297,34 @@ function throwsPlainly(node, ts, plain = true) {
   let inner = plain
   if (ts.isFunctionLike(node) && node.body) inner = !node.asteriskToken && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)
   return !!ts.forEachChild(node, (child) => throwsPlainly(child, ts, inner) || undefined)
+}
+
+// The local names of createRequire imported from node:module.
+function createRequireNames(imports, ts) {
+  const names = new Set()
+  for (const i of imports) {
+    if (!ts.isStringLiteral(i.moduleSpecifier) || !["module", "node:module"].includes(i.moduleSpecifier.text)) continue
+    for (const b of bindingsOf(i, ts)) if (!b.type && b.kind === "named" && (b.property ?? b.name) === "createRequire") names.add(b.name)
+  }
+  return names
+}
+
+// Whether node reads import.meta for the module's own identity: anything but
+// import.meta.url as the base of new URL(<a path beside the module>, ...) or
+// the argument of createRequire, whose resolution starts from the module's
+// directory.
+function namesModule(node, ts, requires) {
+  if (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword) {
+    const url = node.parent
+    if (!ts.isPropertyAccessExpression(url) || url.expression !== node || url.questionDotToken || url.name.text !== "url") return true
+    const use = url.parent
+    if (ts.isCallExpression(use) && use.arguments.length === 1 && use.arguments[0] === url && ts.isIdentifier(use.expression) && requires.has(use.expression.text)) return false
+    if (!ts.isNewExpression(use) || use.arguments?.length !== 2 || use.arguments[1] !== url || !ts.isIdentifier(use.expression) || use.expression.text !== "URL") return true
+    const first = use.arguments[0]
+    const head = ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) ? first.text : ts.isTemplateExpression(first) ? first.head.text : null
+    return head === null || !(head === "." || head === ".." || head.startsWith("./") || head.startsWith("../"))
+  }
+  return !!ts.forEachChild(node, (child) => namesModule(child, ts, requires) || undefined)
 }
 
 function readsImportMeta(node, ts) {

@@ -291,14 +291,14 @@ test("stock TypeScript declares the same types for every served member", () => {
 
 test("code that reads the module's location never moves to the companion", () => {
   const source = 'import { readFileSync } from "node:fs";\nexport const self = (): string => readFileSync(import.meta.filename, "utf8");\nexport const value = 1;\n'
-  assert.match(splitPlatform(source, "provider.ts", ts).refused, /import\.meta\.filename .*provider\.platform\.ts/)
+  assert.match(splitPlatform(source, "provider.ts", ts).refused, /reads import\.meta, which would name provider\.platform\.ts/)
   const root = mkdtempSync(join(tmpdir(), "import-meta-identity-batch-"))
   try {
     mkdirSync(join(root, "src"))
     writeFileSync(join(root, "src/provider.ts"), source)
     const result = splitBatchPlatform(root, ["src/provider.ts"], ts)
     assert.equal(result.splits.length, 0)
-    assert.match(result.refused[0], /import\.meta\.filename/)
+    assert.match(result.refused[0], /reads import\.meta/)
     assert.equal(readFileSync(join(root, "src/provider.ts"), "utf8"), source)
   } finally { rmSync(root, { recursive: true, force: true }) }
   // resolve and env are the same in the companion: such code moves and calls

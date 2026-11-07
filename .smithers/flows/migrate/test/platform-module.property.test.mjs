@@ -75,7 +75,13 @@ export const uses = (i: I): string => String(i.x)
 
 test("a module the split cannot serve keeps its platform code, with the reason", () => {
   assert.match(split(`import { sep } from "node:path"\nexport const a = sep\n`).refused, /platform code only/)
-  assert.match(split(`import { sep } from "node:path"\nexport const a = sep + import.meta.url\nexport const k = 1\n`).refused, /EK4009/)
+  // A body cannot hold import.meta (EK4009): the declaration stays and only
+  // its host operation moves. Throwing code still moves whole, so it refuses.
+  const kept = split(`import { sep } from "node:path"\nexport const a = sep + import.meta.url\nexport const k = 1\n`)
+  assert.match(kept.module, /^export const a = \$sep\(\) \+ import\.meta\.url$/m)
+  assert.match(kept.module, /^module platform \{\nimport \{ sep \} from "node:path"/m)
+  assert.doesNotMatch(kept.module.replace(/^module platform \{[^]*?^\}$/m, ""), /node:path/)
+  assert.match(split(`export const a = () => { if (!import.meta.url) throw new Error("x") }\nexport const k = 1\n`, { throws: true }).refused, /EK4009/)
   assert.match(split(`import { rmSync } from "node:fs"\nrmSync("x")\nexport const k = 1\n`).refused, /runs in order/)
   assert.match(split(`import { sep } from "node:path"\nconst a = sep\nexport = a\n`).refused, /EK4008/)
   assert.equal(split(`export const k = 1\n`), null)

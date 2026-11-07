@@ -1,0 +1,55 @@
+{
+  "key": "platform:alchemy-import-meta-moved-declaration:EK4009",
+  "source": "alchemy partition conversion: a declaration that reaches the platform and reads import.meta could not move to a module body",
+  "cases": [
+    {
+      "key": "alchemy:lambda-main-url-random-uuid",
+      "package": "private",
+      "file": "src/JobFunction.ts",
+      "globals": ["crypto"],
+      "text": "import * as AWS from \"@alchemy.run/aws\";\nimport * as Effect from \"effect/Effect\";\n\nexport default class JobFunction extends AWS.Lambda.Function<JobFunction>()(\n  \"JobFunction\",\n  { main: import.meta.url, memorySize: 512, functionUrl: true },\n  Effect.gen(function* () {\n    return {\n      fetch: Effect.gen(function* () {\n        return { jobId: crypto.randomUUID() };\n      }),\n    };\n  }),\n) {}\n"
+    },
+    {
+      "key": "alchemy:static-site-stack-file-url",
+      "package": "private",
+      "file": "alchemy.run.ts",
+      "globals": [],
+      "text": "import { fileURLToPath } from \"node:url\";\nimport * as GCP from \"@alchemy.run/gcp\";\nimport * as Alchemy from \"alchemy\";\nimport * as Effect from \"effect/Effect\";\n\nexport default Alchemy.Stack(\n  \"GcpStaticSiteExample\",\n  { providers: GCP.providers(), state: Alchemy.localState() },\n  Effect.gen(function* () {\n    const site = yield* GCP.Storage.Upload(\"Site\", {\n      path: fileURLToPath(new URL(\"./site\", import.meta.url)),\n    });\n    return site;\n  }),\n);\n"
+    },
+    {
+      "key": "alchemy:framework-package-version-create-require",
+      "package": "wildcard",
+      "file": "src/nextjs/source.ts",
+      "globals": [],
+      "text": "import { createRequire } from \"node:module\";\n\nconst packageVersion: string = createRequire(import.meta.url)(\"../../package.json\").version;\n\nconst PROVIDER = \"@alchemy.run/frontend-frameworks/nextjs/source\";\n\nexport const describe = () => ({ provider: PROVIDER, version: packageVersion });\n"
+    },
+    {
+      "key": "alchemy:railway-read-package-version",
+      "package": "wildcard",
+      "file": "src/hosted.ts",
+      "globals": [],
+      "text": "import { createRequire } from \"node:module\";\n\nconst readPackageVersion = (name: string): string | undefined => {\n  try {\n    const req = createRequire(import.meta.url);\n    const version = (req(`${name}/package.json`) as { version?: string }).version;\n    return typeof version === \"string\" && version.length > 0 ? version : undefined;\n  } catch {\n    return undefined;\n  }\n};\n\nexport const runtimeVersion = readPackageVersion(\"alchemy\");\n"
+    },
+    {
+      "key": "alchemy:cli-dev-watcher-parent-url",
+      "package": "wildcard",
+      "file": "src/Cli/exec.ts",
+      "globals": ["process"],
+      "text": "import { fileURLToPath } from \"node:url\";\nimport * as Effect from \"effect/Effect\";\nimport { watchImport } from \"./watch.ts\";\n\nexport const DEV_RELOAD_EXIT_CODE = 75;\n\nconst runNodeDevWatcher = Effect.fn(function* (entrypoint: string, root: string) {\n  return yield* Effect.sync(() =>\n    watchImport<{ readonly default?: unknown }>(entrypoint, {\n      parentURL: import.meta.url,\n      shouldInvalidate: (url) => {\n        if (!url.startsWith(\"file:\")) return false;\n        const file = fileURLToPath(url);\n        return file.startsWith(root);\n      },\n      onReload: () => {\n        process.exitCode = DEV_RELOAD_EXIT_CODE;\n      },\n    }),\n  );\n});\n\nexport const dev = (entrypoint: string) => runNodeDevWatcher(entrypoint, process.cwd());\n"
+    },
+    {
+      "key": "alchemy:build-child-loader-flags-resolve",
+      "package": "wildcard",
+      "file": "src/core/BuildChild.ts",
+      "globals": [],
+      "text": "import { fileURLToPath } from \"node:url\";\n\nconst vibeLangLoaderFlags = (entry: string, isBun: boolean): Array<string> =>\n  entry.endsWith(\".ts\")\n    ? isBun\n      ? [\"--preload\", fileURLToPath(import.meta.resolve(\"vibelang/bun\"))]\n      : [\"--import\", import.meta.resolve(\"vibelang/register\")]\n    : [];\n\nexport const childArgs = (entry: string, isBun: boolean): Array<string> => [...vibeLangLoaderFlags(entry, isBun), entry];\n"
+    },
+    {
+      "key": "alchemy:worker-main-url-random-uuid",
+      "package": "private",
+      "file": "src/Api.ts",
+      "globals": ["crypto"],
+      "text": "import * as Cloudflare from \"@alchemy.run/cloudflare\";\nimport * as Effect from \"effect/Effect\";\n\nexport default class Api extends Cloudflare.Worker<Api>()(\n  \"Api\",\n  {\n    main: import.meta.url,\n    observability: {\n      enabled: true,\n    },\n  },\n  Effect.gen(function* () {\n    return { fetch: Effect.sync(() => ({ id: crypto.randomUUID() })) };\n  }),\n) {}\n"
+    }
+  ]
+}

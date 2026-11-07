@@ -29,7 +29,7 @@ const helperBases = { resolve: "$importMetaResolve", filename: "$importMetaFilen
 
 // Whether node, a reference, is written: assigned, updated, deleted or a
 // destructuring or for-in/of target.
-function isWritten(node, ts) {
+export function isWritten(node, ts) {
   let at = node
   while (at.parent && ts.isParenthesizedExpression(at.parent)) at = at.parent
   const parent = at.parent
@@ -124,11 +124,7 @@ export function splitImportMeta(text, file, sibling, ts) {
   const platform = lines.join("\n") + "\n"
   // A generated source-child helper keeps its own private boundary in a VIP-40
   // body. Only an authored import.meta use may add a null export to the manifest.
-  return { module, platform, moved: names, wrapped: [], importMeta: sites.some(site => !inSourceChildHelper(site.node, ts)), importText,
-    // The helpers that carry the module's URL. Code that calls them cannot
-    // move to the companion, whose own URL differs.
-    identity: [helpers.filename, helpers.dirname].filter(Boolean),
-    members: Object.fromEntries(Object.entries(helpers).map(([kind, name]) => [name, kind])) }
+  return { module, platform, moved: names, wrapped: [], importMeta: sites.some(site => !inSourceChildHelper(site.node, ts)), importText }
 }
 
 // An exact null export keeps the fresh resolver private under a source
