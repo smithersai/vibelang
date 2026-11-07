@@ -1,14 +1,18 @@
 import { strict as assert } from "node:assert"
-import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync, symlinkSync, linkSync, existsSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, delimiter, relative } from "node:path"
 import { spawn, spawnSync } from "node:child_process"
 import { once } from "node:events"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { test } from "node:test"
+import fc from "fast-check"
+import { checkProperty } from "../../../scripts/testing/property.mjs"
+import { compilerCommand } from "../project.mjs"
 
 const launcher = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
 const binaryModule = fileURLToPath(new URL("../binary.mjs", import.meta.url))
+const overrideModule = fileURLToPath(new URL("../compiler-override.mjs", import.meta.url))
 test("forwards arguments, input, streams, working directory, and exit status", () => {
   const scratch = mkdtempSync(join(tmpdir(), "vibelang-launcher-"))
   try {
@@ -50,6 +54,7 @@ test("names the scoped Windows package when its optional dependency is missing",
     writeFileSync(join(scratch, "package.json"), '{"type":"module"}')
     copyFileSync(launcher, join(scratch, "bin", "vibelang"))
     copyFileSync(binaryModule, join(scratch, "binary.mjs"))
+    if (existsSync(overrideModule)) copyFileSync(overrideModule, join(scratch, "compiler-override.mjs"))
     const env = { ...process.env }
     delete env.VIBELANG_BINARY
     const asWindows = 'data:text/javascript,Object.defineProperty(process,"platform",{value:"win32"})'
@@ -121,6 +126,7 @@ function installed(scratch, { native = false, platform = false } = {}) {
   writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "vibelang", type: "module" }))
   copyFileSync(launcher, join(pkg, "bin", "vibelang"))
   copyFileSync(binaryModule, join(pkg, "binary.mjs"))
+  if (existsSync(overrideModule)) copyFileSync(overrideModule, join(pkg, "compiler-override.mjs"))
   const fake = (path, label) => {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, `#!/usr/bin/env node\nconsole.log(${JSON.stringify(label)}, ...process.argv.slice(2))\n`)
@@ -186,4 +192,95 @@ test("native executable paths and arguments need no shell quoting", () => {
   })
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), args)
+})
+
+
+test("rejects recursive launcher overrides before starting any child compiler", async () => {
+  function check({ name, kind }) {
+    const scratch = mkdtempSync(join(tmpdir(), "vibelang-override-"))
+    try {
+      const wrapper = installed(scratch, { native: true })
+      const module = pathToFileURL(join(dirname(wrapper), "../binary.mjs")).href
+      let selected = wrapper
+      if (kind === "relative") selected = relative(scratch, wrapper)
+      else if (kind === "symlink" || kind === "path") {
+        selected = join(scratch, name)
+        symlinkSync(wrapper, selected, "file")
+      } else if (kind === "hardlink") {
+        selected = join(scratch, name)
+        linkSync(wrapper, selected)
+      }
+      const env = { ...process.env, VIBELANG_BINARY: kind === "path" ? name : selected,
+        PATH: scratch + delimiter + (process.env.PATH ?? "") }
+      // Calling the finder directly proves rejection before exercising the
+      // real launcher. A regression cannot recursively spawn compiler children.
+      const probe = spawnSync(process.execPath, ["--input-type=module", "--eval",
+        `import {findBinary} from ${JSON.stringify(module)};try {console.log(findBinary())} catch(error) {console.error(error.message);process.exitCode=1}`
+      ], { cwd: scratch, env, encoding: "utf8", timeout: 5000 })
+      assert.equal(probe.status, 1, probe.stdout + probe.stderr)
+      assert.match(probe.stderr, /VIBELANG_BINARY.*JavaScript launcher/)
+      assert.match(probe.stderr, /native compiler/)
+      assert.doesNotMatch(probe.stderr, /\n\s+at /)
+      const actual = spawnSync(process.execPath, [wrapper, "--version"], { cwd: scratch, env, encoding: "utf8", timeout: 5000 })
+      assert.equal(actual.status, 1, actual.stdout + actual.stderr)
+      assert.equal(actual.stdout, "")
+      assert.match(actual.stderr, /VIBELANG_BINARY.*JavaScript launcher/)
+      assert.doesNotMatch(actual.stderr, /\n\s+at /)
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
+  }
+  const kinds = process.platform === "win32" ? ["absolute", "relative", "hardlink"] : ["absolute", "relative", "symlink", "hardlink", "path"]
+  for (const kind of kinds) check({ name: "compiler-雪 %20", kind })
+  await checkProperty(fc, {
+    name: "launcher-override-aliases",
+    rule: "VIBELANG_BINARY selects the native compiler executable; selecting a JavaScript launcher must fail without starting another compiler.",
+    arbitrary: fc.record({
+      name: fc.array(fc.constantFrom("a", "é", "日", " ", "%", "2"), { minLength: 1, maxLength: 12 }).map(chars => "compiler-" + chars.join("")),
+      kind: fc.constantFrom(...kinds)
+    }),
+    numRuns: 24, check,
+    command: "node --test test/launcher.test.mjs"
+  })
+})
+
+test("project compiler commands reject a self-referential launcher override", () => {
+  const before = process.env.VIBELANG_BINARY
+  const scratch = mkdtempSync(join(tmpdir(), "vibelang-command-override-"))
+  try {
+    const wrapper = installed(scratch, { native: true })
+    for (const selected of [wrapper, join(dirname(wrapper), "..", "bin", "vibelang")]) {
+      process.env.VIBELANG_BINARY = selected
+      assert.throws(() => compilerCommand(wrapper, ["--version"]), /VIBELANG_BINARY.*JavaScript launcher/)
+    }
+    process.env.VIBELANG_BINARY = process.execPath
+    assert.deepEqual(compilerCommand(wrapper, ["--version"]), [process.execPath, ["--version"]])
+  } finally {
+    if (before === undefined) delete process.env.VIBELANG_BINARY
+    else process.env.VIBELANG_BINARY = before
+    rmSync(scratch, { recursive: true, force: true })
+  }
+})
+
+
+test("a custom Node compiler in a package bin directory keeps its executable meaning", () => {
+  const scratch = mkdtempSync(join(tmpdir(), "vibelang-custom-override-"))
+  const before = process.env.VIBELANG_BINARY
+  try {
+    const wrapper = installed(scratch, { native: true })
+    const custom = join(scratch, "custom", "bin", "vibelang")
+    mkdirSync(dirname(custom), { recursive: true })
+    writeFileSync(join(dirname(custom), "../package.json"), '{"name":"vibelang","type":"module"}')
+    writeFileSync(custom, '#!/usr/bin/env node\nconsole.log("custom compiler")\n')
+    chmodSync(custom, 0o755)
+    process.env.VIBELANG_BINARY = custom
+    assert.deepEqual(compilerCommand(wrapper, ["--version"]), [custom, ["--version"]])
+    const result = spawnSync(process.execPath, ["--input-type=module", "--eval",
+      `import {findBinary} from ${JSON.stringify(pathToFileURL(join(dirname(wrapper), "../binary.mjs")).href)};console.log(findBinary())`
+    ], { env: process.env, encoding: "utf8" })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout.trim(), custom)
+  } finally {
+    if (before === undefined) delete process.env.VIBELANG_BINARY
+    else process.env.VIBELANG_BINARY = before
+    rmSync(scratch, { recursive: true, force: true })
+  }
 })

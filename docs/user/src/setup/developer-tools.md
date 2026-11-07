@@ -29,6 +29,8 @@ Source maps in esbuild bundles keep original source filenames, including Unicode
 
 Diagnostics from source loaders retain their source details and exclude compiler file-list output.
 
+For a custom compiler, set `VIBELANG_BINARY` to its native executable. Selecting the package's JavaScript launcher reports an error before another compiler starts.
+
 Imports between `.vibe` modules preserve Unicode, spaces and literal `%` in file names through bundler builds. Use the original source name in the import. Literal JavaScript import names retain TypeScript's filename meaning. Importing `./créé.vibe` and `./cr%C3%A9%C3%A9.js` in the same module keeps the source and literal JavaScript file distinct.
 
 For programmatic Rolldown builds, `vibelang-unplugin/rolldown` uses

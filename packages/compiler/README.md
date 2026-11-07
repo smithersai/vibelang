@@ -390,7 +390,7 @@ it tracks native sources, dependencies, configs and compiler changes. Await
 `close()` when finished. Module loader hooks do not change `readFile` or
 directory enumeration.
 
-`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package.
+`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package. The override must select a compiler executable; selecting the package's JavaScript launcher reports an error instead of starting it recursively.
 
 `isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe`. `hasVibeDirective(file, text)` answers from text you already hold. Virtual module IDs containing a NUL byte are not filesystem paths: `isVibeLangFile(file)` and `fileHasVibeDirective(file)` return `false` without reading them.
 
@@ -552,7 +552,7 @@ optional dependencies, and npm installs the one that matches your platform:
 runs `VIBELANG_BINARY` when set, then `native/vibelang` (`native/vibelang.exe` on Windows) beside the package in a
 VibeLang checkout, then the platform package. If you installed with optional
 dependencies omitted, reinstall without that option. The launcher forwards
-arguments, standard streams, signals, and the exit status.
+arguments, standard streams, signals, and the exit status. Set `VIBELANG_BINARY` to the native compiler executable, not the package's `bin/vibelang` JavaScript launcher. The launcher and bundler backend reject that recursive override, including aliases of the launcher.
 
 Package metadata is available through `vibelang/package.json`.
 
