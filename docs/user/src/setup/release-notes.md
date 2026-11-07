@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `for` loop update that read an `is` binding from the loop test reported `TS2454` even when the binding was typed `any`, `unknown` or `void`, included `undefined`, or was read with `!`. The update now follows TypeScript's definite-assignment exemptions, and still reports `TS2454` for other types.
+
 - A `while` condition that held a binding `is` below `||`, `!`, a conditional or a call argument, such as `while (done || (next() is let v))`, was rejected with `EK4703`. It now compiles, and each evaluation of the condition gets fresh bindings that its body shares, as for any other `while` condition.
 
 - `vibelang --fix --fix-vip-only` kept the `try` before a legacy wrapper whose success data was an Effect value, such as `function make() { return Effect.void }`, so the migrated call ran that Effect instead of returning it. The migration now removes that `try` and writes none before such a call; a wrapper whose returned call ran, such as `return Effect.succeed(7)`, keeps its `try`.
