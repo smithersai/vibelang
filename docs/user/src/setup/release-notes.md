@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Examples with declaration snapshots could be rejected despite a valid repair. Declaration snapshots now stay separate from the source being repaired.
+
 - The page outline contained invalid list markup on wide screens. Its position marker now stays out of screen-reader navigation while headings remain proper list items.
 
 - Cross-file service, failure-contract and migration examples could report `TS5097` before demonstrating their intended behavior. They now use runtime import names or explicitly enable source imports where required.
