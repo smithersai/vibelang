@@ -658,6 +658,8 @@ Migration into a TypeScript module body keeps merged declarations in one lexical
 
 Migration API snapshots retain native compatibility declarations when a project layout error leaves ordinary declarations outside the snapshot. Saved TypeScript sources resolve those native siblings through their original paths, including `vibe.sidecarDir` and `rootDirs`. The comparison reads frozen declarations; missing sidecars, unresolved dependencies and changed exported types still prevent qualification.
 
+Generated `import.meta.filename` and `import.meta.dirname` companions use a namespace `node:url` import. Directory helpers resolve the source module's parent URL without adding `node:path`; POSIX, drive and network-share roots keep their separators. Non-file URLs still produce `undefined`, and invalid file URL encodings keep their original errors.
+
 JavaScript emission preserves the project's declaration source root when `vibe.sidecarDir` is configured. Package `types` targets keep pointing to the emitted declarations, including projects with a source root inside or outside the package. Runtime JavaScript remains under `.vibelang/js/` at its package-relative path.
 
 An original declaration emit that exits with TypeScript's emit-error status and only `TS5011` layout diagnostics retains its compiler, exit status, files and diagnostics in the stock API oracle. Qualification still requires a complete stock/native declaration comparison; changed APIs, unresolved declarations, source errors and unexplained compiler exits remain unavailable.

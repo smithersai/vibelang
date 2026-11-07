@@ -258,7 +258,7 @@ test("stock TypeScript declares the same types for every served member", () => {
     writeFileSync(join(root, "ambient.d.ts"), [
       "interface ImportMetaEnv { readonly API_URL: string; readonly MODE: \"development\" | \"production\" }",
       "interface ImportMeta { url: string; resolve(specifier: string, parent?: string): string; filename: string; dirname: string; env: ImportMetaEnv }",
-      "declare module \"node:url\" { export function fileURLToPath(url: string): string }",
+      "declare module \"node:url\" { export class URL { constructor(input: string, base?: string) }; export function fileURLToPath(url: string | URL): string }",
       "declare module \"node:path\" { export function dirname(path: string): string }",
       ""].join("\n"))
     const source = [

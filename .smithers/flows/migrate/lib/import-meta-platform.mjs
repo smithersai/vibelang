@@ -18,7 +18,7 @@ function inSourceChildHelper(node, ts) {
 //   change import.meta, so looking up resolve after them instead of before is
 //   not observable.
 // - import.meta.filename and import.meta.dirname: Node defines them from a
-//   file: URL with fileURLToPath and path.dirname, and leaves them undefined
+//   file: URL using node:url, retaining directory roots, and leaves them undefined
 //   for any other URL; Bun and Deno agree.
 // - import.meta.env: the build's environment (Vite's define, Bun's
 //   process.env), read where the module read it. A write stays refused.
@@ -93,8 +93,7 @@ export function splitImportMeta(text, file, sibling, ts) {
   const kinds = new Set(sites.map(site => site.kind))
   const helpers = {}
   for (const kind of ["resolve", "filename", "dirname", "env"]) if (kinds.has(kind)) helpers[kind] = fresh(helperBases[kind])
-  const fileUrlToPath = kinds.has("filename") || kinds.has("dirname") ? fresh("$fileURLToPath") : null
-  const pathDirname = kinds.has("dirname") ? fresh("$dirname") : null
+  const fileUrlToPath = kinds.has("filename") || kinds.has("dirname") ? fresh("$NodeURL") : null
   const names = Object.values(helpers)
   const importText = "import { " + [...names].sort().join(", ") + " } from \"./" + posix.basename(sibling) + "\""
   // Only the member read changes: inputs, callbacks and catch stay where they ran.
@@ -111,15 +110,26 @@ export function splitImportMeta(text, file, sibling, ts) {
   const at = source.statements[0]?.getStart(source) ?? text.length
   module = module.slice(0, at) + importText + "\n" + module.slice(at)
   const lines = []
-  if (fileUrlToPath) lines.push("import { fileURLToPath as " + fileUrlToPath + " } from \"node:url\"")
-  if (pathDirname) lines.push("import { dirname as " + pathDirname + " } from \"node:path\"")
+  if (fileUrlToPath) lines.push("import * as " + fileUrlToPath + " from \"node:url\"")
   // A parent argument passes through as written; a call without one still
   // passes none, so the host's own default applies.
   if (helpers.resolve) lines.push(sites.some(site => site.parent)
     ? "export function " + helpers.resolve + "(...args: Parameters<ImportMeta[\"resolve\"]>): ReturnType<ImportMeta[\"resolve\"]> { return import.meta.resolve(...args) }"
     : "export function " + helpers.resolve + "(specifier: string): string { return import.meta.resolve(specifier) }")
-  if (helpers.filename) lines.push("export function " + helpers.filename + "(url: string): ImportMeta[\"filename\"] { return (url.startsWith(\"file:\") ? " + fileUrlToPath + "(url) : undefined) as ImportMeta[\"filename\"] }")
-  if (helpers.dirname) lines.push("export function " + helpers.dirname + "(url: string): ImportMeta[\"dirname\"] { return (url.startsWith(\"file:\") ? " + pathDirname + "(" + fileUrlToPath + "(url)) : undefined) as ImportMeta[\"dirname\"] }")
+  if (helpers.filename) lines.push("export function " + helpers.filename + "(url: string): ImportMeta[\"filename\"] { return (url.startsWith(\"file:\") ? " + fileUrlToPath + ".fileURLToPath(url) : undefined) as ImportMeta[\"filename\"] }")
+  if (helpers.dirname) lines.push(`export function ${helpers.dirname}(url: string): ImportMeta["dirname"] {
+  let directory: string | undefined
+  if (url.startsWith("file:")) {
+    // Validate the original filename before resolving its parent URL.
+    ${fileUrlToPath}.fileURLToPath(url)
+    const parent = ${fileUrlToPath}.fileURLToPath(new ${fileUrlToPath}.URL(".", url))
+    const driveRoot = parent.length === 3 && parent[1] === ":" && parent.charCodeAt(2) === 92
+    const shareRoot = parent.charCodeAt(0) === 92 && parent.charCodeAt(1) === 92 && parent.split(parent[0]).filter(part => part.length > 0).length === 2
+    const root = parent === "/" || parent === "//" || driveRoot || shareRoot
+    directory = root ? parent : parent.slice(0, -1)
+  }
+  return directory as ImportMeta["dirname"]
+}`)
   if (helpers.env) lines.push("export function " + helpers.env + "(): ImportMeta[\"env\"] { return import.meta.env }")
   const platform = lines.join("\n") + "\n"
   // A generated source-child helper keeps its own private boundary in a VIP-40
