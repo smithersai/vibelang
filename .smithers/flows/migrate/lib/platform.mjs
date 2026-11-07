@@ -53,6 +53,9 @@ const diagnosticNotes = notes => Array.isArray(notes)
 
 // A clock or randomness read is named as written, with its call: crypto.randomUUID(), new Date().
 const globalMessage = new RegExp(String.raw`^(?:new )?([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])*(?:\(\))? (?:${globalWordings.join("|")})`)
+// A read through a cast names the global it casts: "(globalThis as { readonly
+// location?: … }).location is platform code" (smithers FetchFailures).
+const castMessage = new RegExp(String.raw`^\(\s*([A-Za-z_$][\w$]*)\s+(?:as|satisfies)\s[\s\S]*\)(?:\??\.[\w$.?]*|\[[^\]]*\])*(?:\(\))? (?:${globalWordings.join("|")})`)
 
 /**
  * The host globals that EK4402 messages name, as the identifiers a
@@ -76,6 +79,8 @@ export function platformGlobalsOf(messages) {
     const prelude = preludePlatformNote.exec(text)
     if (prelude) { names.add(prelude[1]); continue }
     if (/^\S+ from \S+ is platform code/.test(text)) continue
+    const cast = castMessage.exec(text)
+    if (cast) { names.add(cast[1]); continue }
     const m = globalMessage.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
     // vibelang --fix qualifies a constructor the prelude hides, so

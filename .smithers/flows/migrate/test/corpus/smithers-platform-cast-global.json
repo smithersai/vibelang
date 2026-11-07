@@ -1,0 +1,21 @@
+{
+  "source": "Smithers flows/observability src/FetchFailures.ts and flows/platform-browser src/BrowserCache.ts read a host global through a cast; the partitions' EK4402 messages are these texts. Minimized; shapes and messages kept.",
+  "modules": [
+    {
+      "file": "src/FetchFailures.ts",
+      "text": "/**\n * Fetch failures, reported with the page they happened on.\n *\n * @since 1.0.0\n */\n\n/**\n * The page a failure happened on, when the host has one.\n *\n * @category accessors\n * @since 1.0.0\n */\nexport const pageOf = (): string | undefined => {\n  const href = (globalThis as { readonly location?: { readonly href?: unknown } }).location?.href\n  return typeof href === \"string\" ? href : undefined\n}\n\n/**\n * The class of an HTTP status.\n *\n * @category accessors\n * @since 1.0.0\n */\nexport const statusClass = (status: number): string => `${Math.floor(status / 100)}xx`\n",
+      "message": "(globalThis as { readonly location?: { readonly href?: unknown } }).location is platform code, which VibeLang code does not use directly.",
+      "moved": [
+        "pageOf"
+      ]
+    },
+    {
+      "file": "src/BrowserCache.ts",
+      "text": "/**\n * The browser's Cache Storage, when the host has one.\n *\n * @since 1.0.0\n */\n\n/**\n * Whether the host offers Cache Storage.\n *\n * @category accessors\n * @since 1.0.0\n */\nexport const available = (): boolean => (globalThis as { readonly caches?: unknown }).caches !== undefined\n\n/**\n * The cache a namespace is stored under.\n *\n * @category accessors\n * @since 1.0.0\n */\nexport const cacheName = (namespace: string): string => `smithers:${namespace}`\n",
+      "message": "(globalThis as { readonly caches?: CacheStorage }).caches is platform code, which VibeLang code does not use directly.",
+      "moved": [
+        "available"
+      ]
+    }
+  ]
+}
