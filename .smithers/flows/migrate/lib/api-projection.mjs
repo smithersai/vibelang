@@ -1,7 +1,7 @@
 // Reconstruct a read-only declaration snapshot's original package layout.
 // Every alias forwards to one stored declaration, preserving nominal identity.
 import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
-import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path"
+import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path"
 import { tmpdir } from "node:os"
 
 const slash = path => path.split(sep).join("/")
@@ -184,6 +184,34 @@ export function apiProjection(ts, directory, surface, files, { published = true,
         if (!slash(real).includes("/node_modules/") && existsSync(modules) && !existsSync(link))
           symlinkSync(modules, link, "junction")
       }
+    }
+    // A declaration may import another workspace package's module by a
+    // relative path that leaves this package, as a flow imports
+    // ../../../packages/x/src/Bridge.js. The projection mirrors only this
+    // package and its ancestors' node_modules, so link the tree's directory
+    // where that path leaves the package's ancestors. The import then
+    // resolves as it does in the tree, to the same file on both sides.
+    const providerExists = target => [target, join(target, "index.ts"), join(target, "index.d.ts"),
+      ...[".ts", ".tsx", ".d.ts", ".mts", ".d.mts", ".cts", ".d.cts"].map(extension => target.replace(/\.[cm]?jsx?$/, "") + extension)].some(file => existsSync(file))
+    for (const entry of surface.unresolved ?? []) {
+      const at = entry.indexOf(": ")
+      const placed = at > 0 && destinations.get(entry.slice(0, at)), specifier = entry.slice(at + 2)
+      if (!placed || !/^\.\.?\//.test(specifier)) continue
+      const target = resolve(metadata.packageDir, dirname(placed), specifier)
+      // The deepest ancestor holding the target; 0 is the package itself.
+      const index = ancestors.findIndex(ancestor => target.startsWith(ancestor === sep ? sep : ancestor + sep))
+      if (index <= 0 || !providerExists(target)) continue
+      // Only another package's module: a file of this project above its
+      // tsconfig has a declaration of its own, or a recorded reason it has none.
+      let owner = dirname(target)
+      while (owner !== ancestors[index] && !existsSync(join(owner, "package.json"))) owner = dirname(owner)
+      if (owner === ancestors[index]) continue
+      const top = join(ancestors[index], relative(ancestors[index], target).split(sep)[0])
+      if (basename(top) === "node_modules") continue
+      let mirror = root
+      for (let level = 0; level < index; level++) mirror = dirname(mirror)
+      const link = join(mirror, basename(top))
+      if (!existsSync(link)) symlinkSync(top, link, "junction")
     }
     return { directory: root, originals, destinations, projectContexts, absentSources,
       cleanup() { rmSync(temporary, { recursive: true, force: true }) } }

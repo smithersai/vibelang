@@ -1,0 +1,11 @@
+{
+  "repository": "smithers",
+  "module": ".smithers/flows/coding/command-receipts.ts",
+  "pattern": "A flow package's declaration imports another workspace package's source module by a relative path that leaves the package.",
+  "packageDir": "repo/.smithers/flows",
+  "declaration": "coding/command-receipts.d.ts",
+  "consumer": "import type { RuntimeBridge } from \"../../../packages/smithers/gateway/src/RuntimeBridge.js\";\nexport type Host = RuntimeBridge;\nexport declare const host: (bridge: RuntimeBridge) => string;\n",
+  "provider": "repo/packages/smithers/gateway/src/RuntimeBridge.ts",
+  "providerSource": "export interface RuntimeBridge { readonly name: string }\n",
+  "providerPackage": "repo/packages/smithers/gateway/package.json"
+}
