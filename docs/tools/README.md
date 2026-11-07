@@ -108,14 +108,16 @@ inside the block. An empty `// Output:` asserts no stdout. Don't use both forms
 for one block. Other output fence labels (`out`, `text`) don't opt in.
 
 ```vibe
-// run: Console.log(greet("Ada"))
+// run: try Console.log(greet("Ada"))
 function greet(name: string) { return `Hello, ${name}!` }
 // Output: Hello, Ada!
 ```
 
 The optional header comment `// run: <expression>` runs that expression inside
 a generated VibeLang entry function, with the block's declarations and imports
-in scope. Without it, Node executes the emitted module. Start a standalone
+in scope. Run an Effect with `try` inside the hook. Without a hook, Node
+executes the emitted module; declaring `main` alone does not call it. Use
+`// run: try main()` to invoke an Effect function named `main` from the checker. Start a standalone
 program with an explicit top-level runner. A hook imports the module first, so
 its top-level statements still run; examples with a runner must finish on
 their own. Markers never make a function run in the published example itself.
