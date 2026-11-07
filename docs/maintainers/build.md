@@ -1765,6 +1765,8 @@ conservatively treats new failing witnesses as retirements.
 
 Declaration snapshots under an output case's `expected/` directory are reference outputs, not source files. Every actual input source still needs a matching fixed source, and extra fixed sources are rejected. Type assertions used by a repaired example belong in both its input and output; a repair must not create an unrelated assertion file.
 
+Declaration snapshots under an output case's `expected/` directory are reference outputs, not source files. Every actual input source still needs a matching fixed source, and extra fixed sources are rejected.
+
 Register a fix in `docs/design/retirement-fixes.json`:
 
 ```json
