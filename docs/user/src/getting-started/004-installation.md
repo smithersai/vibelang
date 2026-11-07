@@ -203,7 +203,7 @@ From a project, run:
 
 ```sh
 bun run build
-bun run dev
+bun run start
 bun run test
 bun x --no-install vibelang --noEmit
 ```
