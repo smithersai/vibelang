@@ -490,3 +490,36 @@ test("one process inventories each root once and keeps roots apart", async () =>
   rmSync(one,{recursive:true,force:true});rmSync(two,{recursive:true,force:true})
  }
 })
+
+// A numeric assignment is runtime data, not a declaration of a mapper report.
+test("forwarded mapper parameters never borrow a code from another package",()=>{
+ const sources=[
+  {path:"typescript/tsc/internal/vibelangmapper/fixture.go",text:"func diag(code int32) Diagnostic { return Diagnostic{Code: code} }; func forward(code int32) Diagnostic { return diag(code) }; var actual = diag(9003)"},
+  {path:"typescript/tsc/internal/parser/vibelang_match.go",text:"func pattern() { result.code = 4705 }"}
+ ]
+ assert.deepEqual([...compilerCodes(sources).keys()],["EK9003"])
+})
+
+test("generated forwarded mapper parameters ignore foreign numeric assignments across source order and receiver forms",()=>{
+ fc.assert(fc.property(
+  fc.constantFrom("code","value","kind"),fc.integer({min:1000,max:8999}),
+  fc.constantFrom("field","variable","constant","local"),fc.boolean(),fc.boolean(),
+  (name,number,form,method,reverse)=>{
+   const receiver=method?"(p *Printer) ":""
+   const helper="func "+receiver+"diag(code int32) Diagnostic { return Diagnostic{Code: code} }"
+   const call=(argument)=>(method?"p.":"")+"diag("+argument+")"
+   const fixture=[
+    {path:"typescript/tsc/internal/vibelangmapper/reporter.go",text:helper+"; func forward("+name+" int32) Diagnostic { return "+call(name)+" }; var actual = "+call("registered")},
+    {path:"typescript/tsc/internal/vibelangmapper/constants.go",text:"const registered int32 = 9003"},
+    {path:"typescript/tsc/internal/parser/vibelang_fixture.go",text:{
+     field:"func foreign() { result."+name+" = "+number+" }",
+     variable:"var "+name+" = "+number,
+     constant:"const "+name+" = "+number,
+     local:"func foreign() { "+name+" := "+number+"; _ = "+name+" }"
+    }[form]}
+   ]
+   if(reverse)fixture.reverse()
+   assert.deepEqual([...compilerCodes(fixture).keys()],["EK9003"])
+  }
+ ),{seed:47059003,numRuns:160,examples:[["code",4705,"field",false,false]]})
+})

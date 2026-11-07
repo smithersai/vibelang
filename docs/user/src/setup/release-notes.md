@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The diagnostic inventory could report retired `EK4705` even though the compiler emits `EK0707`. Numeric assignments in unrelated files no longer invent mapper diagnostic codes.
+
 - A file containing retired handler syntax could also produce overlapping-edit errors and lose unrelated generated code. The TypeScript mapper now reports the retirement diagnostic while preserving other declarations.
 
 - Replaying a migration example after compilation could report a compiler-generated declaration as an extra source file. Replays now ignore generated declaration companions and retain authored declarations.
