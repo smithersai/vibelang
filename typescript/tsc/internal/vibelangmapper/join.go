@@ -214,7 +214,9 @@ func (p *projector) tryValue(call *ast.Node, e env) {
 	}
 	p.plan.mark(editRun, partOpen, start, start, "")
 	p.plan.replace(start, p.tokenStart(operand), helperRef("$try")+"(")
-	p.visit(operand, e)
+	operandEnv := e
+	operandEnv.holdCalls = true
+	p.visit(operand, operandEnv)
 	p.plan.insert(call.End(), ")")
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
