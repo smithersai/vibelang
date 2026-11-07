@@ -797,19 +797,45 @@ export function mergeFixes(into, files) {
   return into
 }
 
+// The compiler's platform repair moves a host read into a new companion beside
+// its module, x.vibe's x.platform.ts, headed by this line. Under --only it may
+// create the companion of a listed module that no file claims yet (chapter 7,
+// Selecting ordinary fix files); the batch owns that file.
+export const compilerCompanionMarker = "// Generated platform helpers for this VibeLang module.\n"
+
+/** The companion the compiler's platform repair names for module, or null. */
+export const compilerCompanionOf = module => /\.vibe$/.test(module) ? module.replace(/\.vibe$/, ".platform.ts") : null
+
+const claimsCompanion = (root, companion) =>
+  [".ts", ".tsx", ".js", ".d.ts"].some(extension => existsSync(join(root, companion.replace(/\.ts$/, extension))))
+
+/** Whether file, relative to root, is a companion the compiler wrote. */
+export const isCompilerCompanion = (root, file) => {
+  try { return readFileSync(join(root, file), "utf8").startsWith(compilerCompanionMarker) } catch { return false }
+}
+
 /**
  * Runs `vibelang -p tsconfig --fix --noEmit --declaration` until a run fixes nothing, at
  * most maxRounds times. Returns every round's report, the merged rewrites by
- * file and kind, the refusals, and the diagnostics of the last run. With
- * only, ordinary repairs use --only for the batch's files (relative to root).
+ * file and kind, the refusals, the diagnostics of the last run, and the
+ * companions the compiler created for selected modules. With only, ordinary
+ * repairs use --only for the batch's files (relative to root).
  * A defensive snapshot still restores nonselected sources if a compiler writes
  * outside its selection, including on interruption. An earlier batch's file,
  * hand repairs included, stays as committed. An empty selection starts no fix.
  */
 export async function fixToFixedPoint(options) {
   if (options.only?.length === 0) {
-    return { settled: true, rounds: [], byFile: {}, refused: [], restored: [], diagnostics: [] }
+    return { settled: true, rounds: [], byFile: {}, refused: [], restored: [], diagnostics: [], companions: [] }
   }
+  const companionRoot = resolve(options.root ?? options.cwd ?? ".")
+  const fresh = [...new Set((options.only ?? []).map(compilerCompanionOf).filter(Boolean))]
+    .filter(companion => !claimsCompanion(companionRoot, companion))
+  const fixed = await fixToFixedPointUnscoped(options)
+  return { ...fixed, companions: fresh.filter(companion => isCompilerCompanion(companionRoot, companion)).sort() }
+}
+
+async function fixToFixedPointUnscoped(options) {
   const files = await fixProgramFiles(options)
   const snippetRoot = resolve(options.root ?? options.cwd ?? ".")
   const snippetTs = () => loadTypeScript([snippetRoot, resolve(options.compiler ?? ".", "..")])

@@ -96,6 +96,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The editor reported a `var` in a `do` expression twice, once as `EK0107` and again as `EK0201` or `EK0203`. It now reports only the `do` diagnostic for that declaration.
 
+- A migration batch whose module took `vibelang --fix`'s platform repair failed its verify step on the new `x.platform.ts`, reported as a file outside the batch, and a revert left that file behind. The migration flow now records the compiler's companion with its module, formats it with the batch and removes it when the module is reverted.
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
