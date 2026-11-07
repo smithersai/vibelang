@@ -791,6 +791,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			removeUnusedTypeNames(g, texts, result)
 			verified(texts)
 		}
+		sites.auditPhase("final", 0)
 		// A diagnostic the run leaves without a fix is a refused site too. A
 		// round's diagnostic without a fix is not one yet: a later round or
 		// rewrite may repair it.
@@ -835,6 +836,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		if reverted && result.Err == nil && done.Err() == nil {
 			verified(texts)
 		}
+		if sites.audit != nil && sites.audit.err != nil && result.Err == nil {
+			result.Err = fmt.Errorf("cannot write refusal audit: %w", sites.audit.err)
+		}
 		result.Sites = sites.all()
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 		return result
@@ -854,6 +858,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				return result
 			}
 			round++
+			sites.auditPhase("round", round)
 			progress.enter("round", round, fixesApplied(result), len(result.Refused), "finding fixes")
 			progress.stage("finding fixes")
 			proposals := propose(program)
@@ -947,6 +952,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if done.Err() == nil {
 				var refused []FixRefusal
 				for round := 1; round <= maxTryRounds && done.Err() == nil; round++ {
+					sites.auditPhase("try", round)
 					progress.enter("try", round, fixesApplied(result), len(result.Refused), "finding rewrites")
 					var wrote bool
 					wrote, refused = rewriteTries(g, fs, build(texts), texts, result)
@@ -972,6 +978,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		} else {
 			// What the prelude makes shorter (D310, D311).
 			if done.Err() == nil {
+				sites.auditPhase("prelude", 0)
 				progress.enter("prelude", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
 				rewritePrelude(g, fs, program, texts, result)
 				verified(texts)
@@ -1051,6 +1058,7 @@ func removeUnusedEffectImports(g *fixGate, program *compiler.Program, texts map[
 	if len(cleaned) == 0 {
 		return
 	}
+	g.sites.auditPhase("imports", 0)
 	g.progress.enter("imports", 0, fixesApplied(result), len(result.Refused), "removing unused imports")
 	if _, ok := g.passes(texts, cleaned); !ok {
 		return

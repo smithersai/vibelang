@@ -311,6 +311,15 @@ vibelang --fix: refused site: src/a.vibe:12:3-12:40 [281,318) EK2128: no fix app
 
 A site in text that an earlier fix of the same run wrote reads `EK2128 new`, and its span is the original text that fix replaced. Refused sites alone don't change the exit status. If a rewrite changes a refused site anyway, that is a VibeLang bug: `--fix` prints `vibelang --fix: refused site changed: <site>: a vibelang bug; <file> keeps its text from before --fix`, leaves that file as it was, and exits 3.
 
+To audit refusals created by intermediate fix rounds, set `VIBELANG_FIX_AUDIT_DIR` to a local artifact directory:
+
+```sh
+VIBELANG_FIX_AUDIT_DIR=.cache/fix-audit vibelang --fix
+```
+
+Each invocation that records refused sites creates a private `run-*` directory. Its `refusals.jsonl` records the phase, round, diagnostic code or rewrite label and byte/UTF-16 spans in the source state where each refusal was encountered, alongside its projected original byte span. The `source` field names an immutable SHA-256-named `.source` snapshot in the same directory. Snapshots contain the complete intermediate source; on Unix, directories and files use owner-only permissions. Source text is absent from the metadata and normal compiler output. Keep these artifacts local. Without the environment variable, no audit files are written. An audit write failure makes the command fail instead of silently claiming a complete receipt.
+
+
 Normalization continues until no accepted fix remains, even when nested edits overlap for more than sixteen rounds. If a rewrite repeats a source state, the command reports non-convergence and writes no files.
 
 A direct `extends` or `implements` entry retains its named type, such as `Effect.Effect<number>`. Effect types inside another base's type arguments can still shorten, as in `Holder<number!!>`.

@@ -866,6 +866,7 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
     let result, pid
+    const audit = log && resolve(`${log}.${round}.audit`)
     const progressLog = log && `${log}.${round}.progress.jsonl`
     if (progressLog) writeFileSync(progressLog, "")
     const progress = fixProgressStream(event => {
@@ -878,6 +879,7 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
       try {
         result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, {
           cwd, log: log && `${log}.${round}.log`, timeoutMs,
+          ...(audit ? { env: { VIBELANG_FIX_AUDIT_DIR: audit } } : {}),
           onStderr: (chunk, process) => { pid = process.pid; progress.write(chunk) }
         })
       } finally { progress.end() }
@@ -905,7 +907,7 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
       })
     }
     assertFinished(result, log && `${log}.${round}.log`)
-    rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused })
+    rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused, ...(audit ? { audit } : {}) })
     mergeFixes(byFile, parsed.files)
     refused.push(...parsed.refused)
     last = result

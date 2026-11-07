@@ -124,7 +124,7 @@ Before changing the target, `codemod` atomically writes and flushes
 package exports and import edits. It replays interrupted mechanical edits
 without overwriting a conflicting file. Before starting the compiler it
 records the `fixing` phase, then each compiler attempt and project progress;
-attempt logs have distinct names. Retrying the same run preserves already
+attempt logs have distinct names. Each logged fix attempt also requests a private refusal-audit directory, recorded as `fix.rounds[].audit` in `codemod.json`. It contains immutable intermediate source snapshots and JSON records of the native fix phase, round and diagnostic spans; source stays in these local artifacts, not diagnostic output. Retrying the same run preserves already
 renamed modules and checked hand repairs and runs the current compiler to a
 fixed point. Only the completed `codemod.json` advances the flow. `revert`
 can use the saved original and import/export bookkeeping before the compiler
