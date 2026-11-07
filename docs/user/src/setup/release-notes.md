@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A formatter failure in a batch could omit the input filename. Formatter commands and `formatSource` now identify the original file, including marked TypeScript files.
+
 - The migrate flow's platform split left a private type in the module after moving every reader of it to the `.platform.ts` companion, such as `type Entry` read only by a moved `load`, so the module failed `noUnusedLocals` (`TS6196`). The split now leaves such a type to the companion, and keeps every type the module still reads.
 - Checking the compact language guides rejected current descriptions of foreign calls and `Effect` factories. Checks now recognize that guidance while still rejecting missing failure rules.
 

@@ -117,7 +117,7 @@ The plugin reports the file and leaves it unchanged when:
 
 This check also covers ordinary `/* @internal */` comments on fields, methods and accessors. Parameter comments follow the compiler's parameter attachment rules; a line break that keeps the same meaning can still format.
 
-The formatter commands include the original file path before each syntax-error location, so a failure in a multi-file check identifies the file to repair. A refused file keeps its original bytes.
+The formatter commands and `formatSource` include the original file path before a formatting failure, including an error from dprint that names no file. Marked TypeScript files retain their written `.ts`, `.tsx`, `.mts` or `.cts` path in the message. A refused file keeps its original bytes.
 
 Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are supported and follow dprint’s TypeScript formatting.
 

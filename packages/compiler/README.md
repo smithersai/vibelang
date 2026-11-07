@@ -453,7 +453,8 @@ const formatted = formatSource(source, filePath)
 
 `formatSource(text, filePath)` formats a supplied buffer, including an unsaved
 file whose path is ignored or under `node_modules`. The full path selects the
-repository's quote style and line width. File-scanning commands
+repository's quote style and line width. A formatting error names the supplied
+file path and preserves the underlying formatter message. File-scanning commands
 `vibelang-format --write` and `vibelang-format --check` apply ignore rules
 when selecting files. See [developer tools](https://vibelang.sh/setup/developer-tools#prettier-and-oxfmt)
 for configuration formats and Oxfmt integration.

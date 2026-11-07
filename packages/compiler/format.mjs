@@ -110,11 +110,16 @@ export function formatSource(text, filePath = "file.vibe", style = repositorySty
   return formatText(text, filePath, style, ["--no-gitignore", "--allow-node-modules"])
 }
 function formatText(text, filePath, style, flags = []) {
+  const requestedPath = filePath
   // Read the supplied buffer: an editor's unsaved directive can differ from disk.
   if (hasVibeDirective(filePath, text)) {
     filePath = filePath.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
   }
-  return withConfig(style, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
+  try {
+    return withConfig(style, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
+  } catch (error) {
+    throw new Error(`${requestedPath}: ${error.message}`, { cause: error })
+  }
 }
 // discoverable lists the absolute paths dprint would format, which is what
 // `--stdin` formats too: it returns a gitignored file's text unchanged.
