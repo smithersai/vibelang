@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A saved declaration alongside a migration example could make a valid quick fix fail verification. Saved declarations now stay separate from the sources the fix must produce, and mismatches name the unmatched source files.
 
 - `vibelang --fix --only` refused the platform repair of a listed module ("--only does not list x.platform.ts, the new sibling TypeScript module"), and a later rewrite then left the host read where no fix applies, so a migrated module such as `export const value = Effect.sync(() => process.platform)` went back to TypeScript. `--only` now creates the listed module's new `x.platform.ts` companion, as plain `--fix` does, and still never writes a file that exists.
+- `vibelang --fix` left an `Effect.gen` unconverted when its body piped through a custom stage and then an Effect stage with a callback, as in `.pipe(followUp, Effect.flatMap((exit) => ...))`: it built every stage apart from the program, so the callback parameter was `unknown` and the rewrite was refused. Effect stages whose arguments are functions, literals or constants now stay in the pipe with the program first, so their callbacks keep its types.
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.
