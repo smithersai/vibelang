@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -49,3 +49,29 @@ test("unmatched formatting globs and filenames never report success", () => {
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
+
+test("existing excluded formatting inputs stay unchanged while missing neighbours fail", () => {
+  const root = mkdtempSync(join(tmpdir(), "vibelang-format-excluded-"))
+  try {
+    fc.assert(fc.property(
+      fc.constantFrom("node_modules", "dist", "build", "coverage", ".git", ".jj"),
+      fc.constantFrom("[id]", "with space", "深い"),
+      fc.constantFrom(".vibe", ".vibex"),
+      fc.boolean(), fc.boolean(), fc.boolean(),
+      (directory, name, extension, absolute, check, separate) => {
+        const relative = directory + "/" + name + extension
+        const file = join(root, relative)
+        const source = "export   const value=42;\n"
+        mkdirSync(join(root, directory), { recursive: true })
+        writeFileSync(file, source)
+        const input = absolute ? file : relative
+        const result = run(root, [check ? "--check" : "--write", input], separate)
+        assert.equal(result.status, 0, result.stderr)
+        assert.equal(readFileSync(file, "utf8"), source)
+        const missing = run(root, ["--check", input + ".missing.vibe"], separate)
+        assert.notEqual(missing.status, 0)
+        assert.match(missing.stderr, /no files match/)
+      }
+    ), { numRuns: 16 })
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
