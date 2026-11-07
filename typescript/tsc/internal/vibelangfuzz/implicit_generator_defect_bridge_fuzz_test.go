@@ -30,7 +30,7 @@ func FuzzImplicitGeneratorDefectBridge(f *testing.F) {
 		f.Fatal("missing preserving quick-fix rule")
 	}
 	for mode := uint8(0); mode < 3; mode++ {
-		for kind := uint8(0); kind < 45; kind++ {
+		for kind := uint8(0); kind < 90; kind++ {
 			f.Add(mode, kind, false)
 			f.Add(mode, kind, true)
 		}
@@ -73,6 +73,14 @@ func FuzzImplicitGeneratorDefectBridge(f *testing.F) {
 			sourceBody = "const info = trusted(log.info, [])\nexport const work = effect (x: string | undefined) => { if (x) info(x); return 1 }\n"
 		}
 		invocation := []string{"log.info(x)", "new log.Box(x).value", "log.tag`${x}`"}[kind/5%3]
+		// Grouped, computed and saved constructor references keep the same
+		// native invocation contract as the direct property form.
+		if kind >= 45 {
+			invocation = []string{"new (log.Box)(x).value", "new log[\"Box\"](x).value", "new SavedBox(x).value"}[(kind-45)/5%3]
+			if (kind-45)/5%3 == 2 {
+				prefix += "const SavedBox = log.Box\n"
+			}
+		}
 		stockBody = strings.ReplaceAll(stockBody, "log.info(x)", invocation)
 		sourceBody = strings.ReplaceAll(sourceBody, "log.info(x)", invocation)
 		runner := fmt.Sprintf("import { Cause, Effect, Exit } from \"effect\"\nimport { marker } from \"./foreign.js\"\nimport { work } from \"./main.js\"\nexport const main = () => Effect.map(Effect.exit(work(%s)), ex => Exit.isSuccess(ex) ? { exit: \"success\", value: ex.value } : { exit: \"failure\", reasons: ex.cause.reasons.map(r => r._tag), same: Cause.squash(ex.cause) === marker, value: String(Cause.squash(ex.cause)) })\n", value)

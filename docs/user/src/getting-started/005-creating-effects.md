@@ -272,3 +272,5 @@ Effect functions use Effect's execution semantics. Plain functions and recursion
 Use effect functions, `try`, returns, and throws for local work. Use `sync`, `Effect.try`, `tryPromise`, and `callback` to adapt foreign code.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/creating-effects)
+
+When `vibelang --fix` refuses a constructor call in an `Effect.gen` or `Effect.fn` body, its message identifies direct `eval` or `yield*` in the operands. These need a manual migration to keep evaluation in its original scope and execution phase. Grouped, computed and saved constructor references keep their complete native construction when a preserving bridge is available.

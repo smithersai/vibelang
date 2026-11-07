@@ -1419,8 +1419,12 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 			}
 			markPipeCalls(node, operands)
 		case ast.IsNewExpression(node) && own && effectCode == 0 && throwing == nil && needsGeneratorDefectBridge(c, node):
-			if holdsYield(node) || foreignInvocationHasDirectEval(node) {
-				s.why = "the constructor's operands cannot move into a defect-preserving function"
+			if holdsYield(node) {
+				s.why = "a throwing constructor has a yield* in its operands"
+				return true
+			}
+			if foreignInvocationHasDirectEval(node) {
+				s.why = "a throwing constructor has direct eval in its operands"
 				return true
 			}
 			s.throwing = append(s.throwing, node)

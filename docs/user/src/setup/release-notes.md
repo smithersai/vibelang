@@ -79,6 +79,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A VibeLang declaration could use `@exception`, TypeScript's alias for `@throws`, and emit a throwing contract. The alias now receives `EK0406`, just like `@throws`; remove the tag manually while retaining the documentation.
 
+- A refused constructor migration gave a generic message about moving its operands. The refusal now identifies direct `eval` or `yield*`, so the scope or suspension that needs a manual migration is clear.
+
 - A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
 
 - An implicit `Effect.gen` repair could be refused when its body constructed a foreign class. It now preserves those constructor exceptions as defects, including member and aliased constructors.
