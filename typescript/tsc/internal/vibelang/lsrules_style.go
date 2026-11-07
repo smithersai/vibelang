@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -220,8 +221,12 @@ var styleFix = &ls.CodeFixProvider{
 			if body == nil || returnedValue(body.Parent) == nil {
 				return nil, nil
 			}
-			value := text(returnedValue(body.Parent))
-			if ast.IsObjectLiteralExpression(ast.SkipParentheses(returnedValue(body.Parent))) {
+			returned := returnedValue(body.Parent)
+			value := text(returned)
+			// A concise body that starts with { is a block, and a comma there
+			// ends the arrow: (n) => { return n, 1 } in a call would pass 1 as
+			// another argument.
+			if ast.IsObjectLiteralExpression(ast.SkipParentheses(returned)) || ast.IsBinaryExpression(returned) && returned.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
 				value = "(" + value + ")"
 			}
 			return []*ls.CodeAction{{Description: "Write the value as the body", Changes: replaceRange(fix, nodeStart(file, body), body.End(), value)}}, nil
@@ -233,25 +238,49 @@ var styleFix = &ls.CodeFixProvider{
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
 		defer done()
 		var description, newText string
+		var kept []*ast.Node
 		switch fix.ErrorCode {
 		case EK4821.Code:
 			// TaggedStruct changes make input and constructor behavior.
 			return nil, nil
 		case EK4824.Code:
-			description, newText = "Remove the pipe", text(pipeReceiver(c, call))
+			kept = []*ast.Node{pipeReceiver(c, call)}
+			description, newText = "Remove the pipe", text(kept[0])
 		case EK4825.Code:
 			inner := pipeReceiver(c, call)
-			var functions []string
-			for _, f := range append(pipeFunctions(inner), pipeFunctions(call)...) {
-				functions = append(functions, text(f))
+			functions := append(slices.Clone(pipeFunctions(inner)), pipeFunctions(call)...)
+			var texts []string
+			for _, f := range functions {
+				texts = append(texts, text(f))
 			}
+			kept = append([]*ast.Node{pipeReceiver(c, inner)}, functions...)
 			if isMethodPipe(call) {
-				newText = text(pipeReceiver(c, inner)) + ".pipe(" + strings.Join(functions, ", ") + ")"
+				newText = text(kept[0]) + ".pipe(" + strings.Join(texts, ", ") + ")"
 			} else {
-				newText = text(call.Expression()) + "(" + text(pipeReceiver(c, inner)) + ", " + strings.Join(functions, ", ") + ")"
+				kept = append(kept, call.Expression())
+				newText = text(call.Expression()) + "(" + text(kept[0]) + ", " + strings.Join(texts, ", ") + ")"
 			}
 			description = "Pass every function to one pipe"
 		}
+		if commentBetween(file, nodeStart(file, call), call.End(), kept) {
+			return nil, nil // the repair writes its own punctuation there
+		}
 		return []*ls.CodeAction{{Description: description, Changes: replaceRange(fix, nodeStart(file, call), call.End(), newText)}}, nil
 	},
+}
+
+// commentBetween reports whether file's text in [start, end), outside the
+// nodes a repair keeps, holds a comment the repair would drop. A repair that
+// would drop a comment is not offered (chapter 7, Effect's type-aware lint).
+func commentBetween(file *ast.SourceFile, start, end int, kept []*ast.Node) bool {
+	kept = slices.Clone(kept)
+	slices.SortFunc(kept, func(a, b *ast.Node) int { return nodeStart(file, a) - nodeStart(file, b) })
+	text := file.Text()
+	for _, node := range kept {
+		if from := nodeStart(file, node); from > start && hasComment(text[start:from]) {
+			return true
+		}
+		start = max(start, node.End())
+	}
+	return start < end && hasComment(text[start:end])
 }

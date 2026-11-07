@@ -217,6 +217,8 @@ The plugin's `ignoreEffectErrorsInTscExitCode`, `ignoreEffectWarningsInTscExitCo
 
 In a `.vibe` file, a rule runs in one of three ways. A rule whose pattern VibeLang's syntax rules out, such as `missingStarInYieldEffectGen`, does not run. A rule that a VibeLang diagnostic already ports runs as that diagnostic at the rule's severity. Every other rule runs as Effect wrote it. [Effect language service rules](/getting-started/012-devtools#effect-language-service-rules) lists each rule's answer.
 
+Ordinary `vibelang --fix` applies the repairs of `unnecessaryArrowBlock`, `unnecessaryPipe` and `unnecessaryPipeChain` where the project or a `// @vibelang-diagnostics` comment turns the rule on, at any severity, so the fixed module passes your lint. Where the rule is off, `--fix` leaves those arrows and pipes as written. It skips a repair that would drop a comment.
+
 Use `// @effect-diagnostics-next-line schemaSync:off` to configure imported diagnostics for a line in builds, the language server and `vibelang lint`. The separate Oxlint integration retains its own conventions for disable comments.
 
 ### Bridge imported validation helpers

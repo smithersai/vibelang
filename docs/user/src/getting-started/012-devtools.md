@@ -444,11 +444,11 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Style | `schemaUnionOfLiterals` | Effect 3 only | None |
 | Style | `serviceNotAsClass` | Not needed: `service` declarations | `service Users { … }` |
 | Style | `strictBooleanExpressions` | EK4822, off by default | `if (count) { … }` |
-| Style | `unnecessaryArrowBlock` | EK4823, off by default, with a quick fix | `(x) => { return x + 1 }` |
+| Style | `unnecessaryArrowBlock` | EK4823, off by default, with a quick fix that `--fix` applies when the rule is on | `(x) => { return x + 1 }` |
 | Style | `unnecessaryEffectGen` | Effect functions use `try` | None |
 | Style | `unnecessaryFailYieldableError` | Not needed: `throw new NotFound({ id })` | `throw new NotFound({ id })` |
-| Style | `unnecessaryPipe` | EK4824, off by default, with a quick fix | `pipe(x)` |
-| Style | `unnecessaryPipeChain` | `EK4825`, off by default, with a quick fix | `x.pipe(f).pipe(g)` |
+| Style | `unnecessaryPipe` | EK4824, off by default, with a quick fix that `--fix` applies when the rule is on | `pipe(x)` |
+| Style | `unnecessaryPipeChain` | `EK4825`, off by default, with a quick fix that `--fix` applies when the rule is on | `x.pipe(f).pipe(g)` |
 | Hover | Extended Effect type | Covered: a function's hover shows its contract, `A!E!R` | `string!UserNotFound!Users` |
 | Hover | `yield*` hover | Use `try` to get the success value | `try load()` returns `User` |
 | Hover | Layer service involvement | Hover: a layer lists what it provides, needs, and fails with | Hover on `UsersLive` |

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A project that turned on `unnecessaryArrowBlock`, `unnecessaryPipe` or `unnecessaryPipeChain` still had those reports after `vibelang --fix`, so a converted module failed the project's own lint. `--fix` now applies those repairs where the project turns the rule on and leaves the code alone where it is off. The repairs no longer drop comments between pipe arguments, and a block returning `a, b` becomes `=> (a, b)`.
+
 - A platform repair could refuse optional host calls such as `process.getuid?.()`. Calls without arguments now move with their receiver and short-circuit behavior intact.
 
 - `vibelang --fix` refused pipelines ending in a platform's `runMain`, treating the runner as an unknown custom stage. It now converts the pinned platform runners while preserving stage construction order and public types.
