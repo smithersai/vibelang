@@ -536,15 +536,17 @@ const targets = {
   ),
   "create-cli": S.Shell.Test({
     summary: "Run the scaffolder's fast CLI unit tests.",
-    shell: "node --test packages/create-vibelang/test/create.test.mjs",
+    shell: "node --test packages/create-vibelang/test/create.test.mjs packages/create-vibelang/test/dev.test.mjs packages/create-vibelang/test/filesystem.property.test.mjs packages/create-vibelang/test/pin.property.test.mjs",
     data: [
       S.file("packages/create-vibelang/package.json"),
       S.file("packages/create-vibelang/bin/create-vibelang.mjs"),
-      S.file("packages/create-vibelang/test/create.test.mjs"),
+      S.file("packages/create-vibelang/bun.lock"),
+      S.glob("packages/create-vibelang/test/**"),
+      S.file("scripts/testing/property.mjs"),
       S.glob("templates/app/**"),
       S.file("docs/user/llms-essentials.md")
     ],
-    tools: [node],
+    tools: [node, S.Host.bin("npm"), S.Host.bin("tar")],
     sandbox: "none",
     timeout: "1m"
   }),
