@@ -298,6 +298,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow kept a factory in TypeScript when its platform code read a private type of the module, even when the factory's return type never mentioned that type. The flow now checks the return type with the module's own tsconfig, and a factory whose result does not expose the private type converts; one that exposes it, or whose type it cannot fully resolve, still stays in TypeScript.
 - After the migrate flow moved a `crypto.randomUUID()`, `crypto.getRandomValues()` or `performance.now()` call into a module body, the module still failed `EK4402` on the helper call that replaced it. Those reads now get a helper with a signature of its own, so the module compiles.
 
+- `EK4402` on an `import.meta` member other than `url` told you to use "the Path or Config service" without naming the call that reads configuration. It now names the Path service or `Config.String`, or moving the use to a `.ts` file.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |
