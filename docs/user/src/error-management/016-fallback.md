@@ -30,6 +30,8 @@ Reading saved title
 Saved issue
 ```
 
+The left operand can be a stored Effect, a property or an expression that constructs one. It is evaluated once, then its Effect runs. A written `try` inside that operand runs first in the enclosing function; only failures of the resulting Effect reach this handler.
+
 The cache is read only if the primary computation fails. The fallback's errors become `title`'s; handling the primary doesn't handle them. A catch expression propagates defects and causes with only interruption. A typed failure beside a defect propagates as a defect, and one beside an interruption is handled.
 
 ```vibe

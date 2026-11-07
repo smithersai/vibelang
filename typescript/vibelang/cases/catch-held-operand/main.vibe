@@ -1,0 +1,32 @@
+// expect-result: [7,99,7,99,7,99,7,99,7,99,7,99,"outer",7]
+import { Effect as E } from "effect"
+
+type Job = E.Effect<number, string>
+
+effect function outerBoundary() {
+  return (try E.fail("outer")) catch () => 7
+}
+
+export effect function main() {
+  const good: Job = E.succeed(7)
+  const bad: Job = E.fail("bad")
+  const box = { good, bad }
+  const a = good catch () => 99
+  const b = bad catch () => 99
+  const c = (good as Job) catch () => 99
+  const d = (bad as Job) catch () => 99
+  const e = (good satisfies Job) catch () => 99
+  const f = (bad satisfies Job) catch () => 99
+  const g = (true ? good : E.succeed(0)) catch () => 99
+  const h = (true ? bad : E.succeed(0)) catch () => 99
+  const i = box.good catch () => 99
+  const j = box.bad catch () => 99
+  const k = box["good"] catch () => 99
+  const l = box["bad"] catch () => 99
+  const boundary = try E.match(outerBoundary(), {
+    onFailure: (error) => error,
+    onSuccess: () => "handled"
+  })
+  const inner = (try E.succeed(E.fail("inner"))) catch () => 7
+  return [a, b, c, d, e, f, g, h, i, j, k, l, boundary, inner]
+}

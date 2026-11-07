@@ -238,47 +238,47 @@ var projectionCases = []struct {
 	{
 		name:    "catch expression defers a value fallback (D236)",
 		source:  "effect function f() { return a() catch 2 }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 2 })))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a(), () => $gen(function* () { return 2 })))) })}",
 	},
 	{
 		name:    "catch expression contextually types a handler arrow (D238)",
 		source:  "effect function f() { return a() catch (e) => recover(e) }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), (e) => $gen(function* () { return (yield* $run(recover(e))) })))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a(), (e) => $gen(function* () { return (yield* $run(recover(e))) })))) })}",
 	},
 	{
 		name:    "catch expressions associate to the left (D237)",
 		source:  "effect function f() { return a() catch b() catch c }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return (yield* $run($value(b)())) })))) }), () => $gen(function* () { return c })))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch((yield* $run($catch(a(), () => $gen(function* () { return (yield* $run($value(b)())) })))), () => $gen(function* () { return c })))) })}",
 	},
 	{
 		name:    "nullish coalescing stays inside the catch (D237)",
 		source:  "effect function f() { return a() ?? 1 catch 2 }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) ?? 1 }), () => $gen(function* () { return 2 })))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a() ?? 1, () => $gen(function* () { return 2 })))) })}",
 	},
 	{
 		name:    "catch expression stays in its conditional branch (D237)",
 		source:  "effect function f(ok: boolean) { return ok ? a() catch 1 : 2 }",
-		virtual: "       function f(ok: boolean) { return $gen(function* () { return ok ? (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 1 })))) : 2 })}",
+		virtual: "       function f(ok: boolean) { return $gen(function* () { return ok ? (yield* $run($catch(a(), () => $gen(function* () { return 1 })))) : 2 })}",
 	},
 	{
 		name:    "catch in a pipe body captures its topic (D237)",
 		source:  "declare function find(id: string): string!!; effect function f(id: string) { return id |> find(%) catch 1 }",
-		virtual: "declare function find(id: string): Effect.Effect<string, never, never>;        function f(id: string) { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = id; return (yield* $run($catch($gen(function* () { return (yield* $run(find($topic))) }), () => $gen(function* () { return 1 })))) }))) })}",
+		virtual: "declare function find(id: string): Effect.Effect<string, never, never>;        function f(id: string) { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = id; return (yield* $run($catch(find($topic), () => $gen(function* () { return 1 })))) }))) })}",
 	},
 	{
 		name:    "catch expression statement guards ASI",
 		source:  "effect function f() {\n  a() catch 1\n}",
-		virtual: "       function f() { return $gen(function* () {\n  ;(yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), () => $gen(function* () { return 1 }))))\n})}",
+		virtual: "       function f() { return $gen(function* () {\n  ;(yield* $run($catch(a(), () => $gen(function* () { return 1 }))))\n})}",
 	},
 	{
 		name:    "catch handler block runs its own Effect body",
 		source:  "effect function f() { return a() catch e => { return recover(e) } }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch($gen(function* () { return (yield* $run($value(a)())) }), e => { return $gen(function* () { return (yield* $run(recover(e))) })}))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch(a(), e => { return $gen(function* () { return (yield* $run(recover(e))) })}))) })}",
 	},
 	{
 		name:    "catch expression retains this in both operands",
 		source:  "effect function f() { return this.a() catch this.b() }",
-		virtual: "       function f() { return $gen({ self: this }, function* () { return (yield* $run($catch($gen({ self: this }, function* () { return (yield* $run(this.a())) }), () => $gen({ self: this }, function* () { return (yield* $run(this.b())) })))) })}",
+		virtual: "       function f() { return $gen({ self: this }, function* () { return (yield* $run($catch(this.a(), () => $gen({ self: this }, function* () { return (yield* $run(this.b())) })))) })}",
 	},
 	{
 		name:    "a written catch helper call keeps ordinary call semantics",

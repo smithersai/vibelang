@@ -16,10 +16,9 @@ func isCatchExpression(node *ast.Node) bool {
 	return ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$catchExpression"
 }
 
-// catchExpression runs the left side inside $catch and defers the fallback
-// until an expected failure (D236-D238). Program and Effect-body edits keep
-// both renderings' generator boundaries and preserve the handler's contextual
-// error type. No completion records are needed for expression values.
+// catchExpression passes the evaluated left operand to $catch. Construction
+// and written execution in that operand stay in the enclosing activation;
+// $catch runs the resulting Effect and invokes its handler only on failure.
 func (p *projector) catchExpression(call *ast.Node, e env) {
 	if _, hatch := p.forms.(*Resolver).inHatch(call); hatch {
 		return
@@ -34,7 +33,9 @@ func (p *projector) catchExpression(call *ast.Node, e env) {
 	}
 	p.plan.insert(start, helperRef("$catch")+"(")
 	left, handler := call.Arguments()[0].Body(), call.Arguments()[1]
-	p.catchProgram(left)
+	operandEnv := e
+	operandEnv.holdCalls = true
+	p.visit(left, operandEnv)
 	if handler.Kind == ast.KindArrowFunction && handler.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0 {
 		fallback := handler.Body()
 		p.plan.replace(left.End(), p.tokenStart(fallback), ", () => ")

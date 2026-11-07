@@ -213,11 +213,11 @@ var emitCases = []struct {
 		absent:   []string{"f$direct"},
 	},
 	{
-		name:   "catch expressions run operands inside lazy generators",
+		name:   "catch expressions run their evaluated operands",
 		source: "effect function f() { return a() catch e => recover(e) }",
 		contains: []string{
 			`import { $catch, $done, $isRun, $settle } from "vibelang-runtime/internal";`,
-			"$catch($gen(function* () { return (($t = $value(a)()), $isRun($t) ? (yield* $t) : $t); }), e => $gen(function* () { return (($t = recover(e)), $isRun($t) ? (yield* $t) : $t); }))",
+			"$catch(a(), e => $gen(function* () { return (($t = recover(e)), $isRun($t) ? (yield* $t) : $t); }))",
 		},
 		absent: []string{"$catchExpression", "f$direct"},
 	},
@@ -226,7 +226,7 @@ var emitCases = []struct {
 		source: "declare function input(): string!!; declare function find(id: string): string!!; declare function backup(id: string): string!!; effect function f() { return input() |> find(%) catch backup(%) }",
 		contains: []string{
 			"const $topic = (($t = input()), $isRun($t) ? (yield* $t) : $t);",
-			"$catch($gen(function* () { return (($t = find($topic)), $isRun($t) ? (yield* $t) : $t); }), () => $gen(function* () { return (($t = backup($topic)), $isRun($t) ? (yield* $t) : $t); }))",
+			"$catch(find($topic), () => $gen(function* () { return (($t = backup($topic)), $isRun($t) ? (yield* $t) : $t); }))",
 		},
 		absent: []string{"|>", "(%)", "f$direct"},
 	},
