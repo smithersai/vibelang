@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Converting an `async` method with a computed numeric, template-literal or union key could violate its indexed `Promise` contract. The editor now withholds that conversion until the contract is migrated too.
+
 - Bundled dynamic imports could be reported as having an incorrect source position when a generated import used the same module name. Valid positions are now recognized while shifted mappings still fail.
 
 - Generating the diagnostic reference from sources with same-named constants could replace a diagnostic with another package's code. It now keeps the code selected by the source package and imports.

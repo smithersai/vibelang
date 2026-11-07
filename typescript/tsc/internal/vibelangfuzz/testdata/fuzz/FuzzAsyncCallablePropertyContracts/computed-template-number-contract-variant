@@ -1,0 +1,3 @@
+go test fuzz v1
+string("computed-template-number-contract")
+byte(5)

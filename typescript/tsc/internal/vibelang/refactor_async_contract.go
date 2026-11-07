@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/jsnum"
 )
 
 // The selected function changes from Promise to Effect. Its written containing
@@ -48,21 +47,49 @@ func asyncKeepsPromiseContract(c *checker.Checker, fn *ast.Node) bool {
 		return false
 	}
 	name := symbol.Name()
+	owner := member.Parent
+	computedIndex := name == ast.InternalSymbolNameComputed
+	keyApplies := c.IsApplicableIndexType
+	var inferredKeys []*checker.Type
+	if computedIndex {
+		var sourceType *checker.Type
+		if ast.IsClassLike(owner) {
+			if ownerSymbol := c.GetSymbolOfDeclaration(owner); ownerSymbol != nil {
+				sourceType = c.GetDeclaredTypeOfSymbol(ownerSymbol)
+				if ast.IsStatic(member) {
+					sourceType = c.GetTypeOfSymbolAtLocation(ownerSymbol, owner)
+				}
+			}
+		} else if ast.IsObjectLiteralExpression(owner) {
+			sourceType = c.GetTypeAtLocation(owner)
+		}
+		if sourceType != nil {
+			for _, info := range c.GetIndexInfosOfType(sourceType) {
+				if info.Declaration() == nil {
+					inferredKeys = append(inferredKeys, info.KeyType())
+				}
+			}
+		}
+	}
 	var keyType *checker.Type
-	indexRequiresPromise := func(t *checker.Type) bool {
+	indexRequiresPromise := func(t *checker.Type, own bool) bool {
 		if t == nil {
 			return false
 		}
 		for _, info := range c.GetIndexInfosOfType(t) {
+			// A class's inferred indexes change with its member types.
+			// Written own indexes and inherited contracts remain outside the edit.
+			if own && info.Declaration() == nil {
+				continue
+			}
 			if !promiseCallable(info.ValueType()) {
 				continue
 			}
 			if keyType == nil {
 				if property := member.Name(); property != nil && ast.IsComputedPropertyName(property) {
-					candidate := c.GetTypeAtLocation(property.Expression())
-					if candidate.Flags()&checker.TypeFlagsESSymbolLike != 0 {
-						keyType = candidate
-					}
+					// Computed numeric and template keys may have only an internal
+					// symbol name. Their source type selects the indexed contract.
+					keyType = c.GetTypeAtLocation(property.Expression())
 				}
 				if keyType == nil {
 					factory := ast.NewNodeFactory(ast.NodeFactoryHooks{})
@@ -74,17 +101,26 @@ func asyncKeepsPromiseContract(c *checker.Checker, fn *ast.Node) bool {
 					keyType = c.GetTypeFromTypeNode(literalType)
 				}
 			}
-			if c.IsTypeAssignableTo(keyType, info.KeyType()) ||
-				info.KeyType() == c.GetNumberType() && jsnum.FromString(name).String() == name {
-				return true
+			for _, part := range unionMembers(keyType) {
+				// Numeric property keys also fall under string index signatures.
+				if keyApplies(part, info.KeyType()) {
+					return true
+				}
+				for _, inferred := range inferredKeys {
+					// Computed keys can widen to an index domain. A written
+					// narrower index must remain compatible with that domain too.
+					if keyApplies(part, inferred) &&
+						(keyApplies(inferred, info.KeyType()) || keyApplies(info.KeyType(), inferred)) {
+						return true
+					}
+				}
 			}
 		}
 		return false
 	}
 	memberRequiresPromise := func(t *checker.Type) bool {
-		return t != nil && (promiseCallable(c.GetTypeOfPropertyOfType(t, name)) || indexRequiresPromise(t))
+		return t != nil && (promiseCallable(c.GetTypeOfPropertyOfType(t, name)) || indexRequiresPromise(t, false))
 	}
-	owner := member.Parent
 	if ast.IsObjectLiteralExpression(owner) {
 		return memberRequiresPromise(c.GetContextualType(owner, checker.ContextFlagsNone))
 	}
@@ -98,7 +134,7 @@ func asyncKeepsPromiseContract(c *checker.Checker, fn *ast.Node) bool {
 		if ast.IsStatic(member) {
 			ownerType = c.GetTypeOfSymbolAtLocation(ownerSymbol, owner)
 		}
-		if indexRequiresPromise(ownerType) {
+		if indexRequiresPromise(ownerType, true) {
 			return true
 		}
 	}

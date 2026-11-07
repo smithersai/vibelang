@@ -365,6 +365,10 @@ func (c *Checker) GetIndexTypeOfType(t *Type, keyType *Type) *Type {
 	return c.getIndexTypeOfType(t, keyType)
 }
 
+func (c *Checker) IsApplicableIndexType(source *Type, target *Type) bool {
+	return c.isApplicableIndexType(source, target)
+}
+
 func (c *Checker) GetIndexInfosOfType(t *Type) []*IndexInfo {
 	return c.getIndexInfosOfType(t)
 }

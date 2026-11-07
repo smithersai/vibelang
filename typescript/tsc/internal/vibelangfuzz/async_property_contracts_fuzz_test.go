@@ -18,6 +18,9 @@ func FuzzAsyncCallablePropertyContracts(f *testing.F) {
 	startShortBudget(f)
 	requireAsyncRefactorBridgeQuote(f)
 	keys := []string{"implements-field", "extends-field", "implements-expression", "static-field", "index-method", "class-index", "class-method-index", "number-index", "template-index", "symbol-index", "untyped-field-control", "object-base-field-control", "any-index-control", "unknown-class-index-control", "other-number-index-control", "other-template-index-control"}
+	keys = append(keys, "computed-number-string", "computed-number-number", "computed-template", "computed-union", "computed-number-class", "computed-string-class", "computed-template-class", "computed-number-inherited", "computed-union-string", "computed-any-control", "computed-unknown-control", "computed-other-index-control", "computed-untyped-control")
+	keys = append(keys, "computed-template-number-contract", "computed-template-other-contract", "named-other-inferred-contract", "literal-other-inferred-contract", "computed-string-union-number", "computed-template-untyped-control", "computed-literal-untyped-control")
+	keys = append(keys, "computed-numeric-template-number", "computed-number-numeric-template", "computed-numeric-template-control")
 	for _, key := range keys {
 		f.Add(key, uint8(0))
 	}
@@ -106,6 +109,52 @@ func asyncCallablePropertySource(key string, mode uint8) (string, int, bool) {
 		source, offer = "export const holder: { [key: `load${number}`]: (input: Promise<number>) => Promise<number> } = { ASYNC load7(input: Promise<number>) { return await input } }", false
 	case "symbol-index":
 		source, offer = "const key = Symbol(); export const holder: { [key: symbol]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-number-string":
+		source, offer = "const key: number = 7; export const holder: Record<string, (input: Promise<number>) => Promise<number>> = { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-number-number":
+		source, offer = "const key: number = 7; export const holder: Record<number, (input: Promise<number>) => Promise<number>> = { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-template":
+		source, offer = "const key = 'load7' as `load${number}`; export const holder: { [key: `load${number}`]: (input: Promise<number>) => Promise<number> } = { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-union":
+		source, offer = "const key = 7 as number | symbol; export const holder: Record<number, (input: Promise<number>) => Promise<number>> = { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-number-class":
+		source, offer = "const key: number = 7; export class Loader { [key: number]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-string-class":
+		source, offer = "const key: number = 7; export class Loader { [key: string]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-template-class":
+		source, offer = "const key = 'load7' as `load${number}`; export class Loader { [key: `load${number}`]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-number-inherited":
+		source, offer = "const key: number = 7; class Base { [key: number]: (input: Promise<number>) => Promise<number> }; export class Loader extends Base { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-union-string":
+		source, offer = "const key = 7 as number | `load${number}`; export const holder: Record<string, (input: Promise<number>) => Promise<number>> = { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-any-control":
+		source, offer = "const key: number = 7; export const holder: Record<number, (input: Promise<number>) => any> = { ASYNC [key](input: Promise<number>) { return await input } }", true
+	case "computed-unknown-control":
+		source, offer = "const key = 'load7' as `load${number}`; export class Loader { [key: `load${number}`]: (input: Promise<number>) => unknown; ASYNC [key](input: Promise<number>) { return await input } }", true
+	case "computed-other-index-control":
+		source, offer = "const key: number = 7; export class Loader { [key: symbol]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", true
+	case "computed-untyped-control":
+		source, offer = "const key: number = 7; export class Loader { ASYNC [key](input: Promise<number>) { return await input } }", true
+	case "computed-template-number-contract":
+		source, offer = "const key = 'load7' as `load${number}`; export class Loader { [key: number]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-template-other-contract":
+		source, offer = "const key = 'load7' as `load${number}`; export class Loader { [key: `task${number}`]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "named-other-inferred-contract":
+		source, offer = "const key: string = 'other'; export class Loader { async [key](input: Promise<number>) { return await input }; ASYNC load(input: Promise<number>) { return await input } }", true
+	case "literal-other-inferred-contract":
+		source, offer = "const key: string = 'other'; const picked = 'load'; export class Loader { async [key](input: Promise<number>) { return await input }; ASYNC [picked](input: Promise<number>) { return await input } }", true
+	case "computed-string-union-number":
+		source, offer = "const key = '7' as '7' | 'load'; export const holder: Record<number, (input: Promise<number>) => Promise<number>> = { ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-template-untyped-control":
+		source, offer = "const key = 'load7' as `load${number}`; export class Loader { ASYNC [key](input: Promise<number>) { return await input } }", true
+	case "computed-literal-untyped-control":
+		source, offer = "const picked = 'load'; export class Loader { ASYNC [picked](input: Promise<number>) { return await input } }", true
+	case "computed-numeric-template-number":
+		source, offer = "const key = '7' as `${number}`; export class Loader { [key: number]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-number-numeric-template":
+		source, offer = "const key: number = 7; export class Loader { [key: `${number}`]: (input: Promise<number>) => Promise<number>; ASYNC [key](input: Promise<number>) { return await input } }", false
+	case "computed-numeric-template-control":
+		source, offer = "const key = '7' as `${number}`; export class Loader { ASYNC [key](input: Promise<number>) { return await input } }", true
 	case "untyped-field-control":
 		source, offer = "export class Loader { load = ASYNC (input: Promise<number>) => await input }", true
 	case "object-base-field-control":
@@ -121,7 +170,9 @@ func asyncCallablePropertySource(key string, mode uint8) (string, int, bool) {
 	default:
 		source = "interface Contract { load(input: Promise<number>): Promise<number> }; export class Loader implements Contract { load = ASYNC (input: Promise<number>) => await input }"
 	}
-	if mode&4 != 0 {
+	// Some written class indexes must satisfy an inferred Promise index;
+	// their original value contracts cannot widen to PromiseLike.
+	if mode&4 != 0 && key != "computed-template-number-contract" && key != "computed-template-other-contract" && key != "computed-number-numeric-template" && key != "computed-numeric-template-number" {
 		source = strings.ReplaceAll(source, "): Promise<number>", "): PromiseLike<number>")
 		source = strings.ReplaceAll(source, "=> Promise<number>", "=> PromiseLike<number>")
 	}
