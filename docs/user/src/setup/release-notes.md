@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An unannotated foreign function returning a Promise could bypass the no-throw check in an Effect function’s parameter default or a plain factory returning an Effect, Stream or Layer. These calls now report `EK0401`, since they may throw before returning the Promise.
+
 - JSX imports could fail in bundlers with missing-loader or module-resolution errors. Explicit JSX sources, module queries and rewritten dependencies now build with the project's JSX settings and original source maps.
 
 - A `for` loop update that read an `is` binding from the loop test reported `TS2454` even when the binding was typed `any`, `unknown` or `void`, included `undefined`, or was read with `!`. The update now follows TypeScript's definite-assignment exemptions, and still reports `TS2454` for other types.

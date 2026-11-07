@@ -94,7 +94,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Learning Path** | **15,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 3,100 |
 | [Installation](../getting-started/004-installation.md) | 3,100 |
-| [Creating Effects](../getting-started/005-creating-effects.md) | 4,300 |
+| [Creating Effects](../getting-started/005-creating-effects.md) | 4,400 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,700 |
 | **Core Concepts** | **32,000** |
@@ -145,7 +145,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
-| **Error Management** | **23,000** |
+| **Error Management** | **24,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 12,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,600 |
 | [Fallback](../error-management/016-fallback.md) | 2,900 |

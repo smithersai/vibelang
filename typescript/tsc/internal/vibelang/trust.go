@@ -665,7 +665,8 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 		// Chapter 3 (Plain code never throws): a plain function whose return
 		// type is wholly effectful is stricter, and any thrown type other than
 		// never is EK0401. A written contract is the plain-code pass's.
-		if _, written := foreignThrowsContract(c, call); !written && (t.kind == trustForeign || t.kind == trustUnknown) && !t.promise && !t.value && a.knownThrows(call) == nil {
+		// Returning a Promise does not rule out a synchronous throw.
+		if _, written := foreignThrowsContract(c, call); !written && (t.kind == trustForeign || t.kind == trustUnknown) && !t.value && a.knownThrows(call) == nil {
 			report(c, callee, unknownThrowInEffectful, name)
 		}
 		return
@@ -684,7 +685,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	case ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(call, home):
 		// Known throws are already owned by the plain-code pass. The
 		// stricter parameter check adds only previously unknown throwing.
-		if t.kind == trustForeign && !t.promise && a.knownThrows(call) == nil {
+		if t.kind == trustForeign && a.knownThrows(call) == nil {
 			d := report(c, callee, foreignCallInEffectParameters, name)
 			note(d, "Compute the value in the body with {0}.", boundaryCall(c, file, "try", call, ""))
 		}
