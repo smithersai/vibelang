@@ -35,6 +35,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Formatting a missing file or a glob with no matches could report success. Explicit unmatched inputs now fail with a path diagnostic before any files are changed.
 
+- Expo exports could fail with `module is not defined in ES module scope` after following the Babel setup. The guide now gives the CommonJS configuration a `.cjs` filename.
+
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
 - The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
 - The error guides described plain-function throws as JavaScript exceptions or defects. They now explain the compile error and show how to choose a typed failure or defect.

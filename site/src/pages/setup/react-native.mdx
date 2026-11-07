@@ -25,10 +25,10 @@ Metro caches a transformed module by its own text, but a `.vibe` module's JavaSc
 
 ## 2. Configure Babel
 
-Add `vibelang/babel` after the app's presets. Metro does not need it, but any tool that runs Babel on a file directly does, such as a Jest suite or a React Compiler coverage test:
+Add `vibelang/babel` after the app's presets. Metro does not need it, but any tool that runs Babel on a file directly does, such as a Jest suite or a React Compiler coverage test. Save CommonJS Babel configuration as `babel.config.cjs` because `package.json` has `"type": "module"`. Rename an existing `babel.config.js` that uses `module.exports`:
 
 ```js
-// babel.config.js
+// babel.config.cjs
 module.exports = function (api) {
   api.cache(true)
   return { presets: ["babel-preset-expo", "vibelang/babel"] }
