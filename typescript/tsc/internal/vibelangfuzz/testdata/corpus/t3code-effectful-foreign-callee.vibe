@@ -1,0 +1,3 @@
+import * as Effect from "effect/Effect";
+import { foreign } from "./foreign.js";
+export const program = Effect.suspend(() => { foreign("failure"); return Effect.void; });
