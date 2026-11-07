@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nimport * as Effect from \"effect/Effect\";\nexport function read(box: { readonly body: Effect.Effect<number> }) { return Effect.succeed(box).pipe(Effect.flatMap(x => x.body)); }\nexport const main = () => { const events: string[] = []; const program = read({ body: Effect.sync(() => { events.push(\"run\"); return 7; }) }); const before = events.length; return Effect.map(Effect.all([program, program]), values => ({before, values, events})); };\n")
