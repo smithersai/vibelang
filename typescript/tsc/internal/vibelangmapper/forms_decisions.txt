@@ -1791,6 +1791,7 @@ typescript/vibelang/cases/cov-ch900a-native-return-annotations/main.vibe:7:39 la
 typescript/vibelang/cases/cov-ch900a-native-return-annotations/main.vibe:8:28 byname program table
 typescript/vibelang/cases/cov-ch900a-native-return-annotations/main.vibe:8:39 lambda plain table
 typescript/vibelang/cases/cov-ch900a-not-prefix/main.vibe:2:13 lambda plain fallback
+typescript/vibelang/cases/cov-ch900a-operator-heads/main.vibe:7:9 lambda effectFn fallback
 typescript/vibelang/cases/cov-ch900a-ordinary-provide/main.vibe:12:57 lambda effectFn annotation
 typescript/vibelang/cases/cov-ch900a-plain-async-match/main.vibe:2:39 lambda dual fallback
 typescript/vibelang/cases/cov-ch900a-plain-async-match/main.vibe:3:59 lambda plain table
@@ -2169,6 +2170,8 @@ typescript/vibelang/cases/cov2-004a-elisions/main.vibe:4:15 lambda plain table
 typescript/vibelang/cases/cov2-004a-elisions/main.vibe:4:26 lambda plain fallback
 typescript/vibelang/cases/cov2-004a-finish-value-jump/main.vibe:5:23 lambda dual fallback
 typescript/vibelang/cases/cov2-004a-inclusive-relations/main.vibe:6:23 lambda plain table
+typescript/vibelang/cases/cov2-004a-inclusive-relations/main.vibe:6:31 lambda effectFn fallback
+typescript/vibelang/cases/cov2-004a-inclusive-relations/main.vibe:6:53 lambda effectFn fallback
 typescript/vibelang/cases/cov2-004a-optional-list/main.vibe:4:15 lambda plain table
 typescript/vibelang/cases/cov2-004a-optional-list/main.vibe:4:26 lambda plain fallback
 typescript/vibelang/cases/cov2-004a-property-cache/main.vibe:5:22 lambda plain fallback
@@ -5427,11 +5430,15 @@ typescript/vibelang/cases/match-proto-key-controls/main.vibe:8:25 lambda plain t
 typescript/vibelang/cases/match-proto-literal-key.fail/main.vibe:4:32 lambda effectFn fallback
 typescript/vibelang/cases/match-proto-literal-key.fail/main.vibe:5:32 lambda effectFn fallback
 typescript/vibelang/cases/match-proto-literal-key.fail/main.vibe:6:32 lambda effectFn fallback
+typescript/vibelang/cases/match-relational-bound-order/main.vibe:16:21 lambda plain table
+typescript/vibelang/cases/match-relational-bound-order/main.vibe:22:102 lambda effectFn fallback
+typescript/vibelang/cases/match-relational-bound-order/main.vibe:22:19 lambda dual fallback
+typescript/vibelang/cases/match-relational-bound-order/main.vibe:22:50 lambda effectFn fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:74:92 lambda plain table
 typescript/vibelang/cases/match-relational-regex/main.vibe:91:22 lambda plain fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:91:43 lambda plain fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:92:12 lambda effectFn fallback
-typescript/vibelang/cases/match-relational-regex/main.vibe:92:33 lambda plain fallback
+typescript/vibelang/cases/match-relational-regex/main.vibe:92:33 lambda effectFn fallback
 typescript/vibelang/cases/match-relational-regex/main.vibe:92:48 lambda plain fallback
 typescript/vibelang/cases/match-retained-jose-error/main.vibe:11:8 lambda dual fallback
 typescript/vibelang/cases/match-retained-jose-error/main.vibe:12:8 lambda dual fallback

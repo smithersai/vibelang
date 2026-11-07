@@ -73,6 +73,7 @@ export const {
   $registerErrorMatcher,
   $region,
   $relation,
+  $relates,
   $rest,
   $runMain,
   $schemaErrorFamily,

@@ -134,6 +134,7 @@ var preludeModules = map[string]string{
 	"$extract":      runtimeModule,
 	"$matchCache":   runtimeModule,
 	"$relation":     runtimeModule,
+	"$relates":      runtimeModule,
 	"$rest":         runtimeModule,
 	"$propertyKey":  runtimeModule,
 	"$noMatch":      runtimeModule,

@@ -155,6 +155,7 @@ or runtime references valid in first-release `.vibe` source.
 | `$provideService` | Supply a service implementation | — |
 | `$registerErrorMatcher` | Record and return a generated error matcher so error subclasses retain tag matching | D278, VIP-7 |
 | `$relation` | Test a relational pattern (`<`, `>`, `<=`, `>=`, `in`) as the proposal does | — |
+| `$relates` | Tell whether a relational pattern admits its subject, before its operand runs | VIP-7 |
 | `$rest` | Extract object rest properties for a pattern | — |
 | `$schemaErrorFamily` | Register a schema error family and its union schema | — |
 | `$schemaErrorMatcher` | Install a schema error declaration matcher that tests its tag across package copies | VIP-7, VIP-29 |
