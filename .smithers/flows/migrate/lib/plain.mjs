@@ -6,7 +6,7 @@
 // and a written Generator type on ordinary generators. Functions returning
 // Effects stay available for the compiler's TypeScript-form fixes.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
-import { isAbsolute, join, relative, sep } from "node:path"
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { quote, run } from "./util.mjs"
 
 /**
@@ -180,9 +180,10 @@ export function applyPlainEdits(text, edits) {
  * before the codemod renames them, reading types through the TypeScript
  * program of the first of tsconfigs (paths relative to root) that includes
  * the file. Returns { file: { marked, left } } for each file it changed or
- * had to leave a generator in.
+ * had to leave a generator in. renamed maps each module the batch renames
+ * to the TypeScript source it is renamed from, both relative to root.
  */
-export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, exists, flipped = false } = {}) {
+export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, exists, flipped = false, renamed = new Map() } = {}) {
   // The compiler probe already proved that syntax preserves plain functions.
   // Do not load package graphs for a legacy annotation pass that cannot edit them.
   if (flipped) return {}
@@ -203,6 +204,22 @@ export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, ex
     const options = { ...(config?.options ?? {}), noEmit: true, skipLibCheck: true }
     const compilerHost = ts.createCompilerHost(options, true)
     Object.assign(compilerHost, { readFile, fileExists })
+    // The batch's imports already name its renamed modules, ./peer.vibe for
+    // ./peer.ts, and no declaration of peer.vibe exists before the compiler
+    // runs. Stock TypeScript would read every import of such a peer as any,
+    // and a function returning the peer's Effect would be marked plain. Read
+    // the peer from the source it is renamed from, which is still here.
+    if (renamed.size) {
+      compilerHost.resolveModuleNameLiterals = (literals, containingFile, redirected, compilerOptions, containingSourceFile) => literals.map((literal) => {
+        const mode = containingSourceFile && ts.getModeForUsageLocation ? ts.getModeForUsageLocation(containingSourceFile, literal, compilerOptions) : undefined
+        const resolved = ts.resolveModuleName(literal.text, containingFile, compilerOptions, compilerHost, undefined, redirected, mode)
+        if (resolved.resolvedModule || !/^\.\.?\//.test(literal.text)) return resolved
+        const from = renamed.get(inRoot(resolve(dirname(containingFile), literal.text)))
+        if (!from) return resolved
+        const extension = from.endsWith(".tsx") ? ts.Extension.Tsx : from.endsWith(".mts") ? ts.Extension.Mts : from.endsWith(".cts") ? ts.Extension.Cts : ts.Extension.Ts
+        return { resolvedModule: { resolvedFileName: join(root, from), extension, isExternalLibraryImport: false, resolvedUsingTsExtension: true } }
+      })
+    }
     const program = ts.createProgram({ rootNames: group.map((f) => join(root, f)), options, host: compilerHost })
     const checker = program.getTypeChecker()
     for (const file of group) {

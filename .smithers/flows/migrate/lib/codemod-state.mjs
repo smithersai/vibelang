@@ -68,7 +68,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   // Read the TypeScript after platform splitting and before renaming. Detail
   // 269: a post-VIP-1 compiler needs no legacy plain return annotation.
   const plain = {}
-  if (ts) for (const group of plainGroups) Object.assign(plain, markPlainFunctions(ts, target, group.files, group.tsconfigs, { read, write, exists: file => writes.some(w => w.file === (toOf.get(file) ?? file) && w.after !== null) || existsSync(join(target, file)), flipped: group.flipped }))
+  if (ts) for (const group of plainGroups) Object.assign(plain, markPlainFunctions(ts, target, group.files, group.tsconfigs, { read, write, exists: file => writes.some(w => w.file === (toOf.get(file) ?? file) && w.after !== null) || existsSync(join(target, file)), flipped: group.flipped, renamed: new Map(renames.map(r => [r.to, r.from])) }))
   const exportEdits = rewriteExports(target, renames, { write, bareEntries })
   // rewriteExports reads the original manifest. Reapply the companion's
   // private subpaths to its planned result in the same write-ahead journal.

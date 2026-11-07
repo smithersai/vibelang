@@ -259,6 +259,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow kept a module in TypeScript when one of its types read an exported function that the platform split moves, such as `export type Timer = ReturnType<typeof createTimer>`. The function stays in the module as a wrapper of the same name and signature, so the type keeps reading it and the module converts.
 - The migrate flow's platform split moved an interface that names a host type, such as `readonly signal?: AbortSignal`, out of the module while a function the module kept still used it, so the converted file reported `TS2304`. The interface now stays in the module, and the moved code uses its own copy.
 - The migrate flow kept a component or a function that returns nothing in TypeScript when its platform code read a private type of the module, on the grounds that the inferred return type might name that type. A function that returns only JSX, `null` or `undefined`, or no value, now keeps its wrapper and the module converts; a function that may return the private type still stays in TypeScript.
+- With a compiler before VIP-1, the migrate flow marked a function `: infer _` when it returned the Effect of a module converted in the same batch, and the converted module failed `EK9203`. The flow now reads that module's types from its TypeScript source and keeps such functions Effect functions.
 
 ### Upgrade from 0.0.12
 
