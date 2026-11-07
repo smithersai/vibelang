@@ -288,6 +288,13 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"rest-initializer", "function f(...p = []) { return p; }"},
 	{"rest-pattern-optional", "function f(...[p]?: number[]) { return p; }"},
 	{"binding-pattern-optional", "function f ( [ p ] ? : number [ ] ) { return p ; }"},
+	{"binding-rest-element", "const [...p] = [1];"},
+	{"binding-nested-rest-pattern", "function f(...[...p]: number[]) { return p; }"},
+	{"binding-elision", "const [a, , c] = [1, 2, 3];"},
+	{"binding-rest-property", "const { a, ...rest } = { a: 1, b: 2 };"},
+	{"binding-rest-trailing-comma", "const [...p,] = [1];"},
+	{"binding-rest-initializer", "const [...p = []] = [1];"},
+	{"binding-rest-not-last", "const { ...rest, a } = { a: 1 };"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -2116,6 +2123,12 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// Native MetaProperty spelling and new.target placement.
 	case 17012, 17013:
 		return true
+	// checkGrammarBindingElement: a rest element that is not last (TS2462),
+	// followed by a trailing comma (TS1013), with a property name (TS2566) or
+	// with an initializer (TS1186). ECMAScript's BindingRestElement and
+	// BindingRestProperty end their pattern and carry neither.
+	case 1013, 1186, 2462, 2566:
+		return true
 	// checkGrammarParameterList: a rest parameter that is not last (TS1014),
 	// optional (TS1047) or initialized (TS1048). ECMAScript's
 	// FunctionRestParameter is a final BindingRestElement with neither.
@@ -2313,6 +2326,12 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-rest-initializer", "", diagnostics.CategoryError, 1048, true},
 		{"native-rest-initializer-warning", "", diagnostics.CategoryWarning, 1048, false},
 		{"ek-rest-initializer-code-collision", "EK", diagnostics.CategoryError, 1048, false},
+		{"native-binding-rest-trailing-comma", "", diagnostics.CategoryError, 1013, true},
+		{"native-binding-rest-initializer", "", diagnostics.CategoryError, 1186, true},
+		{"native-binding-rest-not-last", "", diagnostics.CategoryError, 2462, true},
+		{"native-binding-rest-property-name", "", diagnostics.CategoryError, 2566, true},
+		{"native-binding-rest-not-last-warning", "", diagnostics.CategoryWarning, 2462, false},
+		{"ek-binding-rest-code-collision", "EK", diagnostics.CategoryError, 2462, false},
 		{"effect-for-await-placement", "EK", diagnostics.CategoryError, 102, true},
 		{"effect-for-await-placement-warning", "EK", diagnostics.CategoryWarning, 102, false},
 		{"native-effect-await-code-collision", "", diagnostics.CategoryError, 102, false},

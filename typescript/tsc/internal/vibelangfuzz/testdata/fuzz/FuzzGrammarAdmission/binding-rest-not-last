@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:binding-rest-not-last\nconst { ...rest, a } = { a: 1 };")
