@@ -211,6 +211,21 @@ const migrateHelperIdentity = S.Shell.Test({
 // this checkout's compiler into its fixtures and builds a private copy of the
 // runtime's sources with the native compiler, under test/.fixtures: it never
 // writes packages/runtime, which the runtime and compiler targets read.
+// A compiler rule change can reject the code the migrate flow generates, and
+// before this target only the full migrate-test (four shards, over twenty
+// minutes) compiled it. This file compiles the generated source-child helper
+// with the native compiler in about a minute, so any compiler change reruns it.
+const migrateSourceChildNative = S.Shell.Test({
+  summary: "Compile migrated source-child helpers with the native compiler.",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && cd ../.. && " +
+    "node --test .smithers/flows/migrate/test/source-child-vibe-module.property.test.mjs",
+  data: [compilerNative, runtimeDist, migrationSources, ...install, S.file("compiler/package.json"), S.file("compiler/bun.lock"),
+    S.file("//docs/design/vips/0040-module-declarations.md")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
+  sandbox: "none",
+  timeout: "4m"
+})
+
 const migrateToolchainBaseline = S.Shell.Test({
   summary: "Reject toolchain regressions after valid target dependency probes.",
   shell: "node --test .smithers/flows/migrate/test/toolchain-baseline.property.test.mjs",
@@ -290,6 +305,7 @@ export const Package = S.Package({
     "compiler-test-3": compilerTest(3),
     "compiler-test-4": compilerTest(4),
     "migrate-helper-identity": migrateHelperIdentity,
+    "migrate-source-child-native": migrateSourceChildNative,
     "migrate-test": migrateTest,
     "migrate-lost-wrapper": migrateLostWrapper,
     "migrate-record-provenance": migrateRecordProvenance,
