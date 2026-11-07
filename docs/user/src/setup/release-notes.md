@@ -39,6 +39,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Awaiting an Effect inside an async generator could miss its error when an iterator return type was written. It now reports `EK0103`; `--fix` keeps the Effect unrun across the native `await`.
 
+- Typed lint could lose types imported from `.vibe` modules and report unsafe uses in valid code. It now keeps those types and fails when a source module has errors.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
