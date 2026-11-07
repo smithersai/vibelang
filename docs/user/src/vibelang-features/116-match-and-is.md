@@ -92,6 +92,8 @@ A single `match` keeps an iterable's pulled values for later arms. If `when [1, 
 | `and`, `or`, `not` | Conjunction, alternative, or negation | `when "a" or "e":` |
 | Guard | A condition that is true | `when [let n] and if (n > 0):` |
 
+A matcher, a value pattern or a relational operand is a member expression: a name, `this`, `super`, `import.meta` or `new.target`, followed by `.name` or `[expression]` accesses, as in `when import.meta.url:` or `when === new.target:`.
+
 Bindings inside `or` and `not` patterns follow the same lexical rules as other pattern bindings. Alternatives that bind the same name with the same keyword share one cell; a later alternative can replace a value from an earlier alternative that failed. A saved closure observes that replacement. A `const` binding remains immutable in user code, and a name bound in every alternative gets the union of its extracted types.
 
 `var` is not allowed in pattern bindings (`EK0107`). Binding names may start with `$`, as ordinary TypeScript identifiers do; a `const` binding keeps its assignment checks. Use `let` or `const`, including inside an `is` pattern; the quick fix and `vibelang --fix` replace `var` with `let`.

@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1030 records)</summary>
+<summary>Parser and lowering hooks (1032 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1139,6 +1139,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.tokenStartsPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.parseMatchPrimaryPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.parseMatchValueExpression ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
+| ` parser/vibelang_match.go:Parser.isMatchMetaProperty ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: a pattern member expression may start with import.meta or new.target |
+| ` parser/vibelang_match.go:Parser.parseMatchMetaProperty ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: parse the MetaProperty that starts a pattern member expression |
 | ` parser/vibelang_match.go:Parser.parseMatchListPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.parseMatchObjectPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.isVibeLangIs ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |

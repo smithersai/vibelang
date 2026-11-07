@@ -408,6 +408,8 @@ func (p *Parser) tokenStartsPattern() bool {
 		ast.KindExclamationEqualsToken, ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken,
 		ast.KindInstanceOfKeyword, ast.KindInKeyword:
 		return true
+	case ast.KindImportKeyword, ast.KindNewKeyword:
+		return p.isMatchMetaProperty() // import.meta or new.target
 	}
 	return p.isIdentifier() // a contextual keyword, such as undefined or of
 }
@@ -499,7 +501,7 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 		return &pattern{kind: patternRelation, anchor: anchor, operator: operator, expr: expr}
 	}
 	// A contextual keyword is a name here too, undefined and of among them.
-	if p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword || p.isIdentifier() {
+	if p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword || p.isIdentifier() || p.isMatchMetaProperty() {
 		expr := p.parseMatchValueExpression()
 		if p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak() {
 			result := &pattern{kind: patternExtractor, anchor: anchor, expr: expr}
@@ -555,9 +557,12 @@ func (p *Parser) parseMatchRelationOperand(operator ast.Kind) *ast.Node {
 func (p *Parser) parseMatchValueExpression() *ast.Node {
 	pos := p.nodePos()
 	var expr *ast.Node
-	if p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword {
+	switch {
+	case p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword:
 		expr = p.parseKeywordExpression()
-	} else {
+	case p.isMatchMetaProperty():
+		expr = p.parseMatchMetaProperty()
+	default:
 		expr = p.parseIdentifier()
 	}
 	for {
@@ -575,6 +580,26 @@ func (p *Parser) parseMatchValueExpression() *ast.Node {
 			return expr
 		}
 	}
+}
+
+// isMatchMetaProperty reports whether import.meta or new.target starts here:
+// the pinned PatternMatchingMemberExpression begins with a MetaProperty too.
+func (p *Parser) isMatchMetaProperty() bool {
+	return (p.token == ast.KindImportKeyword || p.token == ast.KindNewKeyword) && p.lookAhead((*Parser).nextTokenIsDot)
+}
+
+// parseMatchMetaProperty parses that MetaProperty as an expression would, so
+// the checker reports an unknown name or a new.target outside a function.
+func (p *Parser) parseMatchMetaProperty() *ast.Node {
+	pos := p.nodePos()
+	keyword := p.token
+	p.nextToken() // import or new
+	p.nextToken() // .
+	if keyword == ast.KindImportKeyword {
+		p.sourceFlags |= ast.NodeFlagsPossiblyContainsImportMeta
+		return p.finishNode(p.factory.NewMetaProperty(ast.KindImportKeyword, p.parseImportMetaPropertyName()), pos)
+	}
+	return p.finishNode(p.factory.NewMetaProperty(ast.KindNewKeyword, p.parseIdentifierName()), pos)
 }
 
 // parseMatchListPattern parses the items of an array pattern or of an

@@ -164,6 +164,8 @@ parser/vibelang_match.go:Parser.nextTokenStartsPattern	admission:match	900-appen
 parser/vibelang_match.go:Parser.tokenStartsPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.parseMatchPrimaryPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.parseMatchValueExpression	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.isMatchMetaProperty	admission:match	004-match.md	support	VIP-7: a pattern member expression may start with import.meta or new.target
+parser/vibelang_match.go:Parser.parseMatchMetaProperty	admission:match	004-match.md	support	VIP-7: parse the MetaProperty that starts a pattern member expression
 parser/vibelang_match.go:Parser.parseMatchListPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.parseMatchObjectPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.isVibeLangIs	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers

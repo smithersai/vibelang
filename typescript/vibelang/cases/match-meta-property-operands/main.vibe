@@ -1,0 +1,20 @@
+// expect-result: {"url":["here","other"],"strict":["here","other"],"target":["same","other"],"instance":["probe","probe"]}
+// Chapter 004, via the pinned PatternMatchingMemberExpression: a member
+// expression in a pattern may start with a MetaProperty, import.meta or
+// new.target, in a value pattern or as a relational operand.
+function url(s: unknown) { return match (s) { when import.meta.url: "here"; default: "other"; } }
+function strict(s: unknown) { return match (s) { when === import.meta.url: "here"; default: "other"; } }
+const seen: string[] = []
+const instances: string[] = []
+class Probe {
+  constructor(s: unknown) {
+    seen.push(match (s) { when === new.target: "same"; default: "other"; })
+    instances.push(match (this) { when new.target: "probe"; default: "other"; })
+  }
+}
+class Sub extends Probe {}
+export effect function main() {
+  new Probe(Probe)
+  new Sub(Probe)
+  return { url: [url(import.meta.url), url("x")], strict: [strict(import.meta.url), strict(1)], target: seen, instance: instances }
+}
