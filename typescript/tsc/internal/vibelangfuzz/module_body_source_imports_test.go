@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
@@ -68,11 +69,14 @@ func FuzzModuleBodySourceImports(f *testing.F) {
 					Gap(t, "FuzzModuleBodySourceImports", construct, "Chapter 7: round %d imports an output: %s", round, d.String())
 				}
 			}
+			var outputsMu sync.Mutex
 			r := p.EmitDeclarationSidecars(t.Context(), func(file, text string) error {
 				if path.Base(file) == "main.vibe."+name+".d.ts" && strings.Contains(text, "declarations/input.vibe") {
 					Gap(t, "FuzzModuleBodySourceImports", construct, "Chapter 7: body imports a compatibility output:\n%s", text)
 				}
+				outputsMu.Lock()
 				files[file] = text
+				outputsMu.Unlock()
 				return nil
 			})
 			if r == nil || r.EmitSkipped || len(r.Diagnostics) > 0 {
