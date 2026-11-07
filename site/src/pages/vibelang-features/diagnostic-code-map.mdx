@@ -207,7 +207,7 @@ The following compatibility reports can still occur while older source is migrat
 | `EK2114` | A catch expression appears in a retired hatch. Use a JavaScript `try` statement in a `.ts` helper or a catch expression in effect code. |
 | `EK2115` | The stock mapper finds an Effect-running call in a legacy factory's call-time body. Separate plain factory setup from an explicit `effect` function or block, or compile with the native compiler. |
 | `EK3203`, `EK3204` | Legacy automatic wiring finds a cycle or an unnamed output. Compose Layers explicitly and provide them with `provide`. |
-| `EK3205` | A legacy automatically started `main` needs a missing service. Provide its required layers and explicitly run the resulting Effect from the entry point. |
+| `EK3205` | A legacy automatically started `main` needs a missing service. Provide its required layers and run the resulting Effect from the entry point with `runPromise`. |
 | `EK3206` | Legacy platform imports name two hosts in one file. Select the intended platform's services explicitly; importing a namespace does not start a host. |
 | `EK3207` | A provider is not a supported operand. Supply a `Layer`, `Context`, non-empty tuple of layers or `Key = value` binding. |
 | `EK4301` | A legacy implicit Effect callback is passed to a synchronous API. Use a plain callback for synchronous work, or an API that accepts an explicit Effect callback. |
