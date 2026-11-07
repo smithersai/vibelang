@@ -316,7 +316,13 @@ export default function vibelang(options = {}) {
       channel.send({ type: "error", err: { message, stack: "", plugin: "vibelang", id, loc } })
       return []
     }
-    return [...affected]
+    // Recompile every affected contract, then let Vite propagate from the
+    // changed modules and compiled outputs. Returning JavaScript ancestors
+    // as changed roots would bypass their dependency accept boundaries.
+    const updates = new Set(context.modules)
+    for (const module of affected) if (module.file && isCompiled(module.file)) updates.add(module)
+    debug(`hot roots: changed=${context.modules.length}, affected=${affected.size}, updates=${updates.size}`)
+    return [...updates]
   }
 
   return {

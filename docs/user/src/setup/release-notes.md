@@ -55,6 +55,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The compatibility diagnostic reference gave vague instructions for starting a provided program. It now names `runPromise` at the entry point.
 
+- Updating a VibeLang dependency could reload the whole Vite page even when an importer accepted the update. Accepted updates now preserve the page and its state.
+
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.
