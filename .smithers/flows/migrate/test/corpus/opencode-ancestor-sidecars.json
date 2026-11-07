@@ -1,0 +1,10 @@
+{
+  "directories": [
+    "packages",
+    "cli"
+  ],
+  "ancestorDepth": 0,
+  "basename": "error",
+  "key": "opencode-ancestor-sidecar-layout",
+  "quote": "each export's type identical to `tsc`'s in both directions"
+}

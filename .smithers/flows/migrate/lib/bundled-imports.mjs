@@ -60,9 +60,18 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     // root, from the package, or from above the package. Name the one that exists.
     const sidecarOf = (source, path) => {
       const name = ".d" + posix.extname(source) + ".ts"
-      const written = [path, path.replace(/^[^/]+\//, ""), posix.join(posix.basename(dir), path)]
+      const stems = [path, path.replace(/^[^/]+\//, "")]
+      const directories = posix.normalize(dir).split("/")
+      for (let depth = directories.length - 1; depth >= 0; depth--)
+        stems.push(posix.join(...directories.slice(depth), path))
+      const written = [...new Set(stems)]
         .map(stem => ".vibe/declarations/" + stem + name).find(file => existsSync(join(root, dir, file)))
-      return "./" + (written ?? (sidecars ? ".vibe/declarations/" : "") + path + name)
+      const target = "./" + (written ?? (sidecars ? ".vibe/declarations/" : "") + path + name)
+      if (native && outputs && !existsSync(join(root, dir, target))) {
+        const warning = posix.join(dir, "package.json") + ": missing compatibility declaration for " + source + " (" + target + ")"
+        if (!warnings.includes(warning)) warnings.push(warning)
+      }
+      return target
     }
     const targetFor = (source, path) => ({
       types: /\.vibex?$/.test(source) ? sidecarOf(source, path) : "./" + inPackage(source),
@@ -82,7 +91,9 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
           if (!output || !existsSync(join(root, output))) {
             warnings.push(posix.join(dir, "package.json") + ": missing emitted JavaScript for " + originalSource + " (" + key + ")")
           } else {
-            targets.set(key, { ...prior, default: "./" + posix.relative(dir, output) })
+            const types = typeof prior.types === "string" && existsSync(join(root, dir, prior.types))
+              ? prior.types : sidecarOf(originalSource, key.slice(routePrefix.length))
+            targets.set(key, { ...prior, types, default: "./" + posix.relative(dir, output) })
             return
           }
         }
