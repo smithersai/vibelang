@@ -5,6 +5,20 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 
+// The API identity gate is api-identity.mjs and every script it reaches by a
+// relative import. Copy that closure, so a fixture keeps working when the gate
+// gains a helper module.
+function apiIdentityScripts(entry = "api-identity.mjs") {
+  const files = [entry]
+  for (let i = 0; i < files.length; i++) {
+    const text = readFileSync(new URL("./" + files[i], import.meta.url), "utf8")
+    for (const [, name] of text.matchAll(/^import\b[^"']*["']\.\/([\w.-]+\.mjs)["']/gm)) {
+      if (!files.includes(name)) files.push(name)
+    }
+  }
+  return files
+}
+
 function fixture(t, { diagnostic = "", header = "", identity = false, identityAfter, pending = false, expectedDiagnostics = false, runnerBinary = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "harness compile "))
   t.after(() => rmSync(root, { recursive: true, force: true }))
@@ -29,7 +43,7 @@ function fixture(t, { diagnostic = "", header = "", identity = false, identityAf
   if (expectedDiagnostics) put(at + "/expected/diagnostics.txt", diagnostic.replace(/: [^:]*$/, "") + "\n")
   if (identity) {
     put(at + "/typescript/tsconfig.json", "{}")
-    for (const file of ["api-identity.mjs", "api-identity-ambient.mjs", "api-identity-nominal.mjs", "api-identity-diagnostics-cache.mjs"])
+    for (const file of apiIdentityScripts())
       put("scripts/" + file, readFileSync(new URL("./" + file, import.meta.url)))
     mkdirSync(join(root, "docs/tools/node_modules"), { recursive: true })
     symlinkSync(new URL("../docs/tools/node_modules/typescript", import.meta.url).pathname, join(root, "docs/tools/node_modules/typescript"))
