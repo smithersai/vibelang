@@ -19,6 +19,18 @@
   },
   "license": "MIT",
   "type": "module",
+  "sideEffects": [
+    "./dist/core-entry.js",
+    "./dist/core-native.cjs",
+    "./dist/core.js",
+    "./dist/entry.js",
+    "./dist/fastcalls.js",
+    "./dist/index.js",
+    "./dist/kernel/kernel.js",
+    "./dist/match.js",
+    "./dist/native.cjs",
+    "./dist/version.js"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -571,6 +571,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Vite's dependency scan failed with `UNLOADABLE_DEPENDENCY` on a `.vibex` file with a `module` body under `"jsx": "preserve"`, because the scan read the absent `.jsx` output from disk. `vibelang-vite` now loads that output from the compile.
 - Passing an Effect CLI Command through its combinators, including `.pipe(Command.withDescription(...))`, incorrectly warned `EK4802`; Commands and other data types that implement Effect now keep their data identity, while passing an unrun Effect to a plain generic function still warns.
 
+- Importing one experimental browser service from `vibelang-runtime/experimental/platform-browser` kept unrelated services and Effect crypto code in browser bundles. The runtime now declares its import-time effects so bundlers can drop unused experimental modules while preserving version checks, matcher initialization and kernel initialization.
+
 - A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
 - Inline type re-exports and empty re-exports of Node builtins could retain unreported runtime loads. They now report `EK4402`, and `vibelang --fix` preserves those loads behind a native module boundary.
 
