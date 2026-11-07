@@ -79,7 +79,7 @@ func FuzzServiceRunHead(f *testing.F) {
 		source := "import { Effect } from \"effect\"\n" + declaration + owner + " { return " + expression + " }\n"
 		files := map[string]string{"main.vibe": source}
 		if len(data) > 4 && data[4]%2 == 1 {
-			source = "import { Effect } from \"effect\"\nimport * as Services from \"./audit.vibe\"\n" + owner + " { return " + strings.ReplaceAll(expression, "Audit.", "Services.Audit.") + " }\n"
+			source = "import { Effect } from \"effect\"\nimport * as Services from \"./audit.js\"\n" + owner + " { return " + strings.ReplaceAll(expression, "Audit.", "Services.Audit.") + " }\n"
 			files = map[string]string{"main.vibe": source, "audit.vibe": declaration}
 		}
 		r, err := w.Compile(t.Context(), Project{Files: files})
@@ -124,7 +124,7 @@ func FuzzServiceRunHead(f *testing.F) {
 		positiveFiles := map[string]string{"main.vibe": declaration + explicit}
 		if len(files) > 1 {
 			explicit = strings.ReplaceAll(explicit, "try Audit", "try Services.Audit")
-			positiveFiles = map[string]string{"main.vibe": "import * as Services from \"./audit.vibe\"\n" + explicit, "audit.vibe": declaration}
+			positiveFiles = map[string]string{"main.vibe": "import * as Services from \"./audit.js\"\n" + explicit, "audit.vibe": declaration}
 		}
 		positive, err := w.Compile(t.Context(), Project{Files: positiveFiles})
 		if err != nil {

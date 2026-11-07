@@ -124,7 +124,7 @@ func FuzzDeclarationThrowsContract(f *testing.F) {
 		}
 		files := map[string]string{filename: source, "package.json": `{"type":"module"}`}
 		if key == "cross-vibe" || key == "foreign-values" {
-			helper, specifier := "helper.vibe", "./helper.vibe"
+			helper, specifier := "helper.vibe", "./helper.js"
 			prefix := ""
 			if key == "foreign-values" {
 				helper, specifier = "helper.ts", "./helper.js"

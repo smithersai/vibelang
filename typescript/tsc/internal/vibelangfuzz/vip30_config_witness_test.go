@@ -108,7 +108,7 @@ func TestInterimSeverityEntriesRejected(t *testing.T) {
 func TestRetiredDeclarationImportStyleChangesNothing(t *testing.T) {
 	w := NewWorkspace(t)
 	files := map[string]string{
-		"main.vibe": "export { value } from \"./leaf.vibe\"\nimport type { T } from \"./plain\"\nexport type U = T | undefined\nexport const made = (): T => ({ n: 1 })\n",
+		"main.vibe": "export { value } from \"./leaf.js\"\nimport type { T } from \"./plain\"\nexport type U = T | undefined\nexport const made = (): T => ({ n: 1 })\n",
 		"leaf.vibe": "export const value: number = 1\n",
 		"plain.ts":  "export type T = { readonly n: number }\n",
 	}

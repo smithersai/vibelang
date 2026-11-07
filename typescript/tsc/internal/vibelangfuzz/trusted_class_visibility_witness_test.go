@@ -33,12 +33,12 @@ func FuzzTrustedClassVisibilityWitness(f *testing.F) {
 			visibility = "export "
 		}
 		foreign := "import { trusted } from \"vibelang-runtime\"\n" + visibility + "class " + name + " extends Error { readonly _tag=\"Hidden\"; private readonly brand=true; constructor(message:string){super(message)} }\nexport const read=trusted((value=0):number=>{if(value)throw new " + name + "(\"hidden\");return 7},[" + name + "])\n"
-		imp, call := "import {read} from \"./foreign.ts\"", "read(0)"
+		imp, call := "import {read} from \"./foreign.js\"", "read(0)"
 		if key == "alias" {
-			imp, call = "import {read as invoke} from \"./foreign.ts\"", "invoke(0)"
+			imp, call = "import {read as invoke} from \"./foreign.js\"", "invoke(0)"
 		}
 		if key == "namespace" {
-			imp, call = "import * as foreign from \"./foreign.ts\"", "foreign.read(0)"
+			imp, call = "import * as foreign from \"./foreign.js\"", "foreign.read(0)"
 		}
 		source := imp + "\nexport effect function main(): number! Error { return " + call + " }\n"
 		project := Project{Files: map[string]string{"main.vibe": source, "foreign.ts": foreign}}

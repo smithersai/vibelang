@@ -69,7 +69,7 @@ func fixOnlyProject(input string) (files map[string]string, listed []string, cla
 		name := fmt.Sprintf("m%d.vibe", i)
 		text := fmt.Sprintf(bodies[at].text, i)
 		if i > 0 {
-			text = fmt.Sprintf("import type { T%d } from \"./m%d.vibe\"\nexport type V%d = T%d\n", i-1, i-1, i, i-1) + text
+			text = fmt.Sprintf("import type { T%d } from \"./m%d.js\"\nexport type V%d = T%d\n", i-1, i-1, i, i-1) + text
 		}
 		files[name] = text
 		if list {
@@ -212,7 +212,7 @@ func FuzzFixOnly(f *testing.F) {
 // --fix on the same project refuses that fix, the negative control.
 func TestFixOnlyCommandLine(t *testing.T) {
 	const main = "export effect function modes() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n"
-	const more = "import { modes } from \"./main.vibe\"\nexport effect function more() {\n  const all = try modes()\n  all.push(\"slow\")\n  return all\n}\n"
+	const more = "import { modes } from \"./main.js\"\nexport effect function more() {\n  const all = try modes()\n  all.push(\"slow\")\n  return all\n}\n"
 	w := NewWorkspace(t)
 	binary := cliBuild(t, t.TempDir())
 	project := func(t *testing.T) string {

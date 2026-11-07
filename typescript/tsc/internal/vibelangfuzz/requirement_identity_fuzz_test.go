@@ -77,6 +77,8 @@ func requirementIdentityProject(key string, data []byte) (map[string]string, str
 	if b(5)%2 != 0 {
 		source = "const café = \"😀\"; /* keep */\n" + source
 	}
+	// Keep both source and runtime specifier mutations valid while emitting.
+	files["tsconfig.json"] = strings.Replace(DefaultConfig, `"sourceMap": true,`, `"sourceMap": true, "rewriteRelativeImportExtensions": true,`, 1)
 	files["main.vibe"] = source
 	want := ""
 	if requirement != "" {

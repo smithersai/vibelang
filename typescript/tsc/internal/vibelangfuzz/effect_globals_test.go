@@ -73,7 +73,7 @@ func effectGlobalsProject(name string, mode int) (project Project, wantError boo
 	case effectGlobalImport:
 		return Project{Files: map[string]string{
 			"m.ts":      "const value = 1;\nexport { value as " + name + " };\n",
-			"main.vibe": "import { " + name + " } from \"./m.ts\";\nexport const probe: number = " + name + ";\n",
+			"main.vibe": "import { " + name + " } from \"./m.js\";\nexport const probe: number = " + name + ";\n",
 		}}, false
 	case effectGlobalIdentity:
 		// The bare name is the export itself, not a like-named function: each

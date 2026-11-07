@@ -27,7 +27,7 @@ func FuzzMigrationMetadataComments(f *testing.F) {
 	f.Fuzz(func(t *testing.T, key string, crlf bool) {
 		TestMigrationMetadataCommentsQuoted(t)
 		const target = "FuzzMigrationMetadataComments"
-		source := "import {double} from './plain.ts'\nexport const run=effect(o:{readonly p?:number})=>{if(!o.p)return 0;return double(o.p)}\n"
+		source := "import {double} from './plain.js'\nexport const run=effect(o:{readonly p?:number})=>{if(!o.p)return 0;return double(o.p)}\n"
 		if strings.HasPrefix(key, "hatch") {
 			source = "export effect function run(){let text='1';const n=try((text)=>{text='2';return JSON.parse(text)},text);return [n,text]}\n"
 		}
