@@ -37,6 +37,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An `is` binding in a call argument could make the TypeScript mapper report overlapping edits and emit no JavaScript. It now projects the argument and its bindings with valid source locations.
 
+- The compatibility diagnostic reference gave vague instructions for starting a provided program. It now names `runPromise` at the entry point.
+
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.

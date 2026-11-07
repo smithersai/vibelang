@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readdirSync } from "node:fs"
 import { test } from "node:test"
+import fc from "fast-check"
 import { block, read, run } from "./spec-witness.mjs"
 
 // Loop round 5, OPUS-4 (decided detail 254): EK4834, EK4835 and EK4836 said
@@ -111,4 +112,30 @@ test("the advisory example's TypeScript reference ends with the VibeLang demo's 
     { success: [{ success: 2 }, { failure: [["Fail", "boom"]] }, [1, 2]] }
   ])
   assert.deepEqual(exits(reference), expected)
+})
+
+ 
+test("generated entry-point controls run a provided Effect once with the documented runner", () => {
+  const row=read("docs/user/src/vibelang-features/diagnostic-code-map.md").split("\n").find(line=>line.startsWith("| `EK3205` |"))
+  assert.ok(row)
+  const runner=/with `(runPromise)`/.exec(row)?.[1]
+  assert.equal(runner,"runPromise","the compatibility advice must name its entry-point consumer")
+  fc.assert(fc.property(fc.integer({min:-1000000,max:1000000}),fc.boolean(),(value,fail)=>{
+    const result=run(`
+import { Effect, Exit, Layer } from "effect"
+let calls = 0
+const program = Effect.flatMap(Effect.sync(() => { calls++ }), () =>
+  ${fail ? "Effect.fail" : "Effect.succeed"}(${value}))
+const provided = Effect.provide(program, Layer.empty)
+const before = calls
+const exit = await Effect.${runner}(Effect.exit(provided))
+console.log(JSON.stringify({ before, calls, result: Exit.isSuccess(exit)
+  ? { success: exit.value }
+  : { failure: exit.cause.reasons.map(r => r._tag === "Fail" ? r.error : r._tag) } }))
+`)
+    assert.equal(result.status,0,result.stderr||result.stdout)
+    assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)),{
+      before:0,calls:1,result:fail?{failure:[value]}:{success:value}
+    })
+  }),{seed:32052026,numRuns:32})
 })
