@@ -56,6 +56,11 @@ for (const name of cases) {
       `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --verbose ${name}`,
     data: [
       ...shared,
+      ...(name === "imported-diagnostic-reference" ? [
+        S.file("//docs/design/src/007-tooling.md"),
+        S.file("//docs/design/inventory/lint-codes.json"),
+        S.glob("//typescript/tsc/internal/effecttsgo/internal/rules/*.go")
+      ] : []),
       ...(name === "error-nominal-literal-key-migration" || name === "error-nominal-fieldless-key-migration"
         ? [S.file("error-key-migration.mjs")] : []),
       S.glob(`cases/${name}/**`)
