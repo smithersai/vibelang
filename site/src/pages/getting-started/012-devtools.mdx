@@ -593,6 +593,8 @@ When a typed tool uses project references across source-exporting workspace pack
 
 The TypeScript projection keeps an explicitly marked `effect` lambda as an Effect function, even when its receiving callback type returns `void`. Its written keyword also settles its form when the callback comes from another module.
 
+TypeScript JSDoc type nodes retain the stock lint-tree shapes and source ranges.
+
 Forms whose TypeScript long form would mislead a rule have their own node types, which rules and `no-restricted-syntax` selectors can name:
 
 | Form | ESTree node |

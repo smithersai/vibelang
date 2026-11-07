@@ -1505,6 +1505,21 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 		}
 		return member
 
+	case ast.KindJSDocAllType:
+		location := span{scanner.SkipTriviaEx(c.text, n.Pos(), &scanner.SkipTriviaOptions{StopAtComments: true}), n.End()}
+		return c.nodeAt(location, "TSJSDocAllType").set("id", 0)
+
+	case ast.KindJSDocNullableType, ast.KindJSDocNonNullableType:
+		kind := "TSJSDocNullableType"
+		if n.Kind == ast.KindJSDocNonNullableType {
+			kind = "TSJSDocNonNullableType"
+		}
+		child := n.Type()
+		// Match the stock parser's generic JSDoc-node ranges.
+		location := span{scanner.SkipTriviaEx(c.text, n.Pos(), &scanner.SkipTriviaOptions{StopAtComments: true}), n.End()}
+		annotation := c.nodeAt(span{child.Pos() - 1, child.End()}, "TSTypeAnnotation").set("typeAnnotation", c.convertChild(child, n))
+		return c.nodeAt(location, kind).set("id", 0).set("postfix", c.rangeOf(n).start == c.rangeOf(child).start).set("typeAnnotation", annotation)
+
 	case ast.KindOptionalType:
 		return c.node(n, "TSOptionalType").set("typeAnnotation", c.convertChild(n.Type(), n))
 

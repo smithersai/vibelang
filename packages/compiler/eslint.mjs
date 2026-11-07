@@ -44,6 +44,13 @@ const jsxVisitorKeys = Object.freeze({
   JSXNamespacedName: ["namespace", "name"]
 })
 
+// Stock typescript-estree can return these generic JSDoc type nodes.
+const jsdocVisitorKeys = Object.freeze({
+  TSJSDocAllType: [],
+  TSJSDocNullableType: ["typeAnnotation"],
+  TSJSDocNonNullableType: ["typeAnnotation"]
+})
+
 /** Child keys of the ESTree node types VibeLang adds. */
 export const vibeVisitorKeys = Object.freeze({
   TopicReference: [],
@@ -158,7 +165,7 @@ export function parseForESLint(code, options = {}) {
   finish(ast, code)
   ast.sourceType = options.sourceType ?? "module"
   const { analyze, Visitor, visitorKeys: typescriptKeys } = typescriptEslint(options.filePath)
-  const visitorKeys = { ...typescriptKeys, ...jsxVisitorKeys, ...vibeVisitorKeys }
+  const visitorKeys = { ...typescriptKeys, ...jsxVisitorKeys, ...jsdocVisitorKeys, ...vibeVisitorKeys }
   const scopeManager = withModuleScopes(Visitor, () => analyze(ast, {
     childVisitorKeys: visitorKeys,
     globalReturn: false,

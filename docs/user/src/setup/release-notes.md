@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Linting TypeScript containing JSDoc type operators could stop with an unsupported node error. The lint parser now preserves the stock parser's nodes and source ranges.
+
 - Lint rules could read numeric concurrency limits as variable names. Limits now keep the token kinds written in the source.
 
 - The formatter companion ignored help requests and mistyped options, and formatter commands accepted conflicting modes. Both commands now show help, reject invalid options and mode combinations, and keep explicitly ignored files unchanged.
