@@ -203,6 +203,10 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   // original was one module, with no cycle (t3code mobile's dependency-graph
   // test). An exported type is imported instead when the copy would read a
   // value of the module, merge with another declaration, or is a default export.
+  // An exported const whose value is a primitive computed from literals,
+  // `export const limit = 64`, is copied the same way: a primitive has no
+  // identity, so the module keeps its export and the moved code reads an equal
+  // private copy (constantCopies below keeps its temporal dead zone).
   const declarationCount = new Map()
   for (const d of declarations) for (const name of d.names) declarationCount.set(name, (declarationCount.get(name) ?? 0) + 1)
   const copiesExported = (d, seen = new Set()) => {
@@ -216,6 +220,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     }
     return true
   }
+  const constants = primitiveConstants(declarations, ts)
   const typesFromModule = new Set()
   const copied = new Set()
   for (let grew = true; grew; ) {
@@ -230,6 +235,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
           else { copied.add(needed); grew = true }
           continue
         }
+        // A copied const takes its own constants with it.
+        if (constants.has(needed) && (needed.exported || copied.has(d))) { copied.add(needed); grew = true; continue }
         if (copied.has(d)) return { refused: `${file}: the type ${[...d.names].join(", ")} reads the value ${name}` }
         moved.add(needed); grew = true
       }
@@ -244,6 +251,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   for (const d of moved) {
     if (!isMovable(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} cannot move to ${posix.basename(platformPath(file))}` }
   }
+  const early = earlyConstant(declarations, moved, copied, constants, ts)
+  if (early) return { refused: `${file}: export ${[...early.names].join(", ")} uses platform code and is not a function with written parameter and return types, so it cannot stay in the .vibe module` }
   const kept = declarations.filter((d) => !moved.has(d))
   const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
   if (inferredTypes.refused) return inferredTypes
@@ -539,6 +548,112 @@ function valueReadNames(statement, ts) {
 }
 
 const isExported = (statement, ts) => (statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+
+// The top-level consts whose value is a primitive computed from literals and
+// other such consts, with no written type: `const limit = 64`, `const name =
+// "ps"`, `const bytes = 4 * 1024`. Evaluating one runs no code and gives an
+// equal value each time, so a copy of it is the same constant.
+function primitiveConstants(declarations, ts) {
+  const candidates = new Map()
+  for (const d of declarations) {
+    const s = d.statement
+    if (!ts.isVariableStatement(s) || !(s.declarationList.flags & ts.NodeFlags.Const)) continue
+    const [v, ...rest] = s.declarationList.declarations
+    if (rest.length || !ts.isIdentifier(v.name) || v.type || !v.initializer) continue
+    candidates.set(v.name.text, d)
+  }
+  const primitive = (node, names) => {
+    while (ts.isParenthesizedExpression(node) || ((ts.isAsExpression(node) || ts.isSatisfiesExpression(node)) && constType(node.type, ts))) node = node.expression
+    if (ts.isNumericLiteral(node) || ts.isBigIntLiteral(node) || ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return true
+    if ([ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(node.kind)) return true
+    if (ts.isIdentifier(node)) { names.push(node.text); return true }
+    if (ts.isPrefixUnaryExpression(node)) return [ts.SyntaxKind.MinusToken, ts.SyntaxKind.PlusToken, ts.SyntaxKind.ExclamationToken, ts.SyntaxKind.TildeToken].includes(node.operator) && primitive(node.operand, names)
+    if (ts.isTemplateExpression(node)) return node.templateSpans.every((span) => primitive(span.expression, names))
+    if (ts.isConditionalExpression(node)) return primitive(node.condition, names) && primitive(node.whenTrue, names) && primitive(node.whenFalse, names)
+    if (ts.isBinaryExpression(node)) return primitiveOperators(ts).has(node.operatorToken.kind) && primitive(node.left, names) && primitive(node.right, names)
+    return false
+  }
+  // Each const reads only literals and other primitive consts; one that reads
+  // anything else, or a const that does, is not one.
+  const reads = new Map()
+  for (const [name, d] of candidates) {
+    const names = []
+    if (primitive(d.statement.declarationList.declarations[0].initializer, names)) reads.set(name, names)
+  }
+  for (let shrank = true; shrank; ) {
+    shrank = false
+    for (const [name, names] of reads) if (names.some((n) => !reads.has(n) || n === name)) { reads.delete(name); shrank = true }
+  }
+  return new Set([...reads.keys()].map((name) => candidates.get(name)))
+}
+
+const constType = (type, ts) => ts.isTypeReferenceNode(type) && ts.isIdentifier(type.typeName) && type.typeName.text === "const" ||
+  ts.isLiteralTypeNode(type) || [ts.SyntaxKind.NumberKeyword, ts.SyntaxKind.StringKeyword, ts.SyntaxKind.BooleanKeyword, ts.SyntaxKind.BigIntKeyword].includes(type.kind)
+
+const primitiveOperators = (ts) => new Set([ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken, ts.SyntaxKind.AsteriskToken, ts.SyntaxKind.AsteriskAsteriskToken, ts.SyntaxKind.SlashToken, ts.SyntaxKind.PercentToken,
+  ts.SyntaxKind.LessThanLessThanToken, ts.SyntaxKind.GreaterThanGreaterThanToken, ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken, ts.SyntaxKind.AmpersandToken, ts.SyntaxKind.BarToken, ts.SyntaxKind.CaretToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.LessThanToken, ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.GreaterThanEqualsToken,
+  ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken])
+
+// The sibling evaluates before the module body, so a copied const is
+// initialized before any kept statement runs. In the original a kept statement
+// above the const that ran the moved code at load read it in its temporal
+// dead zone and threw a ReferenceError; the copy would not. Such a const is
+// not copied: the first kept statement above it whose evaluation can reach the
+// moved code, through a name that reads it, makes the split refuse.
+function earlyConstant(declarations, moved, copied, constants, ts) {
+  const copies = declarations.filter((d) => copied.has(d) && constants.has(d))
+  if (!copies.length) return null
+  const reaching = new Set([...moved].flatMap((d) => [...d.names]))
+  for (let grew = true; grew; ) {
+    grew = false
+    for (const d of declarations) {
+      if (moved.has(d) || [...d.names].every((n) => reaching.has(n))) continue
+      if ([...d.reads].some((n) => reaching.has(n))) { for (const n of d.names) reaching.add(n); grew = true }
+    }
+  }
+  let reached = false
+  for (const d of declarations) {
+    if (copies.includes(d) && reached) return d
+    if (!moved.has(d) && [...loadReads(d.statement, ts)].some((n) => reaching.has(n))) reached = true
+  }
+  return null
+}
+
+// The names a top-level statement reads while the module loads. A function
+// stored as a value, in a variable, an object or array literal or a class
+// member, runs only when something calls it later; a function passed to a
+// call may run now, so its body counts. Types and instance field initializers
+// read nothing at load.
+function loadReads(statement, ts) {
+  const reads = new Set()
+  const stored = (node) => ts.isVariableStatement(node) || ts.isVariableDeclarationList(node) || ts.isVariableDeclaration(node) || ts.isObjectLiteralExpression(node) ||
+    ts.isPropertyAssignment(node) || ts.isArrayLiteralExpression(node) || ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) ||
+    ts.isNonNullExpression(node) || ts.isConditionalExpression(node) || ts.isClassDeclaration(node) || ts.isClassExpression(node) || ts.isPropertyDeclaration(node) || ts.isExportAssignment(node) ||
+    ts.isBinaryExpression(node) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(node.operatorToken.kind)
+  const visit = (node, value) => {
+    if (ts.isTypeNode(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isTypeParameterDeclaration(node) || ts.isHeritageClause(node) && node.token === ts.SyntaxKind.ImplementsKeyword) return
+    if (ts.isPropertyDeclaration(node) && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword) && node.parent && ts.isClassLike(node.parent)) {
+      if (node.name && ts.isComputedPropertyName(node.name)) visit(node.name, false)
+      return
+    }
+    if (ts.isFunctionLike(node) && node.body !== undefined) {
+      if (node.name && ts.isComputedPropertyName(node.name)) visit(node.name, false)
+      if (value) return
+    }
+    if (ts.isIdentifier(node)) {
+      const parent = node.parent
+      const declares = parent && (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) || ts.isClassDeclaration(parent) || ts.isClassExpression(parent) || ts.isEnumDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent)) && parent.name === node
+      const member = parent && ((ts.isPropertyAccessExpression(parent) && parent.name === node) || ((ts.isPropertyAssignment(parent) || ts.isPropertyDeclaration(parent) || ts.isMethodDeclaration(parent) || ts.isGetAccessor(parent) || ts.isSetAccessor(parent) || ts.isEnumMember(parent)) && parent.name === node))
+      if (!declares && !member) reads.add(node.text)
+    }
+    if (ts.isShorthandPropertyAssignment(node)) reads.add(node.name.text)
+    ts.forEachChild(node, (child) => visit(child, value && stored(node) && !(ts.isConditionalExpression(node) && child === node.condition)))
+  }
+  visit(statement, true)
+  return reads
+}
 
 function isMovable(statement, ts) {
   if ((statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)) return false

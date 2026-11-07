@@ -1,0 +1,30 @@
+{
+  "source": "Smithers modules that the platform split refused because the moved code read an exported primitive const: flows/platform-node NodeLanguageServer.ts (MAX_QUEUED_FRAMES), ProcessReaper.ts (defaultPsExecutable, then posixSystem calls the wrapper at load), build/targets JevLint.ts (maximumJudgedFileBytes = 256 * 1024) and build-cli AgentSession.ts (an object literal above the const holds a deferred call). Minimized; names and shapes kept.",
+  "ambient": "declare module \"node:crypto\" { export function createHash(algorithm: string): { update(data: string): { digest(encoding: \"hex\"): string } } }\ndeclare module \"node:child_process\" { export function spawnSync(command: string, args: ReadonlyArray<string>): { readonly stdout: string } }\ndeclare module \"node:fs\" { export function statSync(path: string): { readonly size: number }; export function readFileSync(path: string, encoding: \"utf8\"): string }\n",
+  "modules": [
+    {
+      "file": "src/NodeLanguageServer.ts",
+      "text": "import { createHash } from \"node:crypto\"\n\n/** The most frames a client queues before it drops the oldest. */\nexport const MAX_QUEUED_FRAMES = 64\n\nexport const frameKey = (frame: string): string =>\n  createHash(\"sha256\").update(frame).digest(\"hex\").slice(0, MAX_QUEUED_FRAMES)\n\nexport const queueLimit = (): number => MAX_QUEUED_FRAMES\n",
+      "copied": ["MAX_QUEUED_FRAMES"],
+      "wrapped": ["frameKey"]
+    },
+    {
+      "file": "src/ProcessReaper.ts",
+      "text": "import { spawnSync } from \"node:child_process\"\n\nexport const defaultPsExecutable = \"/bin/ps\"\n\nexport interface System {\n  readonly ownGroup: () => string\n}\n\nexport const posixSystemWith = (executable?: string): System => ({\n  ownGroup: () => spawnSync(executable ?? defaultPsExecutable, [\"-o\", \"pgid=\"]).stdout\n})\n\nexport const posixSystem: System = posixSystemWith()\n",
+      "copied": ["defaultPsExecutable"],
+      "wrapped": ["posixSystemWith"]
+    },
+    {
+      "file": "src/JevLint.ts",
+      "text": "import { statSync } from \"node:fs\"\n\nconst kibibyte = 1024\nexport const maximumJudgedFileBytes = 256 * kibibyte\n\nexport function judgeFile(path: string): boolean {\n  return statSync(path).size <= maximumJudgedFileBytes\n}\n",
+      "copied": ["kibibyte", "maximumJudgedFileBytes"],
+      "wrapped": ["judgeFile"]
+    },
+    {
+      "file": "src/AgentSession.ts",
+      "text": "import { readFileSync } from \"node:fs\"\n\nexport interface GateRunner {\n  readonly run: (ids: ReadonlyArray<string>) => string\n}\n\nexport const sessionText = (path: string): string => readFileSync(path, \"utf8\").slice(0, maximumSessionFileBytes)\n\nexport const unavailableGateRunner: GateRunner = {\n  run: (ids) => sessionText(ids.join(\"/\"))\n}\n\nexport const maximumSessionFileBytes = 4 * 1024 * 1024\n",
+      "copied": ["maximumSessionFileBytes"],
+      "wrapped": ["sessionText"]
+    }
+  ]
+}
