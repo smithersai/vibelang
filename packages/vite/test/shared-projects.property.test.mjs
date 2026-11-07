@@ -48,7 +48,7 @@ process.exit(result.status ?? 1)
     async close() { await writeFile(release, ""); await Promise.all(plugins.map(p => p.closeBundle())); await rm(root, { recursive: true, force: true }) }
   }
 }
-const load = (plugin, file) => plugin.transform.call(context, "", file)
+const load = (plugin, file) => plugin.load.call(context, file)
 
 async function shared(input) {
   const f = await fixture()

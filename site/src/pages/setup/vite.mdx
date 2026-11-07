@@ -306,3 +306,5 @@ and serves it with a virtual `.jsx` ID so framework plugins use their ordinary
 JSX filters. Source maps and diagnostics name the original `.vibex` file.
 Module queries such as `?import` keep compiling; resource queries such as
 `?raw` and `?url` keep their resource behavior.
+
+Development imports and hot updates preserve literal percent sequences in filenames. A source such as `percent%20.vibe` and a JavaScript dependency such as `percent%2520.js` retain their own contents and original source-map locations, including under a configured Vite `base`.

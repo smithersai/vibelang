@@ -32,9 +32,9 @@ export const projects = () => ({
   plugin.configResolved({ root, logger: { warn: assert.fail } })
   t.after(() => plugin.closeBundle())
   const context = { addWatchFile() {}, error: assert.fail }
-  for (const hook of ["transform", "load"]) {
-    const request = () => hook === "transform"
-      ? plugin.transform.call(context, "", source)
+  for (const hook of ["source", "module"]) {
+    const request = () => hook === "source"
+      ? plugin.load.call(context, source)
       : plugin.load.call(context, source + ".text.js")
     const result = await request()
     assert.deepEqual(result.map, expected, hook)

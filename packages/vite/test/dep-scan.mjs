@@ -70,7 +70,7 @@ export async function scanProject(root, input) {
     for (const file of files) await server.transformRequest("/" + file)
     const context = { addWatchFile() {}, error(error) { throw Object.assign(new Error(error.message || error), error) } }
     for (const file of files.filter((name) => name.endsWith(".vibe"))) {
-      emitted[file] = bare((await plugin.transform.call(context, "", join(root, file))).code)
+      emitted[file] = bare((await plugin.load.call(context, join(root, file))).code)
     }
     return { scanned, late: known().filter((dep) => !scanned.includes(dep)), emitted }
   } finally {
