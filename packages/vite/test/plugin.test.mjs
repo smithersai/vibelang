@@ -333,6 +333,37 @@ test("Vite serves and builds a module declaration as a module of its own (D403)"
   assert.equal(counter.count, 2, "the re-export is a live binding")
 })
 
+// rule-evidence: docs/design/vips/0040-module-declarations.md#f7120f477684687d
+test("Vite serves each module body under the compiler's canonical filename, cached by the parent's version (VIP-40)", async (t) => {
+  const rule = "**Loaders and bundlers.** `vibelang/register`, the Bun plugin, Vite and unplugin serve each body's canonical filename from the compiled parent, using the same source basename, encoded name and output suffix as the compiler, cached by the parent's version."
+  assert.ok(rule.includes("Vite"))
+  const root = await fixture(t)
+  const parent = (n) => [
+    `module Über { export const n = ${n} }`, "module $x { export const n = 2 }", "module Text { export const n = 3 }",
+    "import { n as a } from Über", "import { n as b } from $x", "import { n as c } from Text", "export const all = [a, b, c]", ""
+  ].join("\n")
+  await writeFile(join(root, "names.vibe"), parent(1))
+  const server = await serve({
+    root, configFile: false, plugins: [vibelang({ compiler })], logLevel: "silent",
+    server: { host: "127.0.0.1", port: 0, watch }
+  })
+  await server.listen()
+  const base = `http://127.0.0.1:${server.httpServer.address().port}`
+  const text = async (path) => {
+    const response = await fetch(base + path)
+    assert.equal(response.status, 200, path)
+    return response.text()
+  }
+  const served = await text("/names.vibe")
+  const bodies = { "names.vibe.-dc-ber.js": 1, "names.vibe.-24-x.js": 2, "names.vibe.-54-ext.js": 3 }
+  for (const [name, n] of Object.entries(bodies)) {
+    assert.match(served, new RegExp(`from "/${name.replaceAll(".", "\\.")}"`))
+    assert.match(await text("/" + name), new RegExp(`export const n = ${n}\\b`))
+  }
+  await writeFile(join(root, "names.vibe"), parent(10))
+  await until(async () => /export const n = 10\b/.test(await text("/names.vibe.-dc-ber.js")))
+})
+
 test("Vite production builds accept .vibe entry modules", async (t) => {
   const root = await fixture(t)
   const result = await build({
