@@ -50,5 +50,9 @@
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1"
+  },
+  "dependencies": {
+    "magic-string": "1.4.3",
+    "@jridgewell/remapping": "2.3.5"
   }
 }

@@ -1,3 +1,4 @@
+import { relativeOutput } from "./relative-output.js"
 import { missingSourceWatcher } from "./missing-watcher.js"
 import { jsxConfigReader } from "./jsx-config.js"
 import { extensionlessImport, missingRelativeInputs } from "./relative-imports.js"
@@ -322,7 +323,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
 
   async function loadModule(id) {
     const file = cleanId(id)
-    const result = await (await loaded()).load(file)
+    const compiled = await (await loaded()).load(file)
+    const result = relativeOutput(compiled, file, backend, compilerPath, debug)
     debug(`load ${file} from ${result.project}`)
     const missing = missingRelativeInputs(result.errors)
     if (missing.length) debug(`watch missing relative inputs: ${missing.join(", ")}`)

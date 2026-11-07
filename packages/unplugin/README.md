@@ -7,7 +7,7 @@ Rollup, Rolldown, esbuild, and Bun. The compiler owns type and language
 diagnostics. The plugin serves its JavaScript and source maps, reports its
 diagnostics as build errors with file, line, and column, and recompiles in
 watch mode. Source and type-only edits remain active after error recovery. For Vite and Vitest, use [vibelang-vite](../vite/README.md).
-Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning.
+Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. A single module can import both a source such as `./créé.vibe` and a literal JavaScript file named `./cr%C3%A9%C3%A9.js`; those imports load their distinct files.
 In esbuild bundles, Node source-map stacks retain original source filenames,
 including Unicode, spaces and literal `%` sequences.
 

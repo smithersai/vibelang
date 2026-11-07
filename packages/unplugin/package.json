@@ -85,7 +85,9 @@
     "test": "sh test/run.sh"
   },
   "dependencies": {
-    "unplugin": "3.4.0"
+    "unplugin": "3.4.0",
+    "magic-string": "1.4.3",
+    "@jridgewell/remapping": "2.3.5"
   },
   "peerDependencies": {
     "vibelang": "0.0.12"
