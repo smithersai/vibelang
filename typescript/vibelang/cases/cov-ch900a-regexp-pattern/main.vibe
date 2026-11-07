@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 function boolean(s: string) { return match (s) { when /ab/: 1; default: 0; } }
-function extract(s: string) { return match (s) { when /(a)(b)/(let whole, let a, let b): whole + ":" + a + ":" + b; default: ""; } }
+// A non-global regex extracts one match array, not separate capture arguments.
+function extract(s: string) { return match (s) { when /(a)(b)/(let m): m[0] + ":" + m[1] + ":" + m[2]; default: ""; } }
 export effect function main() { return [boolean("ab"), boolean("cd"), extract("ab"), extract("cd")] }
 
 // Appendix A: cov-ch900a-regexp-pattern — spec-rule: docs/design/src/900-appendices.md#6902c0d33e85a183
