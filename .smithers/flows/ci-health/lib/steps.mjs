@@ -177,12 +177,13 @@ export function intermittent(runs, testsOf) {
     .sort((a, b) => b.returns - a.returns || b.failures - a.failures)
 }
 
+// Node marks a test even when its skip or todo reason is an empty string.
+const marked = flag => typeof flag === "string" || Boolean(flag)
+
 // failedTests names what failed in one target's output lines, across the
 // runners the graph uses: bun, node --test, go test and the compiler case
 // harness (typescript/vibelang/harness.mjs).
 export function failedTests(lines) {
-  // Node marks a test even when its skip or todo reason is an empty string.
-  const marked = flag => typeof flag === "string" || Boolean(flag)
   const out = new Set()
   for (const line of lines) {
     // Compiler and migration reporters retain nested and cancelled failures.
@@ -225,7 +226,25 @@ export const CAUSES = [
   ["assertion", /AssertionError|expected|--- FAIL|\(fail\)|✖/i]
 ]
 
-export const cause = (lines) => CAUSES.find(([, pattern]) => lines.some((l) => pattern.test(l)))?.[0] ?? "unknown"
+// Structured reporters separate diagnostics from names, paths and progress.
+// Expected skip/todo failures cannot explain a target's unsuccessful exit.
+const diagnosticLines = lines => lines.flatMap(line => {
+  const record = /^\[(node-test|migrate-test)\] (.*)$/s.exec(line)
+  if (!record) return [line]
+  let item
+  try { item = JSON.parse(record[2]) } catch { return [] }
+  const event = record[1] === "node-test" ? "failure" : "test-failed"
+  let text
+  if (item?.event === event && !marked(item.todo) && !marked(item.skip)) text = item.error
+  else if (record[1] === "node-test" && item?.event === "diagnostic") text = item.message
+  else if (record[1] === "migrate-test" && item?.event === "failure-output") text = item.output
+  return typeof text === "string" ? text.split(/\r\n|[\r\n\u2028\u2029]/) : []
+})
+
+export const cause = lines => {
+  const evidence = diagnosticLines(lines)
+  return CAUSES.find(([, pattern]) => evidence.some(line => pattern.test(line)))?.[0] ?? "unknown"
+}
 
 // targetLines returns one target's output from a graph log. Live lines start
 // with "<label>: " up to a limit; the line "<label>  failed  ..." is followed
@@ -287,7 +306,7 @@ export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
     ...t,
     tests: Object.entries(t.tests).map(([name, test]) => ({ name, ...test })).sort((a, b) => b.failures - a.failures)
   }))
-  const timedOut = (id, label) => targetLines(log(id), label).some((l) => /timed out after/.test(l))
+  const timedOut = (id, label) => diagnosticLines(targetLines(log(id), label)).some((l) => /timed out after/.test(l))
   const regressed = regressions(runs, { split, timedOut })
   const returned = intermittent(runs, (id, label) => failedTests(targetLines(log(id), label)))
   return { ok: true, runs: runs.length, flaky: ranked, intermittent: returned, slow: slow(runs), regressed, summary: `${ranked.length} flaky targets, ${returned.length} intermittent tests, ${regressed.length} slower over ${runs.length} runs` }

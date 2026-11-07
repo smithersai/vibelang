@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
+
 - The editor and TypeScript mapper treated producer function expressions as JavaScript generators. They now preserve their lazy `Stream` behavior for anonymous, named and nested expressions.
 
 - A producer method after a class field without a semicolon could disappear from the editor's TypeScript output or fail to emit. The mapper now keeps the field and method separate.

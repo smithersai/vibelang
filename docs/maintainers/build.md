@@ -1100,6 +1100,8 @@ change every run: `.smithers/flows/ci-health/README.md`.
 
 Migration failure names come from the `[migrate-test]` reporter's `test-failed` records. Health reports include nested and cancelled tests, retain escaped names, and exclude skipped and todo failures. A `skip` or `todo` reason of `""` still marks an expected failure, as it does in Node. Names containing `U+2028` or `U+2029` are retained. The `migrate-reporter` eval executes the actual flow on four real reporter runs with exact expected failure and returning-test names.
 
+Structured reporter cause attribution uses decoded errors, diagnostic messages and captured failure output. The records’ test-name, file-name and progress fields do not supply cause evidence, and marked `skip` and `todo` failure records are excluded. The same diagnostic filtering prevents error-handling names from creating false duration regressions. The `cause-metadata` eval runs both real reporters on assertion failures whose names mention resource and timeout errors.
+
 ## Finding the commit that broke a target
 
 The first-bad flow reruns targets that fail at a bad commit, to separate breaks

@@ -58,6 +58,12 @@ and entities display as literal parts of the name. Pipes and backslashes
 remain inside the displayed cell. Preformatted cells preserve edge spaces,
 repeated spaces and tabs, so distinct whitespace names remain distinguishable.
 
+For structured records, cause attribution and timeout detection read decoded
+error text, diagnostic messages and captured failure output. Test-name, file-name
+and progress fields in these records supply no cause evidence. Marked `skip` and `todo` failure
+records are excluded even when their reason is empty. Incomplete records supply
+no diagnostic evidence; legacy plain-text diagnostics remain supported.
+
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`
 events with the same name, skip and todo rules. Legacy Bun, Node, Go and
@@ -160,3 +166,9 @@ eval joins both actual reporter histories and checks their overlapping names.
 Regenerate the joint history with
 `node .smithers/flows/ci-health/fixture-combined-reporters/record.mjs` after
 refreshing either source history.
+
+The `cause-metadata` eval uses `fixture-cause-metadata/`: eight
+actual reporter executions alternate ordinary assertion failures and success.
+Names describe resource and timeout handling, and expected skip/todo controls
+carry resource or deadline errors. The flow must attribute the ordinary
+assertions correctly while retaining the exact failed names and counters.

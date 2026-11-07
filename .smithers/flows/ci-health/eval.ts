@@ -196,6 +196,27 @@ cases.push({
   } satisfies Input
 });
 
+// Actual reporter diagnostics distinguish assertion errors from error-handling names.
+const causeNames = [
+  "handles ENOSPC diagnostics", "handles SIGKILL diagnostics",
+  "handles TimedOut: ChildProcess.spawn diagnostics", "handles timed out after diagnostics",
+  "handles ECONNRESET diagnostics", "Cannot find package 'example' imported from metadata",
+  "property example failed; saved metadata"
+];
+cases.push({
+  name: "cause-metadata",
+  input: {
+    fixture: "fixture-cause-metadata",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: causeNames,
+    intermittent: causeNames,
+    regressed: {},
+    exactTests: true,
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "3", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
