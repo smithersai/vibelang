@@ -211,6 +211,7 @@ typescript/vibelang/cases/appendix-ek2110-ek2119-archived-control.fail/main.vibe
 typescript/vibelang/cases/appendix-ek4201-archived-control.fail/main.vibe:13:21 lambda program keyword
 typescript/vibelang/cases/appendix-ek4201-archived-control.fail/main.vibe:14:24 byname program table
 typescript/vibelang/cases/appendix-ek4201-archived-control.fail/main.vibe:17:5 lambda effectFn keyword
+typescript/vibelang/cases/appendix-ek4202-archived-control.fail/main.vibe:15:20 lambda program keyword
 typescript/vibelang/cases/appendix-ek4857-return-slot-set.fail/main.vibe:10:18 lambda effectFn annotation
 typescript/vibelang/cases/arguments-through-regions/main.vibe:14:22 byname program table
 typescript/vibelang/cases/arguments-through-regions/main.vibe:3:46 lambda program table
