@@ -253,8 +253,15 @@ func (r *Resolver) holdsProgram(expr *ast.Node) bool {
 // body builds the program and the left side keeps its parameter position.
 // The caller decides whether the declared type is an Effect.
 func HeldConstDeclaration(expr *ast.Node) *ast.Node {
+	// An explicit try supplies its success, even when that success is an Effect.
+	if expr.Flags&ast.NodeFlagsVibeLangTry != 0 {
+		return nil
+	}
 	node := expr
 	for parent := node.Parent; parent != nil; parent = node.Parent {
+		if parent.Flags&ast.NodeFlagsVibeLangTry != 0 {
+			return nil
+		}
 		if ast.IsOuterExpression(parent, ast.OEKParentheses|ast.OEKAssertions) ||
 			(ast.IsConditionalExpression(parent) && parent.AsConditionalExpression().Condition != node) ||
 			(isPipeExpression(parent) && parent.AsBinaryExpression().Right == node) {

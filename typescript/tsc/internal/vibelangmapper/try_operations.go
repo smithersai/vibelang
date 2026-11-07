@@ -105,6 +105,13 @@ func tryOperandMarks(file *ast.SourceFile, text string) []tryOperandMark {
 			visit(node.Expression(), true)
 			return
 		}
+		if ast.IsVariableDeclaration(node) && node.Type() != nil {
+			node.ForEachChild(func(child *ast.Node) bool {
+				visit(child, operand || child == node.Initializer())
+				return false
+			})
+			return
+		}
 		if ast.IsFunctionLike(node) && !(ast.IsArrowFunction(node) && node.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0) {
 			operand = false
 		}
