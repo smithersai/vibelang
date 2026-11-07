@@ -21,6 +21,8 @@ export function restore(module) {
   for (const line of body.split("\n")) {
     let m
     if ((m = /^export const (\$\w+): typeof ([\w.]+) = /.exec(line))) text = text.split(m[1] + "(").join(m[2] + "(")
+    // A clock or randomness read's helper has a signature of its own.
+    else if ((m = /^export function (\$\w+)(?:<.*?>)?\((?:\.\.\.args|array)[^)]*\)[^{]*\{ return ([\w.]+)\(/.exec(line))) text = text.split(m[1] + "(").join(m[2] + "(")
     else if ((m = /^export function (\$\w+)\(\) \{ return typeof (\w+) \}$/.exec(line))) text = text.split(m[1] + "()").join("typeof " + m[2])
     else if ((m = /^export function (\$\w+)\(value: typeof ([\w.]+)\) \{ return [\w.]+ = value \}$/.exec(line))) text = text.replace(new RegExp(m[1].replace("$", "\\$") + "\\(([^()]*)\\)", "g"), m[2] + " = $1")
     else if ((m = /^export function (\$\w+)\(\) \{ return ([\w.]+) \}$/.exec(line))) text = text.split(m[2] + ": " + m[1] + "()").join(m[2]).split(m[1] + "()").join(m[2])

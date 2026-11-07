@@ -284,6 +284,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - With a compiler before VIP-1, the migrate flow marked a function `: infer _` when it returned the Effect of a module converted in the same batch, and the converted module failed `EK9203`. The flow now reads that module's types from its TypeScript source and keeps such functions Effect functions.
 
 - The migrate flow kept a factory in TypeScript when its platform code read a private type of the module, even when the factory's return type never mentioned that type. The flow now checks the return type with the module's own tsconfig, and a factory whose result does not expose the private type converts; one that exposes it, or whose type it cannot fully resolve, still stays in TypeScript.
+- After the migrate flow moved a `crypto.randomUUID()`, `crypto.getRandomValues()` or `performance.now()` call into a module body, the module still failed `EK4402` on the helper call that replaced it. Those reads now get a helper with a signature of its own, so the module compiles.
 
 - Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
 

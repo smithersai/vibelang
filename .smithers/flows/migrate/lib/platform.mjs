@@ -1379,7 +1379,7 @@ function hostOperations(source, statements, platform, ts, taken, file) {
           const name = helper("read " + chain, base, (h) => `${never}export function ${h}() { return ${chain} }`)
           own.push({ at: top.getStart(source), end: top.end, text: name + "()" })
         } else {
-          const name = helper("call " + chain, base, (h) => `export const ${h}: typeof ${chain} = ((...args: Parameters<typeof ${chain}>) => ${chain}(...args)) as typeof ${chain}`)
+          const name = helper("call " + chain, base, (h) => callHelper(h, chain, path))
           own.push({ at: top.getStart(source), end: top.end, text: name })
         }
       } else if (ts.isCallExpression(parent) && parent.expression === top) {
@@ -1403,6 +1403,21 @@ function hostOperations(source, statements, platform, ts, taken, file) {
     if (own.length) edits.set(statement, own)
   }
   return { edits, helpers: [...helpers.values()], typeReads, roots }
+}
+
+// The helper for a moved call of chain. It has the callee's own type, so
+// overloads, generics and assertion signatures resolve as they did. The
+// compiler reports a host clock or randomness read by the declaration its
+// call resolves to (VIP-33; vibelang's clockReads): a helper with the host
+// method's type would still resolve there, so those reads get a function of
+// their own signature instead.
+function callHelper(h, chain, path) {
+  const member = path.at(-1), owner = path.at(-2)
+  const clock = path.length >= 2 && (owner === "crypto" && ["randomUUID", "getRandomValues"].includes(member) || owner === "performance" && member === "now")
+  if (!clock) return `export const ${h}: typeof ${chain} = ((...args: Parameters<typeof ${chain}>) => ${chain}(...args)) as typeof ${chain}`
+  // getRandomValues returns the array it fills, typed as the array passed.
+  if (member === "getRandomValues") return `export function ${h}<T extends Parameters<typeof ${chain}>[0]>(array: T): T { return ${chain}(array) }`
+  return `export function ${h}(...args: Parameters<typeof ${chain}>): ReturnType<typeof ${chain}> { return ${chain}(...args) }`
 }
 
 // An import type declaration for the bindings of i that keep keeps, or null.
