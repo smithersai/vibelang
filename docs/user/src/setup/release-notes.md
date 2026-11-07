@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- `vibelang --fix` moved a throwing call or `throw` into a TypeScript module body and imported its helper with an alias, `import { invoke as $invoke } from $call$ts`, so a repository whose lint forbids renamed imports rejected the fixed file. The module body now exports the helper under the name the file uses, `import { $invoke } from $call$ts`, and a helper written the old way is still reused.
 - An exported `main` in the documentation's output examples could remain unrun and print nothing. Those examples now call `runPromise(main())` explicitly.
 
 - Installing a bundler example could reject the exact source-map helper versions required by the VibeLang plugins. The examples now exempt those pinned helpers from the minimum release age.

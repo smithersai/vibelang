@@ -27,7 +27,7 @@ func TestFixNothrowCalls(t *testing.T) {
 			if fixed == nil || !strings.Contains(fixed.Text, "$invoke(") || len(result.Sites) != 0 {
 				t.Fatalf("missing preserving call: %+v", result)
 			}
-			if strings.Count(fixed.Text, "export function invoke<") != 1 {
+			if strings.Count(fixed.Text, "export function $invoke<") != 1 {
 				t.Fatalf("must reuse one invocation module: %s", fixed.Text)
 			}
 		})

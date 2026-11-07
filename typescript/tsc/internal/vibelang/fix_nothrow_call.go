@@ -15,7 +15,9 @@ import (
 // reads in their original scope, retaining control-flow narrowing.
 // Function (without a call signature) avoids inventing a never-throws contract.
 // Generic/overloaded/predicate/optional calls and suspension operands refuse at their site.
-func nothrowCallBody(method string, arity int, construct bool) string {
+// The function is exported under the name the file imports it by (see
+// nothrowRaiseBody).
+func nothrowCallBody(name string, method string, arity int, construct bool) string {
 	constraint := "Function"
 	target := "target"
 	callable := "Extract<T,(...args:any[])=>any>"
@@ -47,7 +49,7 @@ func nothrowCallBody(method string, arity int, construct bool) string {
 			operands = append(operands, name)
 		}
 	}
-	return "export function invoke<T extends " + constraint + ">(" + signature + "):" + result + " { return " + target + "(" + strings.Join(operands, ",") + ") }"
+	return "export function " + name + "<T extends " + constraint + ">(" + signature + "):" + result + " { return " + target + "(" + strings.Join(operands, ",") + ") }"
 }
 
 func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *ast.Node, key string) (fileFix, bool) {
@@ -139,17 +141,13 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 	if strings.Contains(trivia, "/*") || strings.Contains(trivia, "//") || strings.Contains(prefix, "/*") || strings.Contains(prefix, "//") {
 		return fileFix{}, false
 	}
-	bodyText := nothrowCallBody(method, len(args), construct)
-
 	name := ""
 	for _, statement := range file.Statements.Nodes {
 		if !parser.IsVibeLangModuleDeclaration(statement) {
 			continue
 		}
 		body := parser.ModuleDeclarationBody(file, statement)
-		if strings.TrimSpace(file.Text()[body.Pos():body.End()]) != bodyText {
-			continue
-		}
+		text := strings.TrimSpace(file.Text()[body.Pos():body.End()])
 		module := statement.Name().Text()
 		for _, imp := range file.Statements.Nodes {
 			if !ast.IsImportDeclaration(imp) || !parser.IsVibeLangModuleReference(imp.ModuleSpecifier()) || imp.ModuleSpecifier().Text() != parser.ModuleDeclarationSpecifier(file.FileName(), module) {
@@ -160,7 +158,7 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 				continue
 			}
 			specs := clause.AsImportClause().NamedBindings.AsNamedImports().Elements.Nodes
-			if len(specs) == 1 && specs[0].AsImportSpecifier().PropertyName != nil && specs[0].AsImportSpecifier().PropertyName.Text() == "invoke" {
+			if len(specs) == 1 && text == nothrowCallBody(bridgeImportName(specs[0]), method, len(args), construct) {
 				alias := specs[0].Name()
 				if c.ResolveName(alias.Text(), site, ast.SymbolFlagsValue, false) == c.GetSymbolAtLocation(alias) {
 					name = alias.Text()
@@ -172,7 +170,7 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 	if name == "" {
 		name = freshName(file, "$invoke")
 		module := freshName(file, "$call$ts")
-		header := "\nmodule " + module + " {\n" + bodyText + "\n}\nimport { invoke as " + name + " } from " + module + "\n"
+		header := "\nmodule " + module + " {\n" + nothrowCallBody(name, method, len(args), construct) + "\n}\nimport { " + name + " } from " + module + "\n"
 		edits = append(edits, sourceEdit{len(file.Text()), len(file.Text()), header})
 	}
 	// Leave each original operand outside replacement ranges. This also preserves

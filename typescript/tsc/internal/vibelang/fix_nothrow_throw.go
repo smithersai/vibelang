@@ -13,7 +13,21 @@ import (
 // arguments, getters and surrounding native try/catch keep their meaning.
 // No throws contract is invented: the foreign helper has the ordinary unknown
 // contract, just as the same unannotated helper in a sibling .ts file would.
-const nothrowRaiseBody = "export function raise(value: unknown): never { throw value }"
+// The bridge module exports its one function under the name the file imports
+// it by, so the import needs no alias. A file fixed before this exports raise
+// and imports it as $raise; that bridge is reused too.
+func nothrowRaiseBody(name string) string {
+	return "export function " + name + "(value: unknown): never { throw value }"
+}
+
+// bridgeImportName is the export an import specifier names: its property name,
+// or its local name when it has no alias.
+func bridgeImportName(spec *ast.Node) string {
+	if property := spec.AsImportSpecifier().PropertyName; property != nil {
+		return property.Text()
+	}
+	return spec.Name().Text()
+}
 
 func preservingThrowFix(c *checker.Checker, file *ast.SourceFile, site *ast.Node, key string) (fileFix, bool) {
 	if site.Kind != ast.KindThrowStatement || site.Expression() == nil {
@@ -51,9 +65,7 @@ func preservingThrowFix(c *checker.Checker, file *ast.SourceFile, site *ast.Node
 		}
 		module := statement.Name().Text()
 		body := parser.ModuleDeclarationBody(file, statement)
-		if strings.TrimSpace(file.Text()[body.Pos():body.End()]) != nothrowRaiseBody {
-			continue
-		}
+		text := strings.TrimSpace(file.Text()[body.Pos():body.End()])
 		for _, imp := range file.Statements.Nodes {
 			if !ast.IsImportDeclaration(imp) || !parser.IsVibeLangModuleReference(imp.ModuleSpecifier()) || imp.ModuleSpecifier().Text() != parser.ModuleDeclarationSpecifier(file.FileName(), module) {
 				continue
@@ -63,7 +75,7 @@ func preservingThrowFix(c *checker.Checker, file *ast.SourceFile, site *ast.Node
 				continue
 			}
 			specs := clause.AsImportClause().NamedBindings.AsNamedImports().Elements.Nodes
-			if len(specs) == 1 && specs[0].AsImportSpecifier().PropertyName != nil && specs[0].AsImportSpecifier().PropertyName.Text() == "raise" {
+			if len(specs) == 1 && text == nothrowRaiseBody(bridgeImportName(specs[0])) {
 				alias := specs[0].Name()
 				if c.ResolveName(alias.Text(), site, ast.SymbolFlagsValue, false) == c.GetSymbolAtLocation(alias) {
 					name = alias.Text()
@@ -75,7 +87,7 @@ func preservingThrowFix(c *checker.Checker, file *ast.SourceFile, site *ast.Node
 	if name == "" {
 		name = freshName(file, "$raise")
 		module := freshName(file, "$throw$ts")
-		header := "\nmodule " + module + " {\n" + nothrowRaiseBody + "\n}\nimport { raise as " + name + " } from " + module + "\n"
+		header := "\nmodule " + module + " {\n" + nothrowRaiseBody(name) + "\n}\nimport { " + name + " } from " + module + "\n"
 		edits = append(edits, sourceEdit{len(file.Text()), len(file.Text()), header})
 	}
 	// Keep comments between the keyword and operand, including multiline trivia.

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("opencode-util-call")
+int8(7)

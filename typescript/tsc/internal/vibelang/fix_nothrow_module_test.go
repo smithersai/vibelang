@@ -41,7 +41,7 @@ func TestFixNothrowThrowBridge(t *testing.T) {
 			if strings.Contains(source, "/*keep*/") && !strings.Contains(fixed.Text, "/*keep*/") {
 				t.Fatal("lost comment")
 			}
-			if !strings.Contains(source, "catch (e)") && strings.Count(fixed.Text, nothrowRaiseBody) != 1 {
+			if !strings.Contains(source, "catch (e)") && strings.Count(fixed.Text, nothrowRaiseBody("$raise")) != 1 {
 				t.Fatalf("must reuse one bridge: %s", fixed.Text)
 			}
 		})

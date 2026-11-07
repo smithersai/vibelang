@@ -32,7 +32,7 @@ func TestNothrowPreservingQuoted(t *testing.T) {
 
 func FuzzNothrowPreservingFix(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"smithers-CacheAdmission-caught", "factory-iterator", "statement", "caught", "callback", "default", "generator", "effect-result", "smithers-Store-Effect-try"} {
+	for _, key := range []string{"smithers-CacheAdmission-caught", "factory-iterator", "statement", "caught", "callback", "default", "generator", "effect-result", "smithers-Store-Effect-try", "opencode-util-call"} {
 		f.Add(key, int8(7))
 	}
 	w := NewWorkspace(f)
@@ -56,6 +56,10 @@ func FuzzNothrowPreservingFix(f *testing.F) {
 				source = "export effect function main(xs:Iterable<number>){function task():number!! {for(const n of xs){throw n};return Effect.succeed(0)};return try task()}"
 			case "effect-result":
 				source = "export function main():Effect.Effect<number> {throw " + operand + "}"
+			case "opencode-util-call":
+				// Minimized from opencode's util bom/patch: a throwing host call
+				// moves into the call bridge, its operand staying in place.
+				source = "export function main(text:string):unknown {return JSON.parse(text + " + operand + ")}"
 			case "smithers-Store-Effect-try":
 				source = "export function main(field:string):Effect.Effect<string,unknown> {return Effect.try({try:()=>{const text=JSON.stringify(undefined);if(text===undefined) throw new TypeError(field);return text},catch:(e)=>e})}"
 			default:
@@ -94,7 +98,11 @@ func FuzzNothrowPreservingFix(f *testing.F) {
 				}
 				return
 			}
-			if !strings.Contains(fixed["main.vibe"], "export function raise(value: unknown): never { throw value }") {
+			boundary := "export function $raise(value: unknown): never { throw value }"
+			if key == "opencode-util-call" {
+				boundary = "export function $invoke<"
+			}
+			if !strings.Contains(fixed["main.vibe"], boundary) {
 				Gap(t, nothrowPreservingTarget, key+":missing", "missing TypeScript throw boundary:\n%s", fixed["main.vibe"])
 			}
 			if key != "smithers-Store-Effect-try" && !strings.Contains(fixed["main.vibe"], operand) {
