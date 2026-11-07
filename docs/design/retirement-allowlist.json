@@ -2288,5 +2288,25 @@
       "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended to ban var in all .vibe code; docs/design/src/002-running.md#do-expressions states that a nonfinal var outside a parameter list remains EK0107. This cites existing published acceptance, not a new approval."
     },
     "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/w01-003-plain-throw-caught.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28; docs/design/src/003-failures.md#plain-code-never-throws makes a throw statement or throw expression EK0401 even when a try statement in the same function catches it. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0403",
+    "case": "typescript/vibelang/cases/w01-005-npm-thrown-contract.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended to retire trusted packages; docs/design/src/005-services.md#effects-modules-are-in-scope and docs/design/src/003-failures.md#thrown-types give an npm signature without @throws the thrown type unknown, which effect code must bridge with Effect.try (EK0403). This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
   }
 ]
