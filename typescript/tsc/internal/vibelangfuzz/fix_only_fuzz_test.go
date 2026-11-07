@@ -182,6 +182,7 @@ func TestFixOnlyCommandLine(t *testing.T) {
 	}
 	t.Run("without --fix", func(t *testing.T) {
 		dir := project(t)
+		// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#7475a348b94d1935 | The option requires `--fix` and excludes project-wide migration flags.
 		out, status := run(dir, "--only", "main.vibe", "--noEmit", "--pretty", "false")
 		if status == 0 || !strings.Contains(out, "TS5023") || read(t, dir, "main.vibe") != main {
 			t.Fatalf("status %d, %s; want TS5023 and no edit", status, out)

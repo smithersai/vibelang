@@ -147,6 +147,7 @@ func TestFixOnlyRewritesOnlyListedModules(t *testing.T) {
 	if status != 0 {
 		t.Fatalf("--only a.vibe: status %d, %s", status, sys.stderr.String())
 	}
+	// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#caa3ea599380d0b2 | **Amendment: selected ordinary fixes.** `--fix --only <files>` limits repair writes to the listed project modules under the [selection contract](../src/007-tooling.md#selecting-ordinary-fix-files).
 	after := projectBytes(t, dir)
 	expectChanged(t, before, after, "a.vibe")
 	if after["a.vibe"] != fixed["a.vibe"] {
@@ -294,6 +295,7 @@ func TestFixOnlyListForms(t *testing.T) {
 			if status != 0 {
 				t.Fatalf("status %d, %s", status, sys.stderr.String())
 			}
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#154d26d054d8fc08 | Lists may be comma-separated, repeated or read from `@list.txt`.
 			expectChanged(t, before, projectBytes(t, dir), c.want...)
 		})
 	}
@@ -318,6 +320,7 @@ func TestFixOnlyRefusesBadLists(t *testing.T) {
 			dir := onlyProject(t, map[string]string{"a.vibe": onlyFixableA, "b.vibe": onlyFixableB, "plain.ts": "export const plain = 1\n", "nothing": "\n"})
 			before := projectBytes(t, dir)
 			status, sys := runFix(t, dir, args...)
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#7475a348b94d1935 | The option requires `--fix` and excludes project-wide migration flags.
 			if status == 0 || !strings.Contains(sys.stderr.String(), "--only") {
 				t.Fatalf("status %d, stderr %q; want a refusal naming --only", status, sys.stderr.String())
 			}
