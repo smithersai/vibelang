@@ -126,13 +126,13 @@ func defaultForeignCallbackFits(c *checker.Checker, source, target *checker.Type
 			continue
 		}
 		fits := true
-		for _, required := range c.GetSignaturesOfType(alternative, checker.SignatureKindCall) {
+		requiredSignatures := c.GetSignaturesOfType(alternative, checker.SignatureKindCall)
+		overloaded := len(provided) > 1 || len(requiredSignatures) > 1
+		for _, required := range requiredSignatures {
 			bound, _ := defaultForeignCallbackContract(c, required, append(append([]*checker.Type{}, targetOwners...), alternative), false)
 			matched := false
 			for _, given := range provided {
-				from := c.NewFunctionType(nil, []*checker.Signature{given})
-				to := c.NewFunctionType(nil, []*checker.Signature{required})
-				if !c.IsTypeAssignableTo(from, to) {
+				if !callbackSignatureRelated(c, given, required, overloaded) {
 					continue
 				}
 				contract, known := defaultForeignCallbackContract(c, given, append(append([]*checker.Type{}, sourceOwners...), source), true)

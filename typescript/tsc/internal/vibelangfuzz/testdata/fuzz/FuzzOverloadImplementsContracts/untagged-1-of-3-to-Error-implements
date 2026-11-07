@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:untagged/1-of-3/to-Error/implements")

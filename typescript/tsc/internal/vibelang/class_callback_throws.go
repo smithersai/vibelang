@@ -101,13 +101,13 @@ func implementedCallbackFits(c *checker.Checker, source, target *checker.Type, s
 			continue
 		}
 		fits := true
-		for _, required := range c.GetSignaturesOfType(alternative, checker.SignatureKindCall) {
+		requiredSignatures := c.GetSignaturesOfType(alternative, checker.SignatureKindCall)
+		overloaded := len(provided) > 1 || len(requiredSignatures) > 1
+		for _, required := range requiredSignatures {
 			bound, _ := implementedCallbackContract(c, required, append(append([]*checker.Type{}, targetOwners...), alternative), false)
 			matched := false
 			for _, given := range provided {
-				from := c.NewFunctionType(nil, []*checker.Signature{given})
-				to := c.NewFunctionType(nil, []*checker.Signature{required})
-				if !c.IsTypeAssignableTo(from, to) {
+				if !callbackSignatureRelated(c, given, required, overloaded) {
 					continue
 				}
 				contract, known := implementedCallbackContract(c, given, append(append([]*checker.Type{}, sourceOwners...), source), true)
@@ -126,6 +126,19 @@ func implementedCallbackFits(c *checker.Checker, source, target *checker.Type, s
 		}
 	}
 	return false
+}
+
+// callbackSignatureRelated pairs a provided signature with a required one as
+// TypeScript relates signature lists (checker signaturesRelatedTo): a lone
+// pair compares with the source instantiated in the target's context, and an
+// overloaded side compares with type parameters erased. A member TypeScript
+// accepts through an erased overload is then checked against that overload's
+// contract instead of matching nothing.
+func callbackSignatureRelated(c *checker.Checker, given, required *checker.Signature, overloaded bool) bool {
+	if overloaded {
+		return c.IsOverloadSignatureAssignableTo(given, required)
+	}
+	return c.IsTypeAssignableTo(c.NewFunctionType(nil, []*checker.Signature{given}), c.NewFunctionType(nil, []*checker.Signature{required}))
 }
 
 // Preserve substitutions from inherited generic owners whose parameters occur

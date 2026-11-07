@@ -105,6 +105,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The Data guide said object patterns were still awaiting compiler support. It now describes the patterns without that outdated warning.
 - The expected-errors guide repeated its static-member restriction. It now gives the rule and all repair details together once.
 - The migration's API identity check could not compare a package entry point declared by a handwritten `.d.ts` beside a plain `.js`, which the package build copies to its declaration output, so it refused every module of that package, changed or not. The check now reads that declaration where the package publishes it, and still reports a change to it.
+- A `.vibe` class that implemented an overloaded interface method, such as Effect's `Pipeable.pipe`, with fewer overloads reported `EK0402`, although TypeScript accepts the class. The check now pairs overloads as TypeScript does: a VibeLang method passes, and an untagged TypeScript function still reports `EK0402`.
 - Migration setup could omit a test package that imported a migrated module through a relative path. It now selects that package and its transitive consumers, even without a manifest dependency.
 - The error guides described working error and producer syntax as a future feature. They now describe the syntax as available.
 - The setup guide required Node 26, while the introductory guides admitted unsupported Node versions. All three now give the package requirements: Node `22.22.3` in `22.x`, or `24.11.1` or later.
