@@ -42,8 +42,9 @@ var (
 )
 
 // adviceCounterpart writes the Effect TypeScript twin of a VibeLang advice
-// example: try e becomes yield* e inside Effect.gen, bare Effect globals get
-// their Effect. prefix, and each namespace the example names is imported
+// example: try e becomes yield* e inside Effect.gen, fork effect { s } becomes
+// yield* Effect.forkChild(Effect.gen(function* () { s })), bare Effect globals
+// get their Effect. prefix, and each namespace the example names is imported
 // from the module the prelude or the service's import gives it.
 func adviceCounterpart(example, imports string) (string, error) {
 	named := map[string]string{} // namespace -> import line
@@ -84,7 +85,13 @@ func adviceCounterpart(example, imports string) (string, error) {
 			return "", fmt.Errorf("%s names %s, which no prelude table or import declares", example, name)
 		}
 	}
-	body := adviceTry.ReplaceAllString(example, "${1}yield* ")
+	body := example
+	if block, ok := strings.CutPrefix(body, "fork effect {"); ok {
+		if statements, ok := strings.CutSuffix(block, "}"); ok {
+			body = "yield* Effect.forkChild(Effect.gen(function* () {" + statements + "}))"
+		}
+	}
+	body = adviceTry.ReplaceAllString(body, "${1}yield* ")
 	body = adviceGlobal.ReplaceAllStringFunc(body, func(call string) string {
 		m := adviceGlobal.FindStringSubmatch(call)
 		if effectglobals.Names[m[2]] && !slices.Contains(adviceFreeNames, m[2]) {

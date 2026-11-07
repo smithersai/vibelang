@@ -135,6 +135,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Replacement suggestions for `console` calls omitted `try`, leaving logging unrun when copied into effect code. They now show the runnable Effect call.
 - HTTP replacement diagnostics could suggest constructing a request without running it. They now show `try HttpClient.get(url)`.
+- The platform globals table showed `try repeat(program, Schedule.spaced("1 second"))` for `setInterval`, which waits for the repetition, while the diagnostic shows `fork effect { try repeat(program, Schedule.spaced("1 second")) }`. The table now shows the background repetition the diagnostic suggests.
 
 - A `.vibe` or `.vibex` file could import `./x.vibe` or `./x.ts` without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, where the same import in a `.ts` file reports `TS5097`, and its emitted JavaScript named `./x.js` even without `rewriteRelativeImportExtensions`. VibeLang sources now follow the `.ts` rules: such an import reports `TS5097`, and only `rewriteRelativeImportExtensions` rewrites it in JavaScript. Set `allowImportingTsExtensions` (with `noEmit` or `emitDeclarationOnly`) or `rewriteRelativeImportExtensions` in `compilerOptions`, as for `.ts` imports, or import `./x.js`.
 - `vibelang --fix` left the Effect language-service plugin entry for a second run when the same config also held the retired `declarationSidecars` setting, so running it again changed the config. One run now makes both config repairs.

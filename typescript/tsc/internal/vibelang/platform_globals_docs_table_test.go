@@ -54,7 +54,8 @@ func platformGlobalDocumentedAnswer(name, answer string) (string, error) {
 	}
 	// The guide shows execution of these cold Effects. Other replacements,
 	// such as Stream.fromEventListener, remain ordinary expression values.
-	for _, prefix := range []string{"\x60Console.", "\x60HttpClient.get(", "\x60Socket.makeWebSocket(", "\x60repeat(", "\x60sleep("} {
+	// The diagnostic itself already runs HttpClient.get, sleep and repeat.
+	for _, prefix := range []string{"\x60Console.", "\x60Socket.makeWebSocket("} {
 		if strings.HasPrefix(answer, prefix) {
 			return "\x60try " + answer[1:], nil
 		}

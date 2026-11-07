@@ -869,7 +869,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 | `self` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
 | `sessionStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `setImmediate` | `try yieldNow` |
-| `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
+| `setInterval` | `fork effect { try repeat(program, Schedule.spaced("1 second")) }` |
 | `setTimeout` | `try sleep("1 second")` |
 | `window` | escape to TypeScript for now: Effect has no service for the DOM; try (try Experimental.Window.Window).current gives an API that takes it the page's Window, and other UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |

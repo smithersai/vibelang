@@ -78,17 +78,17 @@ export const run = () => execFileSync("git", ["status"])`, []string{
 		// rule-evidence: docs/design/vips/0033-platform-stdlib.md#af700d45440d7ea1 | Its quick fix and the codemod move the body into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`).
 		{"http client inside tryPromise", `export const run = (url: string) => Effect.tryPromise(() => fetch(url))`, []string{
 			"fetch is platform code, which VibeLang code does not use directly.",
-			"Use HttpClient:   HttpClient.get(url)",
+			"Use HttpClient:   try HttpClient.get(url)",
 			`Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".`,
 		}},
 		{"http client", `export const run = (url: string) => fetch(url)`, []string{
 			"fetch is platform code, which VibeLang code does not use directly.",
-			"Use HttpClient:   HttpClient.get(url)",
+			"Use HttpClient:   try HttpClient.get(url)",
 			`Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".`,
 		}},
 		{"a global as a value", `export const client = fetch`, []string{
 			"fetch is platform code, which VibeLang code does not use directly.",
-			"Use HttpClient:   HttpClient.get(url)",
+			"Use HttpClient:   try HttpClient.get(url)",
 			`Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".`,
 		}},
 		{"scoped IPv6", `import { isIPv6 } from "node:net"
@@ -114,7 +114,7 @@ import { server } from host
 export const run = () => typeof server`, nil},
 		{"import for its effects", `import "node:http"`, []string{
 			"node:http is platform code, which VibeLang code does not import.",
-			"Use HttpClient:   HttpClient.get(url)",
+			"Use HttpClient:   try HttpClient.get(url)",
 			`Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".`,
 		}},
 		{"process.cwd", `export const run = () => process.cwd()`, []string{
@@ -152,7 +152,7 @@ export const run = () => mkdtemp("build-")`, []string{
 		}},
 		{"timers", `export const run = (f: () => void) => setTimeout(f, 10)`, []string{
 			"setTimeout is platform code, which VibeLang code does not use directly.",
-			`Use sleep and Schedule, from the prelude:   sleep("1 second")`,
+			`Use sleep and Schedule, from the prelude:   try sleep("1 second")`,
 		}},
 		{"bytes", `export const run = (text: string) => Buffer.from(text)`, []string{
 			"Buffer.from is platform code, which VibeLang code does not use directly.",

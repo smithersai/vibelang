@@ -181,7 +181,7 @@ func platformIntroductionProblems(page string) []string {
 		// These short diagnostic suggestions return Effects. The introduction
 		// shows how to run them, rather than leaving cold Effects unused.
 		switch example {
-		case "HttpClient.get(url)", "Console.log(message)", "sleep(\"1 second\")":
+		case "Console.log(message)":
 			example = "try " + example
 		}
 		if effect != example {
