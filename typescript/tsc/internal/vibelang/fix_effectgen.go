@@ -360,9 +360,8 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		}
 		edits = append(edits, edit...)
 	}
-	for _, thrower := range scan.throwing {
-		edits = append(edits, keepThrowDefect(file, thrower)...)
-	}
+	defects := keepThrowDefects(c, a, file, generator, scan.throwing)
+	edits = append(edits, defects.edits...)
 	// A .pipe in the body changes with it: try f().pipe(g) is EK4502.
 	// Plan children before parents. A captured pipe replaces its whole call,
 	// including nested pipelines in the receiver or a stage callback.
@@ -468,7 +467,16 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		return refuse("a comment stands between " + nodeText(file, apiName(call)) + " and its generator's body")
 	}
 	edits = joinEditsAt(edits)
-	edits = append(edits, dedentEdits(file, block, len(lineIndent(text, blockStart))-len(lineIndent(text, opening)), edits)...)
+	width := len(lineIndent(text, blockStart)) - len(lineIndent(text, opening))
+	dedent := dedentEdits(file, block, width, edits)
+	if dedent == nil {
+		width = 0
+	}
+	// A const goes before a wrapper that starts where its statement does, and
+	// a branch's closing brace after a wrapper that ends where it does.
+	opens, closes := defects.hoistEdits(file, width)
+	edits = joinEditsAt(slices.Concat(opens, edits, closes))
+	edits = append(edits, dedent...)
 	edits = joinEditsAt(edits)
 	if !orderedEditRangesValid(edits, blockStart, blockEnd) {
 		if os.Getenv("VIBELANG_FIX_EDIT_TRACE") == "1" {

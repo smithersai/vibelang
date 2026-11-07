@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- `vibelang --fix` left an `Effect.gen` or `Effect.fn` generator unconverted when one of its throwing calls read a property that a guard had proved, such as `content.text ? Lifecycle.textDelta(content.text) : 0`, because the converted call lost the guard's proof (`TS2345`). The fix now moves the guard into the call's wrapper, or reads the property into a `const` before the statement, and converts the generator.
 - The migrate flow sent a module back to TypeScript with `EK4402` when it read `import.meta.filename`, `import.meta.dirname` or `import.meta.env`, or called `import.meta.resolve` with a computed or second argument. It now serves these reads from the `.platform.ts` companion, passing the module's own `import.meta.url` where the value names the module, so `main: import.meta.filename` still names the module after migration.
 
 - A migrated lint runner could drop JSX files in its extension filter before linting them. Setup now includes JSX source, preserves directory scope, and repairs filters from earlier setup runs.
