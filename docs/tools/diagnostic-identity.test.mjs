@@ -407,6 +407,31 @@ test("the task's identity-only authorization cannot license source or configurat
 })
 
 
+test("the accepted schema mapping changes only the prior library type witness",()=>{
+ const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
+ const entry=entries.find(a=>a.code==="EK2109"&&a.case==="typescript/vibelang/cases/decl-schema.fail")
+ const method=entries.find(a=>a.code==="EK1505"&&a.case===entry.case)
+ assert.equal(method.vip,"VIP-44")
+ assert.deepEqual(method.identityOnly,entry.identityOnly)
+ assert.equal(entry.vip,"VIP-44")
+ assert.match(entry.approval.reference,/0044-durable-values\.md#schema-mapping/)
+ const base=new URL("../../"+entry.case+"/",import.meta.url)
+ const source=readFileSync(new URL(entry.identityOnly.source,base),"utf8")
+ const prior="f536b3867f767c58ba6428d7e498010bcf809a26c87764bb9fdc99a00f1e7347"
+ const priorInput=text=>executableDigest(text.replaceAll("ArrayBuffer","Date"))
+ assert.equal(priorInput(source),prior,"only the accepted Date-to-ArrayBuffer witness substitution is authorized")
+ assert.equal(executableDigest(source),entry.identityOnly.tokensSha256)
+ assert.equal(digest(readFileSync(new URL("tsconfig.json",base),"utf8")),"29046e9b8a081e65bfbd37550a7e360e0e6312e1c008a5442ecfd8ec7a5ad397")
+ for(const changed of [
+  source.replaceAll("ArrayBuffer","Uint8Array"),
+  source.replaceAll("Partial","Readonly"),
+  source+"\nthrow 1",
+ ]) {
+  assert.notEqual(executableDigest(changed),entry.identityOnly.tokensSha256)
+  assert.notEqual(priorInput(changed),prior)
+ }
+})
+
 test("a report-site category override cannot hide behind its primary declaration",()=>{
  const sources=source('var EK4408 = message(4408,errorCategory,"module"); func reportCollision() { collision := EK4408.With("binding"); collision.Category = warningCategory }')
  const categories=compilerCategories(sources)
