@@ -74,6 +74,20 @@ func editorProgramIn(t testing.TB, source, packageJSON string, packages map[stri
 // editorProgramConfig is editorProgramIn with tsconfig as the project's tsconfig.json.
 func editorProgramConfig(t testing.TB, source, packageJSON string, packages map[string]string, tsconfig string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
 	t.Helper()
+	return editorProgramFile(t, "main.vibe", tsconfig, source, packageJSON, packages)
+}
+
+// editorProgramAt is editorProgramIn for the source file name, main.vibe or
+// main.vibex, under compilerOptions, a JSON object.
+func editorProgramAt(t testing.TB, name, compilerOptions, source, packageJSON string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+	t.Helper()
+	return editorProgramFile(t, name, `{"compilerOptions":`+compilerOptions+`,"files":["`+name+`"]}`, source, packageJSON, packages)
+}
+
+// editorProgramFile compiles the source file name in a project whose
+// tsconfig.json is tsconfig.
+func editorProgramFile(t testing.TB, name, tsconfig, source, packageJSON string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+	t.Helper()
 	dir := t.TempDir()
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -98,7 +112,7 @@ func editorProgramConfig(t testing.TB, source, packageJSON string, packages map[
 	for name, text := range map[string]string{
 		"package.json":  packageJSON,
 		"tsconfig.json": tsconfig,
-		"main.vibe":     source,
+		name:            source,
 	} {
 		if name == "package.json" && packageJSON == "" {
 			continue
@@ -113,7 +127,7 @@ func editorProgramConfig(t testing.TB, source, packageJSON string, packages map[
 		t.Fatalf("config: %v %v", errors, config.Errors)
 	}
 	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
-	file := program.GetSourceFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "main.vibe"))))
+	file := program.GetSourceFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, name))))
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 		text, ok := fs.ReadFile(name)
 		if !ok {

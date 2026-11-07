@@ -107,7 +107,7 @@ The resource action groups object initializers through `as`, `satisfies` and non
 
 ### Move a TypeScript module body to a file
 
-Place the cursor in a top-level `module parse { … }` declaration and request **Move module to a .ts file** (VIP-40). The refactor writes the TypeScript body to `parse.ts` beside the `.vibe` source and rewrites its identifier imports and re-exports to that file. Other module declarations stay in place. The new file keeps the body's comments, JSDoc, relative imports and runtime behavior.
+Place the cursor in a top-level `module parse { … }` declaration and request **Move module to a TypeScript file** (VIP-40). The refactor writes the TypeScript body to `parse.ts` beside a `.vibe` source, or to `parse.tsx` beside a `.vibex` source even when the body has no JSX, and rewrites its identifier imports, re-exports and side-effect imports to that file. When the copied body would be a script under the project's options, for example a body with no `import` or `export` under `moduleDetection: "legacy"`, the new file ends with `export {}` so its declarations stay private; otherwise the body is copied unchanged. Other module declarations stay in place. The new file keeps the body's comments, JSDoc, relative imports and runtime behavior.
 
 If `parse.ts` or a conflicting sibling name is taken, compared case-insensitively, the refactor chooses `main.parse.ts` for `main.vibe`, then adds a number if needed. The rewritten specifier ends in `.ts` when `rewriteRelativeImportExtensions` or `allowImportingTsExtensions` is enabled, and `.js` otherwise. The editor applies file creation and source edits together and does not overwrite an existing file. This move is an explicit refactor; `vibelang --fix` leaves legal module declarations in place.
 
