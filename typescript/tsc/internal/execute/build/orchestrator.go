@@ -387,7 +387,7 @@ func (o *Orchestrator) clean(project string, onlyReferences bool) *OrchestratorR
 
 	result := &OrchestratorResult{}
 	result.Statistics.Projects = len(order)
-	dry := o.opts.Command.BuildOptions.Dry.IsTrue()
+	dry := o.cleanIsDryRun()
 	reportDiagnostic := o.createDiagnosticReporter(nil)
 	for _, task := range order {
 		if task.resolved == nil {
@@ -451,6 +451,15 @@ func (o *Orchestrator) getBuildOrderFor(project string) ([]*BuildTask, bool) {
 		}
 	}
 	return order, true
+}
+
+// Analysis-only entry points inspect build outputs without deleting them.
+func (o *Orchestrator) cleanIsDryRun() bool {
+	if o.opts.Command.BuildOptions.Dry.IsTrue() {
+		return true
+	}
+	policy, ok := o.opts.Sys.(interface{ SuppressEmit() bool })
+	return ok && policy.SuppressEmit()
 }
 
 func (o *Orchestrator) cleanProjectOutput(

@@ -223,6 +223,8 @@ The `catch` mapping retains the original thrown value, and `Effect.orDie`
 keeps it as a defect. The helper runs when the Effect runs. Do not mark a
 throwing validation helper `@nothrow` to pass a non-throwing callback check.
 
+With `vibelang lint --build --clean`, project outputs are listed as a dry run and existing files stay intact. Ordinary `vibelang --build --clean` removes its selected build outputs as TypeScript does.
+
 ## 3. Compile a first module
 
 Create `src/hello.vibe`, in a directory that `include` selects:

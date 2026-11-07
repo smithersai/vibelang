@@ -856,7 +856,7 @@ func (t *BuildTask) cleanProjectOutput(orchestrator *Orchestrator, outputFile ts
 		return
 	}
 	if orchestrator.host.FS().FileExists(outputFile) {
-		if !orchestrator.opts.Command.BuildOptions.Dry.IsTrue() {
+		if !orchestrator.cleanIsDryRun() {
 			err := orchestrator.host.FS().Remove(outputFile.AsPath())
 			if err != nil {
 				t.reportDiagnostic(ast.NewCompilerDiagnostic(diagnostics.Failed_to_delete_file_0, outputFile))
