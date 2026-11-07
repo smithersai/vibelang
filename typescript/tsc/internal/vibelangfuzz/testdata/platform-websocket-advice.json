@@ -1,0 +1,146 @@
+[
+  {
+    "Key": "bare-module",
+    "Source": "export const host = WebSocket",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "bare-plain",
+    "Source": "export function host() { return WebSocket }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "bare-effect",
+    "Source": "export effect function host() { return WebSocket }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "global-module",
+    "Source": "export const host = globalThis.WebSocket",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "global-plain",
+    "Source": "export function host() { return globalThis.WebSocket }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "global-effect",
+    "Source": "export effect function host() { return globalThis.WebSocket }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "key-module",
+    "Source": "export const host = globalThis[\"WebSocket\"]",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "key-plain",
+    "Source": "export function host() { return globalThis[\"WebSocket\"] }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "key-effect",
+    "Source": "export effect function host() { return globalThis[\"WebSocket\"] }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "parenthesized-module",
+    "Source": "export const host = (globalThis)[\"WebSocket\"]",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "parenthesized-plain",
+    "Source": "export function host() { return (globalThis)[\"WebSocket\"] }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "parenthesized-effect",
+    "Source": "export effect function host() { return (globalThis)[\"WebSocket\"] }",
+    "Advice": "try Socket.makeWebSocket(url)",
+    "Replacement": "import { Socket } from \"effect/socket\"; export effect function run(url: string) { provide Socket.layerWebSocketConstructorGlobal { return try Socket.makeWebSocket(url) } }",
+    "Want": 1,
+    "Provider": "NodeSocket.layerWebSocketConstructor from \"@effect/platform-node\", or BrowserSocket.layerWebSocketConstructor from \"@effect/platform-browser\""
+  },
+  {
+    "Key": "destructure-local",
+    "Source": "const object = { WebSocket: 1 }; const { WebSocket: Native } = object; export const host = Native",
+    "Advice": "",
+    "Replacement": "",
+    "Want": 0,
+    "Provider": ""
+  },
+  {
+    "Key": "unicode-alias-local",
+    "Source": "const object = { WebSocket: 1 }; const { WebSocket: Nâtive } = object; export const host = Nâtive",
+    "Advice": "",
+    "Replacement": "",
+    "Want": 0,
+    "Provider": ""
+  },
+  {
+    "Key": "type-only",
+    "Source": "export type Host = typeof WebSocket",
+    "Advice": "",
+    "Replacement": "",
+    "Want": 0,
+    "Provider": ""
+  },
+  {
+    "Key": "local-binding",
+    "Source": "const WebSocket = (url: string) => url; export const host = WebSocket(\"example\")",
+    "Advice": "",
+    "Replacement": "",
+    "Want": 0,
+    "Provider": ""
+  },
+  {
+    "Key": "local-member",
+    "Source": "const object = { WebSocket: 1 }; export const host = object.WebSocket",
+    "Advice": "",
+    "Replacement": "",
+    "Want": 0,
+    "Provider": ""
+  },
+  {
+    "Key": "own-ambient",
+    "Source": "declare const WebSocket: number; export const host = WebSocket",
+    "Advice": "",
+    "Replacement": "",
+    "Want": 0,
+    "Provider": ""
+  }
+]

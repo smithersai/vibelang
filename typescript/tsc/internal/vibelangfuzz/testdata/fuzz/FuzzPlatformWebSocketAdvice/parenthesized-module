@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("parenthesized-module\x00\x06")

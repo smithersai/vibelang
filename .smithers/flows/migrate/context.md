@@ -747,6 +747,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 
 FileSystem advice gets the implementation with `try FileSystem.FileSystem` before calling a member. Run a returned Effect with `try`, as in `try (try FileSystem.FileSystem).readFileString(path)`. The module `FileSystem` supplies the service key; its methods belong to the retrieved implementation. Replacement advice runs methods that return Effects with an outer `try`. The `stream`, `sink` and `watch` methods construct `Stream` or `Sink` values; consume those values with their ordinary APIs.
 
+WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provide `NodeSocket.layerWebSocketConstructor` or `BrowserSocket.layerWebSocketConstructor` for its `Socket.WebSocketConstructor` requirement. A `layerWebSocket(url)` provides `Socket.Socket`; retrieve that service with `try Socket.Socket`.
+
 `crypto.randomInt(min, max)` excludes `max`. For valid native integer bounds, set `halfOpen: true` on the `SecureRandom.SecureRandom` service’s `intBetween` method to retain that range. The Effect method includes both bounds by default and rounds fractional bounds; keep a native call in a `.ts` adapter when its argument validation is required.
 
 | Global | Use instead |

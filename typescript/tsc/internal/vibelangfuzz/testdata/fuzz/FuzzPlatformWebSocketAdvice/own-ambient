@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("own-ambient\x00\x06")
