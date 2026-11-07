@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["esnext", "dom"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rewriteRelativeImportExtensions": true,
+    "jsx": "preserve",
+    "rootDir": ".",
+    "outDir": "out"
+  },
+  "files": ["main.vibe", "app/main.vibex", "app/jsx.d.ts"]
+}

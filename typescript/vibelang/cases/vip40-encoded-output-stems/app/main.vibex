@@ -1,0 +1,11 @@
+// rule-evidence: docs/design/vips/0040-module-declarations.md#e95d2fc0abab13f3
+// VIP-40, emit: A body in `main.vibex` uses the source basename `main.vibex`, so `module parse` emits `main.vibex.parse.jsx` under `"jsx": "preserve"`, or `main.vibex.parse.js` with transformed JSX, as TypeScript does for `.tsx`.
+module parse {
+  export const element = <div />
+}
+module Über { export const n = 5 }
+
+import { element } from parse
+import { n } from Über
+
+export const kept = [element, n]
