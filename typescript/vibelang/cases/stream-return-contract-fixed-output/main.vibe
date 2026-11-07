@@ -1,0 +1,13 @@
+// expect: EK0403
+// Partial Stream views are not Stream results and keep their foreign contracts.
+import type { Marker } from "./lib.js"
+import { marker, noChannel, noPipe, whole, view, knownMarker, safeMarker, untagged } from "./lib.js"
+export effect function markerResult() { return try Effect.orDie(Effect.try({ try: () => marker(), catch: (e) => e })) }
+export effect function missingChannel() { return try Effect.orDie(Effect.try({ try: () => noChannel(), catch: (e) => e })) }
+export effect function missingPipe() { return try Effect.orDie(Effect.try({ try: () => noPipe(), catch: (e) => e })) }
+export effect function knownResult() { return try Effect.orDie(Effect.try({ try: () => knownMarker(), catch: (e) => e })) }
+export effect function completeResult() { return whole() }
+export effect function structuralResult() { return view() }
+export effect function neverResult() { return safeMarker() }
+export function plainFactory(): Marker { untagged(); return marker() }
+export function plainDefault(p = untagged()): Marker { return marker() }
