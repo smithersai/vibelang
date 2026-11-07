@@ -338,3 +338,34 @@ test("an all-platform module's body and wrappers compile and keep the module's e
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// t3code Web previewBridge.ts (dp-t3code-01 2026-11-07T04:40Z): TS18047, the
+// imported nativePreviewBridge is possibly null inside the async closures. An
+// import is not narrowed in a closure the way a local const is.
+const narrowed = `const native = host\nexport const wrapped = native ? { go: async () => native.go() } : null\n`
+test("a moved const the module reads stays a local const of its name, so closures keep its narrowing", () => {
+  const { module } = split(narrowed, { globals: ["host"] })
+  assert.match(module, /^import \{ native as native\$platform \} from platform$/m)
+  assert.match(module, /^const native: typeof native\$platform = native\$platform$/m)
+  assert.match(module, /^export const wrapped = native \?/m)
+  // An exported const is re-exported, as the sibling split leaves it.
+  const exported = split(`export const native = host\nexport const wrapped = native ? 1 : 0\n`, { globals: ["host"] }).module
+  assert.match(exported, /^export \{ native \} from platform$/m)
+  assert.doesNotMatch(exported, /\$platform/)
+})
+
+test("a moved const's narrowing compiles in a closure", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+  const dir = mkdtempSync(join(tmpdir(), "platform-module-narrow-"))
+  try {
+    mkdirSync(join(dir, "src"), { recursive: true })
+    writeFileSync(join(dir, "src/ambient.d.ts"), `declare const host: { go(): Promise<number> } | null\n`)
+    writeFileSync(join(dir, "package.json"), '{"type":"module","private":true}')
+    writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "esnext", module: "esnext", moduleResolution: "bundler", strict: true, declaration: true, skipLibCheck: true, types: [], outDir: "out", rootDir: "src" }, include: ["src"] }))
+    const { module } = split(narrowed, { globals: ["host"] })
+    writeFileSync(join(dir, "src/x.vibe"), module)
+    const r = spawnSync(compiler, ["-p", "tsconfig.json"], { cwd: dir, encoding: "utf8" })
+    assert.equal(r.status, 0, `${r.stdout}\n${module}`)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

@@ -1004,7 +1004,7 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   for (const w of wrappers) { const a = uniqueName(w.name + "$platform", taken); taken.add(a); alias.set(w.name, a) }
   const movedList = declarations.filter((d) => moved.has(d))
   // What the module reads from the body, and what it re-exports, by meaning.
-  const imports_ = [], typeImports = [], exports_ = [], typeExports = []
+  const imports_ = [], typeImports = [], exports_ = [], typeExports = [], bound = []
   let reexportsDefault = false
   const seen = new Set()
   for (const d of movedList) {
@@ -1019,6 +1019,18 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
       const all = declared.get(n)
       const value = all.some((x) => !typeOnly(x))
       if (alias.has(n)) { imports_.push(`${n} as ${alias.get(n)}`); continue }
+      // An import is not narrowed inside a closure the way a local const is
+      // (t3code Web previewBridge.ts, TS18047), so a private moved const that
+      // kept code reads in a closure comes back under an alias and is bound to
+      // a local const of its own name, as the sibling split binds it. A
+      // function or class value has nothing to narrow.
+      if (keptReads.has(n) && !all.some((x) => x.exported) && all.every((x) => narrowableConst(x.statement, ts)) && kept.some((d) => readsInClosure(d.statement, n, ts))) {
+        const a = uniqueName(n + "$platform", taken)
+        taken.add(a)
+        imports_.push(`${n} as ${a}`)
+        bound.push(`const ${n}: typeof ${a} = ${a}`)
+        continue
+      }
       if (keptReads.has(n)) (value ? imports_ : typeImports).push(n)
       if (all.some((x) => x.exported && !typeOnly(x))) exports_.push(n)
       else if (all.some((x) => x.exported)) typeExports.push(n)
@@ -1064,12 +1076,36 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (!reexports && (exports_.length || typeExports.length || reexportsDefault)) {
     return { refused: `${file}: ${[...exports_, ...typeExports, ...(reexportsDefault ? ["default"] : [])].join(", ")} would be declared by \`module ${name}\`, a new public declaration file; platformModuleBodies allows it` }
   }
-  const module = joinParts(leadingHeader(source), head, [body], from, [...kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))), ...wrappers.map((w) => w.text(name, alias.get(w.name)))])
+  const module = joinParts(leadingHeader(source), head, [body], [...from, ...bound], [...kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))), ...wrappers.map((w) => w.text(name, alias.get(w.name)))])
   return { module, name, moved: [...movedList.flatMap((d) => [...d.names]), ...(operations?.helpers.map((h) => h.name) ?? [])], kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]),
     ...(operations ? { hostOperations: operations.helpers.map((h) => h.name) } : {}), wrapped: wrappers.map((w) => w.name) }
 }
 
 const intersect = (a, b) => new Set([...a].filter((x) => b.has(x)))
+
+// A const whose every initializer is a value a condition can narrow: no
+// function or class expression.
+function narrowableConst(statement, ts) {
+  if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const)) return false
+  return statement.declarationList.declarations.every((v) => {
+    let init = v.initializer
+    while (init && (ts.isParenthesizedExpression(init) || ts.isAsExpression(init) || ts.isSatisfiesExpression(init))) init = init.expression
+    return init && !ts.isArrowFunction(init) && !ts.isFunctionExpression(init) && !ts.isClassExpression(init)
+  })
+}
+
+// Whether node reads the identifier name inside a function or method.
+function readsInClosure(node, name, ts) {
+  const visit = (n, inside) => {
+    if (ts.isIdentifier(n) && n.text === name && inside) {
+      const p = n.parent
+      if (!(p && ts.isPropertyAccessExpression(p) && p.name === n) && !(p && ts.isPropertyAssignment(p) && p.name === n)) return true
+    }
+    const fn = ts.isFunctionLike(n) && !ts.isTypeNode(n)
+    return ts.forEachChild(n, (c) => visit(c, inside || fn)) ?? false
+  }
+  return visit(node, false)
+}
 
 
 // An imported factory's inferred object is expanded without its member JSDoc
