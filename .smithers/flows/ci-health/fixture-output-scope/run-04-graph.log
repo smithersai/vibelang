@@ -1,0 +1,20 @@
+//packages:compiler-test-2: [node-test] {"event":"start","elapsedMs":0}
+//packages:compiler-test-2: [node-test] {"event":"output","elapsedMs":31,"file":"case.mjs","scope":"file","stream":"stdout","message":"ENOSPC SIGKILL\n"}
+//packages:compiler-test-2: [node-test] {"event":"output","elapsedMs":31,"file":"case.mjs","scope":"file","stream":"stderr","message":"ECONNRESET timed out after 5ms\n"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":37,"file":"case.mjs","scope":"file","message":"ENOSPC SIGKILL ECONNRESET timed out after 5ms"}
+//packages:compiler-test-2: [node-test] {"event":"failure","elapsedMs":39,"file":"case.mjs","line":13,"column":1,"name":"expected resource control","todo":"","error":"[Error [ERR_TEST_FAILURE]: expected control] {\n  code: 'ERR_TEST_FAILURE',\n  failureType: 'testCodeFailure',\n  cause: Error: expected control\n      at TestContext.<anonymous> (file:///<fixture>/case.mjs:15:9)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)\n      at Test.postRun (node:internal/test_runner/test:1522:19)\n      at Test.run (node:internal/test_runner/test:1447:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)\n}"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"tests 2"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"suites 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"pass 1"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"fail 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"cancelled 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"skipped 0"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"todo 1"}
+//packages:compiler-test-2: [node-test] {"event":"diagnostic","elapsedMs":49,"scope":"run","message":"duration_ms 63.868057"}
+//packages:compiler-test-2: [node-test] {"event":"summary","elapsedMs":49,"counts":{"tests":2,"failed":0,"passed":1,"cancelled":0,"skipped":0,"todo":1,"topLevel":2,"suites":0},"success":true}
+//packages:compiler-test-2: 
+//packages:migrate-test: [migrate-test] {"event":"start","elapsedMs":0,"filesSelected":1,"files":["case.mjs"]}
+//packages:migrate-test: [migrate-test] {"event":"failure-output","elapsedMs":40,"file":"case.mjs","scope":"file","output":"ENOSPC SIGKILL\nECONNRESET timed out after 5ms\n"}
+//packages:migrate-test: [migrate-test] {"event":"test-failed","elapsedMs":40,"file":"case.mjs","name":"expected resource control","todo":"","error":"[Error [ERR_TEST_FAILURE]: expected control] {\n  code: 'ERR_TEST_FAILURE',\n  failureType: 'testCodeFailure',\n  cause: Error: expected control\n      at TestContext.<anonymous> (file:///<fixture>/case.mjs:15:9)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)\n      at Test.postRun (node:internal/test_runner/test:1522:19)\n      at Test.run (node:internal/test_runner/test:1447:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)\n}"}
+//packages:migrate-test: [migrate-test] {"event":"complete","elapsedMs":52,"filesSelected":1,"filesCompleted":1,"missing":[],"counts":{"tests":2,"passed":1,"failed":0,"cancelled":0,"skipped":0,"todo":1},"success":true}
+//packages:migrate-test: 

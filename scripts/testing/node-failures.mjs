@@ -25,8 +25,10 @@ export default async function* failures(events) {
           colors: false, customInspect: false
         })
       })
-      else if (type === "test:stdout" || type === "test:stderr") yield data.message
-      else if (type === "test:diagnostic") yield line("diagnostic", { file, message: data.message })
+      else if (type === "test:stdout" || type === "test:stderr") yield line("output", {
+        file, scope: "file", stream: type.slice(5), message: data.message
+      })
+      else if (type === "test:diagnostic") yield line("diagnostic", { file, scope: file ? "file" : "run", message: data.message })
       else if (type === "test:summary") {
         if (file) {
           finished.add(file)

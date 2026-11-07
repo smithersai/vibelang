@@ -64,10 +64,22 @@ remain inside the displayed cell. Preformatted cells preserve edge spaces,
 repeated spaces and tabs, so distinct whitespace names remain distinguishable.
 
 For structured records, cause attribution and timeout detection read decoded
-error text, diagnostic messages and captured failure output. Test-name, file-name
+error text. Test-name, file-name
 and progress fields in these records supply no cause evidence. Marked `skip` and `todo` failure
 records are excluded even when their reason is empty. Incomplete records supply
 no diagnostic evidence; legacy plain-text diagnostics remain supported.
+
+Captured stdout, stderr and diagnostic records lack a test identity. The
+compiler reporter preserves each chunk as an `output` record with `scope: "file"`
+and its stream. Diagnostic records retain their `file` or `run` scope. Migration `failure-output` records have the same file scope.
+Compiler chunks are reassembled by file and stream before matching, without joining
+different origins or separate capture frames. Their possible causes appear separately as `unattributedCauses` in saved analysis
+and `Unattributed output` in the report. Each count is the number of failed runs
+containing that possible cause. These records cannot override attributed test
+errors or establish a timeout regression. Inspect the original log before
+assigning file output to a failure; it may come from a passing test or an
+expected control. Older unstructured compiler output retains its legacy treatment
+because those logs do not record the distinction.
 
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`
@@ -182,3 +194,10 @@ The `blank-names` eval uses `fixture-blank-names/`: four graph
 histories from eight actual reporter executions retain seven whitespace-only
 names and Node's anonymous-name control. The report must save every name,
 two failures per name and its returning-test observation in both test tables.
+
+The `output-scope` eval runs the actual flow on `fixture-output-scope/`. Eight
+actual reporter executions move identical stdout, stderr and diagnostic text between an expected
+control and an ordinary test. The report retains assertion attribution and all
+four file-output candidates with independent counts, while preserving failure
+names and duration checks. Regenerate it with
+`node .smithers/flows/ci-health/fixture-output-scope/record.mjs`.

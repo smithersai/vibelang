@@ -47,6 +47,7 @@ type Input = {
   readonly tests?: ReadonlyArray<string>;
   readonly exactTests?: boolean;
   readonly causes?: Readonly<Record<string, string>>;
+  readonly unattributedCauses?: Readonly<Record<string, Readonly<Record<string, number>>>>;
   readonly regressed?: Readonly<Record<string, number>>;
   readonly intermittent?: ReadonlyArray<string>;
 };
@@ -54,6 +55,7 @@ type Output = {
   readonly flaky: ReadonlyArray<string>;
   readonly tests: ReadonlyArray<string>;
   readonly causes: Readonly<Record<string, string>>;
+  readonly unattributedCauses: Readonly<Record<string, Readonly<Record<string, number>>>>;
   readonly slow: ReadonlyArray<string>;
   readonly regressed: Readonly<Record<string, number>>;
   readonly intermittent: ReadonlyArray<string>;
@@ -233,6 +235,24 @@ cases.push({
   } satisfies Input
 });
 
+// The same file output comes from an expected control, then a real failure.
+// Node cannot attribute it to either test; preserve that uncertainty in the report.
+cases.push({
+  name: "output-scope",
+  input: {
+    fixture: "fixture-output-scope",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: ["ordinary failure"],
+    exactTests: true,
+    intermittent: ["ordinary failure"],
+    regressed: {},
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" },
+    unattributedCauses: Object.fromEntries(["//packages:compiler-test-2", "//packages:migrate-test"]
+      .map(label => [label, { "disk full": 2, killed: 2, timeout: 2, connection: 2 }]))
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "3", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
@@ -246,9 +266,16 @@ const tests = score("tests", (i, o) => {
 });
 const rendered = score("rendered", (_, o) => Number(o.literalNames));
 const causes = score("causes", (i, o) => {
-  if (!i.causes) return 1;
-  const want = Object.entries(i.causes);
-  return want.filter(([t, c]) => o.causes[t] === c).length / want.length;
+  const checks = Object.entries(i.causes ?? {}).map(([t, c]) => o.causes[t] === c);
+  if (i.unattributedCauses) {
+    checks.push(exactly(Object.keys(i.unattributedCauses), Object.keys(o.unattributedCauses)) === 1);
+    for (const [label, want] of Object.entries(i.unattributedCauses)) {
+      const actual = o.unattributedCauses[label] ?? {};
+      checks.push(exactly(Object.keys(want), Object.keys(actual)) === 1);
+      for (const [name, count] of Object.entries(want)) checks.push(actual[name] === count);
+    }
+  }
+  return checks.length ? checks.filter(Boolean).length / checks.length : 1;
 });
 const slow = score("slow", (_, o) => o.slow.length > 0 && !o.slow.includes("//:cached") ? 1 : 0);
 const regressed = score("regressed", (i, o) => {
@@ -308,6 +335,7 @@ async function report(input: Input): Promise<Output> {
       literalNames: literalTable(markdown, "Flaky tests", "Intermittent tests", result.tests) &&
         literalTable(markdown, "Intermittent tests", "Slower targets", result.intermittent.slice(0, 30)),
       slow: result.slow,
+      unattributedCauses: Object.fromEntries(analysis.flaky.map((t: { label: string; unattributedCauses: Record<string, number> }) => [t.label, t.unattributedCauses])),
       causes: Object.fromEntries(analysis.flaky.map((t: { label: string; causes: Record<string, number> }) => [t.label, top(t.causes)])),
       regressed: Object.fromEntries(analysis.regressed.map((t: { label: string; timeouts: number }) => [t.label, t.timeouts]))
     };

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Health reports could mistake output from an expected test failure for a real resource failure or timeout. They now show file-level output separately from attributed test errors.
+
 - Multiline warnings could lose source excerpts containing a library URL; the complete warning now stays visible.
 
 - Project-reference builds accepted `--generateTrace` without creating trace files. They now write trace events, type data and a legend for every project they compile.

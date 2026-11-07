@@ -56,7 +56,7 @@ test("generated metadata cannot change the cause of actual reporter assertion er
   }
 })
 
-test("structured evidence retains actual error, diagnostic and captured-output causes", () => {
+test("structured evidence retains actual errors without attributing captured output or diagnostics", () => {
   for (const [prefix, event] of [["[node-test]", "failure"], ["[migrate-test]", "test-failed"]]) {
     for (const [error, expected] of signals) {
       assert.equal(cause([prefix + " " + JSON.stringify({event, name:"ordinary", file:"case.mjs", error})]), expected)
@@ -68,8 +68,8 @@ test("structured evidence retains actual error, diagnostic and captured-output c
       }
     }
   }
-  assert.equal(cause(['[node-test] ' + JSON.stringify({event:"diagnostic", file:"ENOSPC", message:"ECONNRESET"})]), "connection")
-  assert.equal(cause(['[migrate-test] ' + JSON.stringify({event:"failure-output", file:"SIGKILL", output:"ENOSPC"})]), "disk full")
+  assert.equal(cause(['[node-test] ' + JSON.stringify({event:"diagnostic", file:"ENOSPC", message:"ECONNRESET"})]), "unknown")
+  assert.equal(cause(['[migrate-test] ' + JSON.stringify({event:"failure-output", file:"SIGKILL", output:"ENOSPC"})]), "unknown")
   const hash = "ab".repeat(32)
   const archive = "parser.go:1:2: could not import example (open cache/ab/" + hash + "-d: no such file or directory)"
   assert.equal(cause(['[node-test] ' + JSON.stringify({event:"failure", error:"wrapper\n" + archive})]), "Go cache archive")
