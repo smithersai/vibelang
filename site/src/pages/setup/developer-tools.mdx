@@ -327,9 +327,13 @@ The ESLint configuration carries applicable core, TypeScript and JS plugin
 rules. It also supplies `oxc/no-accumulating-spread`, checked against upstream
 Oxlint's reducer and loop behavior. A file-list runner fails with the names of
 enabled JS plugin rules that the plugin does not define, rather than silently
-skipping them. When the default correctness category is enabled,
-typescript-eslint's recommended rules provide the existing ESLint fallback;
-turning that category off disables that fallback. Rules of Effect's language
+skipping them. When the default correctness category is enabled and installed
+Oxlint cannot resolve the rules, typescript-eslint's recommended rules provide
+the existing ESLint fallback; turning that category off disables that fallback.
+Where installed Oxlint resolves the rules, they are the whole set, so a `.vibe`
+file gets no rule its `.ts` original does not. A configuration written as a
+module, `oxlint.config.ts` or one a lint script names with `-c`, is read
+through installed Oxlint's `--print-config`. Rules of Effect's language
 service remain with `vibelang lint` (VIP-38).
 
 The mapped `no-unused-vars` rule counts `typeof` reads as Oxlint does,

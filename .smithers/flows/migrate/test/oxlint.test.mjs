@@ -114,7 +114,8 @@ test("setup reports unsupported block filters and updates a filter that already 
 // The CLI contract is independent of the lint engines: keep the diagnostic
 // shape, selected file set, severities and exit status when two engines run.
 import { spawnSync } from "node:child_process"
-import { existsSync, symlinkSync } from "node:fs"
+import { existsSync, readdirSync, realpathSync, symlinkSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 function adapterFixture(t) {
   const root = fixture(t, {
     "package.json": JSON.stringify({ type: "module", scripts: { lint: "bun runner.ts" } }),
@@ -577,4 +578,63 @@ test("adapter rejects explicitly named missing source files with a useful diagno
     verify
   ), { numRuns: 36 })
   assert.equal(run("src/*.vibe").status, 0, "an unmatched glob retains the runner's existing empty-selection policy")
+})
+
+// alchemy-eslint-typescript-config-parity (redis Client): the .vibe ESLint
+// pass read only .oxlintrc.json, so a repository's oxlint.config.ts was never
+// read and typescript-eslint's recommended rules stood in for it. One of them,
+// no-empty-object-type, reported `export interface Child extends Parent {}`,
+// which Oxlint does not report on the .ts original.
+const smithersModules = fileURLToPath(new URL("../../../node_modules", import.meta.url))
+const eslintModules = fileURLToPath(new URL("../../../../packages/compiler/test/eslint/node_modules", import.meta.url))
+const oxlintInstalled = existsSync(join(smithersModules, ".bin/oxlint"))
+const typescriptEslintInstalled = existsSync(join(eslintModules, "typescript-eslint"))
+function oxlintToolFixture(t, entries, { tool = true, tseslint = false } = {}) {
+  const root = fixture(t, {
+    "package.json": '{"type":"module","scripts":{"lint":"oxlint"}}',
+    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+    "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }",
+    ...entries,
+  })
+  if (tool) {
+    mkdirSync(join(root, "node_modules/.bin"), { recursive: true })
+    symlinkSync(join(smithersModules, "oxlint"), join(root, "node_modules/oxlint"))
+    symlinkSync(realpathSync(join(smithersModules, ".bin/oxlint")), join(root, "node_modules/.bin/oxlint"))
+  }
+  if (tseslint) symlinkSync(join(eslintModules, "typescript-eslint"), join(root, "node_modules/typescript-eslint"))
+  return root
+}
+const scriptConfig = body => `import { defineConfig } from "oxlint"\nexport default defineConfig(${body})\n`
+
+test("corpus: a TypeScript Oxlint configuration reaches .vibe files through Oxlint's own loading", { skip: !oxlintInstalled && "install .smithers" }, async t => {
+  const root = oxlintToolFixture(t, { "oxlint.config.ts": scriptConfig('{ categories: { correctness: "off" }, rules: { "no-debugger": "warn" }, overrides: [{ files: ["src/**"], rules: { "no-console": "error" } }] }') })
+  wireDeveloperTools({ root, specsFor, ts })
+  const { default: configs } = await import(join(root, ".vibelang/eslint.config.mjs"))
+  assert.deepEqual(configs.at(-1).files, [["src/**", "**/*.{vibe,vibex}"]])
+  assert.equal([configs.at(-1).rules["no-console"]].flat()[0], "error")
+  assert.equal([configs.at(-2).rules["no-debugger"]].flat()[0], "warn")
+})
+
+test("a lint script's -c names a TypeScript configuration, which loads the same way", { skip: !oxlintInstalled && "install .smithers" }, async t => {
+  const root = oxlintToolFixture(t, {
+    "package.json": '{"type":"module","scripts":{"lint":"oxlint -c lint/strict.config.ts"}}',
+    "lint/strict.config.ts": scriptConfig('{ categories: { correctness: "off" }, rules: { "no-debugger": "warn" } }'),
+  })
+  wireDeveloperTools({ root, specsFor, ts })
+  const file = readdirSync(join(root, ".vibelang")).find(name => /^eslint\..+\.config\.mjs$/.test(name) && name !== "eslint.config.mjs")
+  assert.ok(file, "the named configuration gets its own ESLint configuration")
+  const { default: configs } = await import(join(root, ".vibelang", file))
+  assert.equal([configs.at(-1).rules["no-debugger"]].flat()[0], "warn")
+})
+
+test("where Oxlint resolves the rules, typescript-eslint's recommended rules do not stand in for them", { skip: (!oxlintInstalled || !typescriptEslintInstalled) && "install .smithers and packages/compiler/test/eslint" }, async t => {
+  const resolved = oxlintToolFixture(t, { "oxlint.config.ts": scriptConfig('{ plugins: ["typescript"], rules: { "no-debugger": "error" } }') }, { tseslint: true })
+  wireDeveloperTools({ root: resolved, specsFor, ts })
+  const carried = carriedRules((await import(join(resolved, ".vibelang/eslint.config.mjs"))).default)
+  assert.equal(carried.has("@typescript-eslint/no-empty-object-type"), false)
+  assert.equal(carried.has("no-debugger"), true)
+  // Without the tool there is no resolution, and the recommended rules still stand in.
+  const unresolved = oxlintToolFixture(t, { ".oxlintrc.json": "{}" }, { tool: false, tseslint: true })
+  wireDeveloperTools({ root: unresolved, specsFor, ts })
+  assert.equal(carriedRules((await import(join(unresolved, ".vibelang/eslint.config.mjs"))).default).has("@typescript-eslint/no-empty-object-type"), true)
 })
