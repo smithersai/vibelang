@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1021 records)</summary>
+<summary>Parser and lowering hooks (1022 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1995,6 +1995,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-async-method ` | ` admission:schema-async-method ` | ` - ` | ` pending ` | VIP-15: a schema object-type alias reports only `EK2109` for an `async` method signature, covering native `TS1070` |
 | ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-signature-parameter-modifier ` | ` admission:schema-signature-parameter-modifier ` | ` - ` | ` pending ` | VIP-15: a schema object-type alias reports only `EK2109` for a call signature, covering native parameter-modifier rejection |
 | ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-static-method ` | ` admission:schema-static-method ` | ` - ` | ` pending ` | VIP-15: a `static` schema-alias method reports only `EK2109`, covering native `TS1070` |
+| ` parser/vibelang.go:Parser.vibelangSchemaProperties@schema-signature-reserved-binding ` | ` admission:schema-signature-reserved-binding ` | ` - ` | ` pending ` | VIP-15: a schema-alias signature reports only `EK2109` for a strict-mode reserved parameter binding, covering native `TS1212` |
 
 </details>
 

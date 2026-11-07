@@ -89,7 +89,7 @@ func TestGrammarAdmissionSchemaSignatureKeys(t *testing.T) {
 		"schema S = { f(readonly value: Missing): Missing }":          "admission:schema-signature-parameter-modifier",
 		"schema S = { f(value: number, public x: Missing): Missing }": "admission:schema-signature-parameter-modifier",
 		"schema S = { (value: Missing): Missing }":                    "",
-		"schema S = { (static: Missing): Missing }":                   "",
+		"schema S = { (static: Missing): Missing }":                   "admission:schema-signature-reserved-binding",
 		"type S = { (static static) }":                                "",
 		"schema S = { fork:\nasync\nasync Missing\n}":                 "admission:schema-async-field",
 	} {

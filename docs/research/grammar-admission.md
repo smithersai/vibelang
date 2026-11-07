@@ -641,3 +641,14 @@ The alias mapping explains these masked diagnostics.
 whose value is a flagged `Schema.Unknown` placeholder;
 `checkSchemaValue` reports `EK2109` for that placeholder. The generated
 companion type does not retain the original unsupported member shape.
+
+A reserved binding in a schema-alias signature has its own
+`admission:schema-signature-reserved-binding` family. For example,
+`schema S = { readonly; (static) }` reports only `EK2109`, while its
+TypeScript twin reports `TS1212`. The strict-mode binding words remain
+reserved in typed, optional, rest and destructured parameters.
+This is separate from a parameter modifier: `(static static)` retains
+`admission:schema-signature-parameter-modifier`.
+The classifier reads binding positions; property keys, type references
+and initializer expressions do not become reserved parameter bindings.
+The compiler is unchanged and the known witnesses remain pending.

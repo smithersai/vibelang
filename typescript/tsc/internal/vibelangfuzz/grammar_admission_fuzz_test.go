@@ -264,6 +264,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-async-last-alias-field", "schema S = { fork:\nasync\nasync Missing\n}"},
 	{"native-static-schema-error", "schema error S { static async async\nid: Missing }"},
 	{"schema-static-method", "schema S = { static id() }"},
+	{"schema-signature-reserved-binding", "schema S = { readonly; (static) }"},
+	{"schema-signature-reserved-destructure", "schema S = { ({p: static}: Missing): Missing }"},
+	{"schema-signature-reserved-rest", "schema S = { (...static: Missing[]): Missing }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1039,6 +1042,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarSchemaSignatureParameterModifier(ts) {
 		return "admission:schema-signature-parameter-modifier"
+	}
+	if grammarSchemaSignatureReservedBinding(ts) {
+		return "admission:schema-signature-reserved-binding"
 	}
 	if grammarInvalidImportMeta(ts) {
 		return "admission:import-meta-property"
