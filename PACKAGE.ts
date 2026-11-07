@@ -1602,7 +1602,7 @@ const targets = {
     sandbox: "none",
     timeout: "30m"
   }),
-  "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
+  "docs-check": check("Generated docs, tracked-leak and case-collision checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
   // The compiler corpus runs as `//typescript/vibelang/...`, one cached target
   // per case, through the binary users run.
   "go-vibelang": goVibelang(

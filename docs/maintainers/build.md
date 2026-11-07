@@ -407,6 +407,8 @@ queue:
 | `//:go-module-highlights` | Module reference/rename and document-highlight implementations and regression tests; verifies merged module bindings in ordinary and multi-document highlighting. |
 | `//:go-vibelang-fix-twins` | a non-test Go source in the parser, `internal/vibelang/` or `internal/effectglobals/` |
 
+`//:docs-check` also runs `docs/tools/check-case-collisions.mjs`, which fails when two tracked paths, or two of their directories, differ only by letter case. A macOS or Windows checkout folds case, keeps one of the two files and reports the other as deleted, so a commit made there deletes it. Rename such a file so its name differs by more than case; a Go fuzz seed under `testdata/fuzz/<target>/` may take any name.
+
 The complete parser package takes less than a second after compilation and includes the clash-corpus expectations. Parser and corpus changes select it from their first matching train.
 
 The runtime package check runs the existing entrypoint, export-identity and Effect-version tests, plus 500 generated error-matcher subclass histories and checks the README's public export table after building the runtime. It takes about eight seconds after the build. It joins the first matching train, without waiting for a post-merge receipt: adding a helper to the main entry while omitting it from the guarded entry must fail before landing.
