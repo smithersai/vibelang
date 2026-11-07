@@ -74,6 +74,26 @@ func (p *declarationIdentityProbePool) Compare(ctx context.Context, api, before,
 	}
 }
 
+// Preflight runs the stock API preflight in a pooled worker; its errors read
+// as the cold command's do.
+func (p *declarationIdentityProbePool) Preflight(ctx context.Context, api, dir string) ([]byte, error) {
+	if api != p.api {
+		return nil, fmt.Errorf("declaration identity worker API mismatch")
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case worker := <-p.slots:
+		defer func() { p.slots <- worker }()
+		worker.label = p.label
+		records, err := worker.preflight(ctx, dir)
+		if err != nil {
+			return nil, fmt.Errorf("stock declaration API preflight failed: %w", err)
+		}
+		return records, nil
+	}
+}
+
 type identityStderr struct {
 	sync.Mutex
 	data []byte
@@ -150,38 +170,61 @@ func (w *declarationIdentityWorker) stop() {
 	w.uses = 0
 }
 func (w *declarationIdentityWorker) compare(ctx context.Context, before, after string) (string, error) {
+	diff, _, err := w.exchange(ctx, "", before, after)
+	return diff, err
+}
+
+// preflight returns the stock API preflight's JSON error records for the
+// emitted baseline in root, as the cold command prints them.
+func (w *declarationIdentityWorker) preflight(ctx context.Context, root string) ([]byte, error) {
+	_, records, err := w.exchange(ctx, "preflight", root, "")
+	return records, err
+}
+
+func (w *declarationIdentityWorker) exchange(ctx context.Context, kind, first, second string) (string, []byte, error) {
 	started := time.Now()
 	if err := ctx.Err(); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if w.cmd == nil {
 		if err := w.start(); err != nil {
-			return "", fmt.Errorf("start declaration identity worker: %w", err)
+			return "", nil, fmt.Errorf("start declaration identity worker: %w", err)
 		}
 	}
 	w.serial++
 	w.probes++
 	request := struct {
 		ID       uint64 `json:"id"`
+		Kind     string `json:"kind,omitempty"`
+		Root     string `json:"root,omitempty"`
 		Baseline string `json:"baseline"`
 		Current  string `json:"current"`
-	}{w.serial, before, after}
+	}{ID: w.serial, Kind: kind}
+	stage, what := "worker", "probe"
+	if kind == "preflight" {
+		request.Root = first
+		stage, what = "preflight-worker", "preflight"
+	} else {
+		request.Baseline, request.Current = first, second
+	}
 	if err := json.NewEncoder(w.input).Encode(request); err != nil {
 		stderr := w.stderr
 		w.failures++
 		w.stop()
-		return "", fmt.Errorf("declaration identity worker write: %w exit=%s: %.1200s", err, w.lastExit, stderr.String())
+		return "", nil, fmt.Errorf("declaration identity worker write: %w exit=%s: %.1200s", err, w.lastExit, stderr.String())
 	}
 	type reply struct {
-		ID    uint64 `json:"id"`
-		Diff  string `json:"diff"`
-		Error string `json:"error"`
-		Stats struct {
+		ID      uint64          `json:"id"`
+		Diff    string          `json:"diff"`
+		Records json.RawMessage `json:"records"`
+		Error   string          `json:"error"`
+		Stats   struct {
 			Lookups, Hits int64
 			Entries       int
 			RSS           int64
 			CPU           struct{ User, System int64 }
 			WallMs        float64
+			Files         struct{ Lookups, Hits, Entries int64 }
 			Documents     struct{ Reads, Hits, Resets, TextBytes int64 }
 		}
 	}
@@ -207,13 +250,13 @@ func (w *declarationIdentityWorker) compare(ctx context.Context, before, after s
 	case <-ctx.Done():
 		w.failures++
 		w.stop()
-		return "", fmt.Errorf("declaration identity worker interrupted after %s: %w", time.Since(started).Round(time.Millisecond), ctx.Err())
+		return "", nil, fmt.Errorf("declaration identity worker interrupted after %s: %w", time.Since(started).Round(time.Millisecond), ctx.Err())
 	case result := <-done:
 		if result.err != nil || result.reply.ID != w.serial {
 			stderr := w.stderr
 			w.failures++
 			w.stop()
-			return "", fmt.Errorf("declaration identity worker protocol after %s: %v (reply %d, request %d) exit=%s: %.1200s", time.Since(started).Round(time.Millisecond), result.err, result.reply.ID, w.serial, w.lastExit, stderr.String())
+			return "", nil, fmt.Errorf("declaration identity worker protocol after %s: %v (reply %d, request %d) exit=%s: %.1200s", time.Since(started).Round(time.Millisecond), result.err, result.reply.ID, w.serial, w.lastExit, stderr.String())
 		}
 		w.cacheHits += result.reply.Stats.Hits - w.lastHits
 		w.cacheLookups += result.reply.Stats.Lookups - w.lastLookups
@@ -224,7 +267,7 @@ func (w *declarationIdentityWorker) compare(ctx context.Context, before, after s
 		w.lastDocumentReads, w.lastDocumentHits, w.lastDocumentResets = result.reply.Stats.Documents.Reads, result.reply.Stats.Documents.Hits, result.reply.Stats.Documents.Resets
 		w.peakDocumentText = max(w.peakDocumentText, result.reply.Stats.Documents.TextBytes)
 		w.peakRSS = max(w.peakRSS, result.reply.Stats.RSS)
-		declarationCostRecord(w.label, "worker", map[string]any{"probe": w.serial, "cpu_seconds": float64(result.reply.Stats.CPU.User+result.reply.Stats.CPU.System) / 1e6, "wall_seconds": result.reply.Stats.WallMs / 1000, "rss_bytes": result.reply.Stats.RSS, "cache_hits": result.reply.Stats.Hits, "cache_lookups": result.reply.Stats.Lookups})
+		declarationCostRecord(w.label, stage, map[string]any{"probe": w.serial, "cpu_seconds": float64(result.reply.Stats.CPU.User+result.reply.Stats.CPU.System) / 1e6, "wall_seconds": result.reply.Stats.WallMs / 1000, "rss_bytes": result.reply.Stats.RSS, "cache_hits": result.reply.Stats.Hits, "cache_lookups": result.reply.Stats.Lookups, "file_hits": result.reply.Stats.Files.Hits, "file_lookups": result.reply.Stats.Files.Lookups, "file_entries": result.reply.Stats.Files.Entries})
 		w.uses++
 		// Release V8/compiler state on a fixed request bound, without dropping or
 		// retrying an input. The next distinct request starts a fresh worker.
@@ -233,9 +276,9 @@ func (w *declarationIdentityWorker) compare(ctx context.Context, before, after s
 		}
 		if result.reply.Error != "" {
 			w.failures++
-			return "", fmt.Errorf("declaration identity worker probe after %s: %s", time.Since(started).Round(time.Millisecond), result.reply.Error)
+			return "", nil, fmt.Errorf("declaration identity worker %s after %s: %s", what, time.Since(started).Round(time.Millisecond), result.reply.Error)
 		}
-		return result.reply.Diff, nil
+		return result.reply.Diff, result.reply.Records, nil
 	}
 }
 
@@ -361,6 +404,52 @@ func TestDeclarationIdentityWorkerRegisteredParity(t *testing.T) {
 				if !ok || !other || strings.TrimSuffix(before, "\n") != strings.TrimSuffix(after, "\n") {
 					t.Fatalf("cold/warm diagnostic changed: %v / %v", coldErr, warmErr)
 				}
+			}
+		})
+	}
+}
+
+// File diagnostics persist across a worker's comparisons under the gate's
+// environment keys. A dependency whose global script changes between inputs,
+// at the same paths and with the dependency's own text unchanged, must be
+// checked again: the warm verdict always equals a cold process's.
+func TestDeclarationIdentityWorkerFileReuseEnvironment(t *testing.T) {
+	api := declarationIdentityAPI(t)
+	pool := newDeclarationIdentityProbePool(t, api, 1)
+	dirs := []string{t.TempDir(), t.TempDir()}
+	for _, row := range []struct {
+		name, ambient, code string
+	}{
+		{"declared", "declare type Ambient = number;\n", ""},
+		{"removed", "declare type Other = number;\n", "TS2304"},
+		{"restored", "declare type Ambient = number;\n", ""},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			for _, dir := range dirs {
+				for name, text := range map[string]string{
+					"index.d.ts":                    "import type { Value } from \"dep\";\nexport type Public = Value;\n",
+					"node_modules/dep/package.json": `{"name":"dep","version":"1.0.0","types":"index.d.ts"}`,
+					"node_modules/dep/index.d.ts":   "/// <reference path=\"./globals.d.ts\" />\nexport type Value = { a: Ambient };\n",
+					"node_modules/dep/globals.d.ts": row.ambient,
+				} {
+					if err := writeInside(dir, name, text); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			cold, coldErr := compareIdentityDeclarations(t.Context(), api, dirs[0], dirs[1])
+			warm, warmErr := pool.Compare(t.Context(), api, dirs[0], dirs[1])
+			if cold != warm || (coldErr == nil) != (warmErr == nil) {
+				t.Fatalf("cold=%q %v; worker=%q %v", cold, coldErr, warm, warmErr)
+			}
+			if row.code == "" {
+				if coldErr != nil || cold != "" {
+					t.Fatalf("declared ambient type must compare identical: %q %v", cold, coldErr)
+				}
+				return
+			}
+			if !strings.Contains(coldErr.Error(), row.code) || !strings.Contains(warmErr.Error(), row.code) {
+				t.Fatalf("the dependency's %s must be reported again: %v / %v", row.code, coldErr, warmErr)
 			}
 		})
 	}

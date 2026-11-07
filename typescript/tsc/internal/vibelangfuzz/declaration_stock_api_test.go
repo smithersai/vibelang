@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -24,6 +27,30 @@ func TestDeclarationIdentityStockAPIQuoted(t *testing.T) {
 // namespace-as-type TS2709 makes this baseline ineligible. Missing dependencies
 // and other failures remain failures, not missing-environment/pending waivers.
 func declarationIdentitySuppressedStockAPI(ctx context.Context, api, dir string, stock Project) (string, error) {
+	return declarationIdentitySuppressedStockAPIWith(ctx, api, dir, stock, coldStockAPIRecords)
+}
+
+// stockAPIRecords returns the stock API preflight's JSON error records for the
+// emitted baseline in dir: declaration_stock_api_preflight.mjs's result.
+type stockAPIRecords func(ctx context.Context, api, dir string) ([]byte, error)
+
+// coldStockAPIRecords runs the preflight in a new Node process.
+func coldStockAPIRecords(ctx context.Context, api, dir string) ([]byte, error) {
+	const script = `import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+const [preflight, api, root] = process.argv.slice(1);
+const { stockAPIPreflight } = await import(pathToFileURL(preflight));
+console.log(JSON.stringify(stockAPIPreflight(createRequire(import.meta.url)(api), root)));`
+	module := filepath.Join(Root(), "typescript/tsc/internal/vibelangfuzz/declaration_stock_api_preflight.mjs")
+	cmd := exec.CommandContext(ctx, "node", "--input-type=module", "-e", script, module, api, dir)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("stock declaration API preflight failed: %w: %.1200s", err, out)
+	}
+	return out, nil
+}
+
+func declarationIdentitySuppressedStockAPIWith(ctx context.Context, api, dir string, stock Project, preflight stockAPIRecords) (string, error) {
 	suppressed := false
 	for name, text := range stock.Files {
 		if isTypeScript(name) && !isDeclaration(name) && (strings.Contains(text, "@ts-expect-error") || strings.Contains(text, "@ts-ignore")) {
@@ -34,35 +61,9 @@ func declarationIdentitySuppressedStockAPI(ctx context.Context, api, dir string,
 	if !suppressed {
 		return "", nil
 	}
-	const script = `import { createRequire } from "node:module";
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
-const [api, root] = process.argv.slice(1), ts = createRequire(import.meta.url)(api);
-const config = ts.readConfigFile(join(root,"tsconfig.json"), ts.sys.readFile);
-if(config.error) throw Error(ts.flattenDiagnosticMessageText(config.error.messageText,"\\n"));
-const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root);
-if(parsed.errors.length) throw Error(ts.formatDiagnosticsWithColorAndContext(parsed.errors,{getCanonicalFileName:x=>x,getCurrentDirectory:()=>root,getNewLine:()=>"\\n"}));
-const roots = [];
-function visit(dir) {
- for(const entry of readdirSync(dir,{withFileTypes:true})) {
-  const file=join(dir,entry.name);
-  if(entry.isDirectory()) visit(file);
-  else if(/\.d\.[cm]?ts$/.test(entry.name)) roots.push(file);
- }
-}
-visit(join(root,"__identity_out")); roots.sort();
-if(!roots.length) throw Error("stock emitted no declaration roots");
-const program = ts.createProgram(roots,{...parsed.options,noEmit:true,skipLibCheck:false});
-const errors = roots.flatMap(file => {
- const source=program.getSourceFile(file);
- if(!source) throw Error("stock declaration root was not loaded: "+file);
- return [...program.getSyntacticDiagnostics(source),...program.getSemanticDiagnostics(source)];
-}).filter(d=>d.category===ts.DiagnosticCategory.Error);
-console.log(JSON.stringify(errors.map(d=>({code:d.code,file:d.file?.fileName,text:ts.flattenDiagnosticMessageText(d.messageText,"\\n")}))));`
-	cmd := exec.CommandContext(ctx, "node", "--input-type=module", "-e", script, api, dir)
-	out, err := cmd.CombinedOutput()
+	out, err := preflight(ctx, api, dir)
 	if err != nil {
-		return "", fmt.Errorf("stock declaration API preflight failed: %w: %.1200s", err, out)
+		return "", err
 	}
 	var records []struct {
 		Code       int
@@ -135,6 +136,64 @@ func TestDeclarationIdentitySuppressionAPIControls(t *testing.T) {
 				t.Fatal("preflight changed the emitted declaration")
 			}
 		})
+	}
+}
+
+// The worker preflight shares parsed dependency declarations between programs.
+// For every control, twice through one warm worker, it returns the cold
+// command's exact records and the same eligibility verdict.
+func TestDeclarationIdentityPreflightWorkerParity(t *testing.T) {
+	w := NewWorkspace(t)
+	api, tsc := declarationIdentityAPI(t), StockTypeScript(t)
+	pool := newDeclarationIdentityProbePool(t, api, 1)
+	effect := "import * as Effect from \"effect/Effect\"\n"
+	sources := map[string]string{
+		"canonical":             effect + "export type Canonical=Effect.Effect<number>\n",
+		"exported":              effect + "// @ts-expect-error A namespace is not a type.\nexport type Wrong=Effect<number>\nexport type Canonical=Effect.Effect<number>\n",
+		"local":                 effect + "// @ts-expect-error This local misuse does not escape the API.\ntype Local=Effect<string>\nexport type Public=Effect.Effect<string>\n",
+		"erased-import":         effect + "// @ts-expect-error This unresolved export must not be waived.\nexport type Wrong=Effect<boolean>\n",
+		"unrelated-suppression": "// @ts-expect-error Intentional local assignment failure.\nconst local:string=1\nexport const value=1\n",
+		"unresolved-export":     "// @ts-ignore Deliberately unresolved, never a namespace-type eligibility waiver.\nexport type Missing=import(\"pmfix-stock-api-missing-package\").Missing\n",
+	}
+	names := slices.Sorted(maps.Keys(sources))
+	nonEmpty := 0
+	for round := range 2 {
+		for _, name := range names {
+			t.Run(fmt.Sprintf("%s/%d", name, round), func(t *testing.T) {
+				stock, _, why := declarationIdentityProjects(Archive(map[string]string{"main.ts": sources[name]}))
+				if why != "" {
+					t.Fatal(why)
+				}
+				dir := emitDeclarationIdentityStock(t, w, tsc, stock)
+				defer os.RemoveAll(dir)
+				cold, coldErr := coldStockAPIRecords(t.Context(), api, dir)
+				warm, warmErr := pool.Preflight(t.Context(), api, dir)
+				if coldErr != nil || warmErr != nil {
+					t.Fatalf("preflight records: cold %v; worker %v", coldErr, warmErr)
+				}
+				var coldRecords, warmRecords []map[string]any
+				if err := json.Unmarshal(cold, &coldRecords); err != nil {
+					t.Fatal(err)
+				}
+				if err := json.Unmarshal(warm, &warmRecords); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(coldRecords, warmRecords) {
+					t.Fatalf("worker preflight changed the records:\ncold   %s\nworker %s", cold, warm)
+				}
+				if len(coldRecords) > 0 {
+					nonEmpty++
+				}
+				coldReason, coldVerdict := declarationIdentitySuppressedStockAPI(t.Context(), api, dir, stock)
+				warmReason, warmVerdict := declarationIdentitySuppressedStockAPIWith(t.Context(), api, dir, stock, pool.Preflight)
+				if coldReason != warmReason || (coldVerdict == nil) != (warmVerdict == nil) {
+					t.Fatalf("eligibility changed: cold %q %v; worker %q %v", coldReason, coldVerdict, warmReason, warmVerdict)
+				}
+			})
+		}
+	}
+	if nonEmpty < 2*3 {
+		t.Fatalf("vacuous parity: %d of %d preflights reported errors; want the three erroneous controls in both rounds", nonEmpty, 2*len(names))
 	}
 }
 
