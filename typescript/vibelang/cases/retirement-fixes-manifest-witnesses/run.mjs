@@ -24,7 +24,7 @@ fs.symlinkSync(process.env.VIBELANG_RUNTIME || path.join(repo, "packages/runtime
 const files = dir => fs.readdirSync(path.join(repo, dir), { recursive: true, withFileTypes: true })
   .filter(e => e.isFile()).map(e => path.relative(repo, path.join(e.parentPath, e.name)).split(path.sep).join("/"))
   // Untracked declaration sidecars stay out, as the gate's jj snapshot leaves them out.
-  .filter(p => !/\/(?:out|node_modules|\.cache[^/]*)\//.test(p) && !/\.d\.vibex?\.ts$/.test(p))
+  .filter(p => !/\/(?:out|node_modules|\.cache[^/]*)\//.test(p) && !/\.d\.vibex?\.ts$/.test(p) && !/\.vibex?\..+\.d\.ts$/.test(p))
 const failures = []
 let witnesses = 0
 try {

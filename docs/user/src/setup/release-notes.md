@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Replaying a migration example after compilation could report a compiler-generated declaration as an extra source file. Replays now ignore generated declaration companions and retain authored declarations.
+
 - The migration example for incomplete `Stream` results omitted its type assertions before the repair. It now retains those assertions from input to repaired output.
 
 - Examples with declaration snapshots could be rejected despite a valid repair. Declaration snapshots now stay separate from the source being repaired.
