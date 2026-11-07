@@ -77,14 +77,39 @@ function argumentOf(ts, node) {
   return null
 }
 
+// Effect's constructors whose generator argument is an Effect's body.
+const effectBodyRunners = new Set(["gen", "genUntraced", "fn", "fnUntraced", "fnUntracedEager"])
+
+/**
+ * Whether node, a generator, is the body of an Effect: the argument of
+ * Effect.gen, or of Effect.fn and its kin, directly or after a name
+ * (`Effect.fn("name")(function* ...)`), under any import name. Its yields
+ * carry the Effect's failures and requirements, so a written `Generator<...>`
+ * type erases them: alchemy's Fly SecretProvider declared
+ * `Layer<Provider<Secret>, never, unknown>` under `Generator<any, Attributes, any>`.
+ */
+function effectBody(ts, checker, node) {
+  if (!node.asteriskToken) return false
+  const call = node.parent
+  if (!call || !ts.isCallExpression(call) || !call.arguments.includes(node)) return false
+  const callee = ts.isCallExpression(call.expression) ? call.expression.expression : call.expression
+  const name = ts.isPropertyAccessExpression(callee) ? callee.name : ts.isIdentifier(callee) ? callee : null
+  if (!name || !effectBodyRunners.has(name.text)) return false
+  let symbol = checker.getSymbolAtLocation(name)
+  if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol)
+  return !!symbol?.declarations?.some((d) => /[\\/]effect[\\/]/.test(d.getSourceFile().fileName))
+}
+
 /**
  * A function the toolchain would make an Effect function: written with no
- * modifier and no return annotation, not a callback (argumentOf) unless it is
- * an overloaded reader's (overloadedReader).
+ * modifier and no return annotation, not an Effect's generator body
+ * (effectBody), not a callback (argumentOf) unless it is an overloaded
+ * reader's (overloadedReader).
  */
 function candidate(ts, checker, node) {
   if (!(ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node))) return false
   if (!node.body || node.type) return false
+  if (effectBody(ts, checker, node)) return false
   if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) return false
   if (ts.isMethodDeclaration(node) && !(ts.isClassLike(node.parent) || ts.isObjectLiteralExpression(node.parent))) return false
   if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) && ts.isClassLike(node.parent)) return true
