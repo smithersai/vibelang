@@ -63,7 +63,8 @@ no target arguments. A failed install retains its diagnostic and nonzero exit
 status; provisioned `node_modules` symlinks stay with their owner.
 
 `scripts/ci.sh` installs what the targets read (`.smithers`, the runtime, the
-compiler package, `packages/compiler/test/tools`, `experiments`, `docs/tools`) from their lockfiles, then runs
+compiler package, `packages/compiler/test/tools`, `packages/create-vibelang`,
+`packages/vite`, `experiments`, `docs/tools`) from their lockfiles, then runs
 `smthrs ci`, which runs build and test targets alike. `explain` prints a
 target's inputs, its key and whether the cache holds a result for it.
 
@@ -2468,3 +2469,8 @@ Two targets can report failures with the same name without losing points
 when the expected name set matches. The joint actual-reporter fixture keeps
 both targets and their independent counters; generated repetitions and
 permutations check that grading still penalizes missing and extra names.
+
+The isolated compiler-tool and source-map fixtures install the Vite plugin's
+runtime dependencies from their own pinned manifests. Copied plugins resolve
+those dependencies beside their private compiler peer, without writing to a
+plugin install another target may be using.

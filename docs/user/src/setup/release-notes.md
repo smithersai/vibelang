@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Fresh checkout checks could fail to load the Vite plugin because its runtime dependencies were missing. Starter and isolated tool checks now install and resolve those dependencies.
+
 - Foreign constructors and tagged templates could leave `EK0403` behind after `--fix`. Supported synchronous invocations now receive explicit defect bridges, and generator repairs include constructors.
 
 - The diagnostic inventory could report retired `EK4705` even though the compiler emits `EK0707`. Numeric assignments in unrelated files no longer invent mapper diagnostic codes.
