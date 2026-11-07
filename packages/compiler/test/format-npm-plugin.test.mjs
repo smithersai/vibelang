@@ -24,7 +24,7 @@ function project() {
   symlinkSync(dirname(require.resolve("dprint/package.json")), join(dir, "node_modules", "dprint"), "junction")
   writeFileSync(join(dir, "dprint.json"), JSON.stringify({
     plugins: [typescriptPlugin, "npm:vibelang/dprint-plugin.json"],
-    typescript: { semiColons: "asi", quoteStyle: "alwaysDouble" },
+    typescript: { semicolons: "asi", quoteStyle: "alwaysDouble" },
   }))
   const previousCache = process.env.DPRINT_CACHE_DIR
   process.env.DPRINT_CACHE_DIR = join(dir, "dprint-cache")

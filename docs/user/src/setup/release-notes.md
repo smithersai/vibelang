@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Formatting a file with several adjacent conditional returns could fail with `Formatting not stable`. The bundled TypeScript formatter now reaches a stable layout for these files.
+
 - Migration could refuse matching APIs when a declaration was emitted on only one side. It now compares the saved original source against the other side's declaration, while still rejecting changed types, documentation and invalid source.
 
 - Migration API checks could reject unchanged inferred generic types after declarations moved behind a re-export. They now follow the public export and still reject changed types or documentation.

@@ -67,7 +67,7 @@ function createDprint() {
     const dir = mkdtempSync(join(tmpdir(), "vibe-format-oracle-"))
     try {
       const config = join(dir, "dprint.json")
-      writeFileSync(config, JSON.stringify({ lineWidth: style.lineWidth, plugins: [typescriptPlugin, manifest + "@" + createHash("sha256").update(readFileSync(manifest)).digest("hex")], typescript: { semiColons: "asi", quoteStyle: style.quoteStyle } }))
+      writeFileSync(config, JSON.stringify({ lineWidth: style.lineWidth, plugins: [typescriptPlugin, manifest + "@" + createHash("sha256").update(readFileSync(manifest)).digest("hex")], typescript: { semicolons: "asi", quoteStyle: style.quoteStyle } }))
       const result = spawnSync(process.execPath, [dprintBin, "fmt", "--config", config, "--stdin", join(root, file)], { input: text, cwd: root, encoding: "utf8" })
       return result.status === 0 ? result.stdout : null
     } finally { rmSync(dir, { recursive: true, force: true }) }

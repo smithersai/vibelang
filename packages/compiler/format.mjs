@@ -9,7 +9,10 @@ import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import { cacheDirectory, parseJsonc, prepare } from "./cache.mjs"
 
-export const typescriptPlugin = "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"
+export const typescriptPlugin = "https://plugins.dprint.dev/typescript-0.97.1.wasm@3be85494ff8141c412535e659cbe3d764ed3a740375c929be48393ed20a9d429"
+// The newer parser rejects generic callbacks inside JSX expressions and adds
+// JSX children for text spaces. Keep the established TSX projection compatible.
+const tsxTypescriptPlugin = "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"
 
 // The quote style and print width of a file with no formatter configuration.
 export const defaultStyle = { quoteStyle: "alwaysDouble", lineWidth: 120 }
@@ -77,7 +80,7 @@ export function repositoryStyle(filePath) {
 const unreadable = (path, why) =>
   new Error(`${path}: vibelang-format reads the quote style and print width from JSON configurations only (${why}); format .vibe files with Prettier's vibelang/prettier plugin, which reads every Prettier configuration`)
 
-function withConfig(style, action) {
+function withConfig(style, filePath, action) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-format-"))
   try {
     // Keep npm process references in their package context, including when
@@ -85,10 +88,11 @@ function withConfig(style, action) {
     mkdirSync(join(dir, "node_modules"))
     symlinkSync(fileURLToPath(new URL(".", import.meta.url)), join(dir, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir")
     const config = join(dir, "dprint.json")
+    const tsx = /\.(?:vibex|tsx)$/i.test(filePath)
     writeFileSync(config, JSON.stringify({
       lineWidth: style.lineWidth,
-      plugins: [typescriptPlugin, "npm:vibelang/dprint-plugin.json@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
-      typescript: { semiColons: "asi", quoteStyle: style.quoteStyle }
+      plugins: [tsx ? tsxTypescriptPlugin : typescriptPlugin, "npm:vibelang/dprint-plugin.json@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
+      typescript: { [tsx ? "semiColons" : "semicolons"]: "asi", quoteStyle: style.quoteStyle }
     }))
     return action(config)
   } finally { rmSync(dir, { recursive: true, force: true }) }
@@ -116,7 +120,7 @@ function formatText(text, filePath, style, flags = []) {
     filePath = filePath.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
   }
   try {
-    return withConfig(style, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
+    return withConfig(style, filePath, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
   } catch (error) {
     throw new Error(`${requestedPath}: ${error.message}`, { cause: error })
   }
@@ -139,7 +143,7 @@ function cleanTexts() {
   try {
     prepare(location)
     const plugin = readFileSync(new URL("./dprint-plugin.json", import.meta.url))
-    const file = join(location.path, `format-clean-${createHash("sha256").update(plugin).update(typescriptPlugin).update(process.cwd()).digest("hex").slice(0, 32)}.txt`)
+    const file = join(location.path, `format-clean-${createHash("sha256").update(plugin).update(typescriptPlugin).update(tsxTypescriptPlugin).update(process.cwd()).digest("hex").slice(0, 32)}.txt`)
     let text = ""
     try { text = readFileSync(file, "utf8") } catch {}
     const known = new Set(text.split("\n").filter(Boolean))
@@ -193,11 +197,11 @@ function formatBatch(files, clean) {
     catch { continue }
     const key = textKey(style, input, file)
     if (clean.has(key)) { results.set(file, { input, output: input, key }); continue }
-    const group = JSON.stringify(style)
-    if (!groups.has(group)) groups.set(group, { style, entries: [] })
+    const group = JSON.stringify([style, /\.(?:vibex|tsx)$/i.test(file)])
+    if (!groups.has(group)) groups.set(group, { style, filePath: file, entries: [] })
     groups.get(group).entries.push({ file, input, key })
   }
-  for (const { style, entries } of groups.values()) withConfig(style, config => {
+  for (const { style, filePath, entries } of groups.values()) withConfig(style, filePath, config => {
     const known = discoverable(config)
     const listed = entries.filter(entry => known.has(resolve(entry.file)))
     if (listed.length === 0) return

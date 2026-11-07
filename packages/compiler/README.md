@@ -424,7 +424,7 @@ it beside dprint's TypeScript plugin, and add `vibe` to `includes`:
 {
   "includes": ["**/*.{ts,vibe}"],
   "plugins": [
-    "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a",
+    "https://plugins.dprint.dev/typescript-0.97.1.wasm@3be85494ff8141c412535e659cbe3d764ed3a740375c929be48393ed20a9d429",
     "npm:vibelang/dprint-plugin.json"
   ]
 }
