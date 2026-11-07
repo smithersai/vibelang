@@ -125,6 +125,8 @@ The compiler supplies intrinsic annotations for TypeScript's lib globals and the
 | --- | --- | --- |
 | `JSON.parse(s)` | `SyntaxError` | `try Effect.try(() => JSON.parse(s))` |
 | `Math.max(1, 2)` | `never` | call directly |
+| `new TextDecoder().decode(bytes)`, or `decoder.decode(bytes)` with `const decoder = new TextDecoder("utf-8", { ignoreBOM: true })` | `never` | call directly |
+| `decoder.decode(bytes)` with `decoder` a parameter, a `let`, or made with `fatal: true` | `TypeError` | `try Effect.try(() => decoder.decode(bytes))` |
 | `Option.some(1)` with a written `@throws {never}` contract | `never` | call directly |
 | `Schema.decodeUnknownSync(Schema.String)` or `Schema.decodeSync(Schema.String)` with a written `@throws {never}` contract | `never` | call directly to build the decoder |
 | `decode(value)` for that decoder | `SchemaError` | `try Effect.try(() => decode(value))` |

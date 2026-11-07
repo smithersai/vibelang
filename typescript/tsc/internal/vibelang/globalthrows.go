@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
 // JavaScript's globals carry no @throws tags in TypeScript's lib files, so
@@ -53,6 +54,70 @@ var globalThrowsCurated = map[string]string{
 	"atob":                       "DOMException",
 	"btoa":                       "DOMException",
 	"structuredClone":            "DOMException",
+}
+
+// replacingDecoderDecode reports whether call is decode on a TextDecoder
+// made without fatal: true, which throws nothing. By the Encoding standard,
+// decode throws TypeError only when the decoder's error mode is "fatal",
+// which the constructor sets from options.fatal; any other decoder replaces
+// malformed input with U+FFFD. VibeLang knows the mode only when the
+// receiver is new TextDecoder(…) of the global class, or a const whose
+// initializer is one, and the options are absent or an object literal whose
+// fatal, if written, is false. Any other receiver, such as a parameter, a
+// let, or options held in a variable, keeps the table's TypeError.
+func replacingDecoderDecode(c *checker.Checker, call *ast.Node) bool {
+	callee := ast.SkipParentheses(call.Expression())
+	if !ast.IsPropertyAccessExpression(callee) && !ast.IsElementAccessExpression(callee) {
+		return false
+	}
+	receiver := ast.SkipParentheses(callee.Expression())
+	if ast.IsIdentifier(receiver) {
+		symbol := c.GetSymbolAtLocation(receiver)
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol == nil {
+			return false
+		}
+		d := symbol.ValueDeclaration()
+		if d == nil || !ast.IsVariableDeclaration(d) || !ast.IsIdentifier(d.Name()) || !ast.IsVarConst(d) || d.Initializer() == nil {
+			return false
+		}
+		receiver = ast.SkipParentheses(d.Initializer())
+	}
+	if !ast.IsNewExpression(receiver) || !ast.IsIdentifier(receiver.Expression()) || receiver.Expression().Text() != "TextDecoder" ||
+		!isGlobalOf(c.GetSymbolAtLocation(receiver.Expression()), func(f *ast.SourceFile) bool { return isLibFile(c, f) }) {
+		return false
+	}
+	args := receiver.Arguments()
+	for _, arg := range args {
+		if ast.IsSpreadElement(arg) {
+			return false
+		}
+	}
+	if len(args) < 2 {
+		return true
+	}
+	options := ast.SkipParentheses(args[1])
+	if !ast.IsObjectLiteralExpression(options) {
+		return false
+	}
+	for _, property := range options.Properties() {
+		name := property.Name()
+		if name == nil {
+			return false // a spread, which may set fatal
+		}
+		if ast.IsComputedPropertyName(name) && !ast.IsStringOrNumericLiteralLike(name.Expression()) {
+			return false
+		}
+		if ast.GetPropertyNameForPropertyNameNode(name) != "fatal" {
+			continue
+		}
+		if !ast.IsPropertyAssignment(property) || ast.SkipParentheses(property.Initializer()).Kind != ast.KindFalseKeyword {
+			return false
+		}
+	}
+	return true
 }
 
 // globalThrowsUnknown is the table's value for a member that may throw anything.

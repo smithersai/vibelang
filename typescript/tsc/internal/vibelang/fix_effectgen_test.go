@@ -226,7 +226,7 @@ func TestEffectGenProgramValueIsHeld(t *testing.T) {
 
 // A call whose throw a generator meets as a defect stays one: written bare in
 // the block, its class would join E. Smithers' Route and ElectricCollection kept
-// their generators over this (new TextDecoder().decode, TS2375).
+// their generators over this (a fatal TextDecoder's decode, TS2375).
 func TestEffectGenTrackedThrowStaysDefect(t *testing.T) {
 	const wrapped = "try Effect.orDie(Effect.try({ try: () => JSON.parse(s), catch: (e) => e }))"
 	for _, test := range []struct{ name, source, want string }{
@@ -235,7 +235,7 @@ func TestEffectGenTrackedThrowStaysDefect(t *testing.T) {
 		{"an operand", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  return JSON.parse(s) as number\n})\n", "(" + wrapped + ") as number"},
 		{"a member of its result", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  return JSON.parse(s).length\n})\n", "(" + wrapped + ").length"},
 		{"the outermost call only", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  return JSON.parse(decodeURIComponent(s))\n})\n", "try: () => JSON.parse(decodeURIComponent(s)), catch"},
-		{"a member of a value", "export const f = (b: Uint8Array): Effect.Effect<string> => Effect.gen(function* () {\n  yield* Effect.void\n  return new TextDecoder().decode(b)\n})\n", "try: () => new TextDecoder().decode(b), catch"},
+		{"a member of a value", "export const f = (b: Uint8Array): Effect.Effect<string> => Effect.gen(function* () {\n  yield* Effect.void\n  return new TextDecoder(\"utf-8\", { fatal: true }).decode(b)\n})\n", "try: () => new TextDecoder(\"utf-8\", { fatal: true }).decode(b), catch"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got, ok := effectGenQuickFix(t, test.source)
@@ -249,8 +249,9 @@ func TestEffectGenTrackedThrowStaysDefect(t *testing.T) {
 	}
 	// What already says its failure stays as it is.
 	for name, source := range map[string]string{
-		"a boundary":  "export const f = (s: string) => Effect.gen(function* () {\n  return yield* Effect.try(() => JSON.parse(s))\n})\n",
-		"a math call": "export const f = (n: number) => Effect.gen(function* () {\n  yield* Effect.void\n  return Math.max(n, 1)\n})\n",
+		"a boundary":          "export const f = (s: string) => Effect.gen(function* () {\n  return yield* Effect.try(() => JSON.parse(s))\n})\n",
+		"a math call":         "export const f = (n: number) => Effect.gen(function* () {\n  yield* Effect.void\n  return Math.max(n, 1)\n})\n",
+		"a replacing decoder": "const decoder = new TextDecoder()\nexport const f = (b: Uint8Array) => Effect.gen(function* () {\n  yield* Effect.void\n  return decoder.decode(b)\n})\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, ok := effectGenQuickFix(t, source)

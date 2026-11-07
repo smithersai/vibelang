@@ -1,0 +1,16 @@
+// expect-result: [["ok",65533,65533,65533,65533],[3,3,3,3]]
+// A TextDecoder whose options do not set fatal replaces malformed input with
+// U+FFFD, so its decode throws nothing: plain functions may call it.
+const decoder = new TextDecoder()
+const labelled = new TextDecoder("utf-8", { ignoreBOM: true })
+const explicit = new TextDecoder("utf-8", { fatal: false })
+export function text(bytes: Uint8Array): string { return decoder.decode(bytes) }
+export function inline(bytes: Uint8Array): string { return new TextDecoder().decode(bytes) }
+export function lines(chunks: ReadonlyArray<Uint8Array>): string[] { return chunks.map((chunk) => labelled.decode(chunk)) }
+export function lenient(bytes: Uint8Array): string { return explicit.decode(bytes) }
+export function grouped(bytes: Uint8Array): string { return (new TextDecoder("utf-8", {})).decode(bytes) }
+export effect function main() {
+  const bad = new Uint8Array([0x61, 0xff, 0x62])
+  const decoded = [inline(bad), lines([bad])[0], lenient(bad), grouped(bad)]
+  return [[text(new TextEncoder().encode("ok")), ...decoded.map((s) => s.charCodeAt(1))], decoded.map((s) => s.length)]
+}

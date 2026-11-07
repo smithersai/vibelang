@@ -518,9 +518,14 @@ func classFailure(c *checker.Checker, name string, symbol *ast.Symbol) (failure,
 // builtinTrust returns the trust of the built-in that decl, a lib file's
 // declaration, declares: the classes VibeLang's annotation of it lists
 // (globalThrowsTable) are expected failures, and a built-in the table does
-// not annotate throws unknown (VIP-4).
+// not annotate throws unknown (VIP-4). decode on a TextDecoder known to be
+// made without fatal: true throws never (replacingDecoderDecode).
 func builtinTrust(c *checker.Checker, call *ast.Node, decl *ast.Node) *trust {
-	names, known := globalThrowsOf(globalKey(decl))
+	key := globalKey(decl)
+	if key == "TextDecoder.decode" && replacingDecoderDecode(c, call) {
+		return &trust{kind: trustBuiltin} // throws never
+	}
+	names, known := globalThrowsOf(key)
 	if !known {
 		return &trust{kind: trustForeign, promise: returnsPromise(c, call)}
 	}

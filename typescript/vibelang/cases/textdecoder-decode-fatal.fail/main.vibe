@@ -1,0 +1,13 @@
+// expect: EK0401 EK0401 EK0401 EK0401 EK0401 EK0401
+// decode throws TypeError on malformed input when the decoder was made with
+// fatal: true, and VibeLang keeps TypeError for any receiver it cannot prove
+// was made without it.
+const fatal = new TextDecoder("utf-8", { fatal: true })
+let reassigned = new TextDecoder()
+const options: TextDecoderOptions = {}
+export function strict(bytes: Uint8Array): string { return fatal.decode(bytes) }
+export function mutable(bytes: Uint8Array): string { return reassigned.decode(bytes) }
+export function given(decoder: TextDecoder, bytes: Uint8Array): string { return decoder.decode(bytes) }
+export function configured(bytes: Uint8Array): string { return new TextDecoder("utf-8", options).decode(bytes) }
+export function flagged(flag: boolean, bytes: Uint8Array): string { return new TextDecoder("utf-8", { fatal: flag }).decode(bytes) }
+export function spread(bytes: Uint8Array): string { return new TextDecoder("utf-8", { ...options }).decode(bytes) }

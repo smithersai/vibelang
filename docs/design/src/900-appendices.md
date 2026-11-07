@@ -2521,6 +2521,7 @@ These are the annotations [Thrown types](003-failures.md#thrown-types) refers to
 | Function | Annotation |
 | --- | --- |
 | `JSON.parse` | `@throws {SyntaxError}` |
+| `TextDecoder.prototype.decode` | `@throws {TypeError}`, except `@throws {never}` when the receiver is `new TextDecoder(…)`, or a `const` whose initializer is one, and its options argument is absent or an object literal with no spread and no computed key other than a string or number literal, whose `fatal` property, if any, is written `fatal: false`. The Encoding standard throws `TypeError` from `decode` only when the decoder's error mode is fatal, which `fatal: true` sets; any other decoder replaces malformed input with U+FFFD |
 | `Math.max`, `Date.now`, `Option.some` | `@throws {never}` |
 | `Schema.decodeUnknownSync`, `Schema.decodeSync` | `@throws {never}`: they only build a decoder |
 | the constructors of `Data.TaggedError` and `Data.taggedEnum` variants: `new NotFound({ id })`, `Delivery.Sent({ … })` | `@throws {never}` |

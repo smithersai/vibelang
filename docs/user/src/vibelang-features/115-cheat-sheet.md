@@ -875,7 +875,7 @@ function firstFailure(outcome: Exit.Exit<User, NotFound>) {
 
 **Wrap TypeScript calls**. Call a known nonthrowing function directly. Wrap a potentially throwing function with `Effect.try`. Use `sync` for a function that can't throw; when a function may throw and its failure should be a defect, use `orDie(Effect.try(() => …))`. Always wrap Promises: `tryPromise` for a function that may throw, `promise` for one that can't. Callback arrows capture locals normally.
 
-**Built-in exceptions.** VibeLang ships `@throws` annotations for JavaScript's globals: `JSON.parse` throws `SyntaxError`, and `decodeURI` and `decodeURIComponent` throw `URIError`. Wrap these calls with `Effect.try` before running them with `try` in an effect function. Use its `catch` option to map the error. Inside TypeScript's `Effect.gen`, a plain `JSON.parse` throw is a defect.
+**Built-in exceptions.** VibeLang ships `@throws` annotations for JavaScript's globals: `JSON.parse` throws `SyntaxError`, and `decodeURI` and `decodeURIComponent` throw `URIError`. `decode` on a `TextDecoder` throws `TypeError` only when the decoder was made with `fatal: true`, so `new TextDecoder().decode(bytes)`, or `decode` on a `const` made that way without `fatal: true`, needs no wrapper. Wrap these calls with `Effect.try` before running them with `try` in an effect function. Use its `catch` option to map the error. Inside TypeScript's `Effect.gen`, a plain `JSON.parse` throw is a defect.
 
 Use injected services for platform APIs that Effect covers. Keep `node:*` value imports and Node.js globals in a `.ts` companion file. The following companions supply the foreign APIs for this comparison:
 

@@ -8066,6 +8066,9 @@ typescript/vibelang/cases/terse-contracts/main.vibe:60:42 lambda plain table
 typescript/vibelang/cases/terse-contracts/main.vibe:76:22 lambda effectFn keyword
 typescript/vibelang/cases/terse-contracts/main.vibe:77:26 byname program annotation
 typescript/vibelang/cases/terse-contracts/main.vibe:78:26 byname program annotation
+typescript/vibelang/cases/textdecoder-decode-replacement/main.vibe:15:103 lambda plain table
+typescript/vibelang/cases/textdecoder-decode-replacement/main.vibe:15:65 lambda plain table
+typescript/vibelang/cases/textdecoder-decode-replacement/main.vibe:9:88 lambda plain table
 typescript/vibelang/cases/throw-cause-object/main.vibe:14:19 lambda dual fallback
 typescript/vibelang/cases/throw-cause-object/main.vibe:24:145 lambda plain fallback
 typescript/vibelang/cases/throw-cause-object/main.vibe:24:36 lambda choice fallback
