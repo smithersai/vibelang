@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A producer method after a class field without a semicolon could disappear from the editor's TypeScript output or fail to emit. The mapper now keeps the field and method separate.
+
 - Adding VibeLang with Bun could disable a project's existing dependency resolutions. The install guides now add the Effect helper pin to the table Bun already uses.
 
 - A health report could show space-padded or tabbed test names as the same name. Reports now preserve their spacing in both test tables.
