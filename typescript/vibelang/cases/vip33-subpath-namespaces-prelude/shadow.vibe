@@ -1,0 +1,3 @@
+// An import shadows the prelude's subpath namespace (VIP-14).
+import { HttpClient } from "./local.ts"
+export const imported = HttpClient.label

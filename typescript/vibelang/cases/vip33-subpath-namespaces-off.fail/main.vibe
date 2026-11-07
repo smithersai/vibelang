@@ -1,0 +1,9 @@
+// expect: EK4402 TS2304
+// With vibe.effectModules off, the subpath namespaces leave scope:
+// HttpClient, Path and ChildProcess resolve to nothing, and FileSystem is
+// lib.dom's host global again (vip33-subpath-namespaces-prelude).
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#e6ded71d7db14c05 | **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with VIP-14's precedence rules.
+export const client = HttpClient
+export const files = FileSystem
+export const joiner = Path
+export const process = ChildProcess
