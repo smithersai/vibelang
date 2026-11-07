@@ -13,12 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
-- Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
-
-- The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.
-
-- The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
-
+- The migration kept a module in TypeScript when a top-level statement read the host, such as `if (process.env.FLAG) { … }` or a runner's `NodeRuntime.runMain(…)` reading `process.argv`, because that statement cannot move into a `module` body without running early. The statement now stays where it is, and only its host reads and writes move into the body as helpers it calls in place.
 - After an unresolved import was repaired, Rollup could stop responding to later edits. It now keeps rebuilding source and type-only changes through error recovery.
 
 - Converting a named Effect generator could narrow a generic service requirement and change its public type. The converted function now keeps the original requirement, including through pipeline stages.
@@ -292,6 +287,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - With a compiler before VIP-1, the migrate flow marked a function `: infer _` when it returned the Effect of a module converted in the same batch, and the converted module failed `EK9203`. The flow now reads that module's types from its TypeScript source and keeps such functions Effect functions.
 
 - The migrate flow kept a factory in TypeScript when its platform code read a private type of the module, even when the factory's return type never mentioned that type. The flow now checks the return type with the module's own tsconfig, and a factory whose result does not expose the private type converts; one that exposes it, or whose type it cannot fully resolve, still stays in TypeScript.
+
+- Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
+
+- The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.
+
+- The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
 
 ### Upgrade from 0.0.12
 

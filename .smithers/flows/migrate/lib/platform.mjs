@@ -1003,11 +1003,12 @@ function firstLine(source, statement) {
 // value moves with it, since a declaration cannot read it through a body's
 // value otherwise. A body cannot hold import.meta (EK4009), nor a module export = (EK4008).
 // A top-level statement keeps its place only among its neighbours, and a body
-// evaluates when imported, so a module with one to move stays TypeScript. So
-// does a module left with no value of its own: a body holding the whole file is
-// a .ts file with a harder name. A declaration that would move but reads
-// import.meta, or a value that would move only because moved code reads it,
-// stays instead, and only the module's host operations move (hostOperations).
+// evaluates when imported, so such a statement never moves: it stays where it
+// stands, and only its host operations move (hostOperations), called in place.
+// A module left with no value of its own stays TypeScript: a body holding the
+// whole file is a .ts file with a harder name. A declaration that would move but
+// reads import.meta, or a value that would move only because moved code reads
+// it, stays instead, and only the module's host operations move.
 
 /**
  * Splits the TypeScript module text of file into a module with a module body.
@@ -1070,18 +1071,28 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   const value = (d) => !typeOnly(d) && !reexport(d)
   const dragged = platformCode && !metaReader && !declarations.some((d) => value(d) && !moved.has(d)) &&
     declarations.some((d) => value(d) && !platformSeed.includes(d) && !throwSeed.includes(d))
+  const movable = (s) => ts.isVariableStatement(s) || ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isEnumDeclaration(s) || ts.isExportAssignment(s) || typeNamespace(s, ts)
+  // A statement that runs in order among the module's statements, the platform
+  // code would take into the body, stays too: a body evaluates when imported,
+  // before the module's own statements, while a helper called where the
+  // statement performed the operation keeps the order of evaluation. Throwing
+  // code still moves whole.
+  const ordered = platformCode && !metaReader ? [...close(platformSeed)].find((d) => !movable(d.statement)) : undefined
   let operations = null
-  if (metaReader || dragged) {
+  if (metaReader || dragged || ordered) {
     moved = close(throwSeed)
     const names = new Set()
     const collect = (node) => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, collect) }
     collect(source)
     operations = hostOperations(source, declarations.filter((d) => !moved.has(d)).map((d) => d.statement), platform, ts, names, file)
-    if (operations.refused) return { refused: metaReader
-      ? `${file}: ${firstLine(source, metaReader.statement)} reads import.meta, which a module body cannot (EK4009), and its host operations cannot move on their own: ${operations.refused}`
-      : `${file}: moving its platform code would take every value of the module, and its host operations cannot move on their own: ${operations.refused}` }
+    if (operations.refused) {
+      const why = metaReader
+        ? `${firstLine(source, metaReader.statement)} reads import.meta, which a module body cannot (EK4009)`
+        : ordered ? `${firstLine(source, ordered.statement)} runs in order among the module's statements, so it cannot move to a module body`
+        : "moving its platform code would take every value of the module"
+      return { refused: `${file}: ${why}, and its host operations cannot move on their own: ${operations.refused}` }
+    }
   }
-  const movable = (s) => ts.isVariableStatement(s) || ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isEnumDeclaration(s) || ts.isExportAssignment(s) || typeNamespace(s, ts)
   for (const d of moved) {
     if (!movable(d.statement)) return { refused: `${file}: ${firstLine(source, d.statement)} runs in order among the module's statements, so it cannot move to a module body` }
     if (readsImportMeta(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which a module body cannot (EK4009)` }
