@@ -1,0 +1,13 @@
+// expect:
+// Appendix B: EK4810 — spec-rule: docs/design/src/900-appendices.md#073824c25099e067
+// An assertion that removes a failure from an Effect's error channel is a
+// warning by default; an assertion that keeps the channel is not.
+error NotFound { id: string }
+
+export function dropped(program: number!NotFound) {
+  return program as number!!
+}
+
+export function kept(program: number!NotFound) {
+  return program as number!NotFound
+}

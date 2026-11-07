@@ -1,0 +1,14 @@
+// expect:
+// Appendix B: EK4817 — spec-rule: docs/design/src/900-appendices.md#5fea487a123560c6
+// instanceof against a Schema class is off by default and a warning when
+// enabled.
+export class Person extends Schema.Class<Person>("Person")({ name: Schema.String }) {}
+
+export function silent(value: unknown) {
+  return value instanceof Person
+}
+
+// @vibelang-diagnostics EK4817:warning
+export function enabled(value: unknown) {
+  return value instanceof Person
+}

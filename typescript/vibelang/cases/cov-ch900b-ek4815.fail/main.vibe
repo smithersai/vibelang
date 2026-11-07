@@ -1,0 +1,13 @@
+// expect:
+// Appendix B: EK4815 — spec-rule: docs/design/src/900-appendices.md#27cb4815189792bb
+// Throwing an Effect value as an Effect failure is a warning by default;
+// throwing the intended error value is not.
+error NotFound { id: string }
+
+export effect function thrown(program: number!NotFound) {
+  throw program
+}
+
+export effect function intended(id: string) {
+  throw new NotFound({ id })
+}

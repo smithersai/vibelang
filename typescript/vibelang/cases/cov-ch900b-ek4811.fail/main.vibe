@@ -1,0 +1,12 @@
+// expect:
+// Appendix B: EK4811 — spec-rule: docs/design/src/900-appendices.md#60733b5590d79a42
+// unknown entering an Effect's error channel is off by default and a warning
+// when enabled.
+export effect function silent(cause: unknown) {
+  throw cause
+}
+
+// @vibelang-diagnostics EK4811:warning
+export effect function enabled(cause: unknown) {
+  throw cause
+}
