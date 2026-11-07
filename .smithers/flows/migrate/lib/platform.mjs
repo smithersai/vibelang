@@ -144,11 +144,11 @@ export const platformPath = (file) => file.replace(/\.(m?ts|tsx|vibex)$/, (_, ex
  * builtin as a value and reads none of globals, the host globals to move
  * (platformGlobalsOf).
  */
-export function splitPlatform(text, file, ts, { globals = [] } = {}) {
+export function splitPlatform(text, file, ts, { globals = [], returnsAvoid } = {}) {
   const meta = splitImportMeta(text, file, platformPath(file), ts)
-  if (!meta) return splitDeclarationsPlatform(text, file, ts, { globals })
+  if (!meta) return splitDeclarationsPlatform(text, file, ts, { globals, returnsAvoid })
   if (meta.refused) return meta
-  const declarations = splitDeclarationsPlatform(meta.module, file, ts, { globals })
+  const declarations = splitDeclarationsPlatform(meta.module, file, ts, { globals, returnsAvoid })
   if (declarations?.refused) return declarations
   const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
   meta.platform = [...directives, meta.platform].join("\n")
@@ -165,7 +165,7 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
 
 const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
+function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
@@ -306,12 +306,17 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   // private class or enum, has no name there (TS4058), so an exported type the
   // moved code reads is imported from the module instead of copied, and a
   // private one keeps the module in TypeScript.
-  const inferred = wrappers.find((w) => w.inferred && !returnsOnlyElements(w.d.statement, ts))
-  if (inferred) {
-    const unnamed = [...copied].find((d) => typeOnly(d) && !d.exported) ??
-      [...moved].find((d) => !d.exported && (ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement)))
-    if (unnamed) return { refused: `${file}: export ${inferred.name} has an inferred return type that may name ${[...unnamed.names].join(", ")}, which only ${posix.basename(platformPath(file))} would declare, so the module's declarations would change` }
-    for (const d of [...copied]) if (typeOnly(d)) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
+  // returnsAvoid(name, types), when the caller has a type checker, proves that
+  // export name's return type names none of types; a proved export keeps its
+  // wrapper beside them (splitBatchPlatform supplies it from the module's tsconfig).
+  const inferredWrappers = wrappers.filter((w) => w.inferred && !returnsOnlyElements(w.d.statement, ts))
+  if (inferredWrappers.length) {
+    const unnamed = [...[...copied].filter((d) => typeOnly(d) && !d.exported),
+      ...[...moved].filter((d) => !d.exported && (ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement)))]
+    const unnamedNames = unnamed.flatMap((d) => [...d.names])
+    const inferred = unnamed.length ? inferredWrappers.find((w) => !returnsAvoid?.(w.name, unnamedNames)) : undefined
+    if (inferred) return { refused: `${file}: export ${inferred.name} has an inferred return type that may name ${[...unnamed[0].names].join(", ")}, which only ${posix.basename(platformPath(file))} would declare, so the module's declarations would change` }
+    for (const d of [...copied]) if (typeOnly(d) && d.exported) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
   }
   if (moved.size === declarations.length && !wrappers.length) return { refused: `${file} is platform code only` }
   // A private type the module kept for the moved code alone is the sibling's
@@ -421,6 +426,59 @@ function publishedSiblingRisk(root, file, { exists, read }) {
 }
 
 /**
+ * A type checker over file as its tsconfig compiles it, or null when none can
+ * be built. The returned returnsAvoid(name, types) says whether export name's
+ * return type provably names none of types, the module's own private types:
+ * it walks type arguments, unions, intersections and the structures this file
+ * declares, and an `any` it meets (an import the checker could not resolve,
+ * such as a .vibe module) proves nothing.
+ */
+export function checkedReturns(root, file, ts) {
+  const path = resolve(root, file)
+  let program
+  try {
+    const config = ts.findConfigFile(dirname(path), ts.sys.fileExists)
+    const parsed = config ? ts.getParsedCommandLineOfConfigFile(config, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} }) : undefined
+    program = ts.createProgram({ rootNames: [path], options: { ...(parsed?.options ?? {}), noEmit: true } })
+  } catch {
+    return null
+  }
+  const source = program.getSourceFile(path)
+  const checker = program.getTypeChecker()
+  const module = source && checker.getSymbolAtLocation(source)
+  if (!module) return null
+  return (name, types) => {
+    const symbol = checker.getExportsOfModule(module).find((s) => s.name === name)
+    if (!symbol) return false
+    const wanted = new Set(types)
+    const own = (s) => (s?.declarations ?? []).some((d) => d.getSourceFile() === source)
+    const seen = new Set()
+    let proven = true
+    const visit = (type, depth) => {
+      if (!proven || !type || seen.has(type)) return
+      seen.add(type)
+      if (depth > 16 || type.flags & ts.TypeFlags.Any) { proven = false; return }
+      for (const s of [type.aliasSymbol, type.symbol]) if (s && wanted.has(s.name) && own(s)) { proven = false; return }
+      for (const t of type.aliasTypeArguments ?? []) visit(t, depth + 1)
+      for (const t of type.types ?? []) visit(t, depth + 1)
+      if (!(type.flags & ts.TypeFlags.Object)) return
+      if (type.objectFlags & ts.ObjectFlags.Reference) for (const t of checker.getTypeArguments(type)) visit(t, depth + 1)
+      // Another module's named type cannot name this module's private types,
+      // except through its type arguments, visited above.
+      if (!own(type.symbol)) return
+      for (const p of checker.getPropertiesOfType(type)) visit(checker.getTypeOfSymbolAtLocation(p, source), depth + 1)
+      for (const info of checker.getIndexInfosOfType(type)) visit(info.type, depth + 1)
+      for (const s of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
+        visit(checker.getReturnTypeOfSignature(s), depth + 1)
+        for (const p of s.parameters) visit(checker.getTypeOfSymbolAtLocation(p, source), depth + 1)
+      }
+    }
+    for (const s of checker.getTypeOfSymbolAtLocation(symbol, source).getCallSignatures()) visit(checker.getReturnTypeOfSignature(s), 0)
+    return proven
+  }
+}
+
+/**
  * Splits each batch file that imports a builtin as a value, or reads a host
  * global globalsOf(file) names, writing <Name>.platform.ts beside it.
  * Returns { splits, refused }: the files written, and why each other file
@@ -437,7 +495,8 @@ export function splitBatchPlatform(root, files, ts, {
   throwBodies = true,
   exists = file => existsSync(join(root, file)),
   read = file => readFileSync(join(root, file), "utf8"),
-  write = (file, text) => writeFileSync(join(root, file), text)
+  write = (file, text) => writeFileSync(join(root, file), text),
+  returnsAvoidOf = file => checkedReturns(root, file, ts)
 } = {}) {
   const splits = []
   const refused = []
@@ -469,7 +528,13 @@ export function splitBatchPlatform(root, files, ts, {
     if (!/\.(?:m?ts|tsx|vibex)$/.test(file) || /\.d\.(?:m?ts|tsx|vibex)$/.test(file)) continue
     const sibling = platformPath(file)
     if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
-    const result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
+    let result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
+    // A refusal only an inferred return type's possible private names caused
+    // is retried with a type checker that proves which exports avoid them.
+    if (result?.refused && / has an inferred return type that may name /.test(result.refused)) {
+      const returnsAvoid = returnsAvoidOf(file)
+      if (returnsAvoid) result = splitPlatform(read(file), file, ts, { globals: globalsOf(file), returnsAvoid })
+    }
     // Code that throws in plain code reports EK0401 in a .vibe module; a body
     // keeps it TypeScript, the 2026-10-31 ruling's "ts module using module syntax".
     // An export the body holds is re-exported: its `x.vibe.throwing.d.ts`

@@ -1,0 +1,25 @@
+{
+  "source": "opencode p05 cause C factories, minimized: virtualizer, chromium and queue return no private type; pane's register parameter names Target",
+  "modules": [
+    {
+      "file": "virtualizer.ts",
+      "text": "type Projection = { readonly key: string; readonly height: number }\n\nexport function createTimelineVirtualizer(input: { readonly keys: readonly string[] }) {\n  const project = (key: string): Projection => ({ key, height: 1 })\n  const heights = new Map(input.keys.map((key) => [key, project(key).height] as const))\n  setTimeout(() => {}, 0)\n  return { disclosure: { value: (key: string) => heights.get(key) ?? 0 }, size: () => heights.size }\n}\n",
+      "split": true
+    },
+    {
+      "file": "chromium.ts",
+      "text": "type Element = { readonly selector: string }\n\nexport function createBrowserPage(url: string) {\n  const elements: Element[] = [{ selector: \"body\" }]\n  setTimeout(() => {}, 0)\n  return { url, ready: Promise.resolve(undefined), count: () => elements.length }\n}\n",
+      "split": true
+    },
+    {
+      "file": "queue.ts",
+      "text": "type EditStash = { readonly text: string }\n\nexport function createSessionQueue(input: { readonly sessionID: string }) {\n  let editing: { id: string; stash: EditStash } | undefined\n  setTimeout(() => {}, 0)\n  return {\n    id: input.sessionID,\n    editing: () => editing?.id,\n    startEdit: (id: string, text: string) => { editing = { id, stash: { text } } },\n  }\n}\n",
+      "split": true
+    },
+    {
+      "file": "pane.ts",
+      "text": "type Target = { readonly window: number }\n\nexport function createBrowserPane() {\n  const targets: Target[] = []\n  setTimeout(() => {}, 0)\n  return { register(target: Target) { targets.push(target) }, count: () => targets.length }\n}\n",
+      "split": false
+    }
+  ]
+}
