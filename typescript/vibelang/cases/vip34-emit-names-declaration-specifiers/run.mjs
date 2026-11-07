@@ -103,7 +103,9 @@ try {
 
     // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#83b28e1d15dc1f66 | Compatibility sidecars instead keep VibeLang source references such as `./user.vibe` and `./App.vibex`, relocated to the selected compatibility declaration when necessary, to preserve source identity.
     const sidecar = read(vibe.dir, "main.d.vibe.ts")
-    for (const spelling of ['export { user } from "./user.vibe"', 'export { title } from "./App.vibex"', 'typeof import("./user.vibe")'])
+    // Written ./user.js, ./user and ./App.jsx name the same sources there.
+    for (const spelling of ['export { user } from "./user.vibe"', 'export type { User } from "./user.vibe"', 'export * as Users from "./user.vibe"',
+      'export { title } from "./App.vibex"', 'export { title as jsxTitle } from "./App.vibex"', 'typeof import("./user.vibe")'])
       assert.ok(sidecar.includes(spelling), label + " sidecar lacks " + spelling + "\n" + sidecar)
     assert.doesNotMatch(sidecar, /\.\/(user\.ts|App\.tsx)["']/, label)
     assert.ok(existsSync(join(vibe.dir, "user.d.vibe.ts")) && existsSync(join(vibe.dir, "App.d.vibex.ts")), label)
@@ -117,7 +119,7 @@ try {
   const mirrored = join(relocated.dir, ".vibe/declarations")
   assert.ok(!existsSync(join(relocated.dir, "main.d.vibe.ts")))
   const sidecar = read(mirrored, "main.d.vibe.ts")
-  for (const spelling of ['export { user } from "./user.vibe"', 'export { title } from "../../App.vibex"'])
+  for (const spelling of ['export { user } from "./user.vibe"', 'export { title } from "./App.vibex"', 'export { title as jsxTitle } from "./App.vibex"'])
     assert.ok(sidecar.includes(spelling), "relocated sidecar lacks " + spelling + "\n" + sidecar)
   assert.ok(existsSync(join(mirrored, "user.d.vibe.ts")) && existsSync(join(mirrored, "App.d.vibex.ts")))
   assert.equal(contract(read(relocated.out, "main.d.ts")), read(twin.out, "main.d.ts"))
