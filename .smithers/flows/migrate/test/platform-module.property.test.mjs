@@ -187,15 +187,17 @@ test("moduleBodies is opt-in; a sibling serves an exported package, a body a pri
     return { result, files }
   }
   const exported = '{"name":"p","exports":{".":"./s.js"}}'
+  // Without bodies the sibling serves both: the value export is re-exported from it.
   const off = run('{"private":true}', {})
-  assert.equal(off.files["r.ts"], refused)
-  assert.equal(off.result.refused.length, 1)
-  assert.deepEqual(off.result.splits.map((s) => [s.file, s.platform]), [["s.ts", "s.platform.ts"]])
-  // An explicit export map hides the sibling, so the body serves only what it refuses.
+  assert.equal(off.files["r.ts"], 'export { a } from "./r.platform.ts"\nexport const k = 1\n')
+  assert.deepEqual(off.result.refused, [])
+  assert.deepEqual(off.result.splits.map((s) => [s.file, s.platform]), [["r.ts", "r.platform.ts"], ["s.ts", "s.platform.ts"]])
+  // An explicit export map hides the sibling, so a body serves what the
+  // sibling refuses, and a module whose sibling would re-export a moved
+  // value: the body keeps r.ts's value export in the module.
   const on = run(exported, { moduleBodies: true })
   assert.deepEqual(on.result.refused, [])
   assert.deepEqual(on.result.splits.map((s) => [s.file, s.platform, s.module ?? null]), [["r.ts", null, "platform"], ["s.ts", "s.platform.ts", null]])
-  assert.match(on.files["r.ts"], /^module platform \{$/m)
   assert.equal(on.files["r.platform.ts"], undefined)
   // Every module of a private package is an API entry (t3code Desktop
   // DesktopObservability.ts): a body adds none, a sibling adds one.

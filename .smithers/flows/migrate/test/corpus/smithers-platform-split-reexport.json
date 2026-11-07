@@ -1,0 +1,33 @@
+{
+  "source": "Smithers modules the platform split refused because the moved code read an export that is not a function: flows/platform-node EgressHttpClient.ts (an error class the platform code throws and kept code tests with instanceof), .smithers/flows/review/seeded-bugs labels.ts (a schema value and the type of its name), .smithers/flows/issue-sweep flow.ts (a kept type that reads a moved schema) and a Layer-like object that is itself platform code. Minimized; names and shapes kept.",
+  "ambient": "declare module \"node:path\" { export function basename(path: string): string }\ndeclare module \"node:fs\" { export function readFileSync(path: string, encoding: \"utf8\"): string }\n",
+  "others": {
+    "lib.ts": "export interface Schema<A> {\n  readonly Type: A\n  readonly decode: (u: unknown) => A\n}\nexport const literals = <const A extends ReadonlyArray<string>>(...xs: A): Schema<A[number]> => ({\n  Type: undefined as unknown as A[number],\n  decode: (u) => (xs.includes(u as string) ? (u as A[number]) : xs[0]),\n})\n"
+  },
+  "modules": [
+    {
+      "name": "EgressHttpClient",
+      "text": "import { basename } from \"node:path\"\n\n/** The address a pinned client refused. */\nexport class EgressAddressError extends Error {\n  readonly _tag = \"EgressAddressError\"\n  constructor(readonly address: string) {\n    super(address)\n  }\n}\n\nexport const pinnedClient = (host: string): string => {\n  const address = basename(host)\n  if (address === \"blocked\") throw new EgressAddressError(address)\n  return address\n}\n\nexport const refused = (error: unknown): boolean => error instanceof EgressAddressError\n",
+      "reexported": ["EgressAddressError"],
+      "probe": "let caught; try { m.pinnedClient(\"/x/blocked\") } catch (e) { caught = e } return [m.pinnedClient(\"/a/b\"), m.refused(caught), caught instanceof m.EgressAddressError, caught.address]"
+    },
+    {
+      "name": "labels",
+      "text": "import { readFileSync } from \"node:fs\"\nimport * as Lib from \"./lib.ts\"\n\n/** How bad a seeded bug is. */\nexport const Severity = Lib.literals(\"low\", \"high\")\nexport type Severity = typeof Severity.Type\n\nexport const readSeverity = (path: string): Severity => Severity.decode(readFileSync(path, \"utf8\"))\n\nexport const worst = (a: Severity, b: Severity): Severity => (a === \"high\" || b === \"high\" ? \"high\" : \"low\")\n",
+      "reexported": ["Severity"],
+      "probe": "return [m.worst(\"low\", \"high\"), m.Severity.decode(\"high\"), m.Severity.decode(\"x\")]"
+    },
+    {
+      "name": "issue-sweep flow",
+      "text": "import { readFileSync } from \"node:fs\"\nimport * as Lib from \"./lib.ts\"\n\nexport const Issue = Lib.literals(\"open\", \"closed\")\nexport type Item = { readonly state: typeof Issue.Type }\n\nexport const load = (path: string): Item => ({ state: Issue.decode(readFileSync(path, \"utf8\")) })\nexport const closed = (item: Item): boolean => item.state === \"closed\"\n",
+      "reexported": ["Issue"],
+      "probe": "return [m.closed({ state: \"closed\" }), m.Issue.decode(\"open\")]"
+    },
+    {
+      "name": "layer object",
+      "text": "import { readFileSync } from \"node:fs\"\n\n/** Reads files for the flow. */\nexport const layer = {\n  read: (path: string): string => readFileSync(path, \"utf8\"),\n}\n\nexport const label = (name: string): string => `layer:${name}`\n",
+      "reexported": ["layer"],
+      "probe": "return [m.label(\"a\"), typeof m.layer.read]"
+    }
+  ]
+}

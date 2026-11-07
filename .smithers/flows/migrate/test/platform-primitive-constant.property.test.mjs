@@ -81,10 +81,12 @@ test("a primitive const read in its temporal dead zone keeps the refusal", () =>
   // The same call below the const reads it after it is initialized.
   const after = 'import { sep } from "node:path"\nexport const STATUS = 499\nexport const late = answer()\nexport function answer(): number { return sep.length + STATUS }\n'
   assert.ok(!splitPlatform(after, "src/source.ts", ts).refused)
-  // A const whose value is not a primitive computed from literals still moves and refuses.
+  // A const whose value is not a primitive computed from literals is not copied: it moves and is re-exported.
   for (const value of ["[64]", "{ limit: 64 }", "Number(\"64\")", "limit()", "other.length"]) {
     const text = `import { sep } from "node:path"\nexport const LIMIT = ${value}\nexport function answer(): number { return sep.length + Number(LIMIT) }\n`
-    assert.match(splitPlatform(text, "src/source.ts", ts).refused ?? "", /export LIMIT uses platform code/, value)
+    const split = splitPlatform(text, "src/source.ts", ts)
+    assert.deepEqual(split.reexported, ["LIMIT"], value)
+    assert.match(split.platform, /^export const LIMIT = /m, value)
   }
 })
 
