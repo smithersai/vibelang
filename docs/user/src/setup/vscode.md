@@ -70,7 +70,7 @@ Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as
 | `vibelang.server.typeScriptFiles` | `"auto"` | Serve TypeScript when the built-in server is off; `"on"` always serves it, `"off"` leaves it to the built-in server |
 | `vibelang.trace.server` | `"off"` | Set `"messages"` or `"verbose"` to log LSP traffic |
 
-After changing the executable or rebuilding the compiler, run **VibeLang: Restart Language Server** from the command palette. Use **VibeLang: Show Language Server Output** to inspect the server log. For protocol problems, enable tracing, restart, reproduce, then turn tracing off. Review logs before sharing them: protocol traffic can contain source text and file paths.
+After changing the executable or rebuilding the compiler, run **VibeLang: Restart Language Server** from the command palette. After installing a missing compiler, restart the server even if the earlier notification is still open; it does not block activation or restart. Use **VibeLang: Show Language Server Output** to inspect the server log. For protocol problems, enable tracing, restart, reproduce, then turn tracing off. Review logs before sharing them: protocol traffic can contain source text and file paths.
 
 ## JSX highlighting
 

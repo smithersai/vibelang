@@ -13,6 +13,7 @@ let status: any
 let logs: string[]
 let clients: FakeClient[]
 let builtin: boolean
+let errorResponse: Promise<string | undefined> | undefined
 let errorChoice: string | undefined
 let infoChoice: string | undefined
 let failStart: boolean
@@ -46,7 +47,7 @@ const workspace: any = {
 const window: any = {
   activeTextEditor: undefined,
   createOutputChannel: () => ({ info: (s: string) => logs.push(s), warn: (s: string) => logs.push(s), error: (s: string) => logs.push(s), show: () => executed.push(["show"]), dispose() {} }),
-  async showErrorMessage(...args: unknown[]) { executed.push(["error", ...args]); return errorChoice },
+  async showErrorMessage(...args: unknown[]) { executed.push(["error", ...args]); return errorResponse ?? errorChoice },
   async showInformationMessage(...args: unknown[]) { executed.push(["info", ...args]); return infoChoice }
 }
 const env = { appName: "Visual Studio Code" }
@@ -67,6 +68,7 @@ function reset() {
   oldPath = process.env.PATH
   settings = { "vibelang.server.path": "/configured/vibelang" }
   registered = new Map(); clients = []; logs = []; executed = []; updates = []
+  errorResponse = undefined
   builtin = true; failStart = false; failStop = false; errorChoice = undefined; infoChoice = undefined
   workspace.workspaceFolders = [{ uri: { fsPath: scratch } }]; workspace.textDocuments = []
   window.activeTextEditor = undefined; env.appName = "Visual Studio Code"
@@ -416,4 +418,83 @@ test("vibex compiler discovery follows generated nested editor documents", async
       }
     }
   })
+})
+
+
+test("missing-compiler notice does not hold activation or restart open", async () => {
+  settings["vibelang.server.path"] = ""
+  workspace.workspaceFolders = []
+  process.env.PATH = ""
+  let answer!: (choice: string | undefined) => void
+  errorResponse = new Promise(resolve => { answer = resolve })
+  const activation = start()
+  await Bun.sleep(0)
+  expect(status.text).toBe("vibelang not found")
+  settings["vibelang.server.path"] = "/configured/vibelang"
+  const restarted = command("restartServer") as Promise<void>
+  let recovered = false
+  restarted.then(() => { recovered = true })
+  try {
+    await Bun.sleep(25)
+    expect(recovered).toBe(true)
+    expect(status.text).toBe("vibelang")
+    expect(clients).toHaveLength(1)
+  } finally {
+    answer("Show Output")
+    await activation
+    await restarted
+  }
+  await Bun.sleep(0)
+  expect(executed).toContainEqual(["show"])
+})
+
+
+test("property: recovery events progress with an unanswered missing-compiler notice", () => property("editor-notification-recovery", fc.record({
+  events: fc.array(fc.constantFrom("restart", "settings", "folders"), { minLength: 1, maxLength: 4 }),
+  choice: fc.constantFrom(undefined, "Show Output", "Open Settings")
+}), async ({ events, choice }) => {
+  settings["vibelang.server.path"] = ""
+  workspace.workspaceFolders = []
+  process.env.PATH = ""
+  let answer!: (choice: string | undefined) => void
+  errorResponse = new Promise(resolve => { answer = resolve })
+  const activation = start()
+  await Bun.sleep(0)
+  settings["vibelang.server.path"] = "/configured/vibelang"
+  let barrier: Promise<void> = Promise.resolve()
+  let settled = false
+  try {
+    for (const event of events) {
+      if (event === "settings") onConfiguration({ affectsConfiguration: (section: string) => section === "vibelang.server" })
+      else if (event === "folders") onFolders()
+      else void command("restartServer")
+    }
+    barrier = command("restartServer") as Promise<void>
+    barrier.then(() => { settled = true })
+    await Bun.sleep(25)
+    expect(settled).toBe(true)
+    expect(status.text).toBe("vibelang")
+    expect(clients.filter(client => !client.stopped)).toHaveLength(1)
+  } finally {
+    answer(choice)
+    await activation
+    await barrier
+  }
+  await Bun.sleep(0)
+  if (choice === "Show Output") expect(executed).toContainEqual(["show"])
+  if (choice === "Open Settings") expect(executed).toContainEqual(["workbench.action.openSettings", "vibelang.server.path"])
+}))
+
+
+test("a failed recovery notification is logged without disabling restart", async () => {
+  settings["vibelang.server.path"] = ""
+  workspace.workspaceFolders = []
+  process.env.PATH = ""
+  errorResponse = Promise.reject(new Error("notification unavailable"))
+  await start()
+  await Bun.sleep(0)
+  expect(logs.join("\n")).toContain("Showing server recovery actions failed: Error: notification unavailable")
+  settings["vibelang.server.path"] = "/configured/vibelang"
+  await command("restartServer")
+  expect(status.text).toBe("vibelang")
 })
