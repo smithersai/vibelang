@@ -1,0 +1,17 @@
+// expect: EK0402
+// A class override, on the instance or the static side, must have callable
+// throws that fit the overridden member's type, as an implemented member does
+// (chapter 3, Assignability). Inherited members, admitted contracts and
+// never-throwing members are not reported.
+import { Reader, Source, Statics, Tolerant, parse, safe, untagged } from "./lib.js"
+export class Field extends Reader { read = parse }
+export class Unknown extends Reader { read = untagged }
+export class OverMethod extends Source { read = parse }
+class Local { read = (): string => "local" }
+export class LocalBase extends Local { read = parse }
+export class Admitted extends Tolerant { read = parse }
+export class Safe extends Reader { read = safe }
+export class Inherited extends Reader {}
+export class Method extends Source { override read(): string { return "method" } }
+export class StaticField extends Statics { static read = parse }
+export class StaticSafe extends Statics { static read = safe }

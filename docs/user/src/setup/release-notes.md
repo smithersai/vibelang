@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A class field that overrode a base class member with a function that may throw, such as `class C extends Reader { read = parse }` where `parse` declares `@throws {RangeError}` and `Reader.read` admits no throw, was accepted. It now reports `EK0402`, as the same member does under `implements`.
+
 - Patterns with an impossible extractor length showed a warning without a usable editor repair. The editor now offers a bare pattern or the matching single-value extractor.
 
 - The bundler entry-point example still expected automatic `main` startup. It now writes its runner explicitly and keeps an imported library's `main` inert.

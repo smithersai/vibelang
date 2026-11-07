@@ -254,5 +254,31 @@ func failuresExtraCases() []*failCase {
 	add(&failCase{Name: "effect-interface-copy-control-plain", Owner: "compiler", Quote: effectful, Host: "plain", Lib: effectCopies, Body: "const value = copy()"})
 	add(&failCase{Name: "effect-interface-copy-control-top", Owner: "compiler", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export const value = copy()"})
 	add(&failCase{Name: "effect-interface-copy-control-return", Owner: "compiler", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export function probe(): ReturnType<typeof copy> { return copy() }"})
+	// A class override is checked like an implemented member: a member a
+	// class declares over a base class member must admit no throw the base
+	// member's function type does not.
+	const overrides = "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`, with `service` members as interface members."
+	const overrideLib = "export declare class Reader { read: () => string }\nexport declare class Source { read(): string }\nexport declare class Tolerant {\n  /** @throws {Error} */\n  read(): string\n}\nexport declare class Box<T> { read: () => T }\nexport declare class Statics { static read: () => string }\n/** @throws {RangeError} */\nexport declare function parse(): string\n/** @throws {never} */\nexport declare function safe(): string\nexport declare function untagged(): string\n"
+	for _, row := range []struct{ name, decls string }{
+		{"known", "export class C extends Reader { ⟦read⟧ = parse }"},
+		{"untagged", "export class C extends Reader { ⟦read⟧ = untagged }"},
+		{"over-method", "export class C extends Source { ⟦read⟧ = parse }"},
+		{"local-base", "class Local { read = (): string => \"local\" }\nexport class C extends Local { ⟦read⟧ = parse }"},
+		{"expression", "export const C = class extends Reader { ⟦read⟧ = parse }"},
+		{"generic-base", "export class C extends Box<string> { ⟦read⟧ = parse }"},
+		{"static", "export class C extends Statics { static ⟦read⟧ = parse }"},
+		{"static-untagged", "export class C extends Statics { static ⟦read⟧ = untagged }"},
+	} {
+		add(&failCase{Name: "class-override-" + row.name, Owner: "compiler", Quote: overrides, Code: 402, Host: "none", Lib: overrideLib, Decls: row.decls})
+	}
+	for _, row := range []struct{ name, decls string }{
+		{"admitted", "export class C extends Tolerant { read = parse }"},
+		{"never", "export class C extends Reader { read = safe }"},
+		{"static-never", "export class C extends Statics { static read = safe }"},
+		{"inherited", "export class C extends Reader {}"},
+		{"method", "export class C extends Source { override read(): string { return \"method\" } }"},
+	} {
+		add(&failCase{Name: "class-override-control-" + row.name, Owner: "compiler", Quote: overrides, Host: "none", Lib: overrideLib, Decls: row.decls})
+	}
 	return append(cases, failuresRound20Cases()...)
 }

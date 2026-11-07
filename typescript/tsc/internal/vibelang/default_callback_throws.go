@@ -45,7 +45,7 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 
 func checkDefaultForeignCallbackClass(c *checker.Checker, class *ast.Node) {
 	heritage := ast.GetImplementsHeritageClauseElements(class)
-	if len(heritage) == 0 {
+	if len(heritage) == 0 && ast.GetClassExtendsHeritageElement(class) == nil {
 		return
 	}
 	symbol := c.GetSymbolOfDeclaration(class)
@@ -70,16 +70,7 @@ func checkDefaultForeignCallbackClass(c *checker.Checker, class *ast.Node) {
 			}
 			source, target := c.GetTypeOfSymbol(actual), c.GetTypeOfSymbol(required)
 			declaration := actual.ValueDeclaration()
-			if declaration != nil && declaration.Kind == ast.KindGetAccessor {
-				continue
-			}
-			if declaration != nil && ast.IsPropertyDeclaration(declaration) && declaration.Initializer() != nil && defaultForeignBindingTagged(c, declaration.Initializer(), map[*ast.Symbol]bool{}) {
-				continue
-			}
-			if !defaultForeignCallbackCandidate(c, source, []*checker.Type{instance}, declaration) {
-				continue
-			}
-			if defaultForeignCallbackFits(c, source, target, []*checker.Type{instance}, []*checker.Type{implemented}) {
+			if !defaultForeignClassMember(c, source, instance, declaration) || defaultForeignCallbackFits(c, source, target, []*checker.Type{instance}, []*checker.Type{implemented}) {
 				continue
 			}
 			at := element
@@ -96,6 +87,29 @@ func checkDefaultForeignCallbackClass(c *checker.Checker, class *ast.Node) {
 			reported[name] = true
 		}
 	}
+	overrides := map[*ast.Symbol]bool{}
+	forEachClassOverride(c, class, instance, func(actual, overridden *ast.Symbol, owner, base *checker.Type) {
+		source := c.GetTypeOfSymbol(actual)
+		if overrides[actual] || reported[actual.Name()] && owner == instance || !defaultForeignClassMember(c, source, owner, actual.ValueDeclaration()) ||
+			defaultForeignCallbackFits(c, source, c.GetTypeOfSymbol(overridden), []*checker.Type{owner}, []*checker.Type{base}) {
+			return
+		}
+		reportClassOverride(c, class, actual, overridden)
+		overrides[actual] = true
+	})
+}
+
+// defaultForeignClassMember reports whether a class member's value is an
+// unannotated foreign callable this check owns: not a getter, and not a field
+// initialized from a binding with a written contract.
+func defaultForeignClassMember(c *checker.Checker, source, instance *checker.Type, declaration *ast.Node) bool {
+	if declaration != nil && declaration.Kind == ast.KindGetAccessor {
+		return false
+	}
+	if declaration != nil && ast.IsPropertyDeclaration(declaration) && declaration.Initializer() != nil && defaultForeignBindingTagged(c, declaration.Initializer(), map[*ast.Symbol]bool{}) {
+		return false
+	}
+	return defaultForeignCallbackCandidate(c, source, []*checker.Type{instance}, declaration)
 }
 
 // Every source union alternative must fit one native-compatible destination.
