@@ -1,0 +1,4 @@
+{
+  "key": "platform:t3code-optional-host-receiver",
+  "source": "export class CaptureShortcutConfig {\n  readonly origin = import.meta.url;\n  read() { return process.getuid?.(); }\n}\n"
+}

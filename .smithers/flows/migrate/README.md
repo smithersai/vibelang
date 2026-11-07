@@ -487,6 +487,8 @@ bun .smithers/flows/migrate/eval.ts --update   # run and record baseline.json
 
 ## The idiom context
 
+The migrate flow can move a zero-argument optional host call, such as `process.getuid?.()`, into a native module helper while keeping the class and its `import.meta.url` in the original module. The helper performs the whole optional call on its original receiver, only when the call is reached. Calls with value or type arguments retain the preservation refusal.
+
 `context.md` is the repair agent's system prompt. `build-context.mjs` generates it, so it is never edited by hand:
 
 - `rules.md`, this flow's own rules: the current call rule (a call runs where it stands; only a function literal defers it), every VibeLang form, wrapping Effect mindfully, platform access only through services, Effect's modules or `Experimental.*`, hatches only for real Promise and callback libraries, identical declarations, every test kept.

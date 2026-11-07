@@ -1406,7 +1406,8 @@ function namesItsOwnType(statement, ts) {
 // import.meta. A read, typeof or write helper performs that one operation
 // when the module reaches it, and throws only what the operation throws.
 // What cannot move this way is refused: new, a tagged template, an optional
-// call of a member, a write other than =, delete, a re-export of the name.
+// call of a member with value or type arguments, a write other than =,
+// delete, a re-export of the name.
 // Returns { edits: Map(statement -> [{ at, end, text }]), helpers: [{ name, text }],
 // typeReads, roots } or { refused }.
 function hostOperations(source, statements, platform, ts, taken, file) {
@@ -1459,6 +1460,12 @@ function hostOperations(source, statements, platform, ts, taken, file) {
           const name = helper("call " + chain, base, (h) => callHelper(h, chain, path))
           own.push({ at: top.getStart(source), end: top.end, text: name })
         }
+      } else if (ts.isCallExpression(parent) && parent.expression === top && !parent.arguments.length && !parent.typeArguments?.length) {
+        // Keep the complete optional call on its receiver. With no arguments,
+        // no call-site evaluation can move across the short-circuit test.
+        const name = helper("optional call " + chain, "$optional_" + path.join("_"),
+          (h) => `${never}export function ${h}() { return ${chain}?.() }`)
+        own.push({ at: top.getStart(source), end: parent.end, text: name + "()" })
       } else if (ts.isCallExpression(parent) && parent.expression === top) {
         return { refused: `${where(id)}: ${chain}?.() would lose its receiver` }
       } else if (ts.isNewExpression(parent) && parent.expression === top) {
