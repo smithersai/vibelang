@@ -12,7 +12,7 @@ var (
 	EK0107 = message(107, errorCategory, "Eval, Function, arguments, var or with in a .vibe file. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0401 = message(401, errorCategory, "A throw, a call that may throw, or a parameter default that may throw, in an effectful function. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
 	EK0402 = message(402, errorCategory, "A function that may throw where a function type doesn't admit its thrown type. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
-	EK0403 = message(403, errorCategory, "An unwrapped call, new expression or tagged template that may throw, in effect code or a plain catch handler. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
+	EK0403 = message(403, errorCategory, "An unwrapped call, new expression, tagged template or class evaluation that may throw, in effect code. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
 	EK0404 = message(404, errorCategory, "An unwrapped Promise-producing call, new expression, tagged template or async match in effect code. Move it into a tryPromise thunk, or retain its result as data through an explicit synchronous boundary.")
 	EK0503 = message(503, errorCategory, "A try statement in effect code. Run an Effect with try inside effect code; use a function literal as the catch handler.")
 	EK0504 = message(504, errorCategory, "Catch outside effect code. Run an Effect with try inside effect code; use a function literal as the catch handler.")

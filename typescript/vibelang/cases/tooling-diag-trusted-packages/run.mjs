@@ -48,7 +48,7 @@ assert.deepEqual(npm.config, [], npm.text)
 const at = npm.main.map(d => d.split(" ").slice(0, 3).join(" "))
 assert.deepEqual(at, ["2,48 error EK0403:", "3,44 error EK0403:", "7,85 error TS18046:"], npm.text)
 assert.match(npm.main[0], /'annotated' may throw 'SyntaxError'/)
-assert.match(npm.main[1], /An unwrapped call, new expression or tagged template that may throw/)
+assert.match(npm.main[1], /An unwrapped call, new expression, tagged template or class evaluation that may throw, in effect code\./)
 assert.match(npm.main[2], /'e' is of type 'unknown'/)
 for (const from of ["./lib.js", "./decl.js"]) {
   const local = compile(from)

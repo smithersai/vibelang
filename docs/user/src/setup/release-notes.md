@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The `EK0403` message said it applied in a plain `catch` handler, where a call whose throwing is unknown is an ordinary call and a call known to throw is `EK0401`. It now says it applies in effect code, and names class evaluation among the forms it covers.
+
 - A `try` around a type assertion or conditional could run a returned Effect too early in TypeScript mapper output. It now runs only the operand's outer Effect, preserving the returned Effect for its own execution site.
 
 - An explicit `try` in an Effect-annotated `const` initializer could be rejected or skipped. It now runs at the binding site and stores the Effect's success value.
