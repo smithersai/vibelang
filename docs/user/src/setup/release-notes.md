@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Knip could miss duplicate exports created by `export default value`. It now reports those aliases as TypeScript does.
+
 - The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.
 
 - The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.

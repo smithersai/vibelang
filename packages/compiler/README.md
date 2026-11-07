@@ -530,7 +530,8 @@ never fixed.
 `.vibe` and `.vibex` files. It gives Knip a module's imports, re-exports, dynamic imports,
 export names, JSX tag references and namespace member reads, from the compiler's ESTree, and the
 `vibelang-runtime` import its JavaScript has. Knip takes a compiler only from a
-configuration that is code. Bracket access such as `Users["find"]` counts as a
+configuration that is code. Default aliases such as `export default value`
+retain their binding so Knip can report duplicate exports. Bracket access such as `Users["find"]` counts as a
 namespace member read; an unknown computed key retains all namespace exports,
 as Knip does for TypeScript:
 
