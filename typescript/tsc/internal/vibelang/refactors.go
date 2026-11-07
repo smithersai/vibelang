@@ -269,6 +269,9 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 			return nil
 		}
 		promise := await.Expression()
+		if asyncAwaitOperandJumps(rc.file, promise) {
+			return nil
+		}
 		plain = append(plain, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "")))
 		name := uniqueName(failureName(promise), takenNames)
 		takenNames = append(takenNames, name)
