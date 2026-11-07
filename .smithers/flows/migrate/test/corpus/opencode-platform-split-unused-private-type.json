@@ -1,0 +1,17 @@
+{
+  "ambient": "declare module \"node:fs\" { export function readFileSync(path: string, encoding: \"utf8\"): string; export function writeFileSync(path: string, text: string): void }\n",
+  "modules": [
+    {
+      "file": "src/runtime/persistence/storage.ts",
+      "text": "import { readFileSync, writeFileSync } from \"node:fs\"\ntype Entry = { readonly value: string; readonly at: number }\nexport function load(path: string): string {\n  const entry: Entry = JSON.parse(readFileSync(path, \"utf8\"))\n  return entry.value\n}\nexport function save(path: string, value: string): void {\n  const entry: Entry = { value, at: 0 }\n  writeFileSync(path, JSON.stringify(entry))\n}\nexport const encoding = \"utf8\"\n",
+      "dropped": ["Entry"],
+      "kept": []
+    },
+    {
+      "file": "src/runtime/plugin/host.ts",
+      "text": "import { readFileSync } from \"node:fs\"\ntype Manifest = { readonly name: string; readonly main: Main }\ntype Main = { readonly file: string }\nexport interface Plugin { readonly name: string }\nexport function loadPlugin(path: string): Plugin {\n  const manifest: Manifest = JSON.parse(readFileSync(path, \"utf8\"))\n  return { name: manifest.name + manifest.main.file }\n}\nexport function describe(plugin: Plugin): string { return plugin.name }\n",
+      "dropped": ["Manifest", "Main"],
+      "kept": ["Plugin"]
+    }
+  ]
+}

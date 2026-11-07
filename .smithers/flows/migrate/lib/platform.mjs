@@ -313,12 +313,28 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     for (const d of [...copied]) if (typeOnly(d)) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
   }
   if (moved.size === declarations.length && !wrappers.length) return { refused: `${file} is platform code only` }
+  // A private type the module kept for the moved code alone is the sibling's
+  // copy now; left in the module, nothing reads it (TS6196 under
+  // noUnusedLocals: opencode app runtime/persistence/storage). It goes, and so
+  // does a private type only such a type read.
+  const unread = new Set()
+  for (let grew = true; grew; ) {
+    grew = false
+    for (const d of kept) {
+      if (unread.has(d) || !typeOnly(d) || d.exported || !copied.has(d)) continue
+      const reads = (names) => [...d.names].some((n) => names.has(n))
+      if (kept.some((k) => k !== d && !unread.has(k) && reads(k.reads)) || wrappers.some((w) => reads(w.reads))) continue
+      unread.add(d)
+      grew = true
+    }
+  }
+  const moduleKeptReads = new Set(kept.filter((d) => !unread.has(d)).flatMap((d) => [...d.reads]))
   const namespace = uniqueName("$platform", new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name))]))
   const sibling = "./" + posix.basename(platformPath(file))
   // The module: kept imports, the import of the moved code, kept declarations and wrappers, in source order.
-  const movedReadsByKept = [...moved].filter((d) => !d.exported).flatMap((d) => [...d.names].filter((n) => keptReads.has(n)))
+  const movedReadsByKept = [...moved].filter((d) => !d.exported).flatMap((d) => [...d.names].filter((n) => moduleKeptReads.has(n)))
   const fromSibling = [...new Set(movedReadsByKept)].sort()
-  const moduleReads = new Set([...keptReads, ...wrappers.flatMap((w) => [...w.reads])])
+  const moduleReads = new Set([...moduleKeptReads, ...wrappers.flatMap((w) => [...w.reads])])
   const moduleImports = imports.map((i) => importText(i, source, ts, (b) => moduleReads.has(b.name))).filter(Boolean)
   const head = [...moduleImports]
   if (wrappers.length) head.push(`import * as ${namespace} from "${sibling}"`)
@@ -333,6 +349,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   if (fromSibling.length) head.push(`import { ${fromSibling.map((n) => (alias.has(n) ? `${n} as ${alias.get(n)}` : n)).join(", ")} } from "${sibling}"`)
   const body = []
   for (const d of declarations) {
+    if (unread.has(d)) continue
     if (!moved.has(d)) body.push(inferredTypes.text(d.statement))
     else if (d.exported) body.push(wrappers.find((w) => w.d === d).text(namespace))
     else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name}: typeof ${alias.get(name)} = ${alias.get(name)}`)
