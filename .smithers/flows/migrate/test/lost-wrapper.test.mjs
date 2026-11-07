@@ -490,3 +490,46 @@ test("a dropped member, another member or a changed forward still flags", () => 
   assert.deepEqual(flagsOf(`import { Effect } from "effect"\nexport const f = (x: number) => Effect.succeed(x)\n`, `import { Effect } from "effect"\nexport const f = (x) => (value) => Effect.succeed(value)\n`), ["/f"])
   assert.deepEqual(flagsOf(`import { Effect } from "effect"\nexport const f = (x: boolean) => x ? Effect.void : 1\n`, `import { Effect } from "effect"\nexport const f = (x) => x ? 0 : 1\n`), ["/f"])
 })
+
+// alchemy-lost-wrapper-module-pairing (6 partition sources: sql Records and
+// SqlFile, docker BuildHash among them): a platform or throwing split moves
+// declarations verbatim into a VIP-40 body, which the compiler emits beside
+// the module as x.vibe.<body>.js, and the module only imports or re-exports
+// them. The check read the module's own JavaScript, so every moved
+// Effect-returning function was unpaired.
+const bodyModule = `export { f, h } from "./x.vibe.platform.js";\nimport { f as local } from "./x.vibe.platform.js";\nexport const k = () => local();\n`
+const bodyOriginal = header + `const f = () => Effect.succeed(1)\nconst g = (n: number) => Effect.succeed(n)\nexport { f, g as h }\nexport const k = () => f()\n`
+const bodyCheck = (companion, read) => lostWrapperCheck({
+  ts, files: ["src/x.vibe"],
+  original: () => ({ path: "src/x.ts", text: bodyOriginal }),
+  emitted: () => ({ path: "/out/src/x.js", text: bodyModule }),
+  read: read ?? (path => path === "/out/src/x.vibe.platform.js" ? companion : null),
+})
+
+test("corpus: a module body's functions pair with the original's, from the body's emitted companion", () => {
+  const result = bodyCheck(jsHeader + `export const f = () => Effect.succeed(1);\nconst g = (n) => Effect.succeed(n);\nexport { g as h };\n`)
+  assert.deepEqual(result.unpaired, [])
+  assert.deepEqual(result.blocking, [])
+  assert.equal(result.paired, 3)
+})
+
+test("a body function that lost its wrapper is flagged, as one in the module is", () => {
+  const result = bodyCheck(jsHeader + `export const f = () => 1;\nconst g = (n) => Effect.succeed(n);\nexport { g as h };\n`)
+  assert.deepEqual(result.blocking.map(f => [f.file, f.function, f.effectReturns, f.emittedEffectReturns]), [["src/x.vibe", "/f", 1, 0]])
+})
+
+test("with no companion on disk, the body's functions stay unpaired", () => {
+  const result = bodyCheck(null, () => null)
+  assert.deepEqual(result.unpaired.map(u => u.function).sort(), ["/f", "/g"])
+})
+
+test("only a body of this module counts: another module's companion and a non-body import are not read", () => {
+  const read = []
+  lostWrapperCheck({
+    ts, files: ["src/x.vibe"],
+    original: () => ({ path: "src/x.ts", text: header + `export const f = () => Effect.succeed(1)\n` }),
+    emitted: () => ({ path: "/out/src/x.js", text: `export { f } from "./y.vibe.platform.js";\nimport "./x.helpers.js";\nimport "./x.vibe.not-a-body.js";\n` }),
+    read: path => { read.push(path); return null },
+  })
+  assert.deepEqual(read, [])
+})

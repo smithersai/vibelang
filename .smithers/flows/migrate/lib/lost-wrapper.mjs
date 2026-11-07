@@ -29,7 +29,7 @@
 // nested function once the codemod writes `(value) => Effect.succeed(value)`,
 // so that spelling of the same member counts for the original's arm.
 import { existsSync, readFileSync } from "node:fs"
-import { join, posix } from "node:path"
+import { dirname, join, posix } from "node:path"
 const isTestFile = (path) => /\.(?:test|spec)\.[^/]+$/.test(path)
 const inTestDirectory = (path) => /(?:^|\/)(?:test|tests|__tests__)\//.test(path)
 
@@ -320,9 +320,19 @@ const keepsProgram = fn => fn.generator || fn.factory || (fn.returns > 0 && fn.e
 /** The original's arms whose named members the emitted function forwards to, each the same read of Effect. */
 const forwardedArms = (fn, counterpart) => fn.named.filter(members => members.every(member => counterpart.forwards.includes(member))).length
 
-/** The functions the original had that return Effect values and the emitted text lost, and those it has no function for. */
-export function lostWrappers({ ts, original, originalPath = "original.ts", emitted, emittedPath = "emitted.js" }) {
+/**
+ * The functions the original had that return Effect values and the emitted
+ * text lost, and those it has no function for. companions are the emitted
+ * JavaScript of the module's VIP-40 bodies, `[{ path, text }]`: a body holds
+ * the original's declarations verbatim, under their own names, and the
+ * module imports or re-exports them, so a body's function pairs with the
+ * original function of its name.
+ */
+export function lostWrappers({ ts, original, originalPath = "original.ts", emitted, emittedPath = "emitted.js", companions = [] }) {
   const before = functionsOf(ts, original, originalPath), after = functionsOf(ts, emitted, emittedPath)
+  for (const companion of companions) {
+    for (const [name, fn] of functionsOf(ts, companion.text, companion.path)) if (!after.has(name)) after.set(name, fn)
+  }
   const flags = [], unpaired = []
   let paired = 0
   for (const [name, fn] of before) {
@@ -343,6 +353,25 @@ export function readAllowList(path) {
   if (!Array.isArray(list)) throw new Error(path + " must be a JSON array of { file, function, reason }")
   const valid = entry => typeof entry?.file === "string" && typeof entry?.function === "string" && typeof entry?.reason === "string" && entry.reason.trim() !== ""
   return { entries: list.filter(valid), invalid: list.filter(entry => !valid(entry)) }
+}
+
+/**
+ * The emitted JavaScript of the VIP-40 bodies that emitted, the JavaScript of
+ * the module file (repository-relative), imports or re-exports: x.vibe's body
+ * `platform` emits beside x.js as `x.vibe.platform.js`.
+ */
+export function bodyCompanionsOf(file, emitted, read = path => existsSync(path) ? readFileSync(path, "utf8") : null) {
+  const base = posix.basename(file)
+  const companions = new Map()
+  for (const m of emitted.text.matchAll(/\b(?:from|import)\s*["']\.\/([^"'/]+)["']/g)) {
+    const name = m[1]
+    if (!name.startsWith(base + ".") || !/^[A-Za-z_$][\w$]*\.jsx?$/.test(name.slice(base.length + 1))) continue
+    const path = join(dirname(emitted.path), name)
+    if (companions.has(path)) continue
+    const text = read(path)
+    if (text !== null && text !== undefined) companions.set(path, { path, text })
+  }
+  return [...companions.values()]
 }
 
 /** The package directory that holds a repository path, the longest of `packages`, and the emitted JavaScript of the module there. */
@@ -366,7 +395,7 @@ export function emittedPathOf(file, packages) {
  * listed under noOriginal without stopping the batch; one it renamed and kept
  * no original for is unchecked.
  */
-export function lostWrapperCheck({ ts, files, original, emitted, renamed = () => true, allow = { entries: [], invalid: [] } }) {
+export function lostWrapperCheck({ ts, files, original, emitted, renamed = () => true, allow = { entries: [], invalid: [] }, read }) {
   const flags = [], allowed = [], unpaired = [], unchecked = [], excused = [], noOriginal = []
   let modules = 0, paired = 0
   const used = new Set()
@@ -389,7 +418,7 @@ export function lostWrapperCheck({ ts, files, original, emitted, renamed = () =>
       continue
     }
     modules++
-    const found = lostWrappers({ ts, original: before.text, originalPath: before.path, emitted: after.text, emittedPath: after.path })
+    const found = lostWrappers({ ts, original: before.text, originalPath: before.path, emitted: after.text, emittedPath: after.path, companions: bodyCompanionsOf(file, after, read) })
     paired += found.paired
     unpaired.push(...found.unpaired.map(entry => ({ file, ...entry })))
     for (const flag of found.flags) {
