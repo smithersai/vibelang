@@ -268,6 +268,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   // name the sibling. A URL resolved against it for a path beside the module
   // means the same in either file.
   const requires = createRequireNames(imports, ts)
+  requires.directories = directoryNames(imports, ts)
   for (const d of moved) {
     if (namesModule(d.statement, ts, requires)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which would name ${posix.basename(platformPath(file))} after the move` }
   }
@@ -1440,16 +1441,47 @@ function createRequireNames(imports, ts) {
   return names
 }
 
+// The names the module's imports bind for path's dirname and url's
+// fileURLToPath: "dirname" and "fileURLToPath" for a named import, and a
+// namespace import's name with the member, "NodePath.dirname".
+function directoryNames(imports, ts) {
+  const names = new Map()
+  for (const i of imports) {
+    if (!ts.isStringLiteral(i.moduleSpecifier)) continue
+    const from = i.moduleSpecifier.text
+    const member = ["path", "node:path", "path/posix", "node:path/posix"].includes(from) ? "dirname" : ["url", "node:url"].includes(from) ? "fileURLToPath" : null
+    if (!member) continue
+    for (const b of bindingsOf(i, ts)) {
+      if (b.type) continue
+      if (b.kind === "named" && (b.property ?? b.name) === member) names.set(b.name, member)
+      if (b.kind === "namespace" || b.kind === "default") names.set(b.name + "." + member, member)
+    }
+  }
+  return names
+}
+
+// What callee, an identifier or a namespace member, names among names.
+const calleeName = (callee, ts) => ts.isIdentifier(callee) ? callee.text
+  : ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && !callee.questionDotToken ? callee.expression.text + "." + callee.name.text : null
+
 // Whether node reads import.meta for the module's own identity: anything but
-// import.meta.url as the base of new URL(<a path beside the module>, ...) or
+// import.meta.url as the base of new URL(<a path beside the module>, ...),
 // the argument of createRequire, whose resolution starts from the module's
-// directory.
+// directory, or what names that directory in a sibling beside it too: the
+// directory of fileURLToPath(import.meta.url), and the companion's
+// $importMetaDirname and $importMetaResolve helpers given import.meta.url.
 function namesModule(node, ts, requires) {
   if (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword) {
     const url = node.parent
     if (!ts.isPropertyAccessExpression(url) || url.expression !== node || url.questionDotToken || url.name.text !== "url") return true
     const use = url.parent
     if (ts.isCallExpression(use) && use.arguments.length === 1 && use.arguments[0] === url && ts.isIdentifier(use.expression) && requires.has(use.expression.text)) return false
+    if (ts.isCallExpression(use) && use.arguments.at(-1) === url && ts.isIdentifier(use.expression) && /^\$importMeta(?:Dirname|Resolve)\d*$/.test(use.expression.text)) return false
+    const directories = requires.directories ?? new Map()
+    if (ts.isCallExpression(use) && use.arguments.length === 1 && directories.get(calleeName(use.expression, ts)) === "fileURLToPath") {
+      const parent = use.parent
+      if (ts.isCallExpression(parent) && parent.arguments.length === 1 && parent.arguments[0] === use && directories.get(calleeName(parent.expression, ts)) === "dirname") return false
+    }
     if (!ts.isNewExpression(use) || use.arguments?.length !== 2 || use.arguments[1] !== url || !ts.isIdentifier(use.expression) || use.expression.text !== "URL") return true
     const first = use.arguments[0]
     const head = ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) ? first.text : ts.isTemplateExpression(first) ? first.head.text : null
