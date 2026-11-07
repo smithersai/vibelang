@@ -1,0 +1,1 @@
+vibex specifiers rewrite to the target's output

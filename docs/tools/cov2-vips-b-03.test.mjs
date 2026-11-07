@@ -60,18 +60,3 @@ test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-wo
 // VIP-34: retired Effect alias warning.
 // Activation: Resolve the retired prelude Effect<A,E,R> alias and require EK4856; explicit native Effect imports and local-shadow names remain controls.
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | cov2-vips-b retired Effect alias warning | present | **Amended 2026-11-01: legacy Effect alias migration.** VIP-3 allocates migration warning `EK4856` to uses resolving to the retired prelude `Effect<A, E, R>` alias.")
-
-// rule-evidence: docs/design/vips/0039-vibex.md#8cf089a408dbcf7c
-// VIP-39: vibex gap marker contract.
-// Activation: Extract every vibex example in VIP-39, require an explicit compiler-gap TS6054 marker, then execute the snippet check that rejects stale markers.
-test.todo("rule-evidence: docs/design/vips/0039-vibex.md#preconditions | cov2-vips-b vibex gap marker contract | present | The `.vibex` examples explicitly name the current unsupported-file diagnostic, `TS6054`, with a `// compiler-gap:` marker while these prerequisites and file-kind support are pending.")
-
-// rule-evidence: docs/design/vips/0039-vibex.md#3845388553e07e51
-// VIP-39: JSX throw unary operand.
-// Activation: Parse x ?? throw <E/> with .vibex JSX mode and compare throw operand shape with ordinary unary JSX parsing and an allowed native async twin.
-test.todo("rule-evidence: docs/design/vips/0039-vibex.md#angle-brackets | cov2-vips-b JSX throw unary operand | present | `x ?? throw <E/>` is a throw expression, adopted from the [pinned TC39 throw-expressions proposal](tc39-throw-expressions/README.md) under [VIP-41](0041-throw-expressions.md): its operand is a `UnaryExpression`, so `<` starts JSX there too.")
-
-// rule-evidence: docs/design/vips/0039-vibex.md#670260082f1173ac
-// VIP-39: vibex throw placement.
-// Activation: Cross plain/effect/async bodies and eager parameters in .vibex with throw expressions; require EK0401 wherever synchronous Vibe code cannot throw.
-test.todo("rule-evidence: docs/design/vips/0039-vibex.md#angle-brackets | cov2-vips-b vibex throw placement | present | It is allowed where a throw statement is: synchronous VibeLang code cannot throw, so a throw expression there is `EK0401` (VIP-4, amended 2026-10-31).")
