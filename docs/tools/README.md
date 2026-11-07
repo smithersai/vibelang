@@ -34,7 +34,8 @@ filename comment in either of the first two lines, such as `// launch-options.ts
 after `// TypeScript (.ts)` or `// main.vibe`, names that file and makes it
 available to relative imports. Its extension must match the fence, or the
 checker stops with an error. `.ts` companions keep TypeScript semantics and
-must import their own dependencies. Blocks with repeated captions are
+must import their own dependencies. A fragment's filename caption never reserves
+or renames a complete companion module. Complete blocks with repeated captions are
 independent examples and keep numbered filenames, as do unnamed blocks, such as
 `block-3.vibe`. Later blocks see earlier examples' imports and declarations; a
 new name shadows the earlier one. Blocks that deliberately fail or opt out

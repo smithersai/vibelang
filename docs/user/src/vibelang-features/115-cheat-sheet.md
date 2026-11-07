@@ -991,7 +991,6 @@ const linked = (path: string) => Effect.sync(() => isSymbolicLink(path))
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-6, VIP-14
 // run: try Console.log(try linked("."))
 import { isSymbolicLink } from "./links.ts"
 

@@ -110,13 +110,13 @@ export function extract(markdown: string, options: { inlineExamples?: boolean } 
 }
 
 // Repeated captions describe independent examples, so keep their numbered files.
-// Unique captions are real source files, including TypeScript companion modules.
+// Unique complete captions are source files; fragments cannot reserve their names.
 export function blockFilenames(blocks: Block[]): Map<number, string> {
   const counts = new Map<string, number>()
-  for (const block of blocks) if (block.filename) counts.set(block.filename, (counts.get(block.filename) ?? 0) + 1)
+  for (const block of blocks) if (block.filename && !block.fragment) counts.set(block.filename, (counts.get(block.filename) ?? 0) + 1)
   const used = new Set([...counts].filter(([, count]) => count === 1).map(([name]) => name))
   return new Map(blocks.map(block => {
-    if (block.filename && counts.get(block.filename) === 1) return [block.number, block.filename]
+    if (block.filename && !block.fragment && counts.get(block.filename) === 1) return [block.number, block.filename]
     let filename = `block-${block.number}.${block.language}`
     for (let suffix = 2; used.has(filename); suffix++) filename = `block-${block.number}-${suffix}.${block.language}`
     used.add(filename)
