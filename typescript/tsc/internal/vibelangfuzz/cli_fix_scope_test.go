@@ -10,6 +10,7 @@ package vibelangfuzz
 // VIP-34 scope options require the fix entry point in either argument order: docs/design/vips/0034-compiler-and-tooling.md#465f179b8ba11361
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -28,9 +29,9 @@ func TestCommandLineFixScopes(t *testing.T) {
 	// VIP-34: scope flags require fix.
 	w := &Workspace{fs: osvfs.FS()}
 	dir := t.TempDir()
-	for _, scope := range []string{"--fix-migration-only", "--fix-vip-only"} {
+	for _, scope := range []string{"--fix-migration-only", "--fix-vip-only", "--fix-legacy-service-keys"} {
 		t.Run(scope, func(t *testing.T) {
-			if !strings.Contains(SpecText("007-tooling.md"), "`"+scope+"`") {
+			if !slices.Contains(cliSpecCommandFlags(SpecText("007-tooling.md")), scope) {
 				t.Errorf("chapter 007 does not specify %s", scope)
 			}
 			found := false

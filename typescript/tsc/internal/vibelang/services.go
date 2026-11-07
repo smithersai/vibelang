@@ -278,7 +278,7 @@ func isEffectModuleFile(file *ast.SourceFile, name string) bool {
 // key returns the key of the service that class declares: the key its body
 // writes (D501), or else its package name, its module path within the
 // package, and its name, as in "@acme/app/src/users#Users". A package without
-// a name uses its directory's name, and a file outside every package uses its
+// a string name uses its directory's name, and a file outside every package uses its
 // path from the program's common source directory.
 func (s *services) key(class *ast.Node) string {
 	if key, ok := s.keys[class]; ok {
@@ -293,11 +293,13 @@ func (s *services) key(class *ast.Node) string {
 	program := s.checker.Program()
 	module := tspath.RemoveFileExtension(fileName.AsString()) // the same key for x.vibe and for x.ts with the directive
 	prefix := ""
+	packageNamed := false
 	if directory := program.GetNearestAncestorDirectoryWithPackageJson(fileName.Directory()); directory != "" {
 		prefix = directory.BaseName()
 		if info := program.GetPackageJsonInfo(directory.ResolveFile("package.json")); info.Exists() {
-			if name, ok := info.Contents.Name.GetValue(); ok && name != "" {
+			if name, ok := info.Contents.Name.GetValue(); ok {
 				prefix = name
+				packageNamed = true
 			}
 		}
 		module = strings.TrimPrefix(module, directory.AsString()+"/")
@@ -305,7 +307,7 @@ func (s *services) key(class *ast.Node) string {
 		module = strings.TrimPrefix(module, common.AsString()+"/")
 	}
 	key := module + "#" + class.Name().Text()
-	if prefix != "" {
+	if packageNamed || prefix != "" {
 		key = prefix + "/" + key
 	}
 	s.keys[class] = key

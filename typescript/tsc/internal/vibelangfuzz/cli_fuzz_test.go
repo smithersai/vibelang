@@ -191,6 +191,8 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 			flags = append(flags, cliFlag{"-" + option.ShortName, values, "TypeScript's command line"})
 		}
 	}
+	// Append new flags so existing byte-indexed corpus entries keep their arguments.
+	flags = append(flags, cliFlag{"--fix-legacy-service-keys", cliBareOnly, "007-tooling.md, Legacy service-key upgrade; requires --fix"})
 	return flags
 })
 
@@ -316,6 +318,9 @@ func cliSeeds() []cliSeed {
 		{"--fix", "--fix-migration-only", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
 		{"--fix-vip-only", "--fix", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
 		{"--fix", "--only", "main.vibe", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix", "--fix-legacy-service-keys", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix-legacy-service-keys", "--fix", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix-legacy-service-keys", "--noEmit"},
 		{"--init"},
 		{"--fix", "--fix-migration-only", "--only", "main.vibe", "--explainFiles", "false", "--init"},
 		{"--init", "--target", "nope"},
@@ -716,13 +721,13 @@ func cliHasFix(args []string) bool {
 
 // cliFixFlag reports whether the CLI removes arg before TypeScript parses the
 // command line, fix saying whether it holds --fix: --fix always, and its
-// scope flags --fix-migration-only and --fix-vip-only only beside --fix, as
+// scope flags and --fix-legacy-service-keys only beside --fix, as
 // docs/tools/README.md writes `vibelang --fix --fix-migration-only` and
 // internal/vibelang/fix.go removes "the optional scope flag after --fix was
 // found". A scope flag alone scopes nothing, so TypeScript reports it as an
 // unknown option (TS5023).
 func cliFixFlag(arg string, fix bool) bool {
-	return strings.EqualFold(arg, "--fix") || fix && (strings.EqualFold(arg, "--fix-migration-only") || strings.EqualFold(arg, "--fix-vip-only"))
+	return strings.EqualFold(arg, "--fix") || fix && (strings.EqualFold(arg, "--fix-migration-only") || strings.EqualFold(arg, "--fix-vip-only") || strings.EqualFold(arg, "--fix-legacy-service-keys"))
 }
 
 // cliNeutral reports whether a command line compiles the project as its

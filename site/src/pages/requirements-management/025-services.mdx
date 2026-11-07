@@ -76,6 +76,8 @@ Services are nominal: the compiler derives the key from package, module path, an
 
 When migrating, preserve every original explicit key; deriving a new key can break providers across package boundaries or persisted identities.
 
+A derived key concatenates the string package name, `/`, the package-relative file path without its final extension, `#`, and the service name. An empty package name is still a string: `service Users` in `src/users.vibe` derives `/src/users#Users` when `package.json` contains `"name": ""`. To preserve the directory-prefixed identities produced by older compilers for those packages, run `vibelang --fix --fix-legacy-service-keys` before upgrading consumers. This writes the old keys explicitly and is idempotent; ordinary `--fix` keeps the current derived identity.
+
 An explicit string-literal key keeps its value, including `""`. It is used for runtime lookup, the emitted key type, and duplicate-key checks; an empty literal does not request a derived key.
 
 Derived keys require a module-scope declaration in a package whose `package.json` has a string `name`. A local or block-scoped service, or one outside a named package, reports `EK0903` when it omits `static readonly key`. The editor quick fix and `vibelang --fix` insert an explicit key while preserving the declaration's current runtime identity. A namespace at module scope can still derive its services' keys. A function-local service still needs an explicit key when `noEmit` is enabled or `declaration` is disabled. An explicit key works in each scope, including outside every package; `EK0901` instead diagnoses a malformed written key.
