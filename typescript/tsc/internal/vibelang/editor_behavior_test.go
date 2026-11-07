@@ -63,7 +63,16 @@ func editorProgramWith(t testing.TB, source string, packages map[string]string) 
 	return editorProgramIn(t, source, editorPackageJSON, packages)
 }
 
+// editorTsconfig is the project editorProgram compiles main.vibe in.
+const editorTsconfig = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`
+
 func editorProgramIn(t testing.TB, source, packageJSON string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+	t.Helper()
+	return editorProgramConfig(t, source, packageJSON, packages, editorTsconfig)
+}
+
+// editorProgramConfig is editorProgramIn with tsconfig as the project's tsconfig.json.
+func editorProgramConfig(t testing.TB, source, packageJSON string, packages map[string]string, tsconfig string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
 	t.Helper()
 	dir := t.TempDir()
 	root, err := filepath.Abs("../../../..")
@@ -88,7 +97,7 @@ func editorProgramIn(t testing.TB, source, packageJSON string, packages map[stri
 	}
 	for name, text := range map[string]string{
 		"package.json":  packageJSON,
-		"tsconfig.json": `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`,
+		"tsconfig.json": tsconfig,
 		"main.vibe":     source,
 	} {
 		if name == "package.json" && packageJSON == "" {

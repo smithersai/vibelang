@@ -146,18 +146,18 @@ func (l *LanguageService) ProvideCodeActions(ctx context.Context, params *lsprot
 				continue
 			}
 
-			errorCode := *diag.Code.Integer
-
 			for _, provider := range codeFixProviders {
 				if !codeFixProviderMatchesLSPDiagnostic(provider, diag) {
 					continue
 				}
 
+				// An alias reaches the provider as the code it fixes.
+				fixCode, _ := providerFixCode(provider, diag)
 				for _, mapped := range l.converters.FromLSPRangeForSourceFile(file, diag.Range, spanmap.FeatureCodeActions) {
 					fixContext := &CodeFixContext{
 						SourceFile: mapped.Script,
 						Span:       mapped.Span,
-						ErrorCode:  errorCode,
+						ErrorCode:  fixCode,
 						Program:    program,
 						LS:         l,
 						Diagnostic: diag,
@@ -354,7 +354,8 @@ func codeFixProviderMatchesLSPDiagnostic(provider *CodeFixProvider, diagnostic *
 	if diagnostic.Source != nil && *diagnostic.Source != source || diagnostic.Source == nil && provider.Source != "" {
 		return false
 	}
-	return diagnostic.Code != nil && diagnostic.Code.Integer != nil && containsErrorCode(provider.ErrorCodes, *diagnostic.Code.Integer)
+	_, ok := providerFixCode(provider, diagnostic)
+	return ok
 }
 
 func isFixableDiagnostic(diagnostic *ast.Diagnostic, errorCodes []int32) bool {
