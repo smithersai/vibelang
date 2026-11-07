@@ -230,7 +230,7 @@ An `effect` function or producer expression reserves `fork` and `join` in its ow
 
 ## Port code with --fix
 
-When a `.pipe(...)` has custom stages, `--fix` preserves the construction order before applying them. It uses local captures where needed, so stage factories still run at the original call site and the returned Effect stays cold. Options with accessors or opaque values keep the data-last `retry`, `repeat` or `withSpan` call, preserving when options are read. A custom stage that may observe the receiver supplied by `.pipe(...)` keeps its library form.
+When a `.pipe(...)` has custom stages, `--fix` preserves the construction order before applying them. It uses local captures where needed, so stage factories still run at the original call site and the returned Effect stays cold. Options with accessors or opaque values keep the data-last `retry`, `repeat` or `withSpan` call, preserving when options are read. A custom stage that may observe the receiver supplied by `.pipe(...)` keeps its library form. `Effect.sync(() => { ... })` with a block keeps its form: an `effect` block of the same statements would be built with `Effect.gen`, while `Effect.sync(() => value)` becomes `effect { return value }`, which is built with `Effect.sync`.
 
 For a legacy `fork(program, options)` call inside `effect` code, `--fix` writes `try Effect.forkChild(program, options)`. This preserves the options and evaluates both arguments on the caller before starting the child.
 

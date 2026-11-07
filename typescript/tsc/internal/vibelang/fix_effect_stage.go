@@ -386,6 +386,14 @@ func thunkRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *for
 	if value == nil && name == "suspend" {
 		return nil
 	}
+	// A sync thunk's block holds no step, and as an effect block or function
+	// it is built with Effect.gen or Effect.fnUntraced where the source built
+	// Effect.sync. The fix keeps the program the source wrote; a thunk that
+	// returns one value becomes an effect block that is built with
+	// Effect.sync, so it still moves.
+	if value == nil && name == "sync" {
+		return nil
+	}
 	if value != nil {
 		if isProgram(c, value) != (name == "suspend") {
 			return nil

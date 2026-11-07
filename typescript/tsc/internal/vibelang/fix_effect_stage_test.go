@@ -34,11 +34,7 @@ func TestEffectStageFixes(t *testing.T) {
 		{"a generator yields one with a body", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.gen(function* () {\n    const k = yield* p(n)\n    return k + 1\n  })\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = try effect {\n    const k = try p(n)\n    return k + 1\n  }\n  return v\n}\n"},
 		{"sync held", "export const v = Effect.sync(() => 1)\n", "export const v = effect { return 1 }\n"},
-		{"sync block", "export const v = Effect.sync(() => {\n  // one\n  const a = 1\n  return a + 1\n})\n",
-			"export const v = effect {\n  // one\n  const a = 1\n  return a + 1\n}\n"},
 		{"sync returned", "export const f = (n: number) => Effect.sync(() => n + 1)\n", "export const f = effect (n: number) => n + 1\n"},
-		{"sync block returned", "export const f = (n: number) => Effect.sync(() => {\n  const a = n\n  return a + 1\n})\n",
-			"export const f = effect (n: number) => {\n  const a = n\n  return a + 1\n}\n"},
 		{"sync of an object", "export const f = (n: number) => Effect.sync(() => ({ n }))\n", "export const f = effect (n: number) => ({ n })\n"},
 		{"sync run", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.sync(() => n + 1)\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = n + 1\n  return v\n}\n"},
@@ -92,6 +88,13 @@ func TestEffectStageFixesRefuse(t *testing.T) {
 		{"a suspend of a block", "export const f = (n: number) => Effect.suspend(() => {\n  if (n > 0) return p(n)\n  return p(0)\n})\n", "Effect.suspend("},
 		{"a constructor passed on, not at a plain member", "export const f = (o: Array<number>) => Effect.forEach(o, Effect.succeed)\n", "Effect.forEach(o, Effect.succeed)"},
 		{"a thunk by name", "const thunk = () => 1\nexport const v = Effect.sync(thunk)\n", "Effect.sync(thunk"},
+		// A sync thunk's block written as an effect block or function would be
+		// built with Effect.gen or Effect.fnUntraced instead of Effect.sync.
+		{"a sync block", "export const v = Effect.sync(() => {\n  // one\n  const a = 1\n  return a + 1\n})\n", "export const v = Effect.sync(() => {\n  // one\n  const a = 1\n  return a + 1\n})"},
+		{"a sync block returned", "export const f = (n: number) => Effect.sync(() => {\n  const a = n\n  return a + 1\n})\n", "export const f = (n: number) => Effect.sync(() => {"},
+		{"a sync block that assigns", "let done = false\nexport const mark: Effect.Effect<void> = Effect.sync(() => { done = true })\n", "export const mark: void!! = Effect.sync(() => { done = true })"},
+		{"a sync block that branches", "export const f = (n: number) => Effect.sync(() => {\n  if (n > 0) return 1\n  return 2\n})\n", "export const f = (n: number) => Effect.sync(() => {"},
+		{"a sync block run", "let done = false\nexport const f = (n: number) => Effect.gen(function* () {\n  yield* Effect.sync(() => { done = n > 0 })\n  return n\n})\n", "  try Effect.sync(() => { done = n > 0 })\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got, _ := fixedPipe(t, stageHeader+test.source)
