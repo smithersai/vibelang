@@ -1,3 +1,6 @@
+// rule-evidence: docs/design/vips/0015-schema-declarations.md#decision
+// VIP-15: the project setting controls mapped optional fields and tuple elements; run.mjs
+// decodes each schema beside its Effect TypeScript twin under the same setting.
 export schema S { mutable plain?: string; readonly frozen?: number; mutable loose?: string | undefined; mutable nested?: { mutable value?: boolean }; mutable converted?: Schema.NumberFromString; readonly broad?: Schema.Unknown; readonly anything?: Schema.Any }
 export schema error E { plain?: string; loose?: string | undefined }
 export schema T = [plain?: string, loose?: number | undefined]
