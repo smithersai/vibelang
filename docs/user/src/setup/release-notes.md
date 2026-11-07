@@ -50,6 +50,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The basic Schema examples appeared unfinished and included invalid runner code. They now run and display the documented results.
 
 - Generating `throws.json` inspected implementation bodies for values that cannot be called. It now resolves sources only for callable exports, keeping the same contracts.
+- Following the Effect upgrade steps could stop the build with `EK3201` because the Node helper still used the old version. The guide now updates its pin before installing packages and running checks.
+
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
 - The editor and TypeScript mapper treated producer function expressions as JavaScript generators. They now preserve their lazy `Stream` behavior for anonymous, named and nested expressions.
@@ -765,6 +767,12 @@ useful diagnostics. The DOM type example, bare program statements,
 primitive-base declaration, effectful method under a plain annotation and
 `await` binding compiled then and are rejected now.
 
+Before installing the packages or running the checks, update the existing override in `package.json` to `4.1.1`:
+
+```json
+{ "overrides": { "@effect/platform-node-shared": "4.1.1" } }
+```
+
 With npm:
 
 ```sh
@@ -781,12 +789,6 @@ bun add --exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
 bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.1.1
 bun run build
 bun run test
-```
-
-Move the existing override in `package.json` to 4.1.1:
-
-```json
-{ "overrides": { "@effect/platform-node-shared": "4.1.1" } }
 ```
 
 Projects using another bundler update `vibelang-unplugin` to 0.0.11
