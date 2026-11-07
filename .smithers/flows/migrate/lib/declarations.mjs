@@ -640,16 +640,25 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
   // Keep package-tree declarations in the run snapshot, never as live paths.
   // Aliases of emitted files win over stale build output from the target.
   const originals = handwritten ?? new Map([...declarationFiles(packageDir, resolve(dir))].map(([file, bytes]) => [rel(packageDir, file), bytes]))
+  const retained = []
   for (const [file, bytes] of originals) {
     if (!/\.d\.[cm]?ts$/.test(file) || /\.d\.vibex?\.ts$/.test(file) || aliases[file]) continue
     const stored = posix.join(shippedDir, file)
     mkdirSync(join(dir, stored, ".."), { recursive: true })
     writeFileSync(join(dir, stored), bytes)
     aliases[file] = stored
+    aliases[file.replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] ??= stored
     logicalPaths[stored] = file
+    retained.push({ file, bytes, stored })
+    for (const context of projectContexts) {
+      if (projectDeclarations.get(context).has(file)) context.files.push(stored)
+    }
+  }
+  // Reserve every explicit declaration before inferring copied output paths.
+  // Otherwise a source encountered first can hide a different published copy.
+  for (const { file, bytes, stored } of retained) {
     for (const context of projectContexts) {
       if (!projectDeclarations.get(context).has(file)) continue
-      context.files.push(stored)
       // TypeScript does not emit an input declaration. A package build that
       // copies it publishes it where the project writes declarations, as
       // dist/esm/x.d.ts for src/x.d.ts beside src/x.js, and the manifest names
