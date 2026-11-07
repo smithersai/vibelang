@@ -1,3 +1,4 @@
+import { relativeOutput } from "./relative-output.js"
 import { aliasImport } from "./paths-imports.js"
 import { extensionlessImport } from "./relative-imports.js"
 import { existsSync, readFileSync, realpathSync } from "node:fs"
@@ -263,11 +264,16 @@ export default function vibelang(options = {}) {
   // the diagnostics.
   async function scanned(file) {
     try {
-      const { code } = await (await loaded()).load(sourceFile(file))
+      const { code } = await loadModule(sourceFile(file))
       return code ?? ""
     } catch {
       return ""
     }
+  }
+
+  async function loadModule(file) {
+    const result = await (await loaded()).load(file)
+    return relativeOutput(result, file, backend, () => backend.findCompiler(root, options.compiler), debug)
   }
 
   function diagnostics(errors, file) {
@@ -395,8 +401,12 @@ export default function vibelang(options = {}) {
       // Emitted imports keep the original source in Vite's module graph.
       if (!/\.jsx?$/.test(file)) return
       const target = resolve(dirname(cleanId(importer)), file)
-      if (existsSync(target)) return file !== original
-        ? this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true }) : undefined
+      if (existsSync(target)) {
+        if (isCompiled(cleanId(importer)) && /%[\da-f]{2}/i.test(original)) {
+          debug(`relative existing file: original=${original}, selected=${file}, target=${target}`)
+        }
+        return file !== original ? this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true }) : undefined
+      }
       if (isModuleOutput(target)) return slash(target) + query
       const stem = target.replace(/\.jsx?$/, "")
       for (const extension of file.endsWith(".jsx") ? [".vibex"] : [".vibe", ".vibex"]) {
@@ -409,7 +419,7 @@ export default function vibelang(options = {}) {
     async load(id) {
       const file = cleanId(id)
       if ((!isModuleOutput(file) && !jsxSource(file)) || !isModuleId(id)) return
-      const { project, code, map, errors, warnings, error } = await (await loaded()).load(sourceFile(file))
+      const { project, code, map, errors, warnings, error } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
       if (jsxSource(file)) this.addWatchFile(sourceFile(file))
       if (errors.length) this.error(diagnostics(errors, file))
@@ -422,7 +432,7 @@ export default function vibelang(options = {}) {
     async transform(_source, id) {
       const file = cleanId(id)
       if (!isSource(file) || !isModuleId(id)) return
-      const { project, code, map, errors, warnings, error } = await (await loaded()).load(sourceFile(file))
+      const { project, code, map, errors, warnings, error } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
       // Reject diagnostics for this source, including on repeated requests.
       if (errors.length) this.error(diagnostics(errors, file))

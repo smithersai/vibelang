@@ -62,6 +62,8 @@ ln -s "$package" "$modules/vibelang-unplugin"
 # manifest cache skips it (https://github.com/oven-sh/bun/issues/45831).
 # Keep --no-cache until that is fixed.
 # The compiler peer may be unpublished; fixtures use this checkout.
+# Adapter comparisons import the sibling Vite plugin as well.
+(cd "$repo/packages/vite" && bun install --frozen-lockfile --no-cache --omit peer)
 (cd "$package" && bun install --frozen-lockfile --no-cache --omit peer)
 rm -rf "$package/node_modules/vibelang"
 ln -s "$repo/packages/compiler" "$package/node_modules/vibelang"

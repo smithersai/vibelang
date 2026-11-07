@@ -132,3 +132,90 @@ test("esbuild source maps preserve the exact source filename like TypeScript", a
     command: "node --test test/encoded-imports.property.test.mjs"
   })
 })
+
+for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) {
+  test(`${tool}: mixed escaped source and literal JavaScript imports keep distinct identities`, async () => {
+    async function check({ name, form = "named", escaped = false }) {
+      const directory = join(repo, "packages/unplugin/test/.fixtures")
+      await mkdir(directory, { recursive: true })
+      const root = await mkdtemp(join(directory, "mixed-imports-"))
+      await mkdir(join(root, "src"))
+      await mkdir(join(root, "node_modules"))
+      await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
+      await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+      await writeFile(join(root, "package.json"), '{"type":"module"}')
+      await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+        compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], rewriteRelativeImportExtensions: true },
+        include: ["src"]
+      }))
+      const literal = "./" + encodeURIComponent(name) + ".js"
+      await writeFile(join(root, "src", encodeURIComponent(name) + ".js"), "export const value = 7\n")
+      await writeFile(join(root, "src", encodeURIComponent(name) + ".d.ts"), "export declare const value: number\n")
+      try {
+        for (const extension of ["ts", "vibe"]) {
+          await writeFile(join(root, "src", name + "." + extension), "export const value = 42\n")
+          const source = "./" + name + "." + extension
+          const spelling = escaped ? JSON.stringify(source).replaceAll("é", "\\u00e9").replace("." + extension, "\\u002e" + extension) : JSON.stringify(source)
+          const data = `import {value} from ${JSON.stringify(source)}`
+          const imports = form === "namespace"
+            ? `import * as source from ${spelling}\nimport * as literal from ${JSON.stringify(literal)}\nexport const value = source.value * 100 + literal.value\n`
+            : form === "reexport"
+            ? `export {value as source} from ${spelling}\nexport {value as literal} from ${JSON.stringify(literal)}\n`
+            : `import {value as source} from ${spelling}\nimport {value as literal} from ${JSON.stringify(literal)}\nexport const value = source * 100 + literal\n`
+          const original = "// 😀 imports keep their own targets\n" + imports + `export const data = ${JSON.stringify(data)}\nexport function explode(value = "safe") {\n  return value.toUpperCase()\n}\n`
+          const main = join(root, "src/main." + extension)
+          await writeFile(main, original)
+          const entry = join(root, "src/entry.mjs")
+          await writeFile(entry, `import * as result from "./main.${extension}"; if(process.argv[2]) result.explode(null); console.log(JSON.stringify([${form === "reexport" ? "result.source * 100 + result.literal" : "result.value"}, result.data]))\n`)
+          const output = join(root, "out", ["webpack", "rspack"].includes(tool) ? "main.cjs" : "main.mjs")
+          let close
+          try {
+            if (tool === "vite" || tool === "vite7") {
+              const { build } = tool === "vite" ? await import("vite") : await import(viteRequire.resolve("vite7"))
+              await build({ root, configFile: false, plugins: extension === "vibe" ? [vitePlugin({ compiler: binary })] : [], logLevel: "silent",
+                build: { ssr: entry, outDir: join(root, "out"), minify: false, sourcemap: true, rollupOptions: { output: { entryFileNames: "main.mjs" } } } })
+            } else {
+              const plugin = (await import(`../src/${tool}.js`)).default
+              const plugins = extension === "vibe" ? [plugin({ root, compiler: binary })] : []
+              if (tool === "rollup") {
+                const bundle = await (await import("rollup")).rollup({ input: entry, plugins })
+                close = () => bundle.close()
+                await bundle.write({ file: output, format: "es", sourcemap: true })
+              } else if (tool === "esbuild") {
+                await (await import("esbuild")).build({ entryPoints: [entry], bundle: true, platform: "node", format: "esm", outfile: output, plugins, sourcemap: true, logLevel: "silent" })
+              } else {
+                const api = tool === "webpack" ? (await import("webpack")).default : (await import("@rspack/core")).rspack
+                const compiler = api({ context: root, mode: "none", target: "node", entry, devtool: "source-map",
+                  output: { path: join(root, "out"), filename: "main.cjs" }, plugins, infrastructureLogging: { level: "error" } })
+                close = () => new Promise((accept, reject) => compiler.close(error => error ? reject(error) : accept()))
+                await new Promise((accept, reject) => compiler.run((error, stats) => error ? reject(error) : stats.hasErrors() ? reject(new Error(stats.toString({ all: false, errors: true }))) : accept()))
+              }
+            }
+            const run = spawnSync(process.execPath, [output], { encoding: "utf8" })
+            assert.equal(run.status, 0, run.stderr)
+            assert.deepEqual(JSON.parse(run.stdout), [4207, data], `${name}; ${form}; ${extension}: source and runtime imports, and ordinary string data, retain their original meanings`)
+            const failed = spawnSync(process.execPath, ["--enable-source-maps", output, "throw"], { encoding: "utf8" })
+            const lines = original.split("\n"), line = lines.findIndex(text => text.includes("return value.toUpperCase")) + 1
+            assert.notEqual(failed.status, 0)
+            // Native webpack/Rspack parse this untyped TypeScript control as
+            // JavaScript and provide line-level maps; compiler maps retain columns.
+            const column = extension === "ts" && ["webpack", "rspack"].includes(tool) ? 1 : lines[line - 1].indexOf("toUpperCase") + 1
+            assert.ok(failed.stderr.includes("main." + extension + ":" + line + ":" + column), failed.stderr)
+            const map = JSON.parse(await readFile(output + ".map", "utf8"))
+            assert.ok(map.sourcesContent.includes(original), "source maps retain the complete original module")
+          } finally { await close?.() }
+          await rm(main)
+          await rm(join(root, "src", name + "." + extension))
+        }
+      } finally { await rm(root, { recursive: true, force: true }) }
+    }
+    for (const name of [...names, "rocket-😀 %20"]) for (const form of ["named", "namespace", "reexport"]) await check({ name, form })
+    await check({ name: "créé", escaped: true })
+    await checkProperty(fc, {
+      name: `mixed-escaped-imports-${tool}`,
+      rule: "Relative source imports and literal JavaScript imports denote distinct files, matching the native TypeScript bundler control.",
+      arbitrary: fc.record({ name: arbitrary.map(name => name + "é"), form: fc.constantFrom("named", "namespace", "reexport"), escaped: fc.boolean() }),
+      numRuns: 8, check, command: "node --test test/encoded-imports.property.test.mjs"
+    })
+  })
+}
