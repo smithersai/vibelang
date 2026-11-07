@@ -1,0 +1,11 @@
+// expect: EK4604
+// Appendix B: EK4604 — spec-rule: docs/design/src/900-appendices.md#04961d07f271f19d
+// await inside a non-async hatch body is EK4604. A native async function
+// keeps JavaScript await.
+export effect function inHatch() {
+  return try sync(() => {
+    await Promise.resolve(1)
+  })
+}
+
+export async function native() { return await Promise.resolve(1) }

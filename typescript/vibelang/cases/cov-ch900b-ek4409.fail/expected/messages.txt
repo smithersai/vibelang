@@ -1,0 +1,1 @@
+main.vibe(8,10): warning EK4409: value() calls a value of type any, so genuineAny succeeds with whatever it returns and runs no program it returns.
