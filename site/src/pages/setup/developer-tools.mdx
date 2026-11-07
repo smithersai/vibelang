@@ -180,7 +180,7 @@ learns the `.vibe` extension and its parser. A TypeScript glob on a script's
 `--no-error-on-unmatched-pattern`. A configuration in another shape, such as
 `module.exports`, gets a setup warning instead. A test's fixtures stay as they are.
 
-For `for concurrent`, the lint tree retains the written limit expression and item scope. Compiler-generated cache names are marked as synthetic, so scope rules inspect your own identifiers.
+For `for concurrent`, the lint tree retains the written limit expression and item scope. Compiler-generated cache names are marked as synthetic, so scope rules inspect your own identifiers. The `8` in `for concurrent(8)` has the `Numeric` token kind.
 
 The lint parser reports `EK1010` for an unparenthesized throw expression before a comma. Write `[(throw error), value]` or apply `vibelang --fix`; the grouped form remains visible to lint rules.
 
