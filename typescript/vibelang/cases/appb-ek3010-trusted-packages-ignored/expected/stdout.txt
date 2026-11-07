@@ -1,0 +1,1 @@
+EK3010 warns and ignores trustedPackages in 3 sections

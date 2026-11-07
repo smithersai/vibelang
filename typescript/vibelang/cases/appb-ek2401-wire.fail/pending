@@ -1,0 +1,1 @@
+relic-try-forms EK2401 is not reported yet: the compiler accepts the resolved wire intrinsic. Enforcement waits for the preserving codemod and zero remaining migration uses (chapter 7, Legacy fork, try-statement and wire migration).

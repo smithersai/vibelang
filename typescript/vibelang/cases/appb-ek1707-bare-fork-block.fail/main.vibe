@@ -1,0 +1,6 @@
+// expect: EK1707
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK1707` | a bare `fork { … }` block; write `fork effect { … }` or use the `fork blocks` codemod before rejection | 2, 17 | [Migration](007-tooling.md#legacy-fork-try-statement-and-wire-migration) |
+export effect function main() {
+  const fiber = fork { return 1 }
+  return [join fiber]
+}
