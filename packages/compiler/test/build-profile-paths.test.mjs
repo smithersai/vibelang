@@ -25,15 +25,22 @@ for (const option of ["generateCpuProfile", "generateTrace", "pprofDir"]) {
     finally { rmSync(root, { recursive: true, force: true }) }
   })
 }
+function checkGeneratedPaths(options = {}) {
+  fc.assert(fc.property(
+    fc.constantFrom("-b", "--build", "--BUILD"),
+    fc.constantFrom("generateCpuProfile", "generateTrace", "pprofDir"),
+    fc.constantFrom("./profiles", "nested/../profiles", "with space/profiles", "深い/分析"),
+    (build, option, path) => {
+      // A CPU profile creates a file; another case may need a directory there.
+      const root = fixture()
+      try { check(root, build, option, path) }
+      finally { rmSync(root, { recursive: true, force: true }) }
+    }
+  ), { numRuns: 12, ...options })
+}
 test("build path options accept aliases, nested paths, spaces and Unicode", () => {
-  const root = fixture()
-  try {
-    fc.assert(fc.property(
-      fc.constantFrom("-b", "--build", "--BUILD"),
-      fc.constantFrom("generateCpuProfile", "generateTrace", "pprofDir"),
-      fc.constantFrom("./profiles", "nested/../profiles", "with space/profiles", "深い/分析"),
-      (build, option, path) => check(root, build, option, path)
-    ), { numRuns: 12 })
-  } finally { rmSync(root, { recursive: true, force: true }) }
+  checkGeneratedPaths()
 })
-
+test("profiling path mutations do not inherit another case's output artifacts", () => {
+  checkGeneratedPaths({ seed: 2039653785 })
+})
