@@ -1,0 +1,1 @@
+no repair writes dependencies, typeRoots, foreign sources, declarations, output, build info, locks or referenced projects

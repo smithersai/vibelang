@@ -1,0 +1,1 @@
+an owned source an import reaches is fixed even when exclude omits it

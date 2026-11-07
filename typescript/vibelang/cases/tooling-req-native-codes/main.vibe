@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#compiler-and-tooling-requirements | Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types.
+export const witness = 1

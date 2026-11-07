@@ -1,0 +1,1 @@
+native lexical, syntax and static errors keep their TS codes, also embedded in VibeLang productions
