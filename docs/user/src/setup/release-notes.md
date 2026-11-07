@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- When a `.ts` function's `@throws` named a type that is not a class, such as `@throws {typeof sentinel}` or `@throws {"default"}`, calling it in plain code reported `EK0401` saying it "may throw 'unknown'". The message now shows the written contract, as the effect-code message does.
+
 - Migration examples with callable exports outside a package could still be reported as unsupported after their dependencies resolved. They now verify that support while continuing to reject changed types, changed documentation, and unresolved inputs.
 
 - `vibelang --fix` moved a throwing call or `throw` into a TypeScript module body and imported its helper with an alias, `import { invoke as $invoke } from $call$ts`, so a repository whose lint forbids renamed imports rejected the fixed file. The module body now exports the helper under the name the file uses, `import { $invoke } from $call$ts`, and a helper written the old way is still reused.

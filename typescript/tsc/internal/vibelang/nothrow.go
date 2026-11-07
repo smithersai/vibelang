@@ -69,7 +69,7 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 				if ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(node, home) {
 					report(c, node, foreignCallInEffectParameters, nodeText(file, ast.GetInvokedExpression(node)))
 				} else {
-					report(c, node, throwingCallOutsideEffect, nodeText(file, ast.GetInvokedExpression(node)), typeListText(c, failures))
+					report(c, node, throwingCallOutsideEffect, nodeText(file, ast.GetInvokedExpression(node)), knownThrowsText(c, node, failures))
 				}
 			}
 		}
@@ -352,6 +352,19 @@ func (a *analyzer) firstRunBeyondThrows(fn *ast.Node) *ast.Node {
 
 // typeListText returns the union of types as TypeScript writes it, or "never"
 // for none.
+// knownThrowsText names what a call known to throw throws. A written
+// @throws type that names no class, such as {typeof sentinel} or {"default"},
+// makes the call known to throw unknown; the message shows the written
+// contract, as EK0403 does, rather than unknown.
+func knownThrowsText(c *checker.Checker, node *ast.Node, failures []*checker.Type) string {
+	if len(failures) == 1 && failures[0] == c.GetUnknownType() {
+		if t := callTrust(c, node); !t.unknown && strings.TrimSpace(t.unreachable) != "" {
+			return strings.TrimSpace(t.unreachable)
+		}
+	}
+	return typeListText(c, failures)
+}
+
 func typeListText(c *checker.Checker, types []*checker.Type) string {
 	if len(types) == 0 {
 		return "never"

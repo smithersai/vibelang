@@ -65,3 +65,42 @@ func TestThrowOutsideEffectCodeIsEK0401(t *testing.T) {
 		})
 	}
 }
+
+// A call known to throw names its written contract in EK0401's message. A
+// written type that names no class makes the call known to throw unknown,
+// but the message shows what the tag says, as EK0403 does.
+func TestThrowingCallTextNamesWrittenContract(t *testing.T) {
+	source := `module lib {
+  export const sentinel = new RangeError("x")
+  /** @throws {typeof sentinel} */
+  export function viaValue(): number { throw sentinel }
+  /** @throws {"default"} */
+  export function viaLiteral(): number { throw "default" }
+  /** @throws {RangeError} */
+  export function viaClass(): number { throw sentinel }
+}
+import { viaValue, viaLiteral, viaClass } from lib
+export function a() { return viaValue() }
+export function b() { return viaLiteral() }
+export function c() { return viaClass() }`
+	want := []string{
+		"'viaValue' may throw 'typeof sentinel', and synchronous VibeLang code never throws.",
+		"'viaLiteral' may throw '\"default\"', and synchronous VibeLang code never throws.",
+		"'viaClass' may throw 'RangeError', and synchronous VibeLang code never throws.",
+	}
+	program, file, _, _ := editorProgram(t, source)
+	var got []string
+	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+		if d.Code() == EK0401.Code {
+			got = append(got, diagnosticWithNotes(d))
+		}
+	}
+	if len(got) != len(want) {
+		t.Fatalf("EK0401 diagnostics:\n%s\nwant %d", strings.Join(got, "\n"), len(want))
+	}
+	for i := range want {
+		if !strings.HasPrefix(got[i], want[i]) {
+			t.Errorf("diagnostic %d:\n got %s\nwant %s", i, got[i], want[i])
+		}
+	}
+}
