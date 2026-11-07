@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["esnext"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "outDir": "out",
+    "vibelang": { "trustedPackages": ["legacy-options-dep"], "declarationImportStyle": "bogus" }
+  },
+  "vibelang": { "trustedPackages": ["legacy-root-dep"], "declarationImportStyle": 42 },
+  "vibe": { "trustedPackages": ["vibe-dep"] },
+  "include": ["*.vibe"]
+}

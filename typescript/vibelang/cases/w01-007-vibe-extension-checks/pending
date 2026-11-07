@@ -1,0 +1,1 @@
+needs-ruling a .vibe or .vibex value import of ./x.vibe, ./x.vibex or ./x.ts reports no TS5097 without allowImportingTsExtensions or rewriteRelativeImportExtensions; its .ts twin does. The compiler exempts every VibeLang importer in AllowImportingTsExtensionsFrom, and about 56 cases rely on the exemption.

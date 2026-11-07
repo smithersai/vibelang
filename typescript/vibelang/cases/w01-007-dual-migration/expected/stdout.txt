@@ -1,0 +1,15 @@
+before
+  return withSpan("load") { TS2769
+  return timeout("1 second") { TS2345
+  return semaphore.withPermits(1) { TS2554
+  return label("x") { EK1023
+after
+  return withSpan(effect {
+  }, "load")
+  return timeout(effect {
+  }, "1 second")
+  return semaphore.withPermits(1)(effect {
+  })
+  return label(effect {
+  }, "x")
+fixed project compiles; second --fix changes nothing

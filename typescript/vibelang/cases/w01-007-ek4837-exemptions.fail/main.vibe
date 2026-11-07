@@ -1,0 +1,18 @@
+// expect: EK4837 EK4830
+// rule-evidence: docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms | | `EK4837` | A class written with `Schema.TaggedError`, except one with spread fields or a user-written static `_tag` | Use `schema error Name { … }` when the schema and tag are preserved; an ordinary `error` would lose the schema. |
+// rule-evidence: docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms | A native `Schema.TaggedError` class with spread fields, or a native `Data.TaggedError` or `Schema.TaggedError` class with a user-written static `_tag`, keeps its class form without an error-declaration warning or quick fix.
+// Ordinary fields convert, in Schema and in Data; spread fields and a
+// user-written static _tag keep the class form without a warning.
+import { Data, Schema } from "effect"
+
+const base = { id: Schema.String }
+
+export class Plain extends Schema.TaggedError<Plain>()("Plain", { id: Schema.String }) {}
+export class Spread extends Schema.TaggedError<Spread>()("Spread", { ...base, code: Schema.Number }) {}
+export class OwnTag extends Schema.TaggedError<OwnTag>()("OwnTag", { id: Schema.String }) {
+  static readonly _tag = "OwnTag"
+}
+export class DataPlain extends Data.TaggedError("DataPlain")<{ readonly id: string }> {}
+export class DataOwnTag extends Data.TaggedError("DataOwnTag")<{ readonly id: string }> {
+  static readonly _tag = "DataOwnTag"
+}

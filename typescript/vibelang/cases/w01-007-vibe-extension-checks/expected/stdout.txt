@@ -1,0 +1,7 @@
+vibe-value-import        ["TS5097"]
+vibex-value-import       ["TS5097"]
+vibe-value-reexport      ["TS5097"]
+vibe-type-import         []
+vibe-allow-ts-extensions []
+vibe-rewrite-extensions  []
+vibex-rewrite-extensions []

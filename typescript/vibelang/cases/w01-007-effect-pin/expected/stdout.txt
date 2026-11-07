@@ -1,0 +1,6 @@
+manifests pin effect 4.1.1
+4.1.0  cli ["EK3201 4.1.0"] editor ["EK3201"]
+4.1.2  cli ["EK3201 4.1.2"]
+4.0.3  cli ["EK3201 4.0.3"]
+4.2.0  cli ["EK3201 4.2.0"]
+4.1.1  cli [] editor []

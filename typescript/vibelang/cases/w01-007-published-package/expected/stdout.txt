@@ -1,0 +1,2 @@
+packed ["build/Badge.d.ts","build/Badge.jsx","build/greet.d.ts","build/greet.js","build/index.d.ts","build/index.js","package.json"]
+types build/index.d.ts

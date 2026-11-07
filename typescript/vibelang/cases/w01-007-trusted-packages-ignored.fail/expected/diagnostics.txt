@@ -1,0 +1,2 @@
+main.vibe(10,38): error EK0403
+tsconfig.json(12,13): warning EK3010

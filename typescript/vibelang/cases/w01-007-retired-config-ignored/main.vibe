@@ -1,0 +1,9 @@
+// expect-result: [1,"ok"]
+// Every retired trustedPackages key warns EK3010 and every retired
+// declarationImportStyle key warns EK3011, whatever its value, and the
+// project still compiles and runs: the warnings are nonfatal.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | The retired `trustedPackages` key is ignored in `vibe` and supported legacy sections, with warning `EK3010`: remove it.
+// rule-evidence: docs/design/src/007-tooling.md#declaration-import-spelling | `declarationImportStyle` is retired: root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle` are ignored with nonfatal deprecation warning `EK3011` for every value, including invalid values (VIP-30, amended).
+export effect function main() {
+  return [1, "ok"]
+}

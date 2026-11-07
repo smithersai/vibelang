@@ -1,0 +1,16 @@
+// expect: EK0403
+// Listing npm-dep in the retired trustedPackages key trusts nothing: its
+// unannotated parse throws unknown, as a local TypeScript function would,
+// so the unwrapped call is EK0403. The Effect.try bridge and the written
+// @throws {never} contract on size are the two accepted repairs.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | Npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` without `@throws`; use a signature contract or an explicit `Effect.try` bridge ([VIP-4](../vips/0004-throw.md#decision), amended).
+import { Effect } from "effect"
+import { parse, size } from "npm-dep"
+
+effect function unbridged() { return parse("1") }
+effect function bridged() { return try Effect.try({ try: () => parse("2"), catch: () => "bad json" }) }
+effect function contract() { return size("abc") }
+
+export effect function main() {
+  return [try unbridged(), try bridged(), try contract()]
+}
