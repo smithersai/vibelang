@@ -292,25 +292,19 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 }
 
 // contextualFnContract writes the contract of an Effect.fn whose result type
-// comes from its context. The contextual success type stays, since it types
-// the body's return expressions (a literal such as schemaVersion: 1). The
-// error and requirement channels come from the checked call, as TypeScript
-// infers them: a context that also feeds inference, such as satisfies or a
-// generic parameter, would otherwise widen the inferred and declared type.
+// comes from its context: the Effect type of the checked call, which
+// TypeScript infers with that context. The context types the body's return
+// expressions there (a literal such as schemaVersion: 1 stays 1), and under
+// the generated withSpan call it would not. The context itself is not the
+// contract: one that also feeds inference, such as satisfies or a generic
+// parameter, would widen the inferred and declared type.
 func contextualFnContract(c *checker.Checker, generator *ast.Node, contextual *checker.Type, checked *checker.Type) string {
-	format := func(t *checker.Type) string {
-		return c.TypeToStringEx(t, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+	if signature := singleCallSignature(c, checked); signature != nil {
+		if actual := c.GetReturnTypeOfSignature(signature); isEffectType(c, actual) {
+			contextual = actual
+		}
 	}
-	signature := singleCallSignature(c, checked)
-	if signature == nil {
-		return format(contextual)
-	}
-	actual := c.GetReturnTypeOfSignature(signature)
-	success, errors, requirements := channelType(c, contextual, "_A"), channelType(c, actual, "_E"), channelType(c, actual, "_R")
-	if success == nil || errors == nil || requirements == nil {
-		return format(contextual)
-	}
-	return bangText(format(success), format(errors), format(requirements))
+	return c.TypeToStringEx(contextual, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 }
 
 // effectFnOpenRequirement finds a generic requirement even inside a union,
@@ -1370,18 +1364,6 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				s.pipes = append(s.pipes, node)
 			}
 			markPipeCalls(node, operands)
-		case ast.IsNewExpression(node) && effectCode == 0 && own && throwing == nil && needsGeneratorDefectBridge(c, node):
-			if foreignInvocationHasDirectEval(node) {
-				s.why = "a throwing constructor has direct eval in its operands"
-				return true
-			}
-			if holdsYield(node) {
-				s.why = "a throwing constructor has a yield* in its operands"
-				return true
-			}
-			s.throwing = append(s.throwing, node)
-			throwing = node
-			defer func() { throwing = nil }()
 		case isInvocation(node) && !operands[node] && effectCode == 0:
 			if why := effectGenCallMeaning(c, a, file, node, own, callback); why != "" {
 				s.why = why

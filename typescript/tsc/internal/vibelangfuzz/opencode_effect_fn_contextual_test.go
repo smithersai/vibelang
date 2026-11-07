@@ -27,11 +27,12 @@ func TestEffectFnContextualChannelsQuoted(t *testing.T) {
 
 // Minimized from opencode's core plugin/verbosity: an Effect.fn plugin body
 // whose holder gives it a contextual Effect type wider than its body needs.
-// Holders: satisfies, a plain generic parameter, an annotated property object
-// and an annotated function binding. Bodies: the services and error the body
+// Holders: satisfies, a plain generic parameter, an annotated property object,
+// an annotated function binding, and satisfies with a wider success type
+// (opencode's core worktree/git strategy). Bodies: the services and error the body
 // yields. The oracle compares declarations with the .ts twin through the
 // migration API-identity checker.
-var effectFnContextualHolders = []string{"satisfies", "generic", "property", "annotated"}
+var effectFnContextualHolders = []string{"satisfies", "generic", "property", "annotated", "success"}
 var effectFnContextualBodies = []string{"a", "b", "ab", "fail", "a-fail", "none"}
 
 func effectFnContextualSource(holder, body string) string {
@@ -48,7 +49,7 @@ func effectFnContextualSource(holder, body string) string {
 	if body == "none" {
 		lines = append(lines, "    yield* Effect.void")
 	}
-	fn := "Effect.fn(\"P\")(function* (ctx) {\n" + strings.Join(lines, "\n") + "\n  })"
+	fn := "Effect.fn(\"P\")(function* (ctx: string) {\n" + strings.Join(lines, "\n") + "\n  })"
 	prelude := `import { Context, Data, Effect, Scope } from "effect"
 export class A extends Context.Service<A, { readonly n: number }>()("A") {}
 export class B extends Context.Service<B, { readonly m: number }>()("B") {}
@@ -57,8 +58,14 @@ export class Denied extends Data.TaggedError("Denied")<{}> {}
 export interface Plugin<E, R> { readonly id: string; readonly effect: (ctx: string) => Effect.Effect<void, E, R> }
 export function define<E, R>(plugin: Plugin<E, R>): Plugin<E, R> { return plugin }
 export type Wide = Plugin<Missing | Denied, A | B | Scope.Scope>
+export interface Info { readonly directory: string; readonly branch?: string }
+export interface Strategy { readonly create: (ctx: string) => Effect.Effect<Info, Missing | Denied, A | B> }
 `
 	switch holder {
+	case "success":
+		fn = strings.ReplaceAll(fn, ") return\n", ") return { directory: ctx }\n")
+		fn = strings.Replace(fn, "\n  })", "\n    return { directory: ctx }\n  })", 1)
+		return prelude + "export const P = {\n  create: " + fn + ",\n} satisfies Strategy\n"
 	case "satisfies":
 		return prelude + "export const P = define({\n  id: \"p\",\n  effect: " + fn + ",\n} satisfies Wide)\n"
 	case "generic":
