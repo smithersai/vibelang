@@ -69,15 +69,6 @@
     ]
   },
   {
-    "code": "EK4401",
-    "cases": [
-      {
-        "input": "typescript/vibelang/cases/ek4401-fix.fail",
-        "output": "typescript/vibelang/cases/ek4401-fix-fixed-output"
-      }
-    ]
-  },
-  {
     "code": "EK0101",
     "cases": [
       {

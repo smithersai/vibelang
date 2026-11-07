@@ -38,3 +38,5 @@ export effect function main() {
     return [try errors("1"), try needs("2"), (try value("3")).name, try bang("4"), try everything("5")]
   }
 }
+// Chapter 007: a call whose handlers hold an - spec-rule: docs/design/src/007-tooling.md#c4f94b604fb5354e
+// Chapter 900: EK1010 diagnostic - spec-rule: docs/design/src/900-appendices.md#0e765a0946d1e3ad

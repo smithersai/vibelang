@@ -1,0 +1,1 @@
+every registered retirement witness reproduces its code, fixes to its registered output and compiles again

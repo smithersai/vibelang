@@ -334,7 +334,7 @@ const vibelangTopicTargets = Object.fromEntries(
 const specInputs = S.Filegroup({ srcs: [...S.glob([
   "docs/design/**", "typescript/vibelang/cases/**", "docs/tools/spec-rules*", "docs/tools/spec-schema-constructor*", "docs/tools/spec-examples*", "docs/tools/spec-lint*", "docs/tools/spec-pipe-arrows*", "docs/tools/spec-native-source-resolution*", "docs/tools/spec-diagnostic-*",
   "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
-  "docs/tools/diagnostic-identity*", "docs/tools/diagnostic-archive-examples*", "docs/tools/diagnostic-examples*", "docs/tools/diagnostic-native-projects*", "typescript/vibelang/cases/appendix-diagnostic-identities/examples.json", "scripts/diagnostic-inventory.mjs", "docs/tools/factory-diagnostic-retirement.test.mjs", "docs/tools/retirement-gate*", "scripts/mq-retirement-precheck*",
+  "docs/tools/diagnostic-identity*", "docs/tools/diagnostic-archive-examples*", "docs/tools/diagnostic-examples*", "docs/tools/diagnostic-native-projects*", "typescript/vibelang/cases/appendix-diagnostic-identities/examples.json", "scripts/diagnostic-inventory.mjs", "docs/tools/factory-diagnostic-retirement.test.mjs", "docs/tools/retirement-gate*", "docs/tools/retirement-admission-rules*", "scripts/mq-retirement-precheck*", "scripts/mq-retirement-integration.patch",
   "typescript/tsc/internal/vibelangfuzz/testdata/fuzz/**", "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "typescript/tsc/internal/vibelang/diagnostics.go",
   "docs/user/src/getting-started/012-devtools.md", "PACKAGE.ts",
   "typescript/tsc/internal/diagnostics/diagnosticMessages.json",
@@ -406,7 +406,7 @@ const specSchemaConstructor = check(
 )
 const specLinterTests = S.Shell.Test({
   summary: "Historical spec defects, VIP links and supersession, module extraction scope and projection source kinds, seeded properties and native example checks reject regressions.",
-  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/spec-rules-import-grammar.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/diagnostic-examples.test.mjs docs/tools/diagnostic-archive-examples.test.mjs docs/tools/diagnostic-native-projects.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs docs/tools/retirement-gate.test.mjs && python3 -B scripts/mq-retirement-precheck.test.py && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts spec-native-source-resolution.test.ts",
+  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/spec-rules-import-grammar.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/diagnostic-examples.test.mjs docs/tools/diagnostic-archive-examples.test.mjs docs/tools/diagnostic-native-projects.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs docs/tools/retirement-gate.test.mjs docs/tools/retirement-admission-rules.test.mjs && python3 -B scripts/mq-retirement-precheck.test.py && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts spec-native-source-resolution.test.ts",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
   tools: [node, bun, S.Host.bin("jj"), S.Host.bin("python3")], sandbox: "none", timeout: "10m"
 })
