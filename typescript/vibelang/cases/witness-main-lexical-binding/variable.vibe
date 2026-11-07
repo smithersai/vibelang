@@ -1,0 +1,13 @@
+// rule-evidence: docs/design/src/001-functions.md#modules-and-the-top-level | An exported `const main` or `let main` is an ordinary lexical binding: a read before initialization throws JavaScript’s `ReferenceError`.
+function read() { return main }
+function early(): string {
+  try {
+    read()
+    return "read"
+  } catch (e) {
+    return e instanceof ReferenceError ? "ReferenceError" : "other"
+  }
+}
+export const before = early()
+export let main = effect () => 8
+export const after = typeof read()

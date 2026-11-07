@@ -1,0 +1,13 @@
+// expect: EK0107
+// rule-evidence: docs/design/src/001-functions.md#meaning | | `var` | every `var` declaration, `for (var …)` included; a declaration rejected by a `do` early error uses the [specific diagnostics](002-running.md#do-expressions) | `let`, or `const` when the binding is never assigned |
+export var top = 1
+export function plain(): number { var local = 1; return local }
+export function loop(): number { for (var i = 0; i < 2; i++) {} return 1 }
+export function keys(): number { for (var key in { a: 1 }) {} return 1 }
+export function items(): number { for (var item of [1]) {} return 1 }
+export effect function running(job: number!!) { var ran = try job; return ran }
+// A nonfinal var in a do body outside a parameter list is not a do early error.
+export function nonfinal(): number { return do { var inner = 1; inner } }
+// Names, not declarations.
+const row = { var: 1 }
+export const name = row.var
