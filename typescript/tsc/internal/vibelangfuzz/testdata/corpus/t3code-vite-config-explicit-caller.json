@@ -1,0 +1,6 @@
+{
+  "description": "Explicit configFile neighbor of the T3code programmatic caller.",
+  "config": "import { leaf } from \"./src/leaf.ts\";\nexport default { define: { NATIVE_CONFIG_SENTINEL: \"true\" }, leaf };\n",
+  "leaf": "export const leaf = 1;\n",
+  "caller": "import { optimizeDeps, resolveConfig } from \"vite\";\nexport async function warm(webRoot: string) {\n  const config = await resolveConfig({ root: webRoot, logLevel: \"error\", configFile: \"vite.config.ts\", configLoader: \"native\" }, \"serve\");\n  return optimizeDeps(config);\n}\n"
+}

@@ -1,0 +1,6 @@
+{
+  "description": "Minimized T3code programmatic Vite config caller after a selected config rename; API and loader execution are controlled.",
+  "config": "import { leaf } from \"./src/leaf.ts\";\nexport default { define: { NATIVE_CONFIG_SENTINEL: \"true\" }, leaf };\n",
+  "leaf": "export const leaf = 1;\n",
+  "caller": "import { optimizeDeps, resolveConfig } from \"vite\";\nexport async function warm(webRoot: string) {\n  const config = await resolveConfig({ root: webRoot, logLevel: \"error\" }, \"serve\");\n  return optimizeDeps(config);\n}\n"
+}

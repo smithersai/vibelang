@@ -1,0 +1,4 @@
+FuzzMigrationConfigCallers caller:implicit-call compiler VIP-34: native config eligibility has no discovery or loader proof for programmatic resolveConfig callers; lane migfix-t3code
+FuzzMigrationConfigCallers corpus:t3code-vite-config-api-caller compiler VIP-34: the retained programmatic caller no longer finds the renamed config; lane migfix-t3code
+FuzzMigrationConfigCallers caller:explicit-call compiler VIP-34: programmatic configFile literals retain the removed TypeScript filename; lane migfix-t3code
+FuzzMigrationConfigCallers corpus:t3code-vite-config-explicit-caller compiler VIP-34: the explicit configFile neighbour must follow the supported rename or retain its original config; lane migfix-t3code
