@@ -1,4 +1,4 @@
-import { extensionlessImport } from "./relative-imports.js"
+import { extensionlessImport, missingRelativeInputs } from "./relative-imports.js"
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
@@ -264,7 +264,11 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     const file = cleanId(id)
     const result = await (await loaded()).load(file)
     debug(`load ${file} from ${result.project}`)
-    return result
+    const missing = missingRelativeInputs(result.errors)
+    if (missing.length) debug(`watch missing relative inputs: ${missing.join(", ")}`)
+    // Keep missing candidates in the bundler's watch set, outside the backend's
+    // existing-input snapshot and its check for saves made during a compile.
+    return missing.length ? { ...result, inputs: [...new Set([...result.inputs, ...missing])] } : result
   }
 
   // The module the plugin serves for a specifier, or undefined to leave it to
@@ -329,7 +333,21 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     load: meta.framework === "bun" ? undefined : async function load(id) {
       const { project, code, map, inputs, errors, warnings, error } = await loadModule(id)
       // Any project source or the tsconfig can change the contracts this module compiles against.
-      for (const input of [project, ...inputs]) this.addWatchFile(input)
+      const nativeWatch = ["rollup", "rolldown", "vite"].includes(meta.framework)
+      const watch = new Set()
+      for (const input of [project, ...inputs]) {
+        if (!nativeWatch || existsSync(input)) watch.add(input)
+        else {
+          // Native watchers can ignore absent paths. Register their existing
+          // parent instead: multiple absent alternatives in one directory can
+          // otherwise narrow its watcher to just one of those file names.
+          let directory = dirname(input)
+          while (!existsSync(directory) && dirname(directory) !== directory) directory = dirname(directory)
+          watch.add(directory)
+          debug(`watch missing relative source directory: ${directory}`)
+        }
+      }
+      for (const input of watch) this.addWatchFile(input)
       // Reject this source's errors even after another clean module was loaded.
       if (errors.length) {
         const first = errors.find((diagnostic) => diagnostic.file) || {}

@@ -21,6 +21,8 @@ entries, including expanded `tsdown` entry globs. Array order and named
 entry aliases stay as configured; `.ts` and `.vibe` sources still build.
 Use the `.vibe` source when choosing a single entry.
 
+In bundler watch mode, creating a missing relative source also triggers a rebuild. This includes directory indexes and source imports written with their emitted `.js` extension. Set `VIBELANG_UNPLUGIN_DEBUG=1` to see which missing source candidates the plugin watches.
+
 For programmatic Rolldown builds, `vibelang-unplugin/rolldown` uses
 Rolldown's `cwd` as its default compiler root. A plugin `project` path is
 relative to that root. An explicit plugin `root` can select a different

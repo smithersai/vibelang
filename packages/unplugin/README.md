@@ -269,7 +269,7 @@ declarations and incremental output. A source saved
 during a compile starts another compile before any module is served.
 
 Each `.vibe` module declares every project source and the tsconfig as watch
-files, so an edit to any of them rebuilds the `.vibe` modules. Errors in a loaded source and project-wide errors are reported once for that module,
+files, so an edit to any of them rebuilds the `.vibe` modules. Missing relative imports are watched too: creating the missing source, including a directory index or a source imported by its rewritten `.js` name, rebuilds without another edit to the importer. Set `VIBELANG_UNPLUGIN_DEBUG=1` to trace the missing source candidates registered for watching. Errors in a loaded source and project-wide errors are reported once for that module,
 as a build error whose message lists each diagnostic
 as `file:line:column - error TS2322: text`.
 

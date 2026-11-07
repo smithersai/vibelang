@@ -98,9 +98,13 @@ function watchBundle(bundler, root, env = {}) {
   const started = Date.now()
   // The failure message shows each build result, edit, and trace line in order.
   const history = []
-  const log = (text) => history.push(`+${Date.now() - started}ms ${text}`)
+  const log = (text) => {
+    const line = `+${Date.now() - started}ms ${text}`
+    history.push(line)
+    if (process.env.VIBELANG_WATCH_TRACE) console.error(line)
+  }
   const errors = createInterface({ input: child.stderr })
-  errors.on("line", (line) => history.push(`  stderr: ${line}`))
+  errors.on("line", (line) => log(`stderr: ${line}`))
   const events = []
   let wake = () => {}
   const output = createInterface({ input: child.stdout })
@@ -351,6 +355,46 @@ Bun.build = (options) => { unlinkSync(${JSON.stringify(asset)}); return build(op
         await watchEdits(bundler, root, watcher)
       } finally {
         await watcher.close()
+      }
+    })
+
+
+    it(`${bundler}: watch mode recovers when a missing relative source is created`, async (t) => {
+      for (const [specifier, target, sidecar] of [
+        ["./missing.vibe", "missing.vibe"],
+        ["./missing.vibe", "missing.vibe", true],
+        ["./missing.js", "missing.vibe"],
+        ["./missing", "missing/index.vibe"]
+      ]) {
+        await t.test(specifier + (sidecar ? " with a declaration sidecar" : ""), async (t) => {
+          const root = await fixture(t, `${bundler}-missing-source`)
+          const source = join(root, "src/shop.vibe")
+          await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+            compilerOptions: {
+              target: "ES2022", module: "ESNext", moduleResolution: "Bundler",
+              strict: true, skipLibCheck: true, types: []
+            },
+            include: ["src"]
+          }))
+          await writeFile(join(root, "src/main.ts"), 'import { value } from "./shop.vibe"\nconsole.log(value)\n')
+          await writeFile(source, 'export const value = "initial"\n')
+          if (sidecar) await writeFile(join(root, "src/missing.d.vibe.ts"), 'export declare const value: "stale"\n')
+          const watcher = watchBundle(bundler, root)
+          try {
+            await watcher.next("initial success", (event) => event.ok)
+            await new Promise((accept) => setTimeout(accept, 500))
+            await writeFile(source, `import { value as missing } from "${specifier}"\nexport const value = missing\n`)
+            await watcher.next("missing import diagnostic", (event) => !event.ok && /TS2307|TS6263/.test(event.message))
+            await new Promise((accept) => setTimeout(accept, 500))
+            const missing = join(root, "src", target)
+            await mkdir(resolve(missing, ".."), { recursive: true })
+            await writeFile(missing, 'export const value = "restored"\n')
+            watcher.log(`created missing relative source ${target}`)
+            await watcher.next("success after source creation", (event) => event.ok && printsEventually(bundler, root, "restored"))
+          } finally {
+            await watcher.close()
+          }
+        })
       }
     })
 
