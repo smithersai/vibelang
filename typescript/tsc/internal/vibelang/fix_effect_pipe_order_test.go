@@ -58,3 +58,36 @@ func TestEffectPipeKeepsReceiverSensitiveStage(t *testing.T) {
 		t.Fatalf("missing receiver refusal: %+v", result.Refused)
 	}
 }
+
+// Stream.runForEach(f), Stream.runDrain and Stream.runHead give a program when
+// applied and run nothing, so a pipeline through them needs no captured stages:
+// the stage takes the topic first and its callback is typed by the stream.
+// Captured, Stream.runForEach((rows) => …) stood alone and rows was unknown, so
+// the fix was refused and the generator around it kept its yield* (Smithers'
+// stores: rows.pipe(Stream.runForEach(…), Effect.forkIn(scope, …))).
+func TestEffectPipeStreamRunStagesStayDataFirst(t *testing.T) {
+	for _, test := range []struct{ name, pipe, want string }{
+		{"runForEach then fork", "rows.pipe(\n    Stream.runForEach((all) => Effect.log(all.length)),\n    Effect.forkIn(scope, { startImmediately: true }),\n  )",
+			"rows\n    |> Stream.runForEach(%, (all) => Effect.log(all.length))\n    |> Effect.forkIn(%, scope, { startImmediately: true })"},
+		{"runDrain", "rows.pipe(Stream.take(1), Stream.runDrain, Effect.forkIn(scope))", "rows |> Stream.take(%, 1) |> Stream.runDrain(%) |> Effect.forkIn(%, scope)"},
+		{"runHead", "rows.pipe(Stream.filter((all) => all.length > 0), Stream.runHead, Effect.forkIn(scope))", "rows |> Stream.filter(%, (all) => all.length > 0) |> Stream.runHead(%) |> Effect.forkIn(%, scope)"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source := "declare const rows: Stream.Stream<ReadonlyArray<string>>\nexport const f = effect {\n  const scope = try Effect.scope\n  try (" + test.pipe + ")\n}\n"
+			got, result := fixedPipe(t, source)
+			if result.Err != nil || len(result.Refused) != 0 || strings.Contains(got, "(() => {") || !strings.Contains(got, test.want) {
+				t.Fatalf("stream runner stage was captured or refused: %v %+v\n%s", result.Err, result.Refused, got)
+			}
+		})
+	}
+}
+
+// A runner that runs the program it receives, Effect.runFork, can change what
+// a later stage expression reads, so its pipeline keeps the captured stages.
+func TestEffectPipeRunnerStageStaysCaptured(t *testing.T) {
+	source := "const trace: string[] = []\nconst stage = () => { trace.push(\"build\"); return (fiber: unknown): number => trace.length }\nexport const result = Effect.succeed(1).pipe(Effect.runFork, stage())\n"
+	got, result := fixedPipe(t, source)
+	if result.Err != nil || strings.Contains(got, "Effect.runFork(%") || strings.Contains(got, "|> stage()") {
+		t.Fatalf("runner stage was applied before a later stage was built: %v %+v\n%s", result.Err, result.Refused, got)
+	}
+}

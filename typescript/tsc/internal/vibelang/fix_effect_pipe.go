@@ -322,7 +322,9 @@ func pipeOptionsPlain(c *checker.Checker, node *ast.Node) bool {
 // pipeStagesNeedCapture reports when applying a stage could change a later
 // stage expression, or when calling a property as a pipe body would give it
 // a receiver. Effect program constructors do not run user code; runners and
-// arbitrary stages have no such guarantee.
+// arbitrary stages have no such guarantee. A stage named run… that returns a
+// program when applied, Stream.runForEach(f) or Stream.runDrain, constructs
+// one too: only a runner such as Effect.runPromise runs what it receives.
 func pipeStagesNeedCapture(c *checker.Checker, stages []*ast.Node) bool {
 	for i, stage := range stages {
 		inner := ast.SkipParentheses(stage)
@@ -330,7 +332,7 @@ func pipeStagesNeedCapture(c *checker.Checker, stages []*ast.Node) bool {
 		if ast.IsCallExpression(callee) {
 			callee = callee.Expression()
 		}
-		if module, name := effectMember(c, callee); module != "" && !strings.HasPrefix(name, "run") {
+		if module, name := effectMember(c, callee); module != "" && (!strings.HasPrefix(name, "run") || stageReturnsProgram(c, stage)) {
 			if module == "Effect" && ast.IsCallExpression(inner) {
 				argument := -1
 				switch name {
@@ -350,6 +352,15 @@ func pipeStagesNeedCapture(c *checker.Checker, stages []*ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// stageReturnsProgram reports whether applying stage, a function, gives an
+// Effect for every call signature it has.
+func stageReturnsProgram(c *checker.Checker, stage *ast.Node) bool {
+	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(stage), checker.SignatureKindCall)
+	return len(signatures) > 0 && !slices.ContainsFunc(signatures, func(signature *checker.Signature) bool {
+		return !isEffectType(c, c.GetReturnTypeOfSignature(signature))
+	})
 }
 
 // capturedEffectPipe keeps JavaScript's call-argument evaluation order and
