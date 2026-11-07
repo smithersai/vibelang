@@ -305,7 +305,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   // private class or enum, has no name there (TS4058), so an exported type the
   // moved code reads is imported from the module instead of copied, and a
   // private one keeps the module in TypeScript.
-  const inferred = wrappers.find((w) => w.inferred)
+  const inferred = wrappers.find((w) => w.inferred && !returnsOnlyElements(w.d.statement, ts))
   if (inferred) {
     const unnamed = [...copied].find((d) => typeOnly(d) && !d.exported) ??
       [...moved].find((d) => !d.exported && (ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement)))
@@ -749,6 +749,36 @@ function isMovable(statement, ts) {
 // call the moved one: export const f = (a: A, b = 1): R => ..., or export
 // function f(a: A) { ... }. The declaration file prints the same signature
 // for both; a return type the original leaves to inference stays inferred.
+// Whether a function's inferred return type can name no type of its module:
+// every value it returns is a JSX element, null or undefined, or it returns
+// none, so the type is JSX.Element, null, undefined or void (in a Promise
+// when async). A component such as `export const Terminal = (props:
+// TerminalProps) => { ...; return <div /> }` keeps its wrapper even when
+// moved code reads a private type.
+function returnsOnlyElements(statement, ts) {
+  let fn = statement
+  if (ts.isVariableStatement(statement)) {
+    fn = statement.declarationList.declarations[0]?.initializer
+    while (fn && ts.isParenthesizedExpression(fn)) fn = fn.expression
+  }
+  if (!fn || !(ts.isFunctionDeclaration(fn) || ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) || fn.asteriskToken || !fn.body) return false
+  const element = (e) => {
+    while (e && ts.isParenthesizedExpression(e)) e = e.expression
+    if (!e || e.kind === ts.SyntaxKind.NullKeyword || ts.isIdentifier(e) && e.text === "undefined") return true
+    if (ts.isJsxElement(e) || ts.isJsxSelfClosingElement(e) || ts.isJsxFragment(e)) return true
+    return ts.isConditionalExpression(e) && element(e.whenTrue) && element(e.whenFalse)
+  }
+  if (!ts.isBlock(fn.body)) return element(fn.body)
+  let only = true
+  const visit = (node) => {
+    if (!only || ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (ts.isReturnStatement(node) && !element(node.expression)) only = false
+    else ts.forEachChild(node, visit)
+  }
+  ts.forEachChild(fn.body, visit)
+  return only
+}
+
 function wrapperOf(statement, source, ts) {
   let fn, name, kind
   if (ts.isFunctionDeclaration(statement) && statement.body && statement.name) {

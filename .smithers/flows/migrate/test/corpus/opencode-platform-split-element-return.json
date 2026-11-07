@@ -1,0 +1,20 @@
+{
+  "source": "opencode p05 cause C components and void exports (gui-plugins terminal, updater/whats-new; session-ui session-review), minimized; each keeps a reader of its private type, which the module would otherwise drop (cause D)",
+  "modules": [
+    {
+      "file": "src/terminal.tsx",
+      "text": "type TerminalColors = {\n  readonly fg: string\n}\n\nexport const Terminal = (props: { readonly label: string }) => {\n  const getTerminalColors = (): TerminalColors => ({ fg: getComputedStyle(document.body).color })\n  const colors = getTerminalColors()\n  return (\n    <>\n      <div style={{ color: colors.fg }}>{props.label}</div>\n    </>\n  )\n}\n\nexport const tint = (colors: TerminalColors): string => colors.fg\n",
+      "wrapped": "Terminal"
+    },
+    {
+      "file": "src/session-review.tsx",
+      "text": "export type SessionReviewProps = { readonly label: string }\n\ntype SessionReviewSelection = { readonly start: number; readonly end: number }\n\nexport const SessionReview = (props: SessionReviewProps) => {\n  const selection: SessionReviewSelection = { start: 0, end: getComputedStyle(document.body).color.length }\n  return <div style={{ color: String(selection.end) }}>{props.label}</div>\n}\n\nexport const width = (selection: SessionReviewSelection): number => selection.end - selection.start\n",
+      "wrapped": "SessionReview"
+    },
+    {
+      "file": "src/whats-new.tsx",
+      "text": "type Highlight = { readonly text: string }\n\nexport function showWhatsNew(items: readonly string[]) {\n  const highlights: Highlight[] = items.map((text) => ({ text }))\n  void getComputedStyle(document.body)\n  void highlights\n}\n\nexport const label = (highlight: Highlight): string => highlight.text\n",
+      "wrapped": "showWhatsNew"
+    }
+  ]
+}
