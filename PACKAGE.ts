@@ -1507,6 +1507,8 @@ const targets = {
       "docs/tools/spec-legacy-effect-alias-transition.test.mjs",
       "docs/tools/spec-builtins-contracts.test.mjs",
       "docs/tools/spec-foreign-call-contract.test.mjs",
+      "docs/tools/spec-foreign-call-contract.mjs",
+      "packages/compiler/skills/vibelang/SKILL.md",
       "docs/tools/spec-nothrow.test.mjs",
       "docs/tools/spec-r16-carried.test.mjs",
       "docs/tools/spec-is-statement-body-home.test.mjs",

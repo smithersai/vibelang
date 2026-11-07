@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.12
 
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
+- The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
