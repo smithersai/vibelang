@@ -227,6 +227,34 @@ test("a module outside root compiles with its own package's project, once per re
   assert.deepEqual(compiles().slice(2), [join(root, "dep/tsconfig.json")], "a new revision compiles only the project asked for")
 })
 
+// A Vite root nested inside the project's directory, as `root: "vite"` with
+// `project: "../tsconfig.json"`: the project's modules outside that root are
+// still its own, so its compile emits them rather than narrowing to the root.
+test("a project above a nested root loads its modules outside that root", { skip }, async (t) => {
+  const root = fixture(t)
+  mkdirSync(join(root, "node_modules"))
+  symlinkSync(realpathSync(effect), join(root, "node_modules/effect"))
+  symlinkSync(runtime, join(root, "node_modules/vibelang-runtime"))
+  for (const [path, text] of Object.entries({
+    "package.json": '{"type":"module"}',
+    "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true }, include: ["core/*.vibe", "vite/*.vibe"] }),
+    "core/leaf.vibe": "export const value: number = 1\n",
+    "vite/entry.vibe": "export const entry: string = \"entry\"\n"
+  })) {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), text)
+  }
+  const project = join(root, "tsconfig.json")
+  const modules = projects({ root: join(root, "vite"), project, compiler: native, cache: false })
+  t.after(() => modules.close())
+  const leaf = await modules.load(join(root, "core/leaf.vibe"))
+  const entry = await modules.load(join(root, "vite/entry.vibe"))
+  assert.deepEqual([leaf.project, leaf.error, leaf.errors], [project, false, []])
+  assert.match(leaf.code, /value = 1/)
+  assert.deepEqual([entry.project, entry.error, entry.errors], [project, false, []])
+  assert.match(entry.code, /entry = "entry"/)
+})
+
 test("a private loader compile checks its own files; an imported workspace package's source only supplies types", { skip }, async (t) => {
   // Each module holds one warning (EK4833), which a check of that module reports.
   // Checking every imported package in each project's compile checked a

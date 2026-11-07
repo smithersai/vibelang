@@ -1,0 +1,6 @@
+{
+  "property": "project-nested-root",
+  "rule": "a project above or beside the bundler root still compiles every module it includes",
+  "source": "inbox/migrate-alchemy.md#alchemy-vite-nested-root-project-membership: Alchemy's cloudflare-runtime runs Vite with a nested root and an explicit package-root tsconfig.json; core/Leaf.vibe outside that root reported it was not part of tsconfig.json",
+  "input": { "root": "nested", "modules": ["core/leaf.vibe", "vite/entry.vibe"], "imports": false, "stray": true }
+}

@@ -552,6 +552,12 @@ export function packageRoot(path) {
   }
 }
 
+// within says whether path is directory itself or lies below it.
+const within = (directory, path) => {
+  const rest = relative(directory, path)
+  return !rest.startsWith("..") && !isAbsolute(rest)
+}
+
 /**
  * workspaceProject names the project to try first for a module when `project`
  * (whose directory is `root`) is the one asked for: the nearest config above
@@ -697,8 +703,9 @@ const failed = "throw new Error(\"vibelang: this module did not compile; see the
  * projects compiles .vibe modules for a bundler, one whole-project compile per
  * tsconfig. A module belongs to the nearest config above it, which is `project`
  * for root's own directories, and to the one findProject names when that config
- * leaves it out. Each project compiles once per revision; invalidate() starts a
- * new revision.
+ * leaves it out. `project` may sit above root, as a nested Vite root's
+ * `../tsconfig.json` does; it then compiles every module it includes. Each
+ * project compiles once per revision; invalidate() starts a new revision.
  *
  * load(file) resolves to { project, code, map, inputs, errors, warnings, first, error }.
  * errors and warnings belong to the loaded source or are project-wide.
@@ -731,7 +738,11 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
   function stateOf(tsconfig) {
     let state = states.get(tsconfig)
     if (state === undefined) {
-      const projectRoot = tsconfig === project ? root : packageRoot(tsconfig)
+      // A root nested below the asked project's directory, such as a Vite root
+      // of `vite` beside `core`, would narrow the loader to that root and leave
+      // the project's other modules unemitted; such a project compiles from its
+      // package, as another package's project does.
+      const projectRoot = tsconfig === project && within(root, tsconfig) ? root : packageRoot(tsconfig)
       state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug, preserveJsx, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
       states.set(tsconfig, state)
     }

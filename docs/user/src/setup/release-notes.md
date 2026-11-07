@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A Vite config with a nested `root`, such as `root: "web"` with `vibelang({ project: "../tsconfig.json" })`, failed to load the project's modules outside that root: `core/Leaf.vibe is not part of tsconfig.json. Add it to the tsconfig's include.`, though the include listed it. The project now compiles from its package's directory, so every module it includes loads. The same applies to the bundler plugins of `vibelang-unplugin`.
+
 - The migrate flow's platform split refused a module when a kept statement above an export ran any moved code while the module loaded, even code that never reads the export, such as a schema above a copied `export const defaultPathExtensions = "…"`. It now refuses only when that code reads the export, the one case where the original reads it before it exists, and the refusal for a copied constant no longer says it uses platform code.
 - The migrate flow's `<Name>.platform.ts` sibling had no module header and wrote `export` into each private helper the module calls, so a repository that requires a header and JSDoc on exported declarations, such as Smithers, failed its lint on the generated file. The sibling now starts with the module's header and exports those helpers in an `export { … }` after the moved code, which stays as written.
 - The migrate flow's platform split refused an export with an inferred return type that might name a private type or class moving to `<Name>.platform.ts`. The sibling now exports that declaration so the module's declarations can name it; the module gains no export.

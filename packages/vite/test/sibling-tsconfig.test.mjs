@@ -4,6 +4,7 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { build } from "vite"
+import { devServer } from "./dev-server.mjs"
 import vibelang from "../src/index.js"
 
 // Smithers' apps/mvp: vibelang({ project: "tsconfig.json" }) over a root
@@ -54,4 +55,25 @@ test("a Vite build still fails, naming every tsconfig asked, for a module none i
     "entry.ts": "export { answer } from \"./db/x.vibe\"\n"
   })
   await assert.rejects(bundle(root, "entry.ts"), /x\.vibe is not part of .*tsconfig\.json or .*worker\/tsconfig\.json\. Add it to the tsconfig's include\./)
+})
+
+// Alchemy's cloudflare-runtime: Vite's root is a directory inside the package
+// and the plugin names the package's ../tsconfig.json, which includes core/
+// beside that root. Its modules there are the project's own.
+test("alchemy-vite-nested-root: a project above Vite's nested root serves its modules outside that root", async (t) => {
+  const root = await fixture(t, {
+    "tsconfig.json": { include: ["core/*.vibe", "vite/*.vibe"] },
+    "core/Leaf.vibe": "export const value: number = 1\n",
+    "vite/entry.vibe": "export { value } from \"../core/Leaf.vibe\"\n"
+  })
+  const plugins = [vibelang({ project: "../tsconfig.json", compiler })]
+  const server = await devServer({ root: join(root, "vite"), configFile: false, logLevel: "silent", plugins, server: { middlewareMode: true, watch: null }, appType: "custom" })
+  t.after(() => server.close())
+  assert.equal((await server.ssrLoadModule(join(root, "core/Leaf.vibe"))).value, 1)
+  assert.equal((await server.ssrLoadModule(join(root, "vite/entry.vibe"))).value, 1)
+  const [{ output }] = [await build({
+    root: join(root, "vite"), configFile: false, logLevel: "silent", plugins,
+    build: { write: false, minify: false, lib: { entry: join(root, "vite/entry.vibe"), formats: ["es"], fileName: "out" } }
+  })].flat()
+  assert.match(output[0].code, /value = 1/)
 })
