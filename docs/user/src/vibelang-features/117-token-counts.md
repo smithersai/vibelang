@@ -213,7 +213,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,900 |
 | [Excessive Nesting](../code-style/068-do.md) | 1,900 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 1,900 |
-| **Data Types** | **20,000** |
+| **Data Types** | **19,000** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |

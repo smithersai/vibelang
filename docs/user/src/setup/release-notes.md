@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The error guides described plain-function throws as JavaScript exceptions or defects. They now explain the compile error and show how to choose a typed failure or defect.
 - The Terminal guide gave conflicting advice about Ctrl+C during line input. It now distinguishes normal line input from raw key events.
 - The sandbox inspection example could fail to compile because its diagnostic added another error type. It now preserves the original domain error channel and runs as shown.
+- The Data guide said object patterns were still awaiting compiler support. It now describes the patterns without that outdated warning.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
