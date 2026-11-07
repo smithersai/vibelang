@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The bundled entry-point example reported `TS5097` for its `.vibe` import. Its configuration now enables source-extension rewriting, as TypeScript requires.
+
 - Fresh checkout checks could fail to load the Vite plugin because its runtime dependencies were missing. Starter and isolated tool checks now install and resolve those dependencies.
 
 - Foreign constructors and tagged templates could leave `EK0403` behind after `--fix`. Supported synchronous invocations now receive explicit defect bridges, and generator repairs include constructors.

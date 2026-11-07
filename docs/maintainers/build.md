@@ -2474,3 +2474,9 @@ The isolated compiler-tool and source-map fixtures install the Vite plugin's
 runtime dependencies from their own pinned manifests. Copied plugins resolve
 those dependencies beside their private compiler peer, without writing to a
 plugin install another target may be using.
+
+Compiler fixtures that emit relative source-extension imports set
+`rewriteRelativeImportExtensions`, as their TypeScript twins do. An editor
+archive that exercises such imports carries its own `tsconfig.json`, so the
+original project and the project after a quick fix use the same extension
+policy. Keep static and dynamic imports of both `.vibe` and `.vibex` covered.
