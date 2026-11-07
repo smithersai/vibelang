@@ -1,4 +1,2 @@
-FuzzMigrationManifestAuthorities authority:combined compiler VIP-34: a recorded script rewrite and recorded generated private import map incorrectly invalidate each other's manifest authority; lane migfix-t3code
 FuzzMigrationManifestAuthorities authority:authored-name-map-only compiler VIP-34: recording a generated import-map path also admits an unrelated authored manifest name change; lane migfix-t3code
-FuzzMigrationManifestAuthorities corpus:t3code-script-generated-map-authority compiler VIP-34: generated private imports conflict with a recorded package script rewrite; lane migfix-t3code
 FuzzMigrationManifestAuthorities corpus:t3code-generated-map-authored-name compiler VIP-34: generated-map authority must preserve unrelated authored fields; lane migfix-t3code

@@ -54,6 +54,7 @@ try {
  const records=routed.changed.length?[{package:".",files:0,code:0,restored:true,packingFiles:routed.changed,routedImports:routed.modules,generatedFiles:[{file:output,sha256:createHash("sha256").update(fixture.output).digest("hex")}]}]:[]
  let codemod={batch:"01",packageScriptEdits:mapOnly?[]:[{manifest,module:entry,script}],emittedJs:[]}
  if(key!=="missing-receipt")codemod=withPackingScope(codemod,records)
+ if(key==="missing-receipt")codemod.packageScriptEdits=[]
  const files=mapOnly?[{planned:dir+"/"+leafStem+".ts",path:leaf,migrated:true}]:[{planned:source,path:entry,migrated:key!=="reverted"},{planned:dir+"/"+leafStem+".ts",path:leaf,migrated:true}]
  const batch={files,codemod,manifestSnapshots:{[manifest]:{before:JSON.stringify(before),after:JSON.stringify(after)}}}
  const expectedAllowed=["combined","script-only","map-only"].includes(key)
