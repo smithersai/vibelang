@@ -41,7 +41,7 @@ An extractor calls its matcher once for each pattern attempt and reuses that res
 
 An arm always keeps its expression when `vibelang --fix` removes a no-op Effect. For example, `when true: try Effect.void;` becomes `when true: (undefined as void);`: the assertion preserves an inferred `void` result. `try Effect.undefined` becomes `undefined`. If a local binding shadows `undefined`, the fix uses `void 0` instead. A held `Effect.void` without `try` stays an Effect.
 
-A synchronous `match` introduces no function or Effect boundary in any expression position. An arm may `yield` in an enclosing generator or use `try` in effect code.
+A synchronous `match` introduces no function or Effect boundary in any expression position. An arm may `yield` in an enclosing generator or use `try` in effect code. This also applies when the match is returned or used as a statement, including a `yield` in its subject.
 
 Evaluating the subject preserves an anonymous function or class's empty `.name`, including what its class static initializers observe.
 

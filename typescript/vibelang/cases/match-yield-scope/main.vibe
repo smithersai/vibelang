@@ -1,0 +1,23 @@
+// expect-result: [[{"value":7,"done":false},{"value":9,"done":true},{"value":7,"done":false},{"value":11,"done":true},{"value":7,"done":false},{"value":0,"done":true},{"value":7,"done":false},{"value":10,"done":true},{"value":7,"done":false},{"value":9,"done":true}],[{"value":7,"done":false},{"value":9,"done":true},{"value":7,"done":false},{"value":11,"done":true},{"value":7,"done":false},{"value":0,"done":true},{"value":7,"done":false},{"value":10,"done":true},{"value":7,"done":false},{"value":9,"done":true}]]
+import {nativeValues} from "./native.js"
+function* fromArm(source:{field:number}):Generator<number,number,number>{
+ return match(source){when {field:let value}:yield value;default:0;}
+}
+function* fromSubject(source:{field:number}):Generator<number,number,{field:number}>{
+ return match(yield source.field){when {field:let value}:value;default:0;}
+}
+function* asStatement(source:{field:number}):Generator<number,number,number>{
+ match(source){when {field:let value}:yield value;default:0;};return 0
+}
+function* asExpression(source:{field:number}):Generator<number,number,number>{
+ return 1+(match(source){when {field:let value}:yield value;default:0;})
+}
+function* asInitializer(source:{field:number}):Generator<number,number,number>{
+ const result=match(source){when {field:let value}:yield value;default:0;};return result
+}
+function values():readonly unknown[]{
+ const a=fromArm({field:7}),b=fromSubject({field:7}),c=asStatement({field:7}),d=asExpression({field:7}),e=asInitializer({field:7})
+ return [a.next(),a.next(9),b.next(),b.next({field:11}),c.next(),c.next(9),d.next(),d.next(9),e.next(),e.next(9)]
+}
+
+export effect function main():readonly unknown[]!!{return [values(),nativeValues()]}

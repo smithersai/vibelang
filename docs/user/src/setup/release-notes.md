@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Using `yield` in a returned match or a match statement could crash the compiler. These forms now retain the surrounding generator's variables and suspend normally.
+
 - Migrating an Effect generator with an old `: infer _` annotation in a nested TypeScript callback could leave `TS1338` errors. The fixer now removes the retired annotation and preserves the callback's inferred result.
 
 - Formatting many JSX or marked TypeScript files started a formatter process for every file, even on repeated clean checks. These files now share batch runs, and a clean cached check starts no formatter process.
