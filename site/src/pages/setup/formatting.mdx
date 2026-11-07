@@ -64,6 +64,8 @@ npx vibelang format --write src/view.tsx
 
 Default discovery includes marked `.tsx` files as well as the other marked TypeScript extensions and `.vibe`/`.vibex` files. `--check` exits with status `1` when formatting is needed and writes nothing; `--write` updates the selected files. Unmarked TypeScript files remain unchanged, including explicit paths.
 
+For `vibelang format` and `vibelang-format`, an explicit path to an existing file selects that file before interpreting glob characters. This includes bracketed route folders. Quote a path such as `vibelang-format --write 'src/[id]/page.vibe'` to pass it unchanged through the shell. A pattern with no literal file of that name still expands to matching files, and discovery exclusions still apply.
+
 ## What the formatter changes
 
 Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line breaks at `lineWidth`, quotes, semicolons, and trailing commas. Import and re-export declarations keep their original order, so formatting preserves module initialization order. The names within one import or export keep their order too, so a linter's `sort-imports` rule sees the order you wrote. VibeLang's own forms keep their shape:

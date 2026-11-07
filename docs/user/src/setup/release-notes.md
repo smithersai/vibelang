@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Requesting a CPU profile could finish successfully without writing a file. Compilation and project builds now write the requested profile and report output-path errors.
 
+- Formatting a file in a bracketed route folder could select another file or leave the requested file untouched. Both formatter commands now select existing file paths before expanding globs.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync, readFileSync, symlinkSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync as expandGlob, readFileSync, symlinkSync, statSync } from "node:fs"
 import { availableParallelism, tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { createRequire } from "node:module"
@@ -209,6 +209,14 @@ function formatBatch(files, clean) {
     })
   })
   return results
+}
+// Existing source paths are literal, including bracketed route names. Other
+// inputs, including the default extension pattern, still use glob expansion.
+function globSync(pattern, options) {
+  if (/\.(?:vibex?|[cm]?ts|tsx)$/.test(pattern) && existsSync(pattern) && statSync(pattern).isFile()) {
+    return options?.exclude?.(pattern) ? [] : [pattern]
+  }
+  return expandGlob(pattern, options)
 }
 export function formatFiles(args) {
   const check = args.includes("--check")
