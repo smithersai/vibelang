@@ -18,7 +18,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,191 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,507 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,565 |
 | The skill and the user guide (145 pages) | 570,000 |
 | The user guide alone | 560,000 |
 | The specification (11 chapters) | 260,000 |
@@ -101,9 +101,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,600 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,100 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,100 |
-| [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,000 |
+| [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,100 |
 | [Devtools](../getting-started/012-devtools.md) | 23,000 |
-| **All 13 pages** | **53,000** |
+| **All 13 pages** | **54,000** |
 
 ### Setup
 
@@ -112,12 +112,12 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Set up VibeLang](../setup.md) | 2,100 |
 | [Known limitations](../setup/known-limitations.md) | 710 |
 | [Source maps](../setup/source-maps.md) | 870 |
-| **Start a project** | **10,000** |
+| **Start a project** | **11,000** |
 | [New project](../setup/new-project.md) | 670 |
-| [Existing project](../setup/existing-project.md) | 4,400 |
+| [Existing project](../setup/existing-project.md) | 4,600 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,300 |
 | **Build and test** | **25,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 20,000 |
+| [vibelang CLI](../setup/vibelang-cli.md) | 21,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,500 |
 | **Format and lint** | **14,000** |
 | [Format with dprint](../setup/formatting.md) | 3,500 |
@@ -294,7 +294,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 20,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **130,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 98,000 |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 99,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
 | **All 11 pages** | **260,000** |
 

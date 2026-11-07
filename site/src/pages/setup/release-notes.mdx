@@ -13,17 +13,66 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
+
+- Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.
+
+- Generated metadata imports could fail a repository's required namespace spelling. They now select the conventional `NodeURL` name using the companion's own scope.
+
+- The migration's API identity check refused a package with "Ambient declaration closures differ" when a declaration that augments a module, such as a router's TanStack Router `Register`, reached an inferred `import("./work").WorkFilter` that the converted side spelled `import("./work.ts")`. Such a respelling of the same module now leaves the closure the same; a changed type or a different module still refuses.
+
+- `new Response(…)`, `new Headers(…)` or `x instanceof Response` inside an `Effect.try` or `Effect.tryPromise` thunk reported `TS2351` or `TS2359` with no note, so a migration kept the module in TypeScript instead of moving the host constructor to a `.ts` companion. The error now carries the note it gets anywhere else in the module: the name is Effect's module, and the global is platform code that lives in a `.ts` file.
+
+- The migration's API identity check failed with `TS2307` on both sides, and refused every export of the package, when a declaration imported another workspace package's module by a relative path, such as `../../../packages/smithers/gateway/src/RuntimeBridge.js`: its comparison copy held only the package itself. That module now resolves as it does in the repository, so the exports compare.
+
+- In a `.vibe` file, a check that ports an Effect lint rule, such as `unnecessaryArrowBlock` or `extendsNativeError`, ignored the severity the `@effect/language-service` plugin entry's `diagnosticSeverity` gave the rule, while a `.ts` file followed it. The check now runs at that severity, per-file overrides included; `vibe.severities` still comes first.
+
+- Refreshing project references could take a long time checking output paths in a large project. Those checks now use indexed paths, and planning progress is recorded before rebuilding starts.
+
+- `vibelang --fix` converting an `Effect.fn` generator with an unannotated parameter, such as `Effect.fn("start")(function* (version = "unknown") { … })`, wrote `effect (version = "unknown") =>`, so the declaration changed from TypeScript's `(version?: any)` to `(version?: string)`, and a parameter with no default, `function* (x)`, was refused with `TS7006`. The converted function now writes the `any` TypeScript inferred, `effect (version: any = "unknown") =>`, and keeps the generator when TypeScript inferred a parameter list the function cannot declare.
+
+- Generated packing receipts could fail the repository's format check after migration. Packing metadata now uses the repository's formatter before loader records are saved.
+
+- Migration could reject an unchanged generic factory after a type dependency gained only a re-export. API comparison now follows re-exports that preserve every exported name, type and value.
+
+- A project that turned on `unnecessaryArrowBlock`, `unnecessaryPipe` or `unnecessaryPipeChain` still had those reports after `vibelang --fix`, so a converted module failed the project's own lint. `--fix` now applies those repairs where the project turns the rule on and leaves the code alone where it is off. The repairs no longer drop comments between pipe arguments, and a block returning `a, b` becomes `=> (a, b)`.
+
 - A platform repair could refuse optional host calls such as `process.getuid?.()`. Calls without arguments now move with their receiver and short-circuit behavior intact.
+
+- `vibelang --fix` refused pipelines ending in a platform's `runMain`, treating the runner as an unknown custom stage. It now converts the pinned platform runners while preserving stage construction order and public types.
+
+- Formatting a file with several adjacent conditional returns could fail with `Formatting not stable`. The bundled TypeScript formatter now reaches a stable layout for these files.
+
+- Migration could refuse matching APIs when a declaration was emitted on only one side. It now compares the saved original source against the other side's declaration, while still rejecting changed types, documentation and invalid source.
+
+- Migration API checks could reject unchanged inferred generic types after declarations moved behind a re-export. They now follow the public export and still reject changed types or documentation.
+
+- Migrating a host constructor inside an ordered loop could leave the file in TypeScript. Migration now keeps construction in place and reads the original constructor through its platform body.
+
+- Migrating an entry could rewrite a temporary build fixture with the same relative filename. Paths proven to belong to a fresh temporary directory now keep the fixture’s original source kind.
+
+- Calling `decode` on a `TextDecoder` made without `fatal: true`, such as `new TextDecoder().decode(bytes)` in a plain function, reported `EK0401` ("may throw `TypeError`"), although such a decoder replaces malformed input instead of throwing. It now throws nothing when the receiver is `new TextDecoder(…)`, or a `const` initialized by one, whose options do not set `fatal: true`. A parameter, a `let`, or options held in a variable still throw `TypeError`. As a result, `Effect.try(() => decoder.decode(bytes))` around such a decoder no longer has `TypeError` in its error channel.
+
+- API verification could report a missing project type package after saving sources outside the project directory. It now resolves those type packages from their recorded project configuration.
+
+- Migrating a generator that fails with `return yield* new E(…)` or `return yield* Effect.fail(e)` stopped the batch with "drops the original program's returned value", although the converted `throw` keeps the same failure. The run-phase check now pairs each such return with its `throw`.
+
+- `vibelang --fix` on a project whose `references` were not built yet read every import from those projects as `any`. It wrapped calls such as `shell.list()` in `Effect.try` bridges that lost an `if` guard's narrowing and stopped compiling once the reference was built. `--fix` now reads a referenced project's sources, as the editor does, and writes the same rewrite as for a built reference.
+
+- `vibelang --fix` left `EK0401` on a call that may throw inside an `Effect.catchTag`, `Effect.catchTags`, `Effect.tapError`, `Effect.matchEffect`, `Effect.onExit` or similar handler, so the module could not convert. It now wraps the handler's body so the call fails with the same defect, as it already did for `Effect.suspend` and `Effect.flatMap` callbacks.
 
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
+- Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
 - Migration test measurement could not read a `node --test` run whose skipped or todo tests give a reason, such as `it("x", { skip: "needs a host" })`: the reason and the run's duration became part of the test's name, so identical runs reported missing and extra skipped tests, and a todo with a reason counted as passed. Test names now stop before the duration, and every skip or todo counts as skipped.
 - Migration reported a documentation difference, one comment block fewer, when a module's first exported constant moved to its `.platform.ts` companion: the module's header comment, which TypeScript's declaration output stacks above that constant, stayed at the top of the converted module. A header kept verbatim at the head of the converted module now counts as kept, and a changed, removed or duplicated header still fails.
 - Migration could discard an original declaration oracle solely because its inferred output layout reported `TS5011`. It now keeps the diagnostic and requires the complete stock/native API comparison before qualifying the migration.
 - The migration's API identity check reported an unchanged generic type alias as changed when the alias used a mapped type with an `as` clause, such as `{ [K in keyof A as K extends string ? K : never]: A[K] }`, and anything else in its declaration file changed, for example a declaration moved behind a re-export; the module then stayed TypeScript. The check now proves such an alias identical, and still reports a change to its `as` type, template, key constraint or modifiers.
+- A generated `import.meta.dirname` companion named a different directory than Node for some Windows network paths, such as `\\server\a\\` for `file://server/a//x.ts` where Node names `\\server\a\`. The companion now computes the directory with Node's own `path.dirname` steps, still without importing `node:path`.
 - Generated `import.meta.dirname` companions could fail projects that reject named Node imports or `node:path`. They now use a namespace `node:url` import and preserve directory names, including drive and network-share roots.
 - Migration could report a returned Effect as lost after a plain identity pipeline stage. Its wrapper check now follows unchanged arguments through proven identity returns, while still rejecting discarded programs and async results.
 - Migrating an executable script could move its shebang into a platform companion and cause a parse error. The shebang now stays at the start of the entry module.
+- The migration's platform split turned a kept declaration's `fetch.bind(globalThis)` into a helper typed `typeof fetch.bind`, whose call returns `void`, so the converted module failed with `TS2322` (for example against a `typeof fetch` default parameter) and stayed TypeScript. `bind`, `call` and `apply` on a host function now move only the function, `$fetch().bind(globalThis)`, and keep their types.
 
 - A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
 
