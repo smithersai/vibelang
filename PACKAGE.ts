@@ -1576,6 +1576,12 @@ const targets = {
     [],
     [bun]
   ),
+  "docs-bun-install-pins": check(
+    "Bun installation examples preserve the project's active dependency pin table.",
+    "bun docs/tools/bun-install-pins.mjs && bun test --timeout 30000 docs/tools/bun-install-pins.test.ts",
+    [],
+    [bun]
+  ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --only-failures --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",

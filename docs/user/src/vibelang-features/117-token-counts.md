@@ -93,7 +93,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
 | **Learning Path** | **15,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 3,100 |
-| [Installation](../getting-started/004-installation.md) | 3,000 |
+| [Installation](../getting-started/004-installation.md) | 3,100 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,300 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,700 |
@@ -112,9 +112,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Set up VibeLang](../setup.md) | 2,100 |
 | [Known limitations](../setup/known-limitations.md) | 660 |
 | [Source maps](../setup/source-maps.md) | 780 |
-| **Start a project** | **9,400** |
+| **Start a project** | **9,500** |
 | [New project](../setup/new-project.md) | 570 |
-| [Existing project](../setup/existing-project.md) | 4,100 |
+| [Existing project](../setup/existing-project.md) | 4,300 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,700 |
 | **Build and test** | **23,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 19,000 |

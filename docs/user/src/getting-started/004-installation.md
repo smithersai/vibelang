@@ -63,7 +63,7 @@ See [Getting Started](../013-getting-started.md) for the starter's files and [Ru
 
 ## Add VibeLang to an existing project
 
-Before installing, add this transitive pin to `package.json` (npm and Bun both honor `overrides`):
+For npm, merge this transitive pin into the root `package.json`:
 
 ```json
 {
@@ -74,6 +74,20 @@ Before installing, add this transitive pin to `package.json` (npm and Bun both h
 ```
 
 This keeps the platform package from selecting a newer patch with a different Effect peer requirement.
+
+With Bun, keep using the active pin table in the root `package.json`. If `overrides` already exists, merge the helper pin there. If only `resolutions` exists, keep its other entries and add the pin to it:
+
+```json
+{
+  "resolutions": {
+    "@effect/platform-node-shared": "4.1.1"
+  }
+}
+```
+
+If neither table exists, use `overrides` as shown above. When both fields are present, [Bun uses only `overrides`](https://bun.com/docs/pm/overrides#resolutions). Adding `overrides` to a project that uses only `resolutions` would disable its existing pins.
+
+Then run:
 
 ```sh
 bun add --exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
