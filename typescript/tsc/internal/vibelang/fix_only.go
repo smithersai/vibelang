@@ -84,7 +84,13 @@ func (o FixOptions) resolveOnly(sys tsc.System) (FixOptions, error) {
 type fixScope struct {
 	fs     vfs.FS
 	listed map[tspath.PathKey]tspath.RootedFilePath
-	known  collections.SyncMap[tspath.RootedFilePath, bool]
+	// companions are the fresh platform companions of listed modules: the
+	// platform repair of a listed module may create its <module>.platform.ts
+	// (fix_platform_companion.go) when no file claims that name as the run
+	// starts. Chapter 7 counts that file as part of the listed module's
+	// repair; an existing unlisted file is never written.
+	companions map[tspath.PathKey]tspath.RootedFilePath
+	known      collections.SyncMap[tspath.RootedFilePath, bool]
 }
 
 // newFixScope returns the scope of only: nil, the whole project, when only is
@@ -93,11 +99,36 @@ func newFixScope(fs vfs.FS, only []tspath.RootedFilePath) *fixScope {
 	if only == nil {
 		return nil
 	}
-	s := &fixScope{fs: fs, listed: make(map[tspath.PathKey]tspath.RootedFilePath, len(only))}
+	s := &fixScope{fs: fs, listed: make(map[tspath.PathKey]tspath.RootedFilePath, len(only)), companions: map[tspath.PathKey]tspath.RootedFilePath{}}
 	for _, name := range only {
 		s.listed[s.key(name)] = name
+		// The repair names the companion after the program's file name,
+		// which may be the real path of a module listed through a link.
+		for _, module := range []tspath.RootedFilePath{name, tspath.RootedFilePath(fs.Realpath(tspath.RootedPath(name)))} {
+			if companion, ok := freshPlatformCompanion(fs, module); ok {
+				s.companions[s.companionKey(companion)] = companion
+			}
+		}
 	}
 	return s
+}
+
+// companionKey keys a file that need not exist yet, so it is not resolved.
+func (s *fixScope) companionKey(name tspath.RootedFilePath) tspath.PathKey {
+	return s.fs.CaseSensitivity().PathKey(tspath.RootedPath(name))
+}
+
+// companion reports whether the run may write name only as a listed module's
+// fresh platform companion, not as a listed module.
+func (s *fixScope) companion(name tspath.RootedFilePath) bool {
+	if s == nil {
+		return false
+	}
+	if _, listed := s.listed[s.key(name)]; listed {
+		return false
+	}
+	_, ok := s.companions[s.companionKey(name)]
+	return ok
 }
 
 func (s *fixScope) key(name tspath.RootedFilePath) tspath.PathKey {
@@ -113,6 +144,9 @@ func (s *fixScope) includes(name tspath.RootedFilePath) bool {
 		return known
 	}
 	_, listed := s.listed[s.key(name)]
+	if !listed {
+		_, listed = s.companions[s.companionKey(name)]
+	}
 	s.known.Store(name, listed)
 	return listed
 }
@@ -142,7 +176,14 @@ func (s *fixScope) errors(ctx context.Context, program *compiler.Program) []*ast
 			errors = append(errors, d)
 		}
 	}
-	for _, file := range s.fixable(program) {
+	files := s.fixable(program)
+	// A companion the run creates is checked as its module is.
+	for _, companion := range s.companions {
+		if file := program.GetSourceFile(companion); file != nil {
+			files = append(files, file)
+		}
+	}
+	for _, file := range files {
 		for _, d := range slices.Concat(program.GetSyntacticDiagnostics(ctx, file), program.GetBindDiagnostics(ctx, file), program.GetSemanticDiagnostics(ctx, file)) {
 			if d.Category() == diagnostics.CategoryError {
 				errors = append(errors, d)

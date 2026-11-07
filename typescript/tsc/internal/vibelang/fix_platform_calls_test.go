@@ -180,24 +180,28 @@ func TestFixPlatformCallInCompositeProject(t *testing.T) {
 	}
 }
 
-// --only writes no file it does not list, so the split, which creates one, is
-// refused for that site with the reason, and the run goes on (t3code Desktop
-// proof: `--fix --only` stopped the whole run with "wrote nothing").
+// Chapter 7: under --only the split may create the listed module's fresh
+// companion, so it makes the repair plain --fix makes (t3code Desktop proof:
+// `--fix --only` once stopped the whole run with "wrote nothing").
 func TestFixPlatformCallUnderOnly(t *testing.T) {
 	dir := platformCallCase(t, platformCallSites["ElectronSafeStorage"])
 	fs := bundled.WrapFS(osvfs.FS())
 	config, _ := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
 	main := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "main.vibe")))
 	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{Only: []tspath.RootedFilePath{main}})
-	if result.Err != nil || len(result.Files) != 0 {
-		t.Fatalf("expected no file and no error: %+v", result)
-	}
-	refused := false
 	for _, r := range result.Refused {
-		refused = refused || strings.Contains(r.Error, "--only does not list")
+		if strings.Contains(r.Error, "--only does not list") {
+			t.Fatalf("--only refused the listed module's companion: %+v", r)
+		}
 	}
-	if !refused {
-		t.Fatalf("expected the --only refusal: %+v", result.Refused)
+	plain := fixCase(t, dir)
+	if result.Err != nil || plain.Err != nil || len(result.Files) != 2 || len(plain.Files) != 2 {
+		t.Fatalf("want main.vibe and its companion from both runs:\n--only: %+v\nplain: %+v", result, plain)
+	}
+	for name, fixed := range plain.Files {
+		if result.Files[name] == nil || result.Files[name].Text != fixed.Text {
+			t.Fatalf("%s differs under --only: %+v", name, result.Files[name])
+		}
 	}
 }
 
