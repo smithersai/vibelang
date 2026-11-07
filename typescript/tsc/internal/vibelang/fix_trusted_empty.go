@@ -77,6 +77,7 @@ func trustedEmptyRewrite(c *checker.Checker, file *ast.SourceFile, decl *ast.Nod
 	}
 	safe := true
 	calls := 0
+	writtenThrows := trustedEmptyWrittenThrows(c, args[0])
 	var uses func(*ast.Node) bool
 	uses = func(n *ast.Node) bool {
 		// Direct eval can observe or leak a lexical binding without an
@@ -143,7 +144,21 @@ func trustedEmptyRewrite(c *checker.Checker, file *ast.SourceFile, decl *ast.Nod
 					return true
 				}
 			}
-			wrapped := "try Effect.orDie(Effect.try({ try: () => " + expressionText(file, call) + ", catch: " + defectBridgeIdentity + " }))"
+			thunk := "() => " + expressionText(file, call)
+			if trustedEmptyNarrowedArguments(c, call) {
+				// A closure loses the narrowing of a parameter, a let or a
+				// property path, so evaluate the arguments here, in their
+				// original order, and give the thunk their narrowed values.
+				// Only a thunk written as Effect.try's own try function may
+				// call a callee known to throw, so such a call is refused.
+				captured, ok := trustedEmptyCapturedThunk(file, call)
+				if !ok || writtenThrows {
+					safe = false
+					return true
+				}
+				thunk = captured
+			}
+			wrapped := "try Effect.orDie(Effect.try({ try: " + thunk + ", catch: " + defectBridgeIdentity + " }))"
 			if !standsAlone(call) {
 				wrapped = "(" + wrapped + ")"
 			}
@@ -203,6 +218,110 @@ func trustedEmptyConstructorBinding(c *checker.Checker, expr *ast.Node) bool {
 	for _, declaration := range owner.Declarations() {
 		if declaration.Kind == ast.KindNamespaceImport {
 			return true
+		}
+	}
+	return false
+}
+
+// trustedEmptyNarrowedArguments reports whether an argument of call reads a
+// reference whose type at the call is narrower than its declared type. A
+// const keeps its narrowing inside a closure; a parameter, a let and a
+// property path may not, so moving such an argument into the bridge's thunk
+// could change its type.
+func trustedEmptyNarrowedArguments(c *checker.Checker, call *ast.Node) bool {
+	narrowed := false
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if narrowed || isFunctionBoundary(n) {
+			return narrowed
+		}
+		if ast.IsIdentifier(n) || ast.IsPropertyAccessExpression(n) || ast.IsElementAccessExpression(n) {
+			if trustedEmptyReferenceNarrowed(c, n) {
+				narrowed = true
+				return true
+			}
+		}
+		return n.ForEachChild(visit)
+	}
+	for _, argument := range call.Arguments() {
+		if visit(argument) {
+			return true
+		}
+	}
+	return narrowed
+}
+
+func trustedEmptyReferenceNarrowed(c *checker.Checker, n *ast.Node) bool {
+	if ast.IsIdentifier(n) && n.Parent != nil && (ast.IsPropertyAccessExpression(n.Parent) && n.Parent.Name() == n || ast.IsPropertyAssignment(n.Parent) && n.Parent.Name() == n) {
+		return false // a member name; its access is the reference
+	}
+	symbol := c.GetSymbolAtLocation(n)
+	if ast.IsPropertyAccessExpression(n) {
+		symbol = c.GetSymbolAtLocation(n.Name())
+	}
+	if symbol == nil || symbol.Flags()&(ast.SymbolFlagsVariable|ast.SymbolFlagsProperty) == 0 {
+		return false
+	}
+	if d := symbol.ValueDeclaration(); d != nil && ast.IsVariableDeclaration(d) && ast.IsVarConst(d) {
+		return false
+	}
+	return c.GetTypeAtLocation(n) != c.GetTypeOfSymbol(symbol)
+}
+
+// trustedEmptyCapturedThunk returns ((arg0, …) => () => f(arg0, …))(a, …),
+// which evaluates call's arguments where call stood, or false for a spread
+// argument or explicit type arguments.
+func trustedEmptyCapturedThunk(file *ast.SourceFile, call *ast.Node) (string, bool) {
+	// The parameters are visible only to the thunk, which reads nothing else
+	// but the callee: they must not shadow its names.
+	used := map[string]bool{}
+	var names func(*ast.Node) bool
+	names = func(n *ast.Node) bool {
+		if ast.IsIdentifier(n) {
+			used[n.Text()] = true
+		}
+		return n.ForEachChild(names)
+	}
+	names(call.Expression())
+	var params, args []string
+	for i, argument := range call.Arguments() {
+		if ast.IsSpreadElement(argument) {
+			return "", false
+		}
+		name := fmt.Sprintf("arg%d", i)
+		for suffix := 2; used[name]; suffix++ {
+			name = fmt.Sprintf("arg%d_%d", i, suffix)
+		}
+		params = append(params, name)
+		args = append(args, expressionText(file, argument))
+	}
+	if call.TypeArguments() != nil {
+		return "", false
+	}
+	callee := expressionText(file, call.Expression())
+	list := strings.Join(params, ", ")
+	return "((" + list + ") => () => " + callee + "(" + list + "))(" + strings.Join(args, ", ") + ")", true
+}
+
+// trustedEmptyWrittenThrows reports whether a call signature of impl, the
+// wrapped function, carries a written @throws or @rethrows. Such a call may
+// stand only in the thunk written as Effect.try's own try function.
+func trustedEmptyWrittenThrows(c *checker.Checker, impl *ast.Node) bool {
+	for _, sig := range c.GetSignaturesOfType(c.GetTypeAtLocation(impl), checker.SignatureKindCall) {
+		root := sig
+		for root.Target() != nil {
+			root = root.Target()
+		}
+		if decl := root.Declaration(); decl != nil {
+			for _, host := range jsdocHosts(decl) {
+				for _, doc := range host.JSDoc(nil) {
+					for _, tag := range jsdocTags(doc) {
+						if isContractTag(tag) {
+							return true
+						}
+					}
+				}
+			}
 		}
 	}
 	return false

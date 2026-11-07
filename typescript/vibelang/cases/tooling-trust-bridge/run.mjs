@@ -3,7 +3,8 @@
 // Effect body to Effect.orDie(Effect.try({ try, catch: (e) => e })) over f,
 // reads f once where the wrapper was declared, and keeps results, the exact
 // thrown value as the defect, and the declarations. It refuses wrappers it
-// cannot prove: exported, escaping, or called from plain code.
+// cannot prove: exported, escaping, or called from plain code. Each refused
+// wrapper keeps its located EK0407 error.
 import assert from "node:assert/strict"
 import { project, baseOptions } from "../_tooling-witness.mjs"
 
@@ -63,8 +64,12 @@ project(({ put, read, invoke, run }) => {
   assert.equal(before.status, 0, before.text)
   assert.deepEqual(JSON.parse(before.stdout), expected, "legacy behavior")
 
+  // A refused wrapper keeps its EK0407 error at its own declaration, with a
+  // note that says why --fix left it; the migrated file has no error.
   const fix = invoke("--fix", "-p", ".", "--pretty", "false")
-  assert.equal(fix.status, 0, fix.text)
+  assert.notEqual(fix.status, 0, fix.text)
+  assert.deepEqual(errors(fix.text).sort(), Object.keys(refused).map(f => f + " EK0407").sort(), fix.text)
+  for (const file of Object.keys(refused)) assert.match(fix.text, new RegExp("^" + file.replace(".", "\\.") + "\\(2,\\d+\\): error EK0407: [^\\n]*vibelang --fix[^\\n]*\\n +vibelang --fix cannot rewrite this wrapper", "m"), fix.text)
   const fixed = read("lib.vibe")
   assert.ok(!/trusted\(Dialect\.integer, \[\]\)/.test(fixed), "the empty wrapper is retired:\n" + fixed)
   // Each call becomes the identity-mapped bridge over the captured f.

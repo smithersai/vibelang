@@ -1,0 +1,1 @@
+narrowed arguments keep [7,0]

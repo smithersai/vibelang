@@ -7,7 +7,10 @@ import { codes, withProject } from "../_appb-retirement-helpers.mjs"
 const here = dirname(fileURLToPath(import.meta.url))
 const input = "import { trusted } from \"vibelang-runtime\"\nfunction f(x: number) { return x + 1 }\nconst g = trusted(f, [])\nexport effect function main() { return g(1) }\n"
 withProject(here, { "main.vibe": input }, ({ tsc, read, run }) => {
-  assert.equal(tsc().status, 0)
+  // The retired wrapper is an error before the fix; the legacy output still runs.
+  const legacy = tsc()
+  assert.notEqual(legacy.status, 0, legacy.text)
+  assert.deepEqual(codes(legacy.text), ["EK0407"], legacy.text)
   const before = run()
   const fixed = tsc("--fix")
   assert.equal(fixed.status, 0, fixed.text)

@@ -1,1 +1,0 @@
-tooling EK0407 is never reported: the resolved trusted(f, []) wrapper compiles with no diagnostic (no EK0407 message is registered)

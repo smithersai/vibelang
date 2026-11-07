@@ -31,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Custom extractor patterns could reject an iterable proxy or throw the wrong error while looking up its iterator. They now read the iterator directly, preserving its getter and receiver.
 
+- The retired empty trust wrapper `trusted(f, [])` still compiled with no diagnostic. It is now `EK0407`, which names `vibelang --fix`; the fix rewrites each direct call in effect code to `Effect.orDie(Effect.try({ try: () => f(x), catch: (e) => e }))`, and a wrapper it cannot rewrite keeps the error with a note saying so. The fix no longer refuses a call whose argument is narrowed where it stands, such as `cause?.trace ? spanOf(cause.trace) : []`: it evaluates the arguments there, so the call keeps its narrowed type.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.

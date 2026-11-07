@@ -16,7 +16,7 @@ import (
 // why it has no automatic fix." (007-tooling.md; its quote test also guards the
 // FuzzMigrationDeclarationFix archive for the minimized Alchemy witness.)
 func FuzzTrustedEmptyMigration(f *testing.F) {
-	for _, key := range []string{"direct", "branch", "arithmetic", "shadow", "string", "object", "array"} {
+	for _, key := range []string{"direct", "branch", "arithmetic", "shadow", "string", "object", "array", "narrowed", "narrowed-parameter"} {
 		f.Add(key, uint8(3))
 	}
 	f.Fuzz(func(t *testing.T, key string, raw uint8) {
@@ -41,6 +41,13 @@ func FuzzTrustedEmptyMigration(f *testing.F) {
 		case "array":
 			implementation, annotation = "native", ""
 			prefix = "function native(a: number, b: number): number[] { return [a, b] }\n"
+		case "narrowed":
+			// A property path's narrowing does not reach a closure.
+			body = fmt.Sprintf("const box: { n?: number } = { n: %d }\nreturn box.n !== undefined ? safe(box.n, 1) : 0", n)
+		case "narrowed-parameter":
+			prefix = "function native(a: number, b: number): number { return a - b }\n"
+			implementation = "native"
+			body = fmt.Sprintf("return try pick(%d > 5 ? %d : undefined)\n}\neffect function pick(m: number | undefined): number!! {\nif (m === undefined) { return 0 }\nreturn safe(m, 2) + safe(1, m)", n, n)
 		case "direct":
 		}
 		source := "import { trusted } from \"vibelang-runtime\"\n" + prefix + "const safe = trusted(" + implementation + ", [])\nexport effect function value()" + annotation + " {\n" + body + "\n}\n"
@@ -50,7 +57,7 @@ func FuzzTrustedEmptyMigration(f *testing.F) {
 		if err := os.WriteFile(config, []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["main.vibe"]}`), 0600); err != nil {
 			t.Fatal(err)
 		}
-		before := migrationRuleDeclarations(t, dir, nil)
+		before := trustedEmptyRetiredDeclarations(t, dir)
 		result := fixCase(t, dir)
 		if result.Err != nil || len(result.Refused) != 0 {
 			t.Fatalf("fix %v, refused %v", result.Err, result.Refused)
