@@ -1,0 +1,12 @@
+{
+  "source": "inbox/migrate-alchemy.md: the shared revert of two Fly sources stopped in reference planning with unsafe project output packages/fly/lib; protectedSources named lib/App.d.ts, lib/App.js, lib/AuthProvider.d.ts, lib/AuthProvider.js, lib/BindService.d.ts, lib/BindService.js, lib/Bootstrap.d.ts and lib/Bootstrap.js, none tracked. The repository's root tsconfig.base.json has allowJs and no include, so TypeScript's default include lists every emitted file under the ignored lib/.",
+  "base": {
+    "exclude": ["node_modules", "dist", "vendor"],
+    "compilerOptions": { "allowJs": true, "noEmit": true, "target": "ESNext", "module": "Preserve", "moduleResolution": "Bundler", "allowImportingTsExtensions": true, "rewriteRelativeImportExtensions": true }
+  },
+  "outputs": ["lib/App.d.ts", "lib/App.js", "lib/AuthProvider.d.ts", "lib/AuthProvider.js", "lib/SecretKeyHttp.vibe.platform.js", "lib/SecretKeyHttp.vibe.platform.d.ts"],
+  "protected": [
+    { "file": "lib/kept.js", "tracked": true },
+    { "file": "lib/generated.ts", "tracked": false }
+  ]
+}

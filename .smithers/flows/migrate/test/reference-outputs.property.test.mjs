@@ -9,6 +9,7 @@ import { referenceRefreshPlan, refreshProjectReferences } from "../lib/reference
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-dependent-project-outputs.json", import.meta.url)))
+const baseConfig = JSON.parse(readFileSync(new URL("./corpus/alchemy-reference-refresh-base-config-outputs.json", import.meta.url)))
 
 function fixture(count = 3) {
   const root = mkdtempSync(join(tmpdir(), "reference-outputs-"))
@@ -65,6 +66,67 @@ test("reference invalidation follows generated chain lengths and changed owners"
       assert.equal(plan.outputs.length, 3 * (count - index))
     } finally { f.close() }
   }), { numRuns: 30 })
+})
+
+// A root config that only shares options, with allowJs and no include, lists
+// every emitted file through TypeScript's default include. It takes no part in
+// the refresh, and the repository does not track those outputs, so its listing
+// protects none of them; a tracked file or an untracked TypeScript source there
+// still refuses the plan.
+function withBaseConfig(f) {
+  f.put("tsconfig.base.json", baseConfig.base)
+  for (const output of baseConfig.outputs) f.put("p0/" + output, "stale")
+  const tracked = [...f.configs, "base.json", "tsconfig.base.json", ...f.configs.map(config => config.replace("tsconfig.json", "src/main.ts"))]
+  return { configs: [...f.configs, "tsconfig.base.json"], tracked }
+}
+
+test("alchemy-base-config: an unrelated default-include config protects no untracked output", () => {
+  const f = fixture(2)
+  try {
+    const { configs, tracked } = withBaseConfig(f)
+    const changed = ["p0/src/main.ts"]
+    const plan = referenceRefreshPlan({ ...f, ts, configs, changed, tracked })
+    assert.deepEqual(plan, referenceRefreshPlan({ ...f, ts, changed, tracked }))
+    assert.ok(plan.outputs.includes("p0/lib") && plan.outputs.includes("p1/lib"))
+    for (const { file, tracked: kept } of baseConfig.protected) {
+      f.put("p0/" + file, "export const kept = 1\n")
+      assert.throws(() => referenceRefreshPlan({ ...f, ts, configs, changed, tracked: kept ? [...tracked, "p0/" + file] : tracked }),
+        error => /unsafe project output: p0\/lib/.test(error.message) && error.details.protectedSources.includes("p0/" + file))
+      rmSync(join(f.root, "p0/" + file))
+    }
+    // Without the repository's tracked files, every listed file stays protected.
+    assert.throws(() => referenceRefreshPlan({ ...f, ts, configs, changed }), /unsafe project output: p0\/lib/)
+  } finally { f.close() }
+})
+
+test("an unrelated config's listing of untracked outputs never changes the refresh plan", () => {
+  // The base-config corpus over generated chains, changed owners, base configs
+  // with or without allowJs and include, and output names a build writes.
+  fc.assert(fc.property(fc.integer({ min: 2, max: 5 }), fc.nat(), fc.boolean(), fc.constantFrom("default", "all", "packages"),
+    fc.subarray(baseConfig.outputs, { minLength: 1 }), fc.constantFrom("none", "tracked", "source"),
+    (count, index, allowJs, include, outputs, extra) => {
+      const f = fixture(count)
+      try {
+        index %= count
+        const base = { ...baseConfig.base, compilerOptions: { ...baseConfig.base.compilerOptions, allowJs },
+          ...(include === "all" ? { include: ["**/*"] } : include === "packages" ? { include: ["p*/**/*"] } : {}) }
+        f.put("tsconfig.base.json", base)
+        for (let i = 0; i < count; i++) for (const output of outputs) f.put("p" + i + "/" + output, "stale")
+        const tracked = [...f.configs, "base.json", "tsconfig.base.json", ...f.configs.map(config => config.replace("tsconfig.json", "src/main.ts"))]
+        const configs = [...f.configs, "tsconfig.base.json"], changed = ["p" + index + "/src/main.ts"]
+        if (extra === "none") {
+          const plan = referenceRefreshPlan({ ...f, ts, configs, changed, tracked })
+          assert.deepEqual(plan, referenceRefreshPlan({ ...f, ts, changed, tracked }))
+          assert.deepEqual(plan.projects, f.configs.slice(index))
+          return
+        }
+        // The chain's last project is always rebuilt.
+        const file = "p" + (count - 1) + "/lib/" + (extra === "tracked" ? "kept.js" : "generated.ts")
+        f.put(file, "export const kept = 1\n")
+        assert.throws(() => referenceRefreshPlan({ ...f, ts, configs, changed, tracked: extra === "tracked" ? [...tracked, file] : tracked }),
+          error => error.message === "unsafe project output: p" + (count - 1) + "/lib")
+      } finally { f.close() }
+    }), { numRuns: 60 })
 })
 
 test("unsafe effective output directories are refused before any deletion", async () => {
