@@ -1,0 +1,19 @@
+// rule-evidence: docs/design/vips/0041-throw-expressions.md#7a86ed9442ac9c1e
+// rule-evidence: docs/design/vips/0041-throw-expressions.md#decision | Throw expressions remain supported; no migration to `do { throw (operand); }` is required.
+// run.mjs runs ordinary --fix and both migration scopes over this file and
+// requires it unchanged, with no diagnostic, and the same failures afterwards.
+error Missing { code: string }
+function pair(a: number, b: number): number { return a + b }
+effect function coalesce(value: number | undefined) { return value ?? throw new Missing({ code: "coalesce" }) }
+effect function compound(value: number | undefined, a: string, b: string) { return value ?? throw (new Missing({ code: a + b })) }
+effect function argument() { return pair((throw new Missing({ code: "argument" })), 2) }
+effect function element() { return [1, throw new Missing({ code: "element" })] }
+effect function conditional(flag: boolean) { return flag ? throw new Missing({ code: "conditional" }) : 0 }
+export effect function main() {
+  const a = coalesce(undefined) catch (e) => e.code
+  const b = compound(undefined, "com", "pound") catch (e) => e.code
+  const c = argument() catch (e) => e.code
+  const d = element() catch (e) => e.code
+  const f = conditional(true) catch (e) => e.code
+  return [a, b, c, d, f, try coalesce(7)]
+}

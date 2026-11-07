@@ -20,6 +20,13 @@ const plainGeneratorThrowPlacementQuote = "plain methods, constructors, accessor
 
 const throwExpressionGrammarQuote = "unary nesting such as \x60!throw error\x60 parse."
 
+// VIP-41 writes a throw expression as an element; Appendix B's EK1012 is a
+// stored call, and a throw expression is no call, so where a throw expression
+// is allowed it never reports EK1012.
+const throwExpressionStoredQuote = "A following comma is forbidden by the proposal too: write \x60f((throw e), b)\x60 or \x60[a, throw e]\x60."
+
+const neverStoredCallQuote = "a legacy automatically run call that never succeeds is stored"
+
 var throwExpressionPlacementKeys = []string{
 	"expr-plain", "expr-caught", "expr-arrow", "expr-nested-arrow",
 	"expr-method", "expr-getter", "expr-generator", "expr-top",
@@ -36,6 +43,12 @@ func TestThrowExpressionPlacementQuoted(t *testing.T) {
 	}
 	if !strings.Contains(SpecText("003-failures.md"), throwExpressionGrammarQuote) {
 		t.Fatalf("Chapter 003 no longer says %q; review the grammar oracle", throwExpressionGrammarQuote)
+	}
+	if !strings.Contains(SpecText("../vips/0041-throw-expressions.md"), throwExpressionStoredQuote) {
+		t.Fatalf("VIP-41 no longer says %q; review the stored-element oracle", throwExpressionStoredQuote)
+	}
+	if !strings.Contains(SpecText("900-appendices.md"), neverStoredCallQuote) {
+		t.Fatalf("Appendix B no longer says %q; review the stored-element oracle", neverStoredCallQuote)
 	}
 	if !strings.Contains(SpecText("003-failures.md"), throwExpressionPlacementQuote) {
 		t.Fatalf("Chapter 003 no longer says %q; review the placement oracle", throwExpressionPlacementQuote)
@@ -134,6 +147,11 @@ func checkThrowExpressionPlacement(t *testing.T, w *Workspace, key string, varia
 	found := false
 	throwStart := strings.Index(source, "throw ")
 	for _, d := range r.Diagnostics {
+		if IsEK(d) && d.Code() == 1012 && d.File() != nil && strings.HasSuffix(string(d.File().FileName()), "/"+file) && d.Pos() <= throwStart+len("throw") && d.End() >= throwStart {
+			Gap(t, chapter007OrdinaryThrowsTarget, "never-stored:"+gapKey,
+				"VIP-41 %q, but Appendix B's EK1012 (%q) reports the throw expression: %v\n%s",
+				throwExpressionStoredQuote, neverStoredCallQuote, d, source)
+		}
 		if d.Category() != diagnostics.CategoryError {
 			continue
 		}
@@ -150,6 +168,7 @@ func checkThrowExpressionPlacement(t *testing.T, w *Workspace, key string, varia
 			throwExpressionPlacementQuote, wantError, r.Diagnostics, source)
 	}
 	ExpectPending(t, chapter007OrdinaryThrowsTarget, "compile:"+gapKey)
+	ExpectPending(t, chapter007OrdinaryThrowsTarget, "never-stored:"+gapKey)
 	ExpectPending(t, chapter007OrdinaryThrowsTarget, gapKey)
 }
 

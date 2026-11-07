@@ -75,13 +75,3 @@ test.todo("rule-evidence: docs/design/vips/0039-vibex.md#angle-brackets | cov2-v
 // VIP-39: vibex throw placement.
 // Activation: Cross plain/effect/async bodies and eager parameters in .vibex with throw expressions; require EK0401 wherever synchronous Vibe code cannot throw.
 test.todo("rule-evidence: docs/design/vips/0039-vibex.md#angle-brackets | cov2-vips-b vibex throw placement | present | It is allowed where a throw statement is: synchronous VibeLang code cannot throw, so a throw expression there is `EK0401` (VIP-4, amended 2026-10-31).")
-
-// rule-evidence: docs/design/vips/0041-throw-expressions.md#7a86ed9442ac9c1e
-// VIP-41: throw expressions need no migration.
-// Activation: Run current throw expressions through ordinary and scoped fix passes; assert no forced rewrite to do blocks and unchanged behavior.
-test.todo("rule-evidence: docs/design/vips/0041-throw-expressions.md#decision | cov2-vips-b throw expressions need no migration | present | Throw expressions remain supported; no migration to `do { throw (operand); }` is required.")
-
-// rule-evidence: docs/design/vips/0041-throw-expressions.md#a1c019ce0ca083ab
-// VIP-41: VIP4 controls throw permission.
-// Activation: Cross plain, async, Effect, nested callable and eager-parameter sites; adopted grammar must not authorize a synchronous throw and must require EK0401.
-test.todo("rule-evidence: docs/design/vips/0041-throw-expressions.md#existing-placement-and-match-arm-rules | cov2-vips-b VIP4 controls throw permission | present | [VIP-4's no-throw rule](0004-throw.md) (`EK0401`) decides that.")
