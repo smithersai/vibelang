@@ -1,0 +1,1 @@
+vibe.severities: object defaulting to {}, four values for own and EK38xx codes

@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#config-files | With both prelude switches `false`, write explicit imports as in TypeScript:
+export const witness = 1

@@ -1,0 +1,1 @@
+severity keys: whole codes, EK3006 for disallowed codes and values, EK3007 for other vibe types
