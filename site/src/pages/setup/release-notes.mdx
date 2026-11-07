@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
 - The editor and TypeScript mapper treated producer function expressions as JavaScript generators. They now preserve their lazy `Stream` behavior for anonymous, named and nested expressions.
+- `try.race`, `try.any` and `try.allSettled` could reuse surrounding fiber IDs when the project and runtime loaded separate Effect copies. They now use the project's Effect instance, and settled operations keep working when a local variable is named `Effect`.
+- Producers could reuse surrounding fiber IDs when the project and runtime loaded separate Effect copies. They now start their bodies with the project's `Stream.callback`.
 
 - A producer method after a class field without a semicolon could disappear from the editor's TypeScript output or fail to emit. The mapper now keeps the field and method separate.
 
@@ -128,6 +130,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A `for concurrent` loop could allocate fiber IDs that collided with surrounding fibers when the project and runtime loaded separate Effect copies. It now uses the project's `Effect.forEach`, as the native counterpart does.
 - A line break between `try`, the dot and the operation name, as in `try` followed by `.all [a, b]` on the next line, reported a syntax error. Line breaks and comments may now separate those tokens.
 - Returning migrated files to TypeScript could leave stale declarations or remove unrelated declarations. The migrate flow now uses their original layout for cleanup.
+- `compareDeclarations` dropped `entryBatchSize` and `probeBatchSize`, so a whole-application API check always ran groups of eight entries. It now forwards all three batch sizes, refuses an invalid one instead of using the default, and refuses an option it does not know.
 - Migration API checks ignored a project's `lib`, so a global from a selected library reported `TS2304` on unchanged declarations. They now load those libraries, and `compareDeclarations` takes `profile` and `workerHeaps`, with stage records streamed as they happen.
 - The source-map token check ignored written code on lines with no mappings. It now reports the missing source positions.
 - A warning quoting a `//path/to/source` comment could repeatedly recompile a loader project. Path-like line comments now stay in the warning, while listed source files remain watched.

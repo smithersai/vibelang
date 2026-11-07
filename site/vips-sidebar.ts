@@ -199,6 +199,10 @@ export const vipsSidebar = [
           {
             "text": "42. VibeLang in .ts files",
             "link": "/vips/0042-vibelang-in-ts-files-open"
+          },
+          {
+            "text": "43. theorem and spec, proofs in TypeScript's own syntax",
+            "link": "/vips/0043-theorems-open"
           }
         ]
       }
