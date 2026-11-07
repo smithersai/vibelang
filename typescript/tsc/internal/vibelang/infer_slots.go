@@ -76,6 +76,20 @@ func inferSlotRewrite(c *checker.Checker, file *ast.SourceFile, annotation *ast.
 		return nil
 	}
 	declared := c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(fn))
+	if !isMarkedEffect(fn) {
+		// A plain callable returns its body's Effect unrun. Filling an infer
+		// slot cannot repair a written channel that conflicts with that Effect;
+		// withhold the quick fix under VIP-34's preservation rule.
+		returned := plainReturnedEffect(c, fn)
+		if returned == nil {
+			return nil
+		}
+		for i, slot := range k.channels {
+			if slot.Kind != ast.KindInferType && !c.IsTypeAssignableTo(channelType(c, returned, []string{"_A", "_E", "_R"}[i]), c.GetTypeFromTypeNode(slot)) {
+				return nil
+			}
+		}
+	}
 	filled := []*checker.Type{successType(c, declared), channelType(c, declared, "_E"), channelType(c, declared, "_R")}
 	bang := annotation.AsTypeReferenceNode().TypeName.Flags&ast.NodeFlagsReparsed != 0
 	var edits []sourceEdit
@@ -102,6 +116,37 @@ func inferSlotRewrite(c *checker.Checker, file *ast.SourceFile, annotation *ast.
 	r := &formRewrite{edits: edits}
 	r.description = rewrittenText(file, annotation, edits)
 	return r
+}
+
+// plainReturnedEffect is the Effect an unmarked callable's body returns: the
+// union of its returned expressions' types, or nil when a return is bare or
+// is not an Effect.
+func plainReturnedEffect(c *checker.Checker, fn *ast.Node) *checker.Type {
+	body := fn.Body()
+	if body == nil {
+		return nil
+	}
+	var types []*checker.Type
+	ok := true
+	if body.Kind == ast.KindBlock {
+		forEachReturn(body, func(e *ast.Node) {
+			if e == nil {
+				ok = false
+				return
+			}
+			types = append(types, returnedType(c, e, true))
+		})
+	} else {
+		types = append(types, returnedType(c, body, true))
+	}
+	if !ok || len(types) == 0 {
+		return nil
+	}
+	t := c.GetUnionType(types)
+	if !isEffectType(c, t) {
+		return nil
+	}
+	return t
 }
 
 // writable reports whether t, and each member of a union t, can be written

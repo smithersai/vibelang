@@ -192,7 +192,7 @@ These identities remain in the compiler registry for older source and migration 
 | `EK1504` | Schema fields have no separator. Insert `;` or a line break; the quick fix inserts `;`. |
 | `EK1705` | A `fork.` owner is unknown. Choose `fork.in(scope)`, `fork.scoped` or `fork.detached` for the intended lifetime. |
 | `EK1706` | A `fork.in(scope)` operand is not a `Scope.Scope`. Pass an acquired scope; a lifetime string or layer is not a scope. |
-| `EK4857` | A return channel still writes legacy `infer`. Run the preserving migration or write the inferred channel type explicitly. Remove an all-`infer` annotation only from an explicit `effect` callable when that preserves its contract. |
+| `EK4857` | A return channel still writes legacy `infer`. Run the preserving migration or write the inferred channel type explicitly. Remove an all-`infer` annotation only from an explicit `effect` callable when that preserves its contract. A repair is withheld when the returned Effect conflicts with a written channel. |
 
 The following compatibility reports can still occur while older source is migrated. Use current forms when repairing them.
 
