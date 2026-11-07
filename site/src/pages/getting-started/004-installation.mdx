@@ -150,7 +150,7 @@ Add scripts to `package.json`, which must have `"type": "module"`:
 }
 ```
 
-`src/main.vibe` calls its runner at the top level, as an Effect TypeScript program does: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. A function named `main` is an ordinary function.
+`src/main.vibe` calls its runner at the top level, as an Effect TypeScript program does: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. A function named `main` is an ordinary function. The compiler adds no call to `main`; the top-level runner starts it.
 
 `node --enable-source-maps` maps JavaScript locations back to `.vibe` lines. It does not add the logical caller chain, and VibeLang adds no spans of its own, so a defect can show only one frame. Name a span where it matters with `try withSpan(effect { ... }, "checkout")`. For a sparse failure message or a missing caller stack, follow [Debug stack traces](/getting-started/012-devtools#debug-stack-traces).
 

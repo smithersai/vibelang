@@ -1,2 +1,1 @@
 contract.vibe(8,10): error EK9202: executable needs FileSystem, but its contract says R = never.
-explicit.vibe(6,24): error EK3205: main needs Crypto, which nothing provides when the host starts this module.

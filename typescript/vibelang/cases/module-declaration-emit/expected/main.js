@@ -1,6 +1,6 @@
 import * as Console from "effect/Console";
+import * as Effect from "effect/Effect";
 import * as Effect_1 from "effect/Effect";
-import * as runtime from "vibelang-runtime/internal";
 // Each module declaration the file imports compiles to a JavaScript module of
 // its own (D403), main.vibe.<name>.js beside main.js, which main.js imports
 // where the source wrote the module's name. A module the file imports only
@@ -32,4 +32,4 @@ export function main() {
         }));
     });
 }
-runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));
+await Effect.runPromise(main());

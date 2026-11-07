@@ -7,3 +7,5 @@ const started = runPromise(3)
 export effect function main() {
   try Console.log("local runner", started)
 }
+
+import "vibelang/platform/node"

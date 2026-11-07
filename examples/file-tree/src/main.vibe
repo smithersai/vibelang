@@ -1,4 +1,4 @@
-import "vibelang/platform/node"
+// The application runner is in entry.vibe.
 import { FileSystem } from "effect/FileSystem"
 import { Path } from "effect/Path"
 import { PlatformError } from "effect/PlatformError"

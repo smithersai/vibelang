@@ -37,3 +37,5 @@ export effect function main() {
   const double = flow((n: number) => n + 1, (n: number) => n * 2)
   try Console.log(pipe(1, double), new Late({ ms: 5 })._tag)
 }
+
+void runPromise(main())

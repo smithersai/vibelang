@@ -3,7 +3,6 @@
  */
 import * as Schema from "effect/Schema";
 import * as Effect from "effect/Effect";
-import * as runtime from "vibelang-runtime/internal";
 /** The codes. */
 export const Code = Schema.Literals(["a",
     "b"]);
@@ -33,4 +32,3 @@ export function main() {
         return { code, user };
     });
 }
-runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

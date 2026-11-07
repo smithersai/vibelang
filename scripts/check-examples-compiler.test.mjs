@@ -59,7 +59,7 @@ import { appendFileSync, mkdirSync, writeFileSync } from "node:fs"
 import { basename } from "node:path"
 appendFileSync(process.env.EXAMPLES_COMPILER_TRACE, JSON.stringify({ compiler: ${JSON.stringify(name)}, example: basename(process.cwd()), args: process.argv.slice(2) }) + "\\n")
 mkdirSync("dist", { recursive: true })
-writeFileSync("dist/main.js", "console.log(\\"fixture\\")\\n")
+writeFileSync("dist/entry.js", "console.log(\\"fixture\\")\\n")
 `)
       return put(path, "#!/bin/sh\nexec " + quote(process.execPath) + " " + quote(core) + ' "$@"\n', executable)
     }

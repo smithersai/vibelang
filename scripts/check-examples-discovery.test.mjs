@@ -56,7 +56,7 @@ case $PWD in
     esac ;;
 esac
 mkdir -p dist
-printf '%s\n' 'console.log("fixture")' > dist/main.js
+printf '%s\n' 'console.log("fixture")' > dist/entry.js
 `)
     // Only the manifest probe is faulted. Staging and application execution
     // use real Node; malformed and missing manifests also exercise its reader.

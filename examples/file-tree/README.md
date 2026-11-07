@@ -4,7 +4,7 @@ A recursive function snapshots regular files, then an `effect function*` produce
 `for try` consumes the producer; `Effect.forEach` reads files with concurrency 4.
 The recursion accumulates into an array and returns void. Because it is recursive,
 it writes out its contract, `void!PlatformError!FileSystem | Path`.
-`FileSystem` and `Path` come from Effect; `import "vibelang/platform/node"` makes the entry provide them to `main` from `NodeServices.layer`.
+`FileSystem` and `Path` come from Effect. The written runner in `src/entry.vibe` provides `NodeServices.layer` to `main()` and starts the application.
 Canonical directory paths prevent revisiting a directory through symbolic links.
 
 Run from this directory so `fixtures` resolves to the bundled sample tree:

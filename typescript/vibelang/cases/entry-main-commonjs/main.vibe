@@ -6,3 +6,5 @@ import { helper } from "./lib.vibe"
 export effect function main() {
   try Console.log(`app main uses ${helper}`)
 }
+
+import "vibelang/platform/node"

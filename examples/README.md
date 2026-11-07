@@ -6,7 +6,7 @@ examples build browser bundles with Vite.
 
 | Example | Shows |
 | --- | --- |
-| [hello](hello/) | One function and one log; an exported `main` runs when node starts the module. |
+| [hello](hello/) | One function, one log, and a written application runner. |
 | [users](users/) | Abstract services, layers, `wire`, typed failures, and test layers. |
 | [http-api](http-api/) | A schema-validated HTTP route, conflict errors, and socket-free route tests. |
 | [file-tree](file-tree/) | A recursive function with a written contract, platform services, a producer, and concurrent reads. |
@@ -18,6 +18,8 @@ examples build browser bundles with Vite.
 | [svelte-vite](svelte-vite/) | A Svelte 5 `{#await}` block over quotes that `try.all` runs concurrently. |
 | [foldkit-app](foldkit-app/) | A Foldkit counter and todo list with one HTTP command, beside its Effect TypeScript original. |
 | [alchemy-stack](alchemy-stack/) | An Alchemy stack with a Cloudflare Worker over an R2 bucket, beside its Effect TypeScript original; tested without credentials. |
+
+Each Node application starts in `src/entry.vibe`, which calls `NodeRuntime.runMain` with its platform services. The exported functions in `src/main.vibe` stay unrun when imported by tests.
 
 Each example pins the published VibeLang packages; no compiler source build or Go installation is needed.
 In a Node example directory, run `bun install`,
