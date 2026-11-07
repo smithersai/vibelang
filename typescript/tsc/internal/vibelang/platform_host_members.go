@@ -156,6 +156,9 @@ func platformHostOrigin(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol
 		return platformHostValue{}
 	}
 	symbol := c.GetSymbolAtLocation(node)
+	if node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent) {
+		symbol = c.GetShorthandAssignmentValueSymbol(node.Parent)
+	}
 	if symbol == nil || seen[symbol] {
 		return platformHostValue{}
 	}
@@ -221,7 +224,7 @@ func checkPlatformHostMembers(c *checker.Checker, file *ast.SourceFile) {
 				at = node.PropertyName()
 			}
 		case ast.IsIdentifier(node):
-			if node.Parent != nil && ast.IsBindingElement(node.Parent) && (node.Parent.Name() == node || node.Parent.PropertyName() == node) || !isValueUse(node) {
+			if node.Parent != nil && ast.IsBindingElement(node.Parent) && (node.Parent.Name() == node || node.Parent.PropertyName() == node) || !isValueUse(node) && !(node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent)) {
 				break
 			}
 			at = node
