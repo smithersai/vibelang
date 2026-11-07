@@ -15,7 +15,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
 | `Experimental.MediaQuery` | `matches`, `changes` over `window.matchMedia` | browser |
 | `Experimental.BrowserInfo` | `crossOriginIsolated`, `userAgent` | browser |
-| `Experimental.Window` | `current`, the page's `Window`, for an API that takes one | browser |
+| `Experimental.Window` | `current`, the page's window (`Window & typeof globalThis`), for an API that takes one or a component test | browser |
 | `Experimental.Document` | `current`, the page's `Document`, for an API that takes one | browser |
 | `Experimental.ResizeObserver` | `observe` of an element, until the Scope closes | browser |
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
@@ -515,6 +515,36 @@ effect function origin() {
 `try window.computedStyle(element)` gives the element's live `CSSStyleDeclaration`, as `getComputedStyle` does. It is the host's object, not a snapshot, so a later read of it sees a later change.
 
 `ExperimentalBrowserWindow.layer`, also in `ExperimentalBrowserServices.layer`, reads the host when a member runs. `Experimental.Window.layerTest(window)` gives a fake; pass `computedStyle` as a second argument when a test reads one.
+
+### Drive the page in a component test
+
+`current` is typed `Experimental.Window.Page`, which is `Window & typeof globalThis`, the type the DOM library gives `window`. So the page it injects carries the page's own event constructors, element classes and frame functions, and a happy-dom or jsdom test builds native events and replaces native methods through it:
+
+```vibe
+// keys.vibe
+export function pressHome(page: Experimental.Window.Page) {
+  const key = new page.KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true })
+  page.document.dispatchEvent(key)
+  return key.defaultPrevented
+}
+
+export function countScrolls(page: Experimental.Window.Page, run: () => void) {
+  const prototype = page.Element.prototype
+  const native = prototype.scrollIntoView
+  let scrolls = 0
+  prototype.scrollIntoView = () => {
+    scrolls += 1
+  }
+  try {
+    run()
+  } finally {
+    prototype.scrollIntoView = native
+  }
+  return scrolls
+}
+```
+
+In the test, provide `ExperimentalBrowserWindow.layer` and read `const page = try (try Experimental.Window.Window).current`; under happy-dom or jsdom that is the environment's window. Spies work on it too: `vi.spyOn(page.Element.prototype, "scrollIntoView")`, `vi.spyOn(page, "scrollY", "get")` and `vi.spyOn(page, "requestAnimationFrame")`, restored by `vi.restoreAllMocks()`. A bare `KeyboardEvent`, `Element`, `requestAnimationFrame` or `window.scrollY` still reads the host and is `EK4402`; a member of the injected page is the page's. DOM calls can throw, so call these helpers through `Effect.try` in effect code.
 
 ## BrowserInfo
 

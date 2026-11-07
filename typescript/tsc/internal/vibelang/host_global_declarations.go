@@ -43,12 +43,13 @@ func checkUnlistedHostGlobals(c *checker.Checker, file *ast.SourceFile) {
 				symbol = c.GetSymbolAtLocation(node)
 			}
 		case ast.IsPropertyAccessExpression(node):
-			if isValueUse(node) {
+			if isValueUse(node) && receiverReachesHost(c, node.Expression()) {
 				symbol = c.GetSymbolAtLocation(node)
 			}
 		case ast.IsElementAccessExpression(node):
 			key := node.AsElementAccessExpression().ArgumentExpression
-			if key != nil && (ast.IsStringLiteral(key) || key.Kind == ast.KindNoSubstitutionTemplateLiteral) && isValueUse(node) {
+			if key != nil && (ast.IsStringLiteral(key) || key.Kind == ast.KindNoSubstitutionTemplateLiteral) && isValueUse(node) &&
+				receiverReachesHost(c, node.Expression()) {
 				symbol = c.GetPropertyOfType(c.GetApparentType(c.GetTypeAtLocation(node.Expression())), key.Text())
 			}
 		}
@@ -65,6 +66,28 @@ func checkUnlistedHostGlobals(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// receiverReachesHost reports whether a member read's receiver is the host:
+// a chain of member reads rooted at a global binding, such as globalThis,
+// window or self. A member of any other value, such as the page an injected
+// Experimental.Window gives, a parameter or an import, is that value's member.
+// The value reached the host where it was made, through a service or a .ts
+// file, so page.KeyboardEvent is the injected page's constructor, not a read
+// of the host global (VIP-33, amended 2026-11-07).
+func receiverReachesHost(c *checker.Checker, receiver *ast.Node) bool {
+	for {
+		receiver = ast.SkipOuterExpressions(receiver, ast.OEKAll)
+		switch {
+		case ast.IsPropertyAccessExpression(receiver), ast.IsElementAccessExpression(receiver):
+			receiver = receiver.Expression()
+		case ast.IsIdentifier(receiver):
+			symbol := c.GetSymbolAtLocation(receiver)
+			return symbol == nil || c.GlobalSymbol(receiver.Text(), ast.SymbolFlagsValue) == symbol
+		default:
+			return false
+		}
+	}
 }
 
 func isUnlistedHostGlobal(c *checker.Checker, symbol *ast.Symbol) bool {

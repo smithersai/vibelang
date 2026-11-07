@@ -31,6 +31,18 @@ export type TypeId = "~vibelang/experimental/Window"
 export const TypeId: TypeId = "~vibelang/experimental/Window"
 
 /**
+ * The page's global window, typed as the DOM library types `window`: its
+ * members include the page's own event constructors, element classes and
+ * frame functions, so a component test builds `new page.KeyboardEvent(...)`
+ * and replaces `page.Element.prototype.scrollIntoView` through the injected
+ * page rather than the host's globals.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type Page = globalThis.Window & typeof globalThis
+
+/**
  * The slice of the host this service uses.
  *
  * @category models
@@ -49,8 +61,8 @@ export interface Host {
  */
 export interface Window {
   readonly [TypeId]: TypeId
-  /** The page's `Window`, read each time this runs. */
-  readonly current: Effect.Effect<globalThis.Window>
+  /** The page's window, read each time this runs. */
+  readonly current: Effect.Effect<Page>
   /**
    * The live computed style of `element`, as `getComputedStyle`: it is the
    * host's object, so it reflects later changes, not a snapshot.
@@ -76,14 +88,15 @@ export const Window: Context.Service<Window, Window> = /* @__PURE__ */ Context.S
  */
 export const make = (host: Host): Window => ({
   [TypeId]: TypeId,
-  current: Effect.sync(host.window),
+  current: Effect.sync(() => host.window() as Page),
   computedStyle: (element) => Effect.sync(() => host.computedStyle(element))
 })
 
 /**
- * Provides `window`, for tests: a fake, such as `new EventTarget()`, cast to
- * `Window`. Pass `computedStyle` when a test reads one; without it, the read is
- * a defect.
+ * Provides `window`, for tests: a happy-dom or jsdom window, or a fake, such as
+ * `new EventTarget()`, cast to `Window`. `current` gives it typed as `Page`, so
+ * a fake has only the members it was given. Pass `computedStyle` when a test
+ * reads one; without it, the read is a defect.
  *
  * @category layers
  * @since 0.0.11

@@ -1,0 +1,79 @@
+// expect-result: {"keys":["Home"],"cancelled":true,"detail":"delta","scrolls":1,"frames":[1,2],"ran":2,"restored":true}
+// A component test drives the page through the injected Window, whose `current` is typed as the DOM library types
+// `window`: it builds native events with the page's constructors, replaces a native method on the page's prototype
+// and puts it back, and stubs the page's animation frames. No host global is read here (EK4402).
+// VIP-33, amended 2026-11-07: a member of the injected page is the page's; a host global read bare or through
+// globalThis or window stays EK4402 (TestHostGlobalMemberReceiver in internal/vibelang).
+import { Effect } from "effect"
+import { fakePage } from "./page.ts"
+
+function press(page: Experimental.Window.Page) {
+  const keys: Array<string> = []
+  page.document.addEventListener("keydown", (event) => {
+    keys.push(event.key)
+    event.preventDefault()
+  })
+  const key = new page.KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true })
+  page.document.dispatchEvent(key)
+  return { keys, cancelled: key.defaultPrevented }
+}
+
+function emit(page: Experimental.Window.Page) {
+  const details: Array<string> = []
+  page.document.addEventListener("delta", (event) => {
+    details.push((event as CustomEvent<string>).detail)
+  })
+  page.document.dispatchEvent(new page.CustomEvent("delta", { detail: "delta" }))
+  return details[0]
+}
+
+function scrollStub(page: Experimental.Window.Page) {
+  const prototype = page.Element.prototype
+  const native = prototype.scrollIntoView
+  let scrolls = 0
+  prototype.scrollIntoView = () => {
+    scrolls += 1
+  }
+  try {
+    new page.Element().scrollIntoView()
+  } finally {
+    prototype.scrollIntoView = native
+  }
+  return { scrolls, restored: page.Element.prototype.scrollIntoView === native }
+}
+
+function frameStub(page: Experimental.Window.Page) {
+  const callbacks: Array<FrameRequestCallback> = []
+  const native = page.requestAnimationFrame
+  page.requestAnimationFrame = (callback) => {
+    callbacks.push(callback)
+    return callbacks.length
+  }
+  const frames = [page.requestAnimationFrame(() => {}), page.requestAnimationFrame(() => {})]
+  let ran = 0
+  for (const callback of callbacks) {
+    callback(0)
+    ran += 1
+  }
+  page.requestAnimationFrame = native
+  return { frames, ran, restored: page.requestAnimationFrame === native }
+}
+
+export effect function main() {
+  provide Experimental.Window.layerTest(fakePage()) {
+    const page = try (try Experimental.Window.Window).current
+    const { keys, cancelled } = try Effect.try(() => press(page))
+    const detail = try Effect.try(() => emit(page))
+    const scroll = try Effect.try(() => scrollStub(page))
+    const frame = try Effect.try(() => frameStub(page))
+    return {
+      keys,
+      cancelled,
+      detail,
+      scrolls: scroll.scrolls,
+      frames: frame.frames,
+      ran: frame.ran,
+      restored: scroll.restored && frame.restored
+    }
+  }
+}
