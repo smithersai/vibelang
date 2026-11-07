@@ -10,6 +10,11 @@ watch mode. Source and type-only edits remain active after error recovery. For V
 Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning.
 The shared load hook also compiles explicit `.vibex` JSX sources, including
 module IDs with query strings, using the project's `jsx` compiler option.
+The native esbuild adapter also loads these sources and their rewritten
+`.js` or `.jsx` dependencies. With `jsx: "preserve"`, it lowers JSX using
+the project's effective JSX settings, including inherited factory settings,
+and combines source maps back to the original `.vibex` source. A competing
+TypeScript source keeps the compiler's resolution priority.
 
 The `// @vibe` check reads real source files. Virtual module identifiers from another bundler plugin stay with that plugin, even when their names end in `.ts` or `.vibe`.
 

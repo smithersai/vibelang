@@ -28,6 +28,8 @@ Use the `.vibe` source when choosing a single entry.
 
 In bundler watch mode, creating a missing relative source also triggers a rebuild. Rollup continues watching source, type-only dependencies and configuration after recovering from errors. This includes directory indexes and source imports written with their emitted `.js` extension. Set `VIBELANG_UNPLUGIN_DEBUG=1` to see which missing source candidates the plugin watches.
 
+Explicit `.vibex` imports work through `vibelang-unplugin`, including module queries and dependencies whose imports rewrite to `.js` or `.jsx`. The esbuild adapter applies the project's effective JSX settings when output preserves JSX and retains original source maps. Ordinary TypeScript sources keep their resolution priority when filenames share a stem.
+
 Diagnostics from source loaders retain their source details and exclude compiler file-list output.
 
 Imports between `.vibe` modules preserve Unicode, spaces and literal `%` in file names through bundler builds. Use the original source name in the import. Literal JavaScript import names retain TypeScript's filename meaning.
