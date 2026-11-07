@@ -914,7 +914,9 @@ function firstLine(source, statement) {
 // A top-level statement keeps its place only among its neighbours, and a body
 // evaluates when imported, so a module with one to move stays TypeScript. So
 // does a module left with no value of its own: a body holding the whole file is
-// a .ts file with a harder name.
+// a .ts file with a harder name. A declaration that would move but reads
+// import.meta, or a value that would move only because moved code reads it,
+// stays instead, and only the module's host operations move (hostOperations).
 
 /**
  * Splits the TypeScript module text of file into a module with a module body.
@@ -968,14 +970,25 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   // (hostOperations), and import.meta stays in the module. Throwing code still
   // moves whole.
   const metaReader = platformCode ? [...moved].find((d) => readsImportMeta(d.statement, ts)) : undefined
+  // A move that would take every value of the module, though some value
+  // reaches no platform code, takes it only because moved code reads it: a
+  // resource value and its same-named type beside the provider that reads
+  // the host. The module keeps them, and only the host operations move. A
+  // module whose every value reaches the platform is platform code and stays
+  // TypeScript.
+  const value = (d) => !typeOnly(d) && !reexport(d)
+  const dragged = platformCode && !metaReader && !declarations.some((d) => value(d) && !moved.has(d)) &&
+    declarations.some((d) => value(d) && !platformSeed.includes(d) && !throwSeed.includes(d))
   let operations = null
-  if (metaReader) {
+  if (metaReader || dragged) {
     moved = close(throwSeed)
     const names = new Set()
     const collect = (node) => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, collect) }
     collect(source)
     operations = hostOperations(source, declarations.filter((d) => !moved.has(d)).map((d) => d.statement), platform, ts, names, file)
-    if (operations.refused) return { refused: `${file}: ${firstLine(source, metaReader.statement)} reads import.meta, which a module body cannot (EK4009), and its host operations cannot move on their own: ${operations.refused}` }
+    if (operations.refused) return { refused: metaReader
+      ? `${file}: ${firstLine(source, metaReader.statement)} reads import.meta, which a module body cannot (EK4009), and its host operations cannot move on their own: ${operations.refused}`
+      : `${file}: moving its platform code would take every value of the module, and its host operations cannot move on their own: ${operations.refused}` }
   }
   const movable = (s) => ts.isVariableStatement(s) || ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isEnumDeclaration(s) || ts.isExportAssignment(s) || typeNamespace(s, ts)
   for (const d of moved) {

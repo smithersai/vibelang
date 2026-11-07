@@ -7,6 +7,7 @@ import { test } from "node:test"
 import { pathToFileURL } from "node:url"
 import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 import { splitBatchPlatform, splitPlatform, splitPlatformToModule } from "../lib/platform.mjs"
+import { materialize, restore, statements } from "./helpers/host-operations-oracle.mjs"
 
 // alchemy-platform-import-meta-moved-declaration: a declaration that reaches
 // the platform and reads import.meta could not move. A module body cannot
@@ -21,18 +22,6 @@ const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-import-meta-moved-declaration.json", import.meta.url), "utf8"))
 const js = (text) => ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
 const split = (text, options = {}) => splitPlatformToModule(text, "src/x.ts", ts, options)
-
-// VIP-40: a body is a TypeScript file stored in the .vibe file. Moving it to a
-// sibling and naming that file where the module wrote the body's name changes
-// no observation, so the runtime and declaration tests run that sibling.
-function materialize(module, file = "./x.vibe.platform.mjs", name = "platform") {
-  const open = "module " + name + " {\n", start = module.indexOf(open)
-  assert.ok(start >= 0, module)
-  const end = module.indexOf("\n}\n", start)
-  const body = module.slice(start + open.length, end + 1)
-  const rest = module.slice(0, start) + module.slice(end + 3)
-  return { body, module: rest.replace(new RegExp("( from )" + name + "$", "gm"), "$1" + JSON.stringify(file)) }
-}
 
 test("TestPlatformHostOperationsQuoted", () => {
   const vip = readFileSync(new URL("../../../../docs/design/vips/0040-module-declarations.md", import.meta.url), "utf8")
@@ -232,20 +221,6 @@ const placements = [
   (i, op) => `export function f${i}(): unknown { const inner = () => ${op}; return inner() }`,
   (i, op) => `export const m${i} = Make("m${i}", { main: import.meta.url, value: ${op} });`,
 ]
-// Undo each helper the body declares: what remains must be the source text.
-function restore(module) {
-  const { body, module: rest } = materialize(module)
-  let text = rest
-  for (const line of body.split("\n")) {
-    let m
-    if ((m = /^export const (\$\w+): typeof ([\w.]+) = /.exec(line))) text = text.split(m[1] + "(").join(m[2] + "(")
-    else if ((m = /^export function (\$\w+)\(\) \{ return typeof (\w+) \}$/.exec(line))) text = text.split(m[1] + "()").join("typeof " + m[2])
-    else if ((m = /^export function (\$\w+)\(value: typeof ([\w.]+)\) \{ return [\w.]+ = value \}$/.exec(line))) text = text.replace(new RegExp(m[1].replace("$", "\\$") + "\\(([^()]*)\\)", "g"), m[2] + " = $1")
-    else if ((m = /^export function (\$\w+)\(\) \{ return ([\w.]+) \}$/.exec(line))) text = text.split(m[2] + ": " + m[1] + "()").join(m[2]).split(m[1] + "()").join(m[2])
-  }
-  return text
-}
-const statements = (text) => text.split("\n").filter((line) => line.trim() && !/^import /.test(line))
 test("host operations in any placement move alone, and undoing them restores the module", () => {
   fc.assert(fc.property(fc.array(fc.record({ op: fc.integer({ min: 0, max: operations.length - 1 }), at: fc.integer({ min: 0, max: placements.length - 1 }) }), { minLength: 1, maxLength: 5 }), (picks) => {
     // The first placement always reads import.meta, so the module keeps its declarations.
