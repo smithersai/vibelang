@@ -56,6 +56,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migrating a plain generic function that returned an Effect could leave a retired inference marker in its return type. The repair now uses the returned program's channels and preserves real callback errors and service requirements.
 - Checking the diagnostic reference could report a missing code that no compiler emitted. It now resolves a mapper diagnostic code from the constants in its own package.
+- In effect code, a call of a `.ts` function documented with an empty `@throws {}` tag was treated as never throwing, so a throw became a defect without any diagnostic. Such a tag names no thrown type, so the call now needs a bridge (`EK0403`), as with no tag at all.
 
 - Calling a foreign function with `?.()` could bypass throwing-call checks when its own result was an `Effect`, `Stream` or `Layer` combined with `null` or `undefined`. Optional calls now keep that nullable return contract and require the same bridge as ordinary calls.
 

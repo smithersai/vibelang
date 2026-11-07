@@ -280,5 +280,14 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "class-override-control-" + row.name, Owner: "compiler", Quote: overrides, Host: "none", Lib: overrideLib, Decls: row.decls})
 	}
+	// A @throws tag that writes no type, with no braces or with empty ones,
+	// names no thrown type: its callee keeps the untagged contract, unknown.
+	const noTag = "| no tag | `unknown` |"
+	for _, tag := range []struct{ name, doc string }{{"empty-braces", "/** @throws {} */"}, {"spaced-braces", "/** @throws { } */"}, {"bare", "/** @throws */"}, {"prose", "/** @throws if the input is empty */"}} {
+		lib := tag.doc + "\nexport declare function f(): number\n"
+		add(&failCase{Name: "throws-untyped-" + tag.name, Owner: "compiler", Quote: noTag, Code: 403, Lib: lib, Body: "const v = ⟦f()⟧"})
+		add(&failCase{Name: "throws-untyped-" + tag.name + "-assign", Owner: "compiler", Quote: noTag, Code: 402, Host: "plain", Lib: lib, Body: "const r: () => number = ⟦f⟧"})
+		add(&failCase{Name: "throws-untyped-control-" + tag.name + "-plain", Owner: "compiler", Quote: noTag, Host: "plain", Lib: lib, Body: "const v = f()"})
+	}
 	return append(cases, failuresRound20Cases()...)
 }

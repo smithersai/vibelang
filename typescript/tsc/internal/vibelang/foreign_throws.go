@@ -41,12 +41,7 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 					if !ast.IsJSDocThrowsTag(tag) {
 						continue
 					}
-					expression := tag.AsJSDocThrowsTag().TypeExpression
-					if expression == nil {
-						bounds = append(bounds, "unknown")
-						continue
-					}
-					t := expression.AsJSDocTypeExpression().Type
+					t := throwsTagType(tag)
 					if t == nil {
 						bounds = append(bounds, "unknown")
 						continue

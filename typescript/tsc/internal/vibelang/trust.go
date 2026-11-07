@@ -6,6 +6,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // A call to code that is not Effect needs a declared trust level (design D5,
@@ -439,12 +440,29 @@ func jsdocComment(tag *ast.Node) string {
 func hasThrowsTag(node *ast.Node) bool {
 	for _, jsdoc := range node.JSDoc(nil) {
 		for _, tag := range jsdocTags(jsdoc) {
-			if ast.IsJSDocThrowsTag(tag) && tag.AsJSDocThrowsTag().TypeExpression != nil {
+			if ast.IsJSDocThrowsTag(tag) && throwsTagType(tag) != nil {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// throwsTagType returns the type a `@throws {T}` tag writes, or nil when it
+// writes none: no braces, as in `@throws if empty`, or empty braces, as in
+// `@throws {}`, whose type node the parser leaves without text. Either is
+// a tag that names no thrown type, so its callee keeps the untagged
+// thrown type, unknown.
+func throwsTagType(tag *ast.Node) *ast.Node {
+	expression := tag.AsJSDocThrowsTag().TypeExpression
+	if expression == nil {
+		return nil
+	}
+	t := expression.AsJSDocTypeExpression().Type
+	if t == nil || strings.TrimSpace(scanner.GetTextOfNode(t)) == "" {
+		return nil
+	}
+	return t
 }
 
 // throwsOf reads the `@throws {T}` tags of host's JSDoc. Each names a class
