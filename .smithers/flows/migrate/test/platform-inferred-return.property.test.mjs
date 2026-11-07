@@ -14,6 +14,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import { compareApiIdentity } from "../../../../scripts/api-identity.mjs"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { platformPath, splitPlatform } from "../lib/platform.mjs"
 
@@ -32,9 +33,10 @@ function check(files, ambient, entry) {
       mkdirSync(join(root, dirname(file)), { recursive: true })
       writeFileSync(join(root, file), text)
     }
-    const options = { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, allowImportingTsExtensions: true, strict: true, noUnusedLocals: true, declaration: true, emitDeclarationOnly: true, lib: ["lib.es2022.d.ts"], types: [], skipLibCheck: true, outDir: join(root, ".out") }
+    const options = { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, allowImportingTsExtensions: true, rewriteRelativeImportExtensions: true, strict: true, noUnusedLocals: true, declaration: true, emitDeclarationOnly: true, lib: ["lib.es2022.d.ts"], types: [], skipLibCheck: true, outDir: join(root, ".out") }
     const program = ts.createProgram(Object.keys(files).concat("ambient.d.ts").map((f) => join(root, f)), options)
-    const emitted = program.emit()
+    const declarations = {}
+    const emitted = program.emit(undefined, (name, text) => { if (!name.endsWith("ambient.d.ts")) declarations[name.slice(name.lastIndexOf("/") + 1)] = text })
     const errors = [...ts.getPreEmitDiagnostics(program), ...emitted.diagnostics].filter((d) => d.category === ts.DiagnosticCategory.Error).map((d) => `TS${d.code} ${ts.flattenDiagnosticMessageText(d.messageText, " ")}`)
     const checker = program.getTypeChecker()
     const source = program.getSourceFile(join(root, entry))
@@ -42,10 +44,13 @@ function check(files, ambient, entry) {
     const types = {}
     for (const symbol of checker.getExportsOfModule(checker.getSymbolAtLocation(source))) {
       const type = symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbolAtLocation(symbol, source) : checker.getDeclaredTypeOfSymbol(symbol)
-      // The module's own declarations print bare or through import("./m"); a copy the sibling declared would name m.platform.
-      types[symbol.name] = checker.typeToString(type, undefined, flags).replaceAll(root, "<root>").replaceAll(`import("<root>/${entry.replace(/\.ts$/, "")}").`, "")
+      // The module's own declarations print bare or through import("./m"); a
+      // private type the sibling exports for the result prints through
+      // import("./m.platform"), the same declaration text. The API identity
+      // gate below decides that both are the same type.
+      types[symbol.name] = checker.typeToString(type, undefined, flags).replaceAll(root, "<root>").replaceAll(`import("<root>/${entry.replace(/\.ts$/, "")}.platform").`, "").replaceAll(`import("<root>/${entry.replace(/\.ts$/, "")}").`, "")
     }
-    return { errors, types }
+    return { errors, types, declarations }
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
@@ -60,7 +65,26 @@ function assertSplitPreserves(file, text, ambient, others = {}) {
   const after = check({ ...others, [file]: split.module, [platformPath(file)]: split.platform }, ambient, file)
   assert.deepEqual(after.errors, [], split.module + "\n---\n" + split.platform)
   assert.deepEqual(after.types, before.types, split.module + "\n---\n" + split.platform)
+  const api = sameApi(before.declarations, after.declarations, ambient, file.replace(/\.ts$/, ".d.ts"))
+  assert.ok(api.comparisonComplete && api.identical, JSON.stringify(api, null, 2) + "\n" + split.module)
   return split
+}
+
+// The API identity gate over the module's emitted declarations before and after.
+function sameApi(before, after, ambient, entry) {
+  const root = mkdtempSync(join(tmpdir(), "migrate-platform-inferred-api-"))
+  try {
+    const dirs = [["before", before], ["after", after]].map(([side, files]) => {
+      const dir = join(root, side)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ types: entry }))
+      writeFileSync(join(dir, "ambient.d.ts"), ambient)
+      // Both sides read the same ambient modules through the entry.
+      for (const [file, text] of Object.entries(files)) writeFileSync(join(dir, file), (file === entry ? '/// <reference path="./ambient.d.ts" />\n' : "") + text)
+      return dir
+    })
+    return compareApiIdentity(ts, dirs[0], dirs[1], { compilerOptions: { lib: ["lib.es2022.d.ts"], types: [] } })
+  } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
 test("smithers: an export with an inferred return type stays in the module with that type", () => {
@@ -73,11 +97,15 @@ test("smithers: an export with an inferred return type stays in the module with 
   }
 })
 
-test("an inferred return type that may name a type only the sibling declares keeps the refusal", () => {
-  const privateType = 'import { readFileSync } from "node:fs"\ninterface Row { readonly id: string }\nexport const readRows = (path: string) => JSON.parse(readFileSync(path, "utf8")) as ReadonlyArray<Row>\n'
-  assert.match(splitPlatform(privateType, "src/Rows.ts", ts).refused, /inferred return type that may name Row/)
+test("an inferred return type that names a private type or class names the sibling's, with the same API", () => {
+  // The sibling exports its copy of the private type, or the moved private
+  // class, so the module's declarations can name it; it adds no export to the module.
+  const ambient = 'declare module "node:fs" { export function readFileSync(path: string, encoding: "utf8"): string }\n'
+  const privateType = 'import { readFileSync } from "node:fs"\ninterface Row { readonly id: string }\nexport const readRows = (path: string) => JSON.parse(readFileSync(path, "utf8")) as readonly Row[]\nexport const first = (rows: readonly Row[]): string => rows[0]?.id ?? ""\n'
+  const rows = assertSplitPreserves("Rows.ts", privateType, ambient)
+  assert.match(rows.platform, /^export interface Row \{/m)
   const privateClass = 'import { readFileSync } from "node:fs"\nclass Handle { constructor(readonly text: string) {} }\nexport const open = (path: string) => new Handle(readFileSync(path, "utf8"))\n'
-  assert.match(splitPlatform(privateClass, "src/Open.ts", ts).refused, /inferred return type that may name Handle/)
+  assert.match(assertSplitPreserves("Open.ts", privateClass, ambient).platform, /^export class Handle /m)
   // A parameter with no written type has no signature to write: the function is re-exported instead.
   const untyped = 'import { readFileSync } from "node:fs"\nexport const read = (path) => readFileSync(path, "utf8")\nexport const name = "read"\n'
   const split = splitPlatform(untyped, "src/Read.ts", ts)

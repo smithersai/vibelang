@@ -4,7 +4,8 @@
 // that returns only JSX elements, null or undefined, or no value at all, has
 // a return type that names no type of the module, so its wrapper stays
 // (opencode gui-plugins terminal and updater/whats-new, session-ui
-// session-review). A factory that returns the private type keeps the refusal.
+// session-review). A factory that returns the private type names the
+// sibling's copy, which the sibling exports, and keeps its type.
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -50,7 +51,9 @@ function check(files, entry) {
     const types = {}
     for (const symbol of checker.getExportsOfModule(checker.getSymbolAtLocation(source))) {
       const type = symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbolAtLocation(symbol, source) : checker.getDeclaredTypeOfSymbol(symbol)
-      types[symbol.name] = checker.typeToString(type, undefined, flags).replaceAll(root, "<root>").replaceAll(`import("<root>/${entry.replace(/\.tsx?$/, "")}").`, "")
+      // A private type the sibling exports for an inferred result prints
+      // through import("./m.platform"), the same declaration text.
+      types[symbol.name] = checker.typeToString(type, undefined, flags).replaceAll(root, "<root>").replaceAll(`import("<root>/${entry.replace(/\.tsx?$/, "")}.platform").`, "").replaceAll(`import("<root>/${entry.replace(/\.tsx?$/, "")}").`, "")
     }
     return { errors, types }
   } finally { rmSync(root, { recursive: true, force: true }) }
@@ -79,11 +82,11 @@ test("opencode: a component or a void export keeps its wrapper beside a private 
   }
 })
 
-test("a factory that returns the private type keeps the refusal", () => {
+test("a factory that returns the private type names the sibling's copy and keeps its type", () => {
   const text = 'type Colors = { readonly fg: string }\n\nexport function theme() {\n  const colors: Colors = { fg: getComputedStyle(document.body).color }\n  return colors\n}\n'
-  assert.match(splitPlatform(text, "src/theme.ts", ts, { globals })?.refused ?? "", /inferred return type that may name Colors/)
+  assert.match(assertSplitPreserves("src/theme.ts", text).platform, /\bColors\b/)
   const nested = 'type Colors = { readonly fg: string }\n\nexport const Theme = () => {\n  const colors: Colors = { fg: getComputedStyle(document.body).color }\n  return colors.fg ? colors : null\n}\n'
-  assert.match(splitPlatform(nested, "src/theme.tsx", ts, { globals })?.refused ?? "", /inferred return type that may name Colors/)
+  assert.match(assertSplitPreserves("src/theme.tsx", nested).platform, /\bColors\b/)
 })
 
 // Neighbourhood: a function declaration, const arrow or function expression,

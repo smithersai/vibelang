@@ -2,12 +2,13 @@
 // its moved code read a private type of the module, since only the sibling
 // would declare that type and the return type might name it (opencode app
 // session/timeline/virtualizer, gui-plugins browser/chromium, app
-// session/composer/queue). splitBatchPlatform now retries such a refusal with
-// a type checker over the module's tsconfig: an export whose return type
-// provably names none of those types keeps its wrapper. A return type that
-// names one, directly or through a property, a method parameter, a type
-// argument or a returned closure, or that contains an `any` the checker cannot
-// see through, keeps the refusal (opencode gui-plugins browser/pane).
+// session/composer/queue). The sibling now exports such a type, and
+// splitBatchPlatform retries the split with a type checker over the module's
+// tsconfig: an export whose return type provably names none of those types
+// keeps its wrapper and the sibling exports none. A return type that names
+// one, directly or through a property, a method parameter, a type argument or
+// a returned closure, or that contains an `any` the checker cannot see
+// through, names the sibling's export (opencode gui-plugins browser/pane).
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -41,13 +42,15 @@ function check(root, entry) {
   const types = {}
   for (const symbol of checker.getExportsOfModule(checker.getSymbolAtLocation(source))) {
     const type = symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbolAtLocation(symbol, source) : checker.getDeclaredTypeOfSymbol(symbol)
-    types[symbol.name] = checker.typeToString(type, undefined, flags).replaceAll(root, "<root>").replaceAll(`import("<root>/${entry.replace(/\.ts$/, "")}").`, "")
+    // A private type the sibling exports prints through import("./m.platform").
+    types[symbol.name] = checker.typeToString(type, undefined, flags).replaceAll(root, "<root>").replaceAll(`import("<root>/${entry.replace(/\.ts$/, "")}.platform").`, "").replaceAll(`import("<root>/${entry.replace(/\.ts$/, "")}").`, "")
   }
   return { errors, types }
 }
 
 // Writes the module into a fresh project and runs the batch split over it.
-// Returns whether it split; a split compiles and keeps every export's type.
+// Returns whether it split and which private types the sibling exports; a
+// split compiles and keeps every export's type.
 function splitInProject(file, text, globals = ["setTimeout"], extra = {}) {
   const root = mkdtempSync(join(tmpdir(), "migrate-platform-checked-"))
   try {
@@ -63,7 +66,7 @@ function splitInProject(file, text, globals = ["setTimeout"], extra = {}) {
     const written = readFileSync(join(root, file), "utf8") + "\n---\n" + readFileSync(join(root, platformPath(file)), "utf8")
     assert.deepEqual(after.errors, [], written)
     assert.deepEqual(after.types, before.types, written)
-    return { split: true }
+    return { split: true, exported: result.splits[0].exportedForInference ?? [] }
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
@@ -71,15 +74,16 @@ test("the split quotes the accepted repair contract", () => {
   assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(quote))
 })
 
-test("opencode: a factory whose return type names no private type keeps its wrapper", () => {
+test("opencode: a factory whose return type names no private type keeps its wrapper, and one that names it exports it from the sibling", () => {
   for (const { file, text, split } of corpus.modules) {
     const result = splitInProject(file, text)
-    assert.equal(result.split, split, file + ": " + (result.refused ?? "split"))
-    if (!split) assert.match(result.refused, /inferred return type that may name/)
+    assert.equal(result.split, true, file + ": " + result.refused)
+    // `split` is the corpus's checked answer: the return type names no private type.
+    assert.equal(result.exported.length === 0, split, file + ": " + result.exported)
   }
 })
 
-test("an any the checker cannot see through keeps the refusal", () => {
+test("an any the checker cannot see through exports the private type from the sibling", () => {
   const text = 'import { make } from "./missing.ts"\n\ntype Row = { readonly id: string }\n\nexport function createRows() {\n  const rows: Row[] = []\n  setTimeout(() => {}, 1)\n  return { rows: () => rows.length, handle: make() }\n}\n'
   const root = mkdtempSync(join(tmpdir(), "migrate-platform-checked-"))
   try {
@@ -87,17 +91,17 @@ test("an any the checker cannot see through keeps the refusal", () => {
     writeFileSync(join(root, "ambient.d.ts"), ambient)
     writeFileSync(join(root, "rows.ts"), text)
     const result = splitBatchPlatform(root, ["rows.ts"], ts, { globalsOf: () => ["setTimeout"] })
-    assert.equal(result.splits.length, 0)
-    assert.match(result.refused.join("\n"), /inferred return type that may name Row/)
+    assert.equal(result.splits.length, 1, JSON.stringify(result))
+    assert.deepEqual(result.splits[0].exportedForInference, ["Row"])
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
 // Neighbourhood: a factory, as a function declaration or a const arrow, whose
 // moved body reads a private type Projection, and whose return type uses it
 // not at all or through a property, a method parameter, an array, a Promise
-// argument or a returned closure. The split keeps the module exactly when
-// the return type names no Projection.
-test("a checked factory splits exactly when its return type names no private type", () => {
+// argument or a returned closure. The split always keeps the module's types,
+// and the sibling exports Projection exactly when the return type names it.
+test("a checked factory exports the private type exactly when its return type names it", () => {
   const uses = {
     none: ["{ size: () => count, first: () => project(0).index }", false],
     property: ["{ size: () => count, first: project(0) }", true],
@@ -112,6 +116,7 @@ test("a checked factory splits exactly when its return type names no private typ
     const fn = declared ? `export function createVirtualizer(count: number) ${body}\n` : `export const createVirtualizer = (count: number) => ${body}\n`
     const other = exportedOther ? "export type Size = { readonly size: number }\n" : ""
     const result = splitInProject("m.ts", `type Projection = { readonly index: number }\n${other}\n${fn}`)
-    assert.equal(result.split, !exposes, `${use}: ${result.refused ?? "split"}`)
+    assert.equal(result.split, true, `${use}: ${result.refused}`)
+    assert.deepEqual(result.exported, exposes ? ["Projection"] : [], use)
   }), { numRuns: 30 })
 })
