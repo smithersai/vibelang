@@ -20,6 +20,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The setup guide required Node 26, while the introductory guides admitted unsupported Node versions. All three now give the package requirements: Node `22.22.3` in `22.x`, or `24.11.1` or later.
 - The periodic-stream guide showed a supported example as unavailable. It now demonstrates collecting timestamps with a working interval stream.
 - The fallback guide gave the wrong diagnostic for throwing calls in plain handlers. It now identifies `EK0401` and the effect-handler repair.
+- The Exit guide marked working constructors as unavailable. Its example now demonstrates both success and failure exits.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
