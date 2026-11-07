@@ -718,3 +718,5 @@ For an imported `EK3801` diagnostic in a `.vibe` file, ordinary `--fix` writes `
 The native runtime aggregates repeated stacks. The exported call tree keeps their sample counts and duration without inventing a chronological sample timeline. For Go CPU and memory profiles, use `--pprofDir profiles` instead. Choose one profiler per command; these two options cannot be combined.
 
 Build-mode paths, including `--generateCpuProfile`, `--generateTrace` and `--pprofDir`, resolve relative to the command working directory. Paths read from response files use that same directory. Absolute paths retain their location.
+
+The `--pprofDir` option reports directory creation, CPU-profile startup and profile-output failures as command errors. A failed profiling destination does not produce an uncaught stack trace, and a failure while finishing the profiles makes an otherwise successful compilation fail.

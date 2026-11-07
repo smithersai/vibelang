@@ -18,7 +18,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
-func runLSP(args []string) int {
+func runLSP(args []string) (status int) {
 	flag := flag.NewFlagSet("lsp", flag.ContinueOnError)
 	stdio := flag.Bool("stdio", false, "use stdio for communication")
 	pprofDir := flag.String("pprofDir", "", "Generate pprof CPU/memory profiles to the given directory.")
@@ -38,8 +38,19 @@ func runLSP(args []string) int {
 
 	if *pprofDir != "" {
 		fmt.Fprintf(os.Stderr, "pprof profiles will be written to: %v\n", *pprofDir)
-		profileSession := pprof.BeginProfiling(*pprofDir, os.Stderr)
-		defer profileSession.Stop()
+		profileSession, err := pprof.BeginProfiling(*pprofDir, os.Stderr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "vibelang --lsp: --pprofDir: cannot start profiling: %v\n", err)
+			return 1
+		}
+		defer func() {
+			if err := profileSession.Stop(); err != nil {
+				fmt.Fprintf(os.Stderr, "vibelang --lsp: --pprofDir: cannot write profiles: %v\n", err)
+				if status == 0 {
+					status = 1
+				}
+			}
+		}()
 	}
 
 	fs := bundled.WrapFS(osvfs.FS())
