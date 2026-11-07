@@ -1,0 +1,5 @@
+{
+  "model": "export interface Box<T> { readonly value: T }\n",
+  "helper": "import type { Box } from \"./model.vibe\";\nexport const allowed = (): Box<number> => ({ value: 1 });\n",
+  "entry": "export { allowed } from \"../../scripts/lib/helper.ts\";\n"
+}

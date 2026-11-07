@@ -1,0 +1,5 @@
+FuzzMigrationSavedNativeSiblings layout:outside-inferred-native:vibe:shallow compiler VIP-27: saved external source loses its native sibling under an inferred output root; lane migfix-t3code
+FuzzMigrationSavedNativeSiblings corpus:t3code-saved-native-sibling compiler VIP-27: minimized saved-source native sibling reproduces the unavailable API projection; lane migfix-t3code
+FuzzMigrationSavedNativeSiblings layout:outside-inferred-native:vibe:deep compiler VIP-27: saved external source loses its native sibling with a deeper inferred output root; lane migfix-t3code
+FuzzMigrationSavedNativeSiblings layout:outside-inferred-native:vibex:shallow compiler VIP-27: saved external source loses its native JSX sibling under an inferred output root; lane migfix-t3code
+FuzzMigrationSavedNativeSiblings layout:outside-inferred-native:vibex:deep compiler VIP-27: saved external source loses its native JSX sibling with a deeper inferred output root; lane migfix-t3code
