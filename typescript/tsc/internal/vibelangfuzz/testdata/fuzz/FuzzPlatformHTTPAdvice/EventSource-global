@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("EventSource-global\x00\x1f")

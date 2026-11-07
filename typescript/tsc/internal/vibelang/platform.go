@@ -78,7 +78,7 @@ var platformServices = map[string]*platformService{
 	"Crypto":   {"Effect's crypto services", "try (try SecureRandom.SecureRandom).randomBytes(size)", "", cryptoLayers},
 	"Terminal": {"the Terminal service", "try (try Terminal.Terminal).readLine", "", nodeServices},
 	"Stdio":    {"the Stdio service", "try (try Stdio.Stdio).args", "", nodeServices},
-	"HttpClient": {"HttpClient", "HttpClient.get(url)", "",
+	"HttpClient": {"HttpClient", "try HttpClient.get(url)", "",
 		`FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node"`},
 	"HttpServer": {"HttpRouter", "HttpRouter.serve(app)", "",
 		`ExperimentalNodeHttpServer.layer({ port }) from "vibelang-runtime/experimental/platform-node", or BunHttpServer.layer({ port }) from "@effect/platform-bun"`},

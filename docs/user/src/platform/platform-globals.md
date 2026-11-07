@@ -14,6 +14,8 @@ The migrate flow moves a module's `import.meta` reads into a fresh `<source>.pla
 
 Platform repairs from one source share one fresh `<source>.platform.ts` companion. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten. During migration, host access inside formerly accepted boundary callbacks reports an `EK4402` warning; `--fix` and `--fix-migration-only` can repair explicit-input writes and deletes such as restoring `process.env`. Unwrapped host access remains an error.
 
+For `fetch`, `XMLHttpRequest` and `EventSource`, the diagnostic shows `try HttpClient.get(url)` in Effect code. `HttpClient.get(url)` constructs the request Effect; `try` runs it using the provided `HttpClient` service.
+
 Path diagnostic examples obtain the implementation with `try Path.Path`. Pure members such as `join` and `sep` return values directly; `fromFileUrl` and `toFileUrl` return Effects, so run a conversion with `try` before passing its result to `dirname`. Construct a URL through `try orDie(Effect.try(() => new URL(import.meta.url)))` when deriving a filename from the module identity.
 
 A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.

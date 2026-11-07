@@ -1,7 +1,7 @@
 Use the Path service:   (try Path.Path).join(directory, name)
 Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".
 Use the ChildProcessSpawner service:   try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))
-Use HttpClient:   HttpClient.get(url)
+Use HttpClient:   try HttpClient.get(url)
 Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".
 Use Effect's crypto services:   try (try SecureRandom.SecureRandom).randomBytes(size)
 Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".

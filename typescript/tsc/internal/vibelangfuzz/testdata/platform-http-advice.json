@@ -1,0 +1,85 @@
+[
+  {
+    "Key": "fetch-bare",
+    "Source": "export effect function run() { const host = fetch; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "fetch-global",
+    "Source": "export effect function run() { const host = globalThis.fetch; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "fetch-key",
+    "Source": "export effect function run() { const host = globalThis[\"fetch\"]; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "XMLHttpRequest-bare",
+    "Source": "export effect function run() { const host = XMLHttpRequest; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "XMLHttpRequest-global",
+    "Source": "export effect function run() { const host = globalThis.XMLHttpRequest; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "XMLHttpRequest-key",
+    "Source": "export effect function run() { const host = globalThis[\"XMLHttpRequest\"]; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "EventSource-bare",
+    "Source": "export effect function run() { const host = EventSource; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "EventSource-global",
+    "Source": "export effect function run() { const host = globalThis.EventSource; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "EventSource-key",
+    "Source": "export effect function run() { const host = globalThis[\"EventSource\"]; return host }",
+    "Advice": "try HttpClient.get(url)",
+    "Replacement": "import { HttpClient } from \"effect/http\"; export effect function run(url: string) { return try HttpClient.get(url) }",
+    "Want": 1
+  },
+  {
+    "Key": "fetch-local",
+    "Source": "export function local(fetch: string) { return fetch }",
+    "Want": 0
+  },
+  {
+    "Key": "XMLHttpRequest-local",
+    "Source": "export function local(XMLHttpRequest: string) { return XMLHttpRequest }",
+    "Want": 0
+  },
+  {
+    "Key": "EventSource-local",
+    "Source": "export function local(EventSource: string) { return EventSource }",
+    "Want": 0
+  },
+  {
+    "Key": "type-query",
+    "Source": "export type Request = typeof fetch; export type Source = typeof EventSource; export type Client = typeof XMLHttpRequest",
+    "Want": 0
+  }
+]
