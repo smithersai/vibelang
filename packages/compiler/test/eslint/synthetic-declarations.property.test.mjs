@@ -77,7 +77,7 @@ test("authored dollar bindings keep real constant and reassignment diagnostics",
 })
 
 test("the scope projection oracle quotes the current tooling specification", () => {
-  assert.ok(readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8").includes(rule))
+  assert.ok(readFileSync(new URL("../../../../docs/design/vips/0034-compiler-and-tooling.md", import.meta.url), "utf8").includes(rule))
 })
 
 test("automatic const fixes leave generated temporaries alone and still fix authored dollar bindings", () => {
