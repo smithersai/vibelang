@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migrating a host constructor such as `new Response(...)` could leave its module in TypeScript when the diagnostic named `globalThis.Response`. Both companion-file and module-body migrations now recognize the original bare constructor while preserving local bindings.
+
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.
@@ -100,7 +102,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` rewrote `Effect.sync(() => { ... })` with a block into an `effect` block or function, which the compiler builds with `Effect.gen` or `Effect.fnUntraced`, so a converted module built a wrapper its TypeScript did not and the migration's run-phase check returned it. Such an `Effect.sync` now stays as written; `Effect.sync(() => value)` still becomes `effect { return value }`.
 - A migration on a compiler before plain-function inference wrote a `Generator<...>` return type on generators handed to `Effect.fn`, which erased their requirements, so a provider layer declared `unknown` where TypeScript declared its services. The migration now leaves an Effect's generator body unannotated.
 - Migration kept a module in TypeScript when its platform code found files beside the module through `dirname(fileURLToPath(import.meta.url))` or `import.meta.dirname`, because moved code must not read `import.meta`. The `.platform.ts` companion shares the module's directory, so such code now moves; code that reads the module's own file name or `import.meta.main` still stays.
-- The migrate flow kept a module in TypeScript when `vibelang --fix` had qualified a host constructor the prelude hides, so `EK4402` named `globalThis.Response` while the source the platform split reads spells `new Response(…)`. When the source never spells that member through `globalThis`, the declarations that read the bare global now move to `<Name>.platform.ts`.
 - `vibelang --fix` checked every file of the project for each set of fixes it tried, so a 25-module batch of a 5,510-file project took about 15 minutes and 18 GB. It now checks only the files the fixes change and the files that read them, which a check of the whole program confirms whenever a fix adds an error, and writes the same fixes; the run's last stderr line says what it cost.
 - Checking the compact language guides rejected current descriptions of foreign calls and `Effect` factories. Checks now recognize that guidance while still rejecting missing failure rules.
 

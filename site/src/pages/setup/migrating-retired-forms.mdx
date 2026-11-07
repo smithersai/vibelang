@@ -160,6 +160,8 @@ An alias repair in a class `implements` clause changes only the type spelling. I
 
 Migration setup excludes generated declaration sidecars, including `x.vibe.platform.d.ts` and `x.vibex.platform.d.ts`, from Oxlint, ESLint, dprint and formatters that read `.prettierignore`. Authored `.platform.ts` implementations remain checked. Rerun setup to update an existing migration's configuration.
 
+When the migrate flow receives a host-global diagnostic such as `globalThis.Response` after `vibelang --fix` qualifies `new Response(...)`, it checks the original TypeScript spelling before extracting the platform code. Both companion-file and module-body extraction recognize a bare constructor; a local binding with the same name stays local.
+
 The migration's canonical API comparison uses freshly emitted declarations for native `module` bodies. Existing compatibility copies can spell imports differently; they do not replace the current emit. Handwritten neighbouring declarations remain checked.
 
 In Vite+ projects, these generated-output exclusions also go in `vite.config.ts` under `fmt.ignorePatterns` and `lint.ignorePatterns`. Existing rules, test settings and authored implementation checks stay in place. Setup reports a warning when those sections are computed and require an explicit edit.
