@@ -157,11 +157,7 @@ InvalidQuantity
 error MissingPort
 
 effect function port(env: Map<string, string>) {
-  return try effect {
-    const value = env.get("PORT")
-    if (value === undefined) throw new MissingPort()
-    return value
-  }
+  return env.get("PORT") ?? throw new MissingPort()
 }
 // string!MissingPort
 ```
@@ -171,7 +167,7 @@ effect function port(env: Map<string, string>) {
 MissingPort
 ```
 
-An `effect { … }` expression builds an Effect from statements. Here it validates the optional value and fails with `MissingPort` when the key is absent. `try` runs the block and returns its successful string. The right side of `??`, `||`, `&&`, and `?:` runs only when chosen. In a `.vibex` file, a JSX value may be the operand of `throw`; its factory runs only when that operand is chosen. Recover the Effect with a catch expression and a function-literal handler. The statement `throw cond ? a : b;` still throws the selected value.
+A throw expression fails only when selected. Here `??` returns the stored string when present and fails with `MissingPort` when the key is absent. The right side of `??`, `||`, `&&`, and `?:` runs only when chosen. In a `.vibex` file, a JSX value may be the operand of `throw`; its factory runs only when that operand is chosen. Recover the Effect with a catch expression and a function-literal handler. The statement `throw cond ? a : b;` still throws the selected value.
 
 ## Tracking several error cases
 
