@@ -252,7 +252,7 @@ When converting an Effect generator, `--fix` preserves a native constructor hidd
 
 When migrating a generator, `const inner = yield* make()` becomes `const inner = try make()` even when the result is another Effect. That inner program stays cold until a separate `try inner` runs it. A discarded program result becomes `void try make()`.
 
-Async conversion withholds a `Promise` bridge when an awaited `do` expression would move a `return`, `break` or `continue` away from its source target. Move the outward control flow before the `await` first. Local jumps inside the operand and nested callable returns remain eligible.
+Async conversion withholds a `Promise` bridge when an awaited `do` expression would move a `return`, `break` or `continue` away from its source target. Move the outward control flow before the `await` first. Local jumps inside the operand and nested callable returns remain eligible. The same conversion is withheld for an explicit `throw` that would move from the `async` body into a plain `Effect.tryPromise` callback. Throws in a nested `async` or `effect` callable keep their own context.
 
 ## Calls return Effects; programs stay cold
 

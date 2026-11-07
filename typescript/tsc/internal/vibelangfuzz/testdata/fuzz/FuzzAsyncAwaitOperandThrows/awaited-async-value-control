@@ -1,0 +1,3 @@
+go test fuzz v1
+string("awaited-async-value-control")
+byte(6)
