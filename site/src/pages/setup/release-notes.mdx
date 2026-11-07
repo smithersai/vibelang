@@ -13,6 +13,26 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
+
+- Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
+
+- The application entry example kept running instead of reaching its shown cleanup output. It now finishes after one check and explains how to keep a worker running.
+
+- A documentation example could go unchecked when a comparison fragment repeated its companion file's name. Companion imports now keep their filenames and the complete example is checked.
+
+- The platform globals guide presented a working module-loading adapter as unavailable. It now shows the supported example and its result.
+
+- The JSON Schema guide said JSON-string codecs omitted their embedded schema. It now shows and explains the generated `contentSchema`.
+
+- The Alchemy guide's test command failed in a new project because no test script was configured. The guide now supplies the script and the example files it runs.
+
+- Logger examples in the cheat sheet could fail the platform-global check when run. They now write through Effect's console service.
+
+- Following the Alchemy install guide could select an incompatible Node helper and stop compilation. The guide now pins that helper before installing dependencies.
+
+- The browser entry guide used a crypto API that no longer compiled. Its HMAC example now uses Effect's crypto service and browser layer.
+
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
 - The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
 - The error guides described plain-function throws as JavaScript exceptions or defects. They now explain the compile error and show how to choose a typed failure or defect.
@@ -27,6 +47,17 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The fallback guide gave the wrong diagnostic for throwing calls in plain handlers. It now identifies `EK0401` and the effect-handler repair.
 - The Exit guide marked working constructors as unavailable. Its example now demonstrates both success and failure exits.
 - The throw-expression example used a statement instead of an expression. It now shows a missing-value fallback with `?? throw` and checks both outcomes.
+- Copying the TestClock guide's Vitest configuration into a starter rejected test files as outside the project. The guide now selects the starter's test configuration.
+- The runtime guide's logger example failed to compile because it called the platform console directly. It now uses Effect's console adapter and runs with the documented output.
+- Following the Data guide could report an unknown option for migration-only fixes. The guide now includes the required `--fix` flag.
+- The services and layers guides described available forms as awaiting compiler support. They now describe those forms as available.
+- The timing examples could reject their output code as a fiber operation outside an effect function. They now join the fiber before formatting its result.
+- The basic Schema examples appeared unfinished and included invalid runner code. They now run and display the documented results.
+
+- Generating `throws.json` inspected implementation bodies for values that cannot be called. It now resolves sources only for callable exports, keeping the same contracts.
+- Following the Effect upgrade steps could stop the build with `EK3201` because the Node helper still used the old version. The guide now updates its pin before installing packages and running checks.
+
+- File-list lint commands could skip JSX source or check the wrong files for a TypeScript JSX glob. They now lint `.vibex` files with the requested scope and exclude their generated declarations.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
@@ -743,6 +774,12 @@ useful diagnostics. The DOM type example, bare program statements,
 primitive-base declaration, effectful method under a plain annotation and
 `await` binding compiled then and are rejected now.
 
+Before installing the packages or running the checks, update the existing override in `package.json` to `4.1.1`:
+
+```json
+{ "overrides": { "@effect/platform-node-shared": "4.1.1" } }
+```
+
 With npm:
 
 ```sh
@@ -759,12 +796,6 @@ bun add --exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
 bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.1.1
 bun run build
 bun run test
-```
-
-Move the existing override in `package.json` to 4.1.1:
-
-```json
-{ "overrides": { "@effect/platform-node-shared": "4.1.1" } }
 ```
 
 Projects using another bundler update `vibelang-unplugin` to 0.0.11

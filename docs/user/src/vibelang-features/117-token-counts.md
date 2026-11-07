@@ -18,7 +18,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,164 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,028 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,515 |
 | The skill and the user guide (144 pages) | 530,000 |
 | The user guide alone | 520,000 |
 | The specification (11 chapters) | 250,000 |
@@ -119,9 +119,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **23,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 19,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,900 |
-| **Format and lint** | **12,000** |
+| **Format and lint** | **13,000** |
 | [Format with dprint](../setup/formatting.md) | 3,000 |
-| [Developer tools](../setup/developer-tools.md) | 9,400 |
+| [Developer tools](../setup/developer-tools.md) | 9,500 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
@@ -206,7 +206,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Leftovers](../sink/062-leftovers.md) | 680 |
 | **Testing** | **1,400** |
 | [TestClock](../testing/063-testclock.md) | 1,400 |
-| **Code Style** | **8,700** |
+| **Code Style** | **8,600** |
 | [Guidelines](../code-style/064-guidelines.md) | 810 |
 | [Dual APIs](../code-style/065-dual.md) | 1,000 |
 | [Branded Types](../code-style/066-branded-types.md) | 1,200 |
@@ -272,11 +272,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Producers](112-producers.md) | 4,200 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 12,000 |
-| [Cheat sheet](115-cheat-sheet.md) | 12,000 |
+| [Cheat sheet](115-cheat-sheet.md) | 11,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 12,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,500 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 8 pages** | **56,000** |
+| **All 8 pages** | **55,000** |
 
 ### Specification
 
