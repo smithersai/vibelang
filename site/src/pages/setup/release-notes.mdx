@@ -26,6 +26,24 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An explicit `try` in a computed method name could be skipped in TypeScript mapper output. Key Effects now run once in the defining context, while method bodies stay deferred and untried Effects remain cold.
 
 - The migrate flow's lost-wrapper check flagged every export the platform split keeps as a wrapper that calls the moved function in `<Name>.platform.ts`, since a program handed back through a call counts as no Effect. Such a wrapper now pairs through the moved function, and a wrapper that does anything else is still compared.
+- `vibelang --fix` could leave a retired `: infer _` return annotation on a plain callback after switching to native `callback`. It now removes that annotation while preserving ordinary return inference.
+
+- Callback migration examples could pass a plain value to native `resume`. They now pass an Effect and show how an explicit runtime import keeps the legacy adapter.
+
+- Diagnostic examples could fail to run after their historical inputs were checked. The reference now replays the current inherited-error diagnostic and the earlier rejection of archived control declarations.
+
+- The cheat-sheet example for wrapped platform calls was still marked unavailable even though it compiled. It is now checked as a runnable example, including its documented output.
+
+- The migration example for incomplete `Stream` results omitted its type assertions before the repair. It now retains those assertions from input to repaired output.
+
+- Examples with declaration snapshots could be rejected despite a valid repair. Declaration snapshots now stay separate from the source being repaired.
+
+- Native TypeScript importers could lose exported types after migration when compatibility declarations were emitted from a monorepo ancestor. Bundler routes now select the existing declaration file for that layout.
+
+- An `is` binding in a call argument could make the TypeScript mapper report overlapping edits and emit no JavaScript. It now projects the argument and its bindings with valid source locations.
+
+- The compatibility diagnostic reference gave vague instructions for starting a provided program. It now names `runPromise` at the entry point.
+
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.
