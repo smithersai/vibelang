@@ -25,6 +25,8 @@ In bundler watch mode, creating a missing relative source also triggers a rebuil
 
 Explicit `.vibex` imports work through `vibelang-unplugin`, including module queries and dependencies whose imports rewrite to `.js` or `.jsx`. The esbuild adapter applies the project's effective JSX settings when output preserves JSX and retains original source maps. Ordinary TypeScript sources keep their resolution priority when filenames share a stem.
 
+Source maps in esbuild bundles keep original source filenames, including Unicode, spaces and literal `%` sequences, when Node prints mapped stack traces.
+
 Diagnostics from source loaders retain their source details and exclude compiler file-list output.
 
 Imports between `.vibe` modules preserve Unicode, spaces and literal `%` in file names through bundler builds. Use the original source name in the import. Literal JavaScript import names retain TypeScript's filename meaning.

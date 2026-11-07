@@ -538,7 +538,10 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         })
         build.onLoad({ filter: /\.(?:vibex?(?:\.[^./\\]+\.js)?|tsx?|[cm]ts)(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
-          const { project, code, map, inputs, errors, warnings, error } = await loadModule(path)
+          const { project, code, map: compilerMap, inputs, errors, warnings, error } = await loadModule(path)
+          // Inline maps carry URLs. Preserve filesystem spelling when the
+          // native esbuild loader reads percent escapes and Unicode names.
+          const map = compilerMap && { ...compilerMap, sources: compilerMap.sources.map(source => isAbsolute(source) ? pathToFileURL(source).href : source) }
           const messages = []
           if (errors.length) {
             messages.push({
