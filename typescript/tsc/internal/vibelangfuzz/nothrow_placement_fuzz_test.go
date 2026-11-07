@@ -233,7 +233,7 @@ func FuzzNothrowPlacement(f *testing.F) {
 		} else {
 			code = kind.wrap(position.open + nothrowPayloads[payload].text + position.close)
 		}
-		source := "import { legacy, risky, rest, afterFixed, pair, fixed, fixedPlain } from \"./legacy.ts\"\nerror Bad\ndeclare const maybe: unknown\n" + code
+		source := "import { legacy, risky, rest, afterFixed, pair, fixed, fixedPlain } from \"./legacy.js\"\nerror Bad\ndeclare const maybe: unknown\n" + code
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source, "legacy.ts": nothrowLegacy}})
 		if err != nil {
 			t.Fatal(err)

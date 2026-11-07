@@ -1152,3 +1152,5 @@ narrowed selectors and sibling packages, so compiling the AST as a dependency ca
 running its directive regressions.
 
 The native module companion oracle isolates only the bundler framework wrapper. It loads declared plugin dependencies from the importing source’s package scope, so source-map helpers execute as installed while the keyed source-owner and exclusion checks remain strict.
+
+Generated projects use runtime `.js` specifiers for ordinary imports. A property that deliberately varies source extensions sets `rewriteRelativeImportExtensions` when emitting, or `allowImportingTsExtensions` with `noEmit` when checking only. These options belong to that fixture; the shared default and native extension-rejection properties remain strict.

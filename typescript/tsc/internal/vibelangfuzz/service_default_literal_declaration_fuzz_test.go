@@ -85,7 +85,7 @@ func defaultLiteralProject(key string, choice uint8) map[string]string {
 	}
 	statement := "export type Read = " + read + "\n"
 	if choice&1 != 0 {
-		return map[string]string{"flags.vibe": declaration, "main.vibe": "import { Flags } from \"./flags.vibe\"\n" + statement}
+		return map[string]string{"flags.vibe": declaration, "main.vibe": "import { Flags } from \"./flags.js\"\n" + statement}
 	}
 	return map[string]string{"main.vibe": strings.Replace(declaration, "export service Flags:", "service Flags:", 1) + statement}
 }

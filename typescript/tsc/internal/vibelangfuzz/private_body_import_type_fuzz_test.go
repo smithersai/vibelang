@@ -39,7 +39,7 @@ func privateBodyDeclarationErrors(t *testing.T, key string, variant uint8) []str
 	if variant&8 != 0 {
 		prefix = "types/"
 	}
-	options := map[string]any{"strict": true, "target": "esnext", "module": "preserve", "moduleResolution": "bundler", "noEmit": true, "allowArbitraryExtensions": true, "jsx": "preserve"}
+	options := map[string]any{"strict": true, "target": "esnext", "module": "preserve", "moduleResolution": "bundler", "noEmit": true, "allowImportingTsExtensions": true, "allowArbitraryExtensions": true, "jsx": "preserve"}
 	vibe := map[string]any{"effectGlobals": false, "effectModules": false, "sidecarDir": strings.TrimSuffix(prefix, "/")}
 	config := func(file string) string {
 		v, _ := json.Marshal(map[string]any{"compilerOptions": options, "vibe": vibe, "files": []string{file}})

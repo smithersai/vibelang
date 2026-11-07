@@ -73,7 +73,7 @@ func serviceDefaultReadsProject(form serviceDefaultRead, annotated, identifier, 
 	case "local":
 		statement = "type ReturnType<T> = { wrong: true }\n" + statement
 	case "import":
-		statement = "import type { ReturnType } from \"./shadow.vibe\"\n" + statement
+		statement = "import type { ReturnType } from \"./shadow.js\"\n" + statement
 	case "nested":
 		statement = "export namespace Reads {\n type ReturnType<T> = { wrong: true }\n" + statement + "}\n"
 	case "parameter":
@@ -81,7 +81,7 @@ func serviceDefaultReadsProject(form serviceDefaultRead, annotated, identifier, 
 	}
 	files := map[string]string{"main.vibe": prefix + strings.TrimPrefix(declaration, "export ") + statement}
 	if otherFile {
-		files = map[string]string{"flags.vibe": prefix + declaration, "main.vibe": "import { Flags } from \"./flags.vibe\"\n" + statement}
+		files = map[string]string{"flags.vibe": prefix + declaration, "main.vibe": "import { Flags } from \"./flags.js\"\n" + statement}
 	}
 	if form.shadow == "import" {
 		files["shadow.vibe"] = "export type ReturnType<T> = { wrong: true }\n"

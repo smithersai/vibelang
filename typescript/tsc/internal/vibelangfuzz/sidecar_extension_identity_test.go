@@ -64,7 +64,7 @@ func FuzzSidecarExtensionIdentity(f *testing.F) {
 			}
 			entry := "/app/main." + importer
 			config, _ := json.Marshal(map[string]any{
-				"compilerOptions": map[string]any{"noLib": true, "strict": true, "module": "nodenext", "jsx": "preserve", "noEmit": true, "allowImportingTsExtensions": importer == "ts", "paths": map[string][]string{"lib/Stage": {sidecar}}},
+				"compilerOptions": map[string]any{"noLib": true, "strict": true, "module": "nodenext", "jsx": "preserve", "noEmit": true, "allowImportingTsExtensions": true, "paths": map[string][]string{"lib/Stage": {sidecar}}},
 				"files":           []string{entry},
 			})
 			fs := vfstest.FromMap(map[string]any{

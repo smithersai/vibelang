@@ -132,7 +132,7 @@ func FuzzSidecarResolvedPathView(f *testing.F) {
 		spec := pkg + "/Stage"
 		options := map[string]any{
 			"target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext", "strict": true,
-			"skipLibCheck": true, "jsx": "preserve", "noEmit": true, "rootDir": w.Dir,
+			"skipLibCheck": true, "jsx": "preserve", "noEmit": true, "allowImportingTsExtensions": true, "rootDir": w.Dir,
 			"preserveSymlinks": row.preserve, "types": []string{},
 		}
 		switch row.route {

@@ -132,7 +132,7 @@ func legacyHatchTypesProgram(key string, value int) (map[string]string, map[stri
 		binding = "const factory = (): " + query + " => R[\"" + name + "\"]; const run = factory(); "
 	case "cross-file":
 		files["api.vibe"] = head + "export type Run = " + query + "; export const run: Run = R[\"" + name + "\"];\n"
-		head = "import { run } from \"./api.vibe\"\n"
+		head = "import { run } from \"./api.js\"\n"
 		binding = ""
 	case "instantiation":
 		args := "<number, [number]>"
