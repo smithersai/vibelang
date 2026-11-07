@@ -1462,7 +1462,11 @@ function hostOperations(source, statements, platform, ts, taken, file) {
       } else if (ts.isCallExpression(parent) && parent.expression === top) {
         return { refused: `${where(id)}: ${chain}?.() would lose its receiver` }
       } else if (ts.isNewExpression(parent) && parent.expression === top) {
-        return { refused: `${where(id)}: new ${chain} constructs platform code` }
+        // Read the original constructor where the new expression evaluated it.
+        // Keeping new in the parent retains its overloads, generic inference,
+        // argument evaluation, prototype and new.target without a wrapper.
+        const name = helper("read " + chain, base, (h) => `${never}export function ${h}() { return ${chain} }`)
+        own.push({ at: top.getStart(source), end: top.end, text: "(" + name + "())" })
       } else if (ts.isTaggedTemplateExpression(parent) && parent.tag === top) {
         return { refused: `${where(id)}: ${chain} tags a template` }
       } else if (ts.isTypeOfExpression(parent) && top === id) {

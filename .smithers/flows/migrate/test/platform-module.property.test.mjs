@@ -84,7 +84,7 @@ test("a module the split cannot serve keeps its platform code, with the reason",
   assert.match(split(`export const a = () => { if (!import.meta.url) throw new Error("x") }\nexport const k = 1\n`, { throws: true }).refused, /EK4009/)
   // A statement that runs in order stays where it stands; only its host operation moves (alchemy-platform-module-order).
   assert.match(split(`import { rmSync } from "node:fs"\nrmSync("x")\nexport const k = 1\n`).module, /^\$rmSync\("x"\)$/m)
-  assert.match(split(`import { Worker } from "node:worker_threads"\nnew Worker("x")\nexport const k = 1\n`).refused, /runs in order among the module's statements, so it cannot move to a module body, and its host operations cannot move on their own/)
+  assert.match(split(`import { Worker } from "node:worker_threads"\nnew Worker("x")\nexport const k = 1\n`).module, /^new \(\$Worker\(\)\)\("x"\)$/m)
   assert.match(split(`import { sep } from "node:path"\nconst a = sep\nexport = a\n`).refused, /EK4008/)
   assert.equal(split(`export const k = 1\n`), null)
   assert.equal(split(`import type { Stats } from "node:fs"\nexport const k = (s: Stats) => s\n`), null)

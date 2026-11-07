@@ -1,0 +1,5 @@
+{
+  "key": "platform-split:import-meta-constructor-loop",
+  "rule": "A body that needs metadata receives it as an argument or lives in a `.ts` file.",
+  "text": "import { DatabaseSync } from \"node:sqlite\"\nimport { dirname, join } from \"node:path\"\nimport { fileURLToPath } from \"node:url\"\nconst directory = dirname(fileURLToPath(import.meta.url))\nfor (let repeat = 0; repeat < 1; repeat++) {\n  const db = new DatabaseSync(join(directory, \"probe.db\"))\n  db.close()\n}\n"
+}

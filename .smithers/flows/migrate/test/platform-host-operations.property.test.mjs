@@ -138,7 +138,6 @@ test("stock TypeScript declares the module the same, overloads, generics and ass
 })
 
 const refusals = [
-  ["new", 'import { Worker } from "node:worker_threads";\nexport const start = () => new Worker(new URL("./w.js", import.meta.url));\nexport const k = 1\n', /new Worker constructs platform code/, []],
   ["tagged template", 'import { sql } from "bun";\nexport const q = () => sql`select ${import.meta.url}`;\nexport const k = 1\n', /tags a template/, []],
   ["optional member call", 'import * as NodePath from "node:path";\nexport const p = () => NodePath.join?.(import.meta.url);\nexport const k = 1\n', /lose its receiver/, []],
   ["compound write", "export const f = () => { process.exitCode += 1; return import.meta.url };\nexport const k = 1\n", /written in place/, ["process"]],
@@ -146,6 +145,13 @@ const refusals = [
   ["re-export", 'import { sep } from "node:path";\nconst at = sep + import.meta.url;\nexport { sep, at };\n', /re-exports platform code/, []],
   ["default export", 'import { sep } from "node:path";\nexport const at = sep + import.meta.url;\nexport default sep;\n', /export default sep/, []],
 ]
+test("a host constructor keeps its new expression beside the original module URL", () => {
+  const result = split('import { Worker } from "node:worker_threads";\nexport const start = () => new Worker(new URL("./w.js", import.meta.url));\nexport const k = 1\n')
+  assert.ok(result && !result.refused, JSON.stringify(result))
+  assert.match(result.module, /new \(\$Worker\(\)\)\(new URL\("\.\/w.js", import\.meta\.url\)\)/)
+  assert.match(materialize(result.module).body, /return Worker/)
+})
+
 test("host operations that cannot move alone keep the module in TypeScript, with the reason", () => {
   for (const [name, text, why, globals] of refusals) {
     const result = split(text, { globals })
