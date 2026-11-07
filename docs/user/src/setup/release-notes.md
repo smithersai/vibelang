@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The coding-agent video showed outdated compiler diagnostics. It now shows the compiler rejecting a discarded Effect and the corrected program printing its greeting.
+
 - The starter-test video showed syntax that the compiler rejects. It now shows the current starter source and a real passing test run.
 
 - A child config that set `vibelang.diagnostics` to `null` to clear an inherited legacy severity map was rejected with TS5024. An explicit `null`, like `{}`, now replaces the inherited map with no entries.

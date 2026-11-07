@@ -6,6 +6,8 @@ Run the setup command in an existing project directory containing `package.json`
 
 ![The compiler tells the agent what to write instead](/videos/agent-loop.mp4)
 
+The example adds `try` to run a discarded Effect, then checks that the program prints its greeting.
+
 ## 1. Set up the repository
 
 Install `vibelang` ([Add VibeLang to an existing project](existing-project.md)), then run this from the repository root:

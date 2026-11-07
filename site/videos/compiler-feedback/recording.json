@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "compilerVersion": "0.0.12",
+  "effectVersion": "4.1.1",
+  "sourceSha256": "89c7b8cfb60e5a9b9706f2af6f05760732899bf123c180bee294146abc506893",
+  "correctedSourceSha256": "ad7a06b72845232e409f4988bec5ab52314bcb3ef69af6b2a7908ccf049cf315",
+  "videoSha256": "c630adb189a46d8801a2c80a914a4140481d3282e43e64ee96dfb1d61d04f0ba",
+  "posterSha256": "088d68ee8a713a3735004bd8c16510c29cd789eb3dda1db697ccd1964afff342",
+  "commands": [
+    {
+      "command": "bun run build",
+      "exitCode": 1,
+      "output": "src/main.vibe(4,3): error EK4801: Console.log(\"Hello, Ada!\") is an Effect value, and this statement discards it without running it.\n  No automatic fix: running the discarded program changes its coldness, side effects or failures. Write try explicitly when you intend to run it.\n  Run it with try: try Console.log(\"Hello, Ada!\").\n$ vibelang\nerror: script \"build\" exited with code 1"
+    },
+    {
+      "command": "bun run start",
+      "exitCode": 0,
+      "output": "Hello, Ada!\n$ vibelang && node --enable-source-maps dist/main.js"
+    }
+  ]
+}

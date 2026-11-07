@@ -1,0 +1,7 @@
+import { Console } from "effect"
+
+effect function main() {
+  try Console.log("Hello, Ada!")
+}
+
+await runPromise(main())
