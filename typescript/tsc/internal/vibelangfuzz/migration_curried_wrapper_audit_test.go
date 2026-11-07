@@ -7,11 +7,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
 
-var curriedWrapperKeys = []string{"staged", "staged-alias", "nested", "returned-local", "direct", "simple-iife", "lost-value", "lost-branch", "local-function"}
+var curriedWrapperKeys = []string{"staged", "staged-alias", "nested", "returned-local", "direct", "simple-iife", "lost-value", "lost-branch", "local-function", "passthrough-identity"}
 
 func TestMigrationCurriedWrapperAuditQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", "an Effect, not yet run")
@@ -34,6 +35,15 @@ func curriedWrapperSources(t *testing.T, key string, mode uint8) (string, string
 	var fixture struct{ Original, Native string }
 	if err = json.Unmarshal(raw, &fixture); err != nil {
 		t.Fatal(err)
+	}
+	if key == "passthrough-identity" {
+		raw, err = os.ReadFile(filepath.Join(repoTestdata(), "corpus", "t3code-passthrough-identity-stage.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = json.Unmarshal(raw, &fixture); err != nil {
+			t.Fatal(err)
+		}
 	}
 	original, native := fixture.Original, fixture.Native
 	header := "import * as Effect from \"effect/Effect\";\n"
@@ -161,6 +171,16 @@ func checkCurriedWrapperAudit(t *testing.T, w *Workspace, key string, mode uint8
 	}
 	ExpectPending(t, "FuzzMigrationCurriedWrapperAudit", "wrapper:"+key)
 	ExpectPending(t, "FuzzMigrationCurriedWrapperAudit", specCorpusKey(t))
+}
+
+func TestMigrationIdentityStageNeighborhood(t *testing.T) {
+	TestMigrationCurriedWrapperAuditQuoted(t)
+	w := NewWorkspace(t)
+	for mode := range 16 {
+		t.Run(strconv.Itoa(mode), func(t *testing.T) {
+			checkCurriedWrapperAudit(t, w, "passthrough-identity", uint8(mode))
+		})
+	}
 }
 
 func FuzzMigrationCurriedWrapperAudit(f *testing.F) {

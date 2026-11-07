@@ -1,0 +1,4 @@
+{
+  "original": "import * as Effect from \"effect/Effect\";\nconst through = <A>(program: A): A => program;\nexport const factory = (on = true) => {\n  if (!on) return Effect.succeed(null);\n  return Effect.succeed(1).pipe((program) => through(program));\n};\n",
+  "native": "import * as Effect from \"effect/Effect\";\nconst through = <A>(program: A): A => program;\nexport const factory = (on = true) => {\n  if (!on) return Effect.succeed(null);\n  return Effect.succeed(1) |> ((program) => through(program))(%);\n};\n"
+}
