@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [],
+    "outDir": "out",
+    "plugins": [{ "name": "@effect/language-service" }]
+  },
+  "include": ["*.vibe", "*.ts"]
+}
