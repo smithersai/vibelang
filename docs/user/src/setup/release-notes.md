@@ -23,6 +23,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The Exit guide marked working constructors as unavailable. Its example now demonstrates both success and failure exits.
 - The throw-expression example used a statement instead of an expression. It now shows a missing-value fallback with `?? throw` and checks both outcomes.
 - Copying the TestClock guide's Vitest configuration into a starter rejected test files as outside the project. The guide now selects the starter's test configuration.
+- The runtime guide's logger example failed to compile because it called the platform console directly. It now uses Effect's console adapter and runs with the documented output.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 

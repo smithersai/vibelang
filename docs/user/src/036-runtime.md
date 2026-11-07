@@ -50,8 +50,10 @@ Most applications build their context from layers. Use an explicit context when 
 ## Change runtime behavior within a region
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
-// run: try Effect.provide(startup(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]))
+// run: provide Visible { try startup() }
+const Visible = Logger.layer([
+  Logger.withConsoleLog(Logger.make(({ message }) => String(message)))
+])
 const Quiet = Logger.layer([])
 
 effect function startup() {
@@ -65,7 +67,9 @@ effect function startup() {
 // Output: visible after
 ```
 
-`Effect.provide` installs the layer only around its program and restores the previous logger configuration afterward, even on failure. Nested regions can override it again; child fibers inherit the configuration in effect when they start.
+`provide` installs the layer only around its block and restores the previous logger configuration afterward, even on failure. Nested regions can override it again; child fibers inherit the configuration in effect when they start.
+
+`Visible` prints each message without runtime metadata. `Logger.withConsoleLog` writes through Effect's console integration.
 
 For another format, supply a logger such as `Logger.consoleJson` through `Logger.layer([Logger.consoleJson])`; it uses Effect's console integration, not a browser or Node global.
 
