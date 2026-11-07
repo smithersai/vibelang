@@ -10,7 +10,6 @@ import { fileURLToPath } from "node:url"
 import { dependencyDiagnosticsPlan, fileDiagnosticKeys, saveDependencyDiagnostics } from "./api-identity-diagnostics-cache.mjs"
 import { isolateAmbientSnapshots } from "./api-identity-ambient.mjs"
 import { alignNominalIdentity } from "./api-identity-nominal.mjs"
-import { ownsFile } from "./api-projection.mjs"
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const declaration = /\.d\.(?:[cm]?ts|vibex?\.ts)$/
@@ -778,7 +777,7 @@ function attributeAbsentReferences(ts, program, checker, diagnostics, before, af
     }
     return undefined
   }
-  const owned = file => [before, after].find(base => ownsFile(base, file) && !file.includes("/node_modules/"))
+  const owned = file => [before, after].find(base => file.startsWith(base + "/") && !file.includes("/node_modules/"))
   const logical = (base, file) => slash(relative(base, file)).replace(/\.d\.vibex?\.ts$/, ".d.ts")
   const records = new Map()
   for (const d of diagnostics) {
@@ -939,7 +938,7 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
       // Implicit type packages belong to the input's project, as they do in
       // its stock TypeScript program. Source text and diagnostic offsets stay
       // unchanged; only the compiler's reference metadata gains the context.
-      const owned = (recordedProjects.has(key) || [before, after].some(base => key === base || ownsFile(base, key))) &&
+      const owned = (recordedProjects.has(key) || [before, after].some(base => key === base || key.startsWith(base + "/"))) &&
         !key.includes("/node_modules/")
       const context = owned && project(file)
       if (context?.root) {
@@ -1157,11 +1156,11 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   let program = ts.createProgram(roots, compilerOptions, host)
   if (options.includeComparedFiles) {
     const ownedInputFiles = program.getSourceFiles().filter(source => [before, after].some(base =>
-      (source.fileName === base || ownsFile(base, source.fileName)) &&
+      (source.fileName === base || source.fileName.startsWith(base + "/")) &&
       !source.fileName.includes("/node_modules/"))).map(source => source.fileName)
     result.comparedFiles = Object.fromEntries(
       [["before", before], ["after", after]].map(([side, base]) => [side,
-        ownedInputFiles.filter(file => file === base || ownsFile(base, file)).sort()]))
+        ownedInputFiles.filter(file => file === base || file.startsWith(base + "/")).sort()]))
   }
   const ambient = isolateAmbientSnapshots(ts, [{ base: before, entries: left }, { base: after, entries: right }], compilerOptions, host, program,
     (isolated, entries, files) => collectInputDiagnostics(ts, entries, compilerOptions, host, files, options, progress, "input-diagnostics", isolated))
@@ -1175,7 +1174,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   const originalInputRecords = originalDiagnostics.map(({ start, length, code, ...d }) => {
     const absentDeclaration = originalAbsentReferences.attributed.get(d.file + "\0" + start + "\0" + code)?.declaration
     return absentDeclaration ? { ...d, blocking: false, absentDeclaration } : { ...d, blocking: !d.file ||
-      [before, after].some(base => (d.file === base || ownsFile(base, d.file)) && !d.file.includes("/node_modules/")) }
+      [before, after].some(base => (d.file === base || d.file.startsWith(base + "/")) && !d.file.includes("/node_modules/")) }
   })
   const inputGroupBlocked = originalInputRecords.some(d => d.blocking) || originalAbsentReferences.mismatches.length > 0
   if (inputGroupBlocked) progress("input-group-blocked", { inputDiagnostics: originalInputRecords.length,
@@ -1263,7 +1262,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
           let manifest = {}
           try { manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) } catch {}
           key = "package:" + JSON.stringify([manifest.name ?? tail.slice(0, count).join("/"), manifest.version, relative(root, file), ...peerInstallation(root, manifest)])
-        } else if (file === base || ownsFile(base, file)) key = "owned:" + relative(base, file)
+        } else if (file === base || file.startsWith(base + "/")) key = "owned:" + relative(base, file)
         else {
           const workspace = workspaceOrigin(file)
           key = workspace ? "workspace:" + JSON.stringify(workspace) : "shared:" + file
@@ -1359,7 +1358,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   // The absent declaration an export's declarations reach: an import binding
   // that resolves to nothing, an unresolved qualified name, or an import type
   // of an absent module, followed through owned local declarations.
-  const own = node => [before, after].some(base => ownsFile(base, node.getSourceFile().fileName) &&
+  const own = node => [before, after].some(base => node.getSourceFile().fileName.startsWith(base + "/") &&
     !node.getSourceFile().fileName.includes("/node_modules/"))
   const absentOf = node => {
     for (let n = node; n && !ts.isSourceFile(n); n = n.parent) {
@@ -1423,7 +1422,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   const invalidExports = []
   const errorCache = new Map(), boundedErrorCache = new Map()
   let errorWalkTypes = 0, errorWalkCacheHits = 0, closedErrorTypes = 0
-  const sharedFile = file => !virtual.has(file) && ![before, after].some(base => file === base || ownsFile(base, file))
+  const sharedFile = file => !virtual.has(file) && ![before, after].some(base => file === base || file.startsWith(base + "/"))
   const sharedSymbol = symbol => symbol?.declarations?.length > 0 &&
     symbol.declarations.every(d => sharedFile(d.getSourceFile().fileName))
   // An instantiation carries a side's arguments. One whose generic and arguments
@@ -1612,7 +1611,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     const found = new Map(), seen = new Set()
     found.symbols = new Map()
     const own = s => s?.declarations?.some(d => [before, after].some(base =>
-      (d.getSourceFile().fileName === base || ownsFile(base, d.getSourceFile().fileName)) &&
+      (d.getSourceFile().fileName === base || d.getSourceFile().fileName.startsWith(base + "/")) &&
       !d.getSourceFile().fileName.includes("/node_modules/")))
     const walk = (root, rootPath) => {
       const pending = [[root, rootPath]]
@@ -1637,7 +1636,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
         for (const [kind, signatures] of [["call", type.getCallSignatures()], ["construct", type.getConstructSignatures()]]) {
           for (const [index, signature] of signatures.entries()) {
             const declaration = signature.getDeclaration()
-            if (declaration && [before, after].some(base => ownsFile(base, declaration.getSourceFile().fileName))) {
+            if (declaration && [before, after].some(base => declaration.getSourceFile().fileName.startsWith(base + "/"))) {
               const key = path + "#" + kind + index
               found.symbols.set(key, signature)
               const text = signatureDocs(ts, checker, signature)
@@ -1889,7 +1888,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     const absentDeclaration = (absentReferences.attributed.get(d.file + "\0" + start + "\0" + code) ??
       attributedText.get(d.file + "\0" + code + "\0" + d.diagnostic))?.declaration
     return absentDeclaration ? { ...d, blocking: false, absentDeclaration } : { ...d, blocking: !d.file || [before, after].some(base =>
-      (d.file === base || ownsFile(base, d.file)) && !d.file.includes("/node_modules/")) }
+      (d.file === base || d.file.startsWith(base + "/")) && !d.file.includes("/node_modules/")) }
   })
   // An unavailable export has no probe: its error types prove nothing.
   const unavailable = new Set(invalidExports.filter(item => item.scope === "export").map(item => item.entrypoint + "\0" + item.export))
@@ -1984,7 +1983,7 @@ function checkComparison(ts, plan, progress) {
       ? { entrypoint: check.entrypoint, export: check.export, aspect: check.aspect, mutuallyAssignable: !assignmentFailures.has(check), diagnostic: diagnosticText(d), probe: lines[line] }
       : { diagnostic: diagnosticText(d), file: d.file?.fileName, line: line + 1,
           blocking: !d.file || d.file.fileName === probe || [before, after].some(base =>
-            (d.file.fileName === base || ownsFile(base, d.file.fileName)) && !d.file.fileName.includes("/node_modules/")) }
+            (d.file.fileName === base || d.file.fileName.startsWith(base + "/")) && !d.file.fileName.includes("/node_modules/")) }
     const key = JSON.stringify(item)
     if (!seen.has(key)) (check ? result.typeDifferences : result.environmentDiagnostics).push(item)
     seen.add(key)
