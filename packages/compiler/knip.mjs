@@ -78,7 +78,18 @@ export function compile(text, path = "file.vibe") {
       const root = name?.split(".")[0]
       if (name && imported.has(root) && (name.includes(".") || !/^[a-z]/.test(name))) reads.add(name)
     } else if (node.type === "ImportExpression" && node.source?.type === "Literal" && typeof node.source.value === "string") reads.add(`import(${JSON.stringify(node.source.value)})`)
-    else if (node.type === "MemberExpression" && !node.computed && node.object?.type === "Identifier" && namespaces.has(node.object.name) && node.property?.type === "Identifier") reads.add(`${node.object.name}.${node.property.name}`)
+    else if (node.type === "MemberExpression" && node.object?.type === "Identifier" && namespaces.has(node.object.name)) {
+      if (!node.computed && node.property?.type === "Identifier") reads.add(`${node.object.name}.${node.property.name}`)
+      else if (node.computed) {
+        // Keep static bracket keys in the form Knip reads in TypeScript.
+        // An unknown key can read any export; a nonliteral key keeps Knip's
+        // conservative namespace read without copying VibeLang syntax.
+        const property = node.property
+        if (property?.type === "Literal" && typeof property.value === "string") reads.add(`${node.object.name}[${JSON.stringify(property.value)}]`)
+        else if (property?.type === "TemplateLiteral" && property.expressions.length === 0) reads.add(source(node))
+        else reads.add(`${node.object.name}[void 0]`)
+      }
+    }
     else if ((node.type === "TSQualifiedName") && node.left?.type === "Identifier" && namespaces.has(node.left.name) && node.right?.type === "Identifier") reads.add(`${node.left.name}.${node.right.name}`)
   })
   for (const read of reads) lines.push(`${read}`)

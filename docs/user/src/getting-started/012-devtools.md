@@ -547,7 +547,7 @@ export default {
 }
 ```
 
-Knip then resolves `./x.vibe`, reports an unused export of a `.vibe` file at its line, and counts `vibelang-runtime`, which every compiled module imports, as used. The migrate flow writes this configuration, moving the settings of a `knip.json` into a `knip.config.ts`.
+Knip then resolves `./x.vibe`, reports an unused export of a `.vibe` file at its line, and counts `vibelang-runtime`, which every compiled module imports, as used. Namespace reads through brackets, such as `Users["find"]`, retain the same exports as dot access. A computed key that cannot be resolved retains every export of that namespace, as Knip does for TypeScript. The migrate flow writes this configuration, moving the settings of a `knip.json` into a `knip.config.ts`.
 
 An export keeps the JSDoc tags Knip reads, such as `/** @public */`. All names in one variable declaration share its tags, as in TypeScript: `/** @public */ export const first = 1, second = 2` keeps both exports public. The adapter also keeps intervening ordinary comments and their spacing, so a comment after a JSDoc tag affects Knip attachment exactly as it does in TypeScript. A tag after an earlier statement recognizes every JavaScript line terminator, including CR, U+2028 and U+2029. JSDoc on the same line as an earlier statement follows Knip's ordinary TypeScript lookup as well.
 

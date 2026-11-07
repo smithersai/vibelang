@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
+
 - The application entry example kept running instead of reaching its shown cleanup output. It now finishes after one check and explains how to keep a worker running.
 
 - A documentation example could go unchecked when a comparison fragment repeated its companion file's name. Companion imports now keep their filenames and the complete example is checked.
