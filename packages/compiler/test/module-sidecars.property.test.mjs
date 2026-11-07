@@ -67,7 +67,7 @@ function check(input, { cli = false } = {}) {
     // The sidecar sits beside the source, or at its mirrored path under sidecarDir.
     const sidecarDir = input.layout ? join(root, input.layout, "src") : sourceDir
     const declaration = join(sidecarDir, "main.vibe." + input.name + ".d.ts")
-    assert.ok(existsSync(declaration), "missing declaration beside sidecar: " + input.name)
+    assert.ok(existsSync(declaration), "missing declaration beside sidecar: " + diagnostics)
     assert.match(readFileSync(declaration, "utf8"), /@throws \{RangeError\}/)
     run("repeat-emit", binary, ["-p", "tsconfig.json", "--pretty", "false"], root)
     // A consumer names the source; stock TypeScript finds its sidecar through
@@ -133,7 +133,9 @@ function check(input, { cli = false } = {}) {
 }
 
 test("stock TypeScript reads a module body's re-export and throws contract", () => {
-  check({name:"parse", form:"named", layout:"", noEmit:true}, {cli:true})
+  for (const layout of ["", "types", ".vibe/declarations"]) {
+    check({name:"parse", form:"named", layout, noEmit:true}, {cli:true})
+  }
 })
 
 test("module declarations accompany sidecars across layouts and re-export forms", async () => {
