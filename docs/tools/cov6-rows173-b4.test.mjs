@@ -9,8 +9,6 @@ test.todo("rule-evidence: docs/design/vips/0004-throw.md#80ede5107f580416 | Chap
 // Chapter 900: pending witness for an ordinary main has no automatic - spec-rule: docs/design/src/900-appendices.md#1a789ca38d7aa2c7
 test.todo('rule-evidence: docs/design/src/900-appendices.md#1a789ca38d7aa2c7 | Chapter 900: pending witness for an ordinary main has no automatic | present | An ordinary `main` has no automatic host invocation; run and provide its Effect explicitly.')
 
-// Chapter 900: pending witness for EK4704 diagnostic - spec-rule: docs/design/src/900-appendices.md#303eb57c7dfdefe8
-test.todo('rule-evidence: docs/design/src/900-appendices.md#303eb57c7dfdefe8 | Chapter 900: pending witness for EK4704 diagnostic | present | | interim `EK4704` | error: legacy compiler compatibility — the current lowering does not support a pattern form.')
 
 // Chapter 900: pending witness for compose dependencies explicitly do not apply - spec-rule: docs/design/src/900-appendices.md#bda755bd1c4349fd
 

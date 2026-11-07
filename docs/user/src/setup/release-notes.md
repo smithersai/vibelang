@@ -28,6 +28,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `vibelang --fix` left the Effect language-service plugin entry for a second run when the same config also held the retired `declarationSidecars` setting, so running it again changed the config. One run now makes both config repairs.
 - Exporting `main` could start it without a call or report missing services before a caller supplied them. Unmarked modules now run only their written top-level code; a written runner controls startup and checks its service requirements.
 - Migration could miss a public type change when an unchanged handwritten source declaration hid a different published copy. Declaration checks now compare the published copy itself.
+- An object pattern could reject a computed key such as `[chooseKey()]` as unsupported syntax. Computed key expressions now compile and keep their source type, evaluation order and property-key conversion.
 
 - An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
 

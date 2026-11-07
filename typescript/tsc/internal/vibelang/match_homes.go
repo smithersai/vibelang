@@ -3,6 +3,7 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 func init() { checker.RegisterDeclaredTypeHook(hoistedBindingType) }
@@ -20,6 +21,12 @@ func init() { checker.RegisterDeclaredTypeHook(hoistedBindingType) }
 // do completion reset to undefined before a branch, evolve by that flow too.
 func hoistedBindingType(c *checker.Checker, declaration *ast.Node) *checker.Type {
 	if declaration.Flags&ast.NodeFlagsVibeLangPatternHoist == 0 || declaration.Initializer() != nil || declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) {
+		return nil
+	}
+	// A raw computed-key tuple evolves through its assignment. Its expression
+	// hook preserves the exact tuple at reads; giving it a declared type here
+	// makes a nested do completion spuriously appear unassigned.
+	if parser.MatchKeyTypeSource(declaration) != nil {
 		return nil
 	}
 	values := hoistedValues(declaration)

@@ -5135,6 +5135,10 @@ typescript/vibelang/cases/match-combinator-coverage-fixed-output/main.vibe:6:72 
 typescript/vibelang/cases/match-combinator-coverage-fixed-output/main.vibe:9:86 lambda dual fallback
 typescript/vibelang/cases/match-combinator-fallback/main.vibe:12:20 lambda dual fallback
 typescript/vibelang/cases/match-combinator-fallback/main.vibe:5:20 lambda dual fallback
+typescript/vibelang/cases/match-computed-key-expressions/main.vibe:13:51 lambda plain table
+typescript/vibelang/cases/match-computed-key-expressions/main.vibe:18:21 lambda dual fallback
+typescript/vibelang/cases/match-computed-key-expressions/main.vibe:6:19 lambda dual fallback
+typescript/vibelang/cases/match-computed-key-expressions/main.vibe:9:18 lambda dual fallback
 typescript/vibelang/cases/match-computed-name-key-once/main.vibe:15:20 lambda plain protocol
 typescript/vibelang/cases/match-computed-name-key-once/main.vibe:18:26 lambda dual fallback
 typescript/vibelang/cases/match-computed-name-key-once/main.vibe:24:5 lambda choice fallback

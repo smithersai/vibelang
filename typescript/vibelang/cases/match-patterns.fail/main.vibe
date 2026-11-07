@@ -1,4 +1,4 @@
-// expect: EK4701 EK4703 EK4704 EK0707 EK0107
+// expect: EK4701 EK4703 EK0707 EK0107
 error NotFound { id: string }
 error Timeout
 
@@ -16,7 +16,7 @@ export function bindInForHead(xs: number[]) {
   return xs.length
 }
 
-export function computedKey(o: object, key: () => string) {
+export function computedKey(o: Record<string,number>, key: () => string) {
   return match (o) {
     when { [key()]: 1 }: "one";
     default: "other";
@@ -31,5 +31,4 @@ export function mixed(n: number) {
 }
 // Chapter 900: EK4703 diagnostic - spec-rule: docs/design/src/900-appendices.md#7926a62b6bfb0571
 
-// rule-evidence: docs/design/src/900-appendices.md#303eb57c7dfdefe8
-// Chapter 900: EK4704 — the current lowering does not support a pattern form
+// Chapter 900: — the current lowering does not support a pattern form
