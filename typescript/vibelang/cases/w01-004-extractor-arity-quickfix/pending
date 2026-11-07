@@ -1,1 +1,0 @@
-needs-ruling EK0703 states its repairs only as diagnostic text: the language server offers no `when X:` or `when X(let e):` quick fix.
