@@ -62,6 +62,43 @@ func TestUnlistedHostGlobalDeclarationOrigins(t *testing.T) {
 					count++
 				}
 			}
+			// rule-evidence: docs/design/vips/0033-platform-stdlib.md#858260c113fa8903 | **Amended 2026-10-29: the banned globals are derived, not listed.** A value reference in `.vibe` code is `EK4402` when the symbol it resolves to is declared in `lib.dom*.d.ts`, `lib.webworker*.d.ts`, `lib.scripthost.d.ts` or `@types/node`, not in `lib.es*.d.ts` or `lib.decorators*.d.ts`, and is not on the allowlist.
+			if count != test.want {
+				t.Fatalf("want %d host-global diagnostics, got %d", test.want, count)
+			}
+		})
+	}
+}
+
+func TestHostGlobalLibraryOrigins(t *testing.T) {
+	for _, test := range []struct {
+		name, lib, source string
+		want              int
+	}{
+		{"lib.dom", `"ESNext","DOM"`, "export const value = [FileReader, alert]", 2},
+		{"lib.webworker", `"ESNext","WebWorker"`, "export const value = importScripts", 1},
+		{"lib.scripthost", `"ESNext","ScriptHost"`, "export const value = ActiveXObject", 1},
+		{"lib.es", `"ESNext","DOM"`, "export const value = [Intl, Promise, WeakRef, globalThis.Array]", 0},
+		{"allowlist", `"ESNext","DOM"`, "export const value = [URL, URLSearchParams, TextEncoder, TextDecoder, structuredClone, atob, btoa, AbortController, AbortSignal]", 0},
+		{"allowlisted global member that reaches the host", `"ESNext","DOM"`, "export const value = AbortSignal.timeout", 1},
+		{"local shadow", `"ESNext","DOM","WebWorker"`, "export function value(alert: number, importScripts: number) { return alert + importScripts }", 0},
+		{"type position", `"ESNext","DOM"`, "export type Value = typeof alert", 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			files := computedKeyFiles(false)
+			files["/workspace/x/src/main.vibe"] = test.source
+			files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","skipLibCheck":true,"lib":[` + test.lib + `]},"files":["main.vibe"]}`
+			program := computedKeyProgram(t, files)
+			file := program.GetSourceFile(tspath.RootedFilePath("/workspace/x/src/main.vibe"))
+			count := 0
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+				if d.Source() != diagnosticSource || d.Code() != 4402 {
+					t.Errorf("unexpected diagnostic: %s", d.String())
+				} else {
+					count++
+				}
+			}
+			// rule-evidence: docs/design/vips/0033-platform-stdlib.md#858260c113fa8903 | **Amended 2026-10-29: the banned globals are derived, not listed.** A value reference in `.vibe` code is `EK4402` when the symbol it resolves to is declared in `lib.dom*.d.ts`, `lib.webworker*.d.ts`, `lib.scripthost.d.ts` or `@types/node`, not in `lib.es*.d.ts` or `lib.decorators*.d.ts`, and is not on the allowlist.
 			if count != test.want {
 				t.Fatalf("want %d host-global diagnostics, got %d", test.want, count)
 			}
