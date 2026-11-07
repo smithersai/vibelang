@@ -1,5 +1,0 @@
-FuzzMigrationModuleClosureNarrowing narrowing:closure:TS18047 compiler VIP-40: module-body imports lose captured immutable-binding narrowing; lane migfix-t3code
-FuzzMigrationModuleClosureNarrowing narrowing:nested:TS18047 compiler VIP-40: module-body imports lose captured immutable-binding narrowing; lane migfix-t3code
-FuzzMigrationModuleClosureNarrowing narrowing:async:TS18047 compiler VIP-40: module-body imports lose captured immutable-binding narrowing; lane migfix-t3code
-FuzzMigrationModuleClosureNarrowing narrowing:multiple:TS18047 compiler VIP-40: module-body imports lose captured immutable-binding narrowing; lane migfix-t3code
-FuzzMigrationModuleClosureNarrowing corpus:t3code-preview-bridge-module-narrowing compiler VIP-40: module-body import loses captured immutable-binding narrowing; lane migfix-t3code
