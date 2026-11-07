@@ -78,6 +78,7 @@ FuzzGrammarAdmission corpus:schema-field-initializer compiler VIP-15 and Appendi
 FuzzGrammarAdmission corpus:schema-readonly-method-static compiler VIP-15 and Appendix A: a mixed modifier prefix retains the readonly-method rejection hidden by schema mapping
 FuzzGrammarAdmission corpus:schema-readonly-method-async compiler VIP-15 and Appendix A: a mixed modifier prefix retains the readonly-method rejection hidden by schema mapping
 FuzzGrammarAdmission corpus:schema-field-initializer-numeric compiler VIP-15 and Appendix A: literal property names retain the native initializer rejection hidden by schema mapping
+FuzzGrammarAdmission corpus:schema-field-initializer-modifier compiler VIP-15 and Appendix A: an optional alias member after a modifier prefix keeps its initializer, whose native TS1247 schema mapping hides
 FuzzGrammarAdmission admission:schema-async-method compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for an async method signature, covering native TS1070
 FuzzGrammarAdmission corpus:schema-async-method compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for an async method signature, covering native TS1070
 FuzzGrammarAdmission admission:schema-signature-parameter-modifier compiler VIP-15 and Appendix A: a schema object-type alias reports only EK2109 for a call signature, covering native parameter-modifier rejection

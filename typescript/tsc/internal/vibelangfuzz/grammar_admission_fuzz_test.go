@@ -276,6 +276,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fiber-primary-reference-spaced", "effect function f ( ) { return new join . target ; }"},
 	{"schema-signature-async-parameter", "schema S = { ( async { p : static } : Missing ) : Missing }"},
 	{"schema-signature-modifier-pattern", "schema S = { (readonly [p]: Missing): Missing }"},
+	{"schema-field-initializer-modifier", "schema S = { readonly 1 ? =\nMissing }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -429,6 +430,13 @@ func grammarSchemaFieldInitializer(ts []grammarToken) bool {
 					}
 					if at == k {
 						return true
+					}
+					// After a modifier prefix only an optional name reaches the
+					// initializer: `readonly 1 = T` is already a syntax error.
+					if name, _ := grammarSchemaModifierPrefix(ts, start, ""); name != start {
+						if at := grammarSchemaPropertyEnd(ts, name); at+1 == k && ts[at].text == "?" {
+							return true
+						}
 					}
 				}
 			}
