@@ -6,3 +6,5 @@ export effect function main() {
 export function helper() {
   return "helper"
 }
+
+import "vibelang/platform/node"

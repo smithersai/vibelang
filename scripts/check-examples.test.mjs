@@ -68,7 +68,7 @@ if (basename(process.cwd()) === target) {
 }
 mkdirSync("dist", { recursive: true })
 const output = first && mode === "output" ? "wrong" : "fixture"
-writeFileSync("dist/main.js", first && mode === "run" ? "process.exit(7)" : "console.log(" + JSON.stringify(output) + ")")
+writeFileSync("dist/entry.js", first && mode === "run" ? "process.exit(7)" : "console.log(" + JSON.stringify(output) + ")")
 `)
     const result = spawnSync("sh", [join(root, "scripts/check-examples.sh")], {
       cwd: root, encoding: "utf8", env: { ...process.env, PATH: join(root, "bin") + delimiter + process.env.PATH, VIBELANG: compiler, EXAMPLES_CONTRACT_MODE: mode }

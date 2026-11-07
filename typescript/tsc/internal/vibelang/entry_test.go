@@ -42,13 +42,40 @@ func TestEntryMainExplicitRunner(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := entryRunnerFiles()
-			files["/workspace/x/src/main.vibe"] = "export function main() { return 1 }\n" + test.setup
+			files["/workspace/x/src/main.vibe"] = "import \"vibelang/platform/node\"\nexport function main() { return 1 }\n" + test.setup
 			program := computedKeyProgram(t, files)
 			file := program.GetSourceFile("/workspace/x/src/main.vibe")
 			c, done := program.GetTypeCheckerForFile(t.Context(), file)
 			defer done()
 			if got := entryMain(c, file) != nil; got != test.automatic {
 				t.Errorf("automatic main = %v, want %v for %s", got, test.automatic, test.setup)
+			}
+		})
+	}
+}
+
+// VIP-26 makes every unmarked main declaration ordinary source.
+func TestUnmarkedMainIsOrdinary(t *testing.T) {
+	for _, source := range []string{
+		"export function main() { return 1 }",
+		"export effect function main() { return 1 }",
+		"export async function main() { return 1 }",
+		"export function main<T = number>() { return undefined as T | undefined }",
+		"export function \\u006dain() { return 1 }",
+		"export default function main() { return 1 }",
+		"export function main(value: number) { return value }",
+		"function main() { return 1 }",
+		"function work() { return 1 }; export { work as main }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			program, file, _, _ := editorProgram(t, source)
+			if entryCandidate(file) != nil {
+				t.Fatal("unmarked source selected an implicit entry")
+			}
+			c, done := program.GetTypeCheckerForFile(t.Context(), file)
+			defer done()
+			if planEntry(c, file) != nil {
+				t.Fatal("unmarked source planned implicit startup")
 			}
 		})
 	}

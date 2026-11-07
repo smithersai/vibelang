@@ -3,3 +3,5 @@ export effect function main() {
 }
 
 export const helper = "helper"
+
+import "vibelang/platform/node"

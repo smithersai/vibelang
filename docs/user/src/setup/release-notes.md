@@ -26,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `.vibe` or `.vibex` file could import `./x.vibe` or `./x.ts` without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, where the same import in a `.ts` file reports `TS5097`, and its emitted JavaScript named `./x.js` even without `rewriteRelativeImportExtensions`. VibeLang sources now follow the `.ts` rules: such an import reports `TS5097`, and only `rewriteRelativeImportExtensions` rewrites it in JavaScript. Set `allowImportingTsExtensions` (with `noEmit` or `emitDeclarationOnly`) or `rewriteRelativeImportExtensions` in `compilerOptions`, as for `.ts` imports, or import `./x.js`.
 - `vibelang --fix` left the Effect language-service plugin entry for a second run when the same config also held the retired `declarationSidecars` setting, so running it again changed the config. One run now makes both config repairs.
+- Exporting `main` could start it without a call or report missing services before a caller supplied them. Unmarked modules now run only their written top-level code; a written runner controls startup and checks its service requirements.
 
 - An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
 

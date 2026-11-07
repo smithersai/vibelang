@@ -6,3 +6,5 @@ const result = helper.runSync(1)
 export effect function main() {
   try Console.log("ran", result)
 }
+
+import "vibelang/platform/node"

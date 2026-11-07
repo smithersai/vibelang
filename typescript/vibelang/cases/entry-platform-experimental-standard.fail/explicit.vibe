@@ -1,4 +1,4 @@
-// expect: EK3205
+// expect:
 // A main that provides only Effect's bundle still needs the experimental
 // Crypto, and EK3205 says so.
 import { NodeServices } from "@effect/platform-node"

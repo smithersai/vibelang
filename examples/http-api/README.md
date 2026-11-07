@@ -18,8 +18,8 @@ bun run test
 Vitest runs `src/main.test.vibe` through `vibelang-vite` without a prior
 build. Assertion stacks point to `.vibe` lines. The test routes requests through
 `HttpRouter.toHttpEffect`, without a socket.
-Importing `main.js` constructs layers and starts nothing; running it with
-`node dist/main.js` starts the server, because the module exports `main`.
+Importing `main.js` constructs layers and starts nothing. The written
+runner in `src/entry.vibe` starts the server with `node dist/entry.js`.
 A TypeScript `module` adapter passes Node's `createServer` to
 `NodeHttpServer.layer`, keeping the foreign callback contract inside that
 boundary. Calling its `serverLayer` factory constructs the cold layer at the

@@ -1,6 +1,2 @@
 Provide UserDirectories inside main with provide layer { … }, where layer is UserDirectories.layer.
 Provide Locks inside main with provide layer { … }, where layer is ExperimentalBrowserLocks.layer from "vibelang-runtime/experimental/platform-browser"; ExperimentalNodeLocks.layer from "vibelang-runtime/experimental/platform-node" locks only within one Node.js process.
-Provide FileSystem inside main with provide layer { … }, where layer is NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".
-Name the platform at the top of this file, and the entry provides FileSystem, Process: import "vibelang/platform/node"
-Provide Process inside main with provide layer { … }, where layer is ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun".
-Name the platform at the top of this file, and the entry provides Process: import "vibelang/platform/node"

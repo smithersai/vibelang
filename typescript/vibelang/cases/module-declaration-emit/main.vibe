@@ -91,3 +91,5 @@ export effect function main() {
     described: try describe({ width: 1, height: 2 }),
   }))
 }
+
+await Effect.runPromise(main())

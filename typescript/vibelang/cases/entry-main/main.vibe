@@ -1,5 +1,7 @@
-// Running out/main.js runs main, which the module exports (D135). Without
-// @effect/platform-node, runtime.$runMain runs it.
+// A legacy marked entry starts its exported main when executed directly.
+// Importing the module keeps main unrun.
 export effect function main() {
   try Console.log("entry ran")
 }
+
+import "vibelang/platform/node"
