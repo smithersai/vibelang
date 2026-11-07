@@ -1,0 +1,5 @@
+first build writes src/main.d.vibe.ts and src/main.vibe.parse.d.ts beside src/main.vibe
+second build inputs: ["src/main.vibe"]
+stale src/main.vibe.parse.d.ts is left out and rewritten from its source
+src/main.vibe.other.d.ts, with no module other, is an input
+without module parse, src/main.vibe.parse.d.ts is an input

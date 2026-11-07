@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/src/007-tooling.md#config-files | So is a [module body](001-functions.md#module-declarations)'s declaration written beside a sidecar, such as `src/main.vibe.parse.d.ts`, while its source declares that body ([VIP-40](../vips/0040-module-declarations.md#emit-declarations-source-maps)).
+// With `include: ["src"]`, the declaration `src/main.vibe.parse.d.ts` written for
+// `module parse` in `src/main.vibe` is not a program input while the source
+// declares `parse`, even when stale; a body declaration for a body the source
+// does not declare is an ordinary input. run.mjs compiles the project in place.
+export const witness = 1

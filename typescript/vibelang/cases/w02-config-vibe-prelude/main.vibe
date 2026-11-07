@@ -1,0 +1,12 @@
+// rule-evidence: docs/design/src/007-tooling.md#config-files | Write VibeLang settings in the root `vibe` object ([VIP-30](../vips/0030-config-files.md#decision)):
+// rule-evidence: docs/design/src/007-tooling.md#config-files | | `vibe.effectGlobals` | Boolean; default `true`.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | Put Effect's functions in scope ([VIP-6](../vips/0006-effect-globals.md)); `false` turns the function globals off.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | Qualified calls such as `Effect.sleep` remain available when `vibe.effectModules` is `true`.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | | `vibe.effectModules` | Boolean; default `true`.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | Put Effect's modules in scope ([VIP-14](../vips/0014-effect-modules-in-scope.md)); `false` requires imports.
+// Both prelude switches default to `true`: a bare `succeed` and an unimported
+// `Effect` and `Duration` compile and run. `effectGlobals: false` removes the
+// bare functions but keeps `Effect.sleep`; `effectModules: false` removes the
+// module names and needs `import { Effect } from "effect"`. The switches apply
+// only from the root `vibe` object. run.mjs compiles each configuration.
+export const witness = 1
