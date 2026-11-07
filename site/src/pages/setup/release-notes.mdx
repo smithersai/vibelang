@@ -29,6 +29,29 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Formatting a file in a bracketed route folder could select another file or leave the requested file untouched. Both formatter commands now select existing file paths before expanding globs.
 
+- Migration kept a module in TypeScript when an exported function that used platform code had no written return type, such as `export const digestNpmrc = async (npmrc: string) => { ... }`. The function now stays in the module with the same inferred type and calls its `.platform.ts` companion, unless that type could name something only the companion declares.
+- Matching a branded primitive could incorrectly report a missing tag case. Broad primitive intersections now keep the match open, while tagged object intersections still check missing cases.
+
+- Checking invalid JSX could silently succeed after checking the same text as plain VibeLang. Formatter cache entries now distinguish the source kinds and report the JSX error.
+
+- Using `do` in a pattern condition could falsely report a binding as unassigned. Successful conditions now retain their initialized bindings.
+
+- Passing a relative profiling or trace path with a project build could crash the compiler. Build-mode path options now resolve from the working directory, like ordinary compiler options.
+
+- The compiler help suggested configuring retired package-trust settings. It now identifies the legacy diagnostics section and points to `vibe.severities`.
+
+- A declaration whose inferred type held a reverse mapped type that met itself again, such as the result of `deep(node)` where `deep` takes a recursive mapped type and `node` refers to itself, failed with `TS5088` and declared nothing. It now declares the repeated type as `/*elided*/ any`, as TypeScript 5.9 and 7.0.2 do.
+
+- Awaiting an Effect inside an async generator could miss its error when an iterator return type was written. It now reports `EK0103`; `--fix` keeps the Effect unrun across the native `await`.
+
+- Typed lint could lose types imported from `.vibe` modules and report unsafe uses in valid code. It now keeps those types and fails when a source module has errors.
+
+- An invalid native profiling directory could crash the compiler and print a stack trace. Profiling setup and output failures now report the failed stage and path as ordinary command errors.
+
+- Asking for language-server help returned an error exit status. `vibelang --lsp --help` and `-h` now print usage and exit successfully without starting a server.
+
+- Language-server help advertised named-pipe and socket transports that the server could not use. It now identifies these options as reserved and states that standard input/output is the supported transport.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
@@ -75,6 +98,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A starter installed with Yarn Classic could fail its first build and source tests with `EK3201` after choosing a newer platform helper. New projects now keep that helper on the required version with Yarn's `resolutions`.
 
 - Interrupting a check or build could report success. It now exits unsuccessfully and explains that compilation was cancelled.
+
+- The resource quick fix could replace the caller’s scope when an Effect used a broad requirement such as `object`. It now leaves that code for manual conversion.
 
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
 - The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
@@ -164,6 +189,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A type query of a platform-method alias could receive a platform error even though it runs nothing. Erased `typeof` queries now keep their TypeScript meaning.
 
+- Editors could reject ordinary calls such as `Box.key()` as service access when a local object's name began with a capital letter. The TypeScript view now recognizes the ordinary binding, including a parameter that shadows a service.
+
 
 - A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` could call a `.ts` function with no `@throws` tag, although such a function must never throw. The call now reports `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare the callee's `@throws`, or move the code to a `.ts` file. The same holds for the function's parameter defaults.
 
@@ -173,6 +200,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
 
 ## 0.0.12

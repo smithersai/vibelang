@@ -138,7 +138,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
 | **Upgrade** | **170,000** |
 | [Release notes](../setup/release-notes.md) | 170,000 |
-| **All 22 pages** | **230,000** |
+| **All 22 pages** | **240,000** |
 
 ### Guides
 
@@ -276,7 +276,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 12,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,500 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 8 pages** | **55,000** |
+| **All 8 pages** | **56,000** |
 
 ### Specification
 
