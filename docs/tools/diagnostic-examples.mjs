@@ -303,7 +303,26 @@ export function resolveExamples(fixtures,appendix,root=repository) {
       if(!appendix.has(fixture.code))throw Error(fixture.code+": host fixture has no Appendix row")
       const test=readFileSync(join(root,fixture.testPath),"utf8")
       if(!test.includes("func "+fixture.testName+"("))throw Error(fixture.code+": missing executable host test")
-      if((fixture.host==="registration-only")!==!!fixture.emissionPending)throw Error(fixture.code+": registration-only host must declare pending emission")
+      if((fixture.host==="registration-only")!==!!(fixture.emissionPending||fixture.emissionReplay)||fixture.emissionPending&&fixture.emissionReplay)throw Error(fixture.code+": registration-only host must declare pending emission or an emission replay, exclusively")
+      if(fixture.emissionReplay) {
+        const replay=fixture.emissionReplay
+        const project=resolve(root,replay.project)
+        const cases=resolve(root,"typescript/vibelang/cases")+sep
+        if(!project.startsWith(cases)||project===cases.slice(0,-1))throw Error(fixture.code+": emission replay must name a native case")
+        const relative=project.slice(resolve(root).length+1).split(sep).join("/")
+        const row=appendix.get(fixture.code)
+        if(!row.includes("(../../../"+relative+"/main.vibe)"))throw Error(fixture.code+": emission replay lacks its Appendix link")
+        if(!appendix.has(replay.code)||!row.includes("\x60"+replay.code+"\x60"))throw Error(fixture.code+": emission replay lacks its documented diagnostic")
+        const source=readFileSync(join(project,"main.vibe"),"utf8")
+        const expected=[replay.code,...replay.also??[]]
+        const category=code=>code.startsWith("TS")?"error":appendixCategory(appendix.get(code))
+        const declared=/^\/\/ expect: ([^\n]+)$/m.exec(source)?.[1].trim().split(/\s+/).sort()
+        const warnings=/^\/\/ expect-warnings: ([^\n]+)$/m.exec(source)?.[1].trim().split(/\s+/).sort()??[]
+        if(JSON.stringify(declared)!==JSON.stringify(expected.filter(code=>category(code)==="error").sort())||
+          JSON.stringify(warnings)!==JSON.stringify(expected.filter(code=>category(code)==="warning").sort()))
+          throw Error(fixture.code+": emission replay differs from its case expectations")
+        examples.push({...replay,name:"appendix-current-emission-"+fixture.code,source,project})
+      }
       if(fixture.emissionPending) {
         if(!appendix.get(fixture.code).includes("Emission witness pending for `"+fixture.code+"`"))throw Error(fixture.code+": missing pending emission label")
         const source=readFileSync(join(root,"docs/tools/spec-diagnostic-compatibility-pending.test.mjs"),"utf8")

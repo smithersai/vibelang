@@ -457,7 +457,16 @@
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
     "testName": "TestAppendixRegisteredOnlyHostExamples",
-    "emissionPending": true
+    "emissionReplay": {
+      "project": "typescript/vibelang/cases/appendix-ek4201-archived-control.fail",
+      "code": "EK3501",
+      "also": [
+        "EK4856",
+        "TS2339",
+        "TS2740",
+        "TS7006"
+      ]
+    }
   },
   {
     "name": "appendix-archive-EK4401",
@@ -570,7 +579,13 @@
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
     "testName": "TestAppendixRegisteredOnlyHostExamples",
-    "emissionPending": true
+    "emissionReplay": {
+      "project": "typescript/vibelang/cases/appendix-ek1013-inherited-error-comma.fail",
+      "code": "EK1013",
+      "also": [
+        "EK2117"
+      ]
+    }
   },
   {
     "name": "appendix-archive-EK2006",
@@ -592,28 +607,40 @@
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
     "testName": "TestAppendixRegisteredOnlyHostExamples",
-    "emissionPending": true
+    "emissionReplay": {
+      "project": "typescript/vibelang/cases/appendix-ek2107-ek2108-archived-control.fail",
+      "code": "EK3501"
+    }
   },
   {
     "code": "EK2108",
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
     "testName": "TestAppendixRegisteredOnlyHostExamples",
-    "emissionPending": true
+    "emissionReplay": {
+      "project": "typescript/vibelang/cases/appendix-ek2107-ek2108-archived-control.fail",
+      "code": "EK3501"
+    }
   },
   {
     "code": "EK2110",
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
     "testName": "TestAppendixRegisteredOnlyHostExamples",
-    "emissionPending": true
+    "emissionReplay": {
+      "project": "typescript/vibelang/cases/appendix-ek2110-ek2119-archived-control.fail",
+      "code": "EK3501"
+    }
   },
   {
     "code": "EK2119",
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
     "testName": "TestAppendixRegisteredOnlyHostExamples",
-    "emissionPending": true
+    "emissionReplay": {
+      "project": "typescript/vibelang/cases/appendix-ek2110-ek2119-archived-control.fail",
+      "code": "EK3501"
+    }
   },
   {
     "name": "appendix-archive-EK3101",
@@ -650,7 +677,14 @@
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",
     "testName": "TestAppendixRegisteredOnlyHostExamples",
-    "emissionPending": true
+    "emissionReplay": {
+      "project": "typescript/vibelang/cases/appendix-ek4202-archived-control.fail",
+      "code": "EK3501",
+      "also": [
+        "EK4856",
+        "TS2339"
+      ]
+    }
   },
   {
     "name": "appendix-archive-EK4301",

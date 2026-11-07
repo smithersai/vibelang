@@ -9,7 +9,7 @@ import (
 )
 
 // These reporters remain registered. Their old compiler inputs no longer reach
-// them. This checks allocation only; exact test.todo witnesses track emission.
+// them. This checks allocation only; native case replays check current emission separately.
 // Each interim row's code, default category and meaning are asserted below; an
 // interim code is registered but has no current Appendix B row.
 //

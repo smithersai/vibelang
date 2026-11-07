@@ -17,3 +17,4 @@ effect function forked() {
     effect ask(question, k) { return try resume(k, question.length) }
   })
 }
+// expect-warnings: EK4856
