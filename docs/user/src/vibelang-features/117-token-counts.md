@@ -152,7 +152,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Matching](../error-management/017-matching.md) | 790 |
 | [Retrying](../error-management/018-retrying.md) | 780 |
 | [Timing Out](../error-management/019-timing-out.md) | 830 |
-| [Sandboxing](../error-management/020-sandboxing.md) | 750 |
+| [Sandboxing](../error-management/020-sandboxing.md) | 770 |
 | [Error Accumulation](../error-management/021-error-accumulation.md) | 680 |
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,400 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |

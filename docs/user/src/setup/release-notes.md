@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
 - The error guides described plain-function throws as JavaScript exceptions or defects. They now explain the compile error and show how to choose a typed failure or defect.
 - The Terminal guide gave conflicting advice about Ctrl+C during line input. It now distinguishes normal line input from raw key events.
+- The sandbox inspection example could fail to compile because its diagnostic added another error type. It now preserves the original domain error channel and runs as shown.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
