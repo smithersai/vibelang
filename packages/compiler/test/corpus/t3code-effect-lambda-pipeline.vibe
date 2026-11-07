@@ -1,0 +1,39 @@
+export const makeOpenCodeAdapterV2 = effect (
+) => try withSpan(effect {
+  return ProviderAdapter.ProviderAdapterV2.of({
+    getCapabilities: Effect.fn("OpencodeAdapter.getCapabilities")(function () {
+      const resolveSessionOwner = effect (sessionId: string) => {
+        for (let depth = 0; depth < 5; depth += 1) {
+          const response = try (sdkCall("session.get", { sessionID: cursor }, () =>
+            client.session.get({ sessionID: cursor }),
+          ) |> Effect.option(%));
+          if (parentId === undefined) return undefined;
+          if (owner !== undefined) {
+            for (const hop of hops) relatedSessionOwners.set(hop, owner);
+          }
+        }
+      };
+      const routeRuntimeRequest = effect (
+        request:
+          { readonly type: "permission"; readonly value: PermissionRequest; } | { readonly type: "question"; readonly value: QuestionRequest; },
+      ) => {
+        if (pendingChildRequestRoutes.has(nativeRequestId)) return;
+        const attempt = effect {
+          if (owner === undefined) return false;
+        };
+        if (try attempt) return;
+        try (effect {
+          for (let retry = 0; retry < 5; retry += 1) {
+            if (try attempt) return;
+          }
+        }
+          |> Effect.forkIn(%, scope));
+      };
+    } |> ((effect, input) =>
+        effect
+          |> Effect.mapError(
+              new ProviderAdapter.ProviderAdapterOpenSessionError({
+              }),
+          ))(%, input), "OpenCodeAdapterV2.openSession"),
+  });
+}, "makeOpenCodeAdapterV2");
