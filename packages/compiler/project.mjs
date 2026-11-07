@@ -743,7 +743,7 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
       // the project's other modules unemitted; such a project compiles from its
       // package, as another package's project does.
       const projectRoot = tsconfig === project && within(root, tsconfig) ? root : packageRoot(tsconfig)
-      state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug, preserveJsx, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
+      state = { tsconfig, root: projectRoot, backend: projectBackend({ root: projectRoot, compiler, cache, debug, preserveJsx, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
       states.set(tsconfig, state)
     }
     return state
@@ -823,11 +823,21 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
       state.reported = state.compiled
       if (errors.length) return { project: state.tsconfig, code: failed, inputs, errors, warnings, first }
       const output = outputs.get(file)
+      let error = false
+      if (!output) {
+        const path = relative(state.root, file)
+        const outsideRoot = path === ".." || slash(path).startsWith("../") || isAbsolute(path)
+        debug(`missing output: ${file}; project=${state.tsconfig}; root=${state.root}; listed=${result.files.includes(file)}; outsideRoot=${outsideRoot}`)
+        error = {
+          message: outsideRoot
+            ? `vibelang: ${file} is outside the compilation root ${state.root}. Set the root to a directory containing this source, or give the source its own package.json and tsconfig.json.`
+            : `vibelang: ${file} is not part of ${[state.tsconfig, ...others].join(" or ")}. Add it to the tsconfig's include.`,
+          id: file
+        }
+      }
       return {
         project: state.tsconfig, code: output?.code ?? failed, map: output?.map, inputs, errors, warnings, first,
-        error: !output && {
-          message: `vibelang: ${file} is not part of ${[state.tsconfig, ...others].join(" or ")}. Add it to the tsconfig's include.`, id: file
-        }
+        error
       }
     }
   }
