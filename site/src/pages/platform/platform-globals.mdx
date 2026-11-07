@@ -460,6 +460,8 @@ For `node:net`'s `isIPv4`, use the pure boolean expression `Result.isSuccess(Net
 
 Replace `node:net`'s `isIPv6` with the pure `Experimental.NetAddress.isIPv6(address)` when Node's scoped-host syntax must be retained. It needs no layer or `try`. It delegates bare IPv6 parsing to Effect and preserves Node's ASCII zone syntax, including numeric scope strings beyond the unsigned 32-bit range. Effect's own `NetAddress.ipv6FromString` remains the bare-address decoder.
 
+For `node:net`'s `isIP`, preserve its numeric family with `Result.isSuccess(NetAddress.ipv4FromString(address)) ? 4 : Experimental.NetAddress.isIPv6(address) ? 6 : 0`. This yields `4` for IPv4, `6` for IPv6 including Node-compatible zones, and `0` otherwise. `NetAddress.ipFromString` returns a `Result` instead of this number.
+
 Object shorthand keeps a host alias's identity: reading `{ timeout }` after `const timeout = AbortSignal.timeout` has the same platform restriction as reading `timeout` directly. A local parameter or another shadowing binding keeps its own meaning.
 
 A type query such as `typeof timeout` is erased and does not read the host, even when `timeout` aliases `AbortSignal.timeout`. Value uses of the same alias still follow the platform rule.

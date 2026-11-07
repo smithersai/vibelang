@@ -1,0 +1,32 @@
+[
+  {
+    "key": "net:ip-family:direct",
+    "source": "import { isIP } from \"net\"; export const value=(address:string)=>isIP(address)",
+    "host": true
+  },
+  {
+    "key": "net:ip-family:alias",
+    "source": "import { isIP as Native } from \"net\"; export const value=(address:string)=>Native(address)",
+    "host": true
+  },
+  {
+    "key": "node:net:ip-family:direct",
+    "source": "import { isIP } from \"node:net\"; export const value=(address:string)=>isIP(address)",
+    "host": true
+  },
+  {
+    "key": "node:net:ip-family:alias",
+    "source": "import { isIP as Native } from \"node:net\"; export const value=(address:string)=>Native(address)",
+    "host": true
+  },
+  {
+    "key": "ip-family:local",
+    "source": "const isIP=(address:string)=>address===\"local\"?4:0; export const value=(address:string)=>isIP(address)",
+    "host": false
+  },
+  {
+    "key": "ip-family:parameter",
+    "source": "export const value=(isIP:(address:string)=>number,address:string)=>isIP(address)",
+    "host": false
+  }
+]

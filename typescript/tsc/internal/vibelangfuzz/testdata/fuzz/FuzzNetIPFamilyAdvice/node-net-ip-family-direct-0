@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("node:net:ip-family:direct\u0000\u0000")

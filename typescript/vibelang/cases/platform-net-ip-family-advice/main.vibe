@@ -1,0 +1,9 @@
+// expect-result: [4,6,0,0,4,6,6,0]
+import { Result } from "effect"
+import * as NetAddress from "effect/net/NetAddress"
+import * as Experimental from "vibelang-runtime/experimental"
+export effect function main() {
+  return ["127.0.0.1", "::1", "bad", "127.0.0.01", "255.255.255.255", "fe80::1%eth0", "::1%4294967296", "::1%é"].map(
+    (address) => Result.isSuccess(NetAddress.ipv4FromString(address)) ? 4 : Experimental.NetAddress.isIPv6(address) ? 6 : 0
+  )
+}
