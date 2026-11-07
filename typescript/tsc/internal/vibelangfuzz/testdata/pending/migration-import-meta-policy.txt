@@ -1,4 +1,0 @@
-FuzzMigrationImportMetaPolicy policy:dirname:EK3877 compiler VIP-34: the dirname helper introduces a Node path import forbidden by the unchanged project policy; lane migfix-t3code
-FuzzMigrationImportMetaPolicy policy:dirname-ignore-exit:EK3877 compiler VIP-34: ignoring imported error exit status must not hide the dirname helper's new error diagnostic; lane migfix-t3code
-FuzzMigrationImportMetaPolicy policy:dirname-fix:EK3877 compiler VIP-34: fixing the generated native module must not introduce a forbidden Node path import; lane migfix-t3code
-FuzzMigrationImportMetaPolicy corpus:t3code-import-meta-dirname-policy compiler VIP-34: see policy:dirname:EK3877; lane migfix-t3code

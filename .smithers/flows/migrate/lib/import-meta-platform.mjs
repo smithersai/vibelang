@@ -18,13 +18,23 @@ function inSourceChildHelper(node, ts) {
 //   change import.meta, so looking up resolve after them instead of before is
 //   not observable.
 // - import.meta.filename and import.meta.dirname: Node defines them from a
-//   file: URL using node:url, retaining directory roots, and leaves them undefined
-//   for any other URL; Bun and Deno agree.
+//   file: URL with fileURLToPath and path.dirname, and leaves them undefined
+//   for any other URL; Bun and Deno agree. The companion imports only
+//   node:url and carries its own path.dirname: a node:path import is one the
+//   original never had, and a nodeBuiltinImport policy makes it EK3877.
 // - import.meta.env: the build's environment (Vite's define, Bun's
 //   process.env), read where the module read it. A write stays refused.
 // import.meta.main and every other member depend on the module in a way no
 // argument carries, and an alias, destructuring or computed key hides which
 // member is read: those are refused.
+// The import.meta.dirname helper: Node's path.dirname of fileURLToPath(url),
+// with no node:path. fileURLToPath returns a POSIX path starting with "/",
+// or a Windows one starting with a drive letter or "\\\\"; each branch
+// follows Node's posix.dirname or win32.dirname step for step, so empty
+// segments and UNC roots name what Node names.
+const nodeDirnameTemplate = "export function $NAME(url: string): ImportMeta[\"dirname\"] {\n  let directory: string | undefined\n  if (url.startsWith(\"file:\")) directory = dirname($URL.fileURLToPath(url))\n  return directory as ImportMeta[\"dirname\"]\n  function dirname(path: string): string {\n    const length = path.length\n    let end = -1\n    if (path[0] === \"/\") {\n      for (let at = length - 1, matched = true; at >= 1; at--) {\n        if (path[at] !== \"/\") matched = false\n        else if (!matched) { end = at; break }\n      }\n      return end === -1 ? \"/\" : end === 1 ? \"//\" : path.slice(0, end)\n    }\n    const separator = (at: number): boolean => path[at] === \"\\\\\" || path[at] === \"/\"\n    if (length === 0) return \".\"\n    if (length === 1) return separator(0) ? path : \".\"\n    let root = -1\n    let offset = 0\n    if (separator(0)) {\n      root = offset = 1\n      if (separator(1)) {\n        let at = 2\n        let last = at\n        while (at < length && !separator(at)) at++\n        if (at < length && at !== last) {\n          last = at\n          while (at < length && separator(at)) at++\n          if (at < length && at !== last) {\n            last = at\n            while (at < length && !separator(at)) at++\n            if (at === length) return path\n            if (at !== last) root = offset = at + 1\n          }\n        }\n      }\n    } else if (/^[A-Za-z]:/.test(path)) {\n      root = offset = length > 2 && separator(2) ? 3 : 2\n    }\n    for (let at = length - 1, matched = true; at >= offset; at--) {\n      if (!separator(at)) matched = false\n      else if (!matched) { end = at; break }\n    }\n    return end === -1 ? (root === -1 ? \".\" : path.slice(0, root)) : path.slice(0, end)\n  }\n}"
+export const nodeDirnameText = (name, url) => nodeDirnameTemplate.replaceAll("$NAME", name).replaceAll("$URL", url)
+
 const helperBases = { resolve: "$importMetaResolve", filename: "$importMetaFilename", dirname: "$importMetaDirname", env: "$importMetaEnv" }
 
 // Whether node, a reference, is written: assigned, updated, deleted or a
@@ -117,19 +127,7 @@ export function splitImportMeta(text, file, sibling, ts) {
     ? "export function " + helpers.resolve + "(...args: Parameters<ImportMeta[\"resolve\"]>): ReturnType<ImportMeta[\"resolve\"]> { return import.meta.resolve(...args) }"
     : "export function " + helpers.resolve + "(specifier: string): string { return import.meta.resolve(specifier) }")
   if (helpers.filename) lines.push("export function " + helpers.filename + "(url: string): ImportMeta[\"filename\"] { return (url.startsWith(\"file:\") ? " + fileUrlToPath + ".fileURLToPath(url) : undefined) as ImportMeta[\"filename\"] }")
-  if (helpers.dirname) lines.push(`export function ${helpers.dirname}(url: string): ImportMeta["dirname"] {
-  let directory: string | undefined
-  if (url.startsWith("file:")) {
-    // Validate the original filename before resolving its parent URL.
-    ${fileUrlToPath}.fileURLToPath(url)
-    const parent = ${fileUrlToPath}.fileURLToPath(new ${fileUrlToPath}.URL(".", url))
-    const driveRoot = parent.length === 3 && parent[1] === ":" && parent.charCodeAt(2) === 92
-    const shareRoot = parent.charCodeAt(0) === 92 && parent.charCodeAt(1) === 92 && parent.split(parent[0]).filter(part => part.length > 0).length === 2
-    const root = parent === "/" || parent === "//" || driveRoot || shareRoot
-    directory = root ? parent : parent.slice(0, -1)
-  }
-  return directory as ImportMeta["dirname"]
-}`)
+  if (helpers.dirname) lines.push(nodeDirnameText(helpers.dirname, fileUrlToPath))
   if (helpers.env) lines.push("export function " + helpers.env + "(): ImportMeta[\"env\"] { return import.meta.env }")
   const platform = lines.join("\n") + "\n"
   // A generated source-child helper keeps its own private boundary in a VIP-40

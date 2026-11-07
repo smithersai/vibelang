@@ -88,3 +88,36 @@ test("property: namespace-only companions preserve host directory metadata", asy
     }
   })
 })
+// Node's own dirname over arbitrary file: URLs, not only pathToFileURL output:
+// empty segments, a share with no folder, dots and drive-like POSIX names.
+// URL-relative resolution ("." then trimming one separator) named
+// \\server\a\\ for file://server/a//x.ts, where Node names \\server\a\.
+function hostDirname(url, windows) {
+  return (windows ? NodePath.win32 : NodePath.posix).dirname(NodeURL.fileURLToPath(url, { windows }))
+}
+function sameOutcome(output, url, windows) {
+  let want, got
+  try { want = hostDirname(url, windows) } catch (error) { want = "throws " + error.code }
+  try { got = output.$importMetaDirname(url) } catch (error) { got = "throws " + error.code }
+  assert.equal(got, want, (windows ? "win32 " : "posix ") + url)
+}
+test("dirname names what Node names for empty segments and bare UNC hosts", () => {
+  const urls = ["file://server/x.ts", "file://server/a//x.ts", "file://server//x.ts", "file://server///x.ts",
+    "file://server/a/../x.ts", "file:////x.ts", "file:///.//x.ts", "file:///C:/x.ts", "file:///c|/x.ts", "file:///a//x.ts", "file:///C:x.ts"]
+  for (const windows of [false, true]) {
+    const output = exportsOf(companion({ filename: true }), windows)
+    for (const url of urls) sameOutcome(output, url, windows)
+  }
+})
+test("property: dirname of any file: URL matches Node's path.dirname", async () => {
+  await checkProperty(fc, {
+    name: corpus.key + ":raw-url", rule: corpus.quote,
+    command: "node --test .smithers/flows/migrate/test/platform-import-meta-node-imports.property.test.mjs",
+    numRuns: 300,
+    arbitrary: fc.record({ windows: fc.boolean(),
+      prefix: fc.constantFrom("file:///", "file:////", "file://localhost/", "file://server/", "file://server/share/", "file:///C:/", "file:///c|/", "file:///C:", "file:", "file://server//"),
+      parts: fc.array(fc.constantFrom("a", "", ".", "..", "b c", "C:", "δ", "%20", "%5C"), { maxLength: 4 }),
+      leaf: fc.constantFrom("x.ts", "x.ts?q=/", "x.ts#h/", "mód.js") }),
+    check: ({ windows, prefix, parts, leaf }) => sameOutcome(exportsOf(companion(), windows), prefix + [...parts, leaf].join("/"), windows),
+  })
+})

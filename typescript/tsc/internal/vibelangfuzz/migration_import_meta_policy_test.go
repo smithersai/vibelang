@@ -82,9 +82,11 @@ func FuzzMigrationImportMetaPolicy(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
 	binary := cliBuild(f, w.Dir)
-	f.Add("dirname", uint8(0))
+	// Every key once, so the ignore-exit and --fix observations run without fuzzing.
+	for _, key := range importMetaPolicyKeys {
+		f.Add(key, uint8(0))
+	}
 	f.Add("dirname-pragma", uint8(15))
-	f.Add("url", uint8(0))
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		TestMigrationImportMetaPolicyQuoted(t)
 		if !slices.Contains(importMetaPolicyKeys, key) {
