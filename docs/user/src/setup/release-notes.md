@@ -35,6 +35,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Following the Data guide could report an unknown option for migration-only fixes. The guide now includes the required `--fix` flag.
 - The services and layers guides described available forms as awaiting compiler support. They now describe those forms as available.
 - The timing examples could reject their output code as a fiber operation outside an effect function. They now join the fiber before formatting its result.
+- The basic Schema examples appeared unfinished and included invalid runner code. They now run and display the documented results.
 
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
