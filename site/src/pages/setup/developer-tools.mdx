@@ -200,6 +200,10 @@ package that installs Knip or sets a `knip` key in `package.json` a
 file replaces it, and a JSON file cannot hold a compiler, so Knip then does not
 read `.vibe` modules: such a command needs a JavaScript configuration.
 
+Default aliases such as `export default value` keep their named binding. Knip
+can report the named and default exports as duplicates, matching TypeScript;
+its unused-export findings and JSDoc tags keep their usual meaning.
+
 For an installed Knip release whose compiled-output mapper searches only its
 built-in extensions, setup also writes a versioned patch under `patches/` and
 registers it with pnpm's or Bun's `patchedDependencies`. The mapper then uses

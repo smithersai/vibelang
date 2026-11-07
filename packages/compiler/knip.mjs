@@ -65,7 +65,12 @@ export function compile(text, path = "file.vibe") {
     if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + source(node))
     // TypeScript gives a statement's JSDoc to its first declaration only.
     else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration, typeReads(node.declaration)).map((stub, i) => (i ? "" : doc) + stub))
-    else if (node.type === "ExportDefaultDeclaration") lines.push(doc + "export default 0")
+    else if (node.type === "ExportDefaultDeclaration") {
+      let value = node.declaration
+      while (value?.type === "ParenthesizedExpression") value = value.expression
+      // Keep aliases so Knip can associate default and named exports.
+      lines.push(doc + (value?.type === "Identifier" ? source(node) : "export default 0"))
+    }
   })
   const reads = new Set()
   // Knip reads this output as TypeScript, so preserve tag uses as value
