@@ -55,12 +55,21 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	p.plan.replace(start, p.tokenStart(items), p.names.prelude("Effect")+".forEach(")
 	p.visit(items, e)
 	at := items.End()
-	p.plan.insert(at, ", (")
-	p.concurrentCopy(pattern, at, env{})
-	p.plan.insert(at, ") => ")
+	itemName := p.names.fresh("$concurrentItem")
+	p.plan.insert(at, ", ("+itemName+") => ")
 	p.plan.replace(at, p.tokenStart(body), "")
 	continues := p.concurrentJumps(loopBody)
-	p.plan.mark(editProgram, partOpen, p.tokenStart(body), p.tokenStart(body), selfArg(loopBody))
+	p.plan.mark(editProgram, partOpen, bodyStart, bodyStart, selfArg(loopBody))
+	// Head initialization belongs to the item generator, where defaults and
+	// computed keys may run Effects. Keep the written body in its own block,
+	// so its declarations cannot shadow a head default.
+	kind := "const"
+	if declaration := pattern.Parent; declaration != nil && ast.IsVariableDeclaration(declaration) && declaration.Parent != nil && declaration.Parent.Flags&ast.NodeFlagsLet != 0 {
+		kind = "let"
+	}
+	p.plan.insert(bodyStart, "{ "+kind+" ")
+	p.concurrentCopy(pattern, bodyStart, newEffectEnv())
+	p.plan.insert(bodyStart, " = "+itemName+"; ")
 	// The parser gives an unbraced statement a synthetic block at the
 	// statement's own span. Supply only those braces the source lacks.
 	braced := p.text[bodyStart] == '{'
@@ -86,6 +95,7 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 		}
 		p.plan.replace(start, node.End(), "return")
 	}
+	p.plan.insert(body.End(), " }")
 	p.plan.mark(editProgram, partClose, body.End(), body.End(), "")
 	concurrency := `"unbounded"`
 	if limitName != "" {
