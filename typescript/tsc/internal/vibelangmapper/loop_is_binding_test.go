@@ -14,6 +14,8 @@ func TestLoopIsBindingProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, source := range map[string]string{
+		"call-argument":           "function use(value: boolean) { return value } export function fresh() { use(1 is let captured); return captured }",
+		"call-argument-object":    "function use(value: boolean) { return value } export function fresh(value: unknown) { use(value is {id: let captured}); return captured }",
 		"fresh-binding-corpus":    string(corpus),
 		"condition-and-increment": "function use(n: number) {} export function fresh(it: {next(): IteratorResult<number>}) { for (; it.next() is {done: false, value: let v}; use(v)) {} }",
 		"condition-and-body":      "function use(n: number) {} export function fresh(it: {next(): IteratorResult<number>}) { for (; it.next() is {done: false, value: let v};) { use(v) } }",

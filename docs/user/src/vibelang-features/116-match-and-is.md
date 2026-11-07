@@ -482,6 +482,8 @@ An `is` binding in an `if` head belongs to the block that holds the `if`, as a `
 
 The TypeScript mapper supports binding `is` tests in `for` heads, including parenthesized subjects and separate initializer and update expressions. Each condition evaluation reads its subject once, and projected source locations continue to refer to the written loop.
 
+Binding `is` tests also work inside a call argument and its literal containers, such as `consume(subject is let value)`. The bindings belong to the caller's lexical block, and the mapper preserves the subject's single evaluation and the written source locations.
+
 
 Pattern bindings follow TypeScript's project options. With `exactOptionalPropertyTypes`, `when { let x }` on `{ x?: number }` binds `number`; an explicit `number | undefined` payload stays a union. A successful pattern proves extraction presence, so the access options add no artificial `undefined` to its binding. Reads you write in an arm or guard keep the ordinary access checks.
 A class pattern names a class. A `data` declaration's name, a `schema` declaration's name or a `Context.Reference` is a value, not a class, so `when Delivery:`, `when Address:` or `when Limit:` reports `EK0702`: match a variant with `when { _tag: "Sent" }:`, and test a schema in a guard, `when let value and if (Schema.is(Address)(value)):`.

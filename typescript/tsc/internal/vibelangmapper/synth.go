@@ -390,7 +390,13 @@ func (w *printer) variableList(list *ast.Node, e env) {
 		if i > 0 {
 			w.write(", ")
 		}
-		w.node(declaration.Name(), e)
+		if declaration.Flags&ast.NodeFlagsVibeLangPatternHoist != 0 {
+			// This declaration precedes the source expression owning its name.
+			// Copy the name so it does not advance that expression's source cursor.
+			w.write(w.identifier(declaration.Name()))
+		} else {
+			w.node(declaration.Name(), e)
+		}
 		if typ := declaration.Type(); typ != nil && !parser.MatchKeyTypeHoisted(declaration) && ast.IsIdentifier(declaration.Name()) &&
 			declaration.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 && strings.HasPrefix(declaration.Name().Text(), "$matchKey") {
 			printed := tsprinter.NewPrinter(tsprinter.PrinterOptions{RemoveComments: true}, tsprinter.PrintHandlers{}, nil).Emit(typ, p.file)

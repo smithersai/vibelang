@@ -577,7 +577,7 @@ func (p *projector) visitChildren(node *ast.Node, e env) {
 // visitList walks nodes in order.
 func (p *projector) visitList(nodes []*ast.Node, e env) {
 	for _, node := range nodes {
-		if parser.VibeLangMatchCacheDeclaration(node) == nil {
+		if parser.VibeLangMatchCacheDeclaration(node) == nil && !isPatternHoist(node) {
 			continue
 		}
 		owner := node.Parent
@@ -596,6 +596,21 @@ func (p *projector) visitList(nodes []*ast.Node, e env) {
 	for _, node := range nodes {
 		p.visit(node, e)
 	}
+}
+
+// Pattern declarations share their source span with the later is expression.
+// Render their block once, as for match-cache declarations, so the binding
+// declaration cannot replace text inside the call that contains its pattern.
+func isPatternHoist(node *ast.Node) bool {
+	if !ast.IsVariableStatement(node) {
+		return false
+	}
+	for _, declaration := range node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+		if declaration.Flags&ast.NodeFlagsVibeLangPatternHoist != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // formResolver answers the form decisions the projection needs from the
