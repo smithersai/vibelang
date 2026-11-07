@@ -928,7 +928,6 @@ const name = await Effect.runPromise(greetUser("1"))
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-33
 // run: const output = try Console.Console; provide Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]) { const ticker = try sync(() => makeTicker()); const value = try wrappedCalls('{"ok":true}', ".", ticker); try Console.log(try Effect.try(() => JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free }))) }
 import { makeTicker, offTick, onceTick, statfs, uptime } from "./node-apis.ts"
 import type { EventEmitter } from "node:events"
