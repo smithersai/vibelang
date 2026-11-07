@@ -151,7 +151,7 @@ Declaration-only comparisons resolve a TypeScript source target in conditional e
 
 A shipped declaration copy can share its explicitly recorded logical path with an identical original declaration. Alias reconstruction accepts that one recorded owner in either file order; conflicting bytes, missing stored targets and aliases to separate declarations remain unavailable.
 
-Documentation checks follow namespace re-export aliases to their authored declarations. Type-only and value exports retain their prose, tags and comment-block counts when forwarded from a private module; changed or removed comments still fail.
+Documentation checks follow namespace re-export aliases to their authored declarations. Type-only and value exports retain their prose, tags and comment-block counts when forwarded from a private module; changed or removed comments still fail. A module header that declaration emit stacks onto the first declaration, once the imports between them are dropped, is not counted as that declaration's block when the converted entry re-exports the declaration and keeps the header verbatim at its own head; a header that changes, disappears or is copied onto the moved declaration still fails.
 
 
 The diagnostic reader accepts compiler output with `LF`, `CRLF`, or mixed line endings, preserving diagnostic codes, source locations and repair notes. A nonzero compiler exit with ordinary diagnostics is an error result; a crash, signal, or failing exit without diagnostics stops the step.

@@ -352,13 +352,15 @@ function signatureDocs(ts, checker, signature) {
 // count as well so adding a duplicate authored comment cannot disappear in
 // that normalized documentation view. A generated-only block contributes no
 // authored content; existing authored throws remain checked by sameExportDocs.
-function authoredDocBlocks(ts, symbol) {
+const docHost = (ts, host) => host && ts.isVariableDeclaration(host) && host.parent && ts.isVariableDeclarationList(host.parent) && host.parent.parent && ts.isVariableStatement(host.parent.parent) ? host.parent.parent : host
+const docDeclarations = symbol => symbol?.declarations ?? [symbol?.getDeclaration?.() ?? symbol?.valueDeclaration]
+function authoredDocBlocks(ts, symbol, kept = new Set()) {
   const seen = new Set()
-  const declarations = symbol?.declarations ?? [symbol?.getDeclaration?.() ?? symbol?.valueDeclaration]
-  for (let host of declarations) {
+  for (const declaration of docDeclarations(symbol)) {
+    const host = docHost(ts, declaration)
     if (!host) continue
-    if (ts.isVariableDeclaration(host) && host.parent && ts.isVariableDeclarationList(host.parent) && host.parent.parent && ts.isVariableStatement(host.parent.parent)) host = host.parent.parent
     for (const doc of host.jsDoc ?? []) {
+      if (kept.has(doc)) continue
       const text = normalized(ts.getTextOfJSDocComment(doc.comment) ?? "")
       const tags = [...doc.tags ?? []]
       if (!text && tags.length <= 1 && tags.every(tag => normalized(tag.getText()) === "@throws {never}")) continue
@@ -367,16 +369,34 @@ function authoredDocBlocks(ts, symbol) {
   }
   return seen.size
 }
-function docBlockDifference(ts, before, after) {
-  const a = authoredDocBlocks(ts, before), b = authoredDocBlocks(ts, after)
+// A file's header comment stacks onto its first declaration when the
+// declaration emit drops the imports between them, as an earlier block of that
+// declaration. When the converted entry moves the declaration behind a
+// re-export, the header stays verbatim at the head of the entry file on another
+// statement: it is neither moved nor lost, so the before side does not count it.
+// Every other earlier block still counts, so an added duplicate still fails.
+function keptHeaderBlocks(ts, before, after, afterEntry) {
+  const kept = new Set()
+  const first = afterEntry?.statements?.[0]
+  if (!first || docDeclarations(after).some(declaration => docHost(ts, declaration) === first)) return kept
+  const head = new Set((ts.getLeadingCommentRanges(afterEntry.text, 0) ?? []).map(range => afterEntry.text.slice(range.pos, range.end)))
+  for (const declaration of docDeclarations(before)) {
+    const host = docHost(ts, declaration)
+    if (!host || host !== host.getSourceFile().statements[0]) continue
+    for (const doc of (host.jsDoc ?? []).slice(0, -1)) if (head.has(doc.getText())) kept.add(doc)
+  }
+  return kept
+}
+function docBlockDifference(ts, before, after, afterEntry) {
+  const a = authoredDocBlocks(ts, before, keptHeaderBlocks(ts, before, after, afterEntry)), b = authoredDocBlocks(ts, after)
   return a === b ? {} : { beforeDocBlocks: a, afterDocBlocks: b }
 }
 
 // Will, 2026-11-04 / VIP-27: only an added generated never contract is
 // discretionary. Compare in twin -> emitted order; an authored tag on the twin
 // is never removed, replaced or normalized away.
-function sameExportDocs(ts, checker, symbol, before = "", after = "", beforeSymbol) {
-  if (authoredDocBlocks(ts, beforeSymbol) !== authoredDocBlocks(ts, symbol)) return false
+function sameExportDocs(ts, checker, symbol, before = "", after = "", beforeSymbol, afterEntry) {
+  if (authoredDocBlocks(ts, beforeSymbol, keptHeaderBlocks(ts, beforeSymbol, symbol, afterEntry)) !== authoredDocBlocks(ts, symbol)) return false
   if (before === after) return true
   if (!symbol || /^@(?:throws|exception|rethrows)\b/mu.test(before)) return false
   const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0] ?? symbol.getDeclaration?.()
@@ -1662,7 +1682,8 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     const unalias = s => s.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(s) : s
     const adoc = docs(ts, checker, a) || docs(ts, checker, unalias(a))
     const bdoc = docs(ts, checker, b) || docs(ts, checker, unalias(b))
-    if (!sameExportDocs(ts, checker, unalias(b), adoc, bdoc, unalias(a))) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc, ...docBlockDifference(ts, unalias(a), unalias(b)) })
+    const afterEntry = b.declarations?.[0]?.getSourceFile()
+    if (!sameExportDocs(ts, checker, unalias(b), adoc, bdoc, unalias(a), afterEntry)) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc, ...docBlockDifference(ts, unalias(a), unalias(b), afterEntry) })
     const aliases = [a, b]
     a = unalias(a); b = unalias(b)
     if (absentScope) {
