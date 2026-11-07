@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#selecting-ordinary-fix-files | Only an error in a listed module refuses a fix: a fix that breaks an unlisted module is kept, and the compilation after `--fix` reports the error.
+// run.mjs repairs a.vibe, whose fix narrows the array more.vibe pushes onto,
+// with more.vibe unlisted, listed, and under ordinary --fix.
+export const witness = 1

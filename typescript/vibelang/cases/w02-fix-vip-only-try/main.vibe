@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#fix-scopes | It writes `try` before each call that ran where it stood before VIP-1, and removes the `try` that ran a known legacy wrapper, deciding from the original resolved callable and migration provenance, not the final value's shape or annotation alone.
+// run.mjs migrates input.txt, a module written for the release before VIP-1,
+// with --fix-vip-only, runs the result, and runs ordinary --fix beside it.
+export const witness = 1

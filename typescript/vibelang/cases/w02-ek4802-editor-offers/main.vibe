@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | The editor offers `try` for a direct Effect-valued argument when its written failure and requirement contract accepts it, or explicit type arguments to keep the program.
+// run.mjs asks the language server for EK4802 quick fixes at a direct argument,
+// under a contract that rejects the run, and in a container and a callback.
+export const witness = 1

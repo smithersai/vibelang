@@ -1,0 +1,1 @@
+batch --fix writes only try and refuses the try that adds an error

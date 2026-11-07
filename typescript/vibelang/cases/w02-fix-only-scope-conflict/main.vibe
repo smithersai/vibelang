@@ -1,0 +1,5 @@
+// rule-evidence: docs/design/src/007-tooling.md#selecting-ordinary-fix-files | `--only` cannot be combined with `--fix-migration-only` or `--fix-vip-only`, because a project-wide migration changes what other modules mean.
+// rule-evidence: docs/design/src/007-tooling.md#selecting-ordinary-fix-files | Alone, it is an unknown compiler option (`TS5023`).
+// run.mjs combines --only with each scope flag in either order, and runs it
+// without --fix, beside stock TypeScript's answer for an unknown option.
+export const witness = 1
