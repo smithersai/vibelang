@@ -89,6 +89,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Calling a function whose return type is an interface named `Effect` that copies Effect's `~effect/Effect` marker without declaring its type parameters crashed the compiler. Such a value is now ordinary data, and the call follows the usual throw-contract rules.
 
 - A relational pattern such as `when <= limits.max:` or `when in table:` evaluated its operand, running a getter or index read, even for a subject that could not match, such as an object for `<=` or a number for `in`. The subject's type is now tested first, so the operand runs only for a string, number or bigint, or a property key for `in`.
+- The page outline contained invalid list markup on wide screens. Its position marker now stays out of screen-reader navigation while headings remain proper list items.
 
 - An explicit `try` inside a scoped fork operand could be skipped in TypeScript mapper output, leaving the child to return a cold Effect. The operand now runs the written `try` before forking its result.
 
