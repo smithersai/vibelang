@@ -1,0 +1,47 @@
+// expect-result: {"skipped":"tdz","alternate":[1,"tdz",3,"tdz"],"ternary":[1,2],"argument":[1,2],"labeled":[1,11,2,3,13],"shadow":[99,[11,12]]}
+// Chapter 004, Pattern bindings: an is below a while condition's && chain binds in
+// the loop head, as one in a top-level conjunct does. Each condition evaluation
+// starts with fresh uninitialized cells, a true condition shares them with its
+// body, a skipped binding stays uninitialized, and the names do not leave the loop.
+const safe = (read: () => unknown) => { try { return read() } catch (e) { return e instanceof ReferenceError ? "tdz" : "other" } }
+function feed(values: Array<number>) { let i = 0; return () => values[i++] ?? 99 }
+function keep(flag: boolean) { return flag }
+function skipped(): unknown {
+  // @ts-expect-error: TS2454, the successful condition skipped initialization
+  while (true || (1 is const x)) { return x }
+}
+function alternate() {
+  let n = 0; const reads: Array<() => unknown> = []
+  while (n < 4 && (n++ % 2 === 1 || (n is let cell))) reads.push(() => cell)
+  return reads.map(safe)
+}
+function ternary(next: () => number) {
+  const reads: Array<() => unknown> = []
+  while ((next() is let v) ? v < 3 : false) { reads.push(() => v) }
+  return reads.map(safe)
+}
+function argument(next: () => number) {
+  let count = 0; const reads: Array<() => unknown> = []
+  while (count < 2 && keep(next() is let v)) { count++; reads.push(() => v) }
+  return reads.map(safe)
+}
+function labeled(next: () => number) {
+  let turns = 0; const reads: Array<() => unknown> = []
+  outer: while (turns++ < 3 && (false || (next() is let v))) {
+    reads.push(() => v)
+    if (turns === 2) continue outer
+    reads.push(() => v + 10)
+  }
+  return reads.map(safe)
+}
+function shadow() {
+  const x = 99; let n = 0; const readers: Array<() => unknown> = []
+  while (n < 2 && (false || (++n is let x))) { readers.push(() => x); x += 10 }
+  return [x, readers.map(safe)]
+}
+export effect function main() {
+  return {
+    skipped: safe(skipped), alternate: alternate(), ternary: ternary(feed([1, 2, 3])),
+    argument: argument(feed([1, 2, 3])), labeled: labeled(feed([1, 2, 3])), shadow: shadow()
+  }
+}
