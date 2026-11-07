@@ -138,7 +138,7 @@ func TestMigrationContextualContractOracleControls(t *testing.T) {
 
 func FuzzMigrationContextualContracts(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"context:satisfies:4", "context:returned:0", "context:generic:10", "context:written-control:3", "context:direct-control:0"} {
+	for _, key := range []string{"context:satisfies:4", "context:satisfies:0", "context:satisfies:15", "context:returned:0", "context:returned:15", "context:generic:10", "context:generic:15", "context:written-control:3", "context:direct-control:0"} {
 		f.Add([]byte(key))
 	}
 	w := NewWorkspace(f)

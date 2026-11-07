@@ -1,4 +1,0 @@
-FuzzMigrationContextualContracts declaration:satisfies:named compiler VIP-27: a named Effect.fn repair widens inferred requirements to the contextual interface; lane migfix-opencode
-FuzzMigrationContextualContracts declaration:generic:named compiler VIP-27: a named Effect.fn repair in a generic factory widens inferred requirements to the contextual interface; lane migfix-opencode
-FuzzMigrationContextualContracts corpus:opencode-contextual-factory-requirements compiler VIP-27: reproduces declaration:satisfies:named; lane migfix-opencode
-FuzzMigrationContextualContracts declaration:returned:named compiler VIP-27: a named Effect.fn repair in a returned factory widens inferred requirements to the contextual interface; lane migfix-opencode
