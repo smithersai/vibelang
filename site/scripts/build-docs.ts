@@ -24,7 +24,7 @@ if (process.argv[2] === "--markdown") {
   for (const args of [
     ["scripts/sync-spec-docs.mjs", "../docs", "--facts", factsFile],
     ["scripts/sync-user-docs.mjs", "../docs/user"],
-    ...(process.argv.includes("--sources") ? [] : [["scripts/patch-vocs-search.mjs"], ["scripts/patch-vocs-outline.mjs"], ["scripts/patch-vocs-navigation.mjs"], ["scripts/patch-vocs-tables.mjs"]]),
+    ...(process.argv.includes("--sources") ? [] : [["scripts/patch-vocs-search.mjs"], ["scripts/patch-vocs-outline.mjs"], ["scripts/patch-vocs-navigation.mjs"], ["scripts/patch-vocs-tables.mjs"], ["scripts/patch-vocs-not-found.mjs"]]),
   ]) {
     const result = Bun.spawnSync(["node", ...args], { cwd: site, env: { ...process.env }, stdout: "inherit", stderr: "inherit" })
     if (result.exitCode) process.exit(result.exitCode)

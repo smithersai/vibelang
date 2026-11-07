@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration kept a module in TypeScript on every pass when a plain function returning an Effect called TypeScript that may throw, such as an eager `Effect.succeed(foreign())` factory or a listener registration. With the earlier pass's receipts listed, those declarations now move into a `module throwing { }` body, keeping their eager calls and declarations, and the rest of the module migrates.
 - An existing platform helper could block migration even when a module body needed no new sibling. Body-only repairs now proceed while preserving that helper; repairs that need its path still refuse the collision.
 
+- Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.
+
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
 - Wide documentation tables could not be scrolled with the keyboard on phones. Table containers now accept keyboard focus, show a focus outline and scroll with the arrow keys.

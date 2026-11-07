@@ -124,6 +124,10 @@ The pinned Vocs outline renders a decorative position marker directly inside its
 
 The navigation patch names the top menu and documentation sidebar, and the outline patch names the page outline. Its browser regression checks distinct navigation landmarks in both themes. The same source/runtime integrity and dependency ownership checks apply. Run `npm ci` after changing a patch so the reviewed upstream files are restored before patching.
 
+### Temporary Vocs missing-page landmark patch
+
+The missing-page patch gives the error content a main landmark. Its browser regression checks phone and desktop widths in both themes, then follows the home link. The install, development and build hooks use the same reviewed source/runtime hashes and dependency ownership checks as the outline patch. Run `npm ci` to restore upstream files after changing a patch.
+
 ### Temporary Vocs table keyboard patch
 
 The MDX table wrapper has `tabIndex={0}` and a visible focus outline, so keyboard users can reach overflowing columns with the arrow keys. The browser regression checks Tab, Shift+Tab and horizontal scrolling at phone widths, plus focus on desktop, in both themes. The install, development and build hooks apply the same pinned-version, source/runtime hash and dependency ownership checks as the other Vocs patches.
