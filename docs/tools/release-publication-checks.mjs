@@ -2,6 +2,15 @@ import assert from "node:assert/strict"
 
 const releaseVersion = release => release.split("\n")[0].replace(/ \(unreleased\)$/, "")
 
+function assertEntriesExclude(entries, pattern) {
+  const match = pattern.exec(entries)
+  if (!match) return
+  const start = entries.lastIndexOf("\n- ", match.index)
+  const end = entries.indexOf("\n- ", match.index + match[0].length)
+  const entry = entries.slice(start < 0 ? 0 : start + 1, end < 0 ? undefined : end)
+  assert.doesNotMatch(entry, pattern, "Release note contains internal bookkeeping:\n" + entry)
+}
+
 export function assertReleasePublication(notes, version) {
   const releases = notes.split(/^## /m).slice(1)
   const candidate = releases.findIndex(release => release.split("\n")[0].replace(/ \(unreleased\)$/, "") === version)
@@ -14,20 +23,20 @@ export function assertReleasePublication(notes, version) {
   const publicationNotes = releases.slice(0, candidate + 1).flatMap(release =>
     release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
   ).join("\n")
-  assert.doesNotMatch(publicationNotes, /failures[- ]spec\s+check|synthetic\s+benchmark\s+imports|native\s+compiler\s+regression\s+suite|deployed[- ]release\s+check|built[- ]site\s+validation|example\s+validation\s+carried\s+an?\s+unused/i)
-  assert.doesNotMatch(publicationNotes, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
-  assert.doesNotMatch(publicationNotes, /merge\s+gate|bounded\s+hang\s+probes|stale\s+hang\s+marker/i)
-  assert.doesNotMatch(publicationNotes, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
-  assert.doesNotMatch(publicationNotes, /scripts\/ci\.sh|differential (?:checks|comparisons)|AST layout regression test|Repository validation|Arrow-body and heartbeat checks|named-region runtime checks/i)
-  assert.doesNotMatch(publicationNotes, /Docs checks could use|The docs check read|Specification checks could mistake|A docs check could confuse|Generating documentation could hang|Spec-derived checks could confuse|The documented debugging recipe check|Differential .Exit. checks/i)
-  assert.doesNotMatch(publicationNotes, /The release rehearsal stopped at its Vite warning check|A registry rehearsal could inherit/i)
-  assert.doesNotMatch(publicationNotes, /site(?:['’]s)?\s+contrast\s+check/i)
-  assert.doesNotMatch(publicationNotes, /forms[- ]table\s+check|Go\s+build\s+slot/i)
-  assert.doesNotMatch(publicationNotes, /(?:mask|LSP|editor)\s+smoke\s+test|fork\s+startup\s+checks/i)
-  assert.doesNotMatch(publicationNotes, /Compiler\s+validation\s+treated\s+an?\s+error\s+name|CI\s+reused\s+an?\s+older/i)
-  assert.doesNotMatch(publicationNotes, /editor\s+smoke\s+validation|compiler\s+fuzz\s+validation|schema\s+regression\s+check/i)
-  assert.doesNotMatch(publicationNotes, /migration\s+oracle\s+regression\s+tests|(?:compiler|pin)\s+regression\s+suite|compiler[\u0027\u2019]s\s+keyword\s+coverage\s+check|CI[- ]health\s+reports|declaration[- ]oracle\s+tests|snippet\s+tools[\u0027\u2019]\s+pending[- ]output\s+test\s+fixtures|narrow\s+hosted\s+CI\s+checks/i)
-  assert.doesNotMatch(publicationNotes, /contributor\s+(?:checks|queue)|contribution\s+guide|publication\s+checks|release\s+rehearsals|release-history\s+checks|documentation\s+check|reference\s+check|Appendix\s+diagnostic\s+replay|fixtures\s+now\s+(?:load|initialize)/i)
+  assertEntriesExclude(publicationNotes, /failures[- ]spec\s+check|synthetic\s+benchmark\s+imports|native\s+compiler\s+regression\s+suite|deployed[- ]release\s+check|built[- ]site\s+validation|example\s+validation\s+carried\s+an?\s+unused/i)
+  assertEntriesExclude(publicationNotes, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
+  assertEntriesExclude(publicationNotes, /merge\s+gate|bounded\s+hang\s+probes|stale\s+hang\s+marker/i)
+  assertEntriesExclude(publicationNotes, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
+  assertEntriesExclude(publicationNotes, /scripts\/ci\.sh|differential (?:checks|comparisons)|AST layout regression test|Repository validation|Arrow-body and heartbeat checks|named-region runtime checks/i)
+  assertEntriesExclude(publicationNotes, /Docs checks could use|The docs check read|Specification checks could mistake|A docs check could confuse|Generating documentation could hang|Spec-derived checks could confuse|The documented debugging recipe check|Differential .Exit. checks/i)
+  assertEntriesExclude(publicationNotes, /The release rehearsal stopped at its Vite warning check|A registry rehearsal could inherit/i)
+  assertEntriesExclude(publicationNotes, /site(?:['’]s)?\s+contrast\s+check/i)
+  assertEntriesExclude(publicationNotes, /forms[- ]table\s+check|Go\s+build\s+slot/i)
+  assertEntriesExclude(publicationNotes, /(?:mask|LSP|editor)\s+smoke\s+test|fork\s+startup\s+checks/i)
+  assertEntriesExclude(publicationNotes, /Compiler\s+validation\s+treated\s+an?\s+error\s+name|CI\s+reused\s+an?\s+older/i)
+  assertEntriesExclude(publicationNotes, /editor\s+smoke\s+validation|compiler\s+fuzz\s+validation|schema\s+regression\s+check/i)
+  assertEntriesExclude(publicationNotes, /migration\s+oracle\s+regression\s+tests|(?:compiler|pin)\s+regression\s+suite|compiler[\u0027\u2019]s\s+keyword\s+coverage\s+check|CI[- ]health\s+reports|declaration[- ]oracle\s+tests|snippet\s+tools[\u0027\u2019]\s+pending[- ]output\s+test\s+fixtures|narrow\s+hosted\s+CI\s+checks/i)
+  assertEntriesExclude(publicationNotes, /contributor\s+(?:checks|queue)|contribution\s+guide|publication\s+checks|release\s+rehearsals|release-history\s+checks|documentation\s+check|reference\s+check|Appendix\s+diagnostic\s+replay|fixtures\s+now\s+(?:load|initialize)/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
   // Preserve these shipped fixes in their owning release, even while preparing a newer one.
@@ -46,7 +55,7 @@ export function assertReleaseContrast(notes, version) {
   const bullets = releases.slice(0, candidate + 1).flatMap(release =>
     release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
   ).join("\n")
-  assert.doesNotMatch(bullets, /site(?:['’]s)?\s+contrast\s+check|contrast\s+(?:audit\s+)?(?:state|diagnostics?|failure)/i)
+  assertEntriesExclude(bullets, /site(?:['’]s)?\s+contrast\s+check|contrast\s+(?:audit\s+)?(?:state|diagnostics?|failure)/i)
 }
 
 const upgradeHeadings = [/^Upgrade from /, /^Configuration upgrade$/]

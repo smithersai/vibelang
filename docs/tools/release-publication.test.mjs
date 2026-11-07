@@ -1,6 +1,6 @@
 // Publication requirement: the user-facing bug list excludes internal CI and
 // fuzz bookkeeping. Exercise the real publication guard with isolated notes.
-import { assertReleasePublication } from "./release-publication-checks.mjs"
+import { assertReleasePublication, assertReleaseContrast } from "./release-publication-checks.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -119,4 +119,56 @@ test("a new release keeps previously published fixes in their original version",
     assert.throws(() => assertReleasePublication(notes.replace("Editor parsing rejected", "Editor formerly rejected"), version),
       /retain the user fix once/)
   }), { numRuns: 80, seed: 120012, examples: [[12, false], [12, true]] })
+})
+
+const unrelatedNotes = Array.from({ length: 256 }, (_, index) =>
+  "- The editor retains unrelated_marker_" + index + " when a file changes. " + "Context retained. ".repeat(16))
+
+function diagnosticNotes(row, position) {
+  const notes = [...unrelatedNotes]
+  notes.splice(position, 0, row)
+  return goodNotes.replace("<!-- injected-row -->", notes.join("\n"))
+}
+
+function assertRejectedEntry(check, notes, row) {
+  assert.throws(() => check(notes, "0.0.11"), error => {
+    assert.equal(error.code, "ERR_ASSERTION")
+    assert.ok(error.actual === row, "the diagnostic must contain exactly the rejected entry")
+    assert.ok(!error.message.includes("unrelated_marker_"), "unrelated entries do not belong in the diagnostic")
+    return true
+  })
+}
+
+test("publication diagnostics isolate a rejected entry at every list boundary", () => {
+  for (const position of [0, 1, 128, 255, 256]) {
+    assertRejectedEntry(assertReleasePublication, diagnosticNotes(witness, position), witness)
+  }
+})
+
+test("publication diagnostics retain wrapped entry text and spelling variants", () => {
+  fc.assert(fc.property(fc.constantFrom("merge gate", "forms-table check", "contributor checks", "fuzz"),
+    fc.constantFrom(" ", "  ", "\t", "\n  "), fc.boolean(), fc.integer({ min: 0, max: 256 }),
+    (phrase, separator, uppercase, position) => {
+      const text = (uppercase ? phrase.toUpperCase() : phrase).split(" ").join(separator)
+      const row = "- The " + text + " now passes.\n  The complete entry remains visible."
+      assertRejectedEntry(assertReleasePublication, diagnosticNotes(row, position), row)
+    }), { numRuns: 64, seed: 120047 })
+})
+
+test("contrast diagnostics isolate the rejected entry without losing surrounding-note validation", () => {
+  const row = "- The site's contrast check now passes."
+  assertRejectedEntry(assertReleaseContrast, diagnosticNotes(row, 128), row)
+  const allowed = diagnosticNotes(publicFix, 128)
+  assert.doesNotThrow(() => assertReleasePublication(allowed, "0.0.11"))
+  assert.doesNotThrow(() => assertReleaseContrast(allowed, "0.0.11"))
+})
+
+test("the strict publication command reports the rejected entry without the rest of a long release", t => {
+  const result = fixture(t).check([...unrelatedNotes.slice(0, 128), witness, ...unrelatedNotes.slice(128)].join("\n"))
+  const outputBytes = Buffer.byteLength(result.stdout + result.stderr)
+  t.diagnostic("publication diagnostic output bytes: " + outputBytes)
+  assert.equal(result.status, 1)
+  assert.ok(!result.stdout.includes("unrelated_marker_"), "the command must not print unrelated release entries")
+  assert.match(result.stdout, /merge gate/)
+  assert.ok(Buffer.byteLength(result.stdout + result.stderr) < 8000, "a single short rejected entry has a short diagnostic")
 })

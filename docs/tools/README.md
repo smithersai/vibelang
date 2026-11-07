@@ -539,6 +539,18 @@ The bookkeeping property runs `40` seeded cases and its explicit examples.
 It has `60` seconds for its child-process fixtures on shared hosts; each child
 retains its own timeout.
 
+The strict publication guard reports the complete rejected entry, including
+wrapped lines, without printing unrelated release notes. Run it before
+submitting release-note changes:
+
+```sh
+VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs
+```
+
+`node --test docs/tools/release-publication.test.mjs` also exercises rejected
+entries at the beginning, middle and end of long lists, spelling and
+whitespace variants, and the actual strict command.
+
 ### Starter templates
 
 `bun test docs/tools/starter-templates.test.ts` checks every directory under
@@ -555,3 +567,4 @@ an invalid program cannot establish a clean audit. `-compiler` selects the
 compiler explicitly; the default is this checkout's native compiler. The
 audit uses the project's compiler configuration; the template configs keep
 the default diagnostic severities.
+
