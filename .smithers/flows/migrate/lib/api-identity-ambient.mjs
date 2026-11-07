@@ -3,6 +3,7 @@
 // Diagnose the original environments independently before applying any edits.
 // Identifiers are selected by their TypeScript symbols, never by text matching.
 import { relative, resolve } from 'node:path'
+import { ownsFile } from './api-projection.mjs'
 
 
 // A positive closure proof lets equal global environments share one set of
@@ -43,7 +44,7 @@ function equivalentEnvironment(ts, left, right, before, after, host) {
   const key = (file, base) => {
     if (!file) return null
     file = resolve(file)
-    return (file === base || file.startsWith(base + '/')) && !file.includes('/node_modules/')
+    return (file === base || ownsFile(base, file)) && !file.includes('/node_modules/')
       ? 'owned:' + relative(base, file) : 'shared:' + file
   }
   const closure = (program, base) => program.getSourceFiles().map(source => {
@@ -68,7 +69,7 @@ function equivalentEnvironment(ts, left, right, before, after, host) {
 
 export function isolateAmbientSnapshots(ts, snapshots, compilerOptions, host, initialProgram, diagnose) {
   const virtual = new Map(), surfaces = new Map(), diagnostics = [], names = new Map(), equivalentFiles = new Map(), sourceFiles = new Map()
-  const owned = source => snapshots.some(({base}) => source.fileName === base || source.fileName.startsWith(base + '/')) && !source.fileName.includes('/node_modules/')
+  const owned = source => snapshots.some(({base}) => source.fileName === base || ownsFile(base, source.fileName)) && !source.fileName.includes('/node_modules/')
   const contributes = source => {
     if (!ts.isExternalModule(source) && !ts.isJsonSourceFile(source)) return true
     let found = false
@@ -111,7 +112,7 @@ export function isolateAmbientSnapshots(ts, snapshots, compilerOptions, host, in
     done.add(base)
     const program = programs[index]
     const checker = program.getTypeChecker()
-    const own = source => (source.fileName === base || source.fileName.startsWith(base + '/')) && !source.fileName.includes('/node_modules/')
+    const own = source => (source.fileName === base || ownsFile(base, source.fileName)) && !source.fileName.includes('/node_modules/')
     const sources = program.getSourceFiles().filter(own)
     sourceFiles.set(base, new Set(sources.map(source => source.fileName)))
     diagnostics.push(...diagnose(program, Object.values(entries), sources.map(source => source.fileName)))
