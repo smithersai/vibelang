@@ -1,0 +1,26 @@
+{
+  "solution": {
+    "files": [],
+    "references": [
+      {
+        "path": "./leaf"
+      }
+    ]
+  },
+  "project": {
+    "compilerOptions": {
+      "declaration": true,
+      "target": "ESNext",
+      "module": "ESNext"
+    },
+    "include": [
+      "src"
+    ]
+  },
+  "source": "export const value = 1\n",
+  "sizes": [
+    100,
+    200,
+    400
+  ]
+}

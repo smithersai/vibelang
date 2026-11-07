@@ -7,6 +7,38 @@ const inside = (parent, child) => {
   const path = relative(parent, child)
   return path === "" || path !== ".." && !path.startsWith(".." + sep) && !isAbsolute(path)
 }
+// Match the native path implementation's case rules and separator boundaries.
+const pathKey = path => process.platform === "win32" ? resolve(path).toLowerCase() : resolve(path)
+
+function descendantIndex(paths) {
+  const keys = new Set(paths.map(pathKey)), sorted = [...keys].sort()
+  return parent => {
+    const key = pathKey(parent)
+    if (keys.has(key)) return true
+    const prefix = key.endsWith(sep) ? key : key + sep
+    let low = 0, high = sorted.length
+    while (low < high) {
+      const middle = (low + high) >>> 1
+      if (sorted[middle] < prefix) low = middle + 1
+      else high = middle
+    }
+    return sorted[low]?.startsWith(prefix) ?? false
+  }
+}
+
+function outermostOutputs(paths) {
+  const counts = new Map()
+  for (const path of paths) counts.set(pathKey(path), (counts.get(pathKey(path)) ?? 0) + 1)
+  return paths.filter(path => {
+    // Distinct spellings of the same native path covered one another before.
+    if (counts.get(pathKey(path)) > 1) return false
+    for (let child = path, parent = dirname(child); parent !== child; child = parent, parent = dirname(child)) {
+      if (counts.has(pathKey(parent))) return false
+    }
+    return true
+  })
+}
+
 const extra = ts => [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred },
   { extension: ".vibex", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }]
 
@@ -100,13 +132,14 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked }) {
   const sources = [...projects].flatMap(([path, project]) => project.parsed.fileNames.filter(file =>
     graph.has(path) || !trackedPaths || trackedPaths.has(resolve(file)) || !emitted.test(file))).concat(
     [...(trackedPaths ?? [])], [...projects.keys()])
+  const containsSource = descendantIndex(sources)
   // Validate the entire deletion plan before removing any artifact.
   for (const path of outputs) {
     let parent = path
     while (!existsSync(parent) && parent !== dirname(parent)) parent = dirname(parent)
     if (path === root || !inside(root, path) || !inside(realpathSync(root), realpathSync(parent)) ||
       [".jj", ".git", "node_modules"].some(name => inside(join(root, name), path)) ||
-      sources.some(source => inside(path, resolve(source)))) {
+      containsSource(path)) {
       const error = new Error("unsafe project output: " + relative(root, path))
       error.details = { output: relative(root, path).split(sep).join("/"),
         protectedSources: sources.filter(source => inside(path, resolve(source)))
@@ -119,20 +152,22 @@ export function referenceRefreshPlan({ root, ts, configs, changed, tracked }) {
   }
   const names = paths => paths.map(path => relative(root, path).split(sep).join("/"))
   return { projects: names([...affected].sort()), roots: names(roots),
-    outputs: names([...outputs].filter(path => ![...outputs].some(parent => parent !== path && inside(parent, path))).sort()) }
+    outputs: names(outermostOutputs([...outputs]).sort()) }
 }
 
 /** Persist each stage so failed or interrupted rebuilds cannot look complete. */
 export async function refreshProjectReferences({ root, ts, configs, changed, tracked, compiler, log, execute = run, diagnosticsAllowed = false }) {
-  const startedAt = new Date().toISOString()
+  const startedAt = new Date().toISOString(), planningStarted = performance.now()
+  const planningMs = () => Math.round(performance.now() - planningStarted)
+  writeJson(log + ".json", { startedAt, state: "planning", stage: "reference-planning" })
   let plan
   try { plan = referenceRefreshPlan({ root, ts, configs, changed, tracked }) }
   catch (error) {
-    writeJson(log + ".json", { startedAt, finishedAt: new Date().toISOString(), state: "planning-failed",
+    writeJson(log + ".json", { startedAt, finishedAt: new Date().toISOString(), state: "planning-failed", planningMs: planningMs(),
       stage: "reference-planning", error: String(error?.message ?? error), ...(error.details ? { details: error.details } : {}) })
     throw error
   }
-  const receipt = { ...plan, startedAt, state: plan.projects.length ? "planned" : "not-needed" }
+  const receipt = { ...plan, startedAt, planningMs: planningMs(), state: plan.projects.length ? "planned" : "not-needed" }
   writeJson(log + ".json", receipt)
   if (!plan.projects.length) return receipt
   const executable = typeof compiler === "function" ? compiler() : compiler
