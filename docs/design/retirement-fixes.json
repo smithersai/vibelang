@@ -265,5 +265,14 @@
         "output": "typescript/vibelang/cases/retired-service-class-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK0103",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/await-effect-generator.fail",
+        "output": "typescript/vibelang/cases/await-effect-generator-fixed-output"
+      }
+    ]
   }
 ]

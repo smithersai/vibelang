@@ -1,0 +1,7 @@
+// expect: EK0103
+import { Effect } from "effect"
+
+export async function* values(): AsyncGenerator<Effect.Effect<number>, void, unknown> {
+  const value = await Effect.succeed(7)
+  yield value
+}

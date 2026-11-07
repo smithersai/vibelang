@@ -5,7 +5,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
 // The checks in this file report TypeScript syntax that VibeLang does not
@@ -15,10 +14,8 @@ import (
 // (VIP-5). Native loops keep their TypeScript protocols and operand checks.
 // A for await in an Effect body is EK0102; it never implicitly consumes a
 // Stream (VIP-20, detail293). Await using in Effect code is EK0102 too.
-// The parser writes await outside an
-// async function as $await (fibers.go), so an AwaitExpression here is inside
-// an async function. D271 exempts
-// explicit JavaScript iterator generators and their own body syntax.
+// Native generators keep their iterator protocol. Their written return
+// annotation does not exempt await operands from VIP-5 checking.
 
 var EK1017 = message(1017, errorCategory, "provide is a statement; write provide layer { statements } and return from inside its block.")
 
@@ -39,12 +36,6 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 	visit = func(node *ast.Node) bool {
 		if hatchOf(node) != "" {
 			return forEachHatchVibeLang(node, visit) // async and await keep their JavaScript meaning in a hatch's TypeScript (D148)
-		}
-		if fn := ast.GetContainingFunction(node); fn != nil && !isFunctionBoundary(node) &&
-			ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator != 0 && vibelangmapper.HasJavaScriptIteratorReturn(fn) {
-			// Await, for await and await using are JavaScript inside this
-			// generator. Nested functions still own their VibeLang rules.
-			return node.ForEachChild(visit)
 		}
 		switch node.Kind {
 		case ast.KindYieldExpression:

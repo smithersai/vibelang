@@ -37,6 +37,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A declaration whose inferred type held a reverse mapped type that met itself again, such as the result of `deep(node)` where `deep` takes a recursive mapped type and `node` refers to itself, failed with `TS5088` and declared nothing. It now declares the repeated type as `/*elided*/ any`, as TypeScript 5.9 and 7.0.2 do.
 
+- Awaiting an Effect inside an async generator could miss its error when an iterator return type was written. It now reports `EK0103`; `--fix` keeps the Effect unrun across the native `await`.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
@@ -185,6 +187,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
 
 ## 0.0.12
