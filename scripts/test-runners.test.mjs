@@ -24,6 +24,8 @@ const runs = [
   ["site/scripts/patch-vocs-search.test.mjs", "site/package.json", "scripts/patch-vocs-search.test.mjs"],
   ["site/scripts/patch-vocs-llms.test.mjs", "site/package.json", "scripts/patch-vocs-llms.test.mjs"],
   ["site/scripts/outline-contrast.test.mjs", "site/package.json", "scripts/outline-contrast.test.mjs"],
+  ["site/scripts/declaration-routes.test.mjs", "site/package.json", "scripts/declaration-routes.test.mjs"],
+  ["site/scripts/patch-vocs-routes.test.mjs", "site/package.json", "scripts/patch-vocs-routes.test.mjs"],
   ["site/scripts/outline-structure.test.mjs", "site/package.json", "scripts/outline-structure.test.mjs"],
   ["site/scripts/patch-vocs-outline.test.mjs", "site/package.json", "scripts/patch-vocs-outline.test.mjs"],
   ["site/scripts/table-keyboard.test.mjs", "site/package.json", "scripts/table-keyboard.test.mjs"],

@@ -13,7 +13,7 @@ function prepareVocsModule(root, spec) {
   if (version !== '2.8.5') throw new Error('Unsupported Vocs ' + version + '; review the accessibility patch before upgrading.')
   const directory = spec.directory ?? 'react/internal'
   const files = [
-    join(vendor, 'src', directory, spec.name + '.tsx'),
+    join(vendor, 'src', directory, spec.name + (spec.sourceExtension ?? '.tsx')),
     join(vendor, 'dist', directory, spec.name + '.js'),
     join(vendor, 'dist', directory, spec.name + '.js.map'),
   ]
@@ -28,7 +28,7 @@ function prepareVocsModule(root, spec) {
   } else if (hash !== spec.hashes.patched) throw new Error('Vocs ' + spec.name + ' source hash changed; review the patch.')
   if (sha(source) !== spec.hashes.patched) throw new Error('Patched Vocs source hash did not match the reviewed patch.')
   const output = ts.transpileModule(source, {
-    fileName: spec.name + '.tsx', reportDiagnostics: true,
+    fileName: spec.name + (spec.sourceExtension ?? '.tsx'), reportDiagnostics: true,
     compilerOptions: {
       target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
       jsx: ts.JsxEmit.ReactJSX, sourceMap: true, inlineSources: true,
