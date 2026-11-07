@@ -1,0 +1,12 @@
+// VIP-40: the comparison's namespace closes over outer scope, while the
+// module declaration has its own scope and exposes ES module exports.
+const label = "outer"
+namespace Classic {
+  export function read(): string { return label }
+}
+module Modern {
+  const label = "inner"
+  export function read(): string { return label }
+}
+import { read as readModule } from Modern
+export { Classic, readModule }
