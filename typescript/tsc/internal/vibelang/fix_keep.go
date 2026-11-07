@@ -59,6 +59,12 @@ func (k *fixKeeper) keep(texts map[tspath.RootedFilePath]string) {
 				k.fail(err)
 				return
 			}
+			// A companion is in scope only while no file claims its name. One
+			// that appeared after the run began is an unlisted file, never edited.
+			if err == nil && k.scope.companion(name) {
+				k.fail(fmt.Errorf("%s: a fix would create this platform companion, but the file exists now; --only never edits an unlisted file; wrote nothing", relativeName(k.sys, name)))
+				return
+			}
 			k.original[name] = string(original)
 			if k.infos == nil {
 				k.infos = map[tspath.RootedFilePath]os.FileInfo{}
@@ -75,7 +81,8 @@ func (k *fixKeeper) keep(texts map[tspath.RootedFilePath]string) {
 			}
 		}
 		// The last line of defense for a list's promise: a run stopped at any
-		// moment leaves every unlisted file as it was.
+		// moment leaves every unlisted file as it was. A listed module's fresh
+		// companion is in scope only while no file claims its name.
 		if !k.scope.includes(name) {
 			k.fail(fmt.Errorf("%s: a fix reached a file --only does not list; wrote nothing", relativeName(k.sys, name)))
 			return

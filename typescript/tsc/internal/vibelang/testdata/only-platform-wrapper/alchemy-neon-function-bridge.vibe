@@ -1,7 +1,8 @@
 // alchemy reconvert c6, shard packages__neon__000: a closed Effect wrapper
 // over a host read in a module of an --only batch. The shard read process.env;
 // this test project has no Node types, so a DOM read stands in for it. Plain
-// --fix moves the wrapper into a new X.platform.ts file; --only refuses.
+// --fix moves the wrapper into a new X.platform.ts file, and so does --only
+// for a listed module.
 export effect function bridgeTarget() {
   return try Effect.try(() => window.location.origin);
 }
