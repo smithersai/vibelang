@@ -100,6 +100,10 @@
       {
         "input": "typescript/vibelang/cases/platform-preserved-type-exports.fail",
         "output": "typescript/vibelang/cases/platform-preserved-type-exports-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-host-nested-bindings.fail",
+        "output": "typescript/vibelang/cases/platform-host-nested-bindings-fixed-output"
       }
     ]
   },

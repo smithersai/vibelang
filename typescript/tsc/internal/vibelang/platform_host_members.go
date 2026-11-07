@@ -199,11 +199,26 @@ func checkPlatformHostMembers(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		var at *ast.Node
+		var selected platformHostValue
 		switch {
 		case ast.IsBindingElement(node):
 			at = node.Name()
-			if at == nil || !ast.IsIdentifier(at) {
+			if at == nil {
 				break
+			}
+			if !ast.IsIdentifier(at) {
+				if node.Parent == nil || !ast.IsObjectBindingPattern(node.Parent) {
+					break
+				}
+				variable := node.Parent.Parent
+				if !ast.IsVariableDeclaration(variable) {
+					break
+				}
+				selected = platformHostProperty(platformHostOrigin(c, variable.Initializer(), map[*ast.Symbol]bool{}, cache, writes, values), platformHostKey(node.PropertyName()))
+				if selected.member == "" {
+					break
+				}
+				at = node.PropertyName()
 			}
 		case ast.IsIdentifier(node):
 			if node.Parent != nil && ast.IsBindingElement(node.Parent) && (node.Parent.Name() == node || node.Parent.PropertyName() == node) || !isValueUse(node) {
@@ -216,7 +231,11 @@ func checkPlatformHostMembers(c *checker.Checker, file *ast.SourceFile) {
 			}
 		}
 		if at != nil {
-			if value := platformHostOrigin(c, at, map[*ast.Symbol]bool{}, cache, writes, values); value.member != "" {
+			value := selected
+			if value.member == "" {
+				value = platformHostOrigin(c, at, map[*ast.Symbol]bool{}, cache, writes, values)
+			}
+			if value.member != "" {
 				name := value.root + "." + value.member
 				d := report(c, at, EK4402.With("{0} reaches the host and cannot be used in a .vibe file."), name)
 				if value.root == "AbortSignal" {

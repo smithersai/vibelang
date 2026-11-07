@@ -1,0 +1,5 @@
+// expect: EK4402
+const { timeout: { name: signalName } } = AbortSignal
+const { createObjectURL: { name: createName } } = URL
+const { ["revokeObjectURL"]: { ...copy } } = URL
+export { signalName, createName, copy }
