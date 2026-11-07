@@ -177,7 +177,7 @@ test("adapter keeps native failures even when native diagnostics are empty", t =
 test("adapter maps TypeScript globs for the VibeLang pass without broadening explicit file lists", t => {
   const { root, run } = adapterFixture(t)
   run("src/**/*.tsx")
-  assert.deepEqual(JSON.parse(readFileSync(join(root, ".eslint-paths.json"))), [join(root, "src/**/*.vibe")])
+  assert.deepEqual(JSON.parse(readFileSync(join(root, ".eslint-paths.json"))), [join(root, "src/**/*.vibex")])
   rmSync(join(root, ".eslint-paths.json"))
   run("src/plain.ts")
   assert.equal(existsSync(join(root, ".eslint-paths.json")), false)
@@ -516,4 +516,43 @@ test("native TypeScript lint directive aliases preserve the registered ESLint ru
       assert.equal(transform(written), transform(canonical))
     }
   ), { seed: 8311106, numRuns: 160 })
+})
+
+test("adapter routes explicit JSX sources and filters both declaration sidecars", t => {
+  const { root, run, warning } = adapterFixture(t)
+  writeFileSync(join(root, "src/view.vibex"), "export const view = <div />\n")
+  writeFileSync(join(root, ".eslint.json"), JSON.stringify([{ ...warning, filePath: join(root, "src/view.vibex") }]))
+  const result = run("--deny-warnings", "src/view.vibex", "src/plain.ts", "src/view.d.vibex.ts")
+  assert.equal(result.status, 1, "the JSX warning must retain the caller's exit policy")
+  assert.equal(result.output.diagnostics[0].filename, "src/view.vibex")
+  assert.deepEqual(JSON.parse(readFileSync(join(root, ".native-args.json"))).slice(-1), ["src/plain.ts"])
+  assert.deepEqual(JSON.parse(readFileSync(join(root, ".eslint-paths.json"))), [join(root, "src/view.vibex")])
+  assert.deepEqual(JSON.parse(readFileSync(join(root, ".projected-options.json"))).paths, [join(root, "src/view.vibex")])
+})
+
+test("adapter preserves JSX file-list and glob scope across source extensions", t => {
+  const { root, run } = adapterFixture(t)
+  const selectors = [
+    ["src/**/*.ts", "src/**/*.vibe"],
+    ["src/**/*.tsx", "src/**/*.vibex"],
+    ["src/**/*.{ts,tsx}", "src/**/*.{vibe,vibex}"],
+    ["src/**/*.{tsx,tsx}", "src/**/*.vibex"],
+    ["src/**/*.vibex", "src/**/*.vibex"],
+  ]
+  for (const [source, expected] of selectors) {
+    run(source)
+    assert.deepEqual(JSON.parse(readFileSync(join(root, ".eslint-paths.json"))), [join(root, expected)])
+  }
+  fc.assert(fc.property(
+    fc.stringMatching(/^[a-z][a-z0-9]{0,6}$/),
+    fc.constantFrom("vibe", "vibex"),
+    fc.boolean(),
+    (name, extension, nativeFile) => {
+      const file = "src/" + name + "." + extension
+      writeFileSync(join(root, file), "export const value = 1\n")
+      run(file, file.replace("." + extension, ".d." + extension + ".ts"), ...(nativeFile ? ["src/plain.ts"] : []))
+      assert.deepEqual(JSON.parse(readFileSync(join(root, ".eslint-paths.json"))), [join(root, file)])
+      assert.deepEqual(JSON.parse(readFileSync(join(root, ".projected-options.json"))).paths, [join(root, file)])
+    }
+  ), { numRuns: 48 })
 })

@@ -245,7 +245,7 @@ extends TypeScript extension filters to `.vibe`, keeps directory and package
 filters, and excludes `.d.vibe.ts` declaration sidecars. Unsupported filter
 shapes produce a setup warning naming the runner.
 
-File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter.
+File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter. Explicit `.vibex` paths reach the same source and native passes as `.vibe` paths; both declaration sidecar extensions are excluded. A `.tsx` glob selects `.vibex`, and a mixed `{ts,tsx}` glob selects both source extensions.
 Upstream Oxlint checks their TypeScript files; ESLint and the native pass
 check their VibeLang files on the original source tree. The
 generated configuration retains rule names, options, severities and directory

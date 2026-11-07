@@ -35,13 +35,16 @@ for (let i = 0; i < args.length; i++) {
     native.push(arg)
     if (/^--(?:type-aware|no-ignore|disable-nested-config|(?:disable-)?[\w-]+-plugin)$/.test(arg)) projected.push(arg)
     if (arg === "--deny-warnings") maxWarnings = 0
-  } else { suppliedPaths++; if (!arg.endsWith(".d.vibe.ts")) paths.push(arg) }
+  } else { suppliedPaths++; if (!/\.d\.vibex?\.ts$/.test(arg)) paths.push(arg) }
 }
 if (!native.includes("--threads")) native.push("--threads", "8")
 
-const vibe = path => path.endsWith(".vibe")
+const vibe = path => /\.vibex?$/.test(path)
 const directory = path => statSync(path, { throwIfNoEntry: false })?.isDirectory()
-const vibeGlob = path => path.replace(/\.\{([^}]+)\}/g, (all, parts) => parts.split(",").some(ext => /^[cm]?tsx?$/.test(ext)) ? ".vibe" : all).replace(/\.[cm]?tsx?$/, ".vibe")
+const vibeGlob = path => path.replace(/\.\{([^}]+)\}/g, (all, parts) => {
+  const extensions = [...new Set(parts.split(",").map(ext => ext === "tsx" ? "vibex" : /^[cm]?ts$/.test(ext) ? "vibe" : ext))]
+  return extensions.length === 1 ? "." + extensions[0] : ".{" + extensions.join(",") + "}"
+}).replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
 const vibePaths = suppliedPaths ? paths.flatMap(path => vibe(path) || directory(path) ? [resolve(path)] : /[*?{]/.test(path) ? [resolve(vibeGlob(path))] : []) : [process.cwd()]
 const nativePaths = paths.filter(path => !vibe(path))
 if (vibePaths.length && (!suppliedPaths || nativePaths.some(path => directory(path) || /[*?{]/.test(path))) && !native.includes("--no-error-on-unmatched-pattern")) native.push("--no-error-on-unmatched-pattern")
@@ -79,7 +82,7 @@ if (vibePaths.length) {
   }
   if (!nativeOnly) {
   const { ESLint } = await import("eslint")
-  const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: [...configs, { files: ["**/*.vibe"], rules }], errorOnUnmatchedPattern: false, warnIgnored: false })
+  const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: [...configs, { files: ["**/*.{vibe,vibex}"], rules }], errorOnUnmatchedPattern: false, warnIgnored: false })
   const results = await eslint.lintFiles(vibePaths)
   if (format === "json") {
     output.diagnostics ??= []
