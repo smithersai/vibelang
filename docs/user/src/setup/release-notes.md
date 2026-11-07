@@ -232,6 +232,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - In a project that emits declarations, `vibelang --fix` turned a private `Schema.Struct` constant into a `schema` declaration even when the declaration file named the constant, which added `type X = typeof X.Type` to the declaration, or exported a new type through `export { X }`. The fix now keeps such a constant as written.
 - With a project pinned to a compiler older than `--only`, such as VibeLang 0.0.11, the migrate flow's ordinary repairs failed with `TS5023` and each batch was reported settled with no fixes. The flow now reruns that repair without `--only` and still keeps only the batch's own files changed.
 
+- A function with a property assigned more than once, such as `f.x = a` followed by `f["x"] = b`, got declarations that named the property twice, which TypeScript rejects with `TS2300`. The declarations now declare the property once, with the type of everything assigned to it.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |

@@ -79,6 +79,7 @@ type DeclarationTransformer struct {
 	expandoHosts                     map[ast.NodeId]*ast.Node               // store the result of transforming expando hosts so they can be inserted later if the host is actually referenced
 	expandoMembers                   map[ast.NodeId][]*ast.Node             // store any found expando _members_ after transforming them so *if* the host is referenced, they can be emitted alongside it
 	deferredExpandoAssignments       map[ast.NodeId][]*ast.BinaryExpression // expando assignments whose host wasn't visible when collected, processed if the host is late-marked visible
+	emittedExpandoProperties         collections.Set[*ast.Symbol]           // expando property symbols already declared: a property assigned more than once is declared once
 	seenProperties                   collections.Set[thisPropertyAssignmentKey]
 	thisPropertyAssignmentsCollected []*ast.Node
 	rawReferencedFiles               []ReferencedFilePair
@@ -318,6 +319,7 @@ func (tx *DeclarationTransformer) visitSourceFile(node *ast.SourceFile) *ast.Nod
 	tx.expandoHosts = make(map[ast.NodeId]*ast.Node)
 	tx.expandoMembers = make(map[ast.NodeId][]*ast.Node)
 	tx.deferredExpandoAssignments = make(map[ast.NodeId][]*ast.BinaryExpression)
+	tx.emittedExpandoProperties = collections.Set[*ast.Symbol]{}
 	tx.rawReferencedFiles = make([]ReferencedFilePair, 0)
 	tx.rawTypeReferenceDirectives = make([]*ast.FileReference, 0)
 	tx.rawLibReferenceDirectives = make([]*ast.FileReference, 0)
@@ -2920,6 +2922,13 @@ func (tx *DeclarationTransformer) transformExpandoAssignment(node *ast.BinaryExp
 		return
 	}
 
+	// Every assignment to one property (`f.x = a`, `f["x"] = b`) shares its symbol. Declare the
+	// property once, from the first assignment emitted, as TypeScript 5.9 does: a second member
+	// of the same name would make the namespace a duplicate declaration (TS2300).
+	if !tx.emittedExpandoProperties.AddIfAbsent(symbol) {
+		return
+	}
+
 	tx.transformExpandoHost(name, declaration)
 
 	exportName := tx.Factory().NewIdentifier(property)
@@ -2938,7 +2947,7 @@ func (tx *DeclarationTransformer) transformExpandoAssignment(node *ast.BinaryExp
 
 	preexistingExpandoHasExport := core.Some(tx.expandoMembers[hostId], ast.IsExportDeclaration)
 
-	if ast.IsIdentifier(node.Right) {
+	if ast.IsIdentifier(node.Right) && tx.expandoAssignmentsAliasOneValue(symbol, node) {
 		if !preexistingExpandoHasExport {
 			tx.addExportModifierToExpandoMembers(hostId)
 		}
@@ -2994,6 +3003,30 @@ func (tx *DeclarationTransformer) transformExpandoAssignment(node *ast.BinaryExp
 	}
 
 	tx.expandoMembers[hostId] = append(tx.expandoMembers[hostId], statements...)
+}
+
+// expandoAssignmentsAliasOneValue reports whether every assignment to the property symbol
+// assigns the identifier that node assigns, so `export { g as x }` declares the property
+// exactly. Otherwise the property is a variable of the property's type, which is the union
+// of everything assigned to it.
+func (tx *DeclarationTransformer) expandoAssignmentsAliasOneValue(symbol *ast.Symbol, node *ast.BinaryExpression) bool {
+	target := tx.resolver.GetReferencedValueDeclaration(node.Right)
+	if target == nil {
+		return len(symbol.Declarations()) <= 1
+	}
+	for _, declaration := range symbol.Declarations() {
+		if declaration == node.AsNode() {
+			continue
+		}
+		if !ast.IsBinaryExpression(declaration) {
+			return false
+		}
+		right := declaration.AsBinaryExpression().Right
+		if !ast.IsIdentifier(right) || tx.resolver.GetReferencedValueDeclaration(right) != target {
+			return false
+		}
+	}
+	return true
 }
 
 func (tx *DeclarationTransformer) addExportModifierToExpandoMembers(hostId ast.NodeId) {

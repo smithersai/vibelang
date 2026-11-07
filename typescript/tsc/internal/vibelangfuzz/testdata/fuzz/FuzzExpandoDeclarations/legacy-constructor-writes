@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("expando:function:constructor.dot.g,constructor.element.g")
