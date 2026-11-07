@@ -55,7 +55,8 @@ Rendered table cells show line breaks with `<br>`, including `CRLF` as one
 break, so a multiline name cannot split a row. Saved JSON retains the original
 name. Markdown punctuation is escaped, so formatting, links, HTML-like text
 and entities display as literal parts of the name. Pipes and backslashes
-remain inside the displayed cell.
+remain inside the displayed cell. Preformatted cells preserve edge spaces,
+repeated spaces and tabs, so distinct whitespace names remain distinguishable.
 
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`

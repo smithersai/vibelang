@@ -37,7 +37,7 @@ function checkCells(pairs) {
       const rows = section.split(/\r\n|\r|\n|\u2028|\u2029/).filter(line => line.startsWith(prefix))
       assert.equal(rows.length, pairs.length, "every test occupies one complete row")
       for (const [, display] of pairs) {
-        assert.ok(rows.some(row => row.startsWith(prefix + display + " | 2 | ")),
+        assert.ok(rows.some(row => row.startsWith(prefix + "<pre>" + display + "</pre> | 2 | ")),
           "the complete displayed name and count must share a row: " + JSON.stringify(display))
       }
     }
@@ -82,7 +82,7 @@ for (const [kind, target] of [["node", "//packages:compiler-test-2"], ["migrate"
       assert.ok(analysis.flaky[0].tests.some(item => item.name === name))
       assert.ok(report(dir).tests.includes(name), "persisted names retain every original character")
       const text = readFileSync(join(dir, "report.md"), "utf8")
-      const expected = "| " + tick + target + tick + " | multiline<br>name<br>with<br>controls \\| tail | 2 | "
+      const expected = "| " + tick + target + tick + " | <pre>multiline<br>name<br>with<br>controls \\| tail</pre> | 2 | "
       assert.equal(text.split("\n").filter(line => line.startsWith(expected)).length, 2,
         "both flaky and returning tables retain the complete name and count")
     } finally {

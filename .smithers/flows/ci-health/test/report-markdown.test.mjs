@@ -32,8 +32,11 @@ function checkRendered(run, names) {
     const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? ""
     const rows = [...body.matchAll(/<tr>([\s\S]*?)<\/tr>/g)]
     const cells = rows.map(row => [...row[1].matchAll(/<td>([\s\S]*?)<\/td>/g)].map(cell => cell[1]))
-    assert.deepEqual(cells.map(row => row[1]), expected, "both rendered tables display literal names")
+    assert.deepEqual(cells.map(row => row[1].replace(/^<pre>([\s\S]*)<\/pre>$/, "$1")), expected, "both rendered tables display literal names")
     assert.ok(cells.every(row => row[2] === "2"), "rendering retains each failure count")
+    for (const [i, name] of names.entries()) if (/^ | $| {2}|\t|[\r\n\u2028\u2029] | [\r\n\u2028\u2029]/.test(name)) {
+      assert.match(cells[i][1], /^<pre>[\s\S]*<\/pre>$/, "HTML must preserve significant test-name whitespace")
+    }
   }
 }
 
@@ -89,3 +92,32 @@ for (const kind of ["node", "migrate"]) {
   })
 }
 
+
+test("health-report names preserve edge spaces, repeated spaces and tabs in both rendered tables", () => {
+  checkNames(["same name", "  same name  ", "same  name", "\tsame name\t", "same\tname", "first\n second "])
+})
+
+test("generated whitespace neighbours retain each distinct name and its layout", () => {
+  const token = fc.constantFrom(" ", "\t", "word", "__proto__", "\\|", "<pre>", "&amp;", "\n", "\r\n", "\u2028", "☃")
+  const name = fc.array(token, { minLength: 1, maxLength: 15 }).map(parts => parts.join("")).filter(value => value.trim().length > 0)
+  fc.assert(fc.property(fc.uniqueArray(name, { minLength: 1, maxLength: 6 }), checkNames),
+    { seed: 332, numRuns: 100 })
+})
+
+test("actual reporters preserve distinct whitespace names through collection and both rendered tables", () => {
+  const run = mkdtempSync(join(tmpdir(), "ci-health-actual-whitespace-"))
+  try {
+    start(run, { results: new URL("../fixture-whitespace/", import.meta.url).pathname, since: "" })
+    collect(run)
+    const analysis = analyze(run)
+    const names = ["same name", "  same name  ", "same  name", "\tsame name\t", "same\tname", "first\n second "]
+    assert.equal(analysis.flaky.length, 2)
+    for (const target of analysis.flaky) {
+      assert.deepEqual(target.tests.map(item => item.name), names)
+      assert.ok(target.tests.every(item => item.failures === 2))
+    }
+    checkRendered(run, [...names, ...names])
+  } finally {
+    rmSync(run, { recursive: true, force: true })
+  }
+})

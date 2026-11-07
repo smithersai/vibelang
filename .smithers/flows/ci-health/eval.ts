@@ -182,6 +182,20 @@ cases.push({
   } satisfies Input
 });
 
+// Both real reporters retain names that ordinary HTML whitespace collapses.
+cases.push({
+  name: "whitespace-names",
+  input: {
+    fixture: "fixture-whitespace",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: ["same name", "  same name  ", "same  name", "\tsame name\t", "same\tname", "first\n second "],
+    exactTests: true,
+    intermittent: ["same name", "  same name  ", "same  name", "\tsame name\t", "same\tname", "first\n second "],
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "3", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
@@ -232,7 +246,12 @@ function literalTable(markdown: string, heading: string, next: string, names: Re
   const escaped: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
   const expected = names.map(name => name.replace(/[&<>"]/g, char => escaped[char])
     .replace(/\r\n|[\r\n\u2028\u2029]/g, "<br>"));
-  return JSON.stringify(cells) === JSON.stringify(expected);
+  return cells.every((cell, i) => {
+    if (cell === undefined) return false;
+    const content = cell.replace(/^<pre>([\s\S]*)<\/pre>$/, "$1");
+    const spacing = /^ | $| {2}|\t|[\r\n\u2028\u2029] | [\r\n\u2028\u2029]/.test(names[i] ?? "");
+    return content === expected[i] && (!spacing || /^<pre>[\s\S]*<\/pre>$/.test(cell));
+  }) && cells.length === expected.length;
 }
 
 async function report(input: Input): Promise<Output> {

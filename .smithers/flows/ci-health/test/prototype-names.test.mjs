@@ -51,7 +51,7 @@ for (const [kind, label] of [["node", "//packages:compiler-test-2"], ["migrate",
         assert.deepEqual(report(dir).tests, names)
         const text = readFileSync(join(dir, "report.md"), "utf8")
         for (const [name, display] of [["__proto__", "\\_\\_proto\\_\\_"], ["constructor", "constructor"], ["toString", "toString"]]) {
-          assert.ok(text.includes("| " + display + " | 2 |"), name + " must remain visible with its count")
+          assert.ok(text.includes("| <pre>" + display + "</pre> | 2 |"), name + " must remain visible with its count")
         }
       })
     } finally {

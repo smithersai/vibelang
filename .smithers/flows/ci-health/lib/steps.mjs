@@ -308,8 +308,8 @@ export const ACTIONS = {
   unknown: "Read the log"
 }
 
-// Escape ASCII punctuation before adding the report's own line-break markup.
-const cell = (s) => String(s).replace(/[!-/:-@[-`{-~]/g, "\\$&").replaceAll(/\r\n|[\r\n\u2028\u2029]/g, "<br>")
+// Escape punctuation before adding markup; preformatted cells preserve spaces and tabs.
+const cell = (s) => "<pre>" + String(s).replace(/[!-/:-@[-`{-~]/g, "\\$&").replaceAll(/\r\n|[\r\n\u2028\u2029]/g, "<br>") + "</pre>"
 const day = (iso) => iso.slice(0, 16).replace("T", " ")
 
 // report writes report.md and the ranking a follow-up reads.

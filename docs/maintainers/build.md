@@ -2418,6 +2418,8 @@ The corrected pipeline repair check retains all original factory-order, mutable-
 
 Compiler shards use `scripts/testing/node-failures.mjs` to report failures with their original error details, ordinary test output, and Node's execution totals. Successful test names do not crowd the graph preview. A progress record lists completed files and files awaiting a summary every 30 seconds. The reporter preserves exit status, nested failures, cancellation, skips and todos; `scripts/compiler-failure-output.test.mjs` runs each real shard command against controlled files to verify those boundaries.
 
+Health-report test cells preserve edge spaces, repeated spaces and tabs with preformatted text. Actual compiler and migration reporter histories and generated whitespace names check both test tables and their saved names.
+
 The module-body corpus follows accepted VIP-40: the original throwing helper and all retained names and export forms must compile without diagnostics. Ordinary namespace controls, extracted bodies and identifier-import rejection are checked with stock TypeScript; twelve seeded mutations retain the same checks without a pending acceptance exception.
 
 The `//:legacy-directive-category-controls` target retains the original spliced JSON witness and compares source-scoped legacy severities with actual diagnostics. Keyed cases cover file and next-line scope, unrelated files, strings, block comments, wildcard precedence, near-miss codes and both line endings. Injected wrong categories must still fail the oracle; no original corpus input is removed.
