@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("console-value\u0000\u0000")
