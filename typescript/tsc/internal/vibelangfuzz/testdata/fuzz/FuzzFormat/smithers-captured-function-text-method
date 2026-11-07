@@ -1,0 +1,2 @@
+go test fuzz v1
+string("const operations = {\n  operation(value: number) {\n    return value + 1;\n  },\n};\nexport const operation = operations.operation;\nexport const source = Function.prototype.toString.call(operation);\nexport const literal = \"Function.prototype.toString: keep this data\";\nexport const arity = operation.length;\n")
