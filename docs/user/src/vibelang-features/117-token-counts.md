@@ -192,9 +192,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PubSub](../concurrency/050-pubsub.md) | 1,300 |
 | [Semaphore](../concurrency/051-semaphore.md) | 790 |
 | [Latch](../concurrency/052-latch.md) | 630 |
-| **Stream** | **12,000** |
+| **Stream** | **11,000** |
 | [Introduction](../stream/053-introduction.md) | 1,200 |
-| [Creating Streams](../stream/054-creating.md) | 2,800 |
+| [Creating Streams](../stream/054-creating.md) | 2,700 |
 | [Consuming Streams](../stream/055-consuming-streams.md) | 860 |
 | [Error Handling](../stream/056-error-handling.md) | 1,600 |
 | [Operations](../stream/057-operations.md) | 4,300 |
