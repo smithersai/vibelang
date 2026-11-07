@@ -1,0 +1,7 @@
+{
+  "key": "api-identity:t3code-project-type-directive-origin",
+  "quote": "each export's type identical to `tsc`'s in both directions",
+  "entry": "export { value } from \"../../external/helper.js\";\n",
+  "helper": "export const value: DesktopEnvironment.Value = { desktop: true };\n",
+  "ambient": "declare namespace DesktopEnvironment { interface Value { readonly desktop: true } }\n"
+}

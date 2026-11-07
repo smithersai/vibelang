@@ -950,6 +950,7 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
   project.physicalFile = discoveredProject.physicalFile
   // Reuse parsed sources only while their virtual text remains unchanged.
   const sourceCache = new Map()
+  const implicitTypeOrigins = new WeakMap()
   const getSource = host.getSourceFile.bind(host)
   host.getSourceFile = (file, languageVersion, onError, fresh) => {
     const key = resolve(file), cached = sourceCache.get(key)
@@ -975,7 +976,13 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
         const written = new Set(source.typeReferenceDirectives.map(reference => reference.fileName))
         const implicit = names.filter(name => !written.has(name))
         if (implicit.length) source.typeReferenceDirectives = [...source.typeReferenceDirectives,
-          ...implicit.map(fileName => ({ fileName, pos: 0, end: 0 }))]
+          ...implicit.map(fileName => {
+            const reference = { fileName, pos: 0, end: 0 }
+            // Project-selected types resolve beside the owning configuration;
+            // an authored triple-slash reference still resolves beside its source.
+            implicitTypeOrigins.set(reference, join(context.root, "__api_identity_types__.ts"))
+            return reference
+          })]
       }
       sourceCache.set(key, source)
     }
@@ -1000,7 +1007,8 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
     const name = typeof reference === "string" ? reference : reference.fileName
     const mode = typeof reference === "string" ? undefined : reference.resolutionMode
     const resolutionOptions = { ...compilerOptions, ...project(containingFile).options, ...options.compilerOptions }
-    const result = ts.resolveTypeReferenceDirective(name, project.physicalFile(containingFile),
+    const origin = typeof reference === "string" ? undefined : implicitTypeOrigins.get(reference)
+    const result = ts.resolveTypeReferenceDirective(name, origin ?? project.physicalFile(containingFile),
       resolutionOptions, host, redirected, undefined, mode)
     const resolved = result.resolvedTypeReferenceDirective
     if (resolved?.packageId) {
