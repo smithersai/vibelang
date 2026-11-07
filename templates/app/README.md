@@ -12,8 +12,8 @@ This project was created from the VibeLang starter. If its dependencies are not
 installed yet, for example after `--no-install`, run `bun install` first.
 
 `start` builds the project and prints `Hello, VibeLang!` and
-`Recovered from EmptyName`. `dev` builds once, then runs `vibelang --watch` and
-Node's output watcher together; press Ctrl+C to stop both. Vitest runs
+`Recovered from EmptyName`. `dev` builds once, starts `vibelang --watch`, then starts Node's output watcher
+only after the compiler is watching; press Ctrl+C to stop both. Vitest runs
 `src/**/*.test.vibe` through `vibelang-vite` and `@effect/vitest`. The plugin
 checks the project with `vibelang`, serves compiled JavaScript from
 `node_modules/.vibelang/`, and maps assertion stacks to the original `.vibe`

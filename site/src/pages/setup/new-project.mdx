@@ -72,7 +72,7 @@ With npm, run `npm run test`. The output includes:
       Tests  2 passed (2)
 ```
 
-`bun run dev` rebuilds and restarts the program on every save until Ctrl+C stops it. Don't run it in a session that waits for each command to exit.
+`bun run dev` waits until the compiler is watching before starting the program, then rebuilds and restarts it on every save until Ctrl+C stops it. Don't run it in a session that waits for each command to exit.
 
 ## Next
 

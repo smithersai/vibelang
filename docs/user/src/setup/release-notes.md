@@ -49,6 +49,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Creating a project at an invalid or unwritable path could print an internal stack trace. The starter now reports the destination and filesystem error code with recovery instructions.
 
+- An edit made just after the starter's first output could be missed by `dev`. The starter now waits for the compiler watcher before starting Node, so that first edit rebuilds and restarts the program.
+
 - Health reports could omit failing tests whose names contained only whitespace. Reports now retain those names and their failure counts.
 - The foreign-call guides required an exception bridge even for Effect-returning functions, which could leave an unrun Effect as the result. The guides now exempt effectful returns from foreign throw tags and show when to run the returned program.
 - The error guides described plain-function throws as JavaScript exceptions or defects. They now explain the compile error and show how to choose a typed failure or defect.

@@ -45,7 +45,7 @@ bun run dev
 bun run test
 ```
 
-`build` runs `vibelang` with the project's `tsconfig.json`. `start` builds, then runs `node --enable-source-maps dist/main.js`. `dev` builds once, then runs `vibelang --watch` beside `node --watch --enable-source-maps dist/main.js`. `test` runs Vitest on `src/**/*.test.vibe` through `vibelang-vite`, which compiles the project with `vibelang` and serves the JavaScript, so tests need no prior build. Node and Vitest receive JavaScript; neither interprets `.vibe` sources.
+`build` runs `vibelang` with the project's `tsconfig.json`. `start` builds, then runs `node --enable-source-maps dist/main.js`. `dev` builds once, starts `vibelang --watch`, waits for its first successful watch build, then starts `node --watch --enable-source-maps dist/main.js`. `test` runs Vitest on `src/**/*.test.vibe` through `vibelang-vite`, which compiles the project with `vibelang` and serves the JavaScript, so tests need no prior build. Node and Vitest receive JavaScript; neither interprets `.vibe` sources.
 
 The starter's `main.vibe` exports an effect function named `main` and calls `NodeRuntime.runMain(main())` at module top level, the application boundary reached by `node dist/main.js`. Its greeting and recovery messages quickly confirm that the service layer and typed failure both run.
 
