@@ -11,20 +11,26 @@ const retiredSelectMessage = "select is outside the first release; vibelang --fi
 
 // Recovery keeps the old source available to the CLI migration. Neither
 // projection rendering may turn a rejected form into continuation code.
-func (p *projector) rejectRetiredControlSyntax(n *ast.Node) bool {
-	code := int32(0)
-	message := retiredControlMessage
+func retiredControlCode(n *ast.Node) int32 {
 	switch {
 	case ast.IsClassDeclaration(n) && isServiceKeywordClass(n) && isControlClass(n):
-		code = 3501
+		return 3501
 	case n.Kind == ast.KindTryStatement && n.Flags&ast.NodeFlagsVibeLang != 0:
-		code = 3501
+		return 3501
 	case n.Kind == ast.KindLabeledStatement && n.Flags&ast.NodeFlagsVibeLang != 0 && strings.HasPrefix(n.AsLabeledStatement().Label.Text(), "$select"):
-		code = 4607
-		message = retiredSelectMessage
+		return 4607
 	}
+	return 0
+}
+
+func (p *projector) rejectRetiredControlSyntax(n *ast.Node) bool {
+	code := retiredControlCode(n)
 	if code == 0 {
 		return false
+	}
+	message := retiredControlMessage
+	if code == 4607 {
+		message = retiredSelectMessage
 	}
 	p.syntaxToken(n, code, message)
 	p.plan.replace(p.tokenStart(n), n.End(), "")

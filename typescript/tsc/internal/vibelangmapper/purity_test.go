@@ -282,7 +282,7 @@ func TestPurityCorpus(t *testing.T) {
 		assert.NilError(t, err)
 		source := string(data)
 		result := Project(source, testContext)
-		js, _, _ := Emit(source, testContext)
+		js, _, diagnostics := Emit(source, testContext)
 		for _, f := range result.Purity {
 			total++
 			if f.ProvablyPure {
@@ -295,7 +295,7 @@ func TestPurityCorpus(t *testing.T) {
 			// The direct entry's name is fresh: f$direct, or f$direct_1 when
 			// the file spells f$direct (freshWord).
 			direct := regexp.MustCompile(`function ` + regexp.QuoteMeta(f.Name+"$direct") + `(_\d+)?\(`)
-			assert.Equal(t, direct.MatchString(js), f.ProvablyPure, "%s: %s", file, f.Name)
+			assert.Equal(t, direct.MatchString(js), f.ProvablyPure, "%s: %s; executable diagnostics=%+v emittedBytes=%d", file, f.Name, diagnostics, len(js))
 		}
 	}
 	t.Logf("corpus: functions=%d ProvablyPure=%d PlainLooking=%d", total, pure, plain)

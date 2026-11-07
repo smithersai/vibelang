@@ -268,7 +268,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Control operations and handlers](111-control-operations-and-handlers.md) | 260 |
+| [Control operations and handlers](111-control-operations-and-handlers.md) | 280 |
 | [Producers](112-producers.md) | 4,200 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 12,000 |
