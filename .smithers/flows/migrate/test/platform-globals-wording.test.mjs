@@ -45,7 +45,7 @@ const kinds = {
   "{0} from {1} is platform code, which a .vibe file does not import as a value.": "import",
   "This import keeps a runtime load of {0}; write import type for type bindings, or move the import to a .ts file.": "module",
   "This export keeps a runtime load of {0}; write export type for type bindings, or move the export to a .ts file.": "module",
-  "Only import.meta.url is available in a .vibe file; use the Path or Config service for host state, or move this import.meta use to a .ts file.": "none",
+  "Only import.meta.url is available in a .vibe file; use the Path service or Config.String for host state, or move this import.meta use to a .ts file.": "none",
 }
 
 const fill = (template, args) => template.replace(/\{(\d)\}/g, (_, i) => args[Number(i)])

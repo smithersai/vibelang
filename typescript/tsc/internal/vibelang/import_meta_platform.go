@@ -7,7 +7,7 @@ import (
 
 // VIP-33/detail 90 exposes only the module's URL. Taking the meta object,
 // even to read a literal computed key, would expose host-specific properties.
-var importMetaPlatformDiagnostic = EK4402.With("Only import.meta.url is available in a .vibe file; use the Path or Config service for host state, or move this import.meta use to a .ts file.")
+var importMetaPlatformDiagnostic = EK4402.With("Only import.meta.url is available in a .vibe file; use the Path service or Config.String for host state, or move this import.meta use to a .ts file.")
 
 func init() { fileChecks = append(fileChecks, checkImportMetaPlatform) }
 
