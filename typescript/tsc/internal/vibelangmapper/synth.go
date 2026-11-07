@@ -560,7 +560,7 @@ func (w *printer) builtinTest(n *ast.Node, e env) bool {
 func (w *printer) identifier(n *ast.Node) string {
 	name := n.Text()
 	switch {
-	case name == "$propertyKey" || name == "$matchCache" || name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$relates" || name == "$patternError":
+	case name == "$propertyKey" || name == "$matchCache" || name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$isError" || name == "$relates" || name == "$patternError":
 		return helperRef(name)
 	case strings.HasPrefix(name, "$match") || strings.HasPrefix(name, "$is"):
 		return w.temporary(name)

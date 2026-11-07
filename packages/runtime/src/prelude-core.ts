@@ -121,6 +121,12 @@ export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown
   Object.defineProperty(error, customMatcher, { value: matcher, configurable: true, writable: true })
 }
 
+/**
+ * VIP-44: the refinement of the Schema an `Error` field maps to,
+ * `Schema.Defect().pipe(Schema.refine($isError))`: an `Error` instance.
+ */
+export const $isError = (value: unknown): value is Error => value instanceof Error
+
 /** D304: joins a schema error subclass to the families above it. */
 export const $schemaErrorMember = (error: abstract new(...args: any) => unknown): void => {
   joinSchemaErrorFamilies(error, ownSchemaErrorAst(error))

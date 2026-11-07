@@ -8,7 +8,7 @@ import (
 // VIP-44: a schema field whose type is the TypeScript library's Date, URL,
 // RegExp, Uint8Array, ReadonlySet<T> or ReadonlyMap<K, V> has a Schema.
 func TestSchemaLibraryTypes(t *testing.T) {
-	for _, field := range []string{"Date", "URL", "RegExp", "Uint8Array", "ReadonlySet<string>", "ReadonlyMap<string, number>", "Date | null", "Date[]", "readonly ReadonlySet<Date>[]", "[Date, URL]"} {
+	for _, field := range []string{"Date", "URL", "RegExp", "Uint8Array", "Error", "Error | null", "ReadonlySet<string>", "ReadonlyMap<string, number>", "Date | null", "Date[]", "readonly ReadonlySet<Date>[]", "[Date, URL]"} {
 		for _, modifier := range []string{"readonly ", "", "readonly opt?: string; readonly "} {
 			source := "export schema Order { " + modifier + "at: " + field + " }\nexport schema Alias = " + field + "\n"
 			if errors := errorsOf(t, source); len(errors) != 0 {

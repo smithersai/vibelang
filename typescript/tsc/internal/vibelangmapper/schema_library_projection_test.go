@@ -13,6 +13,7 @@ func TestSchemaLibraryTypeProjection(t *testing.T) {
 		{"url", "", "URL", "Schema.URL"},
 		{"regexp", "", "RegExp", "Schema.RegExp"},
 		{"bytes", "", "Uint8Array", "Schema.Uint8Array"},
+		{"error", "", "Error", "Schema.Defect().pipe(Schema.refine("},
 		{"set", "", "ReadonlySet<string>", "Schema.ReadonlySet(Schema.String)"},
 		{"map", "", "ReadonlyMap<string, number>", "Schema.ReadonlyMap(Schema.String, Schema.Number)"},
 		{"shadow", "schema Date { readonly iso: string }", "Date", "at: Date"},

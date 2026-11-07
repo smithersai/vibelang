@@ -23,3 +23,24 @@ function witness() {
 		Cite: Citation{VIP: 44, Template: "Schema.ReadonlySet(Schema.String)", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do."},
 	})
 }
+
+// The Error row: a refined Schema.Defect that accepts only Error instances.
+func init() {
+	registerWitness(44, ChapterWitness{
+		Key:     "vip44.schema-error-field-plain",
+		Chapter: "006-data.md",
+		Quote:   "In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax.",
+		Modules: []string{"Schema"},
+		Vibe: `schema Failure { cause: Error }
+function witness() {
+  const probes: unknown[] = [{ cause: new Error("x") }, { cause: new TypeError("t") }, { cause: { message: "x" } }, { cause: "x" }, {}]
+  return probes.map((v) => Schema.is(Failure)(v))
+}`,
+		Effect: `const Failure = Schema.Struct({ cause: Schema.mutableKey(Schema.Defect().pipe(Schema.refine((u) => u instanceof Error))) })
+function witness() {
+  const probes = [{ cause: new Error("x") }, { cause: new TypeError("t") }, { cause: { message: "x" } }, { cause: "x" }, {}]
+  return probes.map((v) => Schema.is(Failure)(v))
+}`,
+		Cite: Citation{VIP: 44, Template: "Schema.Defect().pipe(Schema.refine(", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do.", Reading: "the schema-mapping table writes Error as Schema.Defect().pipe(Schema.refine((u): u is Error => u instanceof Error)); no code block shows that row"},
+	})
+}

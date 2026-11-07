@@ -1,0 +1,16 @@
+// expect-result: [true,false,false,true,true,true]
+// VIP-44: the TypeScript-library Error maps to
+// Schema.Defect().pipe(Schema.refine(...)), which accepts an Error instance and
+// encodes it through its JSON codec.
+import { Schema } from "effect"
+schema Failure { readonly cause: Error }
+schema Optional { readonly cause?: Error; readonly tags: ReadonlySet<string> }
+export effect function main() {
+  const is = Schema.is(Failure)
+  const encoded = try Schema.encodeEffect(Schema.toCodecJson(Failure))({ cause: new Error("boom") })
+  const { cause } = encoded as { readonly cause: { readonly message?: unknown } }
+  return [
+    is({ cause: new Error("x") }), is({ cause: { message: "x" } }), is({ cause: "x" }),
+    cause.message === "boom", Schema.is(Optional)({ tags: new Set() }), Schema.is(Optional)({ cause: new TypeError("t"), tags: new Set(["a"]) })
+  ]
+}

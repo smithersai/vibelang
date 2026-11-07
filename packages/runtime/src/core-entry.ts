@@ -76,6 +76,7 @@ export const {
   $relates,
   $rest,
   $runMain,
+  $isError,
   $schemaErrorFamily,
   $schemaErrorMember,
   $schemaErrorMatcher,

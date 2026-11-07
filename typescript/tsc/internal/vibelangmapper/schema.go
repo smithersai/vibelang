@@ -181,6 +181,9 @@ func schemaKeyEffectFrame(node *ast.Node, lexical bool) *ast.Node {
 func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 	for _, reference := range p.file.VibeLangSchemaGenerics {
 		if reference.Expression == node && reference.Library != nil && p.libraryReference(reference) {
+			if reference.Arity == 0 && reference.Name.Text() == "Error" {
+				return schema + ".Defect().pipe(" + schema + ".refine(" + helperRef("$isError") + "))"
+			}
 			return p.schemaExpression(reference.Library, schema)
 		}
 		if reference.Expression == node && reference.Library != nil && reference.Arity == 0 {

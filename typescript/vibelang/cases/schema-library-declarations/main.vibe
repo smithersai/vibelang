@@ -1,0 +1,11 @@
+// VIP-44: an exported schema with library-typed fields declares what
+// TypeScript declares for its Effect TypeScript counterpart (typescript/main.ts).
+import { Schema } from "effect"
+
+export schema Order {
+  readonly id: string
+  readonly at: Date
+  readonly tags: ReadonlySet<string>
+  readonly counts: ReadonlyMap<string, number>
+  readonly cause: Error
+}
