@@ -56,7 +56,14 @@ func inferredEffectArguments(c *checker.Checker, call *ast.Node) []*ast.Node {
 		if constraintNamesEffect(c, param) {
 			continue // a declared Effect position, as Effect.forkChild's Arg
 		}
-		if isEffectType(c, args[i]) || isEffectSubtype(c, args[i]) {
+		// EK4802 warns about an unrun program inferred as ordinary data
+		// (VIP-1/5), so use Effect's own interface identity. A subtype with
+		// structure of its own, such as effect/cli's Command, is data that
+		// also implements Effect; running it would replace that data with
+		// its success value. Keep that identity through plain generics and
+		// Pipeable receiver inference, without exempting any callee name.
+		// Aliases and unions of Effect itself still describe cold programs.
+		if isEffectType(c, args[i]) {
 			inferred[param] = true
 		}
 	}

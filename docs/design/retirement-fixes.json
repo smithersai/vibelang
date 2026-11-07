@@ -277,5 +277,14 @@
         "output": "typescript/vibelang/cases/await-effect-generator-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK4802",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/effect-subtype-generic-argument.fail",
+        "output": "typescript/vibelang/cases/effect-subtype-generic-argument-fixed-output"
+      }
+    ]
   }
 ]
