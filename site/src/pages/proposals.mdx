@@ -34,6 +34,8 @@ Code marked **Adapted** rewrites an original example in current VibeLang syntax:
 
 **Status: partial.** Effect's workflow library runs from `.vibe` files today. The language feature does not exist.
 
+The design is being decided layer by layer; [VIP-44](/vips/0044-durable-values) covers values.
+
 In the earlier design, durable execution was part of the language. An **Action** declares a typed operation whose implementation is supplied later. Passing a function to `durable(...)` makes a **Flow** that connects Actions. The compiler turned each Flow into a static **Plan** without running it, and the runtime journaled every completed Action so that a restart resumed the run instead of repeating finished work.
 
 ### Proposed syntax

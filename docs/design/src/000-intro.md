@@ -72,7 +72,7 @@ The compiler is being changed to match the VIPs. Until it does, a VibeLang examp
 3. [Failures](003-failures.md): VIP-4, VIP-13, VIP-29, VIP-41.
 4. [Pattern matching](004-match.md): VIP-7.
 5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33.
-6. [Data](006-data.md): VIP-15, VIP-16, VIP-28.
+6. [Data](006-data.md): VIP-15, VIP-16, VIP-28, VIP-44.
 7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38, VIP-39.
 8. [Runtime guarantees](008-runtime.md): VIP-31.
 9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, and flipping pending examples.
