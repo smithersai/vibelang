@@ -232,6 +232,7 @@ test("upgrade-effect retains the Effect upgrade evidence and rejects new test fa
     writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.0.6", compiler: "native/vibelang", packages: {} })
 
     const options = { run, target, packages: ["packages/core"], test: "bun test", testCwd: "packages/core", toolchain, install: "true", base }
+    // rule-evidence: docs/design/vips/0032-effect-version.md#c5b6290f216dbea5 | Only then does it convert files to `.vibe`.
     await assert.rejects(upgradeEffect(options), /toolchain baseline regression/)
     const result = readJson(paths(run).upgrade)
     assert.deepEqual(result.effect, { from: "4.0.5", to: "4.0.6" })
@@ -340,6 +341,7 @@ test("upgrade-effect moves a repository VibeLang set up to this run's VibeLang i
     assert.match(compiler, /^file:\.\/\.vibelang-toolchain\/vibelang-0\.0\.11-[0-9a-f]{12}\.tgz$/)
     assert.deepEqual(readFileSync(join(target, compiler.slice(5))), readFileSync(join(toolchain, "vibelang-0.0.11.tgz")))
     // Effect and VibeLang move together in the upgrade's commit, and each file keeps its formatting.
+    // rule-evidence: docs/design/vips/0032-effect-version.md#5896fc765c34f201 | **Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found while upgrading Smithers).
     assert.equal(readFileSync(join(target, "packages/core/package.json"), "utf8"), JSON.stringify({ ...JSON.parse(core), dependencies: { effect: "4.0.6", "vibelang-runtime": "0.0.11" } }, null, 2) + "\n")
     assert.deepEqual(result.vibelang, ["package.json", "packages/core/package.json"])
     const { stdout } = await must(`jj diff --summary -r ${result.jj.commit}`, { cwd: target })
@@ -575,5 +577,3 @@ test("patchState holds for generated patches: applies before, contained after, c
     assert.equal(patchState(diff, file(reworded)), "conflict", message)
   }
 })
-// VIP-32 simultaneous-existing-VibeLang-upgrade
-// rule: docs/design/vips/0032-effect-version.md#a8bf35e3b7a8a1df

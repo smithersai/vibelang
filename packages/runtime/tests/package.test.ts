@@ -66,6 +66,7 @@ for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
           expect(result.exitCode).toBe(0)
           expect(output.trim()).toBe("42")
         } else {
+          // rule-evidence: docs/design/vips/0032-effect-version.md#5896fc765c34f201 | **Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found while upgrading Smithers).
           expect(result.exitCode).not.toBe(0)
           expect(output).toContain("vibelang-runtime@0.0.11 requires effect@4.1.1")
           expect(output).toContain(`found effect@${version}`)

@@ -27,6 +27,7 @@ test("nextStep walks upgrade-effect, setup, plan and each batch's steps, back to
     const p = paths(run)
     const write = (path, value) => { mkdirSync(join(path, ".."), { recursive: true }); writeFileSync(path, JSON.stringify(value)) }
     const at = (path, seconds) => utimesSync(path, seconds, seconds)
+    // rule-evidence: docs/design/vips/0032-effect-version.md#c5b6290f216dbea5 | Only then does it convert files to `.vibe`.
     assert.deepEqual(nextStep(run), { step: "upgrade-effect" })
     write(p.upgrade, {})
     assert.deepEqual(nextStep(run), { step: "setup" })
@@ -251,5 +252,3 @@ test("formatVibe formats with the repository's dprint where the nearest dprint c
     rmSync(root, { recursive: true, force: true })
   }
 })
-// VIP-32 upgrade-before-conversion
-// rule: docs/design/vips/0032-effect-version.md#c5b6290f216dbea5

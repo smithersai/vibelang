@@ -46,21 +46,6 @@ test.todo("rule-evidence: docs/design/vips/0030-config-files.md#decision | cov2-
 // Activation: Try warning/error/off severities for EK9201 and EK9202 and require EK3006 without changing their default diagnostics.
 test.todo("rule-evidence: docs/design/vips/0030-config-files.md#wills-words | cov2-vips-b interim severity code rejection | present | **Amended 2026-11-01: interim severity codes.** Interim `EK92xx` codes are not configurable through `vibe.severities`, even when printed as warnings; an entry is `EK3006`.")
 
-// rule-evidence: docs/design/vips/0032-effect-version.md#c5b6290f216dbea5
-// VIP-32: conversion follows pin upgrade.
-// Activation: Use an isolated migration fixture with an off-pin Effect; require version upgrade and install success before any source extension changes.
-test.todo("rule-evidence: docs/design/vips/0032-effect-version.md#decision | cov2-vips-b conversion follows pin upgrade | present | Only then does it convert files to `.vibe`.")
-
-// rule-evidence: docs/design/vips/0032-effect-version.md#a8bf35e3b7a8a1df
-// VIP-32: coupled runtime Effect upgrade.
-// Activation: Verify the published runtime exact pin refuses an off-pin Effect and that upgrade planning changes the VibeLang/runtime/Effect versions together.
-test.todo("rule-evidence: docs/design/vips/0032-effect-version.md#decision | cov2-vips-b coupled runtime Effect upgrade | present | **Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found by smithers-3a on Smithers).")
-
-// rule-evidence: docs/design/vips/0032-effect-version.md#1cc56090e3b485bb
-// VIP-32: off pin compile diagnostic.
-// Activation: Cross matching/mismatching/missing Effect versions through compiler and editor; require one EK3201 with resolved, VibeLang and pinned versions for mismatches.
-test.todo("rule-evidence: docs/design/vips/0032-effect-version.md#decision | cov2-vips-b off pin compile diagnostic | present | **Amended 2026-10-30: an off-pin Effect is a compile error.** VibeLang declares `effect` as an exact `peerDependency`, and the compiler reads the resolved `effect/package.json`: a version other than the pin is `EK3201` (\"the resolved effect is X; VibeLang Y pins Z: upgrade both together\"), in the editor and in CI.")
-
 // rule-evidence: docs/design/vips/0033-platform-stdlib.md#9adea56c74ab839d
 // VIP-33: module body native platform rules.
 // Activation: Compile identical platform references in a named top-level module body and sibling .ts file, with a .vibe outer-scope negative control.

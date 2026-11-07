@@ -6,6 +6,7 @@ const read=name=>JSON.parse(readFileSync(new URL(name,import.meta.url),"utf8"))
 // Chapter 007 / exact accepted Effect artifact and peer: docs/design/src/007-tooling.md#c6b61a86481bd880
 test("Chapter 007 / compiler and runtime publish the same exact Effect peer",()=>{
  const compiler=read("../package.json"),runtime=read("../../runtime/package.json")
+ // rule-evidence: docs/design/vips/0032-effect-version.md#1cc56090e3b485bb | **Amended 2026-10-30: an off-pin Effect is a compile error.** VibeLang declares `effect` as an exact `peerDependency`, and the compiler reads the resolved `effect/package.json`: a version other than the pin is `EK3201` ("the resolved effect is X; VibeLang Y pins Z: upgrade both together"), in the editor and in CI.
  assert.match(compiler.peerDependencies.effect,/^\d+\.\d+\.\d+$/)
  assert.equal(compiler.peerDependencies.effect,runtime.peerDependencies.effect)
  const installed=JSON.parse(readFileSync(new URL("../node_modules/effect/package.json",import.meta.url),"utf8"))

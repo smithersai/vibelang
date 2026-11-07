@@ -54,6 +54,7 @@ console.log(JSON.stringify({
 
 test("matcher symbol: a host without Symbol.customMatcher gets the registry key as a non-writable, non-enumerable, non-configurable own property", () => {
   for (const [name, executable] of hosts) {
+    // rule-evidence: docs/design/vips/0031-runtime-guarantees.md#35cbcb19358f981e | **Clarified 2026-11-03: global matcher initialization.** Where absent, the runtime defines an own global `Symbol.customMatcher` with value `Symbol.for("Symbol.customMatcher")`, non-writable, non-enumerable and non-configurable.
     expect([name, observe(executable, null)]).toEqual([name, {
       hadBefore: false, isSymbol: true, registryKey: "Symbol.customMatcher", hostIdentity: null, exportIsKey: true,
       writable: false, enumerable: false, configurable: false,
