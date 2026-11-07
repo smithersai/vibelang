@@ -5,6 +5,7 @@
 // Reify those identities as shared unique-symbol keys in the virtual program.
 // All member types, visibility, enum names and constant values remain checked.
 import { relative, resolve } from "node:path"
+import { ownsFile } from "./api-identity-ownership.mjs"
 
 export function alignNominalIdentity(ts, program, before, after, brandFile, entryMaps, ambientNames = new Map()) {
   const printer = ts.createPrinter()
@@ -35,7 +36,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
           const symbol = unalias(exported)
           const owned = symbol.declarations?.some(node => {
             const file = node.getSourceFile().fileName
-            return file.startsWith(base + "/") && !file.includes("/node_modules/")
+            return ownsFile(base, file) && !file.includes("/node_modules/")
           })
           if (!owned) continue
           const names = [...path, exported.name]
@@ -54,7 +55,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     }
     let path
     for (const [entries, base] of snapshots) {
-      if (source.fileName !== base && !source.fileName.startsWith(base + "/")) continue
+      if (source.fileName !== base && !ownsFile(base, source.fileName)) continue
       const entry = Object.entries(entries).filter(([, file]) => file === source.fileName).map(([key]) => key).sort()[0]
       path = entry !== undefined ? "entry:" + entry : relative(base, source.fileName).replace(/\.d\.vibex?\.ts$/, ".d.ts")
       break
@@ -117,8 +118,8 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
   const inferAliases = base => {
     const found = new Map()
     for (const source of program.getSourceFiles()) {
-      if (!source.fileName.startsWith(base + "/") || source.fileName.includes("/node_modules/") || !ts.isExternalModule(source)) continue
-      if (snapshots.find(([, root]) => source.fileName.startsWith(root + "/"))[1] !== base) continue
+      if (!ownsFile(base, source.fileName) || source.fileName.includes("/node_modules/") || !ts.isExternalModule(source)) continue
+      if (snapshots.find(([, root]) => ownsFile(root, source.fileName))[1] !== base) continue
       if (source.statements.some(node => ts.isExportAssignment(node) && node.isExportEquals)) continue
       const path = relative(base, source.fileName).replace(/\.d\.vibex?\.ts$/, ".d.ts")
       for (const statement of source.statements)
@@ -145,7 +146,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
   const brandType = id => factory.createTypeLiteralNode([factory.createPropertySignature(
     [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], brandKey(id), undefined, factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword))])
   for (const source of program.getSourceFiles()) {
-    const own = [before, after].some(base => source.fileName === base || source.fileName.startsWith(base + "/"))
+    const own = [before, after].some(base => source.fileName === base || ownsFile(base, source.fileName))
     if (!own || source.fileName.includes("/node_modules/")) continue
     let changed = false
     const transform = context => {
