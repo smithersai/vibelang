@@ -12,8 +12,6 @@ test.todo("rule-evidence: docs/design/src/002-running.md#776b34d942c2543e | Chap
 // Chapter 2: keep bare yield, producer delegation and parameter yield unchanged.
 test.todo("rule-evidence: docs/design/src/002-running.md#24b514e5cdf40a89 | Chapter 2: yield-star quick-fix boundaries - The assigned behavior has no existing test witness.")
 
-// Chapter 7: .vibex output names under JSX preserve and declaration output.
-test.todo("rule-evidence: docs/design/src/007-tooling.md#654575a33d8e24a4 | Chapter 7: .vibex output names under JSX preserve and declaration output - The assigned behavior has no existing test witness.")
 
 // Chapter 900: EK4601 legacy await-on-Effect diagnostic.
 test.todo("rule-evidence: docs/design/src/900-appendices.md#92880f15baa127b9 | Chapter 900: EK4601 legacy await-on-Effect diagnostic - No executable case or fuzz witness is present for this compatibility diagnostic.")

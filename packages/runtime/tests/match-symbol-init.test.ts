@@ -4,6 +4,9 @@
 // non-enumerable and non-configurable, like a well-known symbol. A pre-existing
 // host symbol is preserved with its native identity."
 //
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | **Matcher symbol initialization.** When the host lacks `Symbol.customMatcher`, runtime initialization defines an own property on the global `Symbol` with value `Symbol.for("Symbol.customMatcher")`, non-writable, non-enumerable and non-configurable, like a well-known symbol.
+// Stable rule id: docs/design/src/008-runtime.md#4ea1ce61385bfacf
+//
 // Each scenario starts a fresh Node and Bun process, because the property can
 // be defined only once per realm.
 import { afterAll, expect, test } from "bun:test"

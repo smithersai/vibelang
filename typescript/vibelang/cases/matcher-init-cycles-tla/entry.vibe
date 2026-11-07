@@ -1,0 +1,13 @@
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | Cycles and top-level `await` keep their ordinary TypeScript meanings.
+// Every module here but log.ts uses the matcher key, so each requests the
+// runtime first. The cycle a <-> b, function hoisting across it, and the
+// top-level awaits in tla, during which the independent after module runs,
+// evaluate as in entry-ts.ts, the TypeScript twin.
+import { events, log } from "./log.ts"
+import { isOne } from "./a.vibe"
+import { isTwo } from "./b.vibe"
+import { isThree, ready } from "./tla.vibe"
+import { isFour } from "./after.vibe"
+log("entry " + ready + " " + [isOne(1), isTwo(2), isThree(3), isFour(4), isOne(2)].join(","))
+export const trace = events
+// Stable rule id: docs/design/src/008-runtime.md#6cf98677eb8ae9a9
