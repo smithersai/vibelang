@@ -1,0 +1,24 @@
+// expect: EK4402
+/// <reference path="./types-node/index.d.ts" />
+// The references that vip33-module-body-sibling-ts holds in a module body,
+// written in the .vibe file's own scope: a node:* value import, process and
+// Buffer are EK4402, including inside Effect wrapper arrows. A type-only
+// import and the module body's copy stay allowed.
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#d13dd74b1a3ce38a | Outside a TypeScript `module` body, a `.vibe` file has no `node:*` value imports and no Node globals (`process`, `Buffer`).
+import { EOL } from "node:os"
+import type { EOL as Newline } from "node:os"
+export const cwd = () => process.cwd()
+export const size = (text: string) => Buffer.from(text).length
+export const newline = () => EOL
+export effect function wrapped() { return try Effect.try(() => process.cwd()) }
+export effect function bytes(text: string) { return try Effect.sync(() => Buffer.from(text)) }
+export type Line = typeof Newline
+
+module host {
+  import { EOL } from "node:os"
+  export const cwd = () => process.cwd()
+  export const size = (text: string) => Buffer.from(text).length
+  export const newline = () => EOL
+}
+import { cwd as bodyCwd, size as bodySize, newline as bodyNewline } from host
+export const body = [bodyCwd, bodySize, bodyNewline]

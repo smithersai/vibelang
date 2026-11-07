@@ -1,0 +1,24 @@
+/// <reference path="./types-node/index.d.ts" />
+// A named top-level module body holds the same platform code as the sibling
+// host.ts, and both compile and run alike; vip33-outer-vibe-platform.fail has
+// the same references outside a body, where each one is EK4402.
+import * as sibling from "./host.ts"
+
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#9adea56c74ab839d | A named top-level `module` body follows the rules of a sibling `.ts` file; VIP-40 supersedes VIP-25.
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#1c208562e180707d | Code that needs them lives in a `.ts` file or a named top-level `module` body ([VIP-40](0040-module-declarations.md), which supersedes VIP-25).
+module host {
+  import { EOL } from "node:os"
+  export const cwd = () => process.cwd()
+  export const size = (text: string) => Buffer.from(text).length
+  export const newline = () => EOL
+}
+
+export { cwd, size, newline } from host
+import { cwd, size, newline } from host
+
+// expect-result: {"same":true,"size":6,"newline":"\n"}
+export effect function main() {
+  const body = try Effect.try(() => [cwd(), size("héllo"), newline()])
+  const typescript = try Effect.try(() => [sibling.cwd(), sibling.size("héllo"), sibling.newline()])
+  return { same: JSON.stringify(body) === JSON.stringify(typescript), size: body[1], newline: body[2] }
+}
