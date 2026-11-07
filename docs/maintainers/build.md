@@ -161,6 +161,8 @@ The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its
 
 ## Go package coverage
 
+Migration import checks compare each rewritten source with its stock TypeScript twin, including diagnostic codes, messages and source locations. The resolver and import-form matrix covers type-only imports and both source-extension flags; native module-body imports keep their own spelling.
+
 Migration regression fixtures use the accepted source syntax and the pinned dependency package layout. Retired trailing blocks are decoded through the migration program. Fixed compiler-case twins preserve the input's rule-evidence comments, and schema expectations preserve decoded field modifiers and mandatory declaration sidecar imports even under `noEmit`.
 
 Full validation's `//typescript/tsc/...` selection includes

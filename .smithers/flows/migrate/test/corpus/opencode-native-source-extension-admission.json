@@ -1,0 +1,12 @@
+{
+  "key": "opencode:native-source-extension-admission",
+  "description": "A migrated top-level value import uses the sibling source extension without either extension option",
+  "resolution": "NodeNext",
+  "allow": false,
+  "rewrite": false,
+  "kind": "named",
+  "body": false,
+  "codes": [
+    5097
+  ]
+}

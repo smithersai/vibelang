@@ -43,13 +43,18 @@ const kinds = {
   reexport: spec => `export { value as result } from "${spec}";`,
 }
 const resolutions = ["NodeNext", "Node16", "Bundler"]
-function check({ resolution, allow, kind, body, quote: q = "\"", inline = false }) {
+const admission = JSON.parse(readFileSync(new URL("./corpus/opencode-native-source-extension-admission.json", import.meta.url), "utf8"))
+const tooling = readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
+test("source-extension admission follows the native twin", () => {
+  assert.ok(tooling.includes("Written `./x.vibe` and `./x.vibex` imports follow the `.ts`/`.tsx` twin's source-extension checks"))
+})
+function check({ resolution, allow, rewrite: rewriteExtensions = false, kind, body, quote: q = "\"", inline = false }) {
   const root = mkdtempSync(join(tmpdir(), "native-import-"))
   const form = kinds[kind]("./leaf.js").replaceAll("\"", q)
   const source = body ? `module local {${inline ? " " : "\n"}${form}\n}\n` : form + "\n"
   const expected = body ? source : source.replace("./leaf.js", "./leaf.vibe")
   const options = { strict: true, target: "ESNext", module: ["NodeNext", "Node16"].includes(resolution) ? resolution : "ESNext",
-    moduleResolution: resolution, types: [], noEmit: true, allowArbitraryExtensions: true, allowImportingTsExtensions: allow }
+    moduleResolution: resolution, types: [], noEmit: true, allowArbitraryExtensions: true, allowImportingTsExtensions: allow, rewriteRelativeImportExtensions: rewriteExtensions }
   try {
     writeFileSync(join(root, "package.json"), "{\"type\":\"module\"}")
     writeFileSync(join(root, "leaf.vibe"), fixture.leaf)
@@ -58,24 +63,47 @@ function check({ resolution, allow, kind, body, quote: q = "\"", inline = false 
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: options, vibe: { effectModules: false }, files: ["main.vibe", "leaf.vibe"] }))
     const compiled = spawnSync(compiler, ["-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8" })
     assert.ifError(compiled.error)
-    assert.equal(compiled.status, 0, JSON.stringify({ resolution, allow, kind, body }) + compiled.stdout + compiled.stderr)
-    // The unchanged native body must also compile as a real TypeScript file.
+    // Compare the actual rewritten import, including its source extension,
+    // against stock TypeScript. Type-only imports need no extension opt-in.
     writeFileSync(join(root, "leaf.ts"), fixture.leaf)
-    writeFileSync(join(root, "twin.ts"), form)
+    const twin = body ? form : expected.replaceAll("./leaf.vibe", "./leaf.ts")
+    const twinPath = join(root, "twin.ts")
+    writeFileSync(twinPath, twin)
     const parsed = ts.convertCompilerOptionsFromJson(options, root)
     assert.deepEqual(parsed.errors, [])
-    const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([join(root, "twin.ts")], parsed.options))
-    assert.deepEqual(diagnostics.map(d => [d.code, ts.flattenDiagnosticMessageText(d.messageText, "\n")]), [])
+    const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([twinPath], parsed.options))
+    const native = diagnostics.map(d => {
+      assert.equal(d.file?.fileName, twinPath)
+      const position = d.file.getLineAndCharacterOfPosition(d.start)
+      return {
+        code: "TS" + d.code, line: position.line + 1, column: position.character + 1,
+        message: ts.flattenDiagnosticMessageText(d.messageText, "\n"),
+      }
+    })
+    const actual = [...compiled.stdout.matchAll(/^main\.vibe\((\d+),(\d+)\): error (TS\d+): (.*)$/gm)].map(m => ({
+      code: m[3], line: Number(m[1]), column: Number(m[2]),
+      message: m[4].replaceAll("'.vibe'", "'.ts'"),
+    }))
+    const context = JSON.stringify({ resolution, allow, rewrite: rewriteExtensions, kind, body }) + "\n" + compiled.stdout + compiled.stderr
+    assert.equal(compiled.status, native.length ? 2 : 0, context)
+    assert.equal(compiled.stderr, "", context)
+    assert.equal(actual.length, (compiled.stdout.match(/: error /g) || []).length, context)
+    assert.deepEqual(actual, native, context)
+    return native.map(d => Number(d.code.slice(2)))
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
+test(admission.key, () => {
+  assert.deepEqual(check(admission), admission.codes)
+})
+
 test("module resolution, source-extension option, import kind and position matrix", () => {
-  for (const resolution of resolutions) for (const allow of [false, true])
-    for (const kind of Object.keys(kinds)) for (const body of [false, true]) check({ resolution, allow, kind, body })
+  for (const resolution of resolutions) for (const allow of [false, true]) for (const rewrite of [false, true])
+    for (const kind of Object.keys(kinds)) for (const body of [false, true]) check({ resolution, allow, rewrite, kind, body })
 })
 test("native import neighbours vary quotes, layout, resolver, option and form", () => {
-  fc.assert(fc.property(fc.record({ resolution: fc.constantFrom(...resolutions), allow: fc.boolean(),
-    kind: fc.constantFrom(...Object.keys(kinds)), body: fc.boolean(), quote: fc.constantFrom("\"", "\u0027"), inline: fc.boolean() }), check),
+  fc.assert(fc.property(fc.record({ resolution: fc.constantFrom(...resolutions), allow: fc.boolean(), rewrite: fc.boolean(),
+    kind: fc.constantFrom(...Object.keys(kinds)), body: fc.boolean(), quote: fc.constantFrom("\"", "\u0027"), inline: fc.boolean() }), sample => { check(sample) }),
     { seed: 405097, numRuns: 40, endOnFailure: true })
 })
 
