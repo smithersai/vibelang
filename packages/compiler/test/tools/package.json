@@ -9,6 +9,7 @@
   "devDependencies": {
     "@babel/core": "7.29.0",
     "@tanstack/router-generator": "1.167.12",
+    "@types/node": "26.6.5",
     "@types/react": "19.2.2",
     "@vitejs/plugin-react": "6.1.2",
     "babel-plugin-react-compiler": "1.0.0",
@@ -19,6 +20,7 @@
     "metro-source-map": "0.87.1",
     "oxc-transform-react": "0.152.0",
     "react": "19.2.0",
-    "vite": "8.3.4"
+    "vite": "8.3.4",
+    "vite-plus": "1.4.0"
   }
 }
