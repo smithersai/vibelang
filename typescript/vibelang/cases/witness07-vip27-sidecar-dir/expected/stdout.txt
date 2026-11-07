@@ -1,0 +1,1 @@
+sidecar directory layouts match TypeScript declarationDir

@@ -1,0 +1,29 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#5c51e6a7ef75e129
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-bun-project-scripts | **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its synthesized `typeof Name.Type` alias has no comment.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#6f42980fb6df70ed
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-bun-project-scripts | Native `removeComments` and `stripInternal` behavior is unchanged.
+// run.mjs compiles this file under default, `removeComments` and `stripInternal` options and requires stock tsc's bytes for typescript/main.ts.
+
+/** A user. */
+export schema User {
+  /** The id. */
+  readonly id: string
+}
+
+/**
+ * A legacy name.
+ * @deprecated Use User.
+ */
+export schema Legacy = string
+
+/**
+ * The codes.
+ * @internal
+ */
+export schema Code = "a" | "b"
+
+/** @public The visible name. */
+export schema Name = string
+
+/** A constant after the schemas. */
+export const after = 1

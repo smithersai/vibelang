@@ -126,41 +126,6 @@ test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision |
 // Activation: Emit an unannotated TypeScript function, verify no synthesized JSDoc, and reject its unchecked call as a foreign unknown throw.
 test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b unannotated foreign callable throws unknown | present | Without the tag, `tsc` emits the same function type with no JSDoc; that is a foreign callable with thrown type `unknown` under VIP-4.")
 
-// rule-evidence: docs/design/vips/0027-declaration-output.md#5c51e6a7ef75e129
-// VIP-27: schema JSDoc value only.
-// Activation: Compare struct and literal schema declarations with native Schema twins; documentation attaches only to the const, never the type alias.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-bun-project-scripts | cov2-vips-b schema JSDoc value only | present | **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its synthesized `typeof Name.Type` alias has no comment.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#6f42980fb6df70ed
-// VIP-27: schema native comment emit options.
-// Activation: Compare removeComments and stripInternal combinations, public/internal docs, and both schema forms with native TypeScript emit.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-bun-project-scripts | cov2-vips-b schema native comment emit options | present | Native `removeComments` and `stripInternal` behavior is unchanged.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#142d4d9b6fd4cf2f
-// VIP-27: sidecar declaration source roots.
-// Activation: Check explicit rootDir, composite config-root, and inferred common source root, asserting the exact mirrored output path for each.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01 | cov2-vips-b sidecar declaration source roots | present | `vibe.sidecarDir` moves every sidecar of the project into one directory, conventionally `.vibe/declarations`, at the source's path relative to TypeScript's declaration source root: explicit `rootDir`, the config directory for a composite project, or the common source directory otherwise.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#f398c9a2d915af53
-// VIP-27: rootDir dot sidecar path.
-// Activation: Compile src/x.vibe with rootDir "." and sidecarDir ".vibe/declarations"; assert .vibe/declarations/src/x.d.vibe.ts.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01 | cov2-vips-b rootDir dot sidecar path | present | With `rootDir: \".\"`, `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#0749f7b4c18141d5
-// VIP-27: imported source sidecar ownership.
-// Activation: Compile an imported source outside the selected config directory while a nearer config disagrees; selected project controls root and output.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01 | cov2-vips-b imported source sidecar ownership | present | An imported source outside the compiling config's directory follows that compiling project's root and `sidecarDir`; its nearest config does not change ownership.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#c84e422c75926c19
-// VIP-27: outside rootDir diagnostic.
-// Activation: Import a source excluded by explicit rootDir and require native TS6059 rather than silently changing its owner.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01 | cov2-vips-b outside rootDir diagnostic | present | An explicit `rootDir` excluding it reports `TS6059`.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#d836c4a76fc6e649
-// VIP-27: beside source default sidecar.
-// Activation: Compile a nested source with no sidecarDir and assert exactly one compatibility declaration beside that source.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01 | cov2-vips-b beside source default sidecar | present | With no `sidecarDir`, the sidecar stays beside its source.")
-
 // rule-evidence: docs/design/vips/0027-declaration-output.md#ab84b6b8845122f6
 // VIP-27: migration enables enumeration sidecars.
 // Activation: Run setup on an isolated fixture whose tracked script enumerates *.ts; verify sidecars enabled and the live migration trees remain untouched.
