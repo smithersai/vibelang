@@ -240,3 +240,93 @@ test("function-model probe accepts only the generated never contract", async () 
     ), { seed: 27136, numRuns: 48 })
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+// alchemy-codemod-legacy-plain-boundaries (32 partition sources): the pass
+// wrote `: infer _` into a VIP-40 module body, whose source is TypeScript
+// ("A body is a TypeScript file stored inside a `.vibe` file"), where it is
+// TS1338; and into the callbacks of an object passed as an argument, which
+// TypeScript, and a legacy-inference toolchain, type from the parameter they
+// fill: unmarked, `Effect.try({ try: () => JSON.parse(text), catch: (cause)
+// => cause })` declares `Effect<unknown, unknown>` on the legacy pin.
+const legacyBoundaries = JSON.parse(readFileSync(new URL("./corpus/alchemy-legacy-plain-boundaries.json", import.meta.url), "utf8"))
+for (const sample of legacyBoundaries.samples) {
+  test(`corpus: ${legacyBoundaries.repo} ${sample.key}`, () => {
+    assert.equal(mark(sample.before).text, sample.after)
+  })
+}
+
+test("a function an argument holds through an object, array, parentheses, as, satisfies or a conditional stays as written", () => {
+  const source = [
+    "declare function take(x: unknown): void",
+    "export const a = take({ f: (n: number) => n })",
+    "export const b = take([(n: number) => n])",
+    "export const c = take(((n: number) => n))",
+    "export const d = take({ m(n: number) { return n } } as object)",
+    "export const e = take(Math.random() > 0.5 ? (n: number) => n : (n: number) => -n)",
+    "export const f = take({ nested: { g: function (n: number) { return n } } } satisfies object)",
+    "export const g = new Proxy({} as Record<string, number>, { get: (_target, key) => String(key).length })",
+    ""
+  ].join("\n")
+  const { text, result } = mark(source)
+  assert.equal(text, source)
+  assert.equal(result, undefined)
+})
+
+test("a function a callback builds, or an argument computes, is no argument and is still marked", () => {
+  const { text } = mark([
+    "declare function take(x: unknown): void",
+    "export const a = take(() => ({ f: (n: number) => n }))",
+    "export const b = take(((n: number) => n)(1))",
+    "export const o = { f: (n: number) => n }",
+    ""
+  ].join("\n"))
+  assert.equal(text, [
+    "declare function take(x: unknown): void",
+    "export const a = take(() => ({ f: (n: number): infer _ => n }))",
+    "export const b = take(((n: number): infer _ => n)(1))",
+    "export const o = { f: (n: number): infer _ => n }",
+    ""
+  ].join("\n"))
+})
+
+test("a namespace is VibeLang code and is marked; only a module body is left alone", () => {
+  const { text } = mark("export namespace N { export const f = (n: number) => n }\nmodule body { export const g = (n: number) => n }\n")
+  assert.equal(text, "export namespace N { export const f = (n: number): infer _ => n }\nmodule body { export const g = (n: number) => n }\n")
+})
+
+test("property: an argument's wrapped function stays as written, the same function bound to a name is marked once, and a module body never changes", () => {
+  const fc = createRequire(join(runtime, "package.json"))("fast-check")
+  const functions = {
+    arrow: () => "(n: number) => n + 1",
+    expression: () => "function (n: number) { return n + 1 }",
+  }
+  const wrappers = {
+    object: (e) => `{ f: ${e} }`,
+    method: null,
+    array: (e) => `[${e}]`,
+    paren: (e) => `(${e})`,
+    as: (e) => `(${e}) as unknown`,
+    satisfies: (e) => `(${e}) satisfies unknown`,
+    whenTrue: (e) => `Math.random() > 0.5 ? ${e} : undefined`,
+    whenFalse: (e) => `Math.random() > 0.5 ? undefined : ${e}`,
+  }
+  const keys = Object.keys(wrappers).filter((k) => wrappers[k])
+  fc.assert(fc.property(
+    fc.constantFrom(...Object.keys(functions)),
+    fc.array(fc.constantFrom(...keys), { maxLength: 4 }),
+    fc.boolean(),
+    (kind, chain, inBody) => {
+      let expression = functions[kind]()
+      for (const key of chain) expression = wrappers[key](expression)
+      const argument = `declare function take(x: unknown): void\nexport const a = take(${expression})\n`
+      assert.equal(mark(argument).text, argument, argument)
+      const bound = `export const a = ${expression}\n`
+      const marked = mark(bound).text
+      assert.equal(marked.split("infer _").length - 1, 1, marked)
+      if (inBody) {
+        const body = `module platform {\nexport const a = ${expression}\nexport const free = (n: number) => n\n}\nexport { a, free } from platform\n`
+        assert.equal(mark(body).text, body, body)
+      }
+    }
+  ), { seed: 1107, numRuns: 60 })
+})

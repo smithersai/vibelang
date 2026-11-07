@@ -56,19 +56,50 @@ function overloadedReader(ts, checker, node) {
 }
 
 /**
+ * The call or new expression whose argument node fills, directly or as a
+ * member of an object or array literal passed there, or null. TypeScript
+ * types such a function from the parameter it fills, and so does a
+ * legacy-inference toolchain: `Effect.try({ try: () => JSON.parse(text),
+ * catch: (cause) => cause })` declares `Effect<unknown, unknown>` there
+ * unannotated, and `new Proxy(target, { get: (_, key) => ... })` keeps its
+ * handler's types (alchemy, 32 partition sources).
+ */
+function argumentOf(ts, node) {
+  let child = node
+  for (let parent = node.parent; parent; child = parent, parent = parent.parent) {
+    if ((ts.isCallExpression(parent) || ts.isNewExpression(parent)) && parent.arguments?.includes(child)) return parent
+    const passesThrough = ts.isParenthesizedExpression(parent) || ts.isObjectLiteralExpression(parent) || ts.isArrayLiteralExpression(parent) ||
+      ts.isAsExpression(parent) || ts.isSatisfiesExpression(parent) ||
+      (ts.isPropertyAssignment(parent) && parent.initializer === child) ||
+      (ts.isConditionalExpression(parent) && parent.condition !== child)
+    if (!passesThrough) return null
+  }
+  return null
+}
+
+/**
  * A function the toolchain would make an Effect function: written with no
- * modifier and no return annotation, not an inline callback unless it is an
- * overloaded reader's (overloadedReader).
+ * modifier and no return annotation, not a callback (argumentOf) unless it is
+ * an overloaded reader's (overloadedReader).
  */
 function candidate(ts, checker, node) {
   if (!(ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node))) return false
   if (!node.body || node.type) return false
   if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) return false
   if (ts.isMethodDeclaration(node) && !(ts.isClassLike(node.parent) || ts.isObjectLiteralExpression(node.parent))) return false
-  const parent = node.parent
-  const callback = (ts.isCallExpression(parent) || ts.isNewExpression(parent)) && parent.arguments?.includes(node)
-  return !callback || overloadedReader(ts, checker, node)
+  if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) && ts.isClassLike(node.parent)) return true
+  const call = argumentOf(ts, node)
+  return !call || call === node.parent && overloadedReader(ts, checker, node)
 }
+
+/**
+ * A VIP-40 `module name { }` body, which a platform or throwing split writes
+ * before this pass runs. Its source is TypeScript ("A body is a TypeScript
+ * file stored inside a `.vibe` file"), where `: infer _` is TS1338. A
+ * `namespace` and `declare global` are not bodies.
+ */
+const typeScriptBody = (ts, node) => ts.isModuleDeclaration(node) && ts.isIdentifier(node.name) &&
+  !(node.flags & (ts.NodeFlags.Namespace | ts.NodeFlags.GlobalAugmentation))
 
 /** The text after a function's parameter list, or around a bare arrow parameter, that annotates its return. */
 function annotation(ts, sf, node, text) {
@@ -89,6 +120,7 @@ export function plainEdits(ts, checker, sf, { flipped = false } = {}) {
   const left = []
   if (flipped) return { edits, left }
   const visit = (node) => {
+    if (typeScriptBody(ts, node)) return
     if (candidate(ts, checker, node)) {
       const signature = checker.getSignatureFromDeclaration(node)
       const returned = signature && checker.getReturnTypeOfSignature(signature)
