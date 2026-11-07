@@ -1,0 +1,18 @@
+// expect-result: [0,0,"v26.5.0","26.5.0",2]
+import { Effect } from "effect"
+import * as Experimental from "vibelang-runtime/experimental"
+
+let reads = 0
+export effect function main() {
+  const before = reads
+  const program = effect {
+    const version: string = "v" + (try (try Experimental.Process.Process).versions).node
+    const versions: Readonly<Record<string, string>> = try (try Experimental.Process.Process).versions
+    return [version, versions.node] as const
+  }
+  const cold = reads
+  const result = try Effect.provide(program, Experimental.Process.layerTest({
+    versions: Effect.sync(() => { reads++; return { node: "26.5.0", v8: "test" } })
+  }))
+  return [before, cold, result[0], result[1], reads]
+}

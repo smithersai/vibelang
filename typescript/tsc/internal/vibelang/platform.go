@@ -354,7 +354,7 @@ var platformAPIs = map[string]platformAPI{
 	"process.arch":           {"ExperimentalProcess", "try (try Experimental.Process.Process).arch", ""},
 	"process.execPath":       {"ExperimentalProcess", "try (try Experimental.Process.Process).execPath", ""},
 	"process.versions":       {"ExperimentalProcess", "try (try Experimental.Process.Process).versions", ""},
-	"process.version":        {"ExperimentalProcess", "try (try Experimental.Process.Process).versions", ""},
+	"process.version":        {"ExperimentalProcess", `"v" + (try (try Experimental.Process.Process).versions).node`, "On Node, process.version is the node component prefixed with v; versions itself is a map. Keep other runtime version spellings in a .ts file."},
 	"process.memoryUsage":    {"ExperimentalProcess", "try (try Experimental.Process.Process).memoryUsage", ""},
 	"process.argv":           {"Stdio", "try (try Stdio.Stdio).args", "The args effect leaves out argv[0] and argv[1], the runtime and the script."},
 	"process.cwd":            {"Path", "(try Path.Path).resolve()", ""},

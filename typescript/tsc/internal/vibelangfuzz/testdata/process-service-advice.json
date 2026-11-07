@@ -132,12 +132,12 @@
   {
     "key": "node:process:version:direct",
     "source": "import { version } from \"node:process\";export const value=version",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "node:process:version:alias",
     "source": "import { version as Native } from \"node:process\";export const value=Native",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "node:process:memoryUsage:direct",
@@ -212,12 +212,12 @@
   {
     "key": "process:version:direct",
     "source": "import { version } from \"process\";export const value=version",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "process:version:alias",
     "source": "import { version as Native } from \"process\";export const value=Native",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "process:memoryUsage:direct",
@@ -292,12 +292,12 @@
   {
     "key": "process:version:held",
     "source": "export const value=process.version",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "process:version:closure",
     "source": "export const value=()=>process.version",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "process:memoryUsage:held",
@@ -372,12 +372,12 @@
   {
     "key": "globalThis.process:version:held",
     "source": "export const value=globalThis.process.version",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "globalThis.process:version:closure",
     "source": "export const value=()=>globalThis.process.version",
-    "advice": "try (try Experimental.Process.Process).versions"
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
   },
   {
     "key": "globalThis.process:memoryUsage:held",
@@ -438,5 +438,45 @@
     "key": "globalThis.performance.timeOrigin:closure",
     "source": "export const value=()=>globalThis.performance.timeOrigin",
     "advice": "try (try Experimental.Process.Process).timeOrigin"
+  },
+  {
+    "key": "process:version:computed",
+    "source": "export const value=process[\"version\"]",
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
+  },
+  {
+    "key": "process:version:optional",
+    "source": "export const value=process?.version",
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
+  },
+  {
+    "key": "globalThis.process:version:computed",
+    "source": "export const value=globalThis[\"process\"][\"version\"]",
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
+  },
+  {
+    "key": "globalThis.process:version:optional",
+    "source": "export const value=globalThis.process?.version",
+    "advice": "\"v\" + (try (try Experimental.Process.Process).versions).node"
+  },
+  {
+    "key": "process:version-module-control:namespace",
+    "source": "import * as Native from \"process\";export const value=Native.version",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process:version-module-control:default",
+    "source": "import Native from \"process\";export const value=Native.version",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "node:process:version-module-control:namespace",
+    "source": "import * as Native from \"node:process\";export const value=Native.version",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "node:process:version-module-control:default",
+    "source": "import Native from \"node:process\";export const value=Native.version",
+    "advice": "try Config.String(\"NAME\")"
   }
 ]

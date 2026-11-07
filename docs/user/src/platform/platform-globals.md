@@ -202,7 +202,7 @@ Timer advice runs a delay with `try sleep("1 second")`. Repetition runs in the b
 
 Clipboard advice first obtains the injected `Clipboard.Clipboard` service. Its `readString` member is an Effect value: `try (try Clipboard.Clipboard).readString` reads the text.
 
-The `versions` member of the `Experimental.Process.Process` service supplies a map of component versions, matching `process.versions`. On Node, `process.version` is the `node` entry with a leading `v`; selecting that entry alone omits the prefix. Keep a runtime-specific version read in a `.ts` adapter when it does not follow Node’s spelling.
+The `versions` member of the `Experimental.Process.Process` service supplies a map of component versions, matching `process.versions`. The `process.version` diagnostic shows the string expression `"v" + (try (try Experimental.Process.Process).versions).node` for Node. On Node, `process.version` is the `node` entry with a leading `v`; selecting that entry alone omits the prefix. Keep a runtime-specific version read in a `.ts` adapter when it does not follow Node’s spelling.
 
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,

@@ -7,12 +7,17 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
+
+const processAdviceQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
 
 const processInjectionQuote = "Platform access is only through injected Effect services"
 
 func processServiceAdviceQuoted(t testing.TB) {
 	t.Helper()
+	chapterSays(t, "007-tooling.md", processAdviceQuote)
 	text := SpecText("005-services.md")
 	for _, quote := range []string{processInjectionQuote} {
 		if !strings.Contains(text, quote) {
@@ -35,6 +40,11 @@ func FuzzProcessServiceAdvice(f *testing.F) {
 	for _, row := range rows {
 		f.Add([]byte(row.Key + "\x00\x00"))
 		f.Add([]byte(row.Key + "\x00\x01"))
+		if strings.Contains(row.Key, ":version:") {
+			for mode := byte(2); mode < 8; mode++ {
+				f.Add([]byte(row.Key + "\x00" + string([]byte{mode})))
+			}
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -49,7 +59,20 @@ func FuzzProcessServiceAdvice(f *testing.F) {
 		if len(parts) > 1 && len(parts[1]) > 0 && parts[1][0]&1 != 0 {
 			source = "// retain namespace lookup through trivia\n" + strings.ReplaceAll(source, "Native", "Nâtive")
 		}
-		r, err := w.Compile(t.Context(), Project{Config: "{\"compilerOptions\":{\"strict\":true,\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"types\":[],\"skipLibCheck\":true,\"noEmit\":true},\"files\":[\"main.vibe\",\"node.d.ts\",\"node_modules/@types/node/index.d.ts\"]}", Files: map[string]string{"main.vibe": source, "node.d.ts": "declare module \"node:os\" { export const hostname:any;export const availableParallelism:any;export const platform:any;export const arch:any; }declare module \"os\" { export const hostname:any;export const availableParallelism:any;export const platform:any;export const arch:any; }declare module \"node:process\" { export const pid:any;export const platform:any;export const arch:any;export const execPath:any;export const versions:any;export const version:any;export const memoryUsage:any;export const kill:any; }declare module \"process\" { export const pid:any;export const platform:any;export const arch:any;export const execPath:any;export const versions:any;export const version:any;export const memoryUsage:any;export const kill:any; }", "node_modules/@types/node/index.d.ts": "declare var process: {pid:any;platform:any;arch:any;execPath:any;versions:any;version:any;memoryUsage:any;kill:any;};", "node_modules/@types/node/package.json": `{"name":"@types/node","types":"index.d.ts"}`, "package.json": `{"type":"module"}`}})
+		project := Project{Config: "{\"compilerOptions\":{\"strict\":true,\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"types\":[],\"skipLibCheck\":true,\"noEmit\":true},\"files\":[\"main.vibe\",\"node.d.ts\",\"node_modules/@types/node/index.d.ts\"]}", Files: map[string]string{"main.vibe": source, "node.d.ts": "declare module \"node:os\" { export const hostname:any;export const availableParallelism:any;export const platform:any;export const arch:any; }declare module \"os\" { export const hostname:any;export const availableParallelism:any;export const platform:any;export const arch:any; }declare module \"node:process\" { export const pid:any;export const platform:any;export const arch:any;export const execPath:any;export const versions:any;export const version:any;const Native: {version: string};export default Native;export const memoryUsage:any;export const kill:any; }declare module \"process\" { export const pid:any;export const platform:any;export const arch:any;export const execPath:any;export const versions:any;export const version:any;const Native: {version: string};export default Native;export const memoryUsage:any;export const kill:any; }", "node_modules/@types/node/index.d.ts": "declare var process: {pid:any;platform:any;arch:any;execPath:any;versions:any;version:any;memoryUsage:any;kill:any;};", "node_modules/@types/node/package.json": `{"name":"@types/node","types":"index.d.ts"}`, "package.json": `{"type":"module"}`}}
+		mode := byte(0)
+		if len(parts) > 1 && len(parts[1]) > 0 {
+			mode = parts[1][0]
+		}
+		if mode&2 != 0 {
+			project.Config = strings.Replace(project.Config, "{", `{"vibe":{"effectGlobals":false,"effectModules":false},`, 1)
+		}
+		if mode&4 != 0 {
+			project.Files["main.vibex"] = project.Files["main.vibe"]
+			delete(project.Files, "main.vibe")
+			project.Config = strings.Replace(project.Config, "main.vibe", "main.vibex", 1)
+		}
+		r, err := w.Compile(t.Context(), project)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,6 +91,26 @@ func FuzzProcessServiceAdvice(f *testing.F) {
 		if count != 1 {
 			Gap(t, "FuzzProcessServiceAdvice", row.Key, "want one EK4402, got %d", count)
 			return
+		}
+		if strings.Contains(row.Key, ":version:") {
+			file := "main.vibe"
+			if mode&4 != 0 {
+				file = "main.vibex"
+			}
+			project.Files[file] = `import { Effect } from "effect";
+import * as Experimental from "vibelang-runtime/experimental";
+export effect function replacement(): Effect.Effect<string, never, Experimental.Process.Process> { return ` + row.Advice + ` }`
+			fixed, err := w.Compile(t.Context(), project)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fixed.Remove()
+			for _, d := range fixed.Diagnostics {
+				if d.Category() == diagnostics.CategoryError {
+					Gap(t, "FuzzProcessServiceAdvice", row.Key+":replacement", "string replacement rejected: %s", d.String())
+					return
+				}
+			}
 		}
 		ExpectPending(t, "FuzzProcessServiceAdvice", row.Key)
 		ExpectPending(t, "FuzzProcessServiceAdvice", specCorpusKey(t))

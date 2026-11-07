@@ -26,7 +26,7 @@ var platformGlobalDocVariants = map[string]struct{ diagnostic, documented string
 	"performance.now":         {"`Number(try Clock.monotonicTimeNanos) / 1e6`", "For elapsed intervals, subtract readings from the same clock: `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6`. The clock has an arbitrary origin; keep reads requiring the native origin in a `.ts` adapter."},
 	"process.argv":            {"`try (try Stdio.Stdio).args`", "`try (try Stdio.Stdio).args` for user arguments, matching `process.argv.slice(2)`; read the full array in a `.ts` adapter."},
 	"process.getuid":          {"`try (try Experimental.Process.Process).currentUid`", "`try (try Experimental.Process.Process).currentUid`; absent is `undefined`, root is `0`, native errors stay typed failures"},
-	"process.version":         {"`try (try Experimental.Process.Process).versions`", "`\"v\" + (try (try Experimental.Process.Process).versions).node` on Node; `versions` itself is a map of component versions."},
+	"process.version":         {"`\"v\" + (try (try Experimental.Process.Process).versions).node`", "`\"v\" + (try (try Experimental.Process.Process).versions).node` on Node; `versions` itself is a map of component versions."},
 	"require.resolve":         {"escape to TypeScript for now: Effect has no module-resolution service; keep module resolution in TypeScript.", "escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url`"},
 }
 

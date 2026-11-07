@@ -79,6 +79,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Automatic fixes left throwing overloaded calls unchanged even when every overload agreed on the supplied arguments and result. These calls can now move into a TypeScript helper while preserving their types, receiver and evaluation order.
 
+- The `process.version` replacement hint returned a component-version map where a string was needed. It now selects Node’s version and keeps its leading `v`.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
