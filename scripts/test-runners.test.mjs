@@ -60,6 +60,9 @@ const runs = [
   ["packages/vite/test/*.test.mjs", "packages/vite/test/run.sh", "test/*.test.mjs"],
   ["packages/typescript-shim/test/*.test.mjs", "packages/PACKAGE.ts", "node --test packages/typescript-shim/test/*.test.mjs"],
   ["packages/create-vibelang/test/create.test.mjs", "PACKAGE.ts", "node --test packages/create-vibelang/test/create.test.mjs"],
+  ["packages/create-vibelang/test/dev.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/dev.test.mjs"],
+  ["packages/create-vibelang/test/filesystem.property.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/filesystem.property.test.mjs"],
+  ["packages/create-vibelang/test/pin.property.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/pin.property.test.mjs"],
   // A fixture project: coverage.test.mjs runs Vitest over it.
   ["packages/vite/test/coverage/test/*.test.ts", "packages/vite/test/coverage.test.mjs", "test/coverage"],
   // run.sh names each file on its node --test line; a file it leaves out runs nowhere.
