@@ -20,6 +20,8 @@ func WriteConfigFile(sys System, locale locale.Locale, reportDiagnostic Diagnost
 	file := getCurrentDirectory.ResolveFile("tsconfig.json")
 	if sys.FS().FileExists(file) {
 		reportDiagnostic(ast.NewCompilerDiagnostic(diagnostics.A_tsconfig_json_file_is_already_defined_at_Colon_0, file))
+	} else if policy, ok := sys.(interface{ SuppressEmit() bool }); ok && policy.SuppressEmit() {
+		fmt.Fprintln(sys.Writer(), "Would create a new tsconfig.json")
 	} else {
 		_ = sys.FS().WriteFile(file, generateTSConfig(options, locale))
 		output := []string{"\n"}
