@@ -96,8 +96,10 @@ if (vibePaths.length) {
   }
   if (!nativeOnly) {
   const { ESLint } = await import("eslint")
-  const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: [...configs, { files: ["**/*.{vibe,vibex}"], rules }], errorOnUnmatchedPattern: false, warnIgnored: false })
+  const fix = native.includes("--fix") && !native.some(arg => ["--help", "-h", "--version", "-V", "--print-config", "--init"].includes(arg))
+  const eslint = new ESLint({ cwd: root, fix, overrideConfigFile: true, overrideConfig: [...configs, { files: ["**/*.{vibe,vibex}"], rules }], errorOnUnmatchedPattern: false, warnIgnored: false })
   const results = await eslint.lintFiles(vibePaths)
+  if (fix) await ESLint.outputFixes(results)
   if (format === "json") {
     output.diagnostics ??= []
     for (const result of results) {

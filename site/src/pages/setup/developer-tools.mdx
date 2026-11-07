@@ -258,6 +258,9 @@ filters that added `.vibe` but omitted `.vibex`. Unsupported filter
 shapes produce a setup warning naming the runner.
 
 File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter. An explicitly named source file must exist; a missing file reports its path and exits with status `2`, including with `--vibe-native`. Unmatched globs retain the adapter's empty-selection policy. Explicit `.vibex` paths reach the same source and native passes as `.vibe` paths; both declaration sidecar extensions are excluded. A `.tsx` glob selects `.vibex`, and a mixed `{ts,tsx}` glob selects both source extensions.
+The adapter's `--fix` applies the ESLint pass's source fixes to selected
+`.vibe` and `.vibex` files, then reports remaining findings. Informational
+invocations do not apply fixes.
 Upstream Oxlint checks their TypeScript files; ESLint and the native pass
 check their VibeLang files on the original source tree. The
 generated configuration retains rule names, options, severities and directory
@@ -307,7 +310,7 @@ TypeScript rules stay with the native pass because the source ESLint parser has
 no TypeScript program. This also keeps resolved Oxlint defaults from requiring
 parser services before repository JavaScript plugin rules run.
 
-The pass applies no `--fix`, because a fix on projected text is not a source
+The native pass applies no `--fix`, because a fix on projected text is not a source
 edit. It leaves `reportUnusedDisableDirectives` off, because a directive naming a
 rule of the ESLint pass would look unused.
 

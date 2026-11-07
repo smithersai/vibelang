@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- File-list lint commands accepted `--fix` but left source findings unchanged. They now apply source fixes to the selected files and report what remains.
+
 - Creating a missing source file could leave Vite's error overlay open. The page now recovers automatically, including after deleting and restoring an imported source.
 
 - Linting TypeScript containing JSDoc type operators could stop with an unsupported node error. The lint parser now preserves the stock parser's nodes and source ranges.

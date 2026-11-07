@@ -519,7 +519,9 @@ of `.vibe` and `.vibex` sources, then maps diagnostics back to the original
 source. Reports on generated code are dropped. Migration setup wires this
 through `node .vibelang/oxlint.mjs --vibe-native`; use the
 [Oxlint integration](https://vibelang.sh/setup/developer-tools#oxlint) for
-configuration and rule coverage.
+configuration and rule coverage. File-list runners also accept `--fix` for the
+ESLint pass's fixes to selected authored source files; the native projection is
+never fixed.
 
 ## Find unused code with Knip
 
