@@ -40,7 +40,7 @@ func TestFixGeneratedSidecarInputs(t *testing.T) {
 						}
 					}
 					write(filepath.Join(dir, "media.vibe"), "module throwing { export class Asset { #value = 1; get value() { return this.#value } }\n/** @throws {never} */ export function make() { return new Asset() }\nexport function accept(value: {asset: Asset}) { return value } }\nexport { make, accept } from throwing\n")
-					write(filepath.Join(dir, "tsconfig.json"), fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"rootDir":".","rootDirs":[".",".vibe/declarations"]},"vibe":{"sidecarDir":%q},"include":["*.vibe","*.ts"]}`, layout))
+					write(filepath.Join(dir, "tsconfig.json"), fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true,"rootDir":".","rootDirs":[".",".vibe/declarations"]},"vibe":{"sidecarDir":%q},"include":["*.vibe","*.ts"]}`, layout))
 					fs := bundled.WrapFS(osvfs.FS())
 					build := func() *compiler.Program {
 						t.Helper()

@@ -58,7 +58,7 @@ const files = {
   "more.vibe": 'import { modes } from "./a.vibe"\nexport effect function more() {\n  const all = try modes()\n  all.push("slow")\n  return all\n}\n',
 }
 const repaired = 'export effect function modes() {\n  const mode = "fast"\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n'
-const config = { compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, outDir: "out", types: [] }, include: ["*.vibe"] }
+const config = { compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, outDir: "out", types: [], rewriteRelativeImportExtensions: true }, include: ["*.vibe"] }
 const sources = (texts) => Object.fromEntries(Object.entries(texts).filter(([n]) => n.endsWith(".vibe")))
 try {
   // The project compiles before any fix.

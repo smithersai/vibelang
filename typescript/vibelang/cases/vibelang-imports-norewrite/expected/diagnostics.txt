@@ -1,0 +1,4 @@
+main.vibe(9,26): error TS5097
+main.vibe(10,28): error TS5097
+main.vibe(11,26): error TS5097
+names.vibe(1,28): error TS5097

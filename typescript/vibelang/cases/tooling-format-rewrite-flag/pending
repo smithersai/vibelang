@@ -1,1 +1,0 @@
-tooling a .vibe module's relative .vibe/.vibex/.ts import specifiers are rewritten to .js/.jsx in emitted JavaScript without rewriteRelativeImportExtensions, and TS5097 is never reported for them, unlike the .ts twin

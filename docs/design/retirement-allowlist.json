@@ -2348,5 +2348,25 @@
       "reference": "docs/design/vips/0004-throw.md: calls through any or Function throw unknown; docs/design/src/003-failures.md (Plain code never throws) applies the stricter no-throw rule to effectful parameter lists."
     },
     "reason": "An erased callable has no signature contract to prove non-throwing. Choosing a concrete callable type, moving the work into an Effect body, or moving the declaration to TypeScript requires author intent and may change call-time behavior."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/declaration-nested-linked.fail",
+    "vip": "VIP-34",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted VIP-34 says \"With `rewriteRelativeImportExtensions`, relative specifiers `./x.vibe` in emitted JavaScript are rewritten to `./x.js`, as for `.ts`; source-extension admission follows the same tsconfig checks as the native twin\"; docs/design/src/007-tooling.md#config-files requires TS5097 without allowImportingTsExtensions or rewriteRelativeImportExtensions. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case only gained `rewriteRelativeImportExtensions: true` in tsconfig.json, the flag its .ts twin needs to import a source extension; its sources and expected diagnostics are unchanged, so it rejects no new form."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/nothrow-sync-throw.fail",
+    "vip": "VIP-34",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted VIP-34 says \"With `rewriteRelativeImportExtensions`, relative specifiers `./x.vibe` in emitted JavaScript are rewritten to `./x.js`, as for `.ts`; source-extension admission follows the same tsconfig checks as the native twin\"; docs/design/src/007-tooling.md#config-files requires TS5097 without allowImportingTsExtensions or rewriteRelativeImportExtensions. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case only gained `rewriteRelativeImportExtensions: true` in tsconfig.json, the flag its .ts twin needs to import a source extension; its sources and expected diagnostics are unchanged, so it rejects no new form."
   }
 ]

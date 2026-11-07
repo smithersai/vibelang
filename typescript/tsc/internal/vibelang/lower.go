@@ -32,7 +32,8 @@ type lowering struct {
 	matchPropertyCaches map[*ast.Node]*ast.Node
 	bindingSentinel     *ast.IdentifierNode // private lexical-pattern TDZ identity, created once per module
 
-	jsx core.JsxEmit // native .tsx output names follow the project JSX mode
+	jsx     core.JsxEmit // native .tsx output names follow the project JSX mode
+	rewrite bool         // rewriteRelativeImportExtensions: source specifiers name their output, as in TypeScript
 	transformers.Transformer
 	plan         *plan
 	effect       *ast.IdentifierNode // local name for effect's Effect module, imported on first use
@@ -85,6 +86,7 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 		matchPropertyCaches: parser.MatchPropertyCaches(file),
 		plan:                planFile(opts.EmitResolver, file),
 		jsx:                 opts.CompilerOptions.Jsx,
+		rewrite:             opts.CompilerOptions.RewriteRelativeImportExtensions.IsTrue(),
 		frames:              findFrameReferences(file),
 		fresh:               freshNames{file: file},
 		commonJS:            opts.GetEmitModuleFormatOfFile != nil && opts.GetEmitModuleFormatOfFile(file) == core.ModuleKindCommonJS,

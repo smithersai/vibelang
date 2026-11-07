@@ -115,17 +115,31 @@ export const user: User = { name: "b" }
 			t.Errorf("the declaration lacks %s:\n%s", want, dts)
 		}
 	}
-	// The JavaScript still imports the outputs (D31).
+	// rewriteRelativeImportExtensions rewrites the JavaScript to the outputs.
 	if strings.Contains(js, `"./helper.ts"`) || !strings.Contains(js, `"./helper.js"`) {
 		t.Errorf("the JavaScript does not import ./helper.js:\n%s", js)
 	}
-	// Without allowImportingTsExtensions, which a .vibe file does not need
-	// to name ./helper.ts, the declaration keeps the written specifier too:
-	// stock TypeScript accepts a .ts specifier in a declaration file.
+	// rewriteRelativeImportExtensions alone admits the source specifiers, as
+	// for the twin, and the declaration still keeps them as written: stock
+	// TypeScript accepts a .ts specifier in a declaration file.
+	files, _ = specifierFiles("vibe", source, `,"rewriteRelativeImportExtensions":true`)
+	rewritten, _, errors := emitSpecifierProject(t, files)
+	if len(errors) != 0 || rewritten != stock {
+		t.Fatalf("with rewriteRelativeImportExtensions alone: errors %v, declaration\n%s", errors, rewritten)
+	}
+	// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#ef0ae173a442cb70 | With `rewriteRelativeImportExtensions`, relative specifiers `./x.vibe` in emitted JavaScript are rewritten to `./x.js`, as for `.ts`; source-extension admission follows the same tsconfig checks as the native twin ([chapter 7](../src/007-tooling.md#config-files)).
+	// Without either flag the .vibe module reports TS5097 where its .ts twin does.
+	files, _ = specifierTwinFiles(source, "")
+	_, _, twinErrors := emitSpecifierProject(t, files)
 	files, _ = specifierFiles("vibe", source, "")
-	plain, _, errors := emitSpecifierProject(t, files)
-	if len(errors) != 0 || plain != stock {
-		t.Fatalf("without allowImportingTsExtensions: errors %v, declaration\n%s", errors, plain)
+	_, _, vibeErrors := emitSpecifierProject(t, files)
+	if len(twinErrors) == 0 || len(vibeErrors) != len(twinErrors) {
+		t.Fatalf("without extension flags: the .ts twin reports %v, the .vibe module %v", twinErrors, vibeErrors)
+	}
+	for _, message := range vibeErrors {
+		if !strings.Contains(message, "allowImportingTsExtensions") {
+			t.Fatalf("without extension flags: the .vibe module reports %v, want TS5097 only", vibeErrors)
+		}
 	}
 }
 
