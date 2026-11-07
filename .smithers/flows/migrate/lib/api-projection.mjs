@@ -174,6 +174,17 @@ export function apiProjection(ts, directory, surface, files, { published = true,
       const projectedFiles = [...originals].filter(([, owner]) => owners.has(owner)).map(([file]) => path(file))
       if (projectedFiles.length) projectContexts.push({ directory, compilerOptions: parsed.options, files: projectedFiles })
     }
+    // A file placed off the package's ancestor chain, such as a saved source in
+    // a sibling package, resolves bare imports from its own directories first.
+    const chain = new Set(ancestors)
+    for (const name of originals.keys()) {
+      let real = dirname(resolve(metadata.packageDir, name)), copy = dirname(path(name))
+      for (; !chain.has(real) && copy.startsWith(temporary + sep); real = dirname(real), copy = dirname(copy)) {
+        const modules = join(real, "node_modules"), link = join(copy, "node_modules")
+        if (!slash(real).includes("/node_modules/") && existsSync(modules) && !existsSync(link))
+          symlinkSync(modules, link, "junction")
+      }
+    }
     return { directory: root, originals, destinations, projectContexts, absentSources,
       cleanup() { rmSync(temporary, { recursive: true, force: true }) } }
   } catch (error) { rmSync(temporary, { recursive: true, force: true }); throw error }
