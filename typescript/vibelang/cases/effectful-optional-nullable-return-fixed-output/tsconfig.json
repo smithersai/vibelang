@@ -11,7 +11,6 @@
   },
   "files": [
     "main.vibe",
-    "lib.ts",
-    "assertions.vibe"
+    "lib.ts"
   ]
 }

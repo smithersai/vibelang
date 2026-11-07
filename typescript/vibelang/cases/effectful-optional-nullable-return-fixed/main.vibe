@@ -1,0 +1,12 @@
+// What vibelang --fix writes for effectful-optional-nullable-return.fail. assertions.vibe
+// checks that each repaired result keeps its nullable type and fails with never.
+// Optional reference syntax does not erase a callable's own nullable result.
+import { maybeEffect, maybeStream, maybeLayer, maybeExit, genericMaybe, optionalWhole, safeMaybe } from "./lib.js"
+export effect function effectResult() { return try Effect.orDie(Effect.try({ try: () => maybeEffect?.(), catch: (e) => e })) }
+export effect function streamResult() { return try Effect.orDie(Effect.try({ try: () => maybeStream?.(), catch: (e) => e })) }
+export effect function layerResult() { return try Effect.orDie(Effect.try({ try: () => maybeLayer?.(), catch: (e) => e })) }
+export effect function exitResult() { return try Effect.orDie(Effect.try({ try: () => maybeExit?.(), catch: (e) => e })) }
+export effect function genericResult() { return try Effect.orDie(Effect.try({ try: () => genericMaybe?.(), catch: (e) => e })) }
+export effect function optionalReference() { return optionalWhole?.() }
+export effect function safeResult() { return safeMaybe?.() }
+export effect function explicitBridge() { return try Effect.orDie(Effect.try(() => maybeEffect?.())) }

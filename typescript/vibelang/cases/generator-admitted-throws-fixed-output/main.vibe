@@ -6,6 +6,6 @@ export const options = Effect.try({ try: function* () { yield $invoke(risky) }, 
 export const executor = new Promise<unknown>(function* (_resolve) { yield $invoke(risky) })
 
 module $call$ts {
-export function invoke<T extends Function>(target:T):ReturnType<Extract<T,(...args:any[])=>any>> { return target() }
+export function $invoke<T extends Function>(target:T):ReturnType<Extract<T,(...args:any[])=>any>> { return target() }
 }
-import { invoke as $invoke } from $call$ts
+import { $invoke } from $call$ts
