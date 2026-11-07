@@ -1,0 +1,18 @@
+{
+  "description": "A private package main must not expose an unexported native module companion as an extra API entry.",
+  "manifest": {
+    "private": true,
+    "type": "module",
+    "main": "./main.ts"
+  },
+  "before": {
+    "main.ts": "export { value } from \"./leaf.js\";\n",
+    "leaf.ts": "export const value: number = 1;\n"
+  },
+  "after": {
+    "main.ts": "export { value } from \"./leaf.js\";\n",
+    "leaf.vibe": "module constants { export const hiddenValue = 1; }\nimport { hiddenValue } from constants;\nexport const value: number = hiddenValue;\n"
+  },
+  "declaration": "export declare const value: number;\n",
+  "mainDeclaration": "export { value } from \"./leaf.js\";\n"
+}
