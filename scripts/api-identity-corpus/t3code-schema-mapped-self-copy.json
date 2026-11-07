@@ -1,0 +1,21 @@
+{
+  "rule": "Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count.",
+  "fields": [
+    "usedTokens",
+    "totalProcessedTokens",
+    "maxTokens",
+    "inputTokens",
+    "cachedInputTokens",
+    "outputTokens",
+    "reasoningOutputTokens",
+    "lastUsedTokens",
+    "lastInputTokens",
+    "lastCachedInputTokens",
+    "lastOutputTokens",
+    "lastReasoningOutputTokens",
+    "toolUses",
+    "durationMs",
+    "autoCompactThreshold"
+  ],
+  "entry": "import type { Snapshot } from \"../dep.js\"; export type Nullable = { readonly [Key in keyof Snapshot]: undefined extends Snapshot[Key] ? Exclude<Snapshot[Key], undefined> | null : Snapshot[Key] };"
+}
