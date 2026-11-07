@@ -669,6 +669,9 @@ func (l *execLowering) pair() {
 // collect indexes the call expressions and member-access receivers under
 // node by their spans, which is how the plan's edits locate them.
 func (l *execLowering) collect(node *ast.Node) {
+	if retiredControlCode(node) != 0 {
+		return
+	}
 	node.ForEachChild(func(child *ast.Node) bool {
 		switch child.Kind {
 		case ast.KindCallExpression:
@@ -1224,6 +1227,9 @@ func (l *execLowering) lowerLoops() {
 	rewritten := map[*ast.Node]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
+		if retiredControlCode(n) != 0 {
+			return
+		}
 		n.ForEachChild(func(c *ast.Node) bool { visit(c); return false })
 		if n.Kind != ast.KindForOfStatement {
 			return
@@ -1295,6 +1301,9 @@ func (l *execLowering) lowerLoops() {
 		escapes := []jump{}
 		var jumps func(*ast.Node)
 		jumps = func(c *ast.Node) {
+			if retiredControlCode(c) != 0 {
+				return
+			}
 			if ast.IsFunctionLike(c) || ast.IsClassLike(c) {
 				return
 			}
