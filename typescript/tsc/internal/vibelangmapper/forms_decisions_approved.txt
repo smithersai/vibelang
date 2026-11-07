@@ -2351,3 +2351,4 @@ typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice 
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The shadowed object method has an explicit boolean[] return annotation, so it is plain regardless of its all name.
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # the local all method declares boolean[], so its annotation decides plain
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The ordinary object method has a written boolean[] return annotation and no effect modifier.
+typescript/vibelang/cases/migrate-opencode-held-program-fixed/lib.vibe:4:16 lambda: effectFn keyword -> effectFn annotation # The written return annotation now describes the plain factory that preserves its synchronous primitive.

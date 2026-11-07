@@ -1,20 +1,20 @@
 
 export const log: Array<string> = []
 
-const listen = effect (): (void!!)!! =>
-  {
+const listen = (): (void!!)!! =>
+  Effect.sync(() => {
     log.push("listen")
     return Effect.sync(() => {
       log.push("unsubscribe")
     })
-  }
+  })
 
 const nested = (): (number!!)!! =>
   Effect.succeed(
-    effect {
+    Effect.sync(() => {
       log.push("inner")
       return 7
-    },
+    }),
   )
 
 export const finalized = effect {
