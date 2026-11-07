@@ -14,7 +14,8 @@ import (
 // thunks evaluate after its getter. Bare calls and constructors keep argument
 // reads in their original scope, retaining control-flow narrowing.
 // Function (without a call signature) avoids inventing a never-throws contract.
-// Generic/overloaded/predicate/optional calls and suspension operands refuse at their site.
+// Generic/predicate/optional calls and suspension operands refuse at their site.
+// Overloads require an identical supplied parameter prefix and result type.
 // The function is exported under the name the file imports it by (see
 // nothrowRaiseBody).
 func nothrowCallBody(name string, method string, arity int, construct bool) string {
@@ -104,7 +105,7 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 		return fileFix{}, false
 	}
 	signatures := c.GetSignaturesOfType(calleeType, kind)
-	if len(signatures) != 1 || len(signatures[0].TypeParameters()) != 0 || c.GetTypePredicateOfSignature(signatures[0]) != nil {
+	if !compatibleNothrowCallSignatures(c, signatures, len(site.Arguments())) {
 		return fileFix{}, false
 	}
 	method := ""
@@ -200,4 +201,34 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 // parameter domains differently from Parameters<T>. Keep these sites intact.
 func stableNothrowCallTarget(t *checker.Type) bool {
 	return t != nil && t.Flags()&(checker.TypeFlagsInstantiableNonPrimitive|checker.TypeFlagsUnionOrIntersection) == 0
+}
+
+// Parameters<T> and ReturnType<T> read the last overload. A helper may use
+// those types only when every overload agrees at each supplied position and
+// on the result. Pointer identity also preserves callback signature contracts;
+// mutual assignability would incorrectly equate any with narrower types.
+func compatibleNothrowCallSignatures(c *checker.Checker, signatures []*checker.Signature, arity int) bool {
+	if len(signatures) == 0 {
+		return false
+	}
+	last := signatures[len(signatures)-1]
+	for _, signature := range signatures {
+		if len(signature.TypeParameters()) != 0 || c.GetTypePredicateOfSignature(signature) != nil {
+			return false
+		}
+		if len(signatures) == 1 {
+			continue
+		}
+		if signature.HasRestParameter() || signature.ThisParameter() != nil ||
+			arity < signature.MinArgumentCount() || arity > len(signature.Parameters()) ||
+			c.GetReturnTypeOfSignature(signature) != c.GetReturnTypeOfSignature(last) {
+			return false
+		}
+		for i := 0; i < arity; i++ {
+			if c.GetTypeAtPosition(signature, i) != c.GetTypeAtPosition(last, i) {
+				return false
+			}
+		}
+	}
+	return true
 }

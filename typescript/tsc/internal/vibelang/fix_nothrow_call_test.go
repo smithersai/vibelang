@@ -121,3 +121,74 @@ export function overloaded(n:number|string):number|string{return n}
 		t.Fatal(err)
 	}
 }
+
+func TestFixNothrowCompatibleOverloads(t *testing.T) {
+	for _, target := range []struct{ name, declaration, call, result string }{
+		{"function", "/** @throws {Error} */ export function read(n:string):number;\n/** @throws {Error} */ export function read(n:string,tail?:number):number;\nexport function read(n:string):number{return n.length}", "native.read(s)", "number"},
+		{"method", "export interface Reader {\n/** @throws {Error} */ read(n:string):number;\n/** @throws {Error} */ read(n:string,tail?:number):number;\n}\nexport const reader:Reader={read:(n:string)=>n.length}", "native.reader.read(s)", "number"},
+		{"constructor", "export class Box {\n/** @throws {Error} */ constructor(n:string);\n/** @throws {Error} */ constructor(n:string,tail?:number);\nconstructor(readonly n:string){}\n}", "new native.Box(s)", "native.Box"},
+		{"two-prefix", "/** @throws {Error} */ export function read(n:string,count:number,tail?:string):number;\n/** @throws {Error} */ export function read(n:string,count:number,tail?:boolean):number;\nexport function read(n:string,count:number):number{return n.length+count}", "native.read(s,2)", "number"},
+		{"zero-prefix", "/** @throws {Error} */ export function read():number;\n/** @throws {Error} */ export function read(tail?:string):number;\nexport function read():number{return 1}", "native.read()", "number"},
+	} {
+		for _, placement := range []string{"body", "arrow", "default", "field"} {
+			t.Run(target.name+"/"+placement, func(t *testing.T) {
+				source := ""
+				switch placement {
+				case "body":
+					source = "export function main(s:string):" + target.result + "{return " + target.call + "}"
+				case "arrow":
+					source = "export const main=(s:string):" + target.result + "=>" + target.call
+				case "default":
+					source = "export function main(s:string,value=" + target.call + "):" + target.result + "{return value}"
+				case "field":
+					source = "export function main(s:string):" + target.result + "{class Box{readonly value=" + target.call + "};return new Box().value}"
+				}
+				_, file, _, _ := editorProgram(t, "import * as native from \"./native.js\";"+source)
+				if err := os.WriteFile(filepath.Join(filepath.Dir(file.FileName().AsString()), "native.ts"), []byte(target.declaration), 0600); err != nil {
+					t.Fatal(err)
+				}
+				result := fixCase(t, filepath.Dir(file.FileName().AsString()))
+				if result.Err != nil {
+					t.Fatal(result.Err)
+				}
+				fixed := result.Files[file.FileName()]
+				if fixed == nil || !strings.Contains(fixed.Text, "$invoke(") || len(result.Sites) != 0 {
+					t.Fatalf("compatible overloads not repaired: %+v", result)
+				}
+			})
+		}
+	}
+}
+
+func TestFixNothrowIncompatibleOverloads(t *testing.T) {
+	for _, target := range []struct{ name, signatures, call string }{
+		{"parameter", "(n:string):number;\n(n:any):number;", "read(s)"},
+		{"return", "(n:string):1;\n(n:string):number;", "read(s)"},
+		{"generic", "<T extends string>(n:T):number;\n(n:string):number;", "read(s)"},
+		{"predicate", "(n:string):n is string;\n(n:string):boolean;", "read(s)"},
+		{"this", "(this:void,n:string):number;\n(n:string):number;", "read(s)"},
+		{"rest", "(n:string):number;\n(n:string,...tail:number[]):number;", "read(s)"},
+		{"arity", "(n:string):number;\n(n:string,tail:number):number;", "read(s)"},
+		{"optional", "(n:string):number;\n(n?:string):number;", "read(s)"},
+	} {
+		t.Run(target.name, func(t *testing.T) {
+			decl := "export const read:{\n/** @throws {Error} */ " + strings.ReplaceAll(target.signatures, ";\n", ";\n/** @throws {Error} */ ") + "\n}=null!"
+			_, file, _, _ := editorProgram(t, "import {read} from \"./native.js\";export function main(s:string){return "+target.call+"}")
+			if err := os.WriteFile(filepath.Join(filepath.Dir(file.FileName().AsString()), "native.ts"), []byte(decl), 0600); err != nil {
+				t.Fatal(err)
+			}
+			r := fixCase(t, filepath.Dir(file.FileName().AsString()))
+			if r.Err != nil {
+				t.Fatal(r.Err)
+			}
+			if len(r.Sites) == 0 {
+				t.Fatalf("missing refusal: %+v", r)
+			}
+			for _, fixed := range r.Files {
+				if strings.Contains(fixed.Text, "$invoke(") {
+					t.Fatalf("unproved overload bridge: %s", fixed.Text)
+				}
+			}
+		})
+	}
+}

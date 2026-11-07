@@ -77,6 +77,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Converting an `async` function nested in an exported factory could produce declaration errors. Generated rejection error types now remain visible to the exported declaration. Attached factory documentation also stays with its declaration across blank lines.
 
+- Automatic fixes left throwing overloaded calls unchanged even when every overload agreed on the supplied arguments and result. These calls can now move into a TypeScript helper while preserving their types, receiver and evaluation order.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
