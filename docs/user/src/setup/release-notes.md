@@ -27,6 +27,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration kept a module in TypeScript when an exported function that used platform code had no written return type, such as `export const digestNpmrc = async (npmrc: string) => { ... }`. The function now stays in the module with the same inferred type and calls its `.platform.ts` companion, unless that type could name something only the companion declares.
 - Matching a branded primitive could incorrectly report a missing tag case. Broad primitive intersections now keep the match open, while tagged object intersections still check missing cases.
 
+- Checking invalid JSX could silently succeed after checking the same text as plain VibeLang. Formatter cache entries now distinguish the source kinds and report the JSX error.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

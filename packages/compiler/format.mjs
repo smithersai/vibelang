@@ -151,7 +151,11 @@ function cleanTexts() {
     }
   } catch { return none }
 }
-const textKey = (style, text) => createHash("sha256").update(JSON.stringify(style)).update("\0").update(text).digest("base64url")
+// The same bytes can be clean plain syntax and invalid JSX.
+const textKey = (style, text, file) => createHash("sha256")
+  .update(JSON.stringify(style)).update("\0")
+  .update(/\.(?:vibex|tsx)$/.test(file) ? "tsx" : "ts").update("\0")
+  .update(text).digest("base64url")
 // Each dprint run spends a core on its one TypeScript host path, so a large
 // batch gains from one run per core. A smaller shard costs more to start than it saves.
 const shardSize = 256
@@ -182,7 +186,7 @@ function formatBatch(files, clean) {
     let style, input
     try { style = repositoryStyle(file); input = readFileSync(file, "utf8") }
     catch { continue }
-    const key = textKey(style, input)
+    const key = textKey(style, input, file)
     if (clean.has(key)) { results.set(file, { input, output: input, key }); continue }
     const group = JSON.stringify(style)
     if (!groups.has(group)) groups.set(group, { style, entries: [] })
