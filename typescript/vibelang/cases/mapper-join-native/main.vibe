@@ -1,0 +1,9 @@
+// expect-result: [7,[]]
+import { Effect as E, Fiber as F } from "effect"
+export effect function main() {
+ const observations: string[] = []
+ const fiber: F.Fiber<number> = try E.forkChild(E.succeed(7))
+ const viewed: F.Fiber<number> = try E.try(() => new Proxy(fiber, { has(target, key): boolean { observations.push(String(key)); return key in target } }))
+ const value = join viewed
+ return [value, observations] as const
+}

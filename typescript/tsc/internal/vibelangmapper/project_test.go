@@ -1125,14 +1125,14 @@ func TestConcurrentContinueRegions(t *testing.T) {
 	}
 }
 
-// TestJoinAnnotatedFactory uses a function's written value channel after
-// its Effect runs, while a held Effect itself remains an invalid join leaf.
+// TestJoinAnnotatedFactory keeps a plain factory call as the native Fiber
+// argument, without adding an implicit Effect execution step.
 func TestJoinAnnotatedFactory(t *testing.T) {
-	source := "declare function make(): Fiber.Fiber<number>!!; function f() { return join make() }"
+	source := "declare function make(): Fiber.Fiber<number>; effect function f() { return join make() }"
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
 	assertParses(t, projection.Text)
-	assert.Assert(t, strings.Contains(projection.Text, "$join((yield* $run(make())))"), "%s", projection.Text)
+	assert.Assert(t, strings.Contains(projection.Text, "$join(make())"), "%s", projection.Text)
 }
 
 // TestFiberFormsInSynthesizedExpressions keeps fiber operations in do and

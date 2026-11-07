@@ -308,6 +308,7 @@ var execHelpers = map[string]execSource{
 	"$method": {"vibelang-runtime/data-methods", "$method"},
 
 	"$gen":             {"effect/Effect", "gen"},
+	"$join":            {"effect/Fiber", "join"},
 	"$fail":            {"effect/Effect", "fail"},
 	"$plain":           {"vibelang-runtime/internal", "$plainOf"},
 	"$promise":         {"effect/Effect", "promise"},

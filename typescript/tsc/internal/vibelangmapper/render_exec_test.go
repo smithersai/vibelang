@@ -192,13 +192,13 @@ var emitCases = []struct {
 		name:     "fiber forms in do bodies retain executable run boundaries",
 		source:   "function f(a: Fiber.Fiber<number>) { return do { join a } } function g() { return do { for concurrent (const x of [1]) { log(x) } 1 } }",
 		contains: []string{"$join(a)", "Effect.forEach([1], ($concurrentItem) => $gen(function* () { const x = $concurrentItem; {", "$isRun($t) ? (yield* $t) : $t"},
-		absent:   []string{"for concurrent", "join a", "f$direct", "g$direct"},
+		absent:   []string{"for concurrent", "return join ", "f$direct", "g$direct"},
 	},
 	{
-		name:     "join runs a held fiber and keeps array and object shapes",
-		source:   "function f(a: Fiber.Fiber<number>, b: Fiber.Fiber<string>) { const x = join a; const y = join [a, b]; return join { a, b } }",
-		contains: []string{"$join(a)", "$join([a, b])", "$join({ a, b })", "$isRun($t) ? (yield* $t) : $t"},
-		absent:   []string{"join a", "f$direct", "$asProgram(a)"},
+		name:     "join runs native fibers inside array and object values",
+		source:   "effect function f(a: Fiber.Fiber<number>, b: Fiber.Fiber<string>) { const x = join a; const y = [join a, join b]; return { x, y } }",
+		contains: []string{"$join(a)", "$join(b)", "from \"effect/Fiber\"", "$isRun($t) ? (yield* $t) : $t"},
+		absent:   []string{"const x = join ", "f$direct", "$asProgram(a)"},
 	},
 	{
 		name:     "concurrent loops defer bodies and continue returns from one item",
