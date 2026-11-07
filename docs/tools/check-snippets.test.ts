@@ -227,12 +227,12 @@ test.skipIf(!existsSync(compiler))("runs marked blocks and reports output mismat
         "```vibe", "// names.vibe", "function salutation() { return 'Hello' }", "export function name() { return 'Ada' }", "```",
         "```vibe", "// run: try Console.log(greet())", "function greet() { return `${salutation()}, ${name()}!` }", "```",
         "```output", "Hello, Ada!", "```",
-        "```vibe", "export effect function main() { try Console.log('native entry') }", "// Output: native entry", "```",
+        "```vibe", "export effect function main() { try Console.log('native entry') }", "await runPromise(main())", "// Output: native entry", "```",
         "```ts", "// TypeScript (.ts)", "// plain.ts", "console.log('plain entry')", "// Output: plain entry", "```"
       ],
       "pending": ["```ts", "// TypeScript (.ts)", "// pending.ts", "// run: return new Promise<void>(() => {})", "export const value = 1", "// Output:", "```"],
-      "mismatch": ["```vibe", "export effect function main() { try Console.log('actual') }", "// Output: claimed", "```"],
-      "exit": ["```vibe", "export effect function main() { try Effect.die('failure') }", "// Output:", "```"],
+      "mismatch": ["```vibe", "export effect function main() { try Console.log('actual') }", "await runPromise(main())", "// Output: claimed", "```"],
+      "exit": ["```vibe", "export effect function main() { try Effect.die('failure') }", "await runPromise(main())", "// Output:", "```"],
       "fragment": ["```vibe", "// fragment", "missing()", "// Output: impossible", "```"],
       "expected": ["```vibe", "// expect-error: TS2322", "const invalid: number = 'text'", "// Output:", "```"],
       "compile": ["```vibe", "// run: missing()", "const valid = 1", "// Output:", "```"]
@@ -257,7 +257,7 @@ test.skipIf(!existsSync(compiler))("runs marked blocks and reports output mismat
     // Give real entries the normal startup budget. Only the deliberate live
     // fiber uses a short timeout; busy CI hosts can take over three seconds
     // to load a native entry's platform runtime.
-    writeFileSync(join(root, "timeout.md"), ["```vibe", "export effect function main() { try Effect.never }", "// Output:", "```"].join("\n"))
+    writeFileSync(join(root, "timeout.md"), ["```vibe", "import * as NodeRuntime from '@effect/platform-node/NodeRuntime'", "export effect function main() { try Effect.never }", "NodeRuntime.runMain(main())", "// Output:", "```"].join("\n"))
     const timeoutReport = join(root, "timeout.json")
     const { stderr: timeoutStderr, status: timeoutStatus } = await runSnippets(root, compiler, timeoutReport, { filter: "timeout.md", deadline: hangingBlockDeadline })
     expect({ status: timeoutStatus, stderr: timeoutStderr }).toEqual({ status: 1, stderr: "" })
@@ -521,8 +521,8 @@ test.skipIf(!existsSync(compiler))("a pending marker stands only while the compi
         "```vibe", "// pending: VIP-1", "const wrong: number = 'text'", "```",
         "```vibe", "// pending: VIP-1", "const takes = 1", "```"
       ],
-      output: ["```vibe", "// pending: VIP-1", "export effect function main() { try Console.log('actual') }", "// Output: claimed", "```"],
-      printed: ["```vibe", "// pending: VIP-1", "export effect function main() { try Console.log('claimed') }", "// Output: claimed", "```"],
+      output: ["```vibe", "// pending: VIP-1", "export effect function main() { try Console.log('actual') }", "await runPromise(main())", "// Output: claimed", "```"],
+      printed: ["```vibe", "// pending: VIP-1", "export effect function main() { try Console.log('claimed') }", "await runPromise(main())", "// Output: claimed", "```"],
       // waits imports a block the compiler takes, but fails itself, so the marker it inherits stays.
       imported: [
         "```vibe", "// lib.vibe", "// pending: VIP-1", "export const value = 1", "```",

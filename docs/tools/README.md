@@ -77,7 +77,7 @@ Temporary files are removed on success and failure; `--keep` preserves the
 temporary projects for debugging. Compiler crashes, missing runtime builds, and
 project configuration errors exit 2. Snippet failures exit 1.
 
-The pending-marker output regression uses executable logging fixtures with `export effect function main()` and `try Console.log(...)`. Its native property checks 32 generated Unicode and quoted messages against exact output and a changed final line. The three-stage CLI regression reports phase timings, exit status and output byte counts within a two-minute deadline.
+The pending-marker output regression uses executable logging fixtures with `export effect function main()`, `try Console.log(...)` and an explicit `await runPromise(main())`. An exported `main` alone stays unrun. Its native property checks 32 generated Unicode and quoted messages against exact output, a changed final line and an unrun entry. The three-stage CLI regression reports phase timings, exit status and output byte counts within a two-minute deadline.
 
 `bun docs/tools/fix-snippets.ts` uses the same extraction, page scope and temporary
 projects to run `vibelang --fix --fix-migration-only`. It writes changed code

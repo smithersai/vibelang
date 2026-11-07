@@ -14,7 +14,7 @@ test.skipIf(!existsSync(compiler))("isolates run-mode output across projects whe
   try {
     for (const [name, warning] of [["first", ""], ["second", 'export effect function constant() { return Effect.succeed(1) catch () => 2 }']] as const) {
       writeFileSync(join(root, `${name}.md`), [
-        "```vibe", warning, `export effect function main() { try Console.log("${name}") }`, `// Output: ${name}`, "```"
+        "```vibe", warning, `export effect function main() { try Console.log("${name}") }`, "await runPromise(main())", `// Output: ${name}`, "```"
       ].join("\n"))
     }
     const output = join(root, "report.json")
