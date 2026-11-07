@@ -2362,7 +2362,11 @@ export async function record(options) {
   // Re-certify that exact tree before counting its tokens or committing it.
   const beforeFormat = await Jj.commitId(t, "@")
   const written = (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path)
-  const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
+  // A protected TypeScript test or fixture may change only in its module
+  // literals (detail 272). The target's formatter would reflow the rest of it,
+  // such as an unchanged import beside the renamed one, and assertScope then
+  // refuses that edit (t3code packages/shared nodeRuntime.test.ts).
+  const formatted = await formatWritten(t, written.filter(file => !isProtectedFile(file)), join(p.batch(b), "logs", "format.log"))
   const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
   // Certify the emitted graph after all source formatting, before checking final bytes.
   rememberPackingFiles(p, b, await emitMigratedJs(config, t, join(p.batch(b), "logs")))

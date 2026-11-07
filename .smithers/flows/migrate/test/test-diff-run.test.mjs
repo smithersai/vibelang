@@ -86,10 +86,23 @@ test("record --force cannot commit an edited assertion, and writes its reason", 
 }))
 test("record rechecks after a formatter edits a previously verified test", async () => fixture(async ({ target, run, p, base }) => {
   writeJson(p.verify("01"), { ok: true })
-  put(target, "node_modules/.bin/prettier", '#!/bin/sh\nsed -i "s/toBe(1)/toBe(2)/" test/x.test.ts\n')
-  await must("chmod +x node_modules/.bin/prettier", { cwd: target })
+  // The target's formatter never receives a protected test (detail 272)...
+  put(target, "node_modules/.bin/prettier", '#!/bin/sh\necho "$@" >> prettier-args.log\n')
+  // ...but a formatter run on the batch's own files that edits one anyway is caught.
+  put(target, "node_modules/.bin/vibelang-format", '#!/bin/sh\nsed -i "s/toBe(1)/toBe(2)/" test/x.test.ts\n')
+  await must("chmod +x node_modules/.bin/prettier node_modules/.bin/vibelang-format", { cwd: target })
   await assert.rejects(record({ run, batch: "01" }), /forbidden test\/fixture edits/)
   assert.equal(await Jj.commitId(target, "@-"), base)
+  assert.ok(!existsSync(join(target, "prettier-args.log")) || !readFileSync(join(target, "prettier-args.log"), "utf8").includes("x.test.ts"))
+}, { initial: { "package.json": '{"scripts":{"format":"prettier --write"}}' } }))
+
+test("record leaves a protected test's layout to its literal edit (t3code nodeRuntime.test.ts)", async () => fixture(async ({ target, run, p }) => {
+  writeJson(p.verify("01"), { ok: true, checks: { packs: true } })
+  put(target, "node_modules/.bin/prettier", '#!/bin/sh\nfor f in "$@"; do case "$f" in *.ts) printf "\\n" >> "$f";; esac; done\n')
+  await must("chmod +x node_modules/.bin/prettier", { cwd: target })
+  const result = await record({ run, batch: "01" })
+  assert.equal(result.testDiff.ok, true)
+  assert.equal(readFileSync(join(target, "test/x.test.ts"), "utf8"), 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
 }, { initial: { "package.json": '{"scripts":{"format":"prettier --write"}}' } }))
 test("recorded selector/import proof is included in the PR body artifact", async () => fixture(async ({ run, p }) => {
   const result = await record({ run, batch: "01", force: "no other checks in this fixture" })

@@ -28,7 +28,10 @@ func TestMigrationRecordProtectedLayoutQuoted(t *testing.T) {
 }
 func checkRecordProtectedLayout(t *testing.T, key string, mode uint8) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	// A recorded batch runs jj init, two commits, emit and the scope proof:
+	// 6-11 s on a 4 vCPU box, past the 10 s per-stage default. Go kills a fuzz
+	// worker after 60 s, so the budget stays at workerHangLimit.
+	ctx, cancel := context.WithTimeout(t.Context(), max(HangLimit, workerHangLimit))
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_record_protected_layout.mjs"), key, strconv.Itoa(int(mode&15)))
 	cmd.Dir = Root()
