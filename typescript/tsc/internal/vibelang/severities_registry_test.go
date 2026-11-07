@@ -133,7 +133,7 @@ func TestAppendixBSeveritySettingsTakeEffect(t *testing.T) {
 				if m == nil {
 					m = message(int32(n), warningCategory, "test warning")
 				}
-				got, on := category(options, m)
+				got, on := category(options, m, "")
 				expected := map[string]diagnostics.Category{"error": diagnostics.CategoryError, "warning": diagnostics.CategoryWarning, "suggestion": diagnostics.CategorySuggestion}[severity]
 				if on != (severity != "off") || on && got != expected {
 					t.Errorf("%s setting %q: category=%v on=%v", code, severity, got, on)

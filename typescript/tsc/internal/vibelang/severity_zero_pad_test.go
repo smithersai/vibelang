@@ -26,7 +26,7 @@ func TestReleaseSeverityCanonicalCodeKeys(t *testing.T) {
 		} {
 			t.Run(code.key+"/"+setting.value, func(t *testing.T) {
 				options := &core.CompilerOptions{VibeLang: &core.VibeLangOptions{Severities: map[string]string{code.key: setting.value}}}
-				got, on := category(options, message(code.number, warningCategory, "test warning"))
+				got, on := category(options, message(code.number, warningCategory, "test warning"), "")
 				if on != setting.on || on && got != setting.want {
 					t.Fatalf("got category=%v on=%v; want category=%v on=%v", got, on, setting.want, setting.on)
 				}

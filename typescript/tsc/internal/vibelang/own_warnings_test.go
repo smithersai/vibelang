@@ -101,10 +101,10 @@ func TestOwnWarningsDefaultToWarning(t *testing.T) {
 		} else if m := registry[n]; m == nil {
 			t.Errorf("%s has no registered message", code)
 		} else {
-			if got, on := category(nil, m); got != diagnostics.CategoryWarning || !on {
+			if got, on := category(nil, m, ""); got != diagnostics.CategoryWarning || !on {
 				t.Errorf("%s defaults to %v (on %v), want a warning", code, got, on)
 			}
-			if got, on := category(&core.CompilerOptions{}, m); got != diagnostics.CategoryWarning || !on {
+			if got, on := category(&core.CompilerOptions{}, m, ""); got != diagnostics.CategoryWarning || !on {
 				t.Errorf("%s defaults to %v (on %v) under empty options, want a warning", code, got, on)
 			}
 		}

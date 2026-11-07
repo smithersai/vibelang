@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- In a `.vibe` file, a check that ports an Effect lint rule, such as `unnecessaryArrowBlock` or `extendsNativeError`, ignored the severity the `@effect/language-service` plugin entry's `diagnosticSeverity` gave the rule, while a `.ts` file followed it. The check now runs at that severity, per-file overrides included; `vibe.severities` still comes first.
+
 - Refreshing project references could take a long time checking output paths in a large project. Those checks now use indexed paths, and planning progress is recorded before rebuilding starts.
 
 - `vibelang --fix` converting an `Effect.fn` generator with an unannotated parameter, such as `Effect.fn("start")(function* (version = "unknown") { … })`, wrote `effect (version = "unknown") =>`, so the declaration changed from TypeScript's `(version?: any)` to `(version?: string)`, and a parameter with no default, `function* (x)`, was refused with `TS7006`. The converted function now writes the `any` TypeScript inferred, `effect (version: any = "unknown") =>`, and keeps the generator when TypeScript inferred a parameter list the function cannot declare.

@@ -2428,5 +2428,35 @@
       "reference": "docs/design/vips/0044-durable-values.md#schema-mapping: accepted VIP-44 maps the TypeScript-library Date to Schema.Date. This records existing published authority, not a new language decision."
     },
     "reason": "The case's class-without-a-schema example changes from Date, which VIP-44 now maps, to ArrayBuffer, which still has no schema form. It rejects no new form and keeps the same diagnostics at the same positions."
+  },
+  {
+    "code": "EK3833",
+    "case": "typescript/vibelang/cases/effect-lint-plugin.fail",
+    "vip": "VIP-38",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0038-effect-lint-built-in.md#decision: accepted VIP-38 says a repository's Effect language-service configuration selects and configures the imported rules, severity resolves from vibe.severities, then that configuration, then the rule's default, and the plugin may enable a default-off rule. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case's plugin entry sets effectSleepZeroToYieldNow to error; the expected report is unchanged and only the case header gained the port's code."
+  },
+  {
+    "code": "EK3837",
+    "case": "typescript/vibelang/cases/effect-lint-plugin.fail",
+    "vip": "VIP-38",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0038-effect-lint-built-in.md#decision: accepted VIP-38 says a repository's Effect language-service configuration selects and configures the imported rules, severity resolves from vibe.severities, then that configuration, then the rule's default, and the plugin may enable a default-off rule. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case's plugin entry sets extendsNativeError to error, so VibeLang's port EK4805 now reports at that severity under the rule's code, as the rule does in a .ts file. Replacing a class that extends Error with an error declaration changes its exported constructor, so no automatic fix applies."
+  },
+  {
+    "code": "EK38108",
+    "case": "typescript/vibelang/cases/effect-lint-plugin.fail",
+    "vip": "VIP-38",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0038-effect-lint-built-in.md#decision: accepted VIP-38 says a repository's Effect language-service configuration selects and configures the imported rules, severity resolves from vibe.severities, then that configuration, then the rule's default, and the plugin may enable a default-off rule. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case's plugin entry sets schemaLiteralNonFinite to error; the expected report is unchanged and only the case header gained another code."
   }
 ]

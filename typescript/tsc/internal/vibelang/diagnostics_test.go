@@ -55,7 +55,7 @@ func TestCategory(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got, on := category(test.options, test.message)
+			got, on := category(test.options, test.message, "")
 			if got != test.want || on != test.on {
 				t.Errorf("category(%s) = %v, %v; want %v, %v", test.message, got, on, test.want, test.on)
 			}
@@ -191,7 +191,7 @@ func TestDirectiveCategory(t *testing.T) {
 		{15, EK4818, diagnostics.CategoryError, true},
 	}
 	for _, test := range tests {
-		category, on := category(nil, test.m)
+		category, on := category(nil, test.m, "")
 		got, gotOn := directiveCategoryIn(text, at(test.line), test.m, category, on)
 		if got != test.want || gotOn != test.on {
 			t.Errorf("line %d, %s: got %v, %v; want %v, %v", test.line, test.m, got, gotOn, test.want, test.on)

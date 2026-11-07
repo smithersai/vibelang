@@ -1,1 +1,2 @@
 EK3823: duplicatePackage: Multiple versions of package `@effect/fake` were detected
+EK3823: This program loads 2 versions of @effect/fake

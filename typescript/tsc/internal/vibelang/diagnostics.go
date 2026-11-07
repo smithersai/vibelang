@@ -10,8 +10,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/lint"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // VibeLang diagnostics are TypeScript diagnostics whose Source is "EK",
@@ -238,8 +240,10 @@ const legacyTrustCategory = warningCategory
 const legacyFormChoiceCategory = warningCategory
 
 // category returns the category options give code, and false when they turn
-// it off.
-func category(options *core.CompilerOptions, m *Message) (diagnostics.Category, bool) {
+// it off. plugin is the severity the project's Effect plugin entry gives the
+// rules m ports (portSeverity), or "": it comes after vibe.severities and
+// before the rule's default (chapter 7, Effect's type-aware lint).
+func category(options *core.CompilerOptions, m *Message, plugin string) (diagnostics.Category, bool) {
 	if value, _ := releaseSeverity(options, m); value != "" {
 		if category, on, ok := categoryNamed(value, m); ok {
 			return category, on
@@ -249,6 +253,9 @@ func category(options *core.CompilerOptions, m *Message) (diagnostics.Category, 
 		if category, on, ok := categoryNamed(options.VibeLang.Diagnostics[m.String()], m); ok {
 			return category, on
 		}
+	}
+	if category, on, ok := categoryNamed(plugin, m); ok {
+		return category, on
 	}
 	if m.Off {
 		return 0, false
@@ -284,13 +291,23 @@ func newDiagnostic(options *core.CompilerOptions, node *ast.Node, m *Message, ar
 // newDiagnosticAt makes a diagnostic with message m at loc in file, or returns
 // nil outside VibeLang source files or when options turn m's code off.
 func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc core.TextRange, m *Message, args ...any) *ast.Diagnostic {
+	return newPortDiagnosticAt(options, pluginSeverity{}, file, loc, m, args...)
+}
+
+// pluginSeverity is the severity the project's Effect plugin entry gives in a
+// file the rules a port answers, and the lint code of the rule that set it.
+type pluginSeverity struct{ severity, code string }
+
+// newPortDiagnosticAt is newDiagnosticAt with plugin, what the project's
+// Effect plugin entry gives the rules m ports (portSeverity).
+func newPortDiagnosticAt(options *core.CompilerOptions, plugin pluginSeverity, file *ast.SourceFile, loc core.TextRange, m *Message, args ...any) *ast.Diagnostic {
 	// D266: TypeScript owns diagnostics in ordinary source files. Keep this
 	// gate at the shared attachment point so no EK rule can reject them,
 	// including rules enabled by project options or inline directives.
 	if !isVibeLangFile(file) {
 		return nil
 	}
-	category, on := category(options, m)
+	category, on := category(options, m, plugin.severity)
 	if slices.Contains(adjustableCodes, m.Code) {
 		category, on = directiveCategory(file, loc.Pos(), m, category, on)
 	}
@@ -300,6 +317,12 @@ func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc co
 	code := m.Code
 	if _, name := releaseSeverity(options, m); name != "" {
 		n, _ := strconv.Atoi(strings.TrimPrefix(name, "EK"))
+		code = int32(n)
+	} else if plugin.code != "" && !legacySeverity(options, m) {
+		// The rule's severity decided the category, so the port reports under
+		// the rule's lint code, as the rule does in a .ts file: its CLI
+		// inclusion and exit policy are the imported rule's.
+		n, _ := strconv.Atoi(strings.TrimPrefix(plugin.code, "EK"))
 		code = int32(n)
 	}
 	d := ast.NewExternalDiagnostic(file, loc, diagnosticSource, category, code, format(m.Text, args))
@@ -328,19 +351,38 @@ func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc co
 // which must be checking node's file, and returns it. It returns nil when the
 // project that owns the file turns m's code off (D297).
 func report(c *checker.Checker, node *ast.Node, m *Message, args ...any) *ast.Diagnostic {
-	if d := newDiagnostic(optionsFor(c, ast.GetSourceFileOfNode(node)), node, m, args...); d != nil {
-		return c.AddDiagnostic(d)
-	}
-	return nil
+	file := ast.GetSourceFileOfNode(node)
+	return reportAt(c, file, scanner.GetErrorRangeForNode(file, node), m, args...)
 }
 
 // reportAt is report for a span that is not one node's error span, such as a
 // keyword inside a node.
 func reportAt(c *checker.Checker, file *ast.SourceFile, loc core.TextRange, m *Message, args ...any) *ast.Diagnostic {
-	if d := newDiagnosticAt(optionsFor(c, file), file, loc, m, args...); d != nil {
+	if d := newPortDiagnosticAt(optionsFor(c, file), portSeverity(c, file, m), file, loc, m, args...); d != nil {
 		return c.AddDiagnostic(d)
 	}
 	return nil
+}
+
+// portSeverity is what the project's Effect plugin entry gives in file the
+// rules m ports (lint.PortSeverity): a port runs at the rule's severity, as
+// the rule does in a .ts file.
+func portSeverity(c *checker.Checker, file *ast.SourceFile, m *Message) pluginSeverity {
+	if len(core.VibeLintPorts[m.String()]) == 0 {
+		return pluginSeverity{}
+	}
+	severity, code := lint.PortSeverity(c.CompilerOptions(), m.String(), file.FileName(), c.Program().CaseSensitivity() == tspath.CaseSensitive)
+	return pluginSeverity{severity, code}
+}
+
+// legacySeverity reports whether a legacy severity map in options sets m's
+// category, which comes before the plugin's.
+func legacySeverity(options *core.CompilerOptions, m *Message) bool {
+	if options == nil || options.VibeLang == nil || !slices.Contains(adjustableCodes, m.Code) {
+		return false
+	}
+	_, _, ok := categoryNamed(options.VibeLang.Diagnostics[m.String()], m)
+	return ok
 }
 
 // note adds a line under d, such as a fix, and returns d. A nil d, which

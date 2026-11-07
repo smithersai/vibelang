@@ -121,7 +121,7 @@ func FuzzLintNativePipeStages(f *testing.F) {
 			if name == "twin.ts" && d.Code() == 38127 {
 				tsCount++
 			}
-			if name == "twin.vibe" && d.Code() == 4825 {
+			if name == "twin.vibe" && (d.Code() == 4825 || d.Code() == 38127) {
 				vibeCount++
 			}
 		}
