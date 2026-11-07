@@ -1,5 +1,7 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 class Bad<T extends string> extends Data.TaggedError("Bad")<{ readonly n: T }> {}
 export effect function main() {
   try Console.log(new Bad({ n: "ok" }).n)
 }
+
+NodeRuntime.runMain(main())

@@ -1,7 +1,6 @@
 // expect-result: [["a1","b1","a2"],-3,"x",[0,1]]
 // A do expression's break, continue and return mean what they mean around
 // it, as TC39 specifies (VIP-2): they reach the enclosing loop or function.
-import "vibelang/platform/node"
 
 function firstNegative(xs: number[]) {
   for (const x of xs) {

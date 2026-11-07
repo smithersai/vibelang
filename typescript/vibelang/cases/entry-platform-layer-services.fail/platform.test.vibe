@@ -1,4 +1,4 @@
-// expect: EK9211
+// expect: EK9211 EK2601
 // A test never runs the entry statement, so it gets no platform layer: it
 // provides its own, and EK9211 names what it leaves out.
 import { it } from "@effect/vitest"

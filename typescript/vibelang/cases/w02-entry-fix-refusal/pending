@@ -1,1 +1,0 @@
-witness-02 vibelang --fix has no entry migration, so it never refuses one, and no checker reports EK2601 at a remaining vibelang/platform/* marker (007-tooling.md, Legacy entry-dispatch migration)

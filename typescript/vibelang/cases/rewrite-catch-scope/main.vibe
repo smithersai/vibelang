@@ -1,4 +1,4 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 error A { n: number }
 error B { n: number }
 const e = { n: 100 }
@@ -22,3 +22,5 @@ export effect function main() {
   try Console.log(try recover(1), try recover(2))
   try Console.log(try nested(1), try nested(2))
 }
+
+NodeRuntime.runMain(main())

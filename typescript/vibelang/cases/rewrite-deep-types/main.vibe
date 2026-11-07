@@ -1,5 +1,7 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 export type Deep = Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<number>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>;
 // VIP-3: required grouping preserves directly nested Effect success slots.
 export type Grouped = Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<number>>>>>>>>>>>>>>>>>>>>;
 export effect function main() { try Console.log("ok") }
+
+NodeRuntime.runMain(main())

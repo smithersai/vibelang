@@ -1,1 +1,0 @@
-witness-07 VIP-26 and Appendix B register EK2601, but the compiler never reports it: the retired platform markers still act as D312 entry markers. Reporting it rejects code that compiles today, so it waits on a decision; see the lane report.

@@ -469,7 +469,7 @@ func checkRunners(c *checker.Checker, file *ast.SourceFile) {
 	if main := entryMain(c, file); main != nil && runnerRequirements(c, c.GetTypeAtLocation(main.Name())) != nil && !mainImported(c, file) {
 		_, provided := entryBundles(c, file, main)
 		if d := checkProgram(c, main.Name(), provided, runnerEntry); d != nil {
-			if platform := platformNote(c, file, neededServices(c, main)); platform != "" {
+			if platform := platformNote(c, file); platform != "" {
 				note(d, platform)
 			}
 		}

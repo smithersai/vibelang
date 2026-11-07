@@ -47,7 +47,6 @@ type plan struct {
 
 	stable map[*ast.Node]bool // operands a lowering moves that may run anywhere (order.go)
 
-	entry *entryPlan // how an entry module runs its main (entry.go), or nil
 }
 
 func (p *plan) isEffect(fn *ast.Node) bool   { return p.effects[fn] }
@@ -179,7 +178,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	// The lowering writes try e as yield* e or e (try.go), never a call of $try.
 	p.prelude = core.Filter(p.prelude, func(name string) bool { return name != "$try" })
 	p.planTrustedCalls(c, a, file)
-	p.entry = planEntry(c, file)
 	// Copies, and last: the lowering reads these without the checker's lock,
 	// while the plan of another file on this checker goes on writing them.
 	p.collisionModules = lockedCopy(collisionModules(c))

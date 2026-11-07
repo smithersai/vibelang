@@ -403,6 +403,7 @@ type FixRefusal struct {
 	Label   string // a source migration without a diagnostic
 	Rewrite string // a rewrite's label, as try, when no diagnostic's fix was refused
 	Error   string // the first error the fix would add, or for a rewrite why it was not written
+	Reason  string // a migration's own reason not to write a fix it cannot prove, as for an eligible legacy entry startup (fix_entry_marker.go)
 	// Start and End, when Spanned, are the span of the refused diagnostic,
 	// or of the fix's edits, in the text the fix was tried on (fix_sites.go).
 	Start, End int
@@ -479,6 +480,10 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		fmt.Fprintf(w, "vibelang --fix: %s: %d %s (%s)\n", name(file), count, plural(count, "fix", "fixes"), strings.Join(parts, ", "))
 	}
 	for _, refusal := range r.Refused {
+		if refusal.Reason != "" {
+			fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not fixed: %s\n", name(refusal.File), refusal.Line, fixCodeName(refusal.Code), refusal.Reason)
+			continue
+		}
 		if refusal.Rewrite != "" {
 			fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not written: %s\n", name(refusal.File), refusal.Line, refusal.Rewrite, refusal.Error)
 			continue
@@ -660,6 +665,8 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			}
 		}
 	}
+	// An eligible legacy entry startup keeps its marker (fix_entry_marker.go).
+	result.Refused = append(result.Refused, entryStartupRefusals(ctx, program, scope.fixable(program))...)
 	refusedWhy := map[string]string{}
 	refuse := func(refusal FixRefusal, key string) {
 		g.refused[key] = true
@@ -779,6 +786,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				p = p.withFixes(callbackMigrationFixes(ctx, program, file, g.refused))
 			}
 			p = p.withFixes(relicForkBlockFixes(file, g.refused))
+			p = p.withFixes(entryMarkerFixes(ctx, program, file, g.refused))
 			p = p.withFixes(doNeverMigrationFixes(ctx, program, file, g.refused))
 			if len(p.fixes) == 0 {
 				p = relicControlMigrationFixes(ctx, program, file, g.refused, refuse)

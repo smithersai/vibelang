@@ -27,9 +27,9 @@ writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: {
   target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true,
   rootDir: "src", outDir: "dist", declaration: true, sourceMap: true
 }, include: ["src/**/*.vibe"] }))
-const source = `import "vibelang/platform/node"
-export function answer() { return 42 }
-export function main() { Console.log("Windows main ran") }
+const source = `export function answer() { return 42 }
+export effect function main() { try Console.log("Windows main ran") }
+await runPromise(main())
 `
 writeFileSync(join(root, "src/main.vibe"), source.replaceAll("\n", "\r\n"))
 compile("--project", join(root, "tsconfig.json"), "--pretty", "false")

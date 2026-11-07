@@ -1,4 +1,4 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 const events: string[] = []
 const cold: number!! = Effect.succeed(7)
 const holder = {
@@ -10,3 +10,5 @@ effect function run() { return try Effect.provide(holder.program, layer()) }
 export effect function main() {
   try Console.log(try run(), events.join(","))
 }
+
+NodeRuntime.runMain(main())

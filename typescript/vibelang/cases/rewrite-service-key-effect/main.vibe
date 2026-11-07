@@ -1,4 +1,6 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 const keys = ["user-key"]
 class Users extends Context.Service<Users, { name: string }>()(keys.pop()!) {}
 export effect function main() { try Console.log("remaining", keys.length) }
+
+NodeRuntime.runMain(main())

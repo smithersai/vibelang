@@ -1,1 +1,5 @@
+again.vibe(2,8): error EK2601
+again.vibe(3,8): error EK2601
+main.vibe(4,8): error EK2601
+main.vibe(5,8): error EK2601
 main.vibe(5,8): error EK3206

@@ -1,4 +1,4 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 error Gone { n: number }
 effect function fail(): number!Gone {
   throw Object.assign({}, new Gone({ n: 7 }))
@@ -7,3 +7,5 @@ effect function recover() {
   return try Effect.catchTag(fail(), "Gone", effect (e) => e.n)
 }
 export effect function main() { try Console.log(try recover()) }
+
+NodeRuntime.runMain(main())

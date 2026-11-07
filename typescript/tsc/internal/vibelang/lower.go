@@ -342,12 +342,6 @@ func (tx *lowering) visitCatchLeftValue(node *ast.Node) *ast.Node {
 func (tx *lowering) visitSourceFile(file *ast.SourceFile) *ast.Node {
 	visited := tx.reachIntrinsics(tx.Visitor().VisitEachChild(file.AsNode()))
 	tx.markProgramArrows(visited)
-	if tx.plan.entry != nil {
-		// Run main when the host starts this module (entry.go).
-		statements := tx.Factory().NewNodeList(append(append([]*ast.Node{}, visited.Statements()...), tx.entryStatement()))
-		statements.Loc = visited.AsSourceFile().Statements.Loc
-		visited = tx.Factory().UpdateSourceFile(visited.AsSourceFile(), statements, visited.AsSourceFile().EndOfFileToken)
-	}
 	imports := preludeImports(&tx.Factory().NodeFactory, tx.plan.prelude)
 	if tx.effect != nil {
 		imports = append(imports, tx.namespaceImport(tx.effect, "effect/Effect"))

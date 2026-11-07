@@ -1,7 +1,22 @@
 // run-seconds: 120
-// Runs each entry module the way `node out/main.js` does: the host starts it.
-import { execFileSync } from "node:child_process"
-
-for (const entry of ["out/main.js", "out/local.js", "out/made.js"]) {
-  process.stdout.write(execFileSync(process.execPath, [entry], { encoding: "utf8" }))
+// rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | Use a listed service layer only when the pinned legacy compiler selected it; preserve selected experimental layers and nesting order.
+// rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | Refuse an unavailable runner or layer, an entry test not expressible in admitted source, or any other loss of types, behavior or declarations: keep the marker and report its file, line and reason as not fixed, with a nonzero exit.
+// The marked sources in inputs/ once started main through the retired entry
+// dispatcher. Each now keeps its marker under vibelang --fix, whose refusal
+// names the runner and layers the legacy compiler selected; this case checks
+// that selection, writes the advice into the modules the host starts, as the
+// program's owner would, and runs them as before.
+import assert from "node:assert/strict"
+import { migrated } from "../../tests/entry-migration.mjs"
+const m = migrated(import.meta.url, ["main.vibe", "local.vibe"])
+assert.notEqual(m.fix.status, 0, `a refused startup fails --fix\n${m.fix.output}`)
+assert.deepEqual(m.runners(), {
+  "local.vibe": "NodeRuntime.runMain(main())",
+  "main.vibe": "NodeRuntime.runMain(main())"
+}, m.fix.output)
+assert.equal(m.build.status, 0, `the advised source compiles cleanly\n${m.build.output}`)
+for (const [command, args] of [["node", ["out/main.js"]], ["node", ["out/local.js"]], ["node", ["out/made.js"]]]) {
+  const started = m.run(command === "node" ? process.execPath : command, args)
+  assert.equal(started.status, 0, `${args.join(" ")}\n${started.output}`)
+  process.stdout.write(started.stdout)
 }

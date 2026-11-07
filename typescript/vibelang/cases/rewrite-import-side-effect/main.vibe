@@ -1,4 +1,4 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { Data, type Label } from "./adapter.ts"
 import { Effect } from "./type-adapter.ts"
 const label: Label = "x"
@@ -6,3 +6,5 @@ class Extra extends Context.Service<Extra, { read(): Effect.Effect<number> }>()(
 import { events } from "./events.ts"
 class Gone extends Data.TaggedError("Gone")<{ readonly n: number }> {}
 export effect function main() { try Console.log(JSON.stringify(events), new Gone({n:1}).n) }
+
+NodeRuntime.runMain(main())

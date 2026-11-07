@@ -115,7 +115,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **11,000** |
 | [New project](../setup/new-project.md) | 670 |
 | [Existing project](../setup/existing-project.md) | 4,600 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,400 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,500 |
 | **Build and test** | **26,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 21,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,500 |
@@ -294,7 +294,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 20,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
 | **Appendices** | **140,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 110,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
 | **All 11 pages** | **270,000** |
 

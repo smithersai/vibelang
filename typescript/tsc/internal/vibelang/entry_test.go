@@ -74,7 +74,7 @@ func TestUnmarkedMainIsOrdinary(t *testing.T) {
 			}
 			c, done := program.GetTypeCheckerForFile(t.Context(), file)
 			defer done()
-			if planEntry(c, file) != nil {
+			if entryMain(c, file) != nil {
 				t.Fatal("unmarked source planned implicit startup")
 			}
 		})

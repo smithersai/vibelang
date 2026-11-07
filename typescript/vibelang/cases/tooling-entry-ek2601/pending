@@ -1,1 +1,0 @@
-tooling EK2601 is never reported: vibelang/platform/node, bun and browser markers compile with no diagnostic (entry.go reports only EK3206 and no EK2601 message is registered)

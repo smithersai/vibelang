@@ -295,5 +295,14 @@
         "output": "typescript/vibelang/cases/fiber-primary-reference-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK2601",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/ek2601-inert-marker.fail",
+        "output": "typescript/vibelang/cases/ek2601-inert-marker-fixed-output"
+      }
+    ]
   }
 ]

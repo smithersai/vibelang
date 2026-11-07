@@ -7,60 +7,42 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// Legacy marked entry modules (D135).
-//
-//	export function main() {
-//	  Console.log("Hello")
-//	}
-//
-// A legacy marked module that exports a function declaration named main with no parameters
-// runs it when the host starts the module: the emitted JavaScript ends with
-//
-//	runtime.$entry(import.meta.main, import.meta.url, main, () => NodeRuntime.runMain(main()));
-//
-// with NodeRuntime imported from @effect/platform-node when that package
-// resolves from the module, and runtime.$runMain, the runtime's copy of the
-// same runner, otherwise. A file that names the browser platform runs main
-// with @effect/platform-browser's BrowserRuntime instead, and imports nothing
-// of Node's. $entry calls the arrow when the host started the
-// module. import.meta.main is true only in that module, so importing the
-// module, from a test or another module, runs nothing. In an ES module bundle
-// made by esbuild, Rollup, Rolldown, or Vite, every module shares the bundle's
-// import.meta, so $entry runs only the main the bundle exports. A file
-// emitted as CommonJS has no import.meta and passes void 0 for both, as every
-// module of a CommonJS bundle does, which empties it; $entry then asks the
-// host's main module. A module that calls a runner at its top level starts
-// its program itself and gets no entry statement. A runner is the
-// declaration the call resolves to, not its spelling: helper.runSync(1) on
-// an object of the program's own is not one (startsProgram).
-//
-// The file that exports main names its platform once, with a platform import
-// (D312):
+// Legacy platform entry markers (VIP-26, chapter 7).
 //
 //	import "vibelang/platform/node"
 //
-// When main needs services that the named platform's bundle provides, such as
-// FileSystem and Path, the entry provides the bundle around it:
+//	export effect function main() {
+//	  try Console.log("Hello")
+//	}
 //
-//	runtime.$entry(import.meta.main, import.meta.url, main, () => NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer)));
+// The retired side-effect imports vibelang/platform/node, bun and browser
+// once made the compiler start an exported main when the host started the
+// module. Each marker now reports EK2601, with or without main, and the
+// compiler adds no startup: main is an ordinary function, and a program
+// starts where its source calls a runner, as in Effect TypeScript.
 //
-// node names @effect/platform-node's NodeServices, bun @effect/platform-bun's
-// BunServices, and browser @effect/platform-browser's BrowserServices. A
-// browser never says which module it started, so in a page $entry runs
-// nothing and the page starts main itself; the browser's runner runs main
-// where a host does say, as Bun does. When main needs a service that only
-// the platform's experimental bundle provides (D313), the entry provides
-// that bundle instead, since it holds Effect's: its layer declares Effect's
-// services too. Effect's comes outside it only when main needs a service the
-// experimental bundle does not declare, or its layer needs services itself.
-// A bundle provides the services its layer's declared type names. A provide inside main wins for the code inside it, as
-// with Effect.provide. The import loads nothing: the lowering removes it. A
-// main that needs none of the bundles' services, and a file without a
-// platform import, get the statement above without the provide, and EK3205
-// names the services main needs that nothing provides (wire.go).
+// vibelang --fix reads the marker as the legacy compiler did, to decide what
+// the marker meant (fix_entry_marker.go). A marker in a module without an
+// eligible startup is inert, and the fix removes it. An eligible startup is
+// an exported, non-default function declaration main with no parameters and
+// a body, in a module that calls no runner at its top level
+// (entryMain). The legacy compiler started it only when the host started its
+// module, never on import, and no admitted source can test which module the
+// host started, so the fix refuses it: the marker stays, and the refusal
+// names the runner call and the layers the legacy compiler selected for main
+// (entryBundles), for the program's owner to write where the program starts.
 //
-// namedPlatform is the trigger; entryBundles and entryStatement provide the
-// layer for whatever platform the trigger names.
+// The legacy selection: node and bun ran main with @effect/platform-node's
+// NodeRuntime, browser with @effect/platform-browser's BrowserRuntime. When
+// main needed services that the named platform's bundle provides, such as
+// FileSystem and Path, it ran under that bundle's layer: node names
+// @effect/platform-node's NodeServices, bun @effect/platform-bun's
+// BunServices, and browser @effect/platform-browser's BrowserServices. When
+// main needed a service that only the platform's experimental bundle
+// provides (D313), it ran under that bundle instead, since its layer holds
+// Effect's; Effect's came outside it only when main needed a service the
+// experimental bundle does not declare, or its layer needed services itself.
+// A marker alone selected no layer.
 
 // platformNodeModule is the package whose NodeRuntime runs an entry module.
 const platformNodeModule = "@effect/platform-node"
@@ -110,18 +92,22 @@ func init() {
 	fileChecks = append(fileChecks, checkPlatformImports)
 }
 
-// checkPlatformImports reports EK3206 at each platform import of file that
-// names a platform other than the first one file names: a file runs on one
-// platform, and source order is no way to choose it.
+// checkPlatformImports reports EK2601 at each platform import of file, and
+// EK3206 at each one that names a platform other than the first one file
+// names: a file ran on one platform, and source order was no way to choose it.
 func checkPlatformImports(c *checker.Checker, file *ast.SourceFile) {
 	var first *entryPlatform
 	for _, statement := range file.Statements.Nodes {
-		switch platform := platformImport(statement); {
-		case platform == nil:
-		case first == nil:
+		platform := platformImport(statement)
+		if platform == nil {
+			continue
+		}
+		specifier := statement.AsImportDeclaration().ModuleSpecifier
+		report(c, specifier, EK2601)
+		if first == nil {
 			first = platform
-		case platform != first:
-			d := report(c, statement.AsImportDeclaration().ModuleSpecifier, EK3206, first.name, platform.name)
+		} else if platform != first {
+			d := report(c, specifier, EK3206, first.name, platform.name)
 			note(d, "Keep one platform import in this file, and start a separate entry file for each platform.")
 		}
 	}
@@ -252,30 +238,6 @@ func startsProgram(c *checker.Checker, expression *ast.Node) bool {
 	return false
 }
 
-// An entryPlan records how the lowering runs an entry module's main.
-type entryPlan struct {
-	main    *ast.Node        // the main function's declaration
-	runtime *platformBundle  // the runtime whose runMain runs main, or nil for the runtime's $runMain
-	bundles []platformBundle // the bundles the entry provides to main, outermost first
-}
-
-// planEntry returns the entry plan of file, or nil when file is not an entry
-// module. The program resolves the runtime's package from an entry module as
-// an implicit import (implicitRuntimeImport), so the plan can ask whether it
-// resolved.
-func planEntry(c *checker.Checker, file *ast.SourceFile) *entryPlan {
-	main := entryMain(c, file)
-	if main == nil {
-		return nil
-	}
-	entry := &entryPlan{main: main}
-	if runtime := entryRuntime(file); resolvedModuleFile(c, file, runtime.module) != nil {
-		entry.runtime = &runtime
-	}
-	entry.bundles, _ = entryBundles(c, file, main)
-	return entry
-}
-
 // entryBundles returns the bundles whose layers the entry provides to main,
 // the main of file, outermost first, and the services they provide; or none
 // when file names no platform or main needs none of its bundles' services.
@@ -346,36 +308,13 @@ func provides(c *checker.Checker, services *checker.Type, service *checker.Type)
 	return false
 }
 
-// platformNote returns what EK3205 adds at file's main, which needs the
-// services needed: the platform import that would provide some of them when
-// file names no platform and @effect/platform-node is installed, or that the
-// named platform's package is not installed. The import would provide the
-// services of @effect/platform-node's bundle and the experimental ones whose
-// layer EK4402 names as the experimental Node bundle; that module is not
-// resolved from a file that names no platform.
-func platformNote(c *checker.Checker, file *ast.SourceFile, needed []*checker.Type) string {
-	platform := namedPlatform(file)
-	if platform != nil {
-		if resolvedModuleFile(c, file, platform.effect.module) == nil {
-			return "import \"" + platformImportPrefix + platform.name + "\" names " + platform.effect.module + ", which is not installed."
-		}
-		return ""
+// platformNote returns what EK3205 adds at file's main when the platform
+// that file names is not installed, or "".
+func platformNote(c *checker.Checker, file *ast.SourceFile) string {
+	if platform := namedPlatform(file); platform != nil && resolvedModuleFile(c, file, platform.effect.module) == nil {
+		return "import \"" + platformImportPrefix + platform.name + "\" names " + platform.effect.module + ", which is not installed."
 	}
-	node := &entryPlatforms[0]
-	services, _ := bundleServices(c, file, node.effect)
-	if services == nil {
-		return ""
-	}
-	var names []string
-	for _, service := range needed {
-		if s := platformServiceOf(c, service); provides(c, services, service) || s != nil && strings.HasPrefix(s.provider, experimentalNodeBundle) {
-			names = append(names, c.TypeToString(service))
-		}
-	}
-	if len(names) == 0 {
-		return ""
-	}
-	return "Name the platform at the top of this file, and the entry provides " + strings.Join(names, ", ") + ": import \"" + platformImportPrefix + node.name + "\""
+	return ""
 }
 
 // resolvedModuleFile returns the file of the module named name that file
@@ -415,58 +354,4 @@ func bundleServices(c *checker.Checker, file *ast.SourceFile, bundle platformBun
 		return nil, false
 	}
 	return c.GetUnionType(outputs), len(inputs) > 0
-}
-
-// entryReference imports Effect's platform modules directly. Their package
-// barrels also load unrelated integrations and their optional peers, such as
-// NodeRedis's redis dependency, even when the entry needs only NodeRuntime.
-// Keep the barrel for checking its exports and the experimental bundle's API.
-func (tx *lowering) entryReference(bundle platformBundle) *ast.Node {
-	if strings.HasPrefix(bundle.module, "@effect/platform-") {
-		return tx.moduleNamespace(bundle.module + "/" + bundle.namespace)
-	}
-	return tx.classReference(classRef{module: bundle.module, name: bundle.namespace})
-}
-
-// entryStatement makes `runtime.$entry(import.meta.main, import.meta.url,
-// main, () => NodeRuntime.runMain(main()))`, or the same with runtime.$runMain.
-// A main that compiles to plain JavaScript runs through Effect.sync, and one
-// that needs a platform's services runs as Effect.provide(main(),
-// NodeServices.layer) (D312), or the experimental bundle's layer, inside a
-// provide of each further bundle. In a
-// file emitted as CommonJS, both import.meta arguments are void 0.
-func (tx *lowering) entryStatement() *ast.Node {
-	f := tx.Factory()
-	entry := tx.plan.entry
-	program := f.NewCallExpression(f.NewIdentifier("main"), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(nil), ast.NodeFlagsNone)
-	if !tx.plan.isEffect(entry.main) {
-		sync := f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("sync"), ast.NodeFlagsNone)
-		program = f.NewCallExpression(sync, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{f.NewIdentifier("main")}), ast.NodeFlagsNone)
-	}
-	layers := make([]*ast.Node, len(entry.bundles))
-	for i, bundle := range entry.bundles {
-		layers[i] = f.NewPropertyAccessExpression(tx.entryReference(bundle), nil /*questionDotToken*/, f.NewIdentifier("layer"), ast.NodeFlagsNone)
-	}
-	for i := len(layers) - 1; i >= 0; i-- {
-		provide := f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("provide"), ast.NodeFlagsNone)
-		program = f.NewCallExpression(provide, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{program, layers[i]}), ast.NodeFlagsNone)
-	}
-	var runner *ast.Node
-	if entry.runtime != nil {
-		runtime := tx.entryReference(*entry.runtime)
-		runner = f.NewPropertyAccessExpression(runtime, nil /*questionDotToken*/, f.NewIdentifier("runMain"), ast.NodeFlagsNone)
-	} else {
-		runner = tx.runtimeMember("$runMain")
-	}
-	run := tx.generated(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken),
-		tx.generated(f.NewCallExpression(runner, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{program}), ast.NodeFlagsNone))))
-	started, url := f.NewVoidZeroExpression(), f.NewVoidZeroExpression()
-	if !tx.commonJS {
-		meta := func(name string) *ast.Node {
-			return f.NewPropertyAccessExpression(f.NewMetaProperty(ast.KindImportKeyword, f.NewIdentifier("meta")), nil /*questionDotToken*/, f.NewIdentifier(name), ast.NodeFlagsNone)
-		}
-		started, url = meta("main"), meta("url")
-	}
-	arguments := []*ast.Node{started, url, f.NewIdentifier("main"), run}
-	return f.NewExpressionStatement(f.NewCallExpression(tx.runtimeMember("$entry"), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone))
 }

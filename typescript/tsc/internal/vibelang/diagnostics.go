@@ -166,6 +166,8 @@ var (
 	EK3204 = message(3204, errorCategory, "{0} does not name its outputs in its type, so wire cannot place it.")
 	// EK3205: an entry module's main needs a service that nothing provides when the host starts the module (D135, D122). {0} is the service.
 	EK3205 = message(3205, warningCategory, "main needs {0}, which nothing provides when the host starts this module.")
+	// EK2601: a retired legacy platform entry marker, `import "vibelang/platform/node"`, `bun` or `browser`, with or without main (VIP-26, chapter 7).
+	EK2601 = message(2601, errorCategory, "legacy platform entry marker: run vibelang --fix and write an explicit runner")
 	// EK3206: a file names a second, different platform with a platform import (D312). {0} is the platform it names first, {1} the second.
 	EK3206 = message(3206, errorCategory, "This file already names the {0} platform, so it cannot also name {1}.")
 
@@ -211,7 +213,7 @@ func init() {
 		EK1002, EK1003, EK1005, EK1010, EK1011, EK1012, EK1023,
 		EK0201, EK0202, EK0203, EK0204, EK0205,
 		EK9201, EK9202, EK9203, EK9204, EK2006, EK9205, EK9206, EK9207, EK9209, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2117,
-		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK9211, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
+		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK9211, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207, EK2601,
 		EK4201, EK4202, EK4301, EK4401, EK4402, EK4406, EK4001, EK4002, EK4003, EK4004, EK4005, EK4006, EK4007, EK4008, EK4009, EK4409, EK4501,
 	} {
 		registry[m.Code] = m

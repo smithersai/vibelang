@@ -1,4 +1,4 @@
-// expect: EK3206
+// expect: EK3206 EK2601
 // A file names one platform (D312): a second, different platform import is
 // an error, not a choice that source order makes.
 import "vibelang/platform/node"

@@ -1,3 +1,5 @@
+home.vibe(4,8): error EK2601
 home.vibe(6,24): warning EK3205
+locks.vibe(2,8): error EK2601
 locks.vibe(4,24): warning EK3205
 locks.vibe(5,3): warning EK0801

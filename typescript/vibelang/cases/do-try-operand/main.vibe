@@ -2,7 +2,6 @@
 // try do { … } runs the do expression's value (VIP-2, VIP-5): the block
 // runs where it stands, then try runs the Effect it gives. Inside an effect
 // block the do runs when the block does.
-import "vibelang/platform/node"
 export effect function main() {
   const order: string[] = []
   const n = try do { const k = 1; effect { return k + 2 } }

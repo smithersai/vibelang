@@ -1,5 +1,7 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { b } from "./b.ts"
 import { a } from "./a.ts"
 import { events } from "./events.ts"
 export effect function main() { try Console.log(a,b,events.join(",")) }
+
+NodeRuntime.runMain(main())

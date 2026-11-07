@@ -1,7 +1,6 @@
 // expect: EK0107
 // var in a do expression hoists to the enclosing function, as TC39
 // specifies (VIP-2), so the code after the do expression sees it.
-import "vibelang/platform/node"
 export effect function main() {
   const n = do { var leaked = 42; leaked }
   try Console.log(n)

@@ -1,4 +1,4 @@
-// expect: EK3205
+// expect: EK3205 EK2601
 // A project whose exported mains are all programs makes EK3205 an error.
 service Users {
   find(id: string): string!!

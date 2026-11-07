@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "rewriteRelativeImportExtensions": true,
+    "target": "es2022",
+    "lib": ["esnext"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "outDir": "out"
+  },
+  "include": ["*.vibe"],
+  "vibelang": { "diagnostics": { "EK3205": "error" } }
+}

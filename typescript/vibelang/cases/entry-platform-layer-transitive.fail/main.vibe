@@ -1,4 +1,4 @@
-// expect:
+// expect: EK2601
 // The experimental runtime bundle can see a private platform dependency.
 // That does not install the named platform for this entry.
 import "vibelang/platform/bun"

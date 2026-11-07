@@ -42,6 +42,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The global `tryPromise` reported `EK0401` for a call known to throw inside its thunk, such as `tryPromise(() => load())` with `load` declared `@throws`, while `Effect.tryPromise` admitted it. Both spellings now admit the call, in the function and the options form.
 
 - `vibelang --fix` left a legacy `vibelang.diagnostics` map in place, still reporting `EK3009`, when it named a ported lint code such as `EK4801`. The map now moves to `vibe.severities` under the rule's assigned code, `EK3801`.
+- A retired platform marker such as `import "vibelang/platform/node"` still compiled, and its module started an exported `main` by itself whenever the host started it. Each marker now reports `EK2601` and the compiler starts nothing. `vibelang --fix` removes a marker that started nothing; for a module whose `main` it started, `--fix` keeps the marker, exits nonzero, and names the runner call and layers to write where your program starts, because a runner in the module itself would also start `main` when another module imports it.
 
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
@@ -717,6 +718,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 | Before | After and repair |
 | --- | --- |
+| `import "vibelang/platform/node"`, `bun` or `browser` | `EK2601`, and no implicit startup: run `vibelang --fix`, then write the `runMain` call it names, such as `NodeRuntime.runMain(main())`, in the file that starts your program. |
 | Implicit service keys in a package with `"name": ""` | Keys now begin with `/`. Run `vibelang --fix --fix-legacy-service-keys` on existing source to retain its earlier directory-prefixed keys explicitly. |
 | `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |

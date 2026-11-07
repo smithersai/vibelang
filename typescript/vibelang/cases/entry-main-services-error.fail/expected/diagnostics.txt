@@ -1,2 +1,3 @@
 main.vibe(7,24): error EK3205
+main.vibe(11,8): error EK2601
 tsconfig.json(11,19): warning EK3009

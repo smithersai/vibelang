@@ -1,4 +1,4 @@
-import "vibelang/platform/node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 class Bad extends Data.TaggedError("Bad")<{ readonly /* field explanation */ n: number }> {}
 effect function value(): number!! {
   return try Effect.succeed(/* keep this explanation */ 7)
@@ -21,3 +21,5 @@ effect function failed(): number!Bad {
 export effect function main() { try Console.log(try value(), new Bad({n:1}).n)
   try Console.log(try lineValue(), try wrapperValue())
   try Console.log(failed() catch (e) => e.n) }
+
+NodeRuntime.runMain(main())

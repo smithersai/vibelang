@@ -1,4 +1,9 @@
+mixed.vibe(3,8): error EK2601
 mixed.vibe(7,24): warning EK3205
 platform.test.vibe(7,31): error EK9211
+platform.vibe(2,8): error EK2601
+provided.vibe(3,8): error EK2601
+uninstalled.vibe(3,8): error EK2601
 uninstalled.vibe(6,24): warning EK3205
+users.vibe(3,8): error EK2601
 users.vibe(6,24): warning EK3205

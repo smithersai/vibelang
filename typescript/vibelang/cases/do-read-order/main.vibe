@@ -1,5 +1,4 @@
 // expect-result: [3,4,5,[6,7]]
-import "vibelang/platform/node"
 
 export effect function main() {
   let n: number = 1
