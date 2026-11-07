@@ -1,0 +1,12 @@
+// expect-result: [7,8,9,10]
+import { Effect as E, Fiber as F, Scope as S } from "effect"
+effect function scenario(s: S.Scope) {
+ const a = fork ((try E.succeed(E.succeed(7))) as E.Effect<number>)
+ const b = fork.in(s) ((try E.succeed(E.succeed(8))) as E.Effect<number>)
+ const c = fork.scoped ((try E.succeed(E.succeed(9))) as E.Effect<number>)
+ const d = fork.detached ((try E.succeed(E.succeed(10))) as E.Effect<number>)
+ return [try F.join(a), try F.join(b), try F.join(c), try F.join(d)] as const
+}
+export effect function main() {
+ return try E.scoped(effect { const s = try E.scope; return try scenario(s) })
+}

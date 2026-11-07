@@ -23,7 +23,7 @@ effect function buildDashboard() {
 // Output: chart
 ```
 
-`fork` starts a child fiber and returns its handle, here a `Fiber.Fiber<string>`, without waiting for its result: the parent continues while the child waits. `join` waits for the child and returns its value or propagates its failure.
+`fork` starts a child fiber and returns its handle, here a `Fiber.Fiber<string>`, without waiting for its result: the parent continues while the child waits. `join` waits for the child and returns its value or propagates its failure. An explicit `try` inside a fork operand runs on the caller before the resulting Effect starts on the new fiber; this also applies to `fork.in(s)`, `fork.scoped` and `fork.detached`.
 
 `join fiber` calls `Fiber.join` directly. It evaluates the operand once, including a factory call such as `join readFiber()`, and does not inspect marker properties or enumerate the handle. Its inferred success and error types also come from `Fiber.join`; an operand typed `any` or `never` uses the native signature's `unknown` channels.
 
