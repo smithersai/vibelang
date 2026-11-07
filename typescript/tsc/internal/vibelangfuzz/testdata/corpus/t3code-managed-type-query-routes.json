@@ -1,0 +1,12 @@
+{
+  "source": "packages/source-control-github/src/server/GitHubPullRequestApi.ts",
+  "actions": "export function make(): number { return 1; }\nexport type Kind = \"ok\";\nexport const code = 7;\n",
+  "forms": [
+    "return-type",
+    "import-type",
+    "type-query",
+    "value-import"
+  ],
+  "model": "export type Result = ReturnType<typeof import(\"#vibelang/emitted/src/actions\").make>;\nexport const result: Result = 1;\n",
+  "contract": "Repeated emission retains routes; revert restores source edges."
+}
