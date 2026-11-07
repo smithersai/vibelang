@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The home page hid its installation commands on narrow screens. The npm and Bun commands now stay visible and selectable on phones.
+
 - Setting `VIBELANG_BINARY` to the JavaScript launcher could repeatedly start new compiler processes. It now stops once with guidance to select the native compiler.
 
 - A compatibility sidecar such as `main.d.vibe.ts` kept a written `./App.jsx` or `./App` import of `App.vibex` as written, so plain `tsc` reading the sidecar reported `TS2307`, and a sidecar under `vibe.sidecarDir` named `../../App.vibex` instead of the mirrored declaration. Sidecars now name `./App.vibex` for every import that reaches it, as they name `./user.vibe` for `user.vibe`.
