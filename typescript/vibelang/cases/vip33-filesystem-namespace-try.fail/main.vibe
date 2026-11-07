@@ -1,0 +1,8 @@
+// expect: EK0502
+// try of the FileSystem or Path namespace, which Effect TypeScript's yield*
+// accepts only through a cast and then dies on, is a compile error; the
+// service keys run (vip33-filesystem-namespace-key).
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#23a5d1fa40a9b502 | *Corrected 2026-10-29: the module `FileSystem` is a namespace, and the service key it exports is `FileSystem.FileSystem` (likewise `Path.Path`); in effect 4.1.1, `yield*` of the namespace is a defect.
+export effect function files() { return try FileSystem }
+export effect function path() { return try Path }
+export effect function keys() { return [try FileSystem.FileSystem, try Path.Path] }

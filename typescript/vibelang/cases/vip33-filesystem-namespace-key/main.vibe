@@ -1,0 +1,12 @@
+// FileSystem and Path are namespaces; their service keys are
+// FileSystem.FileSystem and Path.Path. native.ts runs the same lookups in
+// Effect TypeScript, where yield* of the namespace itself is a defect;
+// vip33-filesystem-namespace-try.fail rejects try of the namespace.
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#23a5d1fa40a9b502 | *Corrected 2026-10-29: the module `FileSystem` is a namespace, and the service key it exports is `FileSystem.FileSystem` (likewise `Path.Path`); in effect 4.1.1, `yield*` of the namespace is a defect.
+export effect function main() {
+  provide FileSystem.layerNoop({}), Path.layer {
+    const fs = try FileSystem.FileSystem
+    const path = try Path.Path
+    return { exists: typeof fs.exists, joined: path.join("a", "b") }
+  }
+}
