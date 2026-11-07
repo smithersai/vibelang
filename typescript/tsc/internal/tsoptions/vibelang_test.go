@@ -186,6 +186,8 @@ func TestDeclarationImportStyleDeprecated(t *testing.T) {
 					if len(ds) != 1 || ds[0].Category() != diagnostics.CategoryWarning || ds[0].Code() != 3011 || ds[0].Source() != "EK" || !strings.Contains(ds[0].String(), "Declaration spelling follows the native TypeScript twin.") {
 						t.Fatalf("expected one nonfatal deprecation warning, got %v", ds)
 					}
+					// rule-evidence: docs/design/vips/0030-config-files.md#da5fca5d499ba3d9 | Both historical paths, root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle`, are ignored with nonfatal deprecation warning `EK3011` for every value, including invalid values.
+					// rule-evidence: docs/design/vips/0030-config-files.md#af110eae679bbb0b | **Amended 2026-11-03: declaration import spelling follows TypeScript.** There is no `declarationImportStyle` setting.
 					shown, err := json.Marshal(tsoptions.ConvertToTSConfig(config, "/project/tsconfig.json"))
 					if err != nil || strings.Contains(string(shown), "declarationImportStyle") {
 						t.Fatalf("retired setting retained: %s; %v", shown, err)

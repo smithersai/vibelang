@@ -1,0 +1,11 @@
+no-plugin: compiler 0, lint 0: none
+plugin: compiler 2, lint 0: main.ts(2,22) warning EK3897; witness.vibe(1,26) warning EK3897
+inherited-plugin: compiler 2, lint 0: main.ts(2,22) warning EK3897; witness.vibe(1,26) warning EK3897
+unrelated-plugin: compiler 0, lint 0: none
+diagnostics-false: compiler 0, lint 0: none
+diagnosticSeverity-null: compiler 0, lint 0: none
+inherited-disable: compiler 0, lint 0: none
+native-rule-off: compiler 0, lint 0: none
+native-default-off-on: compiler 2, lint 0: main.ts(2,22) warning EK3897; main.ts(3,1) warning EK3844; witness.vibe(1,26) warning EK3897
+severity-overrides: compiler 2, lint 1: main.ts(2,22) error EK3897; main.ts(3,1) warning EK3844; witness.vibe(1,26) error EK3897
+severity-only: compiler 2, lint 1: main.ts(2,22) error EK3897; tsconfig.json(1,135) warning EK3012; witness.vibe(1,26) error EK3897

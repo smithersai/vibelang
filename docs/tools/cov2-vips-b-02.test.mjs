@@ -6,11 +6,6 @@ import { test } from "node:test"
 // Activation: Cross legacy/auto/force and package type for ordinary .ts and .js with prelude switches off, comparing script binding and diagnostics against native TypeScript.
 test.todo("rule-evidence: docs/design/vips/0030-config-files.md#decision | cov2-vips-b native ts js module detection | present | **Amendment: source module classification.** `moduleDetection` keeps its ordinary meaning for `.ts` and `.js`.")
 
-// rule-evidence: docs/design/vips/0030-config-files.md#859518147e25f9cd
-// VIP-30: legacy diagnostics all config placements.
-// Activation: Cross tsconfig/jsconfig/vibe.config, top/compilerOptions legacy keys, extends and --fix; verify selected severities and removal of only migrated keys.
-test.todo("rule-evidence: docs/design/vips/0030-config-files.md#decision | cov2-vips-b legacy diagnostics all config placements | present | **Amended 2026-10-30: legacy configuration migration.** Both root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics` are recognized in all three config files and their extended configs.")
-
 // rule-evidence: docs/design/vips/0030-config-files.md#af110eae679bbb0b
 // VIP-30: no declarationImportStyle setting.
 // Activation: Require EK3007 for the retired setting and compare ordinary .d.ts import spelling with TypeScript option controls.
