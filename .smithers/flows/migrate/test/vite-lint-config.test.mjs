@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -74,20 +74,41 @@ test("vp lint: a Vite config that fails to load fails the pass instead of lintin
 
 // Categories decide most of a .ts file's rules (t3code: 170 of 188).
 test("rules a category turns on reach .vibe files through the tool's resolution", async t => {
-  const printer = (rules) => `#!/bin/sh\ncat <<'J'\n${JSON.stringify({ rules })}\nJ\n`
-  const root = fixture(t, {
-    "package.json": vp,
-    "house.mjs": house,
-    "vite.config.mjs": `export default ${JSON.stringify({ lint: { categories: { perf: "warn" }, jsPlugins: ["./house.mjs"], rules: { "house/own": "error" } } })}`,
-    "node_modules/.bin/vp": printer({ "no-await-in-loop": "warn", "unicorn/not-under-eslint": "warn", "shadow/not-loaded": "warn" }),
-  })
-  chmodSync(join(root, "node_modules/.bin/vp"), 0o755)
-  const logged = []
-  t.mock.method(console, "error", line => logged.push(line))
-  const configs = await load(root)
-  assert.deepEqual(ruleOf(configs, "no-await-in-loop"), ["warn"])
-  assert.deepEqual(ruleOf(configs, "house/own"), ["error"])
-  assert.match(logged.join(""), /1 Oxlint rules do not run on \.vibe files: shadow\/not-loaded/)
+  const printer = (rules, diagnostics) => String.raw`#!/bin/sh
+printf '%s\n' "$*" >> "$0.calls"
+case "$*" in
+  *--print-config*)
+    cat <<'J'
+${JSON.stringify({ rules })}
+J
+    ;;
+  *)
+    cat <<'J'
+${JSON.stringify({ diagnostics })}
+J
+    ;;
+esac
+`
+  for (const [name, diagnostics] of [["suppressed reason", []], ["reported reason", [{ code: "no-debugger" }]]]) {
+    await t.test(name, async t => {
+      const root = fixture(t, {
+        "package.json": vp,
+        "house.mjs": house,
+        "vite.config.mjs": `export default ${JSON.stringify({ lint: { categories: { perf: "warn" }, jsPlugins: ["./house.mjs"], rules: { "house/own": "error" } } })}`,
+        "node_modules/.bin/vp": printer({ "no-await-in-loop": "warn", "unicorn/not-under-eslint": "warn", "shadow/not-loaded": "warn" }, diagnostics),
+      })
+      chmodSync(join(root, "node_modules/.bin/vp"), 0o755)
+      const logged = []
+      t.mock.method(console, "error", line => logged.push(line))
+      const configs = await load(root)
+      assert.deepEqual(ruleOf(configs, "no-await-in-loop"), ["warn"])
+      assert.deepEqual(ruleOf(configs, "house/own"), ["error"])
+      assert.match(logged.join(""), /1 Oxlint rules do not run on \.vibe files: shadow\/not-loaded/)
+      const calls = readFileSync(join(root, "node_modules/.bin/vp.calls"), "utf8").trim().split("\n")
+      assert.equal(calls.filter(line => line.includes("--print-config")).length, 1)
+      assert.equal(calls.filter(line => line.includes("--format json")).length, 1)
+    })
+  }
 })
 
 test("a failing rule resolution fails the pass", async t => {
