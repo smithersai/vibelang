@@ -966,12 +966,12 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 
 ### Open VIP-43 productions
 
-These productions belong to open [VIP-43](../vips/0043-theorems-open.md), which is not part of the language; [Appendix F](#syntax) gives their rules. A `TheoremDeclaration` or `SpecFunctionDeclaration` starts where a TypeScript declaration can start: a `StatementListItem`, or after `export`. A `ProofBlock` is recognized where a `Statement` can start and is valid only as a `StatementListItem`, as a `let` declaration is. Anywhere else the three words are identifiers.
+These productions belong to open [VIP-43](../vips/0043-theorems-open.md), which is not part of the language; [Appendix F](#syntax) gives their rules. A `TheoremDeclaration` or `SpecFunctionDeclaration` starts where a TypeScript declaration can start: a `StatementListItem`, or after `export`, `export default`, `declare` or `effect` on the same line, which parse and are then rule 4303. A `ProofBlock` is recognized where a `Statement` can start and is valid only as a `StatementListItem`, as a `let` declaration is. Anywhere else the three words are identifiers.
 
 #### TheoremDeclaration
 
 ```text
-TheoremDeclaration = TheoremStart TypeParameters? "(" FormalParameters? ")" Block
+TheoremDeclaration = TheoremStart TypeParameters? Params ReturnType? Block   (a return type parses, then rule 4304 rejects it)
 ```
 
 #### TheoremStart
@@ -985,7 +985,7 @@ As in [EffectShorthand](#effectshorthand), `theorem as T`, `theorem satisfies (T
 #### SpecFunctionDeclaration
 
 ```text
-SpecFunctionDeclaration = "spec" [no LineTerminator here] FunctionDeclaration
+SpecFunctionDeclaration = "spec" [no LineTerminator here] (HoistableDeclaration | EffectFunction | EffectFunctionOverload | Producer)   (only a FunctionDeclaration is valid; generators, async and effect functions and overload signatures parse, then rule 4303 rejects them)
 ```
 
 #### ProofBlock
@@ -2074,7 +2074,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 
 The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`. The old module-declaration codes are retired by [VIP-40](../vips/0040-module-declarations.md#diagnostics); its current rules use `EK4001`–`EK4009`.
 
-Open [VIP-43](../vips/0043-theorems-open.md) reserves the numbers 4302 to 4319 of its block for the rules in [Appendix F](#details). They are not assigned: they become rows here when VIP-43 is accepted and the compiler registers them.
+Open [VIP-43](../vips/0043-theorems-open.md) reserves the numbers 4302 to 4320 of its block for the rules in [Appendix F](#details). They are not assigned: they become rows here when VIP-43 is accepted and the compiler registers them.
 
 The additional retained compiler and migration assignments are `EK1011`, `EK2112`, `EK2113`, `EK2120`, `EK2121`, `EK9001`, `EK9002`, `EK9003` and `EK9004`. Their definitions and existing VIP authorities are listed in the table below.
 
@@ -2099,7 +2099,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0302` | `A!!B!C`: write `(A!!B)!C` or `A!(B!C)` | 3 | [Appendix A](#notes-on-the-productions) |
 | `EK0401` | a `throw`, or a call known to throw outside the `try` block of a `try`/`catch` statement, in synchronous `.vibe` code outside effect code; any thrown type other than `never` in a plain function whose return type is wholly effectful, or in an effectful function's parameter list | 4, 5, 7 | [Failures](003-failures.md#plain-code-never-throws) |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type | 4, 39 | [Failures](003-failures.md#assignability) |
-| `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code; quick fixes, per the proxy ruling of 2026-11-04 on alchemy’s throwing helpers: first wrap with `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))` to preserve defects and E, then offer adding `/** @throws {never} */` to a provably non-throwing same-project `.ts` declaration under [the quick-fix conditions](003-failures.md#plain-code-never-throws) | 4 | [Failures](003-failures.md#calls-in-effect-code) |
+| `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code; quick fixes: first wrap with `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))` to preserve defects and E, then offer adding `/** @throws {never} */` to a provably non-throwing same-project `.ts` declaration under [the quick-fix conditions](003-failures.md#plain-code-never-throws) | 4 | [Failures](003-failures.md#calls-in-effect-code) |
 | `EK0404` | an unwrapped Promise-producing call (runtime `import()` included), `new` expression, tagged template or `async match` in effect code | 4, 5 | [Failures](003-failures.md#calls-in-effect-code) |
 | `EK0406` | a `@throws` or `@rethrows` tag in `.vibe` or `.vibex` source outside a `module` body, including on a service member or function-type signature; quick fix: remove the tag | 4, 27 | [Failures](003-failures.md#thrown-types) |
 | `EK0407` | the retired resolved `trusted(f, [])` wrapper; use the preserving `vibelang --fix` migration or a reviewed `.ts` helper with `@throws {never}` before rejection | 4 | [Migration](007-tooling.md#empty-legacy-trust-wrappers) |
@@ -2217,7 +2217,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4009` | `import.meta` in a module body | 40 | [Modules](001-functions.md#module-declarations) |
 | `EK3410` | retired `mutable` marker on an ordinary type member or plain-error payload; run `vibelang --fix` to remove redundant markers or preserve payloads in a compatibility class; enforce after preserving migration | 34 | [Migration](007-tooling.md#ordinary-mutable-marker-migration) |
 | `EK3501` | retired continuation forms: `control`/`handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` or `handle`; migrate proved local service patterns with `vibelang --fix`, otherwise repair manually | 35 (open; removal only) | [Retirement](000-intro.md#retired-continuation-forms) |
-| `EK4402` | interim warning inside formerly accepted boundary callbacks; error otherwise: a value import of a Node builtin, with or without `node:` (`node:fs`, `fs`), a string-literal `import(…)` of one, or a statically named value that [reaches the platform](005-services.md#reaches-the-platform): a global declared by `lib.dom`, `lib.webworker`, `lib.scripthost` or `@types/node` and not by `lib.es*` or `lib.decorators*`, minus the allowlist, or a banned member of an allowlisted global, in a `.vibe` file Replay [example: main.vibe:4:74](../../../typescript/vibelang/cases/cov-ch002b-running-import-forbidden-builtin.fail/main.vibe). Category variants: `error`, `warning`. A legacy hatch callback warns while the preserving platform migration remains incomplete; other platform uses keep their errors. | 33 | [Services](005-services.md#the-platform-standard-library) |
+| `EK4402` | interim warning inside formerly accepted boundary callbacks; error otherwise: a value import of a Node builtin, with or without `node:` (`node:fs`, `fs`), a string-literal `import(…)` of one, or a statically named value that [reaches the platform](005-services.md#reaches-the-platform): a global declared by `lib.dom`, `lib.webworker`, `lib.scripthost` or `@types/node` and not by `lib.es*` or `lib.decorators*`, minus the allowlist, or a banned member of an allowlisted global, in a `.vibe` file Replay [example: main.vibe:4:74](../../../typescript/vibelang/cases/cov-ch002b-running-import-forbidden-builtin.fail/main.vibe). Category variants: `error`, `warning`. A legacy hatch callback warns while the preserving platform migration remains incomplete; other platform uses keep their errors. `EK4402` is an error code that sometimes prints as a warning, so `vibe.severities` can't configure it (`EK3006`). | 33 | [Services](005-services.md#the-platform-standard-library) |
 | `EK4607` | retired `select` block; `vibelang --fix` refuses an unproved selection rewrite | 18 (removal only) | [Retirement](000-intro.md#retired-continuation-forms) |
 | `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; to obtain its result in that context, use `await runPromise(Fiber.join(fiber))` Replay [example: main.vibe:2:70](../../../typescript/vibelang/cases/await-handle-async-warnings/main.vibe). | 5 | [Running Effects](002-running.md#await) |
 | `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; to obtain its result in that context, use `await runPromise(Deferred.await(deferred))` Replay [example: main.vibe:3:79](../../../typescript/vibelang/cases/await-handle-async-warnings/main.vibe). | 5 | [Running Effects](002-running.md#await) |
@@ -2596,7 +2596,7 @@ export declare function decodeUnknownSync<T>(s: Schema.Decoder<T>): {
 
 Source: [VIP-43](../vips/0043-theorems-open.md), which is open. This appendix is not part of the language until VIP-43 is accepted: until then `theorem`, `spec` and `proof` are identifiers, the proof statement names are ordinary names, and no rule below applies. [Appendix C](#open-vips) lists the VIP.
 
-A theorem states a fact about plain functions for every input. `vibelang prove` proves it by lowering the source to [LemmaScript](https://github.com/midspiral/LemmaScript)'s annotated TypeScript and running LemmaScript's `lsc` with the Dafny verifier. All proof syntax erases: compiled JavaScript and declarations are the same as for the program without it.
+A theorem states a fact about plain functions for every input in the [model](#the-trust-boundary). `vibelang prove` proves it by lowering the source to [LemmaScript](https://github.com/midspiral/LemmaScript)'s annotated TypeScript and running LemmaScript's `lsc` with the Dafny verifier. All proof syntax erases: compiled JavaScript and declarations are the same as for the program without it.
 
 ```text
 export function clamp(x: number, lo: number, hi: number): number {
@@ -2620,19 +2620,21 @@ Model: number is an unbounded integer: NaN, infinities, -0, fractions and the 2^
 Verified by LemmaScript 0.6.6 (MIT, Midspiral, https://github.com/midspiral/LemmaScript) with Dafny 4.11.0.
 ```
 
+Proofs are about integers. LemmaScript has an integer model of `number` and no floating-point model, so `vibelang prove` proves facts in that model and prints the `Model:` line on every run; the [trust boundary](#the-trust-boundary) lists what the model leaves out. Restricting theorems to `bigint` would reject most code that uses `number`.
+
 ### Forms
 
 | Form | Means | Section |
 | --- | --- | --- |
 | `theorem name(params) { … }` | A fact that holds for every value of `params` in the [model](#the-trust-boundary) of their types | [Theorems](#theorems) |
-| `spec function f(…) { … }` | A function that only proofs call; erased | [Spec functions](#spec-functions) |
+| `spec function f(…) { … }` | A checked function that only proofs call; erased | [Spec functions](#spec-functions) |
 | `proof { … }` | Proof statements at that point of a plain function; erased | [Proof blocks](#proof-blocks) |
 | `assume(P)` | A hypothesis of a theorem, or a precondition of a function | [Proof statements](#proof-statements) |
 | `assert(Q)` | A fact to prove at that point | [Proof statements](#proof-statements) |
 | `ensures((r) => Q)` | A postcondition: `Q` holds for every value `r` the function returns | [Proof blocks](#proof-blocks) |
 | `invariant(P)` | A loop invariant | [Proof blocks](#proof-blocks) |
 | `decreases(E)` | A termination measure for a loop or a recursive function | [Proof blocks](#proof-blocks) |
-| `declare function f(…): R` | A trusted function: proofs treat its calls as opaque and never check it | [Trusted functions](#trusted-functions) |
+| `declare function f(…): R` | A pure trusted function: proofs never check it and assume only that equal arguments give equal results | [Trusted functions](#trusted-functions) |
 
 The numbers in parentheses below, such as (4305), are the rules in [Details](#details). The VibeLang examples use `text` blocks: until VIP-43 is accepted they are not VibeLang, so no checker compiles them.
 
@@ -2642,8 +2644,8 @@ Three contextual keywords start the new forms. Each is a keyword only before the
 
 | Word | Keyword when followed by | Where |
 | --- | --- | --- |
-| `theorem` | a `BindingIdentifier` other than `as`, `satisfies` or `is`, then `(` or `<` | where a TypeScript declaration can start: a `StatementListItem`, or after `export` |
-| `spec` | `function` | the same |
+| `theorem` | a `BindingIdentifier` other than `as`, `satisfies` or `is`, then `(` or `<` | where a TypeScript declaration can start: a `StatementListItem`, or after `export`, `export default`, `declare` or `effect` |
+| `spec` | `function`, `async function` or `effect function` | the same |
 | `proof` | `{` | where a `Statement` can start |
 
 The excluded names keep `theorem as T`, `theorem satisfies T` and the VIP-7 test `theorem is P` as expressions, as for [EffectShorthand](#effectshorthand). A keyword is written without Unicode escapes: an escaped spelling before these tokens is TypeScript's `TS1260`, as for `effect`. Every form these rules recognize is invalid TypeScript today, so no existing program changes meaning. A line break after the word keeps the TypeScript reading:
@@ -2666,11 +2668,11 @@ A recognized form in the wrong place is a placement error, not a parse error: `e
 
 `theorem` and `spec function` declarations are statements of a module's top level in a `.vibe` or `.vibex` file (4302). They can't be exported (4303), so no other module or package depends on one; a theorem can still sit in any module that imports the functions it states facts about. A predicate that several modules' theorems need is an exported plain function, which every proof can call.
 
-`theorem T` and `spec function f` declare `T` and `f` in the module's value scope, as a function declaration does: a duplicate is TypeScript's duplicate-declaration error, and they shadow and are shadowed as functions are. An expression that refers to a theorem is rule 4311. `noUnusedLocals` never reports a theorem, and reports a spec function that nothing references, as it reports a function.
+`theorem T` and `spec function f` declare `T` and `f` in the module's value scope, as a function declaration does: a duplicate is TypeScript's duplicate-declaration error (`TS2393` or `TS2300`), and they shadow and are shadowed as functions are. Every reference to a theorem is rule 4311: in an expression, in a type query such as `typeof T`, or in an export specifier. `noUnusedLocals` never reports a theorem, and reports a spec function that nothing references, as it reports a function. `noUnusedParameters` reports a theorem parameter that nothing names (`TS6133`), as for a function.
 
 #### Proof contexts
 
-A theorem body, a spec function body and a proof block are proof contexts. A proof context runs nothing.
+A theorem body and a proof block are proof contexts. A proof context runs nothing.
 
 #### Proof statements
 
@@ -2708,16 +2710,16 @@ A theorem's parameters are its universally quantified variables. Each parameter 
 A theorem body holds, in order:
 
 1. Zero or more `assume(P)` statements: the hypotheses.
-2. Any number of these statements:
+2. One or more of these statements, at least one of them an `assert`:
    - `assert(Q)`;
-   - `const x = E` or `const x: T = E`, one identifier and an initializer;
+   - `const x = E` or `const x: T = E`, one identifier and an initializer, used by a later statement;
    - `if (C) S` and `if (C) S else S`, where each `S` is one of these statements or a block of them.
 
-Any other statement is rule 4306: `let`, `var`, a loop, `return`, `throw`, a nested function, an `assume` after the first other statement, or an expression statement other than a proof statement. A proof block there is rule 4305. `ensures`, `invariant` and `decreases` in a theorem are rule 4307. Every `E` and `C` is a [verification expression](#verification-expressions).
+Any other statement is rule 4306: `let`, a loop, `return`, `throw`, a nested function, an `assume` after the first other statement, or an expression statement other than a proof statement. A theorem with no `assert`, and a `const` that no later statement uses, are rule 4306 too: the lemma form drops an unused constant, and with it the preconditions of the calls in its initializer. A proof block there is rule 4305. `ensures`, `invariant` and `decreases` in a theorem are rule 4307. Every `E` and `C` is a [verification expression](#verification-expressions).
 
 #### Meaning
 
-For a theorem with parameters `x1 … xn`, hypotheses `H1 … Hm` and an `assert(Q)` under the `if` conditions `C1 … Ck`, the theorem states: for every `x1 … xn` in the model of their types, if `H1 … Hm` hold, then `C1 … Ck` imply `Q`. The condition of an `else` branch is the negation of its `if` condition. Each `const` stands for its initializer, after its own earlier constants are replaced. The theorem holds when every `assert` in it holds.
+For a theorem with parameters `x1 … xn`, hypotheses `H1 … Hm` and an `assert(Q)` under the `if` conditions `C1 … Ck`, the theorem states: for every `x1 … xn` in the model of their types, if `H1 … Hm` hold, then `C1 … Ck` imply `Q`. The condition of an `else` branch is the negation of its `if` condition. Each `const` stands for its initializer, after its own earlier constants are replaced. The theorem holds when every `assert` in it holds. When no input satisfies the hypotheses, every assertion holds and the theorem says nothing; `vibelang prove` does not detect contradictory hypotheses.
 
 So `searchFinds` below states that every non-negative index `linearSearch` returns holds `target`:
 
@@ -2734,8 +2736,10 @@ A theorem body never runs. What a proof knows about each call in it depends on t
 
 ```text
 spec function isSortedFrom(xs: readonly number[], i: number): boolean {
-  assume(0 <= i)
-  decreases(xs.length - i)
+  proof {
+    assume(0 <= i)
+    decreases(xs.length - i)
+  }
   return i + 1 >= xs.length || (xs[i] <= xs[i + 1] && isSortedFrom(xs, i + 1))
 }
 ```
@@ -2748,20 +2752,20 @@ theorem sortedSuffix(xs: readonly number[], i: number) {
 }
 ```
 
-A spec function is a plain function that only proof contexts call. Its body is a proof context. Its leading `assume`, `ensures` and `decreases` statements are its [contract](#proof-blocks), written without a `proof` block; they mean what they mean in a leading proof block. The rest of its body is ordinary plain-function code in the [verified subset](#the-verified-subset). A spec function must be transparent (4315): no loop, no `let`, no `assert` and no call to a procedure.
+A spec function is a [checked function](#proof-blocks) marked `spec`: only proofs call it, and it erases. Its body is [verified code](#the-verified-subset), not a proof context, and its contract is its leading proof block, as for any checked function. A spec function must be [transparent](#transparent-functions-and-procedures) (4315).
 
-A spec function is referenced only from proof contexts, from the contract of another function, and from other spec functions (4311). Its type parameters, parameters and return type follow plain functions.
+A spec function is referenced only from proof contexts and from other spec functions (4311). Its type parameters, parameters and return type follow plain functions.
 
 ### Proof blocks
 
-A proof block holds proof statements at one point of a plain function. It is allowed only in the body of a checked function: a `function` declaration at the top level of a `.vibe` or `.vibex` module that is not `effect`, `async` or a generator and has no overloads, at any depth of its blocks and loops but not inside a nested function, arrow, class or object literal. Like a `let` declaration, a proof block is a statement of a block's statement list, never the whole body of an `if`, `else`, loop or labeled statement. A proof block anywhere else, including the module top level and another proof context, is rule 4305.
+A proof block holds proof statements at one point of a plain function. It is allowed only in the body of a checked function: a named `function` declaration or spec function at the top level of a `.vibe` or `.vibex` module that is not `effect`, `async` or a generator and has no overloads, at any depth of its blocks, loops and `switch` case clauses but not inside a nested function, arrow, class or object literal. Like a `let` declaration, a proof block is a statement of a block's statement list, never the whole body of an `if`, `else`, loop or labeled statement. A proof block anywhere else, including the module top level and another proof context, is rule 4305.
 
 A proof block holds the theorem body statements: proof statements, `const`, `if` and blocks. Each `const` in a proof block is visible only in that block. What each proof statement may do depends on where the block is:
 
 | Block | Allowed proof statements | Meaning |
 | --- | --- | --- |
 | The first statement of the function body, after any directive prologue: the function's leading proof block | `assume`, `ensures`, `decreases`, `assert` | `assume(P)`: a precondition. `ensures((r) => Q)`: a postcondition. `decreases(E)`: the recursion measure. `assert`: a fact at the start of the body |
-| The first statement of the body block of a `while`, `for` or `for … of` loop: the loop's leading proof block | `invariant`, `decreases`, `assert` | `invariant(P)`: holds before every iteration and after the last. `decreases(E)`: the loop measure |
+| The first statement of the body block of a `while`, `for` or `for … of` loop: the loop's leading proof block | `invariant`, `decreases`, `assert` | `invariant(P)`: holds before every iteration and after the last. `decreases(E)`: the loop measure. A `do … while` loop has no leading proof block and is outside the subset (4314) |
 | Any other proof block | `assert` | A fact at that point |
 
 A proof statement elsewhere is rule 4307. `assume`, `ensures`, `invariant` and `decreases` are direct statements of their block, not inside its `if` statements (4307). `ensures` needs a written return type other than `void` and `undefined`, and its argument is an arrow with one identifier parameter, no type annotation and an expression body (4310).
@@ -2796,16 +2800,33 @@ At run time a proof block is absent: a function compiles to the JavaScript it ha
 
 The arguments of proof statements, and the initializers and conditions of `const` and `if` statements in proof contexts, are verification expressions. A verification expression is one of these forms (4312):
 
-- an identifier; a numeric, bigint or string literal; `true`, `false`, `null` or `undefined`;
+- an identifier; a numeric literal that the [number rule](#numbers) allows; a bigint or string literal; `true`, `false` or `undefined`;
 - an array literal without spread or holes; an object literal whose properties are `name: E` or shorthand `name`;
 - `(E)`, `E.name`, `E[E]`, and a call `F(E, …)` without spread, where `F` is an identifier or member expression;
-- `!E`, `-E`, and `E op E` for `op` one of `*`, `/`, `%`, `+`, `-`, `<`, `<=`, `>`, `>=`, `===`, `!==`, `&&`, `||`;
+- `!E`, `-E`, and `E op E` for `op` one of `*`, `+`, `-`, `<`, `<=`, `>`, `>=`, `===`, `!==`, `&&`, `||`;
+- `Math.floor(A / B)`, the only place `/` appears;
 - `E ? E : E`;
-- `R.every(cb)` and `R.some(cb)`, where `cb` is an arrow `(x) => E` or `(x, i) => E` with identifier parameters and an expression body.
+- `R.every(cb)` and `R.some(cb)`, where `R` has an array type and `cb` is an arrow `(x) => E` or `(x, i) => E` with identifier parameters and an expression body.
 
-Every other form is rule 4312, including `==` and `!=`, `??`, `?.`, template literals, `typeof`, `in`, `instanceof`, `as`, `satisfies`, the non-null `!`, bitwise and shift operators, `**`, assignment, `new`, `this`, any other arrow or function expression, and every VibeLang expression form. `===` and `!==` take operands whose types are primitive: `number`, `bigint`, `string`, `boolean`, `undefined`, `null`, their literal types and unions of them (4313). A type parameter is not primitive. The same rule applies to all [verified code](#the-verified-subset), where `==` and `!=` are also rule 4313. This keeps every proof true of JavaScript's `===`: the prover compares values structurally, and JavaScript compares objects and arrays by identity.
+Every other form is rule 4312, including `==` and `!=`, `%`, `/` outside `Math.floor`, `null`, `??`, `?.`, template literals, `typeof`, `in`, `instanceof`, `as`, `satisfies`, the non-null `!`, bitwise and shift operators, `**`, assignment, `new`, `this`, any other arrow or function expression, and every VibeLang expression form.
+
+Verified code compares only primitive values (4313). The primitive types are `number`, `bigint`, `string`, `boolean` and `undefined`, their literal types and unions of them; a type parameter is not primitive. `===` and `!==` take primitive operands. `includes`, `indexOf` and `lastIndexOf` are called only on arrays whose element type is primitive. Every `Set` element type and `Map` key type that verified code names is primitive. `==` and `!=` are rule 4313 anywhere in [verified code](#the-verified-subset). JavaScript compares objects and arrays by identity and the prover compares them as values, so without this rule `[[]].includes([])` would prove `true`.
 
 `R.every((x, i) => E)` means `E` holds for every element `x` of `R` at index `i`; `R.some` means it holds for at least one. These are the only quantifiers. A theorem's parameters quantify over all values in the model.
+
+#### Numbers
+
+Verified code and verification expressions share one number rule. A numeric literal is an integer whose magnitude is at most `Number.MAX_SAFE_INTEGER`. `/` appears only as the whole argument of `Math.floor`, which LemmaScript lowers to JavaScript's floor division. `%`, `**` and the bitwise and shift operators `&`, `|`, `^`, `~`, `<<`, `>>` and `>>>` are outside the subset. Any other numeric form is rule 4312 in a verification expression and rule 4314 in code. Each excluded form lets a false claim prove through `lemmascript` 0.6.6 and Dafny 4.11.0:
+
+| Claim | Why it proves | JavaScript |
+| --- | --- | --- |
+| `0.1 + 0.2 === 0.3` | Literals are exact reals | `false` |
+| `1 / 10 + 2 / 10 === 3 / 10` | `/` is exact real division | `false` |
+| `9007199254740992 + 1 !== 9007199254740992` | Integers are unbounded | `false` |
+| `(xs.length - 3) % 2 === 1`, for an empty `xs` | LemmaScript types `xs.length - 3` as non-negative and keeps Dafny's Euclidean `%` | `-3 % 2` is `-1` |
+| `toInt32(2147483648) === 2147483648`, where `toInt32(x)` returns `x \| 0` | No 32-bit wrapping | `2147483648 \| 0` is `-2147483648` |
+
+LemmaScript lowers `%` to JavaScript's remainder only when it types the dividend as a signed integer, so a `%` can't be admitted by its operands' TypeScript types.
 
 ### Transparent functions and procedures
 
@@ -2813,18 +2834,20 @@ A function that a proof reaches is one of three kinds, which decide what a proof
 
 | Kind | Which functions | A proof knows about a call |
 | --- | --- | --- |
-| Transparent | A checked function or spec function whose body has no loop, no `let` declaration and no proof block containing `assert`, and calls only transparent and trusted functions | Its body, and its `assume` contract as a requirement |
-| Procedure | Any other checked function | Its `assume` contract as a requirement, and its `ensures` contract; never its body |
-| Trusted | A [trusted function](#trusted-functions) | Only that equal arguments give equal results |
+| Transparent | A checked function whose body has no loop, no `let` declaration, no assignment, `++` or `--`, and no proof block containing `assert`, and that calls only transparent functions, pure trusted functions and standard-library methods. Recursion is allowed: the transparent functions are the largest set of checked functions with this property | Its body, and its `assume` contract as a requirement |
+| Procedure | Any other checked function, and an impure [trusted function](#trusted-functions) | Its `assume` contract as a requirement, and its `ensures` contract; never its body. An impure trusted function has neither contract |
+| Pure trusted | A `declare function` | Only that equal arguments give equal results |
 
-Calls to procedures appear only in a `const` at a theorem body's top level (4309). `linearSearch` has a loop, so it is a procedure, and `searchFinds` is provable only because `linearSearch` states `ensures((r) => r < xs.length)` and `ensures((r) => r < 0 || xs[r] === target)`. Without them `vibelang prove` reports `searchFinds` not proved. A transparent function's `ensures` is proved but is not a fact for its callers, which see its body instead. This follows Dafny, which unfolds functions and keeps methods opaque, and LemmaScript, which lowers a function to a Dafny function exactly when it is transparent ([LemmaScript SPEC §5](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md#5-pure-function-detection)).
+In a verification expression, a call to a procedure appears only in the initializer of a `const` that is a direct statement of a theorem body (4309). `linearSearch` has a loop, so it is a procedure, and `searchFinds` is provable only because `linearSearch` states `ensures((r) => r < xs.length)` and `ensures((r) => r < 0 || xs[r] === target)`. Without them `vibelang prove` reports `searchFinds` not proved. A transparent function's `ensures` is proved but is not a fact for its callers, which see its body instead. This follows Dafny, which unfolds functions and keeps methods opaque, and LemmaScript, which emits a Dafny function for a transparent function and a method for a procedure ([LemmaScript SPEC §5](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md#5-pure-function-detection)). `vibelang prove` checks the two classifications agree ([Steps](#steps), step 6).
 
 ### Trusted functions
 
 A trusted function is a call target that proofs never check:
 
-- a `declare function` with one signature, in a `.vibe` or `.vibex` module;
-- a function with one signature, not `async` and not a generator, declared in a `.ts`, `.tsx`, `.js`, `.jsx` or declaration file, or in a [`module` body](001-functions.md#module-declarations), and reached through an import.
+- a pure trusted function: a `declare function` with one signature, in a `.vibe` or `.vibex` module;
+- an impure trusted function: a function declaration with one signature, not `async` and not a generator, in a `.ts`, `.tsx`, `.js`, `.jsx` or declaration file, or in a [`module` body](001-functions.md#module-declarations), and reached through an import.
+
+Every array, `Map` and `Set` type in a trusted function's signature, at any depth, is readonly: `readonly T[]`, `ReadonlyArray<T>`, `ReadonlyMap<K, V>` or `ReadonlySet<T>` (4314). TypeScript then rejects a `.ts` implementation that mutates its arguments without a cast (`TS2339`, `TS2542`).
 
 ```text
 declare function matchesPattern(text: string, pattern: string): boolean
@@ -2834,7 +2857,7 @@ theorem patternIsDeterministic(text: string, pattern: string) {
 }
 ```
 
-A proof assumes every trusted function is total, deterministic and free of side effects, as LemmaScript models a function from another file ([LemmaScript SPEC §2.9](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md#29-cross-file-calls)). `vibelang prove` lists each trusted function it reaches. VibeLang's ordinary throw checks still apply to calls of trusted functions in theorems and checked functions ([Failures](003-failures.md#plain-code-never-throws)).
+A proof assumes every trusted function is total and free of side effects, and a pure one also deterministic. The lowering marks a `declare function` `//@ pure` and sets LemmaScript's `extern-default` to `impure` ([LemmaScript SPEC §2.9](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md#29-cross-file-calls)), so an imported `rnd()` that returns `Math.random()` can't prove `rnd() === rnd()`: Dafny models each impure call as a fresh value. A `declare function` is the explicit claim that a function is deterministic. An imported function is trusted by default, as LemmaScript trusts a call into another file; `vibelang prove` lists each trusted function it reaches, on its own line and in the summary line, and `vibelang prove --strict` refuses an imported one (4320). VibeLang's ordinary throw checks still apply to calls of trusted functions in theorems and checked functions ([Failures](003-failures.md#plain-code-never-throws)).
 
 ### The verified subset
 
@@ -2845,11 +2868,19 @@ The subset has two layers. VibeLang checks the first in the compiler and the lan
 **VibeLang's layer (4314).** Verified code contains none of:
 
 - VibeLang's expression and statement forms: `try` and `catch` expressions, `effect` blocks, `fork`, `join`, `try.all` and its siblings, `for concurrent`, `for try`, interruption blocks, `provide`, `match`, `do` expressions, the pipe operator and throw expressions;
-- classes, `this`, `super`, `new`, `async` functions, `await`, generators, `yield`, `using`, `try` statements, labeled statements and JSX;
-- a call whose callee is not a reached checked function, spec function or trusted function, a function-typed parameter, or a method or function of TypeScript's standard library declarations (`xs.slice`, `s.includes`, `Math.max`, …). An `effect` function, an `async` function, a method of a class or object literal, a service member, an arrow bound to a `const`, and Effect's globals are not callable;
-- a reached type that is, or contains, an Effect type (`A!E!R` included), a class, a `service`, `error`, `schema` or `data` declaration's type, `any` or `unknown`.
+- classes, `this`, `super`, `new`, `async` functions, `await`, generators, `yield`, `using`, `try` statements, labeled statements, `do … while` loops and JSX;
+- mutation: an assignment, compound assignment, `++`, `--` or `delete` whose target is an element access or a property access, and a call of a standard-library method that changes its receiver: `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `fill` and `copyWithin` on an array, and `set`, `add`, `delete` and `clear` on a `Map` or `Set`. Write `xs.with(i, v)`, a spread or `concat` instead;
+- a numeric form outside the [number rule](#numbers);
+- a type assertion (`as`, `<T>E`), `satisfies` and the non-null `!`;
+- `null`, and a reached type that contains `null`. Write `undefined`;
+- a call whose callee is not a reached checked function, spec function or trusted function, or a method or function of TypeScript's standard library declarations (`xs.slice`, `s.includes`, `Math.max`, …). An `effect` function, an `async` function, a method of a class or object literal, a service member, an arrow bound to a `const`, a function-typed parameter, and Effect's globals are not callable;
+- a reached type that is, or contains, an Effect type (`A!E!R` included), a class, an `enum`, a `service`, `error`, `schema` or `data` declaration's type, a function type, `any` or `unknown`. An arrow passed to a standard-library method, such as `xs.map((x) => x + 1)`, is not a reached type;
+- a reached variable other than a parameter or local of verified code, unless it is a module-level `const` of a `.vibe` or `.vibex` module whose type is primitive and whose initializer is a verification expression over literals and other such constants;
+- a reached function declaration without a name, such as an anonymous `export default function`.
 
-**LemmaScript's layer (4318).** The pinned `lemmascript` 0.6.6 decides the rest: which TypeScript statements and expressions, standard-library methods and types it models, as its [SUBSET.md](https://github.com/midspiral/LemmaScript/blob/main/SUBSET.md) and [SPEC.md](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md) describe. `vibelang prove` reports its rejection, or a Dafny resolution error in its output, as rule 4318 at the reached declaration. For example, `xs.every((x, i) => …)` in code produces Dafny that fails to resolve, while the same call in a verification expression is VibeLang's quantifier and is accepted.
+Rule 4314 reports at the construct, with the root and the chain of calls that reach it as related information. Mutation is excluded because LemmaScript models an array as a Dafny sequence value: `ys = xs; ys[0] = 2` updates a local copy in the proof and the shared array in JavaScript. A reached module-level array or object would be copied into the lowering file as a constant, though unverified code can change it at run time. VibeLang's `data`, `error` and `schema` types and `match` are outside this version's subset: a `data` value comes from Effect's `Data.taggedEnum` constructors, `error` and `schema` values are Effect classes, and `match` runs the [matcher protocol](004-match.md), none of which LemmaScript models. A TypeScript union of object types with a `_tag` field, tested with `switch`, is the alternative; LemmaScript lowers it to a Dafny datatype and `match`.
+
+**LemmaScript's layer (4318).** The pinned `lemmascript` 0.6.6 decides the rest: which TypeScript statements and expressions, standard-library methods and types it models, as its [SUBSET.md](https://github.com/midspiral/LemmaScript/blob/main/SUBSET.md) and [SPEC.md](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md) describe. `vibelang prove` reports its rejection, or a Dafny resolution error in its output, as rule 4318 at the reached declaration. For example, `xs.every((x, i) => …)` in code produces Dafny that fails to resolve, while the same call in a verification expression is VibeLang's quantifier and is accepted. An inline object type such as `(o: { a: number })` doesn't lower either: name it with `type` or `interface`.
 
 ### Erasure
 
@@ -2866,13 +2897,13 @@ The [stock-TypeScript mapper](007-tooling.md#compiler-and-tooling-requirements) 
 
 | Source | Projection |
 | --- | --- |
-| `theorem T<P>(params) { … }` | `void function T<P>(params): void { … };` |
+| `theorem T<P>(params) { … }` | `function T<P>(params): void { … }` followed by the statement `void T;` |
 | `spec function f(…) { … }` | `function f(…) { … }` |
 | `proof { … }` | `{ … }` |
 | `assume(P)`, `assert(Q)`, `invariant(P)`, `decreases(E)` | a call of an ambient function the projection declares with that statement's parameter type, under a name no source identifier spells |
 | `ensures((r) => Q)` | the same, with the arrow parameter typed by the function's written return type |
 
-Stock TypeScript 5.9.3 checks this projection under `--strict --noUnusedLocals --noUnusedParameters` with no diagnostic beyond the source's own, and its declaration output omits the theorem and the spec function.
+Stock TypeScript 5.9.3 checks this projection under `--strict --noUnusedLocals --noUnusedParameters` with no diagnostic beyond the source's own, and its declaration output omits the theorem and the spec function, which are not exported. A theorem projects to a function declaration so that stock TypeScript reports a duplicate name as the compiler does (`TS2393`, `TS2300`); `void T;` keeps `noUnusedLocals` quiet. The projection can't report rule 4311: in it, `typeof T` resolves to the function.
 
 ### The lowering
 
@@ -2880,31 +2911,33 @@ Stock TypeScript 5.9.3 checks this projection under `--strict --noUnusedLocals -
 
 #### Files
 
-The proof directory is `vibe.proofDir` ([Configuration](#configuration)), `proofs` by default, relative to the project's config file. For a module at path `P` relative to the config's directory, such as `src/clamp.vibe`:
+The proof directory is `vibe.proofDir`, resolved as [Configuration](#configuration) says, and by default `proofs` in the selected config's directory. A module that declares a root is inside the selected config's directory (4317). For a module at path `P` relative to that directory, such as `src/clamp.vibe`:
 
 | File | Written by | Contents |
 | --- | --- | --- |
-| `<proofDir>/lemmascript.json` | `vibelang prove`, every run | `{ "string-semantics": "javascript-utf16", "dafny-library": "local", "safe-slice": true }` |
-| `<proofDir>/tsconfig.json` | `vibelang prove`, every run | `{ "compilerOptions": { "strict": true, "target": "ES2022", "module": "ESNext", "noUncheckedIndexedAccess": N, "skipLibCheck": true }, "include": ["**/*.ts"] }`, where `N` is the project's effective `noUncheckedIndexedAccess` |
+| `<proofDir>/lemmascript.json` | `vibelang prove`, every run | `{ "string-semantics": "javascript-utf16", "dafny-library": "local", "safe-slice": true, "extern-default": "impure" }` |
+| `<proofDir>/tsconfig.json` | `vibelang prove`, every run | The line `// Generated by vibelang prove. Do not edit.`, then `{ "compilerOptions": { "strict": true, "target": T, "lib": L, "module": "ESNext", "noUncheckedIndexedAccess": N, "skipLibCheck": true }, "include": ["**/*.ts"] }`, where `T`, `L` and `N` are the project's effective `target`, `lib` and `noUncheckedIndexedAccess`, and `"lib"` is left out when the project sets none |
 | `<proofDir>/P.ts`, such as `proofs/src/clamp.vibe.ts` | `vibelang prove`, every run | The lowering file |
 | `<proofDir>/P.dfy.gen` | LemmaScript | Generated Dafny |
 | `<proofDir>/P.dfy` | LemmaScript seeds it; then the user | Dafny with [hand-written proof additions](#hand-written-proofs) |
 | `<proofDir>/.lemmascript/` | LemmaScript | Its run log, which ignores itself in version control |
 
-The three LemmaScript options select its JavaScript-faithful models: UTF-16 code units for strings, and `slice(lo, hi)` normalizing negative bounds and clamping as JavaScript does ([LemmaScript SPEC §7.6](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md#76-project-configuration-lemmascriptjson)). Commit `P.dfy` and `P.dfy.gen`: `P.dfy.gen` is the merge base for the next run.
+The LemmaScript options select its JavaScript-faithful models: UTF-16 code units for strings, `slice(lo, hi)` normalizing negative bounds and clamping as JavaScript does, and no determinism assumed for an extern function that is not marked pure ([LemmaScript SPEC §7.6](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md#76-project-configuration-lemmascriptjson)). The proof directory's `target` and `lib` are the project's, so `xs.with(i, v)` type-checks there as it does in the program. Commit `P.dfy` and `P.dfy.gen`: `P.dfy.gen` is the merge base for the next run.
 
-The compiler and `vibelang prove` leave the proof directory out of the program's files, as TypeScript leaves out `outDir`. A stock tool that reads the project's config needs the directory in its `exclude`.
+The proof directory is an ordinary directory to the compiler: the project's `include` and `exclude` decide whether its files are program files, as for any directory. Before it writes anything, `vibelang prove` checks that no file of the program is in the proof directory, and that the directory is absent, is empty, or has a `tsconfig.json` whose first line is the generated line above. Otherwise it reports rule 4317 and writes nothing: exclude the directory in the config, or choose another `vibe.proofDir`.
 
 #### The lowering file
 
 The file starts with the line `// Generated by vibelang prove from P. Do not edit.` It then holds, ordered by module path and then source position, a copy of every declaration that a root of the module reaches, and the module's roots:
 
 - A reached type or module-level `const`: its declaration, with `export`.
-- A trusted function: `//@ extern`, then `declare function f(params): R` with its declared signature.
-- A checked or spec function: `// <path>:<line>`, then the declaration as `export function`, with `spec` removed, `//@ verify` as the first line of its body, its proof blocks replaced as below and its comments removed. A spec function's leading `assume`, `ensures` and `decreases` statements become the lines a leading proof block's would. Removing comments means that no source comment starting `//@` reaches LemmaScript.
+- A trusted function: `//@ extern`, then `//@ pure` for a `declare function`, then `declare function f(params): R` with its declared signature.
+- A checked or spec function: `// <path>:<line>`, then the declaration as `export function`, with `spec` removed, `//@ verify` as the first line of its body and its proof blocks replaced as below.
 - A theorem: `// <path>:<line>`, then the generated function described under [Theorem lowering](#theorem-lowering).
 
-If two copied declarations from different modules share a name, each one not from the lowered module is renamed `name_mN` throughout the file, where `N` is the 1-based position of its module among the copied modules other than the lowered one, in path order.
+Every copied declaration, type and constant included, is printed without its comments. The file holds no comment but its first line, the `// <path>:<line>` lines and the `//@` lines the lowering writes, so no source comment such as `//@ type nat` on an interface field reaches LemmaScript.
+
+Each reference prints the lowering-file name of the declaration it resolves to. An import alias (`import { f as g }`), a namespace qualifier (`M.f`), a default import and a re-export resolve to the copied declaration, which the reference then names directly. If two copied declarations from different modules share a name, each one not from the lowered module is renamed to the first of `name_mN`, `name_mN_2`, `name_mN_3`, … that no identifier in the file spells, where `N` is the 1-based position of its module among the copied modules other than the lowered one, in path order. Renaming changes exactly the references that resolve to the renamed declaration.
 
 Proof blocks become `//@` comments at their place, one line per proof statement:
 
@@ -2923,7 +2956,7 @@ A leading proof block's `requires`, `ensures` and `decreases` lines follow `//@ 
 - Each unary, binary and conditional operator application is printed inside one pair of parentheses; identifiers, literals, member accesses, element accesses and calls are printed as written. Implication, which the lowering introduces, is `(A ==> B)`.
 - A formula whose outermost operator is `&&` becomes one line per conjunct, left to right, each conjunct split again the same way.
 - `R.every((x, i) => E)` is `forall(k: nat, ((k < R.length) ==> E''))` and `R.some((x, i) => E)` is `exists(k: nat, ((k < R.length) && E''))`, where `R` is parenthesized unless it is an identifier, member access, element access or call, `E''` is `E` with `R[k]` for `x` and `k` for `i`, and `k` is the first of `k0`, `k1`, … that no identifier in the enclosing declaration spells and no enclosing quantifier uses.
-- Substitution of constants, parameters and `\result` never replaces a name that an `every` or `some` callback rebinds.
+- Substitution is capture-free. Before it replaces any constant, parameter or `\result`, the lowering renames each `every` and `some` callback parameter to the first of `b0`, `b1`, … that no identifier in the enclosing declaration spells, so a name a substituted initializer brings in keeps its meaning. In `const x = y` then `xs.every((y) => x === y)`, the callback's `y` becomes `b0`, and the assertion prints `forall(k0: nat, ((k0 < xs.length) ==> (y === xs[k0])))`.
 
 #### Theorem lowering
 
@@ -3001,10 +3034,10 @@ Through `lemmascript` 0.6.6, Dafny 4.11.0 reports `1 verified, 0 errors`, `4 ver
 ### The proof command
 
 ```sh
-vibelang prove [-p <project>]
+vibelang prove [-p <project>] [--strict]
 ```
 
-`vibelang prove` proves every root of the project. `-p` selects the project as for the compiler ([Config files](007-tooling.md#config-files)); without it, the project is discovered from the current directory. It takes no file arguments.
+`vibelang prove` proves every root of the project. `-p` selects the project as for the compiler ([Config files](007-tooling.md#config-files)); without it, the project is discovered from the current directory. `--strict` refuses implicit trust: a call in verified code to a function from another file, an impure trusted function by default, is rule 4320. A `declare function` stays trusted under `--strict`, because it states its trust in the module itself. The command takes no file arguments.
 
 #### Configuration
 
@@ -3014,41 +3047,46 @@ vibelang prove [-p <project>]
 
 #### Steps
 
-1. Check the program as the compiler does. If it has an error diagnostic, print the diagnostics and exit with status 1.
+1. Check the program as the compiler does, and with `--strict` check rule 4320 too. If it has an error diagnostic, print the diagnostics and exit with status 1.
 2. If the project has no root, print `Nothing to prove.` and exit with status 0. Nothing else is needed: no toolchain, no proof directory.
-3. Resolve `lemmascript/package.json` from the project directory with Node's module resolution. If it is absent, or its `version` is not the pinned `0.6.6`, report rule 4317 and exit with status 1. Run `dafny --version` from `PATH`; if it fails, report rule 4317 and exit with status 1. Any Dafny that runs is used, and the output names its release; LemmaScript 0.6.6 verifies its own examples with Dafny 4.11.0.
-4. Write the proof directory's files.
-5. For each module with a root, in path order, with the proof directory as the working directory and `LSC_RUN_LOG=true` in the environment: run `lsc info --typed P.ts` for Dafny's names, then `lsc regen --backend=dafny P.ts`. `lsc` means `node` running the file that the resolved package's `bin.lsc` names. Modules may run concurrently; output follows path order.
-6. Audit `P.dfy.gen`: for each function of the lowering file, the Dafny member that `lsc info --typed` names for it and that member's `_ensures` lemma together hold exactly as many `assert` statements and `ensures` clauses as the `//@ assert` and `//@ ensures` lines the lowering wrote for the function. A lost assertion or postcondition would let a false proof pass, so any difference is rule 4318 at the declaration.
-7. Classify each run by the audit and by the record it appended to `.lemmascript/runs.jsonl`, and report.
+3. Resolve `lemmascript/package.json` from the project directory with Node's module resolution. If it is absent, or its `version` is not the pinned `0.6.6`, report rule 4317 and exit with status 1. Run `dafny --version` from `PATH`; if it fails or reports a release other than the pinned `4.11.0`, report rule 4317 and exit with status 1. The verdict depends on the prover as much as on LemmaScript, so both are pinned.
+4. Check the proof directory ([Files](#files)); if it fails, report rule 4317 and exit with status 1. Write the proof directory's files.
+5. For each module with a root, in path order, with the proof directory as the working directory and `LSC_RUN_LOG=true` in the environment: run `lsc info --typed P.ts` for Dafny's names, then `lsc regen --backend=dafny P.ts`, then `dafny audit` on `P.dfy` and on a copy of `P.dfy.gen` whose name ends in `.dfy`, since Dafny reads no other extension. `lsc` means `node` running the file that the resolved package's `bin.lsc` names. Modules may run concurrently; output follows path order.
+6. Audit the module. Each check that fails is reported at the declaration:
+   - **Obligations (4318).** For each function of the lowering file, the Dafny member of `P.dfy.gen` that `lsc info --typed` names for it and that member's `_ensures` lemma together hold exactly as many `assert` statements and `ensures` clauses as the `//@ assert` and `//@ ensures` lines the lowering wrote for the function. A lost assertion or postcondition would let a false proof pass. LemmaScript 0.6.6 splits only a top-level `&&`, which the lowering has already split, so the count is exact for the pinned release.
+   - **Classification (4318).** In `P.dfy.gen`, the member for each transparent function is a Dafny `function` and the member for each procedure a `method`. The member's kind is the check: `lsc info --typed` reports `isPure` `true` for `function bump(x: number): number { x += 1; return x }`, which LemmaScript emits as a `method`.
+   - **Assumptions (4319).** `dafny audit` reports nothing for `P.dfy` that it does not report for `P.dfy.gen`, compared by member and message. A hand-written `{:axiom}`, `assume`, `{:verify false}`, `{:only}` or `{:extern}` addition fails this check.
+7. Classify each module by the audit and by the last record in `.lemmascript/runs.jsonl` whose `file` is `P.ts` and whose `cmd` is `regen`, and report.
 
 | Run result | Meaning | Reported |
 | --- | --- | --- |
 | No record, or `lsc info --typed` exits with status 1 | LemmaScript rejected the lowering file | Rule 4318 at the module, with `lsc`'s message |
 | `stage` `"resolve"` | Dafny rejected the generated program | Rule 4318 at the mapped declaration |
-| The audit finds a difference | LemmaScript's output lost an obligation | Rule 4318 at the declaration, whatever the record says |
+| The audit finds a difference | LemmaScript's output lost an obligation or classified a function differently, or `P.dfy` adds an assumption | Rule 4318 or 4319 at the declaration, whatever the record says |
 | `stage` `"conflict"` or `"diff"` | The hand-written `P.dfy` conflicts with the new generation | Rule 4319 at the module |
 | `stage` `"verify"` | One or more obligations failed | Rule 4316 for each Dafny error, at its [mapped location](#source-locations) |
 | `stage` `"ok"` | Every member verified | Nothing |
 
-A root `R` is proved when the audit of its module finds no difference and its module's record has `stage` `"ok"`, or `stage` `"verify"` and a `failed` list that names none of the Dafny members of `R` (`R` and `R_ensures`) and of the functions `R` reaches. Otherwise it is not proved.
+A root is proved when its module's audit finds no difference and its module's record has `stage` `"ok"` and `partial` `false`. Otherwise every root of the module is not proved. Dafny checks each member assuming the contracts of the others, so a member that verifies can rest on a failed one, generated or hand-written: with a failing hand-written lemma `Helper` that `R_ensures` calls, the record lists `R_ensures` as passed and `Helper` as failed. Roots that should succeed or fail independently go in different modules.
 
 #### Output
 
-Diagnostics print first, in the compiler's diagnostic format. Then come one line per root in module path and source order, and one line per trusted function reached. For the examples above with `linearSearch`'s `ensures` removed, and a theorem `patternIsDeterministic` in `src/match.vibe` that calls a `matchesPattern` imported from `src/pattern.ts`:
+Diagnostics print first, in the compiler's diagnostic format. Then come one line per root in module path and source order, and one line per trusted function reached. A root's status is `proved` or `failed`; `failed` means not proved, and the diagnostics name each obligation that failed. For the examples above with `linearSearch`'s `ensures` removed, and the theorem `patternIsDeterministic` in `src/match.vibe` below its `declare function matchesPattern`:
 
 ```text
 proved  clampInRange            src/clamp.vibe:7
 proved  patternIsDeterministic  src/match.vibe:3
-proved  linearSearch            src/search.vibe:1
+failed  linearSearch            src/search.vibe:1
 failed  searchFinds             src/search.vibe:19
-trusted matchesPattern          src/pattern.ts:1
-3 proved, 1 not proved, 1 trusted.
+trusted matchesPattern          src/match.vibe:1
+2 proved, 2 not proved, 1 trusted: matchesPattern.
 Model: number is an unbounded integer: NaN, infinities, -0, fractions and the 2^53 limit are outside these proofs.
 Verified by LemmaScript 0.6.6 (MIT, Midspiral, https://github.com/midspiral/LemmaScript) with Dafny 4.11.0.
 ```
 
-The status word is padded to eight characters and the name to the longest listed name plus two. The summary line is `<p> proved, <f> not proved, <t> trusted.` The last line names the LemmaScript release from its `package.json` and the Dafny release `dafny --version` printed, credits the project, and appears on every run that reaches step 5. Steps 1 to 3 print no summary.
+`linearSearch`'s own members verify, but it shares a module with the failed `searchFinds`, so it is not proved.
+
+The status word is padded to eight characters and the name to the longest listed name plus two. The summary line is `<p> proved, <f> not proved, <t> trusted.`, and when `<t>` is not `0` it names each trusted function, in the order of the `trusted` lines: `<t> trusted: f, g.` The last line names the LemmaScript release from its `package.json` and the Dafny release `dafny --version` printed, credits the project, and appears on every run that reaches step 5. Steps 1 to 4 print no summary.
 
 #### Exit status
 
@@ -3063,7 +3101,7 @@ A missing toolchain, a failed proof and a rejected lowering all exit with status
 
 LemmaScript reports Dafny locations in `P.dfy` and maps nothing back to TypeScript ([LemmaScript SPEC §9](https://github.com/midspiral/LemmaScript/blob/main/SPEC.md#9-not-yet-supported)). `vibelang prove` maps each Dafny error line `P.dfy(L,C): Error: M`, and each `Related location` line that follows it, as follows:
 
-1. The member is the nearest line at or above `L` in `P.dfy` that starts, at column 1, with `function`, `predicate`, `method` or `lemma`; its name is the next identifier.
+1. The member is the nearest line at or above `L` in `P.dfy` that starts, at column 1, with `function`, `predicate`, `method` or `lemma`, each optionally after `ghost`, `opaque` or `static`; its name is the next identifier after any attributes such as `{:axiom}`.
 2. The declaration is the source declaration whose Dafny name, from `lsc info --typed`, is the member's name, or the member's name without a trailing `_ensures`. A member that matches none, such as one of LemmaScript's helpers, maps to the module's first line.
 3. If line `L`, after indentation, starts with `requires`, `ensures`, `invariant`, `decreases` or `assert`, and the member has as many lines starting with that word as the lowering emitted lines of that kind for the declaration, the `n`-th such line maps to the source of the `n`-th emitted line: the conjunct, proof statement or assertion it came from. An `ensures` line of a theorem's `_ensures` lemma maps to the theorem's assertion.
 4. Otherwise the error maps to the declaration's name.
@@ -3072,20 +3110,20 @@ The diagnostic's message is rule 4316's message followed by Dafny's message `M`;
 
 #### Hand-written proofs
 
-When automation fails, a proof continues in `P.dfy`, by LemmaScript's rules: additions only, such as helper lemmas, `assert` statements and lemma calls inside a generated lemma's body ([LemmaScript SPEC_DAFNY §3](https://github.com/midspiral/LemmaScript/blob/main/SPEC_DAFNY.md#3-regeneration-workflow)). `lsc regen` merges those additions into each new generation. A change to a generated line, or a merge conflict, is rule 4319; LemmaScript saves the conflicting merge as `P.dfy.merged`. Hand-written Dafny is part of the [trust boundary](#the-trust-boundary): an `assume` or `{:axiom}` there is trusted.
+When automation fails, a proof continues in `P.dfy`, by LemmaScript's rules: additions only, such as helper lemmas, `assert` statements and lemma calls inside a generated lemma's body ([LemmaScript SPEC_DAFNY §3](https://github.com/midspiral/LemmaScript/blob/main/SPEC_DAFNY.md#3-regeneration-workflow)). `lsc regen` merges those additions into each new generation. A change to a generated line, or a merge conflict, is rule 4319; LemmaScript saves the conflicting merge as `P.dfy.merged`. An addition proves; it never assumes. Every assumption `dafny audit` finds in `P.dfy` and not in `P.dfy.gen` is rule 4319 (step 6), so no hand-written Dafny is trusted.
 
 ### The trust boundary
 
-`proved` means: Dafny verified the Dafny program that LemmaScript generated from the lowering file, together with the additions in `P.dfy`, under LemmaScript's helper definitions and axioms. Everything else is trusted:
+`proved` means: Dafny verified every member of the Dafny program that LemmaScript generated from the lowering file, together with the additions in `P.dfy`, under LemmaScript's helper definitions and axioms, and `dafny audit` found no assumption in the additions. Everything else is trusted:
 
 1. **VibeLang's lowering.** That the lowering file states each theorem's meaning and copies each reached declaration faithfully. The lowering is not itself verified.
-2. **LemmaScript's translation** from TypeScript to Dafny, at the pinned release. The audit in step 6 checks only that no assertion or postcondition is lost.
-3. **The model.** `number` is an unbounded integer, and a non-integer literal an exact real: no `NaN`, no infinities, no `-0`, no 2^53 precision limit, no 32-bit wrapping of bitwise operators. For `clamp(NaN, 0, 1)` JavaScript returns `NaN`, outside `clampInRange`'s proof. Strings are UTF-16 code units. Arrays are immutable sequences, `Map` and `Set` mathematical maps and sets, and `null` and `undefined` one value. Standard-library methods mean what LemmaScript's helpers define; some, such as `split` and `sort`, are axioms.
-4. **Parameters range over the model.** A theorem says nothing about values outside it: fractional and non-finite numbers, sparse arrays, objects with getters, proxies, or extra properties.
-5. **Trusted functions** are total, deterministic and free of side effects.
+2. **LemmaScript's translation** from TypeScript to Dafny, at the pinned release. The audit in step 6 checks only that no assertion or postcondition is lost and that functions are classified as VibeLang classifies them.
+3. **The model.** `number` is an unbounded integer: no `NaN`, no infinities, no `-0` and no 2^53 precision limit. The [number rule](#numbers) keeps fractions, `%` and bitwise operators out of verified code, so these are the model's only differences from JavaScript numbers. For `clamp(NaN, 0, 1)` JavaScript returns `NaN`, outside `clampInRange`'s proof. Strings are UTF-16 code units. Arrays are sequence values and `Map` and `Set` mathematical maps and sets; verified code never mutates them (4314) and compares only primitives (4313), so for verified code a value and its identity can't differ. Standard-library methods mean what LemmaScript's helpers define; some, such as `split`, are axioms.
+4. **Parameters range over the model.** A theorem says nothing about values outside it: fractional and non-finite numbers, sparse arrays, objects with getters, proxies, or extra properties. Intermediate results are unbounded as well, so a theorem can be false at run time even for safe-integer inputs: `x + 2 > x + 1` is proved for every `x` from `0` to `2^53 - 1`, and is false in JavaScript at `2^53 - 1`.
+5. **Trusted functions** are total and free of side effects, mutating no argument; a pure trusted function is also deterministic.
 6. **Preconditions at run time.** Every call from code that no root reaches, and every call at run time, is trusted to satisfy the callee's `assume` contract.
 7. **Termination and the stack.** Dafny proves that reached functions terminate. The JavaScript call-stack limit is not modeled: a proved recursive function can still overflow the stack.
-8. **Dafny, its bundled Z3 solver, and the hand-written additions in `P.dfy`.**
+8. **Dafny 4.11.0, its bundled Z3 solver, and `dafny audit`'s list of assumptions.**
 
 Code that no root reaches is not verified.
 
@@ -3100,17 +3138,17 @@ Code that no root reaches is not verified.
 | `match` | Outside the subset (4314). Write `if` or `switch`; LemmaScript lowers `switch` on a discriminant. |
 | `throw`, `try` statements | Plain code never throws ([Failures](003-failures.md#plain-code-never-throws)). A `try` statement in verified code is 4314. |
 | Classes, methods, `this`, `new` | Outside the subset (4314). A proof block in a method is 4305. |
-| Arrows and function expressions | Not checked functions: a proof block inside one is 4305, and calling one bound to a `const` from verified code is 4314. An arrow is allowed as an `every` or `some` callback in a verification expression and as an argument in verified code. |
+| Arrows and function expressions | Not checked functions: a proof block inside one is 4305, and calling one bound to a `const` from verified code is 4314. An arrow is allowed as an `every` or `some` callback in a verification expression and as an argument of a standard-library method in verified code. A function-typed parameter, property or element is 4314. |
 | Generics | Allowed on theorems, spec functions and checked functions. `===` on a type parameter is 4313. |
 | Overloads | An overloaded function is not a checked or trusted function (4314). A theorem or spec function with overloads is 4303. |
 | `using` | Outside the subset (4314). |
-| Modules and imports | A theorem may sit beside its functions or in another module that imports them. Reached `.vibe` and `.vibex` declarations are copied into the lowering file; TypeScript and JavaScript functions are trusted. Theorems and spec functions are never exported (4303). |
-| `module` bodies (VIP-40) | TypeScript: `theorem` there is TypeScript's syntax error, and its functions are trusted. |
+| Modules and imports | A theorem may sit beside its functions or in another module that imports them. Reached `.vibe` and `.vibex` declarations are copied into the lowering file; TypeScript and JavaScript functions are impure trusted functions, and their other values are 4314. Theorems and spec functions are never exported (4303). |
+| `module` bodies (VIP-40) | TypeScript: `theorem` there is TypeScript's syntax error, and its functions are impure trusted functions. |
 | `.vibex` | As `.vibe`. JSX in verified code is 4314. |
 | `// @vibe` in `.ts` files (open [VIP-42](../vips/0042-vibelang-in-ts-files-open.md)) | If both are accepted, a file with the directive is a `.vibe` file and this appendix applies. Stock tools reading it see VibeLang syntax, as VIP-42's table says. |
 | Declaration emit and sidecars | See [Erasure](#erasure): no output for proof forms. |
 | The TypeScript shim | See [TypeScript projection](#typescript-projection). |
-| Language server | Reports every rule this appendix checks in the compiler, 4302 to 4315, and treats theorem and spec function names as function names for hover, definition, references and rename. It runs no prover: 4316 to 4319 come only from `vibelang prove`. |
+| Language server | Reports every rule this appendix checks in the compiler, 4302 to 4315, and treats theorem and spec function names as function names for hover, definition, references and rename. It runs no prover: 4316 to 4320 come only from `vibelang prove`. |
 | Formatter | Formats `theorem` and `spec function` as function declarations and `proof` as a block, keeping each keyword on its line and preserving proof statements, `//@` text and comments ([Formatting](007-tooling.md#formatting-and-existing-tools)). |
 | `vibelang lint` and repository linters | Read the [TypeScript projection](#typescript-projection). Effect's imported rules find no Effects in proof forms. |
 | `vibelang --fix` | No quick fix and no codemod: the forms are new, so nothing migrates. |
@@ -3134,6 +3172,9 @@ Each departure follows a `lemmascript` 0.6.6 and Dafny 4.11.0 run of the VIP's o
 | `lemmascript` 0.6.1 | 0.6.6, pinned | The current release; both reject arrows in annotations and drop a trailing assertion |
 | `isSorted` with `xs.every((x, i) => …)` | `isSortedFrom`, recursive | A two-parameter callback in code gives Dafny an `Unknown` index type |
 | Nothing on export | Theorems and spec functions are module-local (4303) | No import, projection or declaration rule is needed |
+| A spec function is a proof context | A spec function's body is verified code, and its contract is a leading `proof { }` block | LemmaScript lowers the body as code, where VibeLang's `every((x, i) => …)` quantifier fails to resolve; one contract form serves every checked function |
+| LemmaScript's subset defines which code can be proved | VibeLang's layer also rejects mutation, identity comparison of non-primitives, `null`, `%`, `/` outside `Math.floor`, fractions, bitwise operators, casts, function-typed values and non-primitive module constants | Each one proves a claim that JavaScript falsifies, with `0 errors`; the [number rule](#numbers) lists the arithmetic cases |
+| `declare function` lowers to `//@ extern` | `//@ extern` and `//@ pure`; an imported function is an impure extern | LemmaScript assumes an unmarked extern deterministic by default, so an imported `rnd()` would prove `rnd() === rnd()` |
 
 ### How this appendix settles VIP-43's open questions
 
@@ -3148,7 +3189,7 @@ Each departure follows a `lemmascript` 0.6.6 and Dafny 4.11.0 run of the VIP's o
 
 ### Details
 
-VIP-34 gives VIP-43 the block `EK43xx`. `EK4301` already names an interim rule in [Appendix B](#appendix-b-diagnostics), so VIP-43 reserves the numbers 4302 to 4319 below. Each prints as `EK` followed by its number once VIP-43 is accepted and the compiler registers it; until then no compiler prints them, and Appendix B lists them when they are assigned. Every rule is an error.
+VIP-34 gives VIP-43 the block `EK43xx`. `EK4301` already names an interim rule in [Appendix B](#appendix-b-diagnostics), so VIP-43 reserves the numbers 4302 to 4320 below. Each prints as `EK` followed by its number once VIP-43 is accepted and the compiler registers it; until then no compiler prints them, and Appendix B lists them when they are assigned. Every rule is an error. No rule has a run-time meaning of its own: every proof form erases ([Erasure](#erasure)), so a rule only accepts or rejects a program, or a proof.
 
 #### Compiler and language server
 
@@ -3158,22 +3199,23 @@ VIP-34 gives VIP-43 the block `EK43xx`. `EK4301` already names an interim rule i
 | `4303` | A modifier or overload on a theorem or spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | Remove it; theorems and spec functions are module-local |
 | `4304` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | Give each parameter a plain name and a type |
 | `4305` | A `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | Move the facts into a theorem, into a module-level plain function, or into a braced block |
-| `4306` | A statement in a theorem body or proof block outside the allowed forms: `let`, `var`, a loop, `return`, `throw`, a nested function, an expression statement other than a proof statement, or `assume` after another statement | Use `const`, `if` and proof statements |
-| `4307` | A proof statement outside its allowed place: `ensures`, `invariant` or `decreases` in a theorem; in a proof block or spec function, `assume` or `ensures` other than as a direct statement of a function's leading proof block or among a spec function's leading statements, `decreases` other than as a direct statement of a function's or loop's leading proof block or among a spec function's leading statements, and `invariant` other than as a direct statement of a loop's leading proof block | Move it to the leading proof block of the function or loop it describes |
+| `4306` | A statement in a theorem body or proof block outside the allowed forms: `let`, a loop, `return`, `throw`, a nested function, an expression statement other than a proof statement, or `assume` after another statement; a `const` that no later statement uses; a theorem with no `assert` | Use `const`, `if` and proof statements, and state at least one assertion |
+| `4307` | A proof statement outside its allowed place: `ensures`, `invariant` or `decreases` in a theorem; in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, and `invariant` other than as a direct statement of a loop's leading proof block | Move it to the leading proof block of the function or loop it describes |
 | `4308` | A second argument to `assert`, or any other reference to `by` in a proof context | Remove it; write proof steps in the proof file |
-| `4309` | A call to a procedure in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | Move the call into a `const` at the theorem body's top level |
+| `4309` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | Move the call into a `const` at the theorem body's top level |
 | `4310` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | Write the return type and `ensures((r) => …)` |
-| `4311` | An expression that refers to a theorem, or a reference to a spec function outside a proof context, a contract or a spec function | Call a plain function, or move the use into a proof |
-| `4312` | An expression in a verification position outside the verification expression forms | Rewrite it with the listed forms, or move the computation into a spec function |
-| `4313` | `==` or `!=` in verified code, or `===` or `!==` with an operand whose type is not primitive | Compare primitive values, or write a spec function that compares the parts |
-| `4314` | Verified code outside VibeLang's layer of the verified subset | Keep reached code to plain TypeScript in the subset, or make the callee trusted |
-| `4315` | A spec function with a loop, a `let`, an `assert`, or a call to a procedure | Write it with expressions and recursion |
+| `4311` | A reference to a theorem, in an expression, a type query or an export specifier, or a reference to a spec function outside a proof context or a spec function | Call a plain function, or move the use into a proof |
+| `4312` | An expression in a verification position outside the verification expression forms, the [number rule](#numbers) included | Rewrite it with the listed forms, or move the computation into a spec function |
+| `4313` | `==` or `!=` in verified code, or a comparison of a value whose type is not primitive: an operand of `===` or `!==`, an array element type for `includes`, `indexOf` or `lastIndexOf`, a `Set` element type or a `Map` key type | Compare primitive values, or write a spec function that compares the parts |
+| `4314` | Verified code outside VibeLang's layer of the verified subset: a VibeLang form, a class or `new`, mutation, a numeric form outside the number rule, a cast, `null`, a call of a non-callable target, an excluded reached type such as a function type, a reached variable other than a primitive `.vibe` constant, or a mutable collection type in a trusted function's signature | Keep reached code to plain TypeScript in the subset, write `with` or a spread instead of mutating, or make the callee trusted |
+| `4315` | A spec function that is not transparent: a loop, a `let`, an assignment, an `assert`, or a call to a procedure | Write it with expressions and recursion |
 
 #### `vibelang prove`
 
 | Reserved code | Trigger | Fix |
 | --- | --- | --- |
 | `4316` | An obligation Dafny could not prove: an assertion, postcondition, precondition at a call, invariant on entry or maintenance, termination, a well-formedness condition such as an index in range, or a verifier time-out | Strengthen the hypotheses, state a missing `ensures` or invariant, or add proof steps to `P.dfy` |
-| `4317` | `lemmascript` is not installed or is not the pinned 0.6.6, or `dafny` does not run from `PATH` | Install `lemmascript@0.6.6` as a development dependency and Dafny 4.11.0 |
-| `4318` | LemmaScript rejected the lowering file, Dafny reported a resolution or type error in its output, or the audit found an assertion or postcondition missing from its output | Keep reached code inside LemmaScript's subset; a lost obligation is a LemmaScript defect to report upstream |
-| `4319` | `P.dfy` changes a generated line, or its merge with the new generation conflicts | Restore the generated lines, or resolve the merge from `P.dfy.merged` |
+| `4317` | The proof environment is unusable: `lemmascript` is not installed or is not the pinned 0.6.6; `dafny` does not run from `PATH` or is not the pinned 4.11.0; the proof directory holds a program file, or files `vibelang prove` did not write; or a module with a root is outside the selected config's directory | Install `lemmascript@0.6.6` as a development dependency and Dafny 4.11.0; exclude the proof directory in the config, or choose another `vibe.proofDir` |
+| `4318` | LemmaScript rejected the lowering file, Dafny reported a resolution or type error in its output, or the audit found an assertion or postcondition missing from its output, or a Dafny `function` for a procedure or a `method` for a transparent function | Keep reached code inside LemmaScript's subset; a lost obligation or a different classification is a LemmaScript defect to report upstream |
+| `4319` | `P.dfy` changes a generated line, its merge with the new generation conflicts, or it adds an assumption that `dafny audit` reports | Restore the generated lines, resolve the merge from `P.dfy.merged`, or prove the assumed fact |
+| `4320` | With `--strict`, a call in verified code to a function from another file, which would otherwise be an impure trusted function | Prove the function in a `.vibe` module, or write a `declare function` and accept the trust explicitly |

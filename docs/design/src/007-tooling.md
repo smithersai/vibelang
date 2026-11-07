@@ -278,7 +278,7 @@ A run repairs only the selected project's own files ([VIP-34](../vips/0034-compi
 
 A forbidden write is refused with a not-fixed explanation and no change. A rewrite that can't preserve types, behavior and declaration output refuses at that site.
 
-Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`. The inline catch mapper provably cannot throw and preserves the exact thrown value as a defect. The fix adds no `identity` import and leaves existing imports alone. This follows the proxy ruling of 2026-11-04: an unannotated imported `identity` may throw `unknown` under VIP-4, while the catch callback admits only `never`.
+Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`. The inline catch mapper provably cannot throw and preserves the exact thrown value as a defect. The fix adds no `identity` import and leaves existing imports alone: an unannotated imported `identity` may throw `unknown` under VIP-4, while the catch callback admits only `never`.
 
 A call known to throw in a plain callback that Effect runs inside the fiber, such as an `Effect.catchTag` handler, an `Effect.matchEffect` member or an `Effect.suspend` thunk, keeps its moment and its defect: the fix wraps the callback's body as `try { … } catch (thrown) { return die(thrown) }`, and the program exits with the same `Cause`. An `Eager` combinator such as `Effect.flatMapEager` may call its callback while the program is built, so a call there keeps `EK0401`.
 

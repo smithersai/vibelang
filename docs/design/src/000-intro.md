@@ -6,7 +6,7 @@ This specification defines VibeLang as the accepted VibeLang Improvement Proposa
 
 Declaration serialization has one explicit exception for [cyclic inferred types](001-functions.md#declaration-output); ordinary TypeScript recursion checking still applies.
 
-The previous specification and its decision log (`D1` to `D558`) are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it. Every pre-VIP form no VIP adds is retired: a `--fix` codemod rewrites it to the VIP form or the Effect API it means, the compiler then rejects it with a clear error, and the release notes list it. `vibelang-forms -legacy` is the census. Data-type methods such as `x.map` on `Option` and `Stream` are among them.
+The previous specification and its decision log (`D1` to `D558`) are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it. Every pre-VIP form no VIP adds is retired: a `--fix` codemod rewrites it to the VIP form or the Effect API it means, the compiler then rejects it with a clear error, and the release notes list it. `vibelang-forms -legacy` is the census. Data-type methods such as `x.map` on `Option` and `Stream` are among them. The migration sections of [Tooling](007-tooling.md), whose titles name a migration or a legacy form, and [Appendix B's transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics) specify those codemods and interim diagnostics. They are requirements on the toolchain during the upgrade, not forms of the language.
 
 ## Principles
 
