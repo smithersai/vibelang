@@ -73,6 +73,8 @@ func TestFixBuildProjectsInOrder(t *testing.T) {
 			if status := FixWithOptions(t.Context(), sys, []string{flag, "tsconfig.json", "--pretty", "false"}, FixOptions{}); status != 0 {
 				t.Fatalf("build fixes failed: %d\n%s\n%s", status, sys.stdout.String(), sys.stderr.String())
 			}
+			// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#4f5596f6f7f2a3e4 | In `-b`, each project fixes its own files in build order.
+			// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | With `-b`, each project fixes its own files in build order.
 			previous := -1
 			for _, name := range []string{"leaf/tsconfig.json", "left/tsconfig.json", "right/tsconfig.json", "tsconfig.json"} {
 				needle := "vibelang --fix: " + name + ": migrated"
