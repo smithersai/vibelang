@@ -57,6 +57,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - File-list lint commands could skip JSX source or check the wrong files for a TypeScript JSX glob. They now lint `.vibex` files with the requested scope and exclude their generated declarations.
 
+- Formatting an npm-installed project could fail to find the formatter plugin. Editor formatting, format on save and the formatting commands now resolve the installed plugin correctly.
+
 - Health reports could mistake words in test names or expected failures for disk, process or timeout problems. Reports now classify structured failures from their diagnostic text.
 
 - The editor and TypeScript mapper treated producer function expressions as JavaScript generators. They now preserve their lazy `Stream` behavior for anonymous, named and nested expressions.

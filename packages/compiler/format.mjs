@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync, readFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync, readFileSync, symlinkSync } from "node:fs"
 import { availableParallelism, tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { createRequire } from "node:module"
@@ -80,10 +80,14 @@ const unreadable = (path, why) =>
 function withConfig(style, action) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-format-"))
   try {
+    // Keep npm process references in their package context, including when
+    // the caller is outside the project or the package is read-only.
+    mkdirSync(join(dir, "node_modules"))
+    symlinkSync(fileURLToPath(new URL(".", import.meta.url)), join(dir, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir")
     const config = join(dir, "dprint.json")
     writeFileSync(config, JSON.stringify({
       lineWidth: style.lineWidth,
-      plugins: [typescriptPlugin, fileURLToPath(new URL("./dprint-plugin.json", import.meta.url)) + "@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
+      plugins: [typescriptPlugin, "npm:vibelang/dprint-plugin.json@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
       typescript: { semiColons: "asi", quoteStyle: style.quoteStyle }
     }))
     return action(config)

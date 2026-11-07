@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "kind": "process",
+  "name": "dprint-plugin-vibelang",
+  "version": "0.0.12",
+  "darwin-aarch64": {
+    "reference": "npm:vibelang-darwin-arm64@0.0.12/bin/vibelang",
+    "checksum": "0c98026ddf145151add3029de46f99ac4d0fb5752cf6951001df3bc433614260"
+  },
+  "darwin-x86_64": {
+    "reference": "npm:vibelang-darwin-x64@0.0.12/bin/vibelang",
+    "checksum": "dfedc15f242e8603c7e964be7864248c7c0305a265923bb64ecbfebae5226138"
+  },
+  "linux-aarch64": {
+    "reference": "npm:vibelang-linux-arm64@0.0.12/bin/vibelang",
+    "checksum": "5041587ee4e8e9cfd310f5e093f26343deb725e5472e196c1e6d9ae4177c2176"
+  },
+  "linux-x86_64": {
+    "reference": "npm:vibelang-linux-x64@0.0.12/bin/vibelang",
+    "checksum": "988beb352064bd7751f23c2d185c7615d955737df1ca1e2e48e4681bf7b73b8b"
+  },
+  "windows-aarch64": {
+    "reference": "npm:@smthrs/cli-win32-arm64@0.0.12/bin/vibelang.exe",
+    "checksum": "d4cb759e6bc30fb284ec7d6f46ed9426178ac56aef713da2dae5f783f0409158"
+  },
+  "windows-x86_64": {
+    "reference": "npm:@smthrs/cli-win32-x64@0.0.12/bin/vibelang.exe",
+    "checksum": "49709700c41840c15f159efaaea639718e7ee0d1034ff38d93287806c646c5ea"
+  }
+}
