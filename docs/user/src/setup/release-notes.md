@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Generating the diagnostic reference from sources with same-named constants could replace a diagnostic with another package's code. It now keeps the code selected by the source package and imports.
+
 - Vite SSR stacks could show generated JavaScript positions after a compiler cache write. Cache entries now preserve loaded modules and their original source locations.
 
 - Formatting a standalone `do` expression could fail with `'while' expected`. The formatter now keeps the parentheses that distinguish it from a `do`/`while` statement.

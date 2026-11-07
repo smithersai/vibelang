@@ -57,6 +57,70 @@ test("disabled messages, qualified severity aliases and named parser codes count
   assert.throws(() => compilerCodes(source("var EK1234 = message(unknown.Code, errorCategory, text)")), /unresolved/)
 })
 
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34).
+function nativeConstantSources(name, code, foreign, qualified, alias, grouped, raw, form, reverse) {
+ const owner=qualified?"typescript/tsc/internal/codes":"typescript/tsc/internal/vibelang"
+ const quote=raw?String.fromCharCode(96):'"'
+ const spec=(alias?alias+" ":"")+quote+"example.test/compiler/internal/codes"+quote
+ const imports=qualified?(grouped?"import (\n"+spec+"\n)\n":"import "+spec+"\n"):""
+ const reference=qualified?(alias||"reportcodes")+"."+name:name
+ const assignment=form==="field"?"var holder struct { "+name+" int32 }; func foreign(){holder."+name+" = "+foreign+"}"
+  :(form==="variable"?"var ":"const ")+name+" int32 = "+foreign
+ const sources=[
+  {path:owner+"/constants.go",text:"package "+(qualified?"reportcodes":"vibelang")+"\nconst "+name+" int32 = "+code},
+  {path:"typescript/tsc/internal/vibelang/diagnostics.go",text:"package vibelang\n"+imports+'var d = message('+reference+', warningCategory, "probe")'},
+  {path:"unrelated/codes/constants.go",text:"package reportcodes\n"+assignment}
+ ]
+ return reverse?sources.reverse():sources
+}
+
+test("native constructor codes keep their package's numeric constants",()=>{
+ for(const qualified of [false,true])for(const reverse of [false,true]){
+  const registered=compilerCodes(nativeConstantSources("ReportCode",4804,1260,qualified,"table",false,false,"constant",reverse))
+  assert.deepEqual([...registered.keys()],["EK4804"])
+  assert.deepEqual(auditIdentity(registered,new Map([["EK4804","warning"]]),[]),[])
+ }
+})
+
+test("native constructor package and import bindings ignore foreign numeric names",()=>{
+ fc.assert(fc.property(
+  fc.array(fc.constantFrom("a","b","z","0","_"),{minLength:1,maxLength:8}).map(xs=>"Report_"+xs.join("")),
+  fc.integer({min:9000,max:999999}),fc.integer({min:1000,max:8999}),fc.boolean(),
+  fc.constantFrom("","table","p"),fc.boolean(),fc.boolean(),
+  fc.constantFrom("constant","variable","field"),fc.boolean(),
+  (name,code,foreign,qualified,alias,grouped,raw,form,reverse)=>{
+   const registered=compilerCodes(nativeConstantSources(name,code,foreign,qualified,alias,grouped,raw,form,reverse))
+   assert.deepEqual([...registered.keys()],["EK"+code])
+  }),{seed:3494804,numRuns:300})
+})
+
+test("native constant imports belong to the calling file", () => {
+ const sources = [
+  {path:"typescript/tsc/internal/alpha/code.go",text:"package codebook\nconst ReportCode = 4804"},
+  {path:"typescript/tsc/internal/beta/code.go",text:"package codebook\nconst ReportCode = 4805"},
+  {path:"typescript/tsc/internal/vibelang/first.go",text:'package vibelang\nimport table "example.test/compiler/internal/alpha"\nvar first = message(table.ReportCode, warningCategory, "first")'},
+  {path:"typescript/tsc/internal/vibelang/second.go",text:'package vibelang\nimport table "example.test/compiler/internal/beta"\nvar second = message(table.ReportCode, warningCategory, "second")'}
+ ]
+ for (const ordered of [sources, [...sources].reverse()]) {
+  const registered = compilerCodes(ordered)
+  assert.deepEqual([...registered.keys()].sort(), ["EK4804", "EK4805"])
+  assert.equal(registered.get("EK4804")[0].path, sources[2].path)
+  assert.equal(registered.get("EK4805")[0].path, sources[3].path)
+ }
+})
+
+test("native constructors honor dot imports and refuse missing or blank bindings", () => {
+ const constants = {path:"typescript/tsc/internal/codes/code.go",text:"package codebook\nconst ReportCode = 4804"}
+ const call = header => ({path:"typescript/tsc/internal/vibelang/report.go",
+  text:'package vibelang\n'+header+'\nvar d = message(ReportCode, warningCategory, "report")'})
+ assert.deepEqual([...compilerCodes([constants, call('import . "example.test/compiler/internal/codes"')]).keys()], ["EK4804"])
+ for (const header of ["", 'import _ "example.test/compiler/internal/codes"']) {
+  assert.throws(() => compilerCodes([constants, call(header)]), /unresolved diagnostic constructor argument ReportCode/)
+ }
+ assert.throws(() => compilerCodes([constants, {path:"typescript/tsc/internal/vibelang/report.go",
+  text:'package vibelang\nvar d = message(codebook.ReportCode, warningCategory, "report")'}]), /unresolved/)
+})
+
 test("compiler registries include reserved VIP codes and whole imported lint ordinals", () => {
   const registered = compilerCodes([{ path: "core/registry.go", text:
     'var VibeDiagnosticCategories = map[string]string{"EK1501": "error"}; var VibeImportedLintCodes = map[string]string{"EK3810":"a","EK38100":"b"}' }])

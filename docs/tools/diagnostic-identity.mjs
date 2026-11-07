@@ -84,6 +84,46 @@ function mapperForwarders(sources) {
   return result
 }
 
+// Go imports bind a package name in one file; another package's same-named
+// numeric declaration cannot supply a native diagnostic constructor's code.
+function diagnosticImports(ts, packages) {
+  const result = new Map()
+  const target = specifier => {
+    const wanted = specifier.split("/")
+    let best = 0, matches = []
+    for (const path of packages.keys()) {
+      const parts = path.split("/")
+      let same = 0
+      while (same < parts.length && same < wanted.length &&
+        parts[parts.length - same - 1] === wanted[wanted.length - same - 1]) same++
+      if (same > best) { best = same; matches = [path] }
+      else if (same && same === best) matches.push(path)
+    }
+    return matches.length === 1 ? matches[0] : undefined
+  }
+  for (let i = 0; i < ts.length; i++) {
+    if (ts[i].value !== "import") continue
+    const grouped = ts[i + 1]?.value === "("
+    const begin = i + (grouped ? 2 : 1)
+    let end = begin + 1
+    if (grouped) {
+      while (end < ts.length && ts[end].value !== ")") end++
+    } else if (!ts[begin]?.value.startsWith('"') && ts[begin]?.value.charCodeAt(0) !== 96) end++
+    for (let j = begin; j < end; j++) {
+      const literal = ts[j]?.value
+      if (!literal?.startsWith('"') && literal?.charCodeAt(0) !== 96) continue
+      const specifier = literal.charCodeAt(0) === 96 ? literal.slice(1, -1) : JSON.parse(literal)
+      const owner = target(specifier)
+      const previous = ts[j - 1]?.value
+      const alias = previous === "." || /^[A-Za-z_]\w*$/.test(previous ?? "") && previous !== "import"
+        ? previous : packages.get(owner) ?? specifier.split("/").at(-1)
+      if (alias !== "_") result.set(alias, [...result.get(alias) ?? [], owner])
+    }
+    i = grouped ? end : end - 1
+  }
+  return result
+}
+
 export function compilerCodes(sources) {
   const registered = new Map()
   const tokens = sources.map(({ path, text }) => ({ path, text, tokens: goTokens(text) }))
@@ -91,11 +131,17 @@ export function compilerCodes(sources) {
   const constants = new Map()
   const mapperConstants = new Map()
   const directory = path => path.slice(0, path.lastIndexOf("/"))
-  for (const { tokens: ts } of tokens) {
+  const packages = new Map(), imports = new Map()
+  for (const { path, tokens: ts } of tokens) {
+    const pkg = directory(path)
+    if (ts[0]?.value === "package") packages.set(pkg, ts[1]?.value)
+    else if (!packages.has(pkg)) packages.set(pkg, pkg.split("/").at(-1))
+    const values = constants.get(pkg) ?? new Map()
+    constants.set(pkg, values)
     for (let i = 0; i < ts.length; i++) {
       const j = ts[i + 1]?.value === "int32" ? i + 2 : i + 1
       if (ts[j]?.value === "=" && /^\d+$/.test(ts[j + 1]?.value ?? ""))
-        constants.set(ts[i].value, Number(ts[j + 1].value))
+        values.set(ts[i].value, Number(ts[j + 1].value))
     }
   }
   // Resolve actual package-local const declarations, never a same-named
@@ -149,8 +195,22 @@ export function compilerCodes(sources) {
         let arg = ts[i + 2]?.value
         // A named function declaration is not a message construction.
         if (ts[i - 1]?.value === "func") continue
-        if (ts[i + 3]?.value === ".") arg = ts[i + 4]?.value
-        const n = /^\d+$/.test(arg ?? "") ? Number(arg) : constants.get(arg)
+        const qualifier = ts[i + 3]?.value === "." ? arg : undefined
+        if (qualifier) arg = ts[i + 4]?.value
+        let n = /^\d+$/.test(arg ?? "") ? Number(arg) : undefined
+        if (n === undefined) {
+          if (!imports.has(path)) imports.set(path, diagnosticImports(ts, packages))
+          const bindings = imports.get(path)
+          let owners = qualifier ? bindings.get(qualifier) : [packageDirectory]
+          // Small source fixtures may omit their package/import headers.
+          // A real Go source never resolves an undeclared qualifier this way.
+          if (qualifier && !owners && ts[0]?.value !== "package")
+            owners = [...packages].filter(([dir, name]) => name === qualifier || dir.split("/").at(-1) === qualifier).map(([dir]) => dir)
+          let values = (owners ?? []).map(owner => constants.get(owner)?.get(arg)).filter(value => value !== undefined)
+          if (!qualifier && !values.length)
+            values = (bindings.get(".") ?? []).map(owner => constants.get(owner)?.get(arg)).filter(value => value !== undefined)
+          if (values.length && new Set(values).size === 1) n = values[0]
+        }
         if (n !== undefined) add(codeName(n), path, ts[i].offset, "message")
         else if (/^"EK\d{4,}"$/.test(arg ?? "")) add(JSON.parse(arg), path, ts[i].offset, "message")
         else throw new Error(path + ": unresolved diagnostic constructor argument " + arg)
