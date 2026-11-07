@@ -2,19 +2,27 @@
 // .vibe module only with .vibe in its include, which the migrate flow's
 // setup writes (lib/react-tools.mjs, addReactCompilerInclude).
 import { strict as assert } from "node:assert"
-import { cpSync, mkdirSync } from "node:fs"
+import { cpSync, mkdirSync, readFileSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
 import { build } from "vite"
 import react from "@vitejs/plugin-react"
-import { compilerPackage, hooks, project } from "./helpers.mjs"
+import { compilerPackage, hooks, project, tools } from "./helpers.mjs"
 
 async function fixturePlugin(root) {
   const plugin = join(root, "node_modules/vibelang-vite")
   mkdirSync(plugin)
   cpSync(join(compilerPackage, "../vite/package.json"), join(plugin, "package.json"))
   cpSync(join(compilerPackage, "../vite/src"), join(plugin, "src"), { recursive: true })
+  // The private package must resolve its runtime dependencies beside the
+  // compiler peer, just as an installed plugin does.
+  const { dependencies } = JSON.parse(readFileSync(join(plugin, "package.json"), "utf8"))
+  for (const name of Object.keys(dependencies)) {
+    const target = join(plugin, "node_modules", name)
+    mkdirSync(join(target, ".."), { recursive: true })
+    symlinkSync(join(tools, name), target)
+  }
   return (await import(pathToFileURL(join(plugin, "src/index.js")))).default
 }
 
