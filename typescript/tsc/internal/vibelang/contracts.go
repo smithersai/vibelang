@@ -173,7 +173,9 @@ func unwrappedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *che
 // annotatedReturnType fills in each channel of fn's contract that is written
 // `infer Name` with what fn's body gives it (D57): A from what the body
 // returns, as TypeScript infers a return type, and E and R from what the body
-// raises and needs.
+// raises and needs. An unmarked callable is plain (VIP-1): when its body
+// returns an Effect, that Effect is the callable's result, so each channel
+// also takes the returned Effect's channel, and A is its success type.
 func annotatedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *checker.Type {
 	if !isLowerable(fn) {
 		return t
@@ -187,9 +189,19 @@ func annotatedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *che
 	if effect == nil {
 		return t
 	}
+	var returned *checker.Type
+	if !a.isEffect(fn) {
+		if body := c.GetReturnTypeFromBody(fn); isEffectType(c, body) {
+			returned = body
+		}
+	}
 	channels := []*checker.Type{successType(c, t), channelType(c, t, "_E"), channelType(c, t, "_R")}
 	if k.inferred(channelA) {
-		channels[channelA] = c.GetReturnTypeFromBody(fn)
+		if returned != nil {
+			channels[channelA] = successType(c, returned)
+		} else {
+			channels[channelA] = c.GetReturnTypeFromBody(fn)
+		}
 	}
 	if k.inferred(channelE) || k.inferred(channelR) {
 		info := a.effectOf(fn)
@@ -197,6 +209,10 @@ func annotatedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *che
 			info = &effectInfo{} // fn's body is being collected
 		}
 		errors, requirements := a.channelUnions(info, effect)
+		if returned != nil {
+			errors = c.GetUnionType([]*checker.Type{errors, channelType(c, returned, "_E")})
+			requirements = c.GetUnionType([]*checker.Type{requirements, channelType(c, returned, "_R")})
+		}
 		if k.inferred(channelE) {
 			channels[channelE] = errors
 		}
