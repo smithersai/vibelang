@@ -1,0 +1,3 @@
+{
+  "source": "#!/usr/bin/env node\nimport * as FS from \"node:fs\";\nimport * as Effect from \"effect/Effect\";\nconst read = () => FS.readFileSync(import.meta.dirname + \"/input\", \"utf8\");\nexport const program = Effect.try(read);\n"
+}
