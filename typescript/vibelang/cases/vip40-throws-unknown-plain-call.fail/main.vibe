@@ -1,0 +1,25 @@
+// expect: EK0401
+// rule-evidence: docs/design/vips/0040-module-declarations.md#69234d1983b538fa
+// VIP-40, thrown types: A written `@throws {unknown}` is a known throwing contract and follows the plain-code rejection above.
+// The unannotated control, readText, stays an ordinary call; only the written
+// tag makes the plain call an error.
+module parse {
+  /** @throws {unknown} */
+  export function load(raw: string): string {
+    return raw.trim()
+  }
+
+  export function readText(raw: string): string {
+    return raw.trim()
+  }
+}
+
+import { load, readText } from parse
+
+export function plain(raw: string): string {
+  return readText(raw)
+}
+
+export function label(raw: string): string {
+  return load(raw)
+}

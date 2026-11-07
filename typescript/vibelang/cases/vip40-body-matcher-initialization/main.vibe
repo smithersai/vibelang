@@ -1,0 +1,24 @@
+// rule-evidence: docs/design/vips/0040-module-declarations.md#d2b1277a5a088f09
+// VIP-40, when the body evaluates: A required matcher initialization dependency precedes those source dependencies ([VIP-31](0031-runtime-guarantees.md)); a TypeScript body arranges its own initialization before using `Symbol.customMatcher`, as a sibling `.ts` file would.
+// The file imports the body before anything else, yet its class pattern needs
+// the matcher key, so the runtime initialization dependency loads first and
+// the body sees the key. The body itself requests no initialization: loaded
+// on its own, as a sibling .ts file would be, it sees no key.
+import { seen } from parse
+
+module parse {
+  export const seen = typeof (Symbol as unknown as Record<string, unknown>).customMatcher
+}
+
+class Point {
+  constructor(readonly x: number) {}
+}
+
+export function kind(v: unknown): string {
+  return match (v) {
+    when Point: "point";
+    default: "other";
+  }
+}
+
+export const observed = seen

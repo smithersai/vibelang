@@ -1,5 +1,8 @@
 // expect: EK0403 EK0403
 // VIP-40: effect code wraps every call that may throw — spec-rule: docs/design/vips/0040-module-declarations.md#e79b56e4ec48d1e7
+// rule-evidence: docs/design/vips/0040-module-declarations.md#4d3a7c97c9ed8c9b
+// VIP-40, thrown types: Its unannotated signature still has thrown type `unknown`, so effect code requires the wrapper in rule 3.
+// The second EK0403 is the unwrapped call of the unannotated readText.
 module parse {
   export function readText(raw: string): string {
     return raw.trim()

@@ -1,0 +1,24 @@
+// rule-evidence: docs/design/vips/0040-module-declarations.md#3244168dbdf77b36
+// VIP-40, decision: *Corrected 2026-11-03: the counterpart keeps `loadPort` a function declaration returning `Effect.gen`, and `BadPort` unexported, as the source writes them: VIP-1 puts `effect` "exactly where TypeScript allows `async`", and [Functions](../src/001-functions.md#meaning) says "A declaration stays a hoisted function declaration".*
+// typescript/ holds the corrected counterpart: main.ts declares loadPort as a
+// function returning Effect.gen and keeps BadPort unexported, and the body is
+// the sibling main.vibe.parse.ts. Both must declare the same API; run.mjs
+// checks the emitted declaration is hoisted and BadPort stays private.
+export const early = loadPort
+
+module parse {
+  /** @throws {RangeError} */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!Number.isInteger(n) || n < 1 || n > 65535) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+import { port } from parse
+
+error BadPort { raw: string }
+
+export effect function loadPort(raw: string) {
+  return try Effect.try({ try: () => port(raw), catch: () => new BadPort({ raw }) })
+}
