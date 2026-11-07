@@ -13,7 +13,7 @@ import { declarationRouteLeaks } from "../lib/route-declarations.mjs"
 // its compiled declarations still name one.
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const require = createRequire(join(repo, "packages/runtime/package.json"))
-const compiler = process.env.VIBELANG_BINARY
+const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const put = (root, file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
 const packages = [{ dir: ".", tsconfig: "tsconfig.json", sources: ["src"] }]
 const index = 'export * from "./user.vibe"\n'
@@ -52,7 +52,7 @@ function fixture(t) {
   return root
 }
 
-test("a published package keeps a route that its declarations do not name", { skip: !compiler && "set VIBELANG_BINARY" }, async t => {
+test("a published package keeps a route that its declarations do not name", async t => {
   const root = fixture(t)
   const receipts = await emitMigratedJs({ target: root, toolchain: { kind: "installed" }, packages }, root, join(root, ".logs"))
   assert.ok(!receipts.some(item => item.refusedRoutes), JSON.stringify(receipts))
@@ -60,7 +60,7 @@ test("a published package keeps a route that its declarations do not name", { sk
   assert.deepEqual(declarationRouteLeaks(join(root, ".logs", "route-declarations", "root")), [])
 })
 
-test("a published package whose declarations name a route gets its routes restored", { skip: !compiler && "set VIBELANG_BINARY" }, async t => {
+test("a published package whose declarations name a route gets its routes restored", async t => {
   const root = fixture(t)
   const leaking = async (pkg, outDir) => put(outDir, "index.d.ts", 'export * from "#vibelang/emitted/src/user";\n')
   const receipts = await emitMigratedJs({ target: root, toolchain: { kind: "installed" }, packages }, root, join(root, ".logs"), { routeDeclarations: leaking })
@@ -68,6 +68,22 @@ test("a published package whose declarations name a route gets its routes restor
   assert.ok(refusal, JSON.stringify(receipts))
   assert.deepEqual(refusal.refusedRoutes, { declarations: ["index.d.ts"], modules: ["src/user.vibe"] })
   assert.match(refusal.warnings[0], /routes reach published declarations/)
+  assert.equal(readFileSync(join(root, "src/index.ts"), "utf8"), index)
+  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).imports, undefined)
+})
+
+test("a repeated emit names modules refused through pre-existing routes", async t => {
+  const root = fixture(t)
+  const config = { target: root, toolchain: { kind: "installed" }, packages }
+  const clean = async (pkg, outDir) => put(outDir, "index.d.ts", 'export * from "./user.js";\n')
+  const first = await emitMigratedJs(config, root, join(root, ".first-logs"), { routeDeclarations: clean })
+  assert.ok(!first.some(item => item.refusedRoutes), JSON.stringify(first))
+  assert.match(readFileSync(join(root, "src/index.ts"), "utf8"), /"#vibelang\/emitted\/src\/user"/)
+  const leaking = async (pkg, outDir) => put(outDir, "index.d.ts", 'export * from "#vibelang/emitted/src/user";\n')
+  const second = await emitMigratedJs(config, root, join(root, ".second-logs"), { routeDeclarations: leaking })
+  const refusal = second.find(item => item.refusedRoutes)
+  assert.ok(refusal, JSON.stringify(second))
+  assert.deepEqual(refusal.refusedRoutes, { declarations: ["index.d.ts"], modules: ["src/user.vibe"] })
   assert.equal(readFileSync(join(root, "src/index.ts"), "utf8"), index)
   assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).imports, undefined)
 })

@@ -75,6 +75,8 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
       // Exact routes from normal project emission retain their own output.
       if (prior && typeof prior === "object" && typeof prior["vibelang-source"] === "string") {
         const originalSource = posix.join(dir, prior["vibelang-source"])
+        // Refusals need the complete graph, including edges kept by a later emit.
+        modules.add(originalSource)
         if (native && outputs && generated(prior) && /\.vibex?$/.test(originalSource)) {
           const output = outputs[originalSource]
           if (!output || !existsSync(join(root, output))) {
@@ -92,6 +94,7 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
       source ??= [".vibe", ".ts", ".mts", ".cts"].map(ext => posix.join(dir, path + ext)).find(file => all.has(file))
       if (!source) throw new Error(posix.join(dir, "package.json") + ": emitted import " + key + " has no source counterpart")
       targets.set(key, targetFor(source, path))
+      modules.add(source)
     }
     // A previously native importer can itself become VibeLang. Keep its
     // existing routes even though only native value edges need rewriting.
@@ -122,7 +125,6 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
         const key = routePrefix + path
         keep(key, source)
         edits.push({ start: edge.start, end: edge.end, text: key })
-        modules.add(source)
       }
       if (edits.length) {
         writeFileSync(join(root, file), applyEdits(text, edits))
