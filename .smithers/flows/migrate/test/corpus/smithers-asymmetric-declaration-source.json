@@ -1,0 +1,5 @@
+{
+  "key": "api-identity:asymmetric-declaration-availability",
+  "rule": "the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export",
+  "mechanism": "An original source with recorded declaration-emit failure is compared to its peer's real emitted declaration; this metadata witness does not claim the small source triggers nameability errors."
+}

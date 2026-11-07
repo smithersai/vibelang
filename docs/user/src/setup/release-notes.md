@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migration could refuse matching APIs when a declaration was emitted on only one side. It now compares the saved original source against the other side's declaration, while still rejecting changed types, documentation and invalid source.
+
 - Migration API checks could reject unchanged inferred generic types after declarations moved behind a re-export. They now follow the public export and still reject changed types or documentation.
 
 - Migrating a host constructor inside an ordered loop could leave the file in TypeScript. Migration now keeps construction in place and reads the original constructor through its platform body.

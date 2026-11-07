@@ -848,14 +848,25 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
   let left, right, api
   const semantic = []
   try {
-    // A source saved on one side compares against nothing: leave both absent.
-    const absentSources = Object.keys(aSurface?.apiMetadata?.absentSources ?? {}).filter(name => bSurface?.apiMetadata?.absentSources?.[name])
+    const declarationName = name => name.replace(/\.d\.vibex?\.ts$/, ".d.ts")
+    const sourceKeys = [aSurface, bSurface].map(surface => Object.keys(surface?.apiMetadata?.absentSources ?? {}))
+    const emittedKeys = [aSurface, bSurface].map(surface => new Set(Object.values(surface?.apiMetadata?.logicalPaths ?? {}).map(declarationName)))
+    // One side may have a real header while the other saved its source.
+    // Keep unmatched absences unavailable; neither metadata nor availability
+    // supplies an API proof in place of checking the two actual programs.
+    const asymmetric = new Set(sourceKeys.flatMap((keys, side) => keys.filter(name =>
+      !sourceKeys[1 - side].includes(name) && emittedKeys[1 - side].has(declarationName(name)))).map(declarationName))
+    const absentSources = [...new Set(sourceKeys.flat())].filter(name =>
+      sourceKeys.every(keys => keys.includes(name)) || asymmetric.has(declarationName(name)))
     left = apiProjection(ts, baselineDir, aSurface, before, { published: !includePrivate, absentSources })
     right = apiProjection(ts, currentDir, bSurface, after, { published: !includePrivate, absentSources })
     const entries = (projection, saved) => {
       if (saved?.snapshotVersion !== undefined && saved.snapshotVersion < 3)
         throw new Error("Legacy declaration snapshot may omit shipped deep entrypoints; refresh setup before comparing APIs")
       const physical = file => {
+        // A retained source already has its physical path; it is not an
+        // emitted file with a destination in the declaration layout.
+        if (Object.values(projection.absentSources ?? {}).includes(file)) return file
         const stored = projection.originals.get(rel(projection.directory, file))
         return stored ? join(projection.directory, projection.destinations.get(stored)) : file
       }
@@ -868,9 +879,12 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
         const internal = new Set(saved.apiMetadata.companions ?? [])
         const modules = [...new Set(Object.values(saved.apiMetadata.aliases))].filter(file => !internal.has(file))
         // A saved source has no alias, and its own exports count like any module's.
-        return Object.fromEntries([...modules.map(file => [originalName.get(file) ?? file,
-          join(projection.directory, projection.destinations.get(file))]),
-          ...Object.values(projection.absentSources ?? {}).map(file => [rel(projection.directory, file), file])])
+        return Object.fromEntries([...modules.map(file => {
+          const logical = declarationName(saved.apiMetadata.logicalPaths?.[file] ?? file)
+          return [asymmetric.has(logical) ? logical : originalName.get(file) ?? file,
+            join(projection.directory, projection.destinations.get(file))]
+        }), ...Object.entries(projection.absentSources ?? {}).map(([name, file]) =>
+          [asymmetric.has(declarationName(name)) ? declarationName(name) : rel(projection.directory, file), file])])
       }
       if (published) {
         const manifest = saved?.apiMetadata?.manifest ?? JSON.parse(readFileSync(join(projection.directory, "package.json"), "utf8"))

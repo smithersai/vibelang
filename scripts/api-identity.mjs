@@ -689,8 +689,9 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
 // { before: { "dir/x.d.ts": [{ code, file, line, column }] }, after: { ... } },
 // paths relative to each snapshot. A declaration missing on both sides with
 // the same nonempty set of codes and source locations compares equal; any
-// other listed absence stays unequal. A listed declaration that exists on
-// either side is a blocking error, so a one-sided absence is never equal.
+// other listed absence stays unequal. A real saved source can instead be
+// checked against the other side's real declaration. Without that proof's
+// source and emit evidence, one-sided availability remains a blocking error.
 const absentReferenceCodes = new Set([2305, 2307, 2339, 2459, 2460, 2614, 2694, 2724])
 const absentReason = records => (Array.isArray(records) ? records : []).map(record =>
   [String(record.code ?? "").replace(/^TS/, ""), slash(String(record.file ?? "")).replace(/^\.\//, ""),
@@ -717,6 +718,18 @@ function planAbsentDeclarations(before, after, supplied, exists) {
     const saved = side => supplied.sources?.[side]?.[declaration]
     const present = Object.entries(paths).filter(([side, path]) => declarationTwins(path)
       .some(twin => twin !== saved(side) && exists(twin))).map(([side]) => side)
+    const sources = { before: supplied.sources?.before?.[declaration], after: supplied.sources?.after?.[declaration] }
+    if (present.length === 1) {
+      const emitted = present[0], missing = emitted === "before" ? "after" : "before"
+      // Availability is not equality. Compare the recorded original source
+      // against the real header through the ordinary strict API proof.
+      if (sources[missing] && exists(sources[missing]) && absentReason(reasons[missing]).length && !absentReason(reasons[emitted]).length) {
+        plan.sources.set(paths[missing], sources[missing])
+        plan.declarations.set(declaration, { declaration, equal: false, comparedFromSource: true,
+          declarationSide: emitted, reason: "saved source compared against the emitted declaration" })
+        continue
+      }
+    }
     if (present.length) {
       plan.diagnostics.push({ declaration, blocking: true, diagnostic: "Declaration listed as absent exists on the " +
         present.join(" and ") + " side; a one-sided absence never compares equal: " + declaration })
@@ -732,7 +745,6 @@ function planAbsentDeclarations(before, after, supplied, exists) {
     plan.declarations.set(declaration, record)
     // Both sides kept the source: the checker reads it, so its exports compare
     // like any other module's and the emit diagnostics decide nothing.
-    const sources = { before: supplied.sources?.before?.[declaration], after: supplied.sources?.after?.[declaration] }
     if (sources.before && sources.after) {
       record.comparedFromSource = true
       plan.sources.set(paths.before, sources.before)
