@@ -2998,6 +2998,10 @@ typescript/vibelang/cases/do-try-element/main.vibe:7:58 lambda program keyword
 typescript/vibelang/cases/do-try-operand/main.vibe:8:35 lambda program keyword
 typescript/vibelang/cases/do-try-operand/main.vibe:9:13 lambda program table
 typescript/vibelang/cases/do-try-operand/main.vibe:9:80 lambda program keyword
+typescript/vibelang/cases/do-var-final-parameter-both.fail/main.vibe:5:41 lambda plain fallback
+typescript/vibelang/cases/do-var-parameter-specific-errors.fail/main.vibe:8:44 lambda plain fallback
+typescript/vibelang/cases/do-var-parameter-specific-errors.fail/main.vibe:9:31 lambda plain fallback
+typescript/vibelang/cases/do-var-parameter-specific-errors.fail/main.vibe:9:39 lambda plain fallback
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:15:19 lambda program table
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:21:18 lambda program table
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:28:35 lambda program keyword
