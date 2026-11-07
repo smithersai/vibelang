@@ -1,24 +1,74 @@
 package vibelang
 
 import (
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
 // Effect runs these combinators' callbacks inside the fiber, where a throw
-// becomes a defect holding the thrown value (effect 4.1.1: suspend, flatMap,
-// andThen, tap, catch, catchCause and forEach all exit Die with the same
-// object). A plain callback returning an Effect can't throw (EK0401), so a
-// call that may throw inside it is wrapped where it stands:
+// becomes a defect holding the thrown value. A plain callback returning an
+// Effect can't throw (EK0401), so a call that may throw inside it is wrapped
+// where it stands:
 //
-//	Effect.suspend(() => { foreign(); return Effect.void })
-//	Effect.suspend(() => { try { foreign(); return Effect.void } catch (thrown) { return die(thrown) } })
+//	Effect.catchTag("Denied", (e) => Effect.succeed(reject(e)))
+//	Effect.catchTag("Denied", (e) => { try { return Effect.succeed(reject(e)) } catch (thrown) { return die(thrown) } })
 //
 // The callback still runs at the same moment and its failure is the same
-// defect. A callback passed anywhere else, an eager factory or an
-// Error-valued mapper keeps its EK0401: JavaScript there can tell a throw
-// from a returned Effect.
-var fiberCallbackCombinators = []string{"suspend", "flatMap", "andThen", "tap", "catch", "catchCause", "forEach"}
+// defect: on effect 4.1.1 the throwing callback and the wrapped one exit with
+// the same Cause, holding the same object, for every callback listed here. A
+// callback passed anywhere else, an eager factory or an Error-valued mapper
+// keeps its EK0401: JavaScript there can tell a throw from a returned Effect.
+// So do the Eager variants (flatMapEager, catchEager, matchCauseEffectEager
+// and the rest), which may call their callback while the program is built.
+var fiberCallbackCombinators = []string{
+	"acquireRelease", "acquireUseRelease", "andThen", "catch", "catchCause", "catchCauseFilter", "catchCauseIf",
+	"catchDefect", "catchFilter", "catchIf", "catchTag", "filterOrElse", "flatMap", "forEach",
+	"onError", "onErrorFilter", "onErrorIf", "onExit", "onExitFilter", "onExitIf", "onInterrupt",
+	"repeatOrElse", "retryOrElse", "scopedWith", "suspend", "tap", "tapCause", "tapCauseFilter",
+	"tapCauseIf", "tapDefect", "tapError", "tapErrorTag",
+}
+
+// fiberHandlerMembers lists the combinators that take fiber-run callbacks as
+// members of an object argument, and which members those are; nil admits
+// every member, as catchTags' handlers are named by error tag.
+var fiberHandlerMembers = map[string][]string{
+	"catchTags":        nil,
+	"matchCauseEffect": {"onFailure", "onSuccess"},
+	"matchEffect":      {"onFailure", "onSuccess"},
+	"repeat":           {"until", "while"},
+	"retry":            {"until", "while"},
+	"whileLoop":        {"body"},
+}
+
+// isFiberRunCallback reports whether fn, a function expression with its
+// parentheses, is a callback Effect runs inside the fiber: an argument of a
+// fiberCallbackCombinators call, or a listed member of an object literal
+// passed to a fiberHandlerMembers call.
+func isFiberRunCallback(c *checker.Checker, fn *ast.Node) bool {
+	parent := fn.Parent
+	if parent == nil {
+		return false
+	}
+	if ast.IsCallExpression(parent) {
+		return fn != parent.Expression() && isEffectFunction(c, parent.Expression(), "Effect", fiberCallbackCombinators...)
+	}
+	if !ast.IsPropertyAssignment(parent) || parent.Initializer() != fn || parent.Parent == nil || !ast.IsObjectLiteralExpression(parent.Parent) {
+		return false
+	}
+	name, ok := ast.TryGetTextOfPropertyName(parent.Name())
+	call := parent.Parent.Parent
+	if !ok || call == nil || !ast.IsCallExpression(call) || !slices.Contains(call.Arguments(), parent.Parent) {
+		return false
+	}
+	for combinator, members := range fiberHandlerMembers {
+		if (members == nil || slices.Contains(members, name)) && isEffectFunction(c, call.Expression(), "Effect", combinator) {
+			return true
+		}
+	}
+	return false
+}
 
 func preservingCallbackCallThrows(c *checker.Checker, file *ast.SourceFile, site *ast.Node, key string) (fileFix, bool) {
 	if !ast.IsCallExpression(site) && !ast.IsNewExpression(site) {
@@ -43,8 +93,7 @@ func preservingCallbackCallThrows(c *checker.Checker, file *ast.SourceFile, site
 	for n.Parent != nil && ast.IsParenthesizedExpression(n.Parent) {
 		n = n.Parent
 	}
-	call := n.Parent
-	if call == nil || !ast.IsCallExpression(call) || n == call.Expression() || !isEffectFunction(c, call.Expression(), "Effect", fiberCallbackCombinators...) {
+	if !isFiberRunCallback(c, n) {
 		return fileFix{}, false
 	}
 	visible := c.ResolveName("die", body, ast.SymbolFlagsValue, false)

@@ -1,0 +1,7 @@
+// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | A call known to throw in a plain callback that Effect runs inside the fiber, such as an `Effect.catchTag` handler, an `Effect.matchEffect` member or an `Effect.suspend` thunk, keeps its moment and its defect: the fix wraps the callback's body as `try { … } catch (thrown) { return die(thrown) }`, and the program exits with the same `Cause`.
+// run.mjs converts Alchemy's git protocol handlers, which call a TypeScript
+// helper that may throw inside Effect.catchTag, Effect.catchTags and
+// Effect.matchEffect callbacks. vibelang --fix wraps each callback's body, and
+// the fixed program exits as the TypeScript program does, holding the very
+// object the helper threw.
+export const witness = 1

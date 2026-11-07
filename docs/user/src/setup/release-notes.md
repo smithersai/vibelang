@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- `vibelang --fix` left `EK0401` on a call that may throw inside an `Effect.catchTag`, `Effect.catchTags`, `Effect.tapError`, `Effect.matchEffect`, `Effect.onExit` or similar handler, so the module could not convert. It now wraps the handler's body so the call fails with the same defect, as it already did for `Effect.suspend` and `Effect.flatMap` callbacks.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Migration test measurement could not read a `node --test` run whose skipped or todo tests give a reason, such as `it("x", { skip: "needs a host" })`: the reason and the run's duration became part of the test's name, so identical runs reported missing and extra skipped tests, and a todo with a reason counted as passed. Test names now stop before the duration, and every skip or todo counts as skipped.

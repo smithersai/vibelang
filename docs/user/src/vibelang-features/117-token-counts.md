@@ -115,7 +115,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **10,000** |
 | [New project](../setup/new-project.md) | 670 |
 | [Existing project](../setup/existing-project.md) | 4,400 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,200 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,300 |
 | **Build and test** | **25,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 20,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,500 |
@@ -291,7 +291,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 19,000 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 20,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **130,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 98,000 |
