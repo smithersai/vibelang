@@ -2478,5 +2478,35 @@
       "reference": "docs/design/vips/0019-for-concurrent.md: accepted 2026-10-28; \"`break` and `return` are compile errors, because no loop runs on the body's fiber.\" docs/design/src/002-running.md assigns EK1903 to a `break` that would leave head binding initialization or the body. This records existing published authority, not a new language decision."
     },
     "reason": "This site is a control: a break inside a function written in the loop body keeps TypeScript's TS1107, as before the fix, because the jump crosses a source function. The case adds no new rejection."
+  },
+  {
+    "code": "EK0509",
+    "case": "typescript/vibelang/cases/catch-async-handler-recovery.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md#decision: accepted VIP-5 rejects async catch handlers; docs/design/vips/0034-compiler-and-tooling.md#decision requires the owning diagnostic and preservation of independent native errors. This records existing published authority."
+    },
+    "reason": "The exact fixture already reports EK0509 with the unmodified compiler. It checks removal of generated callback applicability errors from an existing rejection, while all six invalid handlers remain rejected. This narrow record supports offline prechecks without a previous-compiler oracle."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/catch-async-handler-recovery.fail",
+    "vip": "VIP-34",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted VIP-34 preserves TypeScript static errors on ordinary native syntax and independent errors in embedded expressions and types."
+    },
+    "reason": "Both authored type mismatches are unchanged negative controls: a numeric async return under Promise<string> and a numeric initializer under string. The unmodified compiler already reports both TS2322 errors together with EK0509. Stock TypeScript preserves those same errors; this fixture adds no rejected form."
+  },
+  {
+    "code": "TS2739",
+    "case": "typescript/vibelang/cases/catch-async-handler-recovery.fail",
+    "vip": "VIP-34",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted VIP-34 preserves independent native errors while assigning the specific diagnostic to a language rejection."
+    },
+    "reason": "The nested plain function returns an empty object under a two-property written contract, preserving its existing native TS2739 error. The unmodified compiler already reports that error and EK0509. The fix removes generated Promise-versus-Effect cascades while retaining this authored error; no rejection is added."
   }
 ]

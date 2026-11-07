@@ -1,0 +1,7 @@
+// expect: EK0509 TS2322 TS2739
+export effect function concise() { return Effect.fail("x") catch async () => 7 }
+export effect function block() { return Effect.fail("x") catch async (e) => { return e.length } }
+export effect function annotated() { return Effect.fail("x") catch async (): Promise<number> => 7 }
+export effect function writtenError() { return Effect.fail("x") catch async (): Promise<string> => 7 }
+export effect function bodyError() { return Effect.fail("x") catch async () => { const x: string = 7; return x } }
+export effect function nestedError() { return Effect.fail("x") catch async () => { const f = (): { x: number, y: number } => ({}); return f } }

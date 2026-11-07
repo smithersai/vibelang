@@ -1,4 +1,4 @@
-// expect: EK0509 TS2739
+// expect: EK0509
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#ad0105c508be79ac
 // VIP-5: Corrected 2026-10-30: this amendment also listed async arrows as plain
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#8134241285ed195a

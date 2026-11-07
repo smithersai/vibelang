@@ -25,6 +25,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A caught rethrowing call could still reject an inline callback selected by a conditional or logical expression. Known callback throws now belong to the enclosing call, so its catch or wrapper handles them.
 
+- An invalid `async` handler after `catch` could also report that its return value lacked Effect properties. It now reports the handler error while preserving errors in written return types and body code.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.

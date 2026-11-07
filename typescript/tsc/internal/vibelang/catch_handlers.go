@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -39,6 +40,23 @@ import (
 var EK0509 = message(509, errorCategory, parser.VibeLangCatchHandlerMessage)
 
 func init() {
+	checker.RegisterCallArgumentDiagnosticsFilterHook(func(c *checker.Checker, call *ast.Node, ds []*ast.Diagnostic) []*ast.Diagnostic {
+		if len(ds) == 0 || catchExpressionOf(call) == nil || !isVibeLangFile(ast.GetSourceFileOfNode(call)) {
+			return ds
+		}
+		_, fallback := catchParts(call)
+		if malformedCatchHandler(call, fallback) == nil {
+			return ds
+		}
+		// EK0509 owns this generated callback's applicability error, including
+		// errors elaborated onto an async arrow's returned expression. Native
+		// checks of written annotations and body expressions run separately.
+		handler := call.Arguments()[1]
+		start := nodeStart(ast.GetSourceFileOfNode(call), handler)
+		return slices.DeleteFunc(slices.Clone(ds), func(d *ast.Diagnostic) bool {
+			return start <= d.Pos() && d.End() <= handler.End()
+		})
+	})
 	compiler.RegisterRecoverableSyntacticDiagnosticCallback(func(d *ast.Diagnostic) bool {
 		// Catch arrows and provider separators retain intact recovered bodies,
 		// so independent semantic diagnostics still apply.
