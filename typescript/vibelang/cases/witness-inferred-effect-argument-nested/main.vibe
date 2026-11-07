@@ -1,0 +1,25 @@
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | A VIP-40 `module name { … }` declaration body is TypeScript code and is excluded.
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | Nested plain or `async` functions keep TypeScript's inference; a nested `effect` body is inspected independently outside a module declaration body.
+function data<T>(x: T): T { return x }
+module native {
+  import { Effect } from "effect"
+  function data<T>(x: T): T { return x }
+  export const held = Effect.gen(function* () {
+    const job = Effect.succeed(1)
+    return data(job)
+  })
+}
+export effect function outer(job: number!!) {
+  function plain() { return data(job) }
+  async function later() { return data(job) }
+  const arrow = () => data(job)
+  const inner = effect () => data(job) // reports
+  const block = effect { return data(job) } // reports
+  return 1
+}
+// A plain function keeps TypeScript's inference, and an effect body inside it is still inspected.
+export function host(job: number!!) {
+  const direct = data(job)
+  const inner = effect () => data(job) // reports
+  return inner
+}

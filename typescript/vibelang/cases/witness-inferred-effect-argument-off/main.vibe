@@ -1,0 +1,18 @@
+// expect-result: {"coldAfterCall":0,"same":true,"value":7,"runs":1}
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | An ignored warning or `"off"` leaves the argument unrun; only a project-wide `"error"` setting requires a repair.
+// With EK4802 off nothing is reported, and the argument stays the unrun program. The
+// project-wide "error" setting is the one that rejects such a call: ek4802-try-operand-escapes.fail.
+function expect<T>(actual: T): { readonly value: T } { return { value: actual } }
+export effect function main() {
+  let runs = 0
+  const program = effect { runs++; return 7 }
+  const observed = expect(program)
+  // Inference is unchanged: the type argument is the Effect, not its success.
+  const held: number!! = observed.value
+  // @ts-expect-error An unrun Effect is not a number.
+  const wrong: number = observed.value
+  const coldAfterCall = runs
+  const same = observed.value === program
+  const value = try held
+  return { coldAfterCall, same, value, runs }
+}
