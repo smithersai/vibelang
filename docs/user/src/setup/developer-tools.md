@@ -236,8 +236,10 @@ Setup adds `--no-error-on-unmatched-pattern` to the native invocation so a
 directory containing only `.vibe` files still reaches ESLint.
 It also follows local JavaScript and TypeScript runners launched by package
 scripts, including their relative imports. In runners that invoke Oxlint it
-extends TypeScript extension filters to `.vibe`, keeps directory and package
-filters, and excludes `.d.vibe.ts` declaration sidecars. Unsupported filter
+extends TypeScript extension filters to `.vibe` and `.vibex`, keeps directory
+and package filters, and excludes both declaration sidecar extensions. A filter
+that selects only `.tsx` adds only `.vibex`; repeated setup also repairs older
+filters that added `.vibe` but omitted `.vibex`. Unsupported filter
 shapes produce a setup warning naming the runner.
 
 File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter. Explicit `.vibex` paths reach the same source and native passes as `.vibe` paths; both declaration sidecar extensions are excluded. A `.tsx` glob selects `.vibex`, and a mixed `{ts,tsx}` glob selects both source extensions.
