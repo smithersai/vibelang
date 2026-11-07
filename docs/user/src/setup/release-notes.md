@@ -45,6 +45,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Asking for language-server help returned an error exit status. `vibelang --lsp --help` and `-h` now print usage and exit successfully without starting a server.
 
+- Language-server help advertised named-pipe and socket transports that the server could not use. It now identifies these options as reserved and states that standard input/output is the supported transport.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.

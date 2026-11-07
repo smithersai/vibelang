@@ -721,3 +721,4 @@ Build-mode paths, including `--generateCpuProfile`, `--generateTrace` and `--ppr
 
 The `--pprofDir` option reports directory creation, CPU-profile startup and profile-output failures as command errors. A failed profiling destination does not produce an uncaught stack trace, and a failure while finishing the profiles makes an otherwise successful compilation fail.
 Use `vibelang --lsp --help` to inspect language-server options without starting a server or selecting a transport. The `-h` alias has the same successful exit status.
+The language server communicates through `--stdio`. Its `--pipe` and `--socket` options are reserved for compatibility; requesting either without `--stdio` reports that only standard input/output is supported.
