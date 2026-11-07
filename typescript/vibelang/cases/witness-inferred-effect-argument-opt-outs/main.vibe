@@ -1,0 +1,30 @@
+// expect-result: {"explicit":true,"instantiated":true,"accepted":true,"declared":true,"result":7,"coldBeforeTry":0,"runs":1}
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | A signature with a declared Effect result is excluded, as are arguments already run with `try`, explicit call type arguments and explicitly instantiated callees.
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | Writing the call's type arguments explicitly opts out: `expect<Effect.Effect<number>>(e)` passes the program as data.
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | An explicitly instantiated callee, such as `const checkProgram = expect<Effect.Effect<number>>`, also keeps the program.
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | A declared `Effect.Effect<T>` parameter accepts a program without explicit type arguments.
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | To pass a result instead, write `expect(try e)`.
+// EK4802 is an error in this project, so every call below compiles only because it is exempt.
+function expect<T>(actual: T): { readonly value: T } { return { value: actual } }
+function accept<T>(program: T!!): { readonly value: T!! } { return { value: program } }
+function declared<T>(x: T): T!! { return Effect.succeed(x) }
+export effect function main() {
+  let runs = 0
+  const e = effect { runs++; return 7 }
+  const explicit = expect<number!!>(e).value
+  const checkProgram = expect<number!!>
+  const instantiated = checkProgram(e).value
+  const accepted = accept(e).value
+  const declaredProgram = try declared(e)
+  const coldBeforeTry = runs
+  const result = expect(try e).value
+  return {
+    explicit: explicit === e,
+    instantiated: instantiated === e,
+    accepted: accepted === e,
+    declared: declaredProgram === e,
+    result,
+    coldBeforeTry,
+    runs,
+  }
+}

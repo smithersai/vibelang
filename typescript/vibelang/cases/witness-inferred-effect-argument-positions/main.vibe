@@ -1,0 +1,36 @@
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | In effect code, a plain call whose own inferred type argument is an Effect reports `EK4802` at each argument that uses that type parameter outside a declared Effect position.
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | Inspect the resolved signature's unsubstituted parameter types, following unions, intersections, container type arguments such as `T[]` and `Promise<T>`, object properties, and callback parameter and result types; stop at a declared Effect position such as `Effect.Effect<T>`.
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | This includes overloads, methods and `T extends unknown`.
+function pair<T>(a: T, b: T, n: number): number { return n }
+function union<T>(x: T | undefined): number { return 1 }
+function intersection<T>(x: T & {}): number { return 1 }
+function array<T>(xs: T[]): number { return 1 }
+function promised<T>(p: Promise<T>): number { return 1 }
+function property<T>(o: { value: T }): number { return 1 }
+function parameter<T>(f: (x: T) => void, x: T): number { return 1 }
+function result<T>(f: () => T): number { return 1 }
+function stop<T>(e: T!!): number { return 1 }
+function stopInside<T>(o: { value: T!! }): number { return 1 }
+function bounded<T extends unknown>(x: T): number { return 1 }
+function overloaded(x: number): number
+function overloaded<T>(x: T): number
+function overloaded(x: unknown): number { return 1 }
+class Box { put<T>(x: T): number { return 1 } }
+export effect function probe(job: number!!, pending: Promise<number!!>) {
+  const a = pair(job, job, 1)
+  const b = union(job)
+  const c = intersection(job)
+  const d = array([job])
+  const e = promised(pending)
+  const f = property({ value: job })
+  const g = parameter((x) => {}, job)
+  const h = result(() => job)
+  const i = stop(job)
+  const j = stopInside({ value: job })
+  const k = bounded(job)
+  const l = overloaded(job)
+  const m = new Box().put(job)
+  return 1
+}
+// Outside effect code the same calls keep TypeScript's inference and report nothing.
+export function plain(job: number!!) { return pair(job, job, 1) + bounded(job) + new Box().put(job) }

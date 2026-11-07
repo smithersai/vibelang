@@ -1,0 +1,32 @@
+// rule-evidence: docs/design/src/002-running.md#inferred-effect-arguments | Only ordinary call expressions are inspected, not the execution syntax nodes `try e`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork` and its scoped forms, `join`, `catch`, `for try`, `for concurrent`, `provide`, `uninterruptible`, `interruptible` or `restore`.
+// Each execution form below takes the Effect itself and reports nothing.
+// Lines marked "reports" put an ordinary generic call inside an operand,
+// head or body, and that call is still inspected.
+function data<T>(x: T): T { return x }
+export effect function forms(job: number!string, scope: Scope.Scope) {
+  const ran = try job
+  const all = try.all [job, job]
+  const raced = try.race [job, job]
+  const first = try.any [job]
+  const settled = try.allSettled [job]
+  const child = fork job
+  const owned = fork.in(scope) job
+  const scopedChild = fork.scoped job
+  const detached = fork.detached job
+  const joined = join child
+  const caught = job catch () => 0
+  for try (const x of Stream.make(1)) { try job }
+  for concurrent (const x of [1, 2]) { try job }
+  provide Layer.empty { try job }
+  uninterruptible { try job; restore { try job } }
+  interruptible { try job }
+  return 1
+}
+export effect function inside(job: number!string) {
+  const all = try.all [job, data(job)] // reports
+  const caught = data(job) catch () => 0 // reports
+  for concurrent (const x of [1]) { const held = data(job) } // reports
+  provide Layer.empty { const held = data(job) } // reports
+  uninterruptible { restore { const held = data(job) } } // reports
+  return 1
+}
