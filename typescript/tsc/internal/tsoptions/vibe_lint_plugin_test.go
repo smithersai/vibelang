@@ -7,6 +7,7 @@ import (
 
 // VIP-38 requires EK3012 for assigned imported severities, including off,
 // without a resolved plugin. Explicit disabled plugins are still resolved.
+// Appendix B: EK3012 — spec-rule: docs/design/src/900-appendices.md#51031b8ea0acdca6
 func TestLintPluginMigrationWarning(t *testing.T) {
 	for _, mode := range []string{"absent", "empty", "other", "enabled", "disabled", "null", "inherited"} {
 		for _, severity := range []string{"error", "warning", "suggestion", "off"} {
