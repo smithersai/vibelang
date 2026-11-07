@@ -36,6 +36,13 @@ Method decorator lowering is `admission:effect-method` support under
 class is defined and retain that enclosing Effect context; this support row
 introduces no additional syntax.
 
+Shared `schema` and `data` field parsing is `admission:schema-data-fields`
+support under `SchemaDeclaration` and `DataDeclaration`. Their field lists
+use the existing `Field` and `Separator` productions; the shared parser
+retains each declaration's separator diagnostic and introduces no syntax.
+The `schema` separator reporter is `recovery` for the `EK1504` rejection,
+just as the `data` separator reporter is `recovery` for `EK1605`.
+
 A `-` authority and `pending` status mean that no accepted authority was
 found. Those rows record audit debt, including denied and open proposals;
 they grant no permission to accept the form and request no compiler change.

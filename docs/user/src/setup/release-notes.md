@@ -85,6 +85,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Random-integer replacement hints could include their upper bound, unlike Node’s `randomInt`. They now keep that bound exclusive.
 
+- The grammar reference omitted the parser shared by `schema` and `data` fields. It now records both declarations and their existing field separator rules.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.

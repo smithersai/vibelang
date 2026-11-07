@@ -65,7 +65,12 @@ test("random source-column mutations fail and name every reached file without wr
     const pristine = loadRows(root)
     for (let trial = 0; trial < 100; trial++) {
       const rows = structuredClone(pristine)
-      const selected = (trial === 0 ? original.find(r => r.hook.includes("@")) ?? original[0] : original[random() % original.length]).hook
+      const focused = ["parser/vibelang_data.go:Parser.parseVibeLangFields", "parser/vibelang_data.go:schemaFieldSeparatorDiagnostic"]
+      const selected = (trial < fields.length * focused.length
+        ? original.find(r => r.hook === focused[Math.floor(trial / fields.length)]) ?? original[0]
+        : trial === fields.length * focused.length
+          ? original.find(r => r.hook.includes("@")) ?? original[0]
+          : original[random() % original.length]).hook
       const row = rows.find(r => r.hook === selected)
       const field = fields[trial % fields.length]
       const witness = random().toString(16)
@@ -179,4 +184,29 @@ test("only a valid generated census frame is exempt from rule evidence", () => {
     section.replace("generate-grammar-admission.mjs", "manual.mjs"),
     section.replace("\n\n</details>", "\nA `try` must compile.\n\n</details>")
   ]) assert.equal(isGeneratedCensusSection(invalid), false)
+})
+
+test("shared schema and data field parsing cites both declaration grammars", () => {
+  const row = loadRows(repository).find(row => row.hook === "parser/vibelang_data.go:Parser.parseVibeLangFields")
+  assert.ok(row, "shared declaration field parsing needs a source admission row")
+  assert.equal(row.form, "admission:schema-data-fields")
+  assert.equal(row.status, "support")
+  assert.deepEqual(row.authority.split(","), [
+    "900-appendices.md#SchemaDeclaration", "900-appendices.md#DataDeclaration",
+  ])
+  assert.match(row.reason, /VIP-15/)
+  assert.match(row.reason, /VIP-16/)
+  assert.match(row.reason, /separator/i)
+})
+
+test("schema field separator recovery cites its existing diagnostic", () => {
+  const row = loadRows(repository).find(row => row.hook === "parser/vibelang_data.go:schemaFieldSeparatorDiagnostic")
+  assert.ok(row, "schema field separator recovery needs a source admission row")
+  assert.equal(row.form, "admission:schema")
+  assert.equal(row.status, "recovery")
+  assert.equal(row.authority, "900-appendices.md#SchemaDeclaration")
+  assert.match(row.reason, /VIP-15/)
+  assert.match(row.reason, /EK1504/)
+  assert.ok(readFileSync(join(repository, "docs/design/src/900-appendices.md"), "utf8")
+    .includes("`EK1504` in a `schema` body"))
 })
