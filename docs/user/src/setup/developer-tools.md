@@ -388,6 +388,8 @@ see this [Bun runtime limitation](https://github.com/oven-sh/bun/issues/40579).
 
 ## Bundlers inside unchanged tests
 
+Multiline diagnostics retain their source excerpts, including source text that resembles a bundled library URL. The compiler's file listing is excluded from the diagnostic message.
+
 Node tests that call Rolldown or esbuild on native source graphs can preload
 `vibelang-unplugin/rolldown/register` or `vibelang-unplugin/esbuild/register`
 with `node --import`. The preloads include the runtime loader and add a fresh

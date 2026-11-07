@@ -67,7 +67,22 @@ export function parseOutput(output, root) {
   const files = []
   const diagnostics = []
   let diagnostic
-  for (const line of output.split(/\r?\n/)) {
+  const lines = output.split(/\r?\n/)
+  const library = /^bundled:\/\/\/libs\/lib\.[^/\s]+\.d\.ts$/
+  const libraryListings = new Set()
+  let listing = true
+  // A library block ends at a filesystem listing or the end of the output.
+  // Source excerpts can quote the same URLs before continuing their message.
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const line = lines[index]
+    if (!line) continue
+    if (library.test(line)) {
+      if (listing) libraryListings.add(index)
+    } else {
+      listing = isAbsolute(line.trim())
+    }
+  }
+  for (const [index, line] of lines.entries()) {
     let match
     if ((match = line.match(located))) {
       diagnostic = {
@@ -80,7 +95,7 @@ export function parseOutput(output, root) {
       diagnostics.push(diagnostic)
     } else if (/^\s/.test(line)) {
       if (diagnostic) diagnostic.text += "\n" + line
-    } else if (/^bundled:\/\/\/libs\/lib\.[^/\s]+\.d\.ts$/.test(line)) {
+    } else if (libraryListings.has(index)) {
       // Embedded standard libraries belong to the compiler's file listing.
       // They have no filesystem path to watch or fingerprint.
       diagnostic = undefined

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Multiline warnings could lose source excerpts containing a library URL; the complete warning now stays visible.
+
 - Project-reference builds accepted `--generateTrace` without creating trace files. They now write trace events, type data and a legend for every project they compile.
 
 - The migrate flow kept a published package's platform code in TypeScript when its export map had a wildcard naming a fixed file, such as `"./*/neon": "./dist/*/neon.js"`, although such an entry can never publish a `.platform.ts` companion. Those packages now get the companion, as packages with explicit exports do.
