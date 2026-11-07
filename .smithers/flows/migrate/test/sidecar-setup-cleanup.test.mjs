@@ -9,6 +9,7 @@ import { must } from "../lib/util.mjs"
 
 const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))
 
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01 | The migrate flow's setup turns it on where tracked code enumerates `*.ts` files in a folder that will hold `.vibe` files.
 test("Smithers: setup removes superseded adjacent sidecars immediately and replay stays clean", async t => {
   const root = mkdtempSync(join(tmpdir(), "sidecar-setup-cleanup-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))

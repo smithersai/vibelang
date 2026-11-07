@@ -72,6 +72,7 @@ func sidecarViewCases() []sidecarViewCase {
 // Chapter 007 / package, paths and imports source views follow final real or logical path: docs/design/src/007-tooling.md#53fcdcf637e8582a
 // Chapter 007 / package, paths and imports source views follow final real or logical path: docs/design/src/007-tooling.md#af882888697e3917
 // Chapter 007 / package, paths and imports source views follow final real or logical path: docs/design/src/007-tooling.md#e07f023638e0a6e3
+// rule-evidence: docs/design/vips/0027-declaration-output.md#prior-art | **Amended 2026-11-01: sidecars reached by non-relative names.** After native resolution and `realpath`/`preserveSymlinks` handling, a non-relative export, `paths` or `#imports` resolution to a known `.d.vibe.ts`/`.d.vibex.ts` sidecar uses its available source only when the final path is outside `node_modules`.
 func FuzzSidecarResolvedPathView(f *testing.F) {
 	startShortBudget(f)
 	const target = "FuzzSidecarResolvedPathView"

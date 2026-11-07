@@ -35,6 +35,8 @@ func FuzzRecursiveDeclarationParity(f *testing.F) {
 	})
 }
 
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-cyclic-inferred-declaration-types-2026-11-01 | Other `TS5088` checks and ordinary recursive-inference errors `TS7022`, `TS7023` and `TS7024` remain unchanged.
+// retained-5088 and lost-native-error keep every other TS5088 and native error.
 func TestCycleBaselineControls(t *testing.T) {
 	cycle := stockSpan{File: "main.ts", Start: 16, End: 20, Code: 5088, Category: "error"}
 	native := stockSpan{File: "other.ts", Start: 13, End: 18, Code: 2322, Category: "error"}

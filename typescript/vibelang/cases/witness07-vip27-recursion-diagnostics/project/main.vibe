@@ -1,0 +1,9 @@
+export const foo = [1].map(function () { return foo })
+export function recursive(n: number) { return n ? recursive(n - 1) : 1 }
+export const ping = function () { return ping() }
+export const builder = (value: string) => ({ value, named: (next: string) => builder(next) })
+
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-cyclic-inferred-declaration-types-2026-11-01 | Other `TS5088` checks and ordinary recursive-inference errors `TS7022`, `TS7023` and `TS7024` remain unchanged.
+// Lines 1-3 report what TypeScript 7.0.2 and 5.9.3 report for the same text
+// as a .ts file, in .vibe and in the unchanged lib.ts alike; the anonymous
+// cycle on line 4 is elided under declaration emit without an error.

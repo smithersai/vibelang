@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01 | Ordinary `.d.ts` spelling is separate, under the 2026-11-03 amendment below; it cannot change which module a compatibility declaration represents.
+import { User } from "./user.vibe"
+export const make = (name: string) => new User(name)

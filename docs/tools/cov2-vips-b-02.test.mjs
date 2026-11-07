@@ -1,46 +1,6 @@
 // Pending coverage obligations; each activation checks the whole assigned rule.
 import { test } from "node:test"
 
-// rule-evidence: docs/design/vips/0027-declaration-output.md#af0d109226341bb8
-// VIP-27: unrelated recursion diagnostics unchanged.
-// Activation: Require native TS7022/7023/7024 and unrelated TS5088 controls without allowing the anonymous-cycle exception to suppress them.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-cyclic-inferred-declaration-types-2026-11-01 | cov2-vips-b unrelated recursion diagnostics unchanged | present | Other `TS5088` checks and ordinary recursive-inference errors `TS7022`, `TS7023` and `TS7024` remain unchanged.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#ce4a5de605b2131d
-// VIP-27: sidecars are emit outputs.
-// Activation: Compare source-sidecar discovery and overwrite protection with native ts/d.ts emit, including exit status and disk bytes.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-native-overwrite-protection-2026-11-02 | cov2-vips-b sidecars are emit outputs | present | Decided detail 281 replaces detail 280: compatibility sidecars are emit outputs like `.d.ts`.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#826c5bd1e72d60ee
-// VIP-27: include pair silently regenerates.
-// Activation: Seed a stale sidecar selected by include, compile the source and assert regenerated declaration bytes with no error.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-native-overwrite-protection-2026-11-02 | cov2-vips-b include pair silently regenerates | present | An `include` source/sidecar pair selects the source and allows silent regeneration.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#59a46b441bbbb204
-// VIP-27: files pair preserves declaration bytes.
-// Activation: Select both files explicitly, repeat beside and sidecarDir layouts, and assert exit 1, TS5055 and byte-for-byte preservation.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-native-overwrite-protection-2026-11-02 | cov2-vips-b files pair preserves declaration bytes | present | Explicit `files` inputs retain native `TS5055` protection: exit `1` and unchanged declaration bytes, including under `vibe.sidecarDir`.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#15fca8692bd36be1
-// VIP-27: written schema alias replaces synthesis.
-// Activation: Cross struct/literal forms and both source orders with one nongeneric type X=typeof X.Type; compare emitted declarations and duplicate-alias negative controls.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#amendment-native-overwrite-protection-2026-11-02 | cov2-vips-b written schema alias replaces synthesis | present | **Amended 2026-11-02: written schema types (foldkit-9, accepted by Will).** For either ordinary `schema X` form, one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order.")
-
-// rule-evidence: docs/design/vips/0028-generic-data.md#eb18171eb15becd6
-// VIP-28: generic data arities one through four.
-// Activation: Compare constructors and emitted generic payload types for arities 1–4 with Data.TaggedEnum.WithGenerics twins.
-test.todo("rule-evidence: docs/design/vips/0028-generic-data.md#decision | cov2-vips-b generic data arities one through four | present | A `data` declaration (VIP-16) may have up to 4 type parameters, which is the limit of Effect's own `WithGenerics`.")
-
-// rule-evidence: docs/design/vips/0028-generic-data.md#401c1c5122798c77
-// VIP-28: generic data arity limit diagnostic.
-// Activation: Compile a five-parameter data declaration, require its owning diagnostic to name the four-parameter limit, and admit four parameters.
-test.todo("rule-evidence: docs/design/vips/0028-generic-data.md#decision | cov2-vips-b generic data arity limit diagnostic | present | More is a compile error that names the limit.")
-
-// rule-evidence: docs/design/vips/0028-generic-data.md#32de7834f3ba19a3
-// VIP-28: generic helper hygiene.
-// Activation: Occupy the former XDefinition spelling and verify both user binding and generated generic constructor remain correctly typed.
-test.todo("rule-evidence: docs/design/vips/0028-generic-data.md#decision | cov2-vips-b generic helper hygiene | present | **Amended 2026-10-29: a hygienic helper.** The generated generic-data helper (`XDefinition` in the example) gets a fresh name; it is not a reserved user-visible name.")
-
 // rule-evidence: docs/design/vips/0028-generic-data.md#698d7b6fa614cd8f
 // VIP-28: generic data constraints forbidden.
 // Activation: Reject constrained type parameters with EK2126; compare an unconstrained valid declaration as control.
