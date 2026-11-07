@@ -1,0 +1,6 @@
+{
+  "repository": "smithersai/smithers",
+  "pattern": "generic constructor and inferred payload alias forwarded through a companion",
+  "rule": "the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check)",
+  "declarations": "export interface Box<T> { value: T }\n/** The extracted payload. */\nexport type PayloadOf<R> = R extends Box<infer A> ? A : never;\n/** Constructs the extracted payload. */\nexport declare function make<T>(value: T): PayloadOf<T>;\n"
+}

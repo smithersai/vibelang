@@ -139,7 +139,9 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
       const path = relative(base, source.fileName).replace(/\.d\.vibex?\.ts$/, ".d.ts")
       for (const statement of source.statements)
         if (ts.isTypeAliasDeclaration(statement) && statement.typeParameters && usesInfer(statement.type))
-          found.set(path + ":" + statement.name.text, { path, statement, source })
+          // The public binding survives a move into a private companion or a
+          // local rename; the strict form proof still checks its entire type.
+          found.set(publicOrigins.get(checker.getSymbolAtLocation(statement.name)) ?? path + ":" + statement.name.text, { path, statement, source })
     }
     return found
   }

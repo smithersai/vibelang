@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migration API checks could reject unchanged inferred generic types after declarations moved behind a re-export. They now follow the public export and still reject changed types or documentation.
+
 - Migrating a host constructor inside an ordered loop could leave the file in TypeScript. Migration now keeps construction in place and reads the original constructor through its platform body.
 
 - Migrating an entry could rewrite a temporary build fixture with the same relative filename. Paths proven to belong to a fresh temporary directory now keep the fixture’s original source kind.
