@@ -166,6 +166,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 					// identity: a relocated output is not a second VibeLang input.
 					// A .vibex target, however the import spells it, is named by its
 					// own compatibility declaration exactly as a .vibe target is.
+					// A written ./App.jsx or ./App names App.vibex by its source too.
 					if !isBody && resolved != nil && (resolved.Extension == tspath.ExtensionVibe || resolved.Extension == tspath.ExtensionVibex) {
 						target, _ := p.vibeSidecarPaths(string(resolved.ResolvedFileName))
 						return strings.TrimSuffix(target, ".d"+resolved.Extension+".ts") + resolved.Extension
