@@ -1,0 +1,2 @@
+function wire(a: number, b: number): number { return a * 10 + b }
+export const wired = wire(1, 2)

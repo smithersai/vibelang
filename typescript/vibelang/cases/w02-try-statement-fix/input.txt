@@ -1,0 +1,24 @@
+error Bad { n: number }
+const fail = effect (n: number): number!Bad => { if (n > 0) throw new Bad({ n }); return n }
+export effect function caught(n: number) {
+  const log: string[] = []
+  try {
+    log.push("body")
+    log.push("value " + (try fail(n)))
+  } catch (e) {
+    log.push("caught " + e.n)
+  } finally {
+    log.push("cleanup")
+  }
+  return log
+}
+export effect function propagate(log: string[]) {
+  try {
+    log.push("body")
+    try fail(2)
+  } finally {
+    log.push("finally")
+  }
+  log.push("after")
+  return log
+}

@@ -1,0 +1,14 @@
+// expect-result: {"direct":42,"callback":[1,0,2]}
+// rule-evidence: docs/design/src/007-tooling.md#empty-legacy-trust-wrappers | A reviewed `.ts` helper with `@throws {never}` is another replacement.
+// The helper's written @throws {never} contract replaces the empty trusted
+// wrapper wherever the wrapper's function value escaped: it is admitted where
+// a VibeLang function type requires a non-throwing function, and it is called
+// directly in effect code.
+import { parseOrZero } from "./helper.ts"
+function applyAll(f: (s: string) => number, xs: string[]): number[] {
+  return xs.map(f)
+}
+export const parsedAll = applyAll(parseOrZero, ["1", "x", "2"])
+export effect function main() {
+  return { direct: parseOrZero("41") + 1, callback: parsedAll }
+}

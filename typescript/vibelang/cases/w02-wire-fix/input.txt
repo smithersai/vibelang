@@ -1,0 +1,19 @@
+import { wire as compose } from "vibelang-runtime"
+service A { static readonly key = "w02/wire-fix/A"; value: string }
+service B { static readonly key = "w02/wire-fix/B"; value: string }
+const LA = Layer.succeed(A, { value: "a" })
+const LB = Layer.effect(B, effect { return { value: (try A).value + "b" } })
+const Live = wire(LB, LA)
+const Aliased = compose(LB, LA)
+export function localSum(): number {
+  const wire = (x: number, y: number): number => x + y
+  return wire(1, 2)
+}
+effect function read(layer: Layer.Layer<A | B>): string[]!! {
+  provide layer {
+    return [(try B).value, (try A).value]
+  }
+}
+export effect function main() {
+  return { live: try read(Live), aliased: try read(Aliased), local: localSum() }
+}

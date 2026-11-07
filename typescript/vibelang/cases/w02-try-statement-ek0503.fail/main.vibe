@@ -1,0 +1,16 @@
+// expect: EK0503
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | | `EK0503` | A `try` statement in effect code | Explicit Effects, `catch effect` and native cleanup combinators (VIP-5).
+// A try statement in effect code is rejected at its try keyword. The same
+// statement in a plain function keeps its JavaScript meaning.
+export effect function main() {
+  const log: string[] = []
+  try {
+    log.push("body")
+  } finally {
+    log.push("cleanup")
+  }
+  return log
+}
+export function plain(): string {
+  try { return "plain" } finally { void 0 }
+}

@@ -1,0 +1,7 @@
+export effect function main() {
+  const child = fork { return 7 }
+  const spaced = fork /* keep */ { return 8 }
+  const explicit = fork effect { return 9 }
+  const operand = fork Effect.succeed(10)
+  return [join child, join spaced, join explicit, join operand]
+}
