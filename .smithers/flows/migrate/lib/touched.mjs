@@ -2,7 +2,7 @@ import { packageScriptProofs } from "./package-script-scope.mjs"
 import { isProtectedFile } from "./test-diff.mjs"
 
 // What a batch may change in the repository. A batch renames its modules to
-// .vibe, writes their sidecars (beside them or under vibe.sidecarDir) and platform siblings, and the codemod points
+// .vibe, writes their sidecars (beside them or under vibe.sidecarDir), platform siblings and module bodies' declarations, and the codemod points
 // package manifests and importers at the renamed modules; the repair agent
 // edits the batch's own files. Any other change is foreign: an earlier
 // batch's committed module that --fix rewrote (alchemy-5a), a test or config
@@ -33,6 +33,11 @@ export function batchScope({ files, codemod, testDiff, manifestSnapshots, sideca
   for (const emit of codemod?.emittedJs ?? []) for(const file of emit.packingFiles ?? []) scope.add(file)
   for (const split of codemod?.platform?.splits ?? []) {
     if (split.platform) scope.add(split.platform)
+    // The body the codemod wrote, `module <name> { }`, has its declaration
+    // x.vibe.<name>.d.ts beside its migrated source, sidecarDir or not.
+    if (split.module) for (const f of files) {
+      if (f.planned === split.file && /\.vibex?$/.test(f.path)) scope.add(`${f.path}.${split.module}.d.ts`)
+    }
     if (split.privateExports) scope.add(split.privateExports.manifest)
   }
   for (const edit of codemod?.exportEdits ?? []) scope.add(edit.manifest)

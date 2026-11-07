@@ -39,6 +39,37 @@ test("a batch's renames, sidecars, platform siblings and the codemod's manifest 
   assert.deepEqual(foreignChanges([...own, ...foreign], batch), foreign)
 })
 
+// dp-t3code-03 2026-11-07T04:10Z: the codemod moved platform code into
+// `module platform { }`; the compiler writes that body's declaration,
+// x.vibe.platform.d.ts, beside the source, and verify called it foreign.
+test("a migrated module's codemod-written body declaration is its own, and no other body's is", () => {
+  const batch = {
+    files: [
+      { planned: "src/a.ts", path: "src/a.vibe", migrated: true },
+      { planned: "src/b.ts", path: "src/b.ts", migrated: false },
+      { planned: "src/v.tsx", path: "src/v.vibex", migrated: true }
+    ],
+    codemod: { platform: { splits: [
+      { file: "src/a.ts", platform: null, module: "platform" },
+      { file: "src/b.ts", platform: null, module: "platform" },
+      { file: "src/v.tsx", platform: "src/v.platform.ts", module: "throwing" }
+    ] } }
+  }
+  const own = [
+    { status: "R", path: "src/a.vibe", from: "src/a.ts" },
+    { status: "A", path: "src/a.vibe.platform.d.ts" },
+    { status: "A", path: "src/v.vibex.throwing.d.ts" }
+  ]
+  assert.deepEqual(foreignChanges(own, batch), [])
+  const foreign = [
+    { status: "A", path: "src/a.vibe.other.d.ts" },
+    { status: "A", path: "src/b.vibe.platform.d.ts" },
+    { status: "A", path: "src/b.ts.platform.d.ts" },
+    { status: "A", path: "src/c.vibe.platform.d.ts" }
+  ]
+  assert.deepEqual(foreignChanges([...own, ...foreign], batch), foreign)
+})
+
 test("property: generated own changes are never foreign, and generated foreign ones always are", () => {
   fc.assert(fc.property(
     fc.array(fc.integer({ min: 0, max: 4 }), { minLength: 1, maxLength: 30 }),
