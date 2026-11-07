@@ -1,0 +1,3 @@
+FuzzMigrationCallableInference repair:default-parameter:named compiler Chapter 1 and Chapter 7: repair changes the inferred default parameter callable contract; lane migfix-opencode
+FuzzMigrationCallableInference corpus:opencode-default-parameter-inference compiler Chapter 1 and Chapter 7: minimized default parameter contract changes during repair; lane migfix-opencode
+FuzzMigrationCallableInference repair:default-parameter:unnamed compiler Chapter 1 and Chapter 7: unnamed factory repair narrows an inferred default parameter callable contract; lane migfix-opencode

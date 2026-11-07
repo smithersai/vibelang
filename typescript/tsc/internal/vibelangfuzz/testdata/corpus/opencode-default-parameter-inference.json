@@ -1,0 +1,3 @@
+{
+ "main.ts": "import * as Effect from \"effect/Effect\";\nexport const start = Effect.fn(\"start\")(function* (version = \"unknown\") { return version; });\n"
+}

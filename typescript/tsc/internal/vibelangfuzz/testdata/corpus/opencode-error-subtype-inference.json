@@ -1,0 +1,4 @@
+{
+ "foreign.ts": "import * as Effect from \"effect/Effect\";\nexport class Failed extends Error { readonly _tag = \"Failed\"; }\nexport declare const a: Effect.Effect<number, Error>;\nexport declare const b: Effect.Effect<number, Failed>;\n",
+ "main.ts": "import * as Effect from \"effect/Effect\";\nimport { a, b, type Failed } from \"./foreign.js\";\nexport const f = Effect.fn(\"f\")(function* () { yield* a; return yield* b; });\nexport type FailurePart = Extract<Effect.Error<ReturnType<typeof f>>, Failed>;\n"
+}
