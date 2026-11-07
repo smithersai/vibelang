@@ -80,6 +80,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Language-server help advertised named-pipe and socket transports that the server could not use. It now identifies these options as reserved and states that standard input/output is the supported transport.
 
+- The editor reported a `var` in a `do` expression twice, once as `EK0107` and again as `EK0201` or `EK0203`. It now reports only the `do` diagnostic for that declaration.
+
 - The token-count method incorrectly said no Effect comparison imported `effect` and every VibeLang example was self-contained. It now describes the imports and shared declarations included in the comparison.
 
 - Knip could report a used export as unused when a namespace member was read through brackets. Bracket reads now retain the same exports as in TypeScript.
