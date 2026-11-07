@@ -20,7 +20,12 @@ if (process.argv[2] === "format") {
   }
 }
 
-const binary = findBinary()
+let binary
+try { binary = findBinary() }
+catch (error) {
+  console.error(error.message)
+  process.exit(1)
+}
 const child = spawn(binary, process.argv.slice(2), { stdio: "inherit", env: {
   ...process.env,
   VIBELANG_FORMAT_NODE: process.execPath,

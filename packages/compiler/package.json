@@ -54,6 +54,7 @@
   "files": [
     "bin",
     "binary.mjs",
+    "compiler-override.mjs",
     "editor",
     "agents.mjs",
     "cache.mjs",
