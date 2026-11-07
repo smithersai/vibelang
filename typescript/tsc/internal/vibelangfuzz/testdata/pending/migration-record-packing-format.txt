@@ -1,0 +1,2 @@
+FuzzMigrationRecordPackingFormat record:create compiler VIP-34: emission creates the packing receipt after record formats its selected files; lane migfix-opencode-c
+FuzzMigrationRecordPackingFormat corpus:opencode-record-packing-format compiler VIP-34: first-time emitted packing receipt fails the unchanged repository formatter; lane migfix-opencode-c

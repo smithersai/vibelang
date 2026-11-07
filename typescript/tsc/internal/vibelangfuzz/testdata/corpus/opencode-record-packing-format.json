@@ -1,0 +1,17 @@
+{
+  "source": ".vibelang/pack-policy.json",
+  "key": "create",
+  "native": "export const value = 1\n",
+  "policy": {
+    "version": 1,
+    "files": [
+      ".vibelang/js"
+    ],
+    "ignores": []
+  },
+  "formatter": {
+    "name": "prettier",
+    "version": "3.6.2",
+    "printWidth": 120
+  }
+}
