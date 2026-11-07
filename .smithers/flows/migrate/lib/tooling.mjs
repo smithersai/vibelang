@@ -400,7 +400,7 @@ import parser from "vibelang/eslint"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import oxc from "./oxlint-rules.mjs"
-import { withOxlintComments } from "./oxlint-comments.mjs"
+import { withOxlintComments, blanketReasonPolicy } from "./oxlint-comments.mjs"
 const aliases = new Map()
 export const writtenConfigs = new Map()
 const nativePlugins = new Set(["eslint", "typescript", "@typescript-eslint", "unicorn", "react", "react_perf", "react-perf", "react-hooks", "jsx-a11y", "jsx_a11y", "nextjs", "next", "oxc", "deepscan", "import", "import-x", "jsdoc", "jest", "vitest", "promise", "node", "n", "regex", "vue"])
@@ -574,7 +574,7 @@ const correctness = levels[oxlint.categories?.correctness] !== "off"
 const configs = [
   { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**", "**/*.d.vibe.ts", "**/*.d.vibex.ts"] },
   ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, ...(config.plugins ? { plugins: { ...config.plugins, "@typescript-eslint": tseslint.plugin } } : {}), files: ["**/*.{vibe,vibex}"] })) : []),
-  { files: ["**/*.{vibe,vibex}"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
+  { files: ["**/*.{vibe,vibex}"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases, blanketReasonPolicy(fileURLToPath(tool), fromVite ? ["lint"] : [])) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
   ...overrides
 ]
 // vibelang/oxlint runs the native plugins' other rules on the projected TypeScript.

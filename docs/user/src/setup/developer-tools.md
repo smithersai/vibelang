@@ -299,7 +299,7 @@ edit. It leaves `reportUnusedDisableDirectives` off, because a directive naming 
 rule of the ESLint pass would look unused.
 
 Existing `oxlint-disable`, `oxlint-disable-line`,
-`oxlint-disable-next-line` and `oxlint-enable` comments keep their scope. TypeScript rule names written as
+`oxlint-disable-next-line` and `oxlint-enable` comments keep their scope. A directive containing only a reason, such as `// oxlint-disable-next-line -- explanation`, follows the installed Oxlint release: the bridge checks whether that engine treats it as a blanket suppression. TypeScript rule names written as
 `typescript/`, `typescript-eslint/` or `@typescript-eslint/` refer to the same
 registered ESLint rule.
 The bridge also recognizes ESLint directives and the native core/TypeScript
