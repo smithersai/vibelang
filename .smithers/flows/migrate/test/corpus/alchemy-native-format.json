@@ -1,0 +1,5 @@
+{
+  "source": "packages/aws/src/Synthetics/CanaryEventSource.vibe",
+  "pattern": "Multiline native imports and a generic event consumer retain TypeScript semicolons until the batch formatter runs.",
+  "native": "import type { Input } from \"alchemy/Input\";\nimport {\n  consumeBusEvents,\n  type EventRouteProps,\n} from \"../EventBridge/EventSource.vibe\";\n\n/** Keep the event source contract. */\nexport interface EventSourceProps extends EventRouteProps {\n  mutable names?: readonly Input<string>[];\n}\n\nexport const consumeEvents = <StreamReq = never, Req = never>(\n  props: EventSourceProps,\n  process: (events: readonly string[]) => void!never!Req,\n) =>\n  consumeBusEvents(\n    props.names ?? [],\n    process,\n  );\n"
+}
