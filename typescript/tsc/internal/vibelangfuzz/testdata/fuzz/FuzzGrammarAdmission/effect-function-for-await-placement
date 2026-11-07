@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-function-for-await-placement\nexport effect function g ( ) { for await ( let of xs ) { } }")

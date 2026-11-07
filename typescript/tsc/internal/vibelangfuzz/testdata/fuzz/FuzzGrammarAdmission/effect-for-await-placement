@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-for-await-placement\neffect {\nfor await ( const of xs ) { x ; } }")

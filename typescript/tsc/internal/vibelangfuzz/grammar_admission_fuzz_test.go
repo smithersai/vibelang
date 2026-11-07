@@ -281,6 +281,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-await-shorthand", "async function outer() { const f = () => ({ await }); }"},
 	{"effect-await-identifier", "effect function f() { return new await; }"},
 	{"native-await-binding-label", "function f(await: number) { await: while (false) { break await; } return await; }"},
+	{"effect-for-await-placement", "effect {\nfor await ( const of xs ) { x ; } }"},
+	{"effect-function-for-await-placement", "export effect function g ( ) { for await ( let of xs ) { } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1977,6 +1979,12 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 	switch code {
 	case 101, 103, 4618: // Shorthand and compatibility syntax boundaries.
 		return true
+	// Appendix A parses an effect body as FunctionBody[~Yield, ~Await, +Effect],
+	// so await, for await and await using there have no derivation. EK0102
+	// covers the native TS1103 at the same check, which returns before a
+	// malformed for-await head (TS1123) is examined.
+	case 102:
+		return true
 	case 501, 504, 1701, 1001: // [+Effect] placement; EK1001 is legacy module-level try rejection.
 		return true
 	case 108: // VIP-1: a recognized effect modifier on an interface or type literal member, abstract or ambient (Appendix A).
@@ -2290,6 +2298,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-for-await-placement-warning", "", diagnostics.CategoryWarning, 1103, false},
 		{"external-for-await-code-collision", "other", diagnostics.CategoryError, 1103, false},
 		{"ek-for-await-code-collision", "EK", diagnostics.CategoryError, 1103, false},
+		{"effect-for-await-placement", "EK", diagnostics.CategoryError, 102, true},
+		{"effect-for-await-placement-warning", "EK", diagnostics.CategoryWarning, 102, false},
+		{"native-effect-await-code-collision", "", diagnostics.CategoryError, 102, false},
 		{"native-member-definite", "", diagnostics.CategoryError, 1255, true},
 		{"native-labeled-declaration", "", diagnostics.CategoryError, 1344, true},
 		{"native-assignment-target", "", diagnostics.CategoryError, 2364, true},
