@@ -39,6 +39,8 @@ The `// @vibe` check reads real source files. Virtual module identifiers from an
 
 Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
 
+An included source outside the compilation root reports that boundary directly. Set the root to a directory containing the source, or give an external source package its own `package.json` and `tsconfig.json`; changing an already-correct `include` is unnecessary.
+
 ## 1. Add the plugin to Vite
 
 Add `vibelang()` to the `plugins` array in `vite.config.ts`, beside the existing plugins:
