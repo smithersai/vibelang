@@ -1,0 +1,8 @@
+// expect-result: [[1,2,3],[1,2,3]]
+import { nativeValues } from "./native.js"
+const properties = { $Packet$Definition: 1, $Packet$Definition$2: 2 }
+export data Packet<A> { Value { value: A } }
+export effect function main(): readonly unknown[]!! {
+ const packet = Packet.Value({ value: 3 })
+ return [[properties.$Packet$Definition, properties.$Packet$Definition$2, packet.value], nativeValues()]
+}

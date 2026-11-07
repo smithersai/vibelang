@@ -174,7 +174,7 @@ parser/vibelang_match.go:Parser.parseVibeLangIs	admission:is	004-match.md	suppor
 parser/vibelang_match.go:patternHasBindings	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mIdent	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mTemp	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
-parser/vibelang_match.go:Parser.freshenVibeLangTemps	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.freshenVibeLangTemps	admission:match	900-appendices.md#MatchExpression,900-appendices.md#DataDeclaration,006-data.md	support	VIP-7 matcher temporary hygiene and VIP-28 generic-data helper names follow lexical identifier roles
 parser/vibelang_match.go:Parser.mToken	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mString	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mBinary	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers

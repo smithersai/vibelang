@@ -1239,6 +1239,7 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 		names[id.Text()] = true
 	}
 	spelled := map[string]bool{}
+	helperSpelled := map[string]bool{}
 	propertyCaches := map[*ast.Node]*ast.Node{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -1247,6 +1248,22 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 		}
 		if ast.IsIdentifier(node) && !temps[node] {
 			spelled[node.Text()] = true
+			// Data helpers occupy a lexical name. Noncomputed member names
+			// and destructuring property selectors do not occupy that scope.
+			memberName := false
+			if node.Parent != nil {
+				switch node.Parent.Kind {
+				case ast.KindPropertyDeclaration, ast.KindPropertySignature,
+					ast.KindMethodDeclaration, ast.KindMethodSignature,
+					ast.KindGetAccessor, ast.KindSetAccessor, ast.KindEnumMember,
+					ast.KindPropertyAssignment, ast.KindPropertyAccessExpression,
+					ast.KindQualifiedName, ast.KindBindingElement, ast.KindImportSpecifier:
+					memberName = ast.IsIdentifierName(node)
+				}
+			}
+			if !memberName {
+				helperSpelled[node.Text()] = true
+			}
 		}
 		node.ForEachChild(visit)
 		return false
@@ -1262,11 +1279,14 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 				continue
 			}
 			if strings.HasPrefix(name, "$") && strings.HasSuffix(name, "$Definition") {
+				if !helperSpelled[name] {
+					continue
+				}
 				// Detail83: data helpers use their own first-free suffix, not
 				// the counter shared by match bindings and labels.
 				for suffix := 2; ; suffix++ {
 					fresh = name + "$" + strconv.Itoa(suffix)
-					if !spelled[fresh] && !names[fresh] {
+					if !helperSpelled[fresh] && !names[fresh] {
 						break
 					}
 				}

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Generic data declarations could gain unnecessary helper suffixes when a matching name appeared only in an object or class member. Generated declarations now keep the first free helper name.
+
 - Using `yield` in a returned match or a match statement could crash the compiler. These forms now retain the surrounding generator's variables and suspend normally.
 
 - Migrating an Effect generator with an old `: infer _` annotation in a nested TypeScript callback could leave `TS1338` errors. The fixer now removes the retired annotation and preserves the callback's inferred result.
