@@ -1,0 +1,1 @@
+matcher type is program-wide and the runtime export's; initialization stays explicit

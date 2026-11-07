@@ -1,0 +1,13 @@
+// Witness for the VIP-27 matcher type boundary; run.mjs compiles fixtures
+// under both Effect prelude settings and runs their output.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#8d784ca835599a60
+// VIP-27: every .vibe and .vibex resolves SymbolConstructor.customMatcher, independently of the Effect prelude switches.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#24304db992ab8895
+// VIP-27: published declarations add no runtime type reference and no generated matcher member.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#6b3c81e3645e0438
+// VIP-27: .ts files in a program containing the provider see the ambient augmentation.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#10f80678feab8667
+// VIP-27: Symbol.customMatcher has the unique symbol type of the runtime's customMatcher export.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#f489e18231b22d12
+// VIP-27: TypeScript modules keep ordinary dependency order and import vibelang-runtime first.
+export const witness = 1

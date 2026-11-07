@@ -91,21 +91,6 @@ test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-
 // Activation: Import an exported effect main and observe zero body executions until the consumer explicitly runs its Effect.
 test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind | cov2-vips-b no implicit runner | present | This adds no implicit runner or special `main`.")
 
-// rule-evidence: docs/design/vips/0027-declaration-output.md#a9bfea09ebda13fb
-// VIP-27: public plain callable throws never.
-// Activation: Inspect emitted declarations for every public non-effect call signature and verify a separate consumer sees thrown type never.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b public plain callable throws never | present | **`@throws`.** A non-effectful exported function carries `@throws {never}`, because a `.vibe` function can't throw (VIP-4) and a TypeScript function with no `@throws` throws `unknown`.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#68feb199cb49dd6e
-// VIP-27: host throws annotation spelling.
-// Activation: Inspect shipped host annotations for canonical @throws type syntax and consume them through foreign call checking.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b host throws annotation spelling | present | The `@throws` annotations VibeLang ships for JavaScript's globals (VIP-4) use the same spelling.")
-
-// rule-evidence: docs/design/vips/0027-declaration-output.md#c71921fd7ccac3f0
-// VIP-27: twin JSDoc and forbidden source throws tag.
-// Activation: Compare the documented function twin after adding @throws {never}, and reject the same tag in .vibe source with EK0406.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b twin JSDoc and forbidden source throws tag | present | Preserve the source documentation and add that tag to the twin's JSDoc before running `tsc`; do not add it to the `.vibe` source, where it is `EK0406`.")
-
 // rule-evidence: docs/design/vips/0027-declaration-output.md#ab84b6b8845122f6
 // VIP-27: migration enables enumeration sidecars.
 // Activation: Run setup on an isolated fixture whose tracked script enumerates *.ts; verify sidecars enabled and the live migration trees remain untouched.

@@ -1,0 +1,8 @@
+// expect: EK0406
+// rule-evidence: docs/design/vips/0027-declaration-output.md#05b5f0baa9dc0d48
+// VIP-27: the generated tag is never written into .vibe source, where it is EK0406.
+/**
+ * Adds two numbers.
+ * @throws {never}
+ */
+export function add(a: number, b: number) { return a + b }

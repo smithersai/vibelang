@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#24304db992ab8895
+// VIP-27: published declarations add no runtime type reference and no generated matcher member.
 // docs/design/vips/0027-declaration-output.md#6e1c16199aa79a9d
 // VIP-27: error and schema error declarations omit generated runtime references and static matchers.
 export const witness = 1;
